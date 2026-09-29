@@ -97,6 +97,48 @@ describe("Analyzer results page", () => {
     );
   });
 
+  it("restores unsaved choices for current worklist rows after mapping review", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        type: "GeneXpert",
+        resultList: [
+          { id: "held", importIssueReason: "unknown_analyzer_result_value" },
+          { id: "mapped", isAccepted: false, note: "" },
+        ],
+        paging: { totalPages: 2, currentPage: 2 },
+      }),
+    );
+    const history = renderPage({
+      pathname: "/AnalyzerResults",
+      search: "?id=5",
+      state: {
+        worklistDraft: {
+          analyzerId: "5",
+          page: 2,
+          edits: {
+            held: { isAccepted: true },
+            mapped: { isAccepted: true, note: "Review before release" },
+          },
+        },
+      },
+    });
+
+    await waitFor(() =>
+      expect(tableProps.mock.lastCall[0].results.resultList[1]).toMatchObject({
+        isAccepted: true,
+        note: "Review before release",
+      }),
+    );
+    expect(tableProps.mock.lastCall[0].results.resultList[0].isAccepted).toBe(
+      undefined,
+    );
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/AnalyzerResults?id=5&page=2",
+      expect.any(Function),
+    );
+    expect(history.location.state).toBeUndefined();
+  });
+
   it("finds an accession on a one-page analyzer worklist", async () => {
     const response = {
       type: "FluoroCycler XT",

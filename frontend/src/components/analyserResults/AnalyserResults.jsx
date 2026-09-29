@@ -20,7 +20,7 @@ import {
 import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
@@ -74,6 +74,9 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
 };
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
+  const draftEdits = useRef({});
+  const history = useHistory();
+  const location = useLocation();
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -89,6 +92,45 @@ const AnalyserResults = (props) => {
       componentMounted.current = false;
     };
   }, []);
+
+  useEffect(() => {
+    draftEdits.current = {};
+  }, [props.results]);
+
+  const rememberEdit = (rowId, field, value) => {
+    const id = String(rowId);
+    draftEdits.current[id] = { ...draftEdits.current[id], [field]: value };
+  };
+
+  const openMappingWithDraft = (event, resolutionUrl) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const edits = Object.fromEntries(
+      Object.entries(draftEdits.current).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+    const worklistDraft = {
+      analyzerId: String(props.analyzerId),
+      page: Number(props.results?.paging?.currentPage) || 1,
+      edits,
+    };
+    history.replace({
+      pathname: location.pathname,
+      search: location.search,
+      state: { ...location.state, worklistDraft },
+    });
+    history.push(resolutionUrl, { worklistDraft });
+  };
 
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
@@ -217,6 +259,8 @@ const AnalyserResults = (props) => {
     const { name, id, value } = e.target;
     let form = props.results;
     jpSet(form, name, value);
+    const field = name.match(/\.(result|note)$/)?.[1];
+    if (field) rememberEdit(rowId, field, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
@@ -231,6 +275,7 @@ const AnalyserResults = (props) => {
     );
     if (row) {
       row[fieldName] = e.target.checked;
+      rememberEdit(rowId, fieldName, e.target.checked);
     }
   };
 
@@ -241,6 +286,7 @@ const AnalyserResults = (props) => {
     const row = (props.results.resultList || []).find((r) => r.id === rowId);
     if (row) {
       row.typeOfSampleId = e.target.value;
+      rememberEdit(rowId, "typeOfSampleId", e.target.value);
     }
   };
 
@@ -250,6 +296,7 @@ const AnalyserResults = (props) => {
     );
     if (row) {
       row[fieldName] = checked;
+      rememberEdit(rowId, fieldName, checked);
     }
   };
   const validateResults = (e, rowId) => {
@@ -364,6 +411,7 @@ const AnalyserResults = (props) => {
                       name={"resultList[?(@.id == " + row.id + ")].isAccepted"}
                       labelText=""
                       value={true}
+                      defaultChecked={Boolean(row.isAccepted)}
                       onChange={(e) => handleCheckBox(e, row.id, "isAccepted")}
                     />
                   )}
@@ -387,6 +435,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isRejected"}
                     labelText=""
                     value={true}
+                    defaultChecked={Boolean(row.isRejected)}
                     onChange={(e) => handleCheckBox(e, row.id, "isRejected")}
                   />
                 )}
@@ -409,6 +458,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isDeleted"}
                     labelText=""
                     value={true}
+                    defaultChecked={Boolean(row.isDeleted)}
                     onChange={(e) => handleCheckBox(e, row.id, "isDeleted")}
                   />
                 )}
@@ -431,6 +481,7 @@ const AnalyserResults = (props) => {
                 type="text"
                 labelText=""
                 rows={2}
+                defaultValue={row.note || ""}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
             </div>
@@ -458,7 +509,13 @@ const AnalyserResults = (props) => {
                 />
               </div>
               {resolutionUrl && (
-                <CarbonLink as={RouterLink} to={resolutionUrl}>
+                <CarbonLink
+                  as={RouterLink}
+                  to={resolutionUrl}
+                  onClick={(event) =>
+                    openMappingWithDraft(event, resolutionUrl)
+                  }
+                >
                   <FormattedMessage id="analyzer.results.held.reviewMapping" />
                 </CarbonLink>
               )}

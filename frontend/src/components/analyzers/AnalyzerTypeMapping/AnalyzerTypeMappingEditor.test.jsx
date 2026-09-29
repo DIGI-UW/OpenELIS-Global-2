@@ -189,6 +189,13 @@ const LocationProbe = () => {
   );
 };
 
+const ReturnStateProbe = () => {
+  const location = useLocation();
+  return (
+    <output data-testid="return-state">{JSON.stringify(location.state)}</output>
+  );
+};
+
 const renderEditor = (
   entry = "/analyzers/types/shipped.genexpert/mapping?revision=2&returnTo=%2Fanalyzers%2Ftypes%3Fmapping%3DINCOMPLETE",
 ) =>
@@ -198,6 +205,9 @@ const renderEditor = (
         <Route path="/analyzers/types/:profileId/mapping">
           <AnalyzerTypeMappingEditor />
           <LocationProbe />
+        </Route>
+        <Route path="/AnalyzerResults">
+          <ReturnStateProbe />
         </Route>
       </IntlProvider>
     </MemoryRouter>,
@@ -249,6 +259,27 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
     getAnalyzerMappingResultOptions.mockImplementation((testId, callback) =>
       callback(resultOptions[testId] || []),
+    );
+  });
+
+  it("returns to the worklist with its unsaved review choices", async () => {
+    const worklistDraft = {
+      analyzerId: "501",
+      page: 2,
+      edits: { 1005: { isAccepted: true, note: "Reviewed" } },
+    };
+    renderEditor({
+      pathname: "/analyzers/types/shipped.genexpert/mapping",
+      search: "?revision=2&returnTo=%2FAnalyzerResults%3Fid%3D501",
+      state: { worklistDraft },
+    });
+
+    await userEvent.click(
+      (await screen.findAllByRole("link", { name: "Analyzer Types" }))[1],
+    );
+
+    expect(screen.getByTestId("return-state")).toHaveTextContent(
+      JSON.stringify({ worklistDraft }),
     );
   });
 

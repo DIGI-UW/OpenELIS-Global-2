@@ -2,7 +2,8 @@ import React from "react";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
-import { MemoryRouter } from "react-router-dom";
+import { createMemoryHistory } from "history";
+import { Router } from "react-router-dom";
 import { vi } from "vitest";
 import messages from "../../languages/en.json";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
@@ -54,9 +55,12 @@ const mappedQualitativeResult = {
 const renderResults = (
   resultList = [heldResult],
   sampleGroup = [resultList[0]],
-) =>
-  render(
-    <MemoryRouter initialEntries={["/AnalyzerResults?id=2001"]}>
+) => {
+  const history = createMemoryHistory({
+    initialEntries: ["/AnalyzerResults?id=2001"],
+  });
+  const view = render(
+    <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <ConfigurationContext.Provider
           value={{ configurationProperties: { AccessionFormat: "" } }}
@@ -68,15 +72,17 @@ const renderResults = (
             }}
           >
             <AnalyserResults
-              results={{ resultList }}
+              results={{ resultList: resultList.map((row) => ({ ...row })) }}
               sampleGroup={sampleGroup}
               analyzerId="2001"
             />
           </NotificationContext.Provider>
         </ConfigurationContext.Provider>
       </IntlProvider>
-    </MemoryRouter>,
+    </Router>,
   );
+  return { ...view, history };
+};
 
 describe("AnalyserResults", () => {
   beforeEach(() => {
@@ -120,6 +126,37 @@ describe("AnalyserResults", () => {
     const submitted = JSON.parse(postResults.mock.calls[0][1]);
     expect(submitted.resultList[0].isAccepted).not.toBe(true);
     expect(submitted.resultList[1].isAccepted).toBe(true);
+  });
+
+  it("carries unsaved review choices to mapping and back", () => {
+    const { history } = renderResults(
+      [heldResult, mappedQualitativeResult],
+      [mappedQualitativeResult],
+    );
+
+    fireEvent.click(document.getElementById("resultList1005.isAccepted"));
+    fireEvent.change(document.getElementById("resultList1005.note"), {
+      target: { value: "Review before release" },
+    });
+    fireEvent.click(
+      screen.getByRole("link", { name: "Review Analyzer Type mapping" }),
+    );
+
+    expect(history.location.pathname).toBe(
+      "/analyzers/types/genexpert-astm/mapping",
+    );
+    expect(history.location.state.worklistDraft).toEqual({
+      analyzerId: "2001",
+      page: 1,
+      edits: {
+        1005: { isAccepted: true, note: "Review before release" },
+      },
+    });
+    history.goBack();
+    expect(history.location.state.worklistDraft.edits[1005]).toEqual({
+      isAccepted: true,
+      note: "Review before release",
+    });
   });
 
   it("offers acceptance after choosing a specimen for a held mapped result", async () => {

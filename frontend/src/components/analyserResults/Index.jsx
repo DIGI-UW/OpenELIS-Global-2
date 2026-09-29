@@ -13,7 +13,7 @@ import {
   Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Redirect, useLocation } from "react-router-dom";
+import { Redirect, useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
 import { serverPageSizeOf } from "../utils/serverPaging";
 import PageBreadCrumb from "../common/PageBreadCrumb";
@@ -27,6 +27,15 @@ const importIssuesBreadcrumbs = [
     label: "analyzer.importIssues.title",
     link: "/AnalyzerResults?view=import-issues",
   },
+];
+
+const restorableResultFields = [
+  "isAccepted",
+  "isRejected",
+  "isDeleted",
+  "typeOfSampleId",
+  "note",
+  "result",
 ];
 
 /**
@@ -56,7 +65,12 @@ const Index = () => {
   const [serverPageSize, setServerPageSize] = useState();
   const [labNumber, setLabNumber] = useState("");
   const location = useLocation();
+  const history = useHistory();
   const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
+  const worklistDraft = location.state?.worklistDraft;
+  const restoringDraft =
+    worklistDraft &&
+    String(worklistDraft.analyzerId) === String(selectedAnalyzerId);
   const view = getAnalyzerResultsView(location.search);
   const intl = useIntl();
 
@@ -74,7 +88,11 @@ const Index = () => {
   useEffect(() => {
     if (url) {
       setIsLoading(true);
-      getFromOpenElisServer(url, handleResults);
+      const page = restoringDraft ? Number(worklistDraft.page) : 1;
+      getFromOpenElisServer(
+        url + (Number.isInteger(page) && page > 1 ? `&page=${page}` : ""),
+        handleResults,
+      );
     }
   }, [url]);
 
@@ -122,7 +140,38 @@ const Index = () => {
 
   const handleResults = (data) => {
     if (data) {
-      setResults(data);
+      const resultList = restoringDraft
+        ? data.resultList.map((row) => {
+            if (
+              row.importIssueReason &&
+              row.importIssueReason !== "awaiting_specimen"
+            ) {
+              return row;
+            }
+            const edits = worklistDraft.edits?.[String(row.id)];
+            if (!edits) return row;
+            const restored = { ...row };
+            restorableResultFields.forEach((field) => {
+              if (Object.prototype.hasOwnProperty.call(edits, field)) {
+                restored[field] = edits[field];
+              }
+            });
+            return restored;
+          })
+        : data.resultList;
+      setResults({ ...data, resultList });
+      if (restoringDraft) {
+        const remainingState = { ...location.state };
+        delete remainingState.worklistDraft;
+        history.replace({
+          pathname: location.pathname,
+          search: location.search,
+          hash: location.hash,
+          state: Object.keys(remainingState).length
+            ? remainingState
+            : undefined,
+        });
+      }
       setIsLoading(false);
       // the server echoes the analyzer's name in `type`, resolved from the id;
       // it comes back null for an id that matches no analyzer
@@ -138,7 +187,7 @@ const Index = () => {
           : [],
       );
 
-      if (data.resultList.length == 0) {
+      if (resultList.length == 0) {
         setSampleGroup([]);
         addNotification({
           kind: NotificationKinds.warning,
@@ -149,7 +198,7 @@ const Index = () => {
         });
         setNotificationVisible(true);
       } else {
-        setSampleGroup(extractUniqueGroups(data.resultList));
+        setSampleGroup(extractUniqueGroups(resultList));
       }
     }
   };

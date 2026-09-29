@@ -21,6 +21,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
+import { parsePath } from "history";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link, useLocation, useParams } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -90,6 +91,7 @@ const AnalyzerTypeMappingEditor = () => {
   );
   const revision = Number(query.get("revision"));
   const returnTo = safeInternalPath(query.get("returnTo"), "/analyzers/types");
+  const returnDestination = { ...parsePath(returnTo), state: location.state };
   const focusTest = query.get("focusTest");
   const focusValue = query.get("focusValue");
   const analyzerId = query.get("analyzerId");
@@ -515,7 +517,7 @@ const AnalyzerTypeMappingEditor = () => {
         breadcrumbs={[
           { label: "home.label", link: "/" },
           { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-          { label: "analyzerType.page.title", link: returnTo },
+          { label: "analyzerType.page.title", link: returnDestination },
           { label: heading, isCurrentPage: true },
         ]}
       />
@@ -539,7 +541,7 @@ const AnalyzerTypeMappingEditor = () => {
                 as={Link}
                 kind="ghost"
                 renderIcon={ArrowLeft}
-                to={returnTo}
+                to={returnDestination}
               >
                 <FormattedMessage id="analyzerType.mappingEditor.return" />
               </Button>
