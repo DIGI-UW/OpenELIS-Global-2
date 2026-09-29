@@ -97,6 +97,9 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     private AnalyzerSiteBindingConfirmationDAO confirmationDAO;
 
     @Autowired
+    private AnalyzerSiteBindingConfirmationService confirmationService;
+
+    @Autowired
     private HistoryService historyService;
 
     @Autowired
@@ -359,11 +362,11 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     public void reviewedSharedBindingRevisionPersistsAfterReloadingTheLocalAnalyzer() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         BindingSelectionFixture fixture = transaction.execute(status -> {
-            String profileId = "site.selection." + UUID.randomUUID();
+            String profileId = "site.unknown-capable";
             AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
             profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
+            profileBinding.setProfileRevision(3);
+            profileBinding.setProfileFingerprint("sha256:" + "1".repeat(64));
             profileBinding.setSysUserId(TEST_SYS_USER_ID);
             profileBindingDAO.insert(profileBinding);
 
@@ -375,6 +378,13 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
 
             AnalyzerSiteBindingRevision initial = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
             AnalyzerSiteBindingRevision reviewed = bindingRevision(binding, 2, "sha256:" + "d".repeat(64));
+            AnalyzerSiteBindingSnapshot reviewedSnapshot = new AnalyzerSiteBindingSnapshot(binding, reviewed, List.of(),
+                    List.of());
+            confirmationService.confirm(reviewedSnapshot, "sha256:" + "2".repeat(64),
+                    new AnalyzerSiteBindingConfirmationRequest(reviewed.getBindingFingerprint(),
+                            "sha256:" + "2".repeat(64), List.of(), List.of()),
+                    TEST_SYS_USER_ID);
+            String confirmationId = confirmationDAO.findByRevisionId(reviewed.getId()).orElseThrow().getId();
 
             Analyzer analyzer = new Analyzer();
             analyzer.ensureFhirUuid();
@@ -387,7 +397,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             analyzerDAO.insert(analyzer);
             entityManager.flush();
             return new BindingSelectionFixture(analyzer.getId(), initial.getId(), reviewed.getId(), binding.getId(),
-                    profileBinding.getId(), reviewed.getBindingFingerprint());
+                    profileBinding.getId(), reviewed.getBindingFingerprint(), confirmationId);
         });
 
         try {
@@ -401,6 +411,8 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
             transaction.executeWithoutResult(status -> {
                 JdbcTemplate jdbc = new JdbcTemplate(dataSource);
                 jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
+                jdbc.update("DELETE FROM analyzer_site_binding_confirmation WHERE id = ?",
+                        Long.valueOf(fixture.confirmationId()));
                 jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
                         Long.valueOf(fixture.reviewedRevisionId()));
                 jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
@@ -783,7 +795,7 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
     }
 
     private record BindingSelectionFixture(String analyzerId, String initialRevisionId, String reviewedRevisionId,
-            String bindingId, String profileBindingId, String reviewedFingerprint) {
+            String bindingId, String profileBindingId, String reviewedFingerprint, String confirmationId) {
     }
 
     private record ProbeFixture(String analyzerId, String connectionId, String revisionId, String bindingId,
