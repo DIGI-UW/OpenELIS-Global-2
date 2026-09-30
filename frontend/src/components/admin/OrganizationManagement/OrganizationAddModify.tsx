@@ -685,7 +685,9 @@ function OrganizationAddModify() {
                       hideLabel
                       className="defalut"
                       type="text"
-                      maxLength={15}
+                      maxLength={30}
+                      enableCounter
+                      maxCount={30}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
                       })}
@@ -716,7 +718,9 @@ function OrganizationAddModify() {
                       hideLabel
                       className="defalut"
                       type="text"
-                      maxLength={15}
+                      maxLength={30}
+                      enableCounter
+                      maxCount={30}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
                       })}

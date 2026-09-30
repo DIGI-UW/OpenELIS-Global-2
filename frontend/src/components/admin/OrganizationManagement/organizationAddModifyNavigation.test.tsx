@@ -204,4 +204,18 @@ describe("OrganizationAddModify fields", () => {
     ).toBe(false);
     errors.mockRestore();
   });
+
+  it("keeps a street address and city as long as the columns that store them", async () => {
+    renderScreen("/MasterListsPage/organizationEdit?ID=5");
+    const street = screen.getByLabelText(
+      messages["organization.streetAddress"],
+    );
+    const city = screen.getByLabelText(messages["organization.city"]);
+
+    await userEvent.type(street, "Section 12, Lot 34, Boram Road");
+    await userEvent.type(city, "Port Moresby National Capital");
+
+    expect(street).toHaveValue("Section 12, Lot 34, Boram Road");
+    expect(city).toHaveValue("Port Moresby National Capital");
+  });
 });

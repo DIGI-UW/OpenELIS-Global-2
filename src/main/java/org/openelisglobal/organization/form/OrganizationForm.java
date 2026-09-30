@@ -3,6 +3,7 @@ package org.openelisglobal.organization.form;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.sql.Timestamp;
 import java.util.Collection;
 import java.util.List;
@@ -28,6 +29,7 @@ public class OrganizationForm extends BaseForm {
     private String organizationName = "";
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Size(max = 30)
     private String city = "";
 
     @OptionalNotBlank(formFields = { Field.OrganizationAddressInfo, Field.ZipCode })
@@ -61,6 +63,7 @@ public class OrganizationForm extends BaseForm {
     private String multipleUnit = "";
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    @Size(max = 30)
     private String streetAddress = "";
 
     @OptionalNotBlank(formFields = { Field.OrganizationAddressInfo, Field.OrgState })

@@ -77,6 +77,11 @@ public class OrganizationRestControllerTest extends BaseWebContextSensitiveTest 
                 "SELECT street_address FROM clinlims.organization WHERE id = ?", String.class, Long.valueOf(ORG_ID)));
     }
 
+    @Test
+    public void aStreetAddressLongerThanItsColumnIsRefusedAsInvalid() throws Exception {
+        save("Section 12, Lot 34, Boram Road, Wewak").andExpect(status().isBadRequest());
+    }
+
     private org.springframework.test.web.servlet.ResultActions save(String streetAddress) throws Exception {
         Map<String, Object> form = new LinkedHashMap<>();
         form.put("id", ORG_ID);
