@@ -56,13 +56,13 @@ On `develop`:
 - Pins: Bridge 3.2.4 (`1eff7b4`; GeneXpert profile revision 7, FluoroCycler
   revision 4) and mock 0.1.3 (`8c64750`). Source pins and image tags match.
 
-The analyzer harness in CI runs these registered workflows with independent
+The analyzer harness in CI runs these result workflows with independent
 clinical readback: GeneXpert ASTM results for MTB, the three RIF outcomes, HIV
 viral load and COVID positive and negative; two GeneXpert instruments on one
 shared listener; a usable result accepted beside a held sibling that later
-recovers; an invalid RIF binding that holds only RIF; FluoroCycler numeric
-watched-file import; an undelivered result dismissed in the UI; the shipped
-clinical defaults; and the guided setup demos.
+recovers; an invalid RIF binding that holds only RIF; and FluoroCycler numeric
+watched-file import. It also runs checks of the shipped clinical defaults, the
+dismissal of an undelivered result in the UI, and the guided setup demos.
 
 Not yet covered: further FluoroCycler exports, assays, units and status/control
 semantics; a shipped core HL7 profile; OE2-side outage, restart and replay;
