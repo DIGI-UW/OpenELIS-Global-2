@@ -105,9 +105,12 @@ public interface EQAShipmentService {
      * consuming one aliquot per panel sample — from the reserve first; dipping into
      * unreserved production requires a written override note.
      *
+     * A blank courier keeps the replaced shipment's.
+     *
      * @throws IllegalStateException when the cycle is closed, the inventory cannot
      *                               cover the repeat, or the reserve is short and
      *                               no note was given
      */
-    Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String sysUserId);
+    Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String courier,
+            String trackingNumber, Date estimatedDeliveryDate, String sysUserId);
 }

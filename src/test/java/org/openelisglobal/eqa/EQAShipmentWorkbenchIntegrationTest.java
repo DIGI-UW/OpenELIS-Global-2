@@ -719,7 +719,7 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
         shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-A", null, USER);
         shipmentService.markShipped(cycle.getId(), List.of(ORG_A), USER);
         Integer originalBoxId = (Integer) shipmentService.getShipmentRows(cycle.getId()).get(0).get("boxId");
-        shipmentService.sendRepeat(cycle.getId(), ORG_A, null, USER);
+        shipmentService.sendRepeat(cycle.getId(), ORG_A, null, null, null, null, USER);
 
         // The stale original arrives after the repeat was dispatched.
         shipmentService.applyRemoteDelivery(originalBoxId, USER);

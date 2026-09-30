@@ -1,6 +1,8 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   Button,
+  DatePicker,
+  DatePickerInput,
   InlineNotification,
   Modal,
   Table,
@@ -19,9 +21,10 @@ import {
   formatDateOnly,
   hasQaPermission,
   resolveApiErrorMessage,
+  toLocalIsoDate,
 } from "../../../utils/Utils";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
-import { hintStyle } from "../../eqaCommon";
+import { calendarOnlyInput, hintStyle } from "../../eqaCommon";
 import {
   distributeScores,
   fetchIntake,
@@ -110,7 +113,7 @@ const ReceiptMonitor = ({
   const [rows, setRows] = useState([]);
   const [scores, setScores] = useState([]);
   const [repeating, setRepeating] = useState(null);
-  const [overrideNote, setOverrideNote] = useState("");
+  const [repeatForm, setRepeatForm] = useState({});
   const [busy, setBusy] = useState(null);
   const [openingSubmissions, setOpeningSubmissions] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -189,9 +192,8 @@ const ReceiptMonitor = ({
 
   const handleRepeat = () => {
     setBusy(repeating.organizationId);
-    sendRepeat(cycleId, repeating.organizationId, overrideNote, (response) => {
+    sendRepeat(cycleId, repeating.organizationId, repeatForm, (response) => {
       setRepeating(null);
-      setOverrideNote("");
       report(
         response,
         "eqa.receipt.repeatSent",
@@ -573,7 +575,12 @@ const ReceiptMonitor = ({
                             disabled={busy === row.organizationId}
                             onClick={() => {
                               setRepeating(row);
-                              setOverrideNote("");
+                              setRepeatForm({
+                                overrideNote: "",
+                                courier: row.courier || "",
+                                trackingNumber: "",
+                                estimatedDeliveryDate: "",
+                              });
                             }}
                           >
                             {t("eqa.receipt.sendRepeat", "Send repeat")}
@@ -832,11 +839,50 @@ const ReceiptMonitor = ({
               "The repeat comes out of the panel's reserve. If the reserve cannot cover it, a written justification is required before unreserved material is used.",
             )}
           </p>
+          <TextInput
+            id="eqa-repeat-courier"
+            labelText={t("eqa.shipment.courier", "Courier")}
+            value={repeatForm.courier}
+            onChange={(event) =>
+              setRepeatForm({ ...repeatForm, courier: event.target.value })
+            }
+          />
+          <TextInput
+            id="eqa-repeat-tracking"
+            labelText={t("eqa.shipment.tracking", "Tracking number")}
+            value={repeatForm.trackingNumber}
+            onChange={(event) =>
+              setRepeatForm({
+                ...repeatForm,
+                trackingNumber: event.target.value,
+              })
+            }
+          />
+          <DatePicker
+            datePickerType="single"
+            dateFormat="d/m/Y"
+            value={formatDateOnly(repeatForm.estimatedDeliveryDate)}
+            onChange={(dates) =>
+              setRepeatForm({
+                ...repeatForm,
+                estimatedDeliveryDate: dates[0] ? toLocalIsoDate(dates[0]) : "",
+              })
+            }
+          >
+            <DatePickerInput
+              id="eqa-repeat-expected"
+              labelText={t("eqa.shipment.expected", "Expected delivery")}
+              placeholder="dd/mm/yyyy"
+              {...calendarOnlyInput}
+            />
+          </DatePicker>
           <TextArea
             id="eqa-repeat-override-note"
             labelText={t("eqa.receipt.overrideNote", "Override note")}
-            value={overrideNote}
-            onChange={(event) => setOverrideNote(event.target.value)}
+            value={repeatForm.overrideNote}
+            onChange={(event) =>
+              setRepeatForm({ ...repeatForm, overrideNote: event.target.value })
+            }
             rows={3}
           />
         </Modal>

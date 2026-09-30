@@ -200,7 +200,7 @@ describe("ReceiptMonitor", () => {
     ).toBeInTheDocument();
   });
 
-  it("sends a repeat with the override note the reserve may require", async () => {
+  it("sends a repeat with its courier details and the override note the reserve may require", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(jsonResponse(true, { boxCode: "EQA-C9-550-R1" })),
     );
@@ -208,6 +208,12 @@ describe("ReceiptMonitor", () => {
 
     await screen.findByText("Mbeya Regional Lab");
     fireEvent.click(screen.getAllByRole("button", { name: "Send repeat" })[0]);
+    fireEvent.change(screen.getByLabelText("Courier"), {
+      target: { value: "DHL" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking number"), {
+      target: { value: "DHL-4471" },
+    });
     fireEvent.change(screen.getByLabelText("Override note"), {
       target: { value: "Courier lost the box" },
     });
@@ -218,7 +224,12 @@ describe("ReceiptMonitor", () => {
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
         "/rest/eqa/cycles/9/receipts/550/repeat",
-        JSON.stringify({ overrideNote: "Courier lost the box" }),
+        JSON.stringify({
+          overrideNote: "Courier lost the box",
+          courier: "DHL",
+          trackingNumber: "DHL-4471",
+          estimatedDeliveryDate: "",
+        }),
         expect.any(Function),
       ),
     );
