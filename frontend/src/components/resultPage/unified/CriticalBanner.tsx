@@ -64,7 +64,7 @@ const CriticalBanner: React.FC<CriticalBannerProps> = ({
       (status: number) => {
         setSubmitting(false);
         if (status === 200) {
-          setAlert({ ...alert, status: "RESOLVED" });
+          setAlert({ ...alert, status: "ACKNOWLEDGED" });
         }
       },
     );

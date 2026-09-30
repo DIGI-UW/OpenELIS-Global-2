@@ -1,11 +1,11 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, within, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import AlertsDashboard from "../AlertsDashboard";
-import { getFromOpenElisServer } from "../../utils/Utils";
+import { getFromOpenElisServer, putToOpenElisServer } from "../../utils/Utils";
 
 vi.mock("../../utils/Utils", async (importOriginal) => {
   const actual = await importOriginal();
@@ -26,6 +26,14 @@ const renderWithIntl = (component) => {
     </IntlProvider>,
   );
 };
+
+const alertTypes = [
+  "EQA_DEADLINE",
+  "SAMPLE_EXPIRATION",
+  "EQA_SUBMISSION_FAILED",
+  "MICROBIOLOGY_CRITICAL",
+  "REFERRAL_REJECTED",
+];
 
 const mockSummary = {
   criticalAlerts: 3,
@@ -72,7 +80,9 @@ describe("AlertsDashboard", () => {
     vi.clearAllMocks();
     vi.useFakeTimers();
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/summary")) {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
         callback(mockSummary);
       } else if (url.includes("/alerts/dashboard")) {
         callback(mockDashboard);
@@ -132,7 +142,9 @@ describe("AlertsDashboard", () => {
 
   test("Created column shows the time as the server formatted it", () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/summary")) {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
         callback(mockSummary);
       } else if (url.includes("/alerts/dashboard")) {
         callback({
@@ -152,6 +164,65 @@ describe("AlertsDashboard", () => {
 
     const table = document.querySelector("table");
     expect(within(table).getByText("15/01/2026 10:00")).toBeTruthy();
+  });
+
+  test("Alert Type filter offers the types the server lists, by label", () => {
+    renderWithIntl(<AlertsDashboard />);
+
+    const options = Array.from(
+      document.querySelectorAll("#alert-type-filter option"),
+    )
+      .map((option) => option.textContent)
+      .filter(Boolean);
+    expect(options).toEqual([
+      "EQA Deadline",
+      "Sample Expiration",
+      "EQA Submission Failed",
+      "Microbiology Critical",
+      "Referral Rejected",
+    ]);
+  });
+
+  test("an acknowledged alert offers Resolve, which posts the comment to resolve", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
+        callback(mockSummary);
+      } else if (url.includes("/alerts/dashboard")) {
+        callback({
+          alerts: [{ ...mockDashboard.alerts[1], status: "ACKNOWLEDGED" }],
+          totalCount: 1,
+        });
+      }
+    });
+    renderWithIntl(<AlertsDashboard />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Resolve" }));
+    const modal = document.querySelector(".cds--modal.is-visible");
+    fireEvent.change(within(modal).getByRole("textbox"), {
+      target: { value: "Sample re-run" },
+    });
+    fireEvent.click(within(modal).getByRole("button", { name: "Resolve" }));
+
+    expect(putToOpenElisServer).toHaveBeenCalledWith(
+      "/rest/alerts/dashboard/2/resolve",
+      JSON.stringify({ notes: "Sample re-run" }),
+      expect.any(Function),
+    );
+  });
+
+  test("a failed acknowledge is reported instead of passing silently", () => {
+    putToOpenElisServer.mockImplementation((url, payload, callback) =>
+      callback(500),
+    );
+    renderWithIntl(<AlertsDashboard />);
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Acknowledge" })[1]);
+    const modal = document.querySelector(".cds--modal.is-visible");
+    fireEvent.click(within(modal).getByRole("button", { name: "Acknowledge" }));
+
+    expect(within(modal).getByText("Failed to acknowledge alert")).toBeTruthy();
   });
 
   test("renders filter controls", () => {
@@ -186,7 +257,9 @@ describe("AlertsDashboard", () => {
 
   test("renders a microbiology critical alert row", () => {
     getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url.includes("/summary")) {
+      if (url.includes("/types")) {
+        callback(alertTypes);
+      } else if (url.includes("/summary")) {
         callback(mockSummary);
       } else if (url.includes("/alerts/dashboard")) {
         callback({

@@ -11928,5 +11928,11 @@
   "eqa.competency.countsFoldedScore": "Counted with the score",
   "notification.organization.post.error": "The organization was not saved. Check the fields and try again.",
   "organization.email": "Contact Email",
-  "eqa.provider.followups.sendFailed": "Could not email {to}. The notification was downloaded as CSV to send by hand."
+  "eqa.provider.followups.sendFailed": "Could not email {to}. The notification was downloaded as CSV to send by hand.",
+  "alerts.acknowledge.note": "Acknowledgment Comment",
+  "alerts.acknowledge.note.required": "A comment is required to acknowledge a critical alert",
+  "alerts.resolve.button": "Resolve",
+  "alerts.resolve.title": "Resolve Alert",
+  "alerts.resolve.comment.required": "A resolution comment is required",
+  "alerts.resolve.error": "Failed to resolve alert"
 }

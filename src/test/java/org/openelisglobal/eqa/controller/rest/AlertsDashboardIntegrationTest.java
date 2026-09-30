@@ -1,25 +1,40 @@
 package org.openelisglobal.eqa.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertSeverity;
+import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.config.AppConfig;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class AlertsDashboardIntegrationTest extends BaseWebContextSensitiveTest {
+
+    private static final int FIXTURE_USER = 1;
+    private static final AtomicLong ENTITY_IDS = new AtomicLong(System.currentTimeMillis());
 
     @Autowired
     private AlertService alertService;
@@ -49,6 +64,84 @@ public class AlertsDashboardIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(alert.getStartTime().toInstant(), OffsetDateTime.parse(row.get("startTime").asText()).toInstant());
         assertEquals(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(
                 Timestamp.from(alert.getStartTime().toInstant())), row.get("startTimeForDisplay").asText());
+    }
+
+    @Test
+    public void acknowledgeSetsAcknowledgedAndRecordsWhoAndWhenWithoutResolving() {
+        Alert alert = openAlert(AlertSeverity.CRITICAL);
+
+        assertEquals(HttpStatus.OK, controller
+                .acknowledgeAlert(alert.getId(), Map.of("notes", "Called the ward"), sessionRequest()).getStatusCode());
+
+        Alert stored = alertService.get(alert.getId());
+        assertEquals(AlertStatus.ACKNOWLEDGED, stored.getStatus());
+        assertEquals(String.valueOf(FIXTURE_USER), stored.getAcknowledgedBy().getId());
+        assertNotNull(stored.getAcknowledgedAt());
+        assertEquals("Called the ward", stored.getAcknowledgmentNotes());
+        assertNull(stored.getResolvedAt());
+    }
+
+    @Test
+    public void acknowledgingACriticalAlertWithoutACommentIsRefused() {
+        Alert alert = openAlert(AlertSeverity.CRITICAL);
+
+        assertEquals(HttpStatus.BAD_REQUEST,
+                controller.acknowledgeAlert(alert.getId(), Map.of("notes", " "), sessionRequest()).getStatusCode());
+        assertEquals(AlertStatus.OPEN, alertService.get(alert.getId()).getStatus());
+    }
+
+    @Test
+    public void anAcknowledgedAlertCanThenBeResolvedWithAComment() {
+        Alert alert = openAlert(AlertSeverity.WARNING);
+        controller.acknowledgeAlert(alert.getId(), null, sessionRequest());
+
+        assertEquals(HttpStatus.OK, controller
+                .resolveAlert(alert.getId(), Map.of("notes", "Sample re-run"), sessionRequest()).getStatusCode());
+
+        Alert stored = alertService.get(alert.getId());
+        assertEquals(AlertStatus.RESOLVED, stored.getStatus());
+        assertEquals(String.valueOf(FIXTURE_USER), stored.getResolvedBy().getId());
+        assertNotNull(stored.getResolvedAt());
+        assertEquals("Sample re-run", stored.getResolutionNotes());
+    }
+
+    @Test
+    public void resolvingWithoutACommentIsRefused() {
+        Alert alert = openAlert(AlertSeverity.WARNING);
+        controller.acknowledgeAlert(alert.getId(), null, sessionRequest());
+
+        assertEquals(HttpStatus.BAD_REQUEST,
+                controller.resolveAlert(alert.getId(), null, sessionRequest()).getStatusCode());
+        assertEquals(AlertStatus.ACKNOWLEDGED, alertService.get(alert.getId()).getStatus());
+    }
+
+    @Test
+    public void anAlertIsAcknowledgedBeforeItIsResolved() {
+        Alert alert = openAlert(AlertSeverity.WARNING);
+
+        assertEquals(HttpStatus.CONFLICT, controller
+                .resolveAlert(alert.getId(), Map.of("notes", "Skipping ahead"), sessionRequest()).getStatusCode());
+        assertEquals(AlertStatus.OPEN, alertService.get(alert.getId()).getStatus());
+    }
+
+    @Test
+    public void typeFilterOffersEveryAlertType() {
+        List<String> expected = Arrays.stream(AlertType.values()).map(Enum::name).collect(Collectors.toList());
+
+        assertEquals(expected, controller.getAlertTypes().getBody());
+    }
+
+    private Alert openAlert(AlertSeverity severity) {
+        return alertService.createAlert(AlertType.STAT_OVERDUE, "Sample", ENTITY_IDS.incrementAndGet(), severity,
+                "STAT order overdue", "{}");
+    }
+
+    private MockHttpServletRequest sessionRequest() {
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(FIXTURE_USER);
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true).setAttribute(IActionConstants.USER_SESSION_DATA, usd);
+        return request;
     }
 
     private JsonNode dashboardRow(Long alertId) throws Exception {

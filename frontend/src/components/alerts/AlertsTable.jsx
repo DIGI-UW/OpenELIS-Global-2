@@ -26,13 +26,18 @@ const STATUS_TAG_MAP = {
   RESOLVED: "green",
 };
 
+const ACTION_LABELS = {
+  OPEN: "alerts.acknowledge.button",
+  ACKNOWLEDGED: "alerts.resolve.button",
+};
+
 const AlertsTable = ({
   alerts,
   totalCount,
   page,
   pageSize,
   onPageChange,
-  onAcknowledge,
+  onAction,
 }) => {
   const intl = useIntl();
 
@@ -151,14 +156,14 @@ const AlertsTable = ({
                       if (cell.info.header === "actions") {
                         return (
                           <TableCell key={cell.id}>
-                            {original && original.status === "OPEN" && (
+                            {original && ACTION_LABELS[original.status] && (
                               <Button
                                 kind="ghost"
                                 size="sm"
-                                onClick={() => onAcknowledge(original)}
+                                onClick={() => onAction(original)}
                               >
                                 {intl.formatMessage({
-                                  id: "alerts.acknowledge.button",
+                                  id: ACTION_LABELS[original.status],
                                 })}
                               </Button>
                             )}
