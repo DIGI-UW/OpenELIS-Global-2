@@ -10,17 +10,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 
-/**
- * The Routine CSV export pivots results into one column per test of the
- * selected lab unit. Two active tests can share a display name, and Java and
- * Postgres sort test descriptions differently, so each result column must be
- * tied to its test, not to its name or its sort position.
- *
- * <p>
- * The fixture commits its rows because the builder reads on a session of its
- * own, and removes them afterwards. Every id is in a range reserved for this
- * class.
- */
+// Rows commit (the builder reads on its own session); ids 990100-990199 belong to this class.
 public class CSVRoutineColumnBuilderResultColumnsTest extends BaseWebContextSensitiveTest {
 
     private static final int UNIT = 990100;
@@ -50,7 +40,6 @@ public class CSVRoutineColumnBuilderResultColumnsTest extends BaseWebContextSens
 
     @Test
     public void testsSharingADisplayName_exportEachResultUnderItsOwnColumn() throws Exception {
-        // A legacy test and its replacement, both shown to users as "Hematocrit".
         insertTestWithResult(990101, "Hematocrit", "CSV Hémotocrite", "41");
         insertTestWithResult(990102, "Hematocrit", "CSV Hematocrit", "42");
 
@@ -61,9 +50,7 @@ public class CSVRoutineColumnBuilderResultColumnsTest extends BaseWebContextSens
 
     @Test
     public void descriptionsSortedDifferentlyByJavaAndPostgres_keepEachResultUnderItsTest() throws Exception {
-        // Java orders "CSV HCT" before "CSV Hb" (uppercase first); Postgres en_US
-        // orders "CSV Hb" first. Descriptions are unique across the catalog, hence
-        // the prefix.
+        // Java sorts "CSV HCT" first; Postgres en_US sorts "CSV Hb" first.
         insertTestWithResult(990111, "Hemoglobin", "CSV Hb", "13.5");
         insertTestWithResult(990112, "Hematocrit", "CSV HCT", "40");
 
@@ -72,12 +59,19 @@ public class CSVRoutineColumnBuilderResultColumnsTest extends BaseWebContextSens
 
     @Test
     public void resultWithoutATestResultLink_isStillExported() throws Exception {
-        // A free-text result on a test with no configured result options is saved
-        // with no test_result row behind it.
         insertTestWithResult(990121, "Hematocrit", "CSV Hematocrit", "41");
         insertTestWithUnlinkedResult(990122, "Blood film", "CSV Blood film", "normal");
 
         assertEquals(new ExportedRow("Blood film,Hematocrit", "normal,41"), exportUnit());
+    }
+
+    @Test
+    public void quantifiedChildResult_doesNotReplaceItsParent() throws Exception {
+        insertTestWithResult(990131, "Hepatitis B", "CSV HBV", "Positive");
+        jdbcTemplate.update("INSERT INTO result (id, analysis_id, parent_id, value) VALUES (?, ?, ?, ?)", 990132,
+                990131, 990131, "150");
+
+        assertEquals(new ExportedRow("Hepatitis B", "Positive"), exportUnit());
     }
 
     private ExportedRow exportUnit() throws Exception {

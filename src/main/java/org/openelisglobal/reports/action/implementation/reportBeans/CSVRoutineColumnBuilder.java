@@ -31,7 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.StringJoiner;
+import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.jdbc.ReturningWork;
@@ -116,11 +116,7 @@ public abstract class CSVRoutineColumnBuilder {
     /** All possible tests, so we can have 1 result per test. */
     protected List<Test> allTests;
 
-    /**
-     * This table provide a mapping from test name (CSV column heading also) to the
-     * TestResult record so we can look at the result type (Dictionary vs. constant
-     * etc.)
-     */
+    /** TestResult per result column, for its result type. */
     protected Map<String, TestResult> testResultsByColumn;
 
     protected String validStatusId;
@@ -139,17 +135,7 @@ public abstract class CSVRoutineColumnBuilder {
     protected TestService testService = SpringContext.getBean(TestService.class);
     protected TestResultService testResultService = SpringContext.getBean(TestResultService.class);
 
-    // This is the largest value possible for a postgres column name. The code will
-    // convert the
-    // test description to a column name so we need to truncate
-    // It's actually 63 but UTF_8 makes 55 safer.
-    private static final int MAX_POSTGRES_COL_NAME = 55;
-
-    /**
-     * The order of allTests is the order of the result columns in the CSV. The
-     * crosstab takes its categories from the same list, so the order is free to
-     * differ from how Postgres sorts.
-     */
+    /** allTests order is the CSV column order. */
     @SuppressWarnings("unchecked")
     protected void defineAllTestsAndResults() {
         if (allTests == null) {
@@ -179,23 +165,14 @@ public abstract class CSVRoutineColumnBuilder {
         }
     }
 
-    /**
-     * Names a test's result column after its id. Display names repeat across a
-     * catalog, and cut to the Postgres column name limit they collide more often.
-     */
+    /** Ids, not display names: display names repeat across a catalog. */
     protected static String resultColumnName(Test test) {
         return "test_" + test.getId();
     }
 
-    /**
-     * The crosstab category query: the ids of allTests, in list order, so each
-     * result fills the column declared for its test.
-     */
+    /** Must match the column order that appendResultCrosstab declares. */
     protected String resultCategorySql() {
-        StringJoiner ids = new StringJoiner(",");
-        for (Test test : allTests) {
-            ids.add(test.getId());
-        }
+        String ids = allTests.stream().map(Test::getId).collect(Collectors.joining(","));
         return "SELECT id FROM unnest(ARRAY[" + ids + "]) WITH ORDINALITY AS category(id, position) ORDER BY position";
     }
 
@@ -329,11 +306,10 @@ public abstract class CSVRoutineColumnBuilder {
         String value;
         // look in the data source for a value
         try {
-            value = resultSet.getString(trimToPostgresMaxColumnName(column.dbName));
+            value = resultSet.getString(column.dbName);
         } catch (RuntimeException e) {
             // if you end up where it is because the result set doesn't return a
             // column of the right name
-            // Check MAX_POSTGRES_COL_NAME if this fails on a long name
             LogEvent.logInfo(this.getClass().getSimpleName(), "getValue",
                     "Internal Error: Unable to find db column \"" + column.dbName + "\" in data.");
             return "?" + column.csvName + "?";
@@ -346,14 +322,6 @@ public abstract class CSVRoutineColumnBuilder {
             LogEvent.logInfo(this.getClass().getSimpleName(), "getValue", "A null found " + column.dbName);
         }
         return result;
-    }
-
-    private String trimToPostgresMaxColumnName(String name) {
-        if (name.length() <= MAX_POSTGRES_COL_NAME) {
-            return name;
-        } else {
-            return name.substring(0, MAX_POSTGRES_COL_NAME);
-        }
     }
 
     public void add(String dbName, String csvTitle) {
@@ -595,8 +563,9 @@ public abstract class CSVRoutineColumnBuilder {
                 + " join clinlims.test AS t on a.test_id = t.id \n"
                 + " join clinlims.test_section ts on t.test_section_id = ts.id \n"
                 + " left join sample_projects sp on si.samp_id = sp.samp_id \n" + "\n"
-                + " WHERE sp.id IS NULL AND s.entered_date >= date(''" + formatDateForDatabaseSql(lowDate)
-                + "'')  AND s.entered_date <= date(''" + formatDateForDatabaseSql(highDate) + " '') " + "\n "
+                + " WHERE sp.id IS NULL AND r.parent_id IS NULL AND s.entered_date >= date(''"
+                + formatDateForDatabaseSql(lowDate) + "'')  AND s.entered_date <= date(''"
+                + formatDateForDatabaseSql(highDate) + " '') " + "\n "
                 // sql injection safe as user cannot overwrite validStatusId in database
                 /// + ((validStatusId == null) ? "" : " AND a.status_id = " + validStatusId)
                 // + (( excludeAnalytes == null)?"":
@@ -605,8 +574,6 @@ public abstract class CSVRoutineColumnBuilder {
                 + labUnitFilter + "\n ORDER BY 1, 2 " + "\n ', '" + resultCategorySql() + "' ) ");
         // end of cross tab
 
-        // One pivot column per test, named after the test id and declared in
-        // allTests order, the same order as the categories.
         query.append("\n as " + listName + " ( " // inner use of the list name
                 + "\"si_id\" numeric(10) ");
         for (Test col : allTests) {

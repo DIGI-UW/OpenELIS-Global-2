@@ -94,8 +94,6 @@ public class TBColumnBuilder extends RoutineColumnBuilder {
                 + "\n" + " ORDER BY 1, 2 \n" + " ', '" + resultCategorySql() + "' ) ");
         // end of cross tab
 
-        // One pivot column per test, named after the test id and declared in
-        // allTests order, the same order as the categories.
         query.append("\n as " + listName + " ( " // inner use of the list name
                 + "\"si_id\" numeric(10) ");
         for (Test col : allTests) {
