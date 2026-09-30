@@ -4887,10 +4887,10 @@
   "notification.invalid.password": "Please enter password according to instructions.",
   "notification.login.generic.error": "Error while attempting login",
   "notification.login.syntax.error": "Error while attempting login - Could not parse response to JSON",
-  "notification.organization.post.delete.success": "Organization Deactivated Succesfully.",
+  "notification.organization.post.delete.success": "Organization Deactivated Successfully.",
   "notification.organization.post.internetAddress": "Enter a valid Organization Url.",
-  "notification.organization.post.save.success": "Organization Information Added Succesfully.",
-  "notification.organization.post.success": "Organization Information Updated Succesfully.",
+  "notification.organization.post.save.success": "Organization Information Added Successfully.",
+  "notification.organization.post.success": "Organization Information Updated Successfully.",
   "notification.password.change.fail": "Password change failed",
   "notification.password.change.success": "Password changed successfully",
   "notification.response.syntax.error": "Error - Could not parse response to JSON",
@@ -11848,5 +11848,6 @@
   "analyzerType.editor.clientProfilePort": "Client connection port stored in this profile (optional)",
   "eqa.intake.sample": "Sample {code}",
   "eqa.competency.countsFoldedTriage": "Decided by triage",
-  "eqa.competency.countsFoldedScore": "Counted with the score"
+  "eqa.competency.countsFoldedScore": "Counted with the score",
+  "notification.organization.post.error": "The organization was not saved. Check the fields and try again."
 }

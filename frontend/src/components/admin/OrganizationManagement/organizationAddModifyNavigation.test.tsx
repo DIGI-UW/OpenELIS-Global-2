@@ -28,6 +28,8 @@ vi.mock("../../utils/Utils", async () => {
   };
 });
 
+const addNotification = vi.fn();
+
 const renderScreen = (at: string) =>
   render(
     <MemoryRouter initialEntries={[at]}>
@@ -36,7 +38,7 @@ const renderScreen = (at: string) =>
           value={{
             notificationVisible: false,
             setNotificationVisible: vi.fn(),
-            addNotification: vi.fn(),
+            addNotification,
           }}
         >
           <IntlProvider locale="en" messages={messages}>
@@ -69,6 +71,7 @@ describe("OrganizationAddModify navigation", () => {
       },
     );
     (postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>).mockReset();
+    addNotification.mockReset();
   });
 
   it("bounces to the list when opened with no ID to edit", async () => {
@@ -105,6 +108,41 @@ describe("OrganizationAddModify navigation", () => {
         vi.advanceTimersByTime(200);
       });
       expect(await screen.findByText("organization list")).toBeInTheDocument();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("stays on the form and says the save failed when the server refuses it", async () => {
+    vi.useFakeTimers();
+    try {
+      renderScreen("/MasterListsPage/organizationEdit?ID=5");
+      // Any edit enables Save.
+      fireEvent.change(
+        document.getElementById("org-name") as HTMLInputElement,
+        {
+          target: { value: "Org A Updated" },
+        },
+      );
+      (
+        postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>
+      ).mockImplementation(
+        (url: string, body: string, callback: (r: unknown) => void) =>
+          callback({ status: 500, error: "Request failed (HTTP 500)" }),
+      );
+      fireEvent.click(screen.getByText("Save"));
+      act(() => {
+        vi.advanceTimersByTime(1000);
+      });
+
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "error" }),
+      );
+      expect(addNotification).not.toHaveBeenCalledWith(
+        expect.objectContaining({ kind: "success" }),
+      );
+      expect(screen.queryByText("organization list")).toBeNull();
+      expect(document.getElementById("org-name")).not.toBeNull();
     } finally {
       vi.useRealTimers();
     }
