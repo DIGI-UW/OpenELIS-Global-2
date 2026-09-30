@@ -218,4 +218,34 @@ describe("OrganizationAddModify fields", () => {
     expect(street).toHaveValue("Section 12, Lot 34, Boram Road");
     expect(city).toHaveValue("Port Moresby National Capital");
   });
+
+  it("shows the laboratory's contact email and saves a change to it", async () => {
+    (getFromOpenElisServer as ReturnType<typeof vi.fn>).mockImplementation(
+      (url: string, callback: (r: unknown) => void) => {
+        if (url.startsWith("/rest/Organization?ID=")) {
+          return callback({
+            id: "5",
+            organizationName: "Org A",
+            email: "old@lab.example.org",
+            orgTypes: [],
+            selectedTypes: [],
+          });
+        }
+        return callback([]);
+      },
+    );
+    (postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>).mockReset();
+    renderScreen("/MasterListsPage/organizationEdit?ID=5");
+    const email = screen.getByLabelText(messages["organization.email"]);
+    expect(email).toHaveValue("old@lab.example.org");
+
+    await userEvent.clear(email);
+    await userEvent.type(email, "qa@lab.example.org");
+    await userEvent.click(screen.getByText("Save"));
+
+    const [, body] = (
+      postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>
+    ).mock.calls[0];
+    expect(JSON.parse(body).email).toBe("qa@lab.example.org");
+  });
 });

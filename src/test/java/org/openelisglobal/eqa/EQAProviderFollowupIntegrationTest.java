@@ -158,6 +158,17 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
                 followupService.get(followupId).getNotifiedAt() != null);
     }
 
+    @Test
+    public void notifyingAddressesTheLaboratorysOwnContactEmail() {
+        jdbc.update("UPDATE clinlims.organization SET email = ? WHERE id = ?", "qa@participant.example.org",
+                PARTICIPANT_ORG);
+        Long followupId = registerRow(false);
+
+        Map<String, Object> outcome = followupService.notifyParticipant(followupId, USER);
+
+        assertEquals("qa@participant.example.org", outcome.get("recipient"));
+    }
+
     // ---: persistent failure ----
 
     @Test

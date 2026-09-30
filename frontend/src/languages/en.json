@@ -11849,5 +11849,7 @@
   "eqa.intake.sample": "Sample {code}",
   "eqa.competency.countsFoldedTriage": "Decided by triage",
   "eqa.competency.countsFoldedScore": "Counted with the score",
-  "notification.organization.post.error": "The organization was not saved. Check the fields and try again."
+  "notification.organization.post.error": "The organization was not saved. Check the fields and try again.",
+  "organization.email": "Contact Email",
+  "eqa.provider.followups.sendFailed": "Could not email {to}. The notification was downloaded as CSV to send by hand."
 }

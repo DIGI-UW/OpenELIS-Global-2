@@ -62,6 +62,7 @@ interface OrganizationResponse {
   cliaNum?: string;
   streetAddress?: string;
   city?: string;
+  email?: string;
   orgTypes: OrganizationType[];
   organization?: ParentOrganization;
   lastupdated?: string;
@@ -84,6 +85,7 @@ interface OrganizationFormData extends ParentOrganization {
   cliaNum?: string;
   streetAddress?: string;
   city?: string;
+  email?: string;
   organization?: ParentOrganization;
   [key: string]: unknown;
 }
@@ -232,6 +234,7 @@ function OrganizationAddModify() {
         cliaNum: typeOfActivity.cliaNum,
         streetAddress: typeOfActivity.streetAddress,
         city: typeOfActivity.city,
+        email: typeOfActivity.email,
       };
 
       const organizationsManagementIdInfoPost = {
@@ -257,6 +260,7 @@ function OrganizationAddModify() {
         cliaNum: typeOfActivity.cliaNum,
         streetAddress: typeOfActivity.streetAddress,
         city: typeOfActivity.city,
+        email: typeOfActivity.email,
       };
       setOrgInfo(organizationsManagementIdInfo);
       setOrgInfoPost(organizationsManagementIdInfoPost);
@@ -339,6 +343,18 @@ function OrganizationAddModify() {
     setOrgInfo((prevOrgInfo) => ({
       ...prevOrgInfo,
       city: e.target.value,
+    }));
+  }
+
+  function handleEmailChange(e: ChangeEvent<HTMLInputElement>) {
+    setSaveButton(false);
+    setOrgInfoPost((prevOrgInfoPost) => ({
+      ...prevOrgInfoPost,
+      email: e.target.value,
+    }));
+    setOrgInfo((prevOrgInfo) => ({
+      ...prevOrgInfo,
+      email: e.target.value,
     }));
   }
 
@@ -729,6 +745,27 @@ function OrganizationAddModify() {
                       // required={true}
                       value={orgInfo && orgInfo.city ? orgInfo.city : ""}
                       onChange={(e) => handleCityChange(e)}
+                    />
+                  </Column>
+                </Grid>
+                <Grid fullWidth={true}>
+                  <Column lg={8} md={4} sm={4}>
+                    <>
+                      <FormattedMessage id="organization.email" /> :
+                    </>
+                  </Column>
+                  <Column lg={8} md={4} sm={4}>
+                    <TextInput
+                      id="org-email"
+                      labelText={intl.formatMessage({
+                        id: "organization.email",
+                      })}
+                      hideLabel
+                      className="defalut"
+                      type="email"
+                      maxLength={255}
+                      value={orgInfo && orgInfo.email ? orgInfo.email : ""}
+                      onChange={(e) => handleEmailChange(e)}
                     />
                   </Column>
                 </Grid>

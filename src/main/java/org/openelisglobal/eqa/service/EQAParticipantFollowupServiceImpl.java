@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.valueholder.AlertNotificationPayload;
@@ -421,8 +422,8 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
                 .append(", were assessed as unacceptable for the following tests:\n");
         for (Map<String, Object> row : summaryRows(followup)) {
             body.append("- ").append(row.getOrDefault("testName", row.getOrDefault("analyteName", "")))
-                    .append(": reported ").append(row.getOrDefault("reported", "")).append(", target ")
-                    .append(row.getOrDefault("target", "")).append('\n');
+                    .append(": reported ").append(Objects.toString(row.get("reported"), "")).append(", target ")
+                    .append(Objects.toString(row.get("target"), "")).append('\n');
         }
         if (Boolean.TRUE.equals(followup.getPersistentFailureFlag())) {
             body.append("\nThis is a repeated failure across recent cycles and has been escalated.\n");
@@ -431,6 +432,10 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     }
 
     private String contactEmail(Long organizationId) {
+        Organization organization = organizationService.getOrganizationById(String.valueOf(organizationId));
+        if (organization != null && !GenericValidator.isBlankOrNull(organization.getEmail())) {
+            return organization.getEmail();
+        }
         for (OrganizationContact contact : organizationContactService
                 .getListForOrganizationId(String.valueOf(organizationId))) {
             Person person = contact.getPerson();

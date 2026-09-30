@@ -1,6 +1,7 @@
 package org.openelisglobal.organization.form;
 
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
@@ -74,6 +75,9 @@ public class OrganizationForm extends BaseForm {
 
     @URL
     private String internetAddress = "";
+
+    @Email
+    private String email = "";
 
     @OptionalNotBlank(formFields = { Field.MLS })
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
@@ -238,6 +242,14 @@ public class OrganizationForm extends BaseForm {
 
     public String getInternetAddress() {
         return internetAddress;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 
     public void setInternetAddress(String internetAddress) {
