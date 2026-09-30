@@ -172,8 +172,7 @@ const InlineEnrollmentForm = ({
     isEdit &&
     myCycles.some((cycle) => cycle.schemeName === enrollment.programName);
 
-  // The latest pick, so a slow reply for a scheme picked earlier cannot
-  // replace the tests of the one picked since.
+  // Latest pick; a late reply for an earlier scheme is ignored.
   const pickedScheme = useRef(null);
 
   const pickScheme = (value) => {
@@ -188,7 +187,6 @@ const InlineEnrollmentForm = ({
     if (!scheme) {
       return;
     }
-    // A scheme names the tests it covers, so enrolling in it starts from those.
     getFromOpenElisServer(`/rest/eqa/programs/${scheme.id}/tests`, (data) => {
       if (pickedScheme.current !== value) {
         return;

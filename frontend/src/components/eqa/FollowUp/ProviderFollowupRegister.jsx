@@ -59,8 +59,6 @@ const STATUS_TAG = {
  * two different wordings for the same enum, so they carry separate keys.
  */
 const TRIAGE = [
-  // The response is the laboratory's own words, so it asks for them and
-  // refuses to record an empty one.
   {
     target: "RESPONSE_RECEIVED",
     label: "Record response",

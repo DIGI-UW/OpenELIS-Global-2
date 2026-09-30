@@ -512,11 +512,6 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         assertEquals(1, participantResults(cycle.getId()).size());
     }
 
-    /**
-     * The sweep runs every five minutes, and until validation triggered the same
-     * walk a lab that had validated its last result watched the cycle sit in
-     * Testing until the next run.
-     */
     @Test
     public void validatingTheLastResult_makesTheCycleReadyToSubmitAtOnce() {
         EQAProgram scheme = externalScheme(true);
@@ -533,10 +528,6 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         verify(fhirStub, never()).submitCycleViaFhir(anyLong(), anyLong());
     }
 
-    /**
-     * A result that clears its range at entry is finalized by result entry and
-     * never reaches validation, so entry has to move the cycle on as well.
-     */
     @Test
     public void aResultFinalizedAtEntry_makesTheCycleReadyToSubmitAtOnce() {
         EQAProgram scheme = externalScheme(true);
@@ -657,11 +648,8 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
     }
 
-    /**
-     * A double click: the second request arrives while the first is still posting.
-     * The first post is held open until a second post arrives or two seconds pass,
-     * so a second request that gets past the state check is caught posting.
-     */
+    // First post blocks until a second post arrives or 2s pass, so a second
+    // request past the state check is caught posting.
     @Test
     public void reviewSubmit_clickedTwiceAtOnce_postsOnceAndRefusesTheSecond() throws Exception {
         EQACycle cycle = heldAtTheReviewGate(34);

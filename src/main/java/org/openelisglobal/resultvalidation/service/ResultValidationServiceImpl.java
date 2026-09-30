@@ -2,7 +2,6 @@ package org.openelisglobal.resultvalidation.service;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
@@ -128,14 +127,8 @@ public class ResultValidationServiceImpl implements ResultValidationService {
             updater.transactionalUpdate(resultSaveService);
         }
 
-        publishValidatedSamples(analysisUpdateList);
-    }
-
-    private void publishValidatedSamples(List<Analysis> analysisUpdateList) {
-        Set<Long> sampleIds = ResultsValidatedEvent.finalizedSamples(analysisUpdateList);
-        if (!sampleIds.isEmpty()) {
-            eventPublisher.publishEvent(new ResultsValidatedEvent(sampleIds));
-        }
+        eventPublisher
+                .publishEvent(new ResultsValidatedEvent(ResultsValidatedEvent.finalizedSamples(analysisUpdateList)));
     }
 
     private boolean isResultAnalysisFinalized(Result result, List<Analysis> analysisUpdateList) {

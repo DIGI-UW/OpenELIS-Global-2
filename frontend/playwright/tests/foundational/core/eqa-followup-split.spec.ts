@@ -138,8 +138,6 @@ test.describe("EQA follow-up registers", () => {
       await expect(triage).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(triage.getByText("210.0")).toBeVisible();
 
-      // Record response asks for what the laboratory said, and the register
-      // keeps it with the row.
       await triage.getByRole("button", { name: "Record response" }).click();
       await page
         .getByLabel("What the laboratory said")
@@ -150,9 +148,7 @@ test.describe("EQA follow-up registers", () => {
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(foreignRow().getByText("Response received")).toBeVisible();
       await expect(
-        triage.getByText(`E2E ${RUN}: pipette out of calibration, replaced`, {
-          exact: false,
-        }),
+        triage.getByText(`E2E ${RUN}: pipette out of calibration, replaced`),
       ).toBeVisible();
 
       // Resolving needs notes, and closes the row for further triage.
@@ -174,9 +170,7 @@ test.describe("EQA follow-up registers", () => {
       await expect(
         page
           .getByTestId(/^register-triage-/)
-          .getByText(`E2E ${RUN}: pipette out of calibration, replaced`, {
-            exact: false,
-          }),
+          .getByText(`E2E ${RUN}: pipette out of calibration, replaced`),
       ).toBeVisible();
     });
   });

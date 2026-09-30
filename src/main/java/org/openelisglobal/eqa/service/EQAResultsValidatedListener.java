@@ -15,10 +15,8 @@ import org.springframework.transaction.event.TransactionalEventListener;
 import org.springframework.transaction.support.TransactionTemplate;
 
 /**
- * Advances a participant cycle as soon as its results are validated. Until now
- * only the submission sweep did, so a cycle whose last result had been
- * validated waited up to five minutes to read Ready to submit. The sweep still
- * runs and picks up anything this misses.
+ * Advances participant cycles once their results are validated; the submission
+ * sweep is the fallback.
  */
 @Component
 public class EQAResultsValidatedListener {
@@ -36,9 +34,11 @@ public class EQAResultsValidatedListener {
 
     @TransactionalEventListener
     public void advanceCycles(ResultsValidatedEvent event) {
-        // After commit the validation's transaction is finished but still bound, and
-        // joining it would drop these writes, so each step takes a new one. One
-        // cycle each, as in the sweep, so one failure leaves the others advanced.
+        if (event.sampleIds().isEmpty()) {
+            return;
+        }
+        // After commit the old transaction is still bound, so each step needs
+        // REQUIRES_NEW; one per cycle so a failure leaves the rest advanced.
         TransactionTemplate tx = new TransactionTemplate(transactionManager);
         tx.setPropagationBehavior(TransactionDefinition.PROPAGATION_REQUIRES_NEW);
         Set<Long> cycleIds = tx.execute(status -> cycleIdsOf(event.sampleIds()));
@@ -54,11 +54,9 @@ public class EQAResultsValidatedListener {
     private Set<Long> cycleIdsOf(Set<Long> sampleIds) {
         Set<Long> cycleIds = new LinkedHashSet<>();
         for (Long sampleId : sampleIds) {
-            for (SampleEQA sample : sampleEQADAO.getAllMatching("sampleId", sampleId)) {
-                if (Boolean.TRUE.equals(sample.getIsEqaSample()) && sample.getCycleId() != null) {
-                    cycleIds.add(sample.getCycleId());
-                }
-            }
+            sampleEQADAO.findBySampleId(sampleId)
+                    .filter(sample -> Boolean.TRUE.equals(sample.getIsEqaSample()) && sample.getCycleId() != null)
+                    .map(SampleEQA::getCycleId).ifPresent(cycleIds::add);
         }
         return cycleIds;
     }

@@ -404,9 +404,7 @@ const MyCyclesPage = () => {
           lowContrast
           hideCloseButton
           inline
-          // status, not Carbon's alertdialog default, which moves focus to the
-          // action button and holds it there: the manual-submission dialog this
-          // opens could not be typed into.
+          // Carbon's alertdialog default steals focus from the manual-submission dialog.
           role="status"
           title={t(
             "eqa.cycle.retriesSpent.title",
@@ -452,9 +450,6 @@ const MyCyclesPage = () => {
           lowContrast
           hideCloseButton
           inline
-          // status for the same reason: as an alertdialog it kept focus on
-          // Review & submit, so typing into the manual-submission dialog pressed
-          // it instead.
           role="status"
           title={t(
             "eqa.cycle.review.title",

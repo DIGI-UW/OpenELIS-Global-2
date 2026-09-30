@@ -173,12 +173,9 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             updater.transactionalUpdate(actionDataSet);
         }
 
-        // A result that clears its range at entry is finalized here and never
-        // reaches validation, so it is announced the same way validation does.
-        Set<Long> finalizedSamples = ResultsValidatedEvent.finalizedSamples(actionDataSet.getModifiedAnalysis());
-        if (!finalizedSamples.isEmpty()) {
-            eventPublisher.publishEvent(new ResultsValidatedEvent(finalizedSamples));
-        }
+        // Results finalized at entry skip validation, so announce them here too.
+        eventPublisher.publishEvent(
+                new ResultsValidatedEvent(ResultsValidatedEvent.finalizedSamples(actionDataSet.getModifiedAnalysis())));
         return reflexAnalysises;
     }
 

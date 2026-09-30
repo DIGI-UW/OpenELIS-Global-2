@@ -405,9 +405,6 @@ describe("MyCyclesPage", () => {
     expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
   });
 
-  // Carbon's default alertdialog role moves focus to the banner's action button
-  // on every render, so each keystroke in the dialog sent focus back to Review &
-  // submit, and the next space or Enter submitted the cycle.
   test("the provider's reference field keeps focus beside the Review & submit banner", () => {
     renderPage();
     fireEvent.click(screen.getByTestId("cycle-row-2"));

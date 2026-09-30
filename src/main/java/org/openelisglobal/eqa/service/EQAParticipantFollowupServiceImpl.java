@@ -350,8 +350,6 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
             followup.setResponseReceivedAt(DateUtil.getNowAsTimestamp());
         }
         if (target == EQAFollowupStatus.RESPONSE_RECEIVED) {
-            // A response with nothing in it is a status change, not a record of what
-            // the laboratory said.
             if (GenericValidator.isBlankOrNull(notes)) {
                 throw new IllegalArgumentException("Recording a response needs what the laboratory said");
             }
