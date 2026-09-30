@@ -379,6 +379,28 @@ describe("ProviderWorkbenchPage", () => {
     expect(manifest.temperature).toBe("Refrigerated, 2–8°C");
   });
 
+  test("a box with no storage temperature prints as room temperature", async () => {
+    renderWorkbench(
+      PREP_SHORT,
+      [{ ...ROWS[0], temperatureRequirement: null }, ...ROWS.slice(1)],
+      {
+        "/rest/eqa/panels/11/samples": [
+          { id: 1, blindCode: "BLIND-1", analyteName: "HIV-1 RNA" },
+        ],
+      },
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
+
+    fireEvent.click(screen.getAllByText("Pack list")[0].closest("button"));
+
+    await vi.waitFor(() =>
+      expect(generateManifestPDF).toHaveBeenCalledTimes(1),
+    );
+    expect(generateManifestPDF.mock.calls[0][0].temperature).toBe(
+      "Room temperature",
+    );
+  });
+
   test("cycle history names each trigger rather than printing its code", async () => {
     renderWorkbench(PREP_CLEAR, ROWS, {
       "/rest/eqa/cycles/7/transitions": [

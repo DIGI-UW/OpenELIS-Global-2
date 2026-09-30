@@ -62,8 +62,10 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
       `shipment.state.${state.toLowerCase().replace(/_(\w)/g, (_, c) => c.toUpperCase())}`,
       state,
     );
-  const storageLabel = (temp) =>
-    temp && t(`eqa.panel.storage.${temp.toLowerCase()}`, temp);
+  const storageLabel = (temp) => {
+    const code = temp || "AMBIENT";
+    return t(`eqa.panel.storage.${code.toLowerCase()}`, code);
+  };
 
   const [drafts, setDrafts] = useState({});
   const [selected, setSelected] = useState([]);
