@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Modal, Select, SelectItem, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { requestFailed, serverMessage } from "../../utils/requestOutcome";
@@ -56,6 +56,7 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
 }) => {
   const intl = useIntl();
   const [recording, setRecording] = useState(false);
+  const [confirmingUsedUp, setConfirmingUsedUp] = useState(false);
   const [amount, setAmount] = useState("");
   const [disposing, setDisposing] = useState(false);
   const [reason, setReason] = useState("");
@@ -174,7 +175,7 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             kind="secondary"
             size="sm"
             disabled={busy}
-            onClick={markUsedUp}
+            onClick={() => setConfirmingUsedUp(true)}
             data-testid="mark-used-up"
           >
             <FormattedMessage id="label.results.sampleStatus.markUsedUp" />
@@ -317,6 +318,28 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
           </Button>
         </div>
       )}
+      <Modal
+        open={confirmingUsedUp}
+        danger
+        size="xs"
+        modalHeading={intl.formatMessage({
+          id: "label.results.sampleStatus.markUsedUpConfirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.results.sampleStatus.markUsedUp",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setConfirmingUsedUp(false)}
+        onRequestSubmit={() => {
+          setConfirmingUsedUp(false);
+          markUsedUp();
+        }}
+        data-testid="mark-used-up-confirm"
+      >
+        <p>
+          <FormattedMessage id="label.results.sampleStatus.markUsedUpConfirm.body" />
+        </p>
+      </Modal>
       {error && <div className="unifiedSampleStatusError">{error}</div>}
       <div className="unifiedHistoryFootnote">
         <FormattedMessage id="label.results.sampleStatus.footnote" />

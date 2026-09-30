@@ -1,5 +1,5 @@
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
@@ -23,6 +23,13 @@ const wrap = (node: React.ReactElement) =>
     <IntlProvider locale="en" messages={messages}>
       {node}
     </IntlProvider>,
+  );
+
+const confirmMarkUsedUp = () =>
+  fireEvent.click(
+    within(screen.getByTestId("mark-used-up-confirm")).getByRole("button", {
+      name: /Mark used up/,
+    }),
   );
 
 describe("SampleStatusBlock (R7 / D13)", () => {
@@ -103,12 +110,32 @@ describe("SampleStatusBlock (R7 / D13)", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("mark-used-up"));
+    expect(postMock).not.toHaveBeenCalled();
+    confirmMarkUsedUp();
     expect(postMock).toHaveBeenCalledWith(
       "/rest/storage/sample-items/record-usage",
       JSON.stringify({ sampleItemId: "17", markUsedUp: true }),
       expect.any(Function),
     );
     expect(onChanged).toHaveBeenCalled();
+  });
+
+  it("cancelling the Mark used up confirmation sends nothing", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 3.5 }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("mark-used-up"));
+    fireEvent.click(
+      within(screen.getByTestId("mark-used-up-confirm")).getByRole("button", {
+        name: "Cancel",
+      }),
+    );
+    expect(postMock).not.toHaveBeenCalled();
   });
 
   it("exhausted sample offers Start disposal, which posts the disposal form", () => {
@@ -187,6 +214,7 @@ describe("SampleStatusBlock (R7 / D13)", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("mark-used-up"));
+    confirmMarkUsedUp();
     expect(
       screen.getByText("SampleItem is already disposed"),
     ).toBeInTheDocument();
@@ -220,6 +248,7 @@ describe("SampleStatusBlock (R7 / D13)", () => {
       />,
     );
     fireEvent.click(screen.getByTestId("mark-used-up"));
+    confirmMarkUsedUp();
     expect(
       screen.getByText(messages["label.results.sampleStatus.updateFailed"]),
     ).toBeInTheDocument();

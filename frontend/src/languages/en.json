@@ -11928,5 +11928,7 @@
   "eqa.competency.countsFoldedScore": "Counted with the score",
   "notification.organization.post.error": "The organization was not saved. Check the fields and try again.",
   "organization.email": "Contact Email",
-  "eqa.provider.followups.sendFailed": "Could not email {to}. The notification was downloaded as CSV to send by hand."
+  "eqa.provider.followups.sendFailed": "Could not email {to}. The notification was downloaded as CSV to send by hand.",
+  "label.results.sampleStatus.markUsedUpConfirm.title": "Mark this sample used up?",
+  "label.results.sampleStatus.markUsedUpConfirm.body": "Its remaining volume is set to zero. The sample stays in storage until it is disposed."
 }
