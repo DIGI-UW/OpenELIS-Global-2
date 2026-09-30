@@ -168,6 +168,32 @@ describe("SampleStatusBlock (R7 / D13)", () => {
     );
   });
 
+  it("Confirm disposal with no method marks the method as required and sends nothing", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 0, unitOfMeasure: "mL" }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("start-disposal"));
+    fireEvent.change(screen.getByLabelText("Disposal reason"), {
+      target: { value: "testing_complete" },
+    });
+    fireEvent.click(screen.getByTestId("confirm-disposal"));
+    expect(postMock).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Disposal method")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByLabelText("Disposal reason")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(screen.getByText("This field is required")).toBeInTheDocument();
+  });
+
   it("disposed sample shows the status with no actions", () => {
     wrap(
       <SampleStatusBlock

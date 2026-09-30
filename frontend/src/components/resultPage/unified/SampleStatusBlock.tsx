@@ -61,6 +61,7 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
   const [disposing, setDisposing] = useState(false);
   const [reason, setReason] = useState("");
   const [method, setMethod] = useState("");
+  const [disposalSubmitted, setDisposalSubmitted] = useState(false);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -114,13 +115,19 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
       sampleItemId,
       markUsedUp: true,
     });
-  const startDisposal = () =>
+  const startDisposal = () => {
+    setDisposalSubmitted(true);
+    if (!reason || !method) {
+      return;
+    }
     post("/rest/storage/sample-items/dispose", {
       sampleItemId,
       reason,
       method,
       notes,
     });
+  };
+  const requiredText = intl.formatMessage({ id: "error.field.required" });
 
   return (
     <div className="unifiedSampleStatus" data-testid="sample-status-block">
@@ -254,6 +261,8 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setReason(e.target.value)
             }
+            invalid={disposalSubmitted && !reason}
+            invalidText={requiredText}
           >
             <SelectItem value="" text="" />
             {DISPOSAL_REASONS.map((id) => (
@@ -276,6 +285,8 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setMethod(e.target.value)
             }
+            invalid={disposalSubmitted && !method}
+            invalidText={requiredText}
           >
             <SelectItem value="" text="" />
             {DISPOSAL_METHODS.map((id) => (
@@ -302,7 +313,7 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
           <Button
             kind="danger"
             size="sm"
-            disabled={busy || !reason || !method}
+            disabled={busy}
             onClick={startDisposal}
             data-testid="confirm-disposal"
           >
