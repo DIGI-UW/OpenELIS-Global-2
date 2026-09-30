@@ -8,10 +8,12 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.Test;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.SupportedLocaleService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
@@ -208,6 +210,13 @@ public class LabUnitManagementRestControllerSecurityTest extends SecuritySliceMo
     @org.springframework.security.config.annotation.web.configuration.EnableWebSecurity
     @org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity(prePostEnabled = true)
     static class TestConfig {
+        // develop added an AnalysisService field to the controller; the slice needs
+        // the bean, gated like every other service published here.
+        @Bean
+        AnalysisService analysisService() {
+            return GatedServiceMocks.stubbableMock(AnalysisService.class);
+        }
+
         @Bean
         org.springframework.security.web.SecurityFilterChain securityFilterChain(
                 org.springframework.security.config.annotation.web.builders.HttpSecurity http) throws Exception {

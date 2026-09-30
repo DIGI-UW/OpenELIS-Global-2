@@ -12,14 +12,9 @@ import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class AnalyzerResultsAcceptServiceResultMappingTest {
-
-    @Autowired
-    private AnalyzerResultsAcceptService acceptService;
 
     private TestResultService testResultService;
     private AnalyzerResultsAcceptServiceImpl service;
@@ -41,12 +36,6 @@ public class AnalyzerResultsAcceptServiceResultMappingTest {
         when(testResultService.getTestResultsByTestAndDictonaryResult("395", "1379"))
                 .thenReturn(separatelyLoadedNotDetected);
 
-        // acceptService is now @PreAuthorize-gated, so Spring hands back a JDK
-        // proxy that cannot be cast to the impl. Unwrap to the target before
-        // reflecting on its fields.
-        AnalyzerResultsAcceptServiceImpl service = AopTestUtils.getTargetObject(acceptService);
-        TestResultService original = (TestResultService) ReflectionTestUtils.getField(service, "testResultService");
-        ReflectionTestUtils.setField(service, "testResultService", testResultService);
         AnalyzerResultItem item = new AnalyzerResultItem();
         item.setTestId("395");
         item.setComponentId("component-mtb");

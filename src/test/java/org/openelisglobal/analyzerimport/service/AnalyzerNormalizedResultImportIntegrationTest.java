@@ -39,6 +39,7 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
@@ -138,7 +139,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     public void simultaneousCopiesCommitOnlyOneReceiptAndStagingRow() throws Exception {
         String payload = Files.readString(FIXTURE);
         CountDownLatch start = new CountDownLatch(1);
-        try (var workers = Executors.newFixedThreadPool(2)) {
+        // Worker threads do not inherit the SecurityContext, so the gated calls
+        // inside would be denied. Spring's delegating executor copies it.
+        try (var workers = new DelegatingSecurityContextExecutorService(Executors.newFixedThreadPool(2))) {
             java.util.concurrent.Callable<AnalyzerNormalizedResultImportSummary> delivery = () -> {
                 if (!start.await(10, TimeUnit.SECONDS))
                     throw new IllegalStateException("Delivery barrier timed out");

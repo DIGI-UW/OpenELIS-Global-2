@@ -31,6 +31,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -286,7 +287,9 @@ public class PathologyControllerCountsTest extends BaseWebContextSensitiveTest {
     }
 
     private JsonNode dashboardPage(MockHttpSession session, MockHttpServletRequestBuilder request) throws Exception {
-        MockHttpServletResponse response = mockMvc.perform(request.session(session).with(user("technician1")))
+        MockHttpServletResponse response = mockMvc
+                .perform(request.session(session).with(
+                        user("technician1").authorities(fullTestAuthorities().toArray(new SimpleGrantedAuthority[0]))))
                 .andReturn().getResponse();
         assertEquals(200, response.getStatus());
         return objectMapper.readTree(response.getContentAsString());

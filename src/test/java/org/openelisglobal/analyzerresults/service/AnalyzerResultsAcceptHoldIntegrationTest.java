@@ -9,6 +9,7 @@ import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.common.security.SystemContext;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.transaction.AfterTransaction;
@@ -80,8 +81,12 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
 
     @AfterTransaction
     public void resetUnknownPatientCache() {
-        org.openelisglobal.patient.util.PatientUtil.invalidateUnknownPatients();
-        typeOfSampleService.clearCache();
+        // Runs outside the @Before/@After window, so the test principal is gone;
+        // this is fixture bookkeeping, not a user action.
+        SystemContext.runAsSystem(() -> {
+            org.openelisglobal.patient.util.PatientUtil.invalidateUnknownPatients();
+            typeOfSampleService.clearCache();
+        });
     }
 
     private AnalyzerResultItem acceptedItem() {
