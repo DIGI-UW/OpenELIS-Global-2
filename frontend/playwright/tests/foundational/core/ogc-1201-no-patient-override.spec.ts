@@ -38,9 +38,9 @@ test("AL/W: an EQA order saves with no patient and records why", async ({
   await expect(sampleType).toBeVisible({ timeout: LONG_TIMEOUT });
   await sampleType.selectOption({ label: "Serum" });
 
-  const saveDraft = page.getByRole("button", { name: /Save Draft/i });
-  await expect(saveDraft).toBeEnabled({ timeout: LONG_TIMEOUT });
-  await saveDraft.click();
+  const saveAndExit = page.getByRole("button", { name: "Save and exit" });
+  await expect(saveAndExit).toBeEnabled({ timeout: LONG_TIMEOUT });
+  await saveAndExit.click();
 
   // The order exists on the server.
   await expect

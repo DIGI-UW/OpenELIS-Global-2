@@ -173,7 +173,7 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     await samples.getByLabel("Sample Type").first().selectOption(sampleTypeId);
     await samples.locator(`label[for="test-0-${testId}"]`).click();
     await expect(samples.locator(`#test-0-${testId}`)).toBeChecked();
-    await page.getByRole("button", { name: "Save & Next" }).click();
+    await page.getByRole("button", { name: "Save and next" }).click();
     await expect(page).toHaveURL(/\/order\/clinical\/collect/, {
       timeout: NAV_TIMEOUT,
     });
@@ -213,16 +213,24 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
         saves.push(request.url());
       }
     });
+    // Storage lives on Prepare Samples now (OGC-1266 M4): one row per
+    // requested sample, no phantom second row.
+    const storage = page.getByTestId("prepare-storage-section");
+    await expect(storage).toContainText(`${labNumber}-1`);
+    await expect(storage).not.toContainText(`${labNumber}-2`);
+
     const saved = page.waitForResponse(
       (response) =>
         response.url().includes("/rest/SamplePatientEntry") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Save", exact: true }).dblclick();
+    await page
+      .getByRole("button", { name: "Save and exit", exact: true })
+      .dblclick();
     await saved;
-    await expect(page.getByRole("button", { name: "Save & Next" })).toBeEnabled(
-      { timeout: NAV_TIMEOUT },
-    );
+    await expect(page).toHaveURL(/\/order\/clinical\?highlight=/, {
+      timeout: NAV_TIMEOUT,
+    });
     expect(saves).toHaveLength(1);
 
     const order = await (
@@ -240,13 +248,17 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     ).json();
     expect(requests.map((r) => r.status)).toEqual(["COLLECTED"]);
 
-    await page.getByRole("button", { name: "Save & Next" }).click();
-    await expect(page).toHaveURL(/\/order\/clinical\/label/, {
+    // The dashboard highlights the order Save and exit came from and offers
+    // to continue it at Prepare Samples.
+    const row = page.locator("tr.order-highlighted");
+    await expect(row).toContainText(labNumber, { timeout: NAV_TIMEOUT });
+    await row.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/order\/clinical\/collect\?order=/, {
       timeout: NAV_TIMEOUT,
     });
-    await expect(page.locator("main")).toContainText(`${labNumber}.1`, {
-      timeout: NAV_TIMEOUT,
-    });
-    await expect(page.locator("main")).not.toContainText(`${labNumber}-2`);
+    await expect(page.getByTestId("prepare-storage-section")).toContainText(
+      `${labNumber}-1`,
+      { timeout: NAV_TIMEOUT },
+    );
   });
 });
