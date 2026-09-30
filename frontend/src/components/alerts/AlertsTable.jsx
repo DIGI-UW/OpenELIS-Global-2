@@ -78,22 +78,13 @@ const AlertsTable = ({
     return intl.formatMessage({ id: key, defaultMessage: type });
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleString();
-    } catch {
-      return dateStr;
-    }
-  };
-
   const rows = (alerts || []).map((alert) => ({
     id: String(alert.id),
     alertType: formatAlertType(alert.alertType),
     severity: alert.severity,
     message: alert.message,
     status: alert.status,
-    startTime: formatDate(alert.startTime),
+    startTime: alert.startTimeForDisplay,
     actions: alert.status === "OPEN" ? "acknowledge" : "",
     _original: alert,
   }));

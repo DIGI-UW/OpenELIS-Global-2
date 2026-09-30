@@ -130,6 +130,30 @@ describe("AlertsDashboard", () => {
     expect(within(table).queryByText("EQA_SUBMISSION_FAILED")).toBeNull();
   });
 
+  test("Created column shows the time as the server formatted it", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/summary")) {
+        callback(mockSummary);
+      } else if (url.includes("/alerts/dashboard")) {
+        callback({
+          alerts: [
+            {
+              ...mockDashboard.alerts[0],
+              startTime: "2026-01-15T10:00:00+03:00",
+              startTimeForDisplay: "15/01/2026 10:00",
+            },
+          ],
+          totalCount: 1,
+        });
+      }
+    });
+
+    renderWithIntl(<AlertsDashboard />);
+
+    const table = document.querySelector("table");
+    expect(within(table).getByText("15/01/2026 10:00")).toBeTruthy();
+  });
+
   test("renders filter controls", () => {
     renderWithIntl(<AlertsDashboard />);
     expect(screen.getByText("Alert Type")).toBeTruthy();
