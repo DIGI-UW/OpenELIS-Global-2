@@ -94,6 +94,7 @@ const ValidationReviewPanel = ({
   onActionDone,
   onNoteChange,
   onStale,
+  onQcHold,
 }) => {
   const intl = useIntl();
   const triage =
@@ -186,6 +187,10 @@ const ValidationReviewPanel = ({
           onStale(response, row);
           return;
         }
+        if (response?.error === "qcHold" && onQcHold) {
+          onQcHold(response, row);
+          return;
+        }
         setErrorKey(errorMessageKey(response));
       },
     );
@@ -233,7 +238,10 @@ const ValidationReviewPanel = ({
     );
 
   const qcAckBlocksRelease = Boolean(qcAck?.required && !qcAck?.satisfied);
-  const releaseBlocked = busy || qcAckBlocksRelease;
+  const qcHoldBlocksRelease =
+    row.qcHold === true &&
+    configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
+  const releaseBlocked = busy || qcAckBlocksRelease || qcHoldBlocksRelease;
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
@@ -593,6 +601,13 @@ const ValidationReviewPanel = ({
                 onBeforeSign={qcAck?.beforeSign}
                 onSign={release}
                 disabled={releaseBlocked}
+                ariaDescribedBy={
+                  qcHoldBlocksRelease
+                    ? `review-qc-hold-hint-${row.id}`
+                    : qcAckBlocksRelease
+                      ? `review-qc-ack-hint-${row.id}`
+                      : undefined
+                }
                 size="sm"
               >
                 <FormattedMessage id="label.validation.review.action.release" />
@@ -729,8 +744,21 @@ const ValidationReviewPanel = ({
             <FormattedMessage id="label.validation.review.action.refer" />
           </Button>
           {qcAckBlocksRelease && (
-            <span className="unifiedFieldHint" data-testid="review-qc-ack-hint">
+            <span
+              id={`review-qc-ack-hint-${row.id}`}
+              className="unifiedFieldHint"
+              data-testid="review-qc-ack-hint"
+            >
               <FormattedMessage id="label.validation.review.release.qcAckFirst" />
+            </span>
+          )}
+          {qcHoldBlocksRelease && (
+            <span
+              id={`review-qc-hold-hint-${row.id}`}
+              className="unifiedFieldHint"
+              data-testid="review-qc-hold-hint"
+            >
+              <FormattedMessage id="label.validation.review.error.qcHold" />
             </span>
           )}
         </div>

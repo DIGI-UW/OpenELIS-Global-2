@@ -190,6 +190,34 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                 analysisService.get(CLEAR_ID).getStatusId());
     }
 
+    private void holdByAFailedControl(String analysisId) {
+        jdbcTemplate.update("INSERT INTO clinlims.nc_event (id, nce_number, trigger_source_type) VALUES (98001,"
+                + " 'NCE-HOLD-1', 'QC_BENCH_CONTROL')");
+        jdbcTemplate.update("INSERT INTO clinlims.nce_specimen (id, nce_id, analysis_id) VALUES (98001, 98001, ?)",
+                Integer.valueOf(analysisId));
+    }
+
+    @Test
+    public void aClearRowHeldByAFailedControlLeavesTheClearLaneAndIsNotBulkReleased() throws Exception {
+        holdByAFailedControl(CLEAR_ID);
+
+        mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
+                .session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + CLEAR_ID + "')].qcHold").value(true))
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + CLEAR_ID + "')].qcStatus").value("FAIL"))
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + CLEAR_ID + "')].clear").value(false));
+        mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(CLEAR_ID, "", ""))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.released.length()").value(0))
+                .andExpect(jsonPath("$.skipped[0].analysisId").value(CLEAR_ID))
+                .andExpect(jsonPath("$.skipped[0].reason").value("notClear"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                analysisService.get(CLEAR_ID).getStatusId());
+    }
+
     @Test
     public void bulkRelease_releasesOnlyTheServerSideClearRowsAndReportsTheRest() throws Exception {
         mockMvc.perform(

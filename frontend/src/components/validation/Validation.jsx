@@ -292,6 +292,18 @@ const Validation = (props) => {
     refreshQueue();
   };
 
+  const handleQcHold = () => {
+    addNotification({
+      kind: NotificationKinds.error,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({
+        id: "label.validation.review.error.qcHold",
+      }),
+    });
+    setNotificationVisible(true);
+    refreshQueue();
+  };
+
   /**
    * OGC-1028 — a per-row action (release / modify / retest / reject) succeeded:
    * refresh the queue so the row's new state is served fresh.
@@ -1044,6 +1056,7 @@ const Validation = (props) => {
                 onActionDone: handleRowActionDone,
                 onNoteChange: handleRowNoteChange,
                 onStale: handleStale,
+                onQcHold: handleQcHold,
               }}
             ></DataTable>
             <Pagination
