@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from "react";
+import React, { useContext, useEffect, useRef, useState } from "react";
 import {
   Checkbox,
   Column,
@@ -10,6 +10,14 @@ import {
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import CustomDatePicker from "../common/CustomDatePicker";
+import { ConfigurationContext } from "../layout/Layout";
+
+const OPEN_FOR_RESULTS = [
+  "PLANNED",
+  "PANEL_RECEIVED",
+  "TESTING",
+  "READY_TO_SUBMIT",
+];
 
 /**
  * A receipt marked not-intact needs the note that says what was wrong with the
@@ -28,6 +36,8 @@ export const eqaReceiptNoteMissing = (orderFormValues) => {
 const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
   const intl = useIntl();
   const componentMounted = useRef(false);
+  const { configurationProperties = {} } =
+    useContext(ConfigurationContext) || {};
 
   const [myPrograms, setMyPrograms] = useState([]);
   const [cycles, setCycles] = useState([]);
@@ -42,6 +52,16 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
   const cycleId = sampleOrder.eqaCycleId || "";
   const enrollmentId = sampleOrder.eqaProgramId || "";
 
+  const cycleDeadline = (cycle) => {
+    const [year, month, day] = (cycle?.plannedEndDate || "")
+      .slice(0, 10)
+      .split("-");
+    if (!day) return "";
+    return configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
+      ? `${day}/${month}/${year}`
+      : `${month}/${day}/${year}`;
+  };
+
   useEffect(() => {
     componentMounted.current = true;
 
@@ -55,7 +75,13 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
 
     getFromOpenElisServer("/rest/eqa/cycles/mine", (response) => {
       if (componentMounted.current && Array.isArray(response)) {
-        setCycles(response);
+        setCycles(
+          response.filter(
+            (c) =>
+              c.schemeType !== "IN_HOUSE" &&
+              OPEN_FOR_RESULTS.includes(c.status),
+          ),
+        );
       }
       if (componentMounted.current) setListsLoaded((n) => n + 1);
     });
@@ -101,6 +127,8 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
       sampleOrderItems: {
         ...prev?.sampleOrderItems,
         eqaCycleId: prev?.sampleOrderItems?.eqaCycleId || String(cycle.id),
+        eqaDeadline:
+          prev?.sampleOrderItems?.eqaDeadline || cycleDeadline(cycle),
         eqaProgramId:
           prev?.sampleOrderItems?.eqaProgramId ||
           (enrollment ? String(enrollment.id) : ""),
@@ -215,6 +243,7 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
                 labelText={intl.formatMessage({
                   id: "eqa.order.deadline",
                 })}
+                updateStateValue={true}
                 value={sampleOrder.eqaDeadline || ""}
                 onChange={(date) => updateField("eqaDeadline", date)}
               />
@@ -242,7 +271,21 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
                 id="eqa-cycle"
                 labelText={intl.formatMessage({ id: "eqa.order.cycle" })}
                 value={cycleId}
-                onChange={(e) => updateField("eqaCycleId", e.target.value)}
+                onChange={(e) => {
+                  const cycle = cycles.find(
+                    (c) => String(c.id) === e.target.value,
+                  );
+                  setOrderFormValues((prev) => ({
+                    ...prev,
+                    sampleOrderItems: {
+                      ...prev.sampleOrderItems,
+                      eqaCycleId: e.target.value,
+                      eqaDeadline:
+                        cycleDeadline(cycle) ||
+                        prev.sampleOrderItems.eqaDeadline,
+                    },
+                  }));
+                }}
               >
                 <SelectItem value="" text="" />
                 {cycles.map((cycle) => (
