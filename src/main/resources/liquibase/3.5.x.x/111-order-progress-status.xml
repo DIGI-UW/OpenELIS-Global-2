@@ -81,6 +81,44 @@
         </insert>
     </changeSet>
 
+    <!-- Orders saved before the status existed: Ready for testing where the
+         Sample check was recorded, Samples prepared where a sample item has
+         been collected, Entered otherwise, each with the time the data
+         carries. Without this an upgraded order at the Sample check would be
+         refused a release until Prepare Samples was saved again. -->
+    <changeSet author="mozzy11" id="OGC-1266-order-progress-backfill">
+        <preConditions onFail="MARK_RAN">
+            <columnExists schemaName="clinlims" tableName="sample" columnName="order_progress_status"/>
+        </preConditions>
+        <comment>Backfill the order progress status of existing orders</comment>
+        <sql>
+            UPDATE clinlims.sample s
+            SET order_progress_status = 'READY_FOR_TESTING',
+                order_entered_at = COALESCE(s.order_entered_at, s.entered_date),
+                order_prepared_at = COALESCE(s.order_prepared_at, q.verified_date, s.entered_date),
+                order_ready_at = COALESCE(s.order_ready_at, q.verified_date, s.entered_date)
+            FROM clinlims.sample_qa_checklist q
+            WHERE q.sample_id = s.id AND s.order_progress_status IS NULL;
+
+            UPDATE clinlims.sample s
+            SET order_progress_status = 'SAMPLES_PREPARED',
+                order_entered_at = COALESCE(s.order_entered_at, s.entered_date),
+                order_prepared_at = COALESCE(s.order_prepared_at, c.collected_at, s.entered_date)
+            FROM (
+                SELECT samp_id, MAX(collection_date) AS collected_at
+                FROM clinlims.sample_item
+                WHERE collection_date IS NOT NULL
+                GROUP BY samp_id
+            ) c
+            WHERE c.samp_id = s.id AND s.order_progress_status IS NULL;
+
+            UPDATE clinlims.sample
+            SET order_progress_status = 'ENTERED',
+                order_entered_at = COALESCE(order_entered_at, entered_date)
+            WHERE order_progress_status IS NULL;
+        </sql>
+    </changeSet>
+
     <!-- FR-A12: the clinical side menu names the three steps of the
          workflow. Label &amp; Store is folded into Prepare Samples, so its
          entry goes; the environmental and vector menus keep theirs. -->

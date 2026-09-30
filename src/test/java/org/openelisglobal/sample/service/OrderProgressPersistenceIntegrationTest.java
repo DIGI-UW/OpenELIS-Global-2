@@ -73,6 +73,31 @@ public class OrderProgressPersistenceIntegrationTest extends BaseWebContextSensi
         assertNotNull(row.get("order_prepared_at"));
     }
 
+    // Found in review: a reopened order is saved through a detached copy, and
+    // the skip-storage decision set on that copy never reached the row.
+    @Test
+    public void theStorageDecisionOfAReopenedOrderReachesTheRow() {
+        Sample sample = newSample();
+        persist(sample, null, null);
+        entityManager.detach(sample);
+
+        Sample reopened = new Sample();
+        reopened.setId(sample.getId());
+        reopened.setAccessionNumber(sample.getAccessionNumber());
+        reopened.setEnteredDate(sample.getEnteredDate());
+        reopened.setReceivedTimestamp(sample.getReceivedTimestamp());
+        reopened.setStatusId(sample.getStatusId());
+        reopened.setSysUserId(userId);
+        reopened.setLastupdated(sample.getLastupdated());
+        persist(reopened, "SAMPLES_PREPARED", Boolean.TRUE);
+
+        Map<String, Object> row = jdbcTemplate.queryForMap(
+                "SELECT order_progress_status, storage_skipped FROM clinlims.sample WHERE id = ?",
+                Long.valueOf(sample.getId()));
+        assertEquals("SAMPLES_PREPARED", row.get("order_progress_status"));
+        assertEquals(Boolean.TRUE, row.get("storage_skipped"));
+    }
+
     @Test
     public void cancellingStoresTheReasonAndWhoCancelledInTheirColumns() {
         Sample sample = newSample();
@@ -107,6 +132,10 @@ public class OrderProgressPersistenceIntegrationTest extends BaseWebContextSensi
     }
 
     private void persist(Sample sample, String progressStep) {
+        persist(sample, progressStep, null);
+    }
+
+    private void persist(Sample sample, String progressStep, Boolean storageSkipped) {
         SampleAddService sampleAddService = new SampleAddService("<samples></samples>", userId, sample, "");
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(userId);
         updateData.setSample(sample);
@@ -116,6 +145,7 @@ public class OrderProgressPersistenceIntegrationTest extends BaseWebContextSensi
         SamplePatientEntryForm form = new SamplePatientEntryForm();
         SampleOrderItem orderItem = new SampleOrderItem();
         orderItem.setProgressStep(progressStep);
+        orderItem.setStorageSkipped(storageSkipped);
         form.setSampleOrderItems(orderItem);
         PatientManagementInfo patientInfo = new PatientManagementInfo();
         patientInfo.setPatientPK(patient.getId());

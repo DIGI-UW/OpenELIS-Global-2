@@ -159,7 +159,7 @@ describe("ClinicalOrderEnter", () => {
         toContinue: [
           expect.objectContaining({
             id: "order.continue.item.provider",
-            targetId: "requesterId",
+            targetId: "providerName",
           }),
         ],
       }),

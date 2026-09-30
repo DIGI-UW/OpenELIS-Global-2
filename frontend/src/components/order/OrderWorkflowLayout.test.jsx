@@ -123,6 +123,31 @@ describe("the state after the entry step saves", () => {
   });
 });
 
+// OGC-1266 FR-A4: a cancelled order is read-only and offers no Edit.
+describe("a cancelled order", () => {
+  beforeEach(() => {
+    orderContextValue.isReadOnly = true;
+    orderContextValue.progress = {
+      status: "CANCELLED",
+      cancelReason: "Duplicate order",
+    };
+  });
+
+  afterEach(() => {
+    orderContextValue.isReadOnly = false;
+    orderContextValue.progress = undefined;
+  });
+
+  it("says why it was cancelled and offers no Edit", () => {
+    renderLayout();
+
+    expect(
+      screen.getByText("This order was cancelled: Duplicate order"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
+  });
+});
+
 describe("the save status indicator", () => {
   beforeEach(() => {
     orderContextValue.saveStatus = "saved";

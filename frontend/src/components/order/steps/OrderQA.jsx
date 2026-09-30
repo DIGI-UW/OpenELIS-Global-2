@@ -177,7 +177,10 @@ const OrderQA = () => {
   // once the server has said one is needed.
   const [releaseNote, setReleaseNote] = useState("");
   const [releaseNoteNeeded, setReleaseNoteNeeded] = useState(false);
+  // Only the clinical lane has a Prepare Samples step to complete first; the
+  // environmental and vector lanes release from their own steps.
   const prepareComplete =
+    workflowType !== "clinical" ||
     !progress?.status ||
     progress.status === "SAMPLES_PREPARED" ||
     progress.status === "READY_FOR_TESTING";

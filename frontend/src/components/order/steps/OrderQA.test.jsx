@@ -177,6 +177,22 @@ describe("OrderQA", () => {
     );
   });
 
+  // Found in review: the environmental and vector lanes have no Prepare
+  // Samples step, so their Sample check must not wait for one.
+  it("lets an environmental order release from Entered", () => {
+    orderContextValue.progress = { status: "ENTERED" };
+    orderContextValue.orderData.sampleOrderItems.environmentalFields.workflowType =
+      "environmental";
+    renderQa();
+
+    expect(layoutProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({ canProceed: true, toContinue: [] }),
+    );
+    orderContextValue.orderData.sampleOrderItems.environmentalFields.workflowType =
+      "clinical";
+    orderContextValue.progress = undefined;
+  });
+
   // The Sample check cannot release an order whose samples are not prepared.
   it("holds the release while Prepare Samples is incomplete", () => {
     orderContextValue.progress = { status: "ENTERED" };

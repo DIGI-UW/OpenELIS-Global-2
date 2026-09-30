@@ -308,10 +308,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         if (sample == null || sample.getId() == null || sampleOrder == null) {
             return;
         }
-        if (sampleOrder.getStorageSkipped() != null) {
-            sample.setStorageSkipped(sampleOrder.getStorageSkipped());
-        }
-        orderProgressService.recordStepSave(sample, sampleOrder.getProgressStep());
+        orderProgressService.recordStepSave(sample, sampleOrder.getProgressStep(), sampleOrder.getStorageSkipped());
     }
 
     /**

@@ -14,9 +14,10 @@ public interface OrderProgressService {
      * Records a step's save on the order: the first save marks it Entered, and a
      * save that completes Prepare Samples (progressStep SAMPLES_PREPARED) marks it
      * Samples prepared. Later saves never move the status back. A cancelled order
-     * refuses the save.
+     * refuses the save. The step's storage decision (skip storage for the
+     * unassigned samples) is stored with it when the save carries one.
      */
-    void recordStepSave(Sample sample, String progressStep);
+    void recordStepSave(Sample sample, String progressStep, Boolean storageSkipped);
 
     /**
      * The stored status, or the one the legacy step flags imply when none is

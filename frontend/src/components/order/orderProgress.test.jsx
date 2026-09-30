@@ -49,6 +49,7 @@ const PrepareAndSave = ({ onContext }) => {
         sampleTypeId: "3",
         tests: [{ id: "1" }],
         storageNotes: "Keep cold & <dry> 'now'",
+        collectorId: "Nurse O'Brien",
       },
     ]);
     context.stageStorageSkipped(true);
@@ -112,6 +113,7 @@ describe("saving the Prepare Samples step", () => {
     expect(payload.sampleXML).toContain(
       "storageNotes='Keep cold &amp; &lt;dry> &apos;now&apos;'",
     );
+    expect(payload.sampleXML).toContain("collector='Nurse O&apos;Brien'");
 
     await waitFor(() =>
       expect(context.progress.status).toBe("SAMPLES_PREPARED"),

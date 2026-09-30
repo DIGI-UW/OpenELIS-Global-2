@@ -210,7 +210,7 @@ describe("Discard", () => {
     await user.click(screen.getByRole("button", { name: /Discard$/ }));
     expect(
       screen.getByText(
-        "2 tests and 1 samples entered on this page will be lost.",
+        "Unsaved changes on this page will be lost (1 samples, 2 tests).",
       ),
     ).toBeInTheDocument();
 

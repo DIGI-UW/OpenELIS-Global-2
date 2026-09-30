@@ -199,7 +199,9 @@ const OrderWorkflowLayout = ({
     // Order loaded via barcode scan - context is already updated
   };
 
-  const canEdit = isReadOnly && !isEditMode;
+  // A cancelled order opens read-only and stays that way (FR-A4).
+  const cancelled = progress?.status === "CANCELLED";
+  const canEdit = isReadOnly && !isEditMode && !cancelled;
   const nextStep = steps[activeStep + 1];
   const nextStepLabel = intl.formatMessage({
     id: nextStep ? nextStep.label : "order.status.complete",

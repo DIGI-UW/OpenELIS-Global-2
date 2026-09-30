@@ -25,12 +25,14 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
-import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleacceptance.service.SampleAcceptanceBlockedException;
 import org.openelisglobal.sampleacceptance.service.SampleAcceptanceChecklistService;
+import org.openelisglobal.sampleacceptance.service.SampleAcceptanceEvaluation;
 import org.openelisglobal.sampleacceptance.service.SampleAcceptanceRecordService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
  * OGC-1266 FR-F5, FR-F3, FR-F4, FR-A4: the order's progress status advances
@@ -52,7 +54,7 @@ public class OrderProgressServiceImplTest {
     @Mock
     private SampleAcceptanceRecordService acceptanceRecordService;
     @Mock
-    private SampleQaChecklistService qaChecklistService;
+    private SampleItemService sampleItemService;
     @Mock
     private ObservationHistoryService observationHistoryService;
 
@@ -63,7 +65,7 @@ public class OrderProgressServiceImplTest {
     public void theFirstSaveMarksTheOrderEntered() {
         Sample sample = order("41", null);
 
-        service.recordStepSave(sample, null);
+        service.recordStepSave(sample, null, null);
 
         assertEquals("ENTERED", sample.getOrderProgressStatus());
         assertNotNull(sample.getOrderEnteredAt());
@@ -75,7 +77,7 @@ public class OrderProgressServiceImplTest {
     public void aSaveThatCompletesPrepareSamplesMarksTheOrderPrepared() {
         Sample sample = order("41", "ENTERED");
 
-        service.recordStepSave(sample, "SAMPLES_PREPARED");
+        service.recordStepSave(sample, "SAMPLES_PREPARED", null);
 
         assertEquals("SAMPLES_PREPARED", sample.getOrderProgressStatus());
         assertNotNull(sample.getOrderPreparedAt());
@@ -85,8 +87,8 @@ public class OrderProgressServiceImplTest {
     public void aLaterSaveNeverMovesTheStatusBack() {
         Sample sample = order("41", "READY_FOR_TESTING");
 
-        service.recordStepSave(sample, null);
-        service.recordStepSave(sample, "SAMPLES_PREPARED");
+        service.recordStepSave(sample, null, null);
+        service.recordStepSave(sample, "SAMPLES_PREPARED", null);
 
         assertEquals("READY_FOR_TESTING", sample.getOrderProgressStatus());
         verify(sampleService, never()).update(any());
@@ -96,7 +98,7 @@ public class OrderProgressServiceImplTest {
     public void aCancelledOrderRefusesASave() {
         Sample sample = order("41", "CANCELLED");
 
-        assertThrows(IllegalArgumentException.class, () -> service.recordStepSave(sample, null));
+        assertThrows(IllegalArgumentException.class, () -> service.recordStepSave(sample, null, null));
     }
 
     @Test
@@ -135,7 +137,7 @@ public class OrderProgressServiceImplTest {
         Sample sample = order("41", "SAMPLES_PREPARED");
         when(sampleService.get("41")).thenReturn(sample);
         when(acceptanceChecklistService.getEnforcement("clinical")).thenReturn("OPTIONAL");
-        when(qaChecklistService.areAllItemsVerified(41)).thenReturn(false);
+        when(acceptanceRecordService.evaluateOrder("41")).thenReturn(Arrays.asList(evaluation("PENDING")));
 
         assertThrows(IllegalArgumentException.class, () -> service.release("41", " ", "7"));
 
@@ -162,21 +164,26 @@ public class OrderProgressServiceImplTest {
         when(statusService.getStatusID(SampleStatus.Canceled)).thenReturn("12");
         Analysis open = new Analysis();
         open.setStatusId("1");
-        Analysis finalized = new Analysis();
-        finalized.setStatusId("9");
-        when(statusService.matches("9", AnalysisStatus.Finalized)).thenReturn(true);
-        when(analysisService.getAnalysesBySampleId("41")).thenReturn(Arrays.asList(open, finalized));
+        Analysis alreadyCancelled = new Analysis();
+        alreadyCancelled.setStatusId("4");
+        when(statusService.matches("1", AnalysisStatus.NotStarted)).thenReturn(true);
+        when(statusService.matches("4", AnalysisStatus.Canceled)).thenReturn(true);
+        when(analysisService.getAnalysesBySampleId("41")).thenReturn(Arrays.asList(open, alreadyCancelled));
+        SampleItem item = new SampleItem();
+        item.setStatusId("1");
+        when(sampleItemService.getSampleItemsBySampleId("41")).thenReturn(Arrays.asList(item));
 
         Sample cancelled = service.cancel("41", "Registered in the wrong domain", "7");
 
         assertEquals("CANCELLED", cancelled.getOrderProgressStatus());
         assertEquals("Registered in the wrong domain", cancelled.getOrderCancelReason());
         assertEquals("7", cancelled.getOrderCancelledBy());
-        assertEquals("12", cancelled.getStatusId());
+        assertNull(cancelled.getStatusId());
         assertEquals("4", open.getStatusId());
-        assertEquals("9", finalized.getStatusId());
+        assertEquals("12", item.getStatusId());
         verify(analysisService).update(open);
-        verify(analysisService, never()).update(finalized);
+        verify(analysisService, never()).update(alreadyCancelled);
+        verify(sampleItemService).update(item);
     }
 
     // The FHIR ServiceRequest create hands the save a shell that carries only
@@ -189,7 +196,7 @@ public class OrderProgressServiceImplTest {
         shell.setId("41");
         when(sampleService.get("41")).thenReturn(stored);
 
-        service.recordStepSave(shell, "SAMPLES_PREPARED");
+        service.recordStepSave(shell, "SAMPLES_PREPARED", null);
 
         verify(sampleService).update(stored);
         verify(sampleService, never()).update(shell);
@@ -205,7 +212,7 @@ public class OrderProgressServiceImplTest {
         shell.setId("41");
         when(sampleService.get("41")).thenReturn(stored);
 
-        service.recordStepSave(shell, null);
+        service.recordStepSave(shell, null, null);
 
         verify(sampleService, never()).update(any(Sample.class));
         assertEquals("READY_FOR_TESTING", stored.getOrderProgressStatus());
@@ -213,7 +220,7 @@ public class OrderProgressServiceImplTest {
     }
 
     @Test
-    public void cancelLeavesTheSampleStatusAloneWhenNoneIsConfigured() {
+    public void cancelLeavesTheSampleItemsAloneWhenNoCancelledStatusIsConfigured() {
         Sample sample = order("41", "ENTERED");
         sample.setStatusId("1");
         when(sampleService.get("41")).thenReturn(sample);
@@ -223,6 +230,76 @@ public class OrderProgressServiceImplTest {
 
         assertEquals("CANCELLED", cancelled.getOrderProgressStatus());
         assertEquals("1", cancelled.getStatusId());
+        verify(sampleItemService, never()).update(any(SampleItem.class));
+    }
+
+    // Found in review: a test whose result was already accepted was cancelled
+    // underneath the technician. Once any test has moved past Not started the
+    // order is no longer cancellable from order entry.
+    @Test
+    public void cancelRefusesAnOrderWhoseTestingHasStarted() {
+        Sample sample = order("41", "SAMPLES_PREPARED");
+        when(sampleService.get("41")).thenReturn(sample);
+        when(acceptanceChecklistService.getEnforcement("clinical")).thenReturn("OPTIONAL");
+        Analysis accepted = new Analysis();
+        accepted.setStatusId("6");
+        when(analysisService.getAnalysesBySampleId("41")).thenReturn(Arrays.asList(accepted));
+
+        assertThrows(IllegalStateException.class, () -> service.cancel("41", "Duplicate order", "7"));
+        verify(analysisService, never()).update(any(Analysis.class));
+        assertEquals("SAMPLES_PREPARED", sample.getOrderProgressStatus());
+    }
+
+    // The storage decision reaches the stored row even when the save carries a
+    // detached copy of the order (an order reopened for editing).
+    @Test
+    public void theStorageDecisionIsStoredWithTheStep() {
+        Sample stored = order("41", "ENTERED");
+        Sample copy = new Sample();
+        copy.setId("41");
+        when(sampleService.get("41")).thenReturn(stored);
+
+        service.recordStepSave(copy, null, Boolean.TRUE);
+
+        verify(sampleService).update(stored);
+        assertEquals(Boolean.TRUE, stored.getStorageSkipped());
+        assertEquals(Boolean.TRUE, copy.getStorageSkipped());
+    }
+
+    // Found in review: the environmental and vector lanes have no Prepare
+    // Samples step, so their Sample check releases from Entered.
+    @Test
+    public void anEnvironmentalOrderReleasesWithoutPrepareSamples() {
+        Sample sample = order("41", "ENTERED");
+        when(sampleService.get("41")).thenReturn(sample);
+        when(observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE, "41"))
+                .thenReturn("environmental");
+        when(acceptanceChecklistService.getEnforcement("environmental")).thenReturn("OFF");
+
+        Sample released = service.release("41", null, "7");
+
+        assertEquals("READY_FOR_TESTING", released.getOrderProgressStatus());
+    }
+
+    // Found in review: with every specimen's checklist answered, Optional
+    // acceptance asked for a reason anyway.
+    @Test
+    public void optionalAcceptanceNeedsNoReasonOnceEverySpecimenIsAnswered() {
+        Sample sample = order("41", "SAMPLES_PREPARED");
+        when(sampleService.get("41")).thenReturn(sample);
+        when(acceptanceChecklistService.getEnforcement("clinical")).thenReturn("OPTIONAL");
+        when(acceptanceRecordService.evaluateOrder("41")).thenReturn(Arrays.asList(evaluation("ACCEPTED")));
+
+        Sample released = service.release("41", null, "7");
+
+        assertEquals("READY_FOR_TESTING", released.getOrderProgressStatus());
+        assertNull(released.getOrderReleaseNote());
+    }
+
+    private SampleAcceptanceEvaluation evaluation(String overallStatus) {
+        SampleAcceptanceEvaluation evaluation = new SampleAcceptanceEvaluation();
+        evaluation.setOverallStatus(overallStatus);
+        return evaluation;
     }
 
     @Test

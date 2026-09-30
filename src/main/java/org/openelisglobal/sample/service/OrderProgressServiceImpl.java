@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.service;
 
 import java.sql.Timestamp;
+import java.util.List;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -9,11 +10,14 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
-import org.openelisglobal.qachecklist.service.SampleQaChecklistService;
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleacceptance.service.SampleAcceptanceChecklistService;
+import org.openelisglobal.sampleacceptance.service.SampleAcceptanceEvaluation;
 import org.openelisglobal.sampleacceptance.service.SampleAcceptanceRecordService;
+import org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,11 +27,14 @@ public class OrderProgressServiceImpl implements OrderProgressService {
 
     static final String MODE_MANDATORY = "MANDATORY";
     static final String MODE_OFF = "OFF";
+    static final String CLINICAL = "clinical";
 
     @Autowired
     private SampleService sampleService;
     @Autowired
     private AnalysisService analysisService;
+    @Autowired
+    private SampleItemService sampleItemService;
     @Autowired
     private IStatusService statusService;
     @Autowired
@@ -35,19 +42,17 @@ public class OrderProgressServiceImpl implements OrderProgressService {
     @Autowired
     private SampleAcceptanceRecordService acceptanceRecordService;
     @Autowired
-    private SampleQaChecklistService qaChecklistService;
-    @Autowired
     private ObservationHistoryService observationHistoryService;
 
     /**
-     * The save may hand over the stored order itself or a detached shell of it that
-     * only carries the id (the FHIR ServiceRequest create builds one), so the
-     * progress is read from and written to the stored row, and the shell is brought
-     * up to date with what was stored.
+     * The save may hand over the stored order itself or a detached copy of it (an
+     * order reopened for editing, or the shell the FHIR ServiceRequest create
+     * builds), so the progress and the storage decision are written to the stored
+     * row, and the copy is brought up to date with what was stored.
      */
     @Override
     @Transactional
-    public void recordStepSave(Sample sample, String progressStep) {
+    public void recordStepSave(Sample sample, String progressStep, Boolean storageSkipped) {
         if (sample == null) {
             return;
         }
@@ -59,6 +64,10 @@ public class OrderProgressServiceImpl implements OrderProgressService {
         }
         Timestamp now = new Timestamp(System.currentTimeMillis());
         boolean changed = false;
+        if (storageSkipped != null && !storageSkipped.equals(target.getStorageSkipped())) {
+            target.setStorageSkipped(storageSkipped);
+            changed = true;
+        }
         if (current == null) {
             target.setOrderProgressStatus(OrderProgressStatus.ENTERED.name());
             target.setOrderEnteredAt(now);
@@ -81,6 +90,7 @@ public class OrderProgressServiceImpl implements OrderProgressService {
             sample.setOrderProgressStatus(target.getOrderProgressStatus());
             sample.setOrderEnteredAt(target.getOrderEnteredAt());
             sample.setOrderPreparedAt(target.getOrderPreparedAt());
+            sample.setStorageSkipped(target.getStorageSkipped());
             sample.setLastupdated(target.getLastupdated());
         }
     }
@@ -125,14 +135,14 @@ public class OrderProgressServiceImpl implements OrderProgressService {
         if (current == OrderProgressStatus.CANCELLED) {
             throw new IllegalStateException("order.cancelled");
         }
-        if (current != OrderProgressStatus.SAMPLES_PREPARED) {
+        String workflowType = workflowTypeOf(sample);
+        if (CLINICAL.equals(workflowType) && current != OrderProgressStatus.SAMPLES_PREPARED) {
             throw new IllegalStateException("order.release.prepareIncomplete");
         }
-        String mode = acceptanceChecklistService.getEnforcement(workflowTypeOf(sample));
+        String mode = acceptanceChecklistService.getEnforcement(workflowType);
         if (MODE_MANDATORY.equalsIgnoreCase(mode)) {
             acceptanceRecordService.enforceAcceptanceGateForOrder(sampleId);
-        } else if (!MODE_OFF.equalsIgnoreCase(mode)
-                && !qaChecklistService.areAllItemsVerified(Integer.valueOf(sampleId))
+        } else if (!MODE_OFF.equalsIgnoreCase(mode) && hasUnansweredAcceptance(sampleId)
                 && GenericValidator.isBlankOrNull(releaseNote)) {
             throw new IllegalArgumentException("order.release.reasonRequired");
         }
@@ -161,27 +171,53 @@ public class OrderProgressServiceImpl implements OrderProgressService {
         if (isComplete(current, workflowTypeOf(sample))) {
             throw new IllegalStateException("order.cancel.complete");
         }
+        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sampleId);
+        for (Analysis analysis : analyses) {
+            if (!statusService.matches(analysis.getStatusId(), AnalysisStatus.NotStarted)
+                    && !statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                throw new IllegalStateException("order.cancel.inProgress");
+            }
+        }
         String cancelledStatusId = statusService.getStatusID(AnalysisStatus.Canceled);
-        for (Analysis analysis : analysisService.getAnalysesBySampleId(sampleId)) {
-            if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Finalized)
-                    || statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+        for (Analysis analysis : analyses) {
+            if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
                 continue;
             }
             analysis.setStatusId(cancelledStatusId);
             analysis.setSysUserId(sysUserId);
             analysisService.update(analysis);
         }
+        String cancelledSampleStatusId = statusService.getStatusID(SampleStatus.Canceled);
+        if (!GenericValidator.isBlankOrNull(cancelledSampleStatusId) && !"-1".equals(cancelledSampleStatusId)) {
+            for (SampleItem item : sampleItemService.getSampleItemsBySampleId(sampleId)) {
+                if (cancelledSampleStatusId.equals(item.getStatusId())) {
+                    continue;
+                }
+                item.setStatusId(cancelledSampleStatusId);
+                item.setSysUserId(sysUserId);
+                sampleItemService.update(item);
+            }
+        }
         sample.setOrderProgressStatus(OrderProgressStatus.CANCELLED.name());
         sample.setOrderCancelledAt(new Timestamp(System.currentTimeMillis()));
         sample.setOrderCancelledBy(sysUserId);
         sample.setOrderCancelReason(reason.trim());
-        String cancelledSampleStatusId = statusService.getStatusID(SampleStatus.Canceled);
-        if (!GenericValidator.isBlankOrNull(cancelledSampleStatusId) && !"-1".equals(cancelledSampleStatusId)) {
-            sample.setStatusId(cancelledSampleStatusId);
-        }
         sample.setSysUserId(sysUserId);
         sampleService.update(sample);
         return sample;
+    }
+
+    /**
+     * Under Optional acceptance a release is free once every specimen's checklist
+     * is answered; an unanswered (pending) specimen asks for a reason.
+     */
+    private boolean hasUnansweredAcceptance(String sampleId) {
+        List<SampleAcceptanceEvaluation> evaluations = acceptanceRecordService.evaluateOrder(sampleId);
+        if (evaluations == null) {
+            return false;
+        }
+        return evaluations.stream()
+                .anyMatch(evaluation -> SampleAcceptanceRecord.STATUS_PENDING.equals(evaluation.getOverallStatus()));
     }
 
     private String workflowTypeOf(Sample sample) {

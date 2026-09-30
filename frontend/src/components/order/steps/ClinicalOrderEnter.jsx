@@ -182,7 +182,7 @@ const ClinicalOrderEnter = () => {
       met: hasProvider || !providerRequired,
       labelId: "order.save.requirement.provider",
       itemId: "order.continue.item.provider",
-      targetId: "requesterId",
+      targetId: "providerName",
     },
   ];
   const canSave = saveRequirements.every((requirement) => requirement.met);

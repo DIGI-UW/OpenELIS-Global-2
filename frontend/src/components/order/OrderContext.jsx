@@ -115,6 +115,7 @@ export const OrderContext = createContext({
   setCurrentStep: () => {},
   setOrderData: () => {},
   seedOrderData: () => {},
+  seedSamples: () => {},
   setSamples: () => {},
   resetOrder: () => {},
   enableEditMode: () => {},
@@ -394,6 +395,15 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, []);
 
   /**
+   * Fills the samples from what the server holds when a step opens (the
+   * requested sample types merged with the collected ones). Nothing changed
+   * by the user, so the order is not dirty.
+   */
+  const seedSamples = useCallback((newSamples) => {
+    setSamplesState(newSamples);
+  }, []);
+
+  /**
    * Fill in values derived from what the order already holds (the sampling
    * site record looked up by its saved id, a default date on a blank sample)
    * without marking the form dirty, so opening a saved order does not report
@@ -450,7 +460,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                   dateLocale,
                 );
 
-              setIsReadOnly(readOnly);
+              setIsReadOnly(
+                readOnly || response.progressStatus === "CANCELLED",
+              );
               setIsEditMode(false);
               setIsDirty(false);
               setSaveStatus(SaveStatus.SAVED);
@@ -643,7 +655,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             envFields.vecCollectionSiteId ||
             "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${collector}' collectionConditions='${collectionConditions}' collectionMethod='${collectionMethod}' sampleTemperature='${sampleTemperature}' specimenOrigin='${specimenOrigin}' quantity='${quantity}' uom='${uom}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${rejectReasonId}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${gpsCaptureMethod}' container='${container}' locationDetails='${locationDetails}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${qcExpectedValue}'/>`;
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
         }
       });
 
@@ -1605,6 +1617,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     setCurrentStep,
     setOrderData,
     seedOrderData,
+    seedSamples,
     setSamples,
     hydrateOrderData,
     hydrateSamples,

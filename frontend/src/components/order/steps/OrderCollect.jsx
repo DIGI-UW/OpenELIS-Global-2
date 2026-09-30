@@ -50,6 +50,7 @@ const OrderCollect = () => {
     orderData,
     samples,
     setSamples,
+    seedSamples,
     saveOrder,
     markStepComplete,
     isReadOnly,
@@ -161,7 +162,7 @@ const OrderCollect = () => {
             }
             return reqSample;
           });
-          setSamples(mergedSamples);
+          seedSamples(mergedSamples);
         }
       } catch {
         // Failed to load pending requests
@@ -401,11 +402,13 @@ const OrderCollect = () => {
         />
 
         {/* Section 2: Informed Consent */}
-        <ConsentAccordionSection
-          consentData={consentData}
-          onConsentChange={handleConsentChange}
-          isReadOnly={isReadOnly && !isEditMode}
-        />
+        <div id="consent-section">
+          <ConsentAccordionSection
+            consentData={consentData}
+            onConsentChange={handleConsentChange}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        </div>
 
         {/* A collector holding a hemolyzed specimen could log an NCE here but
             had to walk to QA Review to reject or resample it. The same
