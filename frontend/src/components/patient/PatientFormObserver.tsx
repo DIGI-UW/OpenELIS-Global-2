@@ -71,18 +71,31 @@ const normalizePatientForComparison = (patient = {}) => ({
   addressHierarchy: normalizeAddressHierarchy(patient),
 });
 
+/**
+ * Writes the patient form into the order. A patient the order already holds
+ * (saved with the order, or chosen from the search) is never turned back into
+ * a new one: the order keeps its patientPK, and a form that would add the
+ * patient again updates it instead.
+ */
 export const mergePatientIntoOrderFormValues = (
   orderFormValues: OrderFormValues = {},
   values: PatientRecord = {},
   patientUpdateStatus: string,
 ) => {
+  const heldPatientPK = orderFormValues.patientProperties?.patientPK || "";
+  const keepsHeldPatient = !values.patientPK && heldPatientPK;
+  const nextStatus =
+    keepsHeldPatient && patientUpdateStatus === "ADD"
+      ? "UPDATE"
+      : patientUpdateStatus;
   const nextPatientProperties = {
     ...values,
-    patientUpdateStatus,
+    ...(keepsHeldPatient ? { patientPK: heldPatientPK } : {}),
+    patientUpdateStatus: nextStatus,
   };
 
   if (
-    orderFormValues.patientUpdateStatus === patientUpdateStatus &&
+    orderFormValues.patientUpdateStatus === nextStatus &&
     JSON.stringify(orderFormValues.patientProperties || {}) ===
       JSON.stringify(nextPatientProperties)
   ) {
@@ -91,7 +104,7 @@ export const mergePatientIntoOrderFormValues = (
 
   return {
     ...orderFormValues,
-    patientUpdateStatus,
+    patientUpdateStatus: nextStatus,
     patientProperties: nextPatientProperties,
   };
 };

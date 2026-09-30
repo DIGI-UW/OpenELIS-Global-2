@@ -689,6 +689,48 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       ? { ...sampleOrderItems, sampleId: orderId }
       : { ...sampleOrderItems, orderKey: orderKeyRef.current };
 
+  /**
+   * The id of the patient the save stored, from the server's echo of the form.
+   * A save that added the patient answers with the id it was given.
+   */
+  const readSavedPatientPK = async (response) => {
+    try {
+      const body = await response.clone().json();
+      return body?.patientProperties?.patientPK || "";
+    } catch (e) {
+      return "";
+    }
+  };
+
+  /**
+   * Once the server holds the patient, every later save of this order refers
+   * to it by id. Before this, a second Save of an order entered with a new
+   * patient still said "add", and the server added the patient again.
+   */
+  const adoptSavedPatient = useCallback((patientPK) => {
+    if (!patientPK) {
+      return;
+    }
+    setOrderDataState((prev) => {
+      const current = prev.patientProperties || {};
+      if (
+        current.patientPK === patientPK &&
+        current.patientUpdateStatus === "NO_ACTION"
+      ) {
+        return prev;
+      }
+      return {
+        ...prev,
+        patientUpdateStatus: "NO_ACTION",
+        patientProperties: {
+          ...current,
+          patientPK,
+          patientUpdateStatus: "NO_ACTION",
+        },
+      };
+    });
+  }, []);
+
   const recordRangeNotApplied = useCallback(async (response, labNo) => {
     let tests = [];
     try {
@@ -773,6 +815,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                 response,
                 orderData?.sampleOrderItems?.labNo,
               );
+              adoptSavedPatient(await readSavedPatientPK(response));
               setIsDirty(false);
               setSaveStatus(SaveStatus.SAVED);
               setError(null);
@@ -849,8 +892,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                           patientUpdateStatus: "NO_ACTION",
                           // Also update patientPK if available
                           patientPK:
-                            response.patientProperties?.patientPK ||
-                            prev.patientProperties?.patientPK,
+                            prev.patientProperties?.patientPK ||
+                            response.patientProperties?.patientPK,
                         },
                       }));
                     }
@@ -1026,6 +1069,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                 response,
                 orderData?.sampleOrderItems?.labNo,
               );
+              adoptSavedPatient(await readSavedPatientPK(response));
               setFieldErrors({});
               // Reload order to get the created sample ID
               const labNo = orderData?.sampleOrderItems?.labNo;
@@ -1091,8 +1135,8 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
                           ...prev.patientProperties,
                           patientUpdateStatus: "NO_ACTION",
                           patientPK:
-                            response.patientProperties?.patientPK ||
-                            prev.patientProperties?.patientPK,
+                            prev.patientProperties?.patientPK ||
+                            response.patientProperties?.patientPK,
                         },
                       }));
 
