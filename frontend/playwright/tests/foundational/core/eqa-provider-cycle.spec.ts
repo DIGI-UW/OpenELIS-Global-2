@@ -425,10 +425,8 @@ test.describe("EQA provider cycle lifecycle", () => {
         page.locator(`#tracking-${seed.organizationIds[0]}`),
       ).toHaveValue(`E2E-${RUN}-R1`, { timeout: UI_TIMEOUT });
       await expect(
-        page
-          .locator("tr", { hasText: seed.organizationNames[0] })
-          .getByText(/-R1$/),
-      ).toBeVisible();
+        page.locator("tr", { hasText: seed.organizationNames[0] }),
+      ).toContainText(`EQA-C${cycleId}-${seed.organizationIds[0]}-R1`);
     });
   });
 });
