@@ -169,6 +169,18 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
         assertEquals("qa@participant.example.org", outcome.get("recipient"));
     }
 
+    @Test
+    public void theNotificationNamesAnAnalyteThatOnlyHasAnId() {
+        EQACycle cycle = readBack(insertCycle(scheme, 1));
+        Long followupId = followupService.enqueueForOrganization(scheme, cycle, PARTICIPANT_ORG,
+                List.of(Map.of("analyteId", ANALYTE, "reported", "400", "target", "100")), false, USER).getId();
+
+        Map<String, Object> outcome = followupService.notifyParticipant(followupId, USER);
+
+        assertTrue(String.valueOf(outcome.get("message")),
+                String.valueOf(outcome.get("message")).contains("- EQA Followup Analyte: reported 400, target 100"));
+    }
+
     // ---: persistent failure ----
 
     @Test

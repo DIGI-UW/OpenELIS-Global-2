@@ -420,7 +420,9 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         StringBuilder body = new StringBuilder("Your laboratory's results for ").append(schemeName(followup))
                 .append(", cycle ").append(cycleLabel(followup))
                 .append(", were assessed as unacceptable for the following tests:\n");
-        for (Map<String, Object> row : summaryRows(followup)) {
+        List<Map<String, Object>> rows = summaryRows(followup);
+        nameAnalytes(List.of(Map.of("results", rows)));
+        for (Map<String, Object> row : rows) {
             body.append("- ").append(row.getOrDefault("testName", row.getOrDefault("analyteName", "")))
                     .append(": reported ").append(Objects.toString(row.get("reported"), "")).append(", target ")
                     .append(Objects.toString(row.get("target"), "")).append('\n');

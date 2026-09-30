@@ -100,8 +100,8 @@ describe("OrganizationAddModify navigation", () => {
       (
         postToOpenElisServerJsonResponse as ReturnType<typeof vi.fn>
       ).mockImplementation(
-        (url: string, body: string, callback: (status: number) => void) =>
-          callback(200),
+        (url: string, body: string, callback: (r: unknown) => void) =>
+          callback({ success: true }),
       );
       fireEvent.click(screen.getByText("Save"));
       act(() => {

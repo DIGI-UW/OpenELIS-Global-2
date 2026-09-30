@@ -77,6 +77,7 @@ public class OrganizationForm extends BaseForm {
     private String internetAddress = "";
 
     @Email
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String email = "";
 
     @OptionalNotBlank(formFields = { Field.MLS })

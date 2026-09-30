@@ -469,18 +469,15 @@ function OrganizationAddModify() {
     postToOpenElisServerJsonResponse(
       `/rest/Organization?ID=${ID}&startingRecNo=1`,
       JSON.stringify(orgInfoPost),
-      (response) => {
-        submitAddUpdatedOrgInfoCallback(response);
-      },
+      submitAddUpdatedOrgInfoCallback,
     );
   }
 
   const submitAddUpdatedOrgInfoCallback = (response?: {
-    status?: number;
-    error?: string;
+    success?: boolean;
   }) => {
-    // loading is inverted (false shows the spinner), so leave it alone to keep the form up.
-    if (response?.error || (response?.status ?? 0) >= 400) {
+    // loading is inverted: false shows the spinner.
+    if (!response?.success) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({
@@ -701,7 +698,6 @@ function OrganizationAddModify() {
                       hideLabel
                       className="defalut"
                       type="text"
-                      maxLength={30}
                       enableCounter
                       maxCount={30}
                       placeholder={intl.formatMessage({
@@ -734,7 +730,6 @@ function OrganizationAddModify() {
                       hideLabel
                       className="defalut"
                       type="text"
-                      maxLength={30}
                       enableCounter
                       maxCount={30}
                       placeholder={intl.formatMessage({
