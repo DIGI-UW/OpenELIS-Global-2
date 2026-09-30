@@ -282,3 +282,83 @@ describe("AddSample carries what the step shows (OGC-1388)", () => {
     expect(initial).toEqual(emptySample());
   });
 });
+
+describe("AddSample when a request fails or is slow (OGC-1389)", () => {
+  const failing = (pattern) => (url, callback) => {
+    if (pattern.test(url)) {
+      callback(undefined);
+      return;
+    }
+    answerImmediately(url, callback);
+  };
+
+  test("a failed test list keeps the step, names the sample type and retries", () => {
+    let fail = true;
+    utilsMock.getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (/sample-type-tests/.test(url) && fail) {
+        callback(undefined);
+        return;
+      }
+      answerImmediately(url, callback);
+    });
+    render(<Harness initialSamples={[emptySample()]} />);
+
+    chooseSampleType("4");
+
+    expect(
+      screen.getByText("Tests for Whole Blood could not be loaded."),
+    ).toBeInTheDocument();
+    expect(document.getElementById("sampleId_0")).toHaveValue("4");
+
+    fail = false;
+    act(() => {
+      fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    });
+
+    expect(
+      screen.queryByText("Tests for Whole Blood could not be loaded."),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("TMCH")).toBeInTheDocument();
+  });
+
+  test("a search typed before the list arrives shows its results when it lands", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((url, callback) => {
+      const match = url.match(/sample-type-tests\?sampleType=(\d+)/);
+      if (match) {
+        pending[match[1]] = () => callback(TESTS_BY_TYPE[match[1]]);
+        return;
+      }
+      answerImmediately(url, callback);
+    });
+    render(<Harness initialSamples={[emptySample()]} />);
+    chooseSampleType("4");
+
+    searchTests("TMC");
+    expect(screen.getAllByText("Loading tests…").length).toBeGreaterThan(0);
+    expect(
+      screen.queryByText(/No test Found Matching/),
+    ).not.toBeInTheDocument();
+
+    act(() => pending["4"]());
+
+    expect(screen.getAllByRole("menuitem").map((li) => li.textContent)).toEqual(
+      ["TMCH"],
+    );
+  });
+
+  test("failed referral lists disable the referral instead of crashing", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation(
+      failing(/REFERRAL_(REASONS|ORGANIZATIONS)/),
+    );
+    render(<Harness initialSamples={[emptySample()]} />);
+    chooseSampleType("4");
+    toggleTest("18");
+
+    expect(document.getElementById("useReferral_0")).toBeDisabled();
+    expect(
+      screen.getByText(
+        "The referral reasons or laboratories could not be loaded. Reload the page to refer a test.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

@@ -404,6 +404,11 @@ export default function App() {
     messageKey: "errorBoundary.route.samplePatientEntry.message",
   };
 
+  const routeErrorModifyOrder = {
+    titleKey: "errorBoundary.route.modifyOrder.title",
+    messageKey: "errorBoundary.route.modifyOrder.message",
+  };
+
   const routeErrorOrderEntry = {
     titleKey: "errorBoundary.route.orderEntry.title",
     messageKey: "errorBoundary.route.orderEntry.message",
@@ -819,7 +824,11 @@ export default function App() {
                 <SecureRoute
                   path="/ModifyOrder"
                   exact
-                  render={() => <ModifyOrder />}
+                  render={() => (
+                    <RouteErrorBoundary {...routeErrorModifyOrder}>
+                      <ModifyOrder />
+                    </RouteErrorBoundary>
+                  )}
                   role={Roles.RECEPTION}
                 />
                 <SecureRoute

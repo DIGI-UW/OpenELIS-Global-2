@@ -298,7 +298,6 @@ const NoteBookInstanceEntryForm = () => {
 
   const getSamplesXmlValues = () => {
     let sampleXmlString = "";
-    let referralItems = [];
     if (samples.length > 0) {
       if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
@@ -318,38 +317,6 @@ const NoteBookInstanceEntryForm = () => {
             const storagePositionCoordinate =
               storageLocation?.positionCoordinate || "";
             sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''  storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
-          }
-          if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
-            });
           }
         });
         sampleXmlString += "</samples>";

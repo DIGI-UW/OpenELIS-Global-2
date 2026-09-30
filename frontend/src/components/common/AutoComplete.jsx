@@ -29,6 +29,18 @@ function AutoComplete(props) {
     }
   }, [props]);
 
+  useEffect(() => {
+    if (!userInput || !showSuggestions) {
+      return;
+    }
+    const refiltered = (props.suggestions || []).filter(
+      (suggestion) =>
+        suggestion.value.toLowerCase().indexOf(userInput.toLowerCase()) > -1,
+    );
+    setFilteredSuggestions(refiltered);
+    setInvalid(refiltered.length === 0 && !allowFreeText);
+  }, [props.suggestions]);
+
   const onChange = (e) => {
     const { suggestions } = props;
     const userInput = e.currentTarget.value;
