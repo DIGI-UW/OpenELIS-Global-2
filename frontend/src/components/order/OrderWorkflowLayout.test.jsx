@@ -77,7 +77,7 @@ describe("the state after the entry step saves", () => {
   it("names the saved order and offers the next step", async () => {
     renderLayout();
 
-    const collect = messages["order.step.collect"];
+    const collect = messages["order.step.prepare"];
     expect(screen.getByText("Order LAB-42 saved")).toBeInTheDocument();
     expect(screen.getByText(`Next: ${collect}`)).toBeInTheDocument();
     await userEvent
@@ -97,7 +97,7 @@ describe("the state after the entry step saves", () => {
         </OrderWorkflowLayout>
       </IntlProvider>,
     );
-    const collect = messages["order.step.collect"];
+    const collect = messages["order.step.prepare"];
     expect(screen.getByRole("button", { name: collect })).not.toHaveFocus();
 
     const user = userEvent.setup();

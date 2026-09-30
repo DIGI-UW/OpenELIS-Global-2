@@ -700,11 +700,18 @@ export default function App() {
                           render={() => <OrderCollect />}
                           role={Roles.RECEPTION}
                         />
-                        <SecureRoute
+                        {/* Label & Store folded into Prepare Samples (OGC-1266 M4, D-066) */}
+                        <Route
                           path={`${match.path}/label`}
                           exact
-                          render={() => <OrderLabel />}
-                          role={Roles.RECEPTION}
+                          render={({ location }) => (
+                            <Redirect
+                              to={{
+                                pathname: `${match.path}/collect`,
+                                search: location.search,
+                              }}
+                            />
+                          )}
                         />
                         <SecureRoute
                           path={`${match.path}/qa`}
@@ -712,6 +719,8 @@ export default function App() {
                           render={() => <OrderQA />}
                           role={Roles.RECEPTION}
                         />
+                        {/* A step that does not exist never shows a blank page (FR-A16) */}
+                        <Route render={() => <Redirect to={match.path} />} />
                       </Switch>
                     </OrderProvider>
                   )}

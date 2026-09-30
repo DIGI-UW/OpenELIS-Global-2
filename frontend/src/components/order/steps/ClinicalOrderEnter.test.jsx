@@ -16,6 +16,7 @@ const { orderContextValue, programSectionProps, configurationValue } =
         },
       },
       setOrderData: vi.fn(),
+      seedOrderData: vi.fn(),
       samples: [
         {
           sampleTypeId: "blood",
@@ -76,13 +77,27 @@ vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
 }));
 
+const layoutProps = vi.fn();
 vi.mock("../OrderWorkflowLayout", () => ({
-  default: ({ children, extraButtons }) => (
-    <div>
-      {children}
-      {extraButtons}
-    </div>
-  ),
+  default: (props) => {
+    layoutProps(props);
+    return (
+      <div>
+        {props.children}
+        <button disabled={!props.canSave} onClick={props.onSave}>
+          Save and exit
+        </button>
+        <button disabled={!props.canProceed} onClick={props.onSaveAndNext}>
+          Save and next
+        </button>
+        <ul data-testid="to-continue">
+          {(props.toContinue || []).map((item) => (
+            <li key={item.id}>{item.label}</li>
+          ))}
+        </ul>
+      </div>
+    );
+  },
 }));
 
 vi.mock("./sections/PatientSearchSection", () => ({
@@ -113,31 +128,42 @@ vi.mock("./sections/SampleTestSection", () => ({
 }));
 
 import ClinicalOrderEnter from "./ClinicalOrderEnter";
+import { getFromOpenElisServer } from "../../utils/Utils";
 
 describe("ClinicalOrderEnter", () => {
   beforeEach(() => {
     programSectionProps.mockClear();
   });
 
-  it("does not offer a second draft save while one is in flight", () => {
-    orderContextValue.isSubmitting = true;
-    const { unmount } = render(
-      <IntlProvider locale="en" messages={messages}>
-        <ClinicalOrderEnter />
-      </IntlProvider>,
-    );
-
-    expect(screen.getByRole("button", { name: "Save Draft" })).toBeDisabled();
-    unmount();
-
-    orderContextValue.isSubmitting = false;
+  // OGC-1266 FR-A7: the entry step has two levels of required. Save and
+  // exit needs the save level; Save and next needs the complete level too,
+  // and lists what is still missing with a link to each field.
+  it("opens Save and exit on the save level and lists the rest to continue", () => {
+    configurationValue.configurationProperties = { REQUESTER_REQUIRED: "true" };
+    layoutProps.mockClear();
     render(
       <IntlProvider locale="en" messages={messages}>
         <ClinicalOrderEnter />
       </IntlProvider>,
     );
 
-    expect(screen.getByRole("button", { name: "Save Draft" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save and exit" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Save and next" }),
+    ).toBeDisabled();
+    expect(screen.getByTestId("to-continue")).toHaveTextContent(
+      messages["order.continue.item.provider"],
+    );
+    expect(layoutProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        toContinue: [
+          expect.objectContaining({
+            id: "order.continue.item.provider",
+            targetId: "requesterId",
+          }),
+        ],
+      }),
+    );
   });
 
   it("marks the lab number and lists the rest when the server blocks the save", () => {
@@ -207,26 +233,33 @@ describe("ClinicalOrderEnter required-field configuration", () => {
   // legacy screen it was written for, and no server validation reads it — so
   // it drives the asterisk, not the gate. Turning it into a gate blocks every
   // order on the profiles that set it, which is not what it has ever meant.
-  it("does not block the save on the site marker setting", () => {
+  it("does not hold either save on the site marker setting", () => {
     configurationValue.configurationProperties = {
       SampleEntryReferralSiteNameRequired: "true",
     };
     renderEnter();
 
-    expect(screen.getByRole("button", { name: "Save Draft" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save and exit" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save and next" })).toBeEnabled();
+    expect(screen.getByTestId("to-continue")).toBeEmptyDOMElement();
   });
 
-  it("blocks the save when the deployment requires a requester", () => {
+  it("holds Save and next, not the save, when the deployment requires a requester", () => {
     configurationValue.configurationProperties = { REQUESTER_REQUIRED: "true" };
     renderEnter();
 
-    expect(screen.getByRole("button", { name: "Save Draft" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save and exit" })).toBeEnabled();
+    expect(
+      screen.getByRole("button", { name: "Save and next" }),
+    ).toBeDisabled();
   });
 
-  it("leaves the save open when the deployment requires neither", () => {
+  it("leaves both saves open when the deployment requires neither", () => {
     renderEnter();
 
-    expect(screen.getByRole("button", { name: "Save Draft" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save and exit" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save and next" })).toBeEnabled();
+    expect(screen.getByTestId("to-continue")).toBeEmptyDOMElement();
   });
 
   it("marks the required fields so the user can see them", () => {
@@ -249,14 +282,63 @@ describe("ClinicalOrderEnter required-field configuration", () => {
       sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
     };
     renderEnter();
-    expect(screen.getByRole("button", { name: "Save Draft" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save and exit" }),
+    ).toBeDisabled();
+    expect(screen.getByTestId("to-continue")).toHaveTextContent(
+      messages["order.continue.item.patient"],
+    );
+  });
+});
+
+// Found on the live walk: an untouched new order said "Unsaved changes" and
+// asked before leaving, because the defaults the form sets for itself (the
+// workflow type, the generated lab number) were recorded as the user's edits.
+describe("ClinicalOrderEnter defaults on a new order", () => {
+  beforeEach(() => {
+    configurationValue.configurationProperties = {};
+    orderContextValue.setOrderData = vi.fn();
+    orderContextValue.seedOrderData = vi.fn();
+    orderContextValue.labNumber = null;
+    orderContextValue.orderData = {
+      patientProperties: {},
+      sampleOrderItems: {},
+    };
+  });
+
+  afterEach(() => {
+    orderContextValue.labNumber = "LAB-1";
+    getFromOpenElisServer.mockReset();
+  });
+
+  it("seeds the workflow type and the generated lab number without marking the order dirty", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("SampleEntryGenerateScanProvider")) {
+        callback({ status: 200, body: "DEV01260000000000001" });
+      }
+    });
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ClinicalOrderEnter />
+      </IntlProvider>,
+    );
+
+    expect(orderContextValue.seedOrderData).toHaveBeenCalled();
+    expect(orderContextValue.setOrderData).not.toHaveBeenCalled();
+    const seeded = orderContextValue.seedOrderData.mock.calls
+      .map(([value]) => value)
+      .filter((value) => typeof value === "function")
+      .reduce((data, update) => update(data), orderContextValue.orderData);
+    expect(seeded.sampleOrderItems.environmentalFields.workflowType).toBe(
+      "clinical",
+    );
   });
 });
 
 describe("ClinicalOrderEnter EQA pre-set", () => {
   beforeEach(() => {
     configurationValue.configurationProperties = {};
-    orderContextValue.setOrderData = vi.fn();
+    orderContextValue.seedOrderData = vi.fn();
     orderContextValue.orderData = {
       patientProperties: {},
       sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
@@ -279,7 +361,7 @@ describe("ClinicalOrderEnter EQA pre-set", () => {
       </IntlProvider>,
     );
 
-    const applied = orderContextValue.setOrderData.mock.calls
+    const applied = orderContextValue.seedOrderData.mock.calls
       .map(([value]) => value)
       .filter((value) => typeof value === "function")
       .map((value) => value(orderContextValue.orderData))
@@ -302,7 +384,7 @@ describe("ClinicalOrderEnter EQA pre-set", () => {
       </IntlProvider>,
     );
 
-    const applied = orderContextValue.setOrderData.mock.calls
+    const applied = orderContextValue.seedOrderData.mock.calls
       .map(([value]) => value)
       .filter((value) => typeof value === "function")
       .map((value) => value(orderContextValue.orderData))

@@ -20,6 +20,7 @@ const { orderContextValue, postToOpenElisServerJsonResponse, layoutProps } =
       resetOrder: vi.fn(),
       labNumber: "DEV01260000000000001",
       markStepComplete: vi.fn(),
+      adoptProgress: vi.fn(),
     },
     postToOpenElisServerJsonResponse: vi.fn(),
     layoutProps: vi.fn(),
@@ -120,9 +121,9 @@ describe("OrderQA", () => {
     expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
   });
 
-  // The dashboard reads the presence of this record to mark the order
-  // complete, so submission must still write it.
-  it("records the QA review against the lab number on submit", async () => {
+  // OGC-1266 FR-F3: Release for testing records the Sample check and asks
+  // the server to release the order in the same call.
+  it("releases the order against the lab number on submit", async () => {
     postToOpenElisServerJsonResponse.mockImplementation(
       (_url, _body, callback) => callback({ success: true }),
     );
@@ -132,8 +133,65 @@ describe("OrderQA", () => {
 
     expect(postToOpenElisServerJsonResponse).toHaveBeenCalledWith(
       "/rest/qa-checklist",
-      JSON.stringify({ labNumber: "DEV01260000000000001" }),
+      JSON.stringify({ labNumber: "DEV01260000000000001", release: true }),
       expect.any(Function),
     );
+    expect(layoutProps).toHaveBeenCalledWith(
+      expect.objectContaining({
+        primaryLabelId: "order.sampleCheck.release",
+        title: "order.step.sampleCheck",
+      }),
+    );
+  });
+
+  // OGC-1266 FR-F4: under Optional acceptance a release with unanswered items
+  // needs a reason; the field appears once the server has asked for it and the
+  // next release carries it.
+  it("asks for a reason when the server requires one, then sends it", async () => {
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (_url, _body, callback) =>
+        callback({ success: false, error: "order.release.reasonRequired" }),
+    );
+    renderQa();
+
+    await screen.getByText("Submit Order").click();
+    const reason = await screen.findByLabelText(
+      messages["order.sampleCheck.proceedReason"],
+    );
+
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (_url, _body, callback) => callback({ success: true }),
+    );
+    const { default: userEvent } = await import("@testing-library/user-event");
+    await userEvent.setup().type(reason, "Checklist not in use here");
+    await screen.getByText("Submit Order").click();
+
+    expect(postToOpenElisServerJsonResponse).toHaveBeenLastCalledWith(
+      "/rest/qa-checklist",
+      JSON.stringify({
+        labNumber: "DEV01260000000000001",
+        release: true,
+        releaseNote: "Checklist not in use here",
+      }),
+      expect.any(Function),
+    );
+  });
+
+  // The Sample check cannot release an order whose samples are not prepared.
+  it("holds the release while Prepare Samples is incomplete", () => {
+    orderContextValue.progress = { status: "ENTERED" };
+    renderQa();
+
+    expect(layoutProps).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        canProceed: false,
+        toContinue: [
+          expect.objectContaining({
+            id: "order.sampleCheck.disabled.incomplete",
+          }),
+        ],
+      }),
+    );
+    orderContextValue.progress = undefined;
   });
 });
