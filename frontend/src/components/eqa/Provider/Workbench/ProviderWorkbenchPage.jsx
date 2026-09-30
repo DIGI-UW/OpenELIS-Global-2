@@ -156,6 +156,7 @@ const ProviderWorkbenchPage = () => {
                 <ReceiptMonitor
                   cycleId={cycleId}
                   cycleStatus={prep?.cycleStatus}
+                  distributionMethod={prep?.distributionMethod}
                   onChanged={reload}
                   onNotice={setNotice}
                 />

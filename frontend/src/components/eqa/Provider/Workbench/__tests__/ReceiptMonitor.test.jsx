@@ -75,7 +75,11 @@ const PROVIDER_AND_MANAGER = [
 
 const renderTab = (
   cycleStatus = "SUBMISSIONS_OPEN",
-  { permissions = PROVIDER_AND_MANAGER, onNotice = vi.fn() } = {},
+  {
+    permissions = PROVIDER_AND_MANAGER,
+    onNotice = vi.fn(),
+    distributionMethod = "FHIR",
+  } = {},
 ) =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -91,6 +95,7 @@ const renderTab = (
           <ReceiptMonitor
             cycleId="9"
             cycleStatus={cycleStatus}
+            distributionMethod={distributionMethod}
             onChanged={vi.fn()}
             onNotice={onNotice}
           />
@@ -108,7 +113,7 @@ describe("ReceiptMonitor", () => {
   });
 
   it("tags an overdue shipment and a damaged arrival differently", async () => {
-    renderTab();
+    renderTab("SCORED");
 
     expect(await screen.findByText("Overdue")).toBeInTheDocument();
     expect(screen.getByText("Arrived damaged")).toBeInTheDocument();
@@ -160,6 +165,15 @@ describe("ReceiptMonitor", () => {
     );
   });
 
+  it("shows no score and offers no score action before the cycle is scored", async () => {
+    renderTab("SUBMISSIONS_OPEN");
+
+    await screen.findByText("Iringa District Lab");
+    expect(screen.queryByText("1 unacceptable of 3")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Send scores" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Scores CSV" })).toBeNull();
+  });
+
   it.each(["SCORED", "CLOSED"])(
     "offers no result entry or repeat on a %s cycle, but still returns scores",
     async (cycleStatus) => {
@@ -175,6 +189,16 @@ describe("ReceiptMonitor", () => {
       ).toBeInTheDocument();
     },
   );
+
+  it("offers the scores file, not a FHIR return, on a CSV cycle", async () => {
+    renderTab("SCORED", { distributionMethod: "CSV" });
+
+    await screen.findByText("Iringa District Lab");
+    expect(screen.queryByRole("button", { name: "Send scores" })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Scores CSV" }),
+    ).toBeInTheDocument();
+  });
 
   it("sends a repeat with the override note the reserve may require", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
@@ -227,7 +251,7 @@ describe("ReceiptMonitor", () => {
   // every write action on this tab rendered and was enabled, and pressing one
   // answered 403 with the single word "Forbidden".
   it("offers no write action to a persona without either grant", async () => {
-    renderTab("SUBMISSIONS_OPEN", {
+    const { unmount } = renderTab("SUBMISSIONS_OPEN", {
       permissions: ["qa.view.eqa", "qa.eqa.participant"],
     });
 
@@ -247,6 +271,11 @@ describe("ReceiptMonitor", () => {
       screen.getByText("Read-only view of receipts and scores"),
     ).toBeInTheDocument();
     expect(screen.getByText("Iringa District Lab")).toBeInTheDocument();
+
+    unmount();
+    renderTab("SCORED", { permissions: ["qa.view.eqa", "qa.eqa.participant"] });
+    await screen.findByText("Iringa District Lab");
+    expect(screen.queryByRole("button", { name: "Send scores" })).toBeNull();
     expect(
       screen.getByRole("link", { name: "Scores CSV" }),
     ).toBeInTheDocument();

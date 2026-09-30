@@ -77,6 +77,8 @@ const REPEATABLE = [
   "SUBMISSIONS_CLOSED",
 ];
 
+const SCORED = ["SCORED", "CLOSED"];
+
 const dateCell = (value) =>
   value ? formatDateOnly(value.substring(0, 10)) : "—";
 
@@ -87,7 +89,13 @@ const dateCell = (value) =>
  * marks delivered — so a receipt recorded by the lab shows up here on
  * the next load without a second source of truth.
  */
-const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
+const ReceiptMonitor = ({
+  cycleId,
+  cycleStatus,
+  distributionMethod,
+  onChanged,
+  onNotice,
+}) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // Gate each action on the grant its own endpoint asks for, so what is on
@@ -378,6 +386,8 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
   const scoreOf = (organizationId) =>
     scores.find((score) => score.organizationId === organizationId);
 
+  const isScored = SCORED.includes(cycleStatus);
+
   return (
     <>
       {rows.length === 0 ? (
@@ -532,7 +542,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                           : "—"}
                     </TableCell>
                     <TableCell>
-                      {score
+                      {score && isScored
                         ? t(
                             "eqa.score.counts",
                             "{unacceptable} unacceptable of {total}",
@@ -579,9 +589,9 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                           {t("eqa.intake.enterResults", "Enter results")}
                         </Button>
                       )}
-                      {score && score.resultCount > 0 && (
+                      {score && isScored && score.resultCount > 0 && (
                         <>
-                          {isProvider && (
+                          {isProvider && distributionMethod !== "CSV" && (
                             <Button
                               kind="ghost"
                               size="sm"
