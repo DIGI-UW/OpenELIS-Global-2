@@ -27,8 +27,10 @@ public interface HistoryService extends BaseObjectService<History, String> {
      * out. Resolved once and cached — the mapping is static configuration, so a
      * reference table added later is only picked up on restart.
      */
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     Map<String, String> getSystemAuditReferenceTableIds();
 
+    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     List<History> getHistoryByRefIdAndRefTableId(String Id, String Table) throws LIMSRuntimeException;
 
     @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")

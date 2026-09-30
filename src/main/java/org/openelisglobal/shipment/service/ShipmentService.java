@@ -59,6 +59,7 @@ public interface ShipmentService {
      * @param eqaCycleIds EQA cycle ids
      * @return rows of (eqaCycleId, max shippedDate) for cycles that shipped
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_VIEW')")
     List<Object[]> getLatestShippedDatesByEqaCycleIds(Collection<Long> eqaCycleIds);
 
     /**

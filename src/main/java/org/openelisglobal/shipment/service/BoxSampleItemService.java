@@ -91,6 +91,7 @@ public interface BoxSampleItemService {
      * @throws IllegalArgumentException if the box does not exist or nothing was
      *                                  given to pack
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_MANAGE')")
     List<BoxSampleItem> addPanelSamplesToBox(Integer shippingBoxId, List<EQAPanelSample> panelSamples,
             Integer systemUserId);
 

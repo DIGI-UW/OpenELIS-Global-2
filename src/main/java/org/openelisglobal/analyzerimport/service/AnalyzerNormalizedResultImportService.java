@@ -8,5 +8,6 @@ public interface AnalyzerNormalizedResultImportService {
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_IMPORT')")
     AnalyzerNormalizedResultImportSummary importBundle(Bundle bundle, String actor);
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_IMPORT')")
     int recoverHeldMappingResults(String analyzerId, String actor);
 }

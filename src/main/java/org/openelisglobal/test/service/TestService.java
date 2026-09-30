@@ -47,6 +47,7 @@ public interface TestService extends BaseObjectService<Test, String> {
     /** OGC-189: unfiltered by active status, for viewer paths. See TestDAO. */
     List<Test> getAllTestsByTestSectionIds(List<String> ids);
 
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<Test> getPageOfTestsBySysUserId(int startingRecNo, int sysUserId);
 
     @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
@@ -85,6 +86,7 @@ public interface TestService extends BaseObjectService<Test, String> {
     @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<Test> getTestsByLocalCode(String localCode);
 
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<Test> getTestsByNormalizedDescriptionPrefix(String plainName);
 
     @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
@@ -232,6 +234,7 @@ public interface TestService extends BaseObjectService<Test, String> {
      * The tests carrying these ids, in one query. For views that decorate many rows
      * with a test name and would otherwise look one up per row.
      */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     List<Test> getTestsByIds(Collection<String> testIds);
 
     /**
@@ -246,6 +249,7 @@ public interface TestService extends BaseObjectService<Test, String> {
      * localization row, so a listing that must never show one asks for the plain
      * name or the description instead.
      */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     String getLabelOrDefault(String testId, Function<Test, String> label, String fallback);
 
     /**
@@ -262,5 +266,6 @@ public interface TestService extends BaseObjectService<Test, String> {
      * True when the localization is some test's name or reporting name, so a change
      * to its translations must refresh the cached test-name lists.
      */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_CATALOGUE_VIEW')")
     boolean isNameLocalization(String localizationId);
 }

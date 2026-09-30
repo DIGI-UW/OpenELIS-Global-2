@@ -26,6 +26,7 @@ import org.dbunit.operation.DatabaseOperation;
 import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.WithDaemonUser;
@@ -329,12 +330,20 @@ public abstract class BaseWebContextSensitiveTest extends AbstractTransactionalJ
     }
 
     private void refreshFixtureCaches() {
-        if (statusService != null) {
-            statusService.refreshCache();
-        }
-        if (observationHistoryService != null) {
-            observationHistoryService.refreshTypeIdCache();
-        }
+        // Fixture bookkeeping, not a user action. This runs from @AfterTransaction,
+        // which JUnit orders AFTER @After has cleared the test SecurityContext, so
+        // the gated cache refreshes (StatusService.buildMaps is PRIV_-gated) were
+        // denied with AuthenticationCredentialsNotFoundException and took every
+        // fixture-loading test class down with them. Run as the system actor, the
+        // same way DisplayListService.refreshLists and the startup path do.
+        SystemContext.runAsSystem(() -> {
+            if (statusService != null) {
+                statusService.refreshCache();
+            }
+            if (observationHistoryService != null) {
+                observationHistoryService.refreshTypeIdCache();
+            }
+        });
     }
 
     /**

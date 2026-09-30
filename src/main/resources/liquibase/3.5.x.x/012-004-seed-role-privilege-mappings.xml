@@ -1173,9 +1173,17 @@
       Coordinator. Those roles would clear the controller and then be refused at
       the service, which reads to a user as EQA V2 silently breaking.
 
-      Granting the matching privilege to exactly the roles that already hold the
-      qa.* key keeps both models enforced and widens access to nobody: every
-      role named here can already reach these endpoints today.
+      eqa:manage also goes to Reception and Results, which hold the PARTICIPANT
+      tier (qa/026): a lab acting on its own enrolment and results. Those writes
+      reach EQA services whose write gate is eqa:manage, so without this grant a
+      bench lab passes develop's controller and is then refused at the service.
+      This does not let a bench tech seal, distribute or score: EQAGuards.MANAGE
+      on the controller is evaluated first and still requires qa.manage.eqa,
+      which they do not hold. The controller carries the five-tier precision;
+      the service gate is a coarse backstop that must not contradict it.
+
+      Widens effective access to nobody: every role named here can already reach
+      these endpoints through the controller tier it holds today.
     -->
     <changeSet author="openelis" id="012-004t-align-eqa-privileges-with-qa-model">
         <preConditions onFail="MARK_RAN">
@@ -1192,7 +1200,7 @@
 
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
-            WHERE trim(r.name) IN ('QA Officer', 'Global Administrator')
+            WHERE trim(r.name) IN ('QA Officer', 'Global Administrator', 'Reception', 'Results')
               AND p.name = 'eqa:manage'
               AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
                               WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);

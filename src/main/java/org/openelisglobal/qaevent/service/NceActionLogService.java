@@ -12,5 +12,6 @@ public interface NceActionLogService extends BaseObjectService<NceActionLog, Int
     @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     List<NceActionLog> getNceActionLogByNceId(Integer nceId) throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     List<CapaRegisterItem> getCapaRegister(int max) throws LIMSRuntimeException;
 }

@@ -10,6 +10,7 @@ public interface AnalyzerInstanceService {
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerInstanceView ensureConnection(String analyzerId, ObjectNode values, String actor);
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerInstanceView create(AnalyzerInstanceRequest request, String actor);
 
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")

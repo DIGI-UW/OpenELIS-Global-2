@@ -58,6 +58,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
@@ -180,6 +181,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Analysis analysis;
         try {
             analysis = analysisService.get(analysisId);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (RuntimeException e) {
             analysis = null;
         }
@@ -359,6 +363,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
+                    } catch (AccessDeniedException denied) {
+                        // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                        throw denied;
                     } catch (RuntimeException ex) {
                         LogEvent.logError(ex);
                     }
@@ -366,6 +373,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 dataSet.getCalculatedResults().forEach(calculated -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
+                    } catch (AccessDeniedException denied) {
+                        // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                        throw denied;
                     } catch (RuntimeException ex) {
                         LogEvent.logError(ex);
                     }
@@ -568,6 +578,9 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             if (user != null) {
                 return user.getDisplayName();
             }
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (RuntimeException e) {
             LogEvent.logError(e);
         }

@@ -32,6 +32,7 @@ import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.login.valueholder.UserSessionData;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.test.service.TestService;
@@ -64,6 +65,12 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 @WebAppConfiguration
 @ContextConfiguration(classes = { EQARestGuardSecuritySliceTest.TestConfig.class })
 @TestPropertySource("classpath:common.properties")
+// Principals carry the PRIV_EQA_* the service layer requires alongside the qa.*
+// tier the controller requires: EQA is gated at both layers after the OGC-384
+// merge, and 012-004t grants eqa:view/eqa:manage to exactly the roles holding
+// these qa.* keys. The controller keeps the tier precision (a participant still
+// cannot reach a MANAGE handler); the service gate is a coarse backstop.
+
 public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
 
     /** Session principal for handlers that resolve the acting user. */
@@ -92,14 +99,16 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
 
     @Test
     public void read_viewEqaAuthorityReturns200() throws Exception {
-        mockMvc.perform(get("/rest/eqa/my-programs")
-                .with(user("qaofficer").authorities(new SimpleGrantedAuthority("qa.view.eqa"))))
+        mockMvc.perform(get("/rest/eqa/my-programs").with(user("qaofficer")
+                .authorities(new SimpleGrantedAuthority("qa.view.eqa"), new SimpleGrantedAuthority("PRIV_EQA_VIEW"))))
                 .andExpect(status().isOk());
     }
 
     @Test
     public void read_globalAdminFallbackReturns200() throws Exception {
-        mockMvc.perform(get("/rest/eqa/my-programs").with(user("admin").roles("GLOBAL_ADMIN")))
+        mockMvc.perform(get("/rest/eqa/my-programs")
+                .with(user("admin").authorities(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN"),
+                        new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"))))
                 .andExpect(status().isOk());
     }
 
@@ -109,15 +118,16 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
     public void participantWrite_readUmbrellaCannotWrite() throws Exception {
         // Auth ordering: qa.view.eqa admits reads everywhere but must stop at
         // the first write.
-        mockMvc.perform(delete("/rest/eqa/my-programs/9")
-                .with(user("viewer").authorities(new SimpleGrantedAuthority("qa.view.eqa"))))
+        mockMvc.perform(delete("/rest/eqa/my-programs/9").with(user("viewer")
+                .authorities(new SimpleGrantedAuthority("qa.view.eqa"), new SimpleGrantedAuthority("PRIV_EQA_VIEW"))))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     public void participantWrite_participantTierReturns204() throws Exception {
         mockMvc.perform(delete("/rest/eqa/my-programs/9")
-                .with(user("qaofficer").authorities(new SimpleGrantedAuthority("qa.eqa.participant"))))
+                .with(user("qaofficer").authorities(new SimpleGrantedAuthority("qa.eqa.participant"),
+                        new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"))))
                 .andExpect(status().isNoContent());
     }
 
@@ -139,8 +149,8 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
         // let a qa.view.eqa holder change a status; the positive case below proves
         // the route exists, so the 403 here can only come from the method guard.
         mockMvc.perform(put("/rest/eqa/my-programs/9/status").contentType(MediaType.APPLICATION_JSON)
-                .content("{\"status\":\"SUSPENDED\",\"reason\":\"instrument down\"}")
-                .with(user("viewer").authorities(new SimpleGrantedAuthority("qa.view.eqa"))))
+                .content("{\"status\":\"SUSPENDED\",\"reason\":\"instrument down\"}").with(user("viewer").authorities(
+                        new SimpleGrantedAuthority("qa.view.eqa"), new SimpleGrantedAuthority("PRIV_EQA_VIEW"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -149,7 +159,8 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
         mockMvc.perform(put("/rest/eqa/my-programs/9/status").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"status\":\"SUSPENDED\",\"reason\":\"instrument down\"}")
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
-                .with(user("qaofficer").authorities(new SimpleGrantedAuthority("qa.eqa.participant"))))
+                .with(user("qaofficer").authorities(new SimpleGrantedAuthority("qa.eqa.participant"),
+                        new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.status").value("SUSPENDED"));
     }
 
@@ -159,8 +170,9 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
     public void providerWrite_benchAndParticipantTierRefused() throws Exception {
         mockMvc.perform(post("/rest/eqa/programs").contentType(MediaType.APPLICATION_JSON).content("{}")
                 .with(user("bench").authorities(new SimpleGrantedAuthority("qa.eqa.participant"),
-                        new SimpleGrantedAuthority("qa.view.eqa"), new SimpleGrantedAuthority("ROLE_RECEPTION"),
-                        new SimpleGrantedAuthority("ROLE_RESULTS"))))
+                        new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"),
+                        new SimpleGrantedAuthority("qa.view.eqa"), new SimpleGrantedAuthority("PRIV_EQA_VIEW"),
+                        new SimpleGrantedAuthority("ROLE_RECEPTION"), new SimpleGrantedAuthority("ROLE_RESULTS"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -169,7 +181,8 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
         mockMvc.perform(post("/rest/eqa/programs").contentType(MediaType.APPLICATION_JSON)
                 .content("{\"name\":\"HIV VL PT\",\"schemeType\":\"INTERNATIONAL_PT\",\"provider\":\"NHLS\"}")
                 .sessionAttr(IActionConstants.USER_SESSION_DATA, sessionUser())
-                .with(user("provider").authorities(new SimpleGrantedAuthority("qa.eqa.provider"))))
+                .with(user("provider").authorities(new SimpleGrantedAuthority("qa.eqa.provider"),
+                        new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"))))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.name").value("HIV VL PT"));
     }
 
@@ -183,15 +196,17 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
         // produce the 403 is the unblind tier guard itself — without it the class
         // guard would refuse this caller anyway and the test would pass on a
         // deleted annotation.
-        mockMvc.perform(post("/rest/eqa/panels/5/unblind").with(user("coordinator")
-                .authorities(new SimpleGrantedAuthority("qa.view.eqa"), new SimpleGrantedAuthority("qa.manage.eqa"))))
+        mockMvc.perform(post("/rest/eqa/panels/5/unblind")
+                .with(user("coordinator").authorities(new SimpleGrantedAuthority("qa.view.eqa"),
+                        new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("qa.manage.eqa"),
+                        new SimpleGrantedAuthority("PRIV_EQA_VIEW"), new SimpleGrantedAuthority("PRIV_EQA_MANAGE"))))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     public void unblind_readUmbrellaAloneIsNotEnough() throws Exception {
-        mockMvc.perform(post("/rest/eqa/panels/5/unblind")
-                .with(user("viewer").authorities(new SimpleGrantedAuthority("qa.view.eqa"))))
+        mockMvc.perform(post("/rest/eqa/panels/5/unblind").with(user("viewer")
+                .authorities(new SimpleGrantedAuthority("qa.view.eqa"), new SimpleGrantedAuthority("PRIV_EQA_VIEW"))))
                 .andExpect(status().isForbidden());
     }
 
@@ -223,7 +238,7 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
             org.openelisglobal.analyte.service.AnalyteService service = Mockito
                     .mock(org.openelisglobal.analyte.service.AnalyteService.class);
             Mockito.when(service.getAll()).thenReturn(List.of());
-            return service;
+            return GatedServiceMocks.asGatedBean(service);
         }
 
         @Bean
@@ -234,7 +249,7 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
             suspended.setId(9L);
             suspended.setStatus("SUSPENDED");
             Mockito.when(service.updateStatus(anyLong(), anyString(), anyString(), any(), any())).thenReturn(suspended);
-            return service;
+            return GatedServiceMocks.asGatedBean(service);
         }
 
         @Bean
@@ -245,12 +260,12 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
             program.setIsActive(true);
             Mockito.when(service.insert(any(EQAProgram.class))).thenReturn(1L);
             Mockito.when(service.get(eq(1L))).thenReturn(program);
-            return service;
+            return GatedServiceMocks.asGatedBean(service);
         }
 
         @Bean
         EQAProgramEnrollmentService programEnrollmentService() {
-            return Mockito.mock(EQAProgramEnrollmentService.class);
+            return GatedServiceMocks.stubbableMock(EQAProgramEnrollmentService.class);
         }
 
         @Bean
@@ -258,7 +273,7 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
             EQAPanelService service = Mockito.mock(EQAPanelService.class);
             Mockito.when(service.unblind(anyLong(), any())).thenReturn(new EQAPanel());
             Mockito.when(service.toPanelDto(any())).thenReturn(Map.of("id", 5));
-            return service;
+            return GatedServiceMocks.asGatedBean(service);
         }
 
         @Bean
@@ -276,17 +291,17 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
 
         @Bean
         EQABlindingService blindingService() {
-            return Mockito.mock(EQABlindingService.class);
+            return GatedServiceMocks.stubbableMock(EQABlindingService.class);
         }
 
         @Bean
         EQALabelPDFService labelPDFService() {
-            return Mockito.mock(EQALabelPDFService.class);
+            return GatedServiceMocks.stubbableMock(EQALabelPDFService.class);
         }
 
         @Bean
         EQACycleService cycleService() {
-            return Mockito.mock(EQACycleService.class);
+            return GatedServiceMocks.stubbableMock(EQACycleService.class);
         }
 
         /**
@@ -296,17 +311,17 @@ public class EQARestGuardSecuritySliceTest extends SecuritySliceMockMvcTest {
          */
         @Bean
         SystemUserService systemUserService() {
-            return Mockito.mock(SystemUserService.class);
+            return GatedServiceMocks.stubbableMock(SystemUserService.class);
         }
 
         @Bean
         TestService testService() {
-            return Mockito.mock(TestService.class);
+            return GatedServiceMocks.stubbableMock(TestService.class);
         }
 
         @Bean
         TestAnalyteService testAnalyteService() {
-            return Mockito.mock(TestAnalyteService.class);
+            return GatedServiceMocks.stubbableMock(TestAnalyteService.class);
         }
 
         @Bean

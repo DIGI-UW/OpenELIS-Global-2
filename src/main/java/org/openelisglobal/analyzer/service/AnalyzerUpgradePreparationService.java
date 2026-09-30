@@ -15,6 +15,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerUpgradeSource;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
  * Transfers retained upgrade input into current local bindings, without
  * activating anything.
  */
+/**
+ * Exempt from service-layer gating for now, not ungated: reached only from
+ * AnalyzerUpgradeRestController, which develop gates at the controller
+ * (develop's own authorization model). Arrived with develop after this branch
+ * moved gating to services; folding it into PRIV_* is part of the EQA/QA
+ * reconciliation, see docs/rbac/eqa-authorization-collision.md.
+ */
+@CrossDomainService(callers = "AnalyzerUpgradeRestController")
 @Service
 public class AnalyzerUpgradePreparationService {
     private final AnalyzerService analyzers;

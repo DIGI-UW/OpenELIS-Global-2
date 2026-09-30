@@ -7,6 +7,7 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerUpgradePreparationService.ProfileSelection;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.configuration.service.ConfigurationImportRunService;
 import org.springframework.stereotype.Service;
 
@@ -14,6 +15,14 @@ import org.springframework.stereotype.Service;
  * Resumable coordinator. Bridge connection creation runs outside the local
  * preparation transaction.
  */
+/**
+ * Exempt from service-layer gating for now, not ungated: reached only from
+ * AnalyzerUpgradeRestController, which develop gates at the controller
+ * (develop's own authorization model). Arrived with develop after this branch
+ * moved gating to services; folding it into PRIV_* is part of the EQA/QA
+ * reconciliation, see docs/rbac/eqa-authorization-collision.md.
+ */
+@CrossDomainService(callers = "AnalyzerUpgradeRestController")
 @Service
 public class AnalyzerUpgradeService {
     private static final String RUN_SOURCE = "ANALYZER_UPGRADE";

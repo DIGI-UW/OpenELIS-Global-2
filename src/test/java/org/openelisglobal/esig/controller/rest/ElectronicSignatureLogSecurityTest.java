@@ -22,6 +22,7 @@ import org.openelisglobal.esig.service.ElectronicSignatureService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.context.MessageSource;
@@ -56,9 +57,11 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
     @Before
     public void resetServiceStub() {
         ElectronicSignatureService service = webApplicationContext.getBean(ElectronicSignatureService.class);
-        reset(service);
-        when(service.searchSignatures(any(), any(), any(), any(), any(), anyInt(), anyInt())).thenReturn(List.of());
-        when(service.countSearchSignatures(any(), any(), any(), any(), any())).thenReturn(0L);
+        reset(GatedServiceMocks.mockBehind(service));
+        when(GatedServiceMocks.mockBehind(service).searchSignatures(any(), any(), any(), any(), any(), anyInt(),
+                anyInt())).thenReturn(List.of());
+        when(GatedServiceMocks.mockBehind(service).countSearchSignatures(any(), any(), any(), any(), any()))
+                .thenReturn(0L);
     }
 
     @Test
@@ -172,8 +175,8 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
         validated.setRejectionReason("=cmd");
 
         ElectronicSignatureService service = webApplicationContext.getBean(ElectronicSignatureService.class);
-        when(service.searchSignatures(any(), any(), any(), any(), any(), anyInt(), anyInt()))
-                .thenReturn(List.of(rejected, validated));
+        when(GatedServiceMocks.mockBehind(service).searchSignatures(any(), any(), any(), any(), any(), anyInt(),
+                anyInt())).thenReturn(List.of(rejected, validated));
     }
 
     @Configuration
@@ -183,7 +186,7 @@ public class ElectronicSignatureLogSecurityTest extends SecuritySliceMockMvcTest
         ElectronicSignatureService electronicSignatureService() {
             // The slice exercises the @PreAuthorize gate and request validation, not
             // the query. resetServiceStub sets the return values before every test.
-            return mock(ElectronicSignatureService.class);
+            return GatedServiceMocks.stubbableMock(ElectronicSignatureService.class);
         }
 
         /**

@@ -44,5 +44,6 @@ public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     Optional<Analyzer> findByIdForUpdate(String id);
 
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<AnalyzerTestCapability> getCapabilitiesForTest(String testId);
 }

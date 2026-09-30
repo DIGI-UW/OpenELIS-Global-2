@@ -14,6 +14,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -76,6 +77,9 @@ public class EQAEnrollmentRestController extends ControllerUtills {
             List<Map<String, Object>> dtos = enrolled.stream().map(this::toDto).collect(Collectors.toList());
 
             return ResponseEntity.status(HttpStatus.CREATED).body(dtos);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -99,6 +103,9 @@ public class EQAEnrollmentRestController extends ControllerUtills {
             return ResponseEntity.ok(toDto(updated));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -121,6 +128,9 @@ public class EQAEnrollmentRestController extends ControllerUtills {
                 Organization org = organizationService.get(String.valueOf(enrollment.getOrganizationId()));
                 dto.put("organizationName", org != null ? org.getOrganizationName() : null);
                 dto.put("organizationCode", org != null ? org.getShortName() : null);
+            } catch (AccessDeniedException denied) {
+                // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                throw denied;
             } catch (Exception e) {
                 dto.put("organizationName", null);
                 dto.put("organizationCode", null);

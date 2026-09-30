@@ -2,6 +2,7 @@ package org.openelisglobal.eqa.service;
 
 import java.util.Map;
 import org.hl7.fhir.r4.model.Resource;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface EQAFhirSubmissionService {
 
@@ -28,6 +29,7 @@ public interface EQAFhirSubmissionService {
      * report names the consignment, scheme and cycle number, each observation names
      * its analyte by name, so a provider on another instance can place it.
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     Map<String, Resource> participantSubmissionResources(Long cycleId, Long labEnrollmentId);
 
     /**
@@ -35,8 +37,10 @@ public interface EQAFhirSubmissionService {
      * marked as scores for the consignment the panel travelled in, observations
      * named by analyte, each with its Z and verdict.
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     Map<String, Resource> scoreReturnResources(Long distributionId, Long organizationId);
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     Map<String, Object> submitResultsViaFhir(Long distributionId, Long organizationId);
 
     /**
@@ -49,10 +53,13 @@ public interface EQAFhirSubmissionService {
      *         throws instead: that is a caller error, not a transport failure, and
      *         counting it against the retry budget would hide it.
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     boolean submitCycleViaFhir(Long cycleId, Long labEnrollmentId);
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     boolean isSubmissionLate(Long distributionId);
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     Map<String, Object> approveLateSubmission(Long distributionId, Long organizationId, String justification,
             String supervisorUserId);
 }

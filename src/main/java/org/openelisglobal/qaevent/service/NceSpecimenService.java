@@ -21,5 +21,6 @@ public interface NceSpecimenService extends BaseObjectService<NceSpecimen, Integ
      * Of the given analyses, those held by a still-open QC-failure NCE — the
      * Validation QC-fail signal (OGC-1147). Batched for one query per list.
      */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     List<Integer> findAnalysisIdsWithOpenQcHold(Collection<Integer> analysisIds);
 }

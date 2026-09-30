@@ -92,14 +92,17 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * in viewer lists for good. Its results are permanent records, so that is the
      * correct trade against a shorter dropdown.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     Set<String> getTestSectionIdsWithAnyAnalyses();
 
     /**
      * OGC-189 (M3): analysis counts for a lab unit's deactivation impact summary.
      * Index 0 = pending (still in flight), index 1 = historical.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     long[] countAnalysesForLabUnit(String testSectionId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getMaxRevisionAnalysesBySampleIncludeCanceled(SampleItem sampleItem);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -198,17 +201,21 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
             Timestamp lowDate, Timestamp highDate);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before);
 
     /**
      * Lab-unit-keyed affected-analysis window for bench controls (OGC-1147).
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId, String testId,
             Timestamp lowDate, Timestamp highDate);
 
     /** Lab-unit-keyed counterpart used for cap-reason accuracy (OGC-1147). */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId, Timestamp before);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getAnalysesForStatusId(String statusId);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -251,8 +258,10 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
             Collection<String> excludedAnalysisIds, int maxResults);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
@@ -435,6 +444,7 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
      * {@link #getCountOfCollectedAnalysesForStatusIdsExcludingQc(List)}. Returns 0
      * for an empty section list.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
             List<String> testSectionIds);
 

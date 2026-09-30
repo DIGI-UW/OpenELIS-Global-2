@@ -6,6 +6,7 @@ import java.util.Map;
 import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @CrudPrivileges(read = "PRIV_EQA_VIEW", write = "PRIV_EQA_MANAGE")
 public interface EQALabProgramEnrollmentService extends BaseObjectService<EQALabProgramEnrollment, Long> {
@@ -19,8 +20,10 @@ public interface EQALabProgramEnrollmentService extends BaseObjectService<EQALab
 
     String STATUS_WITHDRAWN = "Withdrawn";
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     List<EQALabProgramEnrollment> findAll();
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     List<EQALabProgramEnrollment> findActiveEnrollments();
 
     /**
@@ -29,9 +32,11 @@ public interface EQALabProgramEnrollmentService extends BaseObjectService<EQALab
      *                     analyte cannot be submitted automatically — see
      *                     {@link EQACycleSubmissionService}.
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     EQALabProgramEnrollment createEnrollment(EQALabProgramEnrollment enrollment, List<Long> labUnitIds,
             List<Long> testIds, List<Long> panelIds, Map<Long, Long> testAnalytes);
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     EQALabProgramEnrollment updateEnrollment(Long id, EQALabProgramEnrollment updated, List<Long> labUnitIds,
             List<Long> testIds, List<Long> panelIds, Map<Long, Long> testAnalytes);
 
@@ -41,10 +46,13 @@ public interface EQALabProgramEnrollmentService extends BaseObjectService<EQALab
      * enrols again. The reason and the effective date are both required, and the
      * prior status, the user and the time are written to the audit history.
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     EQALabProgramEnrollment updateStatus(Long id, String newStatus, String reason, Date effectiveDate,
             String sysUserId);
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     void softDelete(Long id);
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     List<String> getDistinctProviders();
 }

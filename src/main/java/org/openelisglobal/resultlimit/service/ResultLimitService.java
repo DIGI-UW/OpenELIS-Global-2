@@ -32,6 +32,7 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * {@link #saveRangesForTest} manages. Dictionary (select-list) limits are left
      * out, as that save never changes them.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ResultLimit> getNumericRangesForTest(String testId);
 
     /** OGC-949 M7: reference ranges scoped to a result component. */
@@ -142,6 +143,7 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * also says why no range was applied when the patient's sex or birth date is
      * missing and the test has a range that depends on it.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimitSelection selectResultLimitForResult(Analysis analysis, Result result, Patient patient,
             String componentId);
 
@@ -154,5 +156,6 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * because the patient's sex or birth date is missing, by display name and
      * without repeats; empty when every range applies.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<String> getTestNamesWithRangeNotApplied(List<OrderedTest> orderedTests, Patient patient);
 }

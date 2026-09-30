@@ -71,6 +71,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
@@ -562,6 +563,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     private List<String> rangeNotAppliedTests(Sample sample) {
         try {
             return samplePatientService.getTestNamesWithRangeNotApplied(sample);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (RuntimeException e) {
             logger.error("Could not list tests without an applicable range for sample {}", sample.getId(), e);
             return new ArrayList<>();
@@ -794,6 +798,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             }
             sampleOrderOverrideService.record(Long.valueOf(saved.getId()), OverrideType.NO_PATIENT, reasonCode, reason,
                     userId);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (RuntimeException e) {
             // The order itself is saved; failing to annotate it must not undo
             // that, but it must be visible.
@@ -878,6 +885,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     notification.setCreatedDate(OffsetDateTime.now());
                     notification.setReadAt(null);
                     notificationDAO.save(notification);
+                } catch (AccessDeniedException denied) {
+                    // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                    throw denied;
                 } catch (Exception e) {
                     LogEvent.logError(e);
                 }

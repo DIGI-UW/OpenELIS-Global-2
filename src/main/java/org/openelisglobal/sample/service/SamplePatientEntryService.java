@@ -42,5 +42,6 @@ public interface SamplePatientEntryService {
      * the order's patient has no recorded sex or birth date: its analyses, and the
      * tests and panels still only requested on a sample type.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     List<String> getTestNamesWithRangeNotApplied(org.openelisglobal.sample.valueholder.Sample sample);
 }

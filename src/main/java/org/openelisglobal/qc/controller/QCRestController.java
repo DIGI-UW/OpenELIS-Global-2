@@ -313,6 +313,9 @@ public class QCRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn("QCRestController", "calculateInitialRunsStatistics", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "calculateInitialRunsStatistics", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -333,6 +336,9 @@ public class QCRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn("QCRestController", "calculateRollingStatistics", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "calculateRollingStatistics", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -353,6 +359,9 @@ public class QCRestController extends BaseRestController {
         try {
             List<WestgardRuleConfig> configs = ruleConfigService.findByTestAndInstrument(testId, instrumentId);
             return ResponseEntity.ok(configs);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getRuleConfigurations", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -369,6 +378,9 @@ public class QCRestController extends BaseRestController {
         try {
             List<WestgardRuleConfig> configs = ruleConfigService.findEnabledByTestAndInstrument(testId, instrumentId);
             return ResponseEntity.ok(configs);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getEnabledRuleConfigurations", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -408,6 +420,9 @@ public class QCRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn("QCRestController", "updateRuleConfiguration", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "updateRuleConfiguration", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -428,6 +443,9 @@ public class QCRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn("QCRestController", "applyPresetConfiguration", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "applyPresetConfiguration", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -453,6 +471,9 @@ public class QCRestController extends BaseRestController {
 
             List<WestgardRuleConfig> defaults = ruleConfigService.createDefaultConfig(testId, instrumentId);
             return ResponseEntity.status(HttpStatus.CREATED).body(defaults);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "createDefaultRuleConfigurations", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -474,6 +495,9 @@ public class QCRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logWarn("QCRestController", "validateRuleConfiguration", e.getMessage());
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "validateRuleConfiguration", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -489,6 +513,9 @@ public class QCRestController extends BaseRestController {
         try {
             List<RuleConfigSummary> summaries = ruleConfigService.getAllRuleConfigSummaries();
             return ResponseEntity.ok(summaries);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getAllRuleConfigSummaries", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -504,6 +531,9 @@ public class QCRestController extends BaseRestController {
         try {
             List<UnconfiguredMapping> mappings = ruleConfigService.getUnconfiguredMappings();
             return ResponseEntity.ok(mappings);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getUnconfiguredMappings", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -533,6 +563,9 @@ public class QCRestController extends BaseRestController {
             return ResponseEntity.ok(dashboardService.getBenchQcSummary(range[0], range[1], parsed));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "getBenchQcSummary", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -546,6 +579,9 @@ public class QCRestController extends BaseRestController {
             Timestamp[] range = computeDateRange(months);
             QCDashboardSummary summary = dashboardService.getDashboardSummary(range[0], range[1]);
             return ResponseEntity.ok(summary);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getDashboardSummary", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -563,6 +599,9 @@ public class QCRestController extends BaseRestController {
             Timestamp[] range = computeDateRange(months);
             List<InstrumentQCStatus> statuses = dashboardService.getAllInstrumentComplianceStatus(range[0], range[1]);
             return ResponseEntity.ok(statuses);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getAllInstrumentQCStatus", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -581,6 +620,9 @@ public class QCRestController extends BaseRestController {
             InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus(instrumentId, range[0],
                     range[1]);
             return ResponseEntity.ok(status);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("QCRestController", "getInstrumentQCStatus", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

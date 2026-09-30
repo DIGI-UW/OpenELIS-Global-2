@@ -7,6 +7,7 @@ import java.sql.SQLException;
 import java.util.Map;
 import java.util.UUID;
 import org.junit.Test;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,7 +38,10 @@ public class FixtureTransactionIntegrationTest extends BaseWebContextSensitiveTe
         probe.setDescription(probeDescription);
         probe.setLocalizedValue("en", probeDescription);
         probe.setSysUserId(TEST_SYS_USER_ID);
-        localizations.insert(probe);
+        // @BeforeTransaction runs before BaseWebContextSensitiveTest's @Before has
+        // authenticated the test principal, so this fixture probe would be refused
+        // by the service gate. It is bookkeeping, not a user action: run as system.
+        SystemContext.runAsSystem(() -> localizations.insert(probe));
         translationsWithProbe = translationSnapshot();
     }
 
@@ -112,16 +116,21 @@ public class FixtureTransactionIntegrationTest extends BaseWebContextSensitiveTe
 
     @AfterTransaction
     public void originalTranslationsSurviveRollback() {
-        try {
-            assertEquals("Fixture replacement must roll back with the test, including dependent translations",
-                    translationsWithProbe, translationSnapshot());
-        } finally {
-            localizations.getAllMatching("description", probeDescription).forEach(row -> {
-                row.setSysUserId(TEST_SYS_USER_ID);
-                localizations.delete(row);
-            });
-        }
-        assertEquals("Remove only the sentinel owned by this check", originalTranslations, translationSnapshot());
+        // @AfterTransaction runs after @After has cleared the test principal; this
+        // is fixture cleanup and its assertions, not a user action: run as system.
+        SystemContext.runAsSystem(() -> {
+            try {
+                assertEquals("Fixture replacement must roll back with the test, including dependent translations",
+                        translationsWithProbe, translationSnapshot());
+            } finally {
+                localizations.getAllMatching("description", probeDescription).forEach(row -> {
+                    row.setSysUserId(TEST_SYS_USER_ID);
+                    localizations.delete(row);
+                });
+            }
+            assertEquals("Remove only the sentinel owned by this check", originalTranslations, translationSnapshot());
+
+        });
     }
 
     private Map<String, Object> translationSnapshot() {

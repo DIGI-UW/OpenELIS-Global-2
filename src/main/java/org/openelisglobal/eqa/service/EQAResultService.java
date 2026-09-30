@@ -36,6 +36,7 @@ public interface EQAResultService extends BaseObjectService<EQAResult, Long> {
      * panel sample the value answers, or is null for a test with no sample behind
      * it.
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_MANAGE')")
     EQAResult submitReportedValue(Long distributionId, Long organizationId, Long testId, Long panelSampleId,
             String reported, EQASubmissionMethod method, String sysUserId);
 

@@ -25,8 +25,6 @@ public class UserSession {
      * set instead of role-name strings (spec 012, US3/T033).
      */
     private Set<String> privileges;
-    private String sessionId;
-
     private Set<String> permissions;
 
     /**
@@ -111,14 +109,6 @@ public class UserSession {
 
     public void setPrivileges(Set<String> privileges) {
         this.privileges = privileges;
-    }
-
-    public String getSessionId() {
-        return sessionId;
-    }
-
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
     }
 
     public Set<String> getModules() {

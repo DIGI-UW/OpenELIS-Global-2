@@ -7,6 +7,8 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.TreeSet;
+import java.util.stream.Collectors;
 import org.junit.Test;
 import org.springframework.asm.AnnotationVisitor;
 import org.springframework.asm.ClassReader;
@@ -52,13 +54,10 @@ public class ServicePrivilegeCoverageTest {
     private static final String BASE_OBJECT_SERVICE = "org/openelisglobal/common/service/BaseObjectService";
     private static final String AUDITABLE_BASE_OBJECT_SERVICE = "org/openelisglobal/common/service/AuditableBaseObjectService";
 
-    @Test
-    public void allServiceMethods_shouldHaveHasAuthorityPreAuthorize() throws Exception {
+    private static List<String> collectViolations() throws IOException {
         List<String> violations = new ArrayList<>();
-
         PathMatchingResourcePatternResolver resolver = new PathMatchingResourcePatternResolver();
         Resource[] resources = resolver.getResources("classpath*:" + BASE_PACKAGE_PATH + "/**/service/**/*.class");
-
         for (Resource resource : resources) {
             try (InputStream in = resource.getInputStream()) {
                 ServiceInterfaceVisitor visitor = new ServiceInterfaceVisitor();
@@ -68,9 +67,95 @@ public class ServicePrivilegeCoverageTest {
                 // unreadable bytecode — skip
             }
         }
+        return violations;
+    }
 
+    @Test
+    public void allServiceMethods_shouldHaveHasAuthorityPreAuthorize() throws Exception {
+        List<String> violations = collectViolations().stream()
+                .filter(v -> !DEVELOP_ORIGIN_BASELINE.contains(interfaceOf(v)))
+                .filter(v -> !DEVELOP_ORIGIN_METHOD_BASELINE.contains(methodOf(v))).collect(Collectors.toList());
         assertTrue(violations.size() + " service method(s) missing @PreAuthorize(\"hasAuthority('PRIV_*')\"):\n"
                 + String.join("\n", violations), violations.isEmpty());
+    }
+
+    /**
+     * Service interfaces that arrived from develop with no service-layer gating
+     * because develop authorizes them at the controller under its own model:
+     * EQAGuards (qa.view.eqa / qa.manage.eqa / provider / participant / unblind)
+     * for EQA V2, and QaPermissions (qa.*) for the QA pillar. Every one is
+     * reachable only through those gated controllers. Expressing their five tiers
+     * as PRIV_* is the EQA/QA reconciliation deferred in
+     * docs/rbac/eqa-authorization-collision.md, not a regression to repair here.
+     *
+     * <p>
+     * A ratchet, like the baselines in InheritedCrudGateCoverageTest and
+     * ControllerDenialRelabelRatchetTest: an interface may leave this list once
+     * gated, never join it. A NEW ungated method on any OTHER interface still fails
+     * the main assertion, which is the point.
+     */
+    static final Set<String> DEVELOP_ORIGIN_BASELINE = new TreeSet<>(Set.of("AccreditationReportService",
+            "AccreditingBodyService", "AmendmentReportService", "AnalyzerDeliveryIssueService", "BatchWorkplanService",
+            "CriticalCallbackService", "EQAAnalystCompetencyService", "EQABlindingService", "EQACycleService",
+            "EQACycleSubmissionService", "EQAFhirExchangeService", "EQALabPerformanceService", "EQALabelPDFService",
+            "EQAPanelReceiptService", "EQAPanelService", "EQAParticipantFollowupService", "EQAParticipantResultService",
+            "EQAPerformanceReportPDFService", "EQAProviderScoringService", "EQAReportCommentService",
+            "EQAShipmentService", "EffectiveTestStatusService", "EqaScoreNceService", "QaOverviewService",
+            "QcHoldService", "QcViolationNceService", "QiConfigService", "RejectionReportService",
+            "TestAccreditationService", "TestRejectionNceService"));
+
+    /**
+     * develop-added methods on interfaces this branch DOES gate, left at develop's
+     * ungated state on purpose. All eight are QC-pillar operations reached only
+     * through controllers develop guards on qa.view.qc / qa.manage.qc
+     * (QCExportRestController, QCRestController, BenchQCResultRestController). No
+     * qc:* privilege exists in this model and the QA Officer role holds no PRIV_*
+     * at all, so a PRIV_ gate here (verified: PRIV_ANALYZER_CONFIGURE, the
+     * interfaces' existing gate) refuses exactly the role the feature is for. Same
+     * shrink-only rule as DEVELOP_ORIGIN_BASELINE. Note QCChartDataRestController,
+     * which reaches getStatisticsWithSigma, carries no gate at either layer.
+     */
+    static final Set<String> DEVELOP_ORIGIN_METHOD_BASELINE = new TreeSet<>(
+            Set.of("QCChartDataService#getExportModel", "QCChartDataService#getStatisticsWithSigma",
+                    "QCControlLotService#getActiveBenchControlLots", "QCDashboardService#getBenchQcSummary",
+                    "QCResultService#createBenchQCResult", "QCResultService#findBenchResults",
+                    "QCResultService#findLatestAcceptedBefore", "QCRuleViolationService#findByDateRange",
+                    // The e-signature LOG reads (QMS pillar), reached only through
+                    // ElectronicSignatureRestController's QaPermissions.VIEW_QMS gate. Their
+                    // interface's own gate is esig:use, the privilege for SIGNING, which is the
+                    // wrong question for an audit read and one the QA Officer role does not hold.
+                    "ElectronicSignatureService#searchSignatures", "ElectronicSignatureService#countSearchSignatures",
+                    "ElectronicSignatureService#getSignaturesInDateRange",
+                    "ElectronicSignatureService#countSignaturesInDateRange"));
+
+    private static String methodOf(String violation) {
+        return violation.split(" - ")[0];
+    }
+
+    private static String interfaceOf(String violation) {
+        return violation.split("#| - ")[0];
+    }
+
+    @Test
+    public void developOriginBaselineOnlyShrinks() throws IOException {
+        List<String> all = collectViolations();
+        Set<String> stillUngated = new TreeSet<>();
+        for (String v : all) {
+            stillUngated.add(interfaceOf(v));
+        }
+        List<String> nowCovered = DEVELOP_ORIGIN_BASELINE.stream().filter(i -> !stillUngated.contains(i)).sorted()
+                .collect(Collectors.toList());
+        assertTrue(
+                "These are gated now - remove them from DEVELOP_ORIGIN_BASELINE so the ratchet tightens: " + nowCovered,
+                nowCovered.isEmpty());
+        Set<String> ungatedMethods = new TreeSet<>();
+        for (String v : all) {
+            ungatedMethods.add(methodOf(v));
+        }
+        List<String> methodsCovered = DEVELOP_ORIGIN_METHOD_BASELINE.stream().filter(m -> !ungatedMethods.contains(m))
+                .sorted().collect(Collectors.toList());
+        assertTrue("These are gated now - remove them from DEVELOP_ORIGIN_METHOD_BASELINE so the ratchet tightens: "
+                + methodsCovered, methodsCovered.isEmpty());
     }
 
     // -----------------------------------------------------------------------
@@ -247,6 +332,14 @@ public class ServicePrivilegeCoverageTest {
          * the other half of the contract, that these stay ungated on purpose.
          */
         private static final Set<String> SELF_IDENTITY_READS = Set.of("UserService#getUserTestSections",
+                // develop (OGC-189 viewers) added four more of the same shape: each takes
+                // the caller's own systemUserId and answers what THAT user is assigned.
+                "UserService#filterAnalysesByLabUnitRoles", "UserService#getTestIdsInUserLabUnits",
+                "UserService#getUserSampleTypes", "UserService#hasAllLabUnits",
+                // Scopes a list of incoming electronic orders to the CALLER's own lab units
+                // (OGC-189). Same shape as getUserTestSections: the argument is the
+                // subject's own systemUserId and the answer is that user's assignment.
+                "ElectronicOrderLabUnitScope#restrictToUserLabUnits",
                 // Both take the subject's own systemUserId and answer "may this user
                 // see this case". Gating them would be circular: the caller would need
                 // a privilege before it could ask whether the caller has one. The

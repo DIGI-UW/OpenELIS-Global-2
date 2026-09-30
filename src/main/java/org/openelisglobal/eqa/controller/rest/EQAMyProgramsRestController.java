@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -48,6 +49,9 @@ public class EQAMyProgramsRestController extends BaseRestController {
         try {
             EQALabProgramEnrollment enrollment = enrollmentService.get(id);
             return ResponseEntity.ok(toDto(enrollment));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.notFound().build();
         }
@@ -81,6 +85,9 @@ public class EQAMyProgramsRestController extends BaseRestController {
             EQALabProgramEnrollment created = enrollmentService.createEnrollment(enrollment, labUnitIds, testIds,
                     panelIds, toLongMap(body.get("testAnalytes")));
             return ResponseEntity.status(HttpStatus.CREATED).body(toDto(created));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -118,6 +125,9 @@ public class EQAMyProgramsRestController extends BaseRestController {
             return ResponseEntity.ok(toDto(result));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

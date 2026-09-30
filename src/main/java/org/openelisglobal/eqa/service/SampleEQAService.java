@@ -55,6 +55,7 @@ public interface SampleEQAService extends BaseObjectService<SampleEQA, Long> {
      * @return the scheme id, or empty when the sample is not EQA, names no cycle,
      *         or its scheme does not capture analysts
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     Optional<Long> findPerAnalystSchemeId(Long sampleId);
 
     /**
@@ -65,7 +66,9 @@ public interface SampleEQAService extends BaseObjectService<SampleEQA, Long> {
      * @return false when the sample is not EQA, names no cycle, or its scheme is
      *         not in-house
      */
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     boolean isInHouse(Long sampleId);
 
+    @PreAuthorize("hasAuthority('PRIV_EQA_VIEW')")
     String deriveOrderStatus(SampleEQA sampleEQA);
 }
