@@ -160,6 +160,22 @@ describe("ReceiptMonitor", () => {
     );
   });
 
+  it.each(["SCORED", "CLOSED"])(
+    "offers no result entry or repeat on a %s cycle, but still returns scores",
+    async (cycleStatus) => {
+      renderTab(cycleStatus);
+
+      await screen.findByText("Iringa District Lab");
+      expect(
+        screen.queryByRole("button", { name: "Enter results" }),
+      ).toBeNull();
+      expect(screen.queryByRole("button", { name: "Send repeat" })).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Send scores" }),
+      ).toBeInTheDocument();
+    },
+  );
+
   it("sends a repeat with the override note the reserve may require", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(jsonResponse(true, { boxCode: "EQA-C9-550-R1" })),

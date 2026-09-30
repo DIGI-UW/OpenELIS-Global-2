@@ -528,6 +528,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Override
     public Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String sysUserId) {
         EQACycle cycle = cycle(cycleId);
+        if (cycle.getStatus() == EQACycleStatus.CLOSED) {
+            throw new IllegalStateException(
+                    "Cycle " + displayName(cycle) + " is closed, so no repeat can be sent for it");
+        }
         requireParticipant(eqaCycleService.participantOrganizationIds(cycle), organizationId);
         Map<Long, ShippingBox> latest = latestBoxes(cycleId);
         ShippingBox original = latest.get(organizationId);

@@ -249,6 +249,21 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         }
     }
 
+    @Test
+    public void aClosedCycleSendsNoRepeat() {
+        prepAndDispatch(6, 2, null);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        try {
+            shipmentService.sendRepeat(cycle.getId(), ORG_A, null, USER);
+            fail("a closed cycle is final");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("closed"));
+        }
+        assertEquals("a refused repeat consumes nothing", Integer.valueOf(2), aliquots("aliquots_reserved"));
+        assertEquals(Integer.valueOf(4), aliquots("aliquots_shipped"));
+    }
+
     // ---- scoring and score return ----
 
     @Test

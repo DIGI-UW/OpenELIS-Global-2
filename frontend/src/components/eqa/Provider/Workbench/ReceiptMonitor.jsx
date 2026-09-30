@@ -61,6 +61,22 @@ const RECEIPT_STATUS_KEY = {
 /** Scoring is offered exactly where the provider machine allows it. */
 const SCORABLE = ["SUBMISSIONS_OPEN", "SUBMISSIONS_CLOSED"];
 
+const INTAKE = [
+  "SHIPPED",
+  "DELIVERED",
+  "SUBMISSIONS_OPEN",
+  "SUBMISSIONS_CLOSED",
+  "SCORING",
+];
+
+// After scoring, a repeat answers a follow-up, so the follow-up register sends it.
+const REPEATABLE = [
+  "SHIPPED",
+  "DELIVERED",
+  "SUBMISSIONS_OPEN",
+  "SUBMISSIONS_CLOSED",
+];
+
 const dateCell = (value) =>
   value ? formatDateOnly(value.substring(0, 10)) : "—";
 
@@ -538,20 +554,22 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                           {t("eqa.receipt.markReceived", "Mark received")}
                         </Button>
                       )}
-                      {isProvider && row.shipmentId && (
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          disabled={busy === row.organizationId}
-                          onClick={() => {
-                            setRepeating(row);
-                            setOverrideNote("");
-                          }}
-                        >
-                          {t("eqa.receipt.sendRepeat", "Send repeat")}
-                        </Button>
-                      )}
-                      {isProvider && (
+                      {isProvider &&
+                        row.shipmentId &&
+                        REPEATABLE.includes(cycleStatus) && (
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            disabled={busy === row.organizationId}
+                            onClick={() => {
+                              setRepeating(row);
+                              setOverrideNote("");
+                            }}
+                          >
+                            {t("eqa.receipt.sendRepeat", "Send repeat")}
+                          </Button>
+                        )}
+                      {isProvider && INTAKE.includes(cycleStatus) && (
                         <Button
                           kind="ghost"
                           size="sm"
