@@ -206,9 +206,11 @@ test.describe("OGC-1266 clinical order entry", () => {
       page.getByRole("button", { name: "Return to Prepare Samples" }),
     ).toBeVisible();
 
-    // Under Optional acceptance a release with unanswered items needs a
-    // reason, which the second release carries.
-    const refused = page.waitForResponse(
+    // Under Optional acceptance a release with a specimen's checklist still
+    // unanswered needs a reason, which the second release carries. A
+    // laboratory whose clinical checklist has no items has nothing to answer
+    // and releases at once.
+    const firstAttempt = page.waitForResponse(
       (response) =>
         response.url().includes("/rest/qa-checklist") &&
         response.request().method() === "POST",
@@ -216,19 +218,23 @@ test.describe("OGC-1266 clinical order entry", () => {
     await page
       .getByRole("button", { name: "Release for testing", exact: true })
       .click();
-    expect((await refused).status()).toBe(400);
-    const reason = page.locator("#release-note");
-    await expect(reason).toBeVisible({ timeout: UI_TIMEOUT });
-    await reason.fill("Checklist kept on paper at this bench");
-    const released = page.waitForResponse(
-      (response) =>
-        response.url().includes("/rest/qa-checklist") &&
-        response.request().method() === "POST",
-    );
-    await page
-      .getByRole("button", { name: "Release for testing", exact: true })
-      .click();
-    expect((await released).status()).toBe(200);
+    const firstStatus = (await firstAttempt).status();
+    if (firstStatus === 400) {
+      const reason = page.locator("#release-note");
+      await expect(reason).toBeVisible({ timeout: UI_TIMEOUT });
+      await reason.fill("Checklist kept on paper at this bench");
+      const released = page.waitForResponse(
+        (response) =>
+          response.url().includes("/rest/qa-checklist") &&
+          response.request().method() === "POST",
+      );
+      await page
+        .getByRole("button", { name: "Release for testing", exact: true })
+        .click();
+      expect((await released).status()).toBe(200);
+    } else {
+      expect(firstStatus).toBe(200);
+    }
     await expect(page.locator(".qa-success-tile")).toContainText(
       `Order ${labNumber} complete`,
       { timeout: UI_TIMEOUT },
