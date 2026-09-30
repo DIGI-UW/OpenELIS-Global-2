@@ -18,6 +18,7 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
@@ -200,7 +201,13 @@ public class UserServiceImpl implements UserService {
         // vanished from the results pages and from reporting the instant it was
         // entered — the guardrail covers viewing historical data too, not only
         // completing pending work.
-        Set<String> pendingSectionIds = analysisService.getTestSectionIdsWithAnyAnalyses();
+        // Self-identity read: the caller is asking which units THEY may view, and
+        // the answer is scoped by their own lab-unit roles below. This helper
+        // carries result:view, which Reception does not hold, so gating it here
+        // denied /rest/user-test-sections/ALL for Reception outright - the same
+        // trap getUserTestSections is exempted from in SELF_IDENTITY_READS. The
+        // scoping, not this count, is what limits what comes back.
+        Set<String> pendingSectionIds = SystemContext.callAsSystem(analysisService::getTestSectionIdsWithAnyAnalyses);
         if (pendingSectionIds.isEmpty()) {
             return active;
         }

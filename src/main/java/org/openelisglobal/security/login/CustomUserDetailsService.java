@@ -9,6 +9,7 @@ import java.util.regex.Pattern;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.constants.Privileges;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
 import org.openelisglobal.privilege.service.PrivilegeService;
@@ -103,7 +104,20 @@ public class CustomUserDetailsService implements UserDetailsService {
         // qa.* permission keys granted to the user's roles become plain
         // authorities so QA REST controllers can gate on hasAuthority
         // ('qa.view.x') per the QA permission model (liquibase/qa/004).
-        authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames, Constants.QA_PERMISSION_PREFIX));
+        //
+        // Read as the system actor. RoleModuleService carries a type-level
+        // PRIV_ROLE_VIEW gate on this branch (develop has none), and this runs
+        // DURING login, before any Authentication exists: gating it makes the
+        // load circular, and the AuthenticationCredentialsNotFoundException it
+        // throws fails every login for every user. Same self-identity pattern as
+        // UserContextHolder.resolveSystemUser, which resolves the caller's own
+        // row through gated services at the same point in the flow.
+        boolean systemWasSet = SystemInitFlag.enter();
+        try {
+            authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames, Constants.QA_PERMISSION_PREFIX));
+        } finally {
+            SystemInitFlag.exit(systemWasSet);
+        }
 
         List<GrantedAuthority> authorities = new ArrayList<>();
         for (String authorityName : authorityNames) {

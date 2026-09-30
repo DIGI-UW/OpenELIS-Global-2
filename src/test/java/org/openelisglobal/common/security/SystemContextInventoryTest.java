@@ -72,6 +72,11 @@ public class SystemContextInventoryTest {
             // Routing onto the microbiology bench, typing a referring organization,
             // recording label quantities, writing compliance links, and reading the
             // order's own analyses to avoid a duplicate insert (result:view).
+            // Self-identity: getUserViewerTestSections asks which units the CALLER
+            // may view, and scopes the answer by their own lab-unit roles. The
+            // analysis count it consults carries result:view, which Reception does
+            // not hold, so gating it denied /rest/user-test-sections/ALL outright.
+            "org/openelisglobal/systemuser/service/UserServiceImpl.java", 1,
             "org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java", 9,
             // Notifying results staff that a STAT order needs picking up.
             "org/openelisglobal/sample/controller/rest/SamplePatientEntryRestController.java", 1,
@@ -81,7 +86,7 @@ public class SystemContextInventoryTest {
             // Landing-page workload counts, from result:view-gated analysis counts.
             "org/openelisglobal/common/rest/provider/PatientDashBoardProvider.java", 1);
 
-    private static final int EXPECTED_TOTAL = 12;
+    private static final int EXPECTED_TOTAL = 13;
 
     /**
      * Direct {@code SystemInitFlag.enter()} users, with the number of sites in
@@ -102,8 +107,17 @@ public class SystemContextInventoryTest {
             Map.entry("org/openelisglobal/configuration/service/ConfigurationInitializationService.java", 1),
             // Self-identity: the signer is always the authenticated caller.
             Map.entry("org/openelisglobal/esig/service/ElectronicSignatureServiceImpl.java", 1),
-            Map.entry("org/openelisglobal/login/controller/LoginPageController.java", 1),
+            // Two: the qa.* permission keys and the full module list on /session.
+            // Both answer "what does the CALLER's own session hold", and
+            // RoleModuleService carries a type-level role:view gate no bench role
+            // holds, so gating them would deny /session for every non-admin.
+            Map.entry("org/openelisglobal/login/controller/LoginPageController.java", 2),
             Map.entry("org/openelisglobal/security/login/CustomFormAuthenticationSuccessHandler.java", 1),
+            // Authority loading cannot require an authority: this derives the qa.*
+            // keys DURING authentication, before any Authentication exists. Gated,
+            // it threw AuthenticationCredentialsNotFoundException and every login
+            // failed. Pinned by LoginPathGatedReadsRunAsSystemTest.
+            Map.entry("org/openelisglobal/security/login/CustomUserDetailsService.java", 1),
             Map.entry("org/openelisglobal/systemuser/service/UserServiceImpl.java", 1),
             Map.entry("org/openelisglobal/result/action/util/ResultsLoadUtility.java", 1),
             Map.entry("org/openelisglobal/dataexchange/fhir/service/FhirTransformServiceImpl.java", 1));

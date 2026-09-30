@@ -1,6 +1,7 @@
 import React, { useMemo } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useIntl } from "react-intl";
+import { menuSubtreeVisible } from "../utils/Utils";
 import {
   SideNavDivider,
   SideNavLink,
@@ -33,7 +34,11 @@ export function canonicalMenuUrl(url) {
   return moved ? moved + reporting.slice(path.length) : reporting;
 }
 
-export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
+export default function ConfiguredSideNav({
+  menus,
+  unifiedResultsOn,
+  userSessionDetails,
+}) {
   const intl = useIntl();
   const location = useLocation();
   const visibleMenus = useMemo(() => {
@@ -45,6 +50,11 @@ export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
             (menu.elementId !== "menu_results_unified" || unifiedResultsOn) &&
             (!legacyResults.has(menu.elementId) || !unifiedResultsOn),
         )
+        // /rest/menu returns every configured row with no reference to the
+        // caller, so without this the sidebar offers pages SecureRoute refuses
+        // and pages ModuleAuthenticationInterceptor refuses. menuSubtreeVisible
+        // keeps a section whose descendants are reachable and drops the rest.
+        .filter((item) => menuSubtreeVisible(item, userSessionDetails))
         .map((item) => ({
           ...item,
           menu: {
@@ -54,7 +64,7 @@ export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
           childMenus: filter(item.childMenus || []),
         }));
     return filter(menus || []);
-  }, [menus, unifiedResultsOn]);
+  }, [menus, unifiedResultsOn, userSessionDetails]);
   const expandedMenus = useMenuAutoExpand(visibleMenus);
   const label = (key) => intl.formatMessage({ id: key, defaultMessage: key });
 

@@ -862,6 +862,7 @@ function OEHeader({
                     <SideNavItems>
                       <ConfiguredSideNav
                         menus={menus.menu}
+                        userSessionDetails={userSessionDetails}
                         unifiedResultsOn={
                           configurationProperties?.RESULTS_ENTRY_UNIFIED_ROUTE ===
                           "true"

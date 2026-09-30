@@ -184,13 +184,23 @@ public class LoginPageController extends BaseController {
             // qa.* permission keys derive from the same role names on every
             // login path — setLabunitRolesForExistingUser populates roles for
             // form, SAML, and OAuth logins before this line.
-            session.setPermissions(
-                    roleModuleService.getPermittedModuleNames(session.getRoles(), Constants.QA_PERMISSION_PREFIX));
-            // Every module the caller's roles grant, not just the qa.* keys above.
-            // ModuleAuthenticationInterceptor gates URLs against exactly this set,
-            // so the sidebar needs it to stop offering rows that layer refuses
-            // (an empty prefix matches all module names).
-            session.setModules(roleModuleService.getPermittedModuleNames(session.getRoles(), ""));
+            // Both reads answer "what does the CALLER's own session hold", and
+            // RoleModuleService carries a type-level PRIV_ROLE_VIEW gate that no
+            // bench role holds, so they run as the system actor. Gating them
+            // would deny /session itself for every non-admin - the page that
+            // tells the frontend what the user may see.
+            boolean systemWasSet = SystemInitFlag.enter();
+            try {
+                session.setPermissions(
+                        roleModuleService.getPermittedModuleNames(session.getRoles(), Constants.QA_PERMISSION_PREFIX));
+                // Every module the caller's roles grant, not just the qa.* keys
+                // above. ModuleAuthenticationInterceptor gates URLs against exactly
+                // this set, so the sidebar needs it to stop offering rows that
+                // layer refuses (an empty prefix matches all module names).
+                session.setModules(roleModuleService.getPermittedModuleNames(session.getRoles(), ""));
+            } finally {
+                SystemInitFlag.exit(systemWasSet);
+            }
         }
         return session;
     }
