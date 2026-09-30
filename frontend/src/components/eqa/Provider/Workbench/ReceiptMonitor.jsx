@@ -1,8 +1,6 @@
 import React, { useCallback, useContext, useEffect, useState } from "react";
 import {
   Button,
-  DatePicker,
-  DatePickerInput,
   InlineNotification,
   Modal,
   Table,
@@ -21,10 +19,10 @@ import {
   formatDateOnly,
   hasQaPermission,
   resolveApiErrorMessage,
-  toLocalIsoDate,
 } from "../../../utils/Utils";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
-import { calendarOnlyInput, hintStyle } from "../../eqaCommon";
+import { hintStyle } from "../../eqaCommon";
+import RepeatShipmentFields from "../../RepeatShipmentFields";
 import {
   distributeScores,
   fetchIntake,
@@ -64,14 +62,6 @@ const RECEIPT_STATUS_KEY = {
 /** Scoring is offered exactly where the provider machine allows it. */
 const SCORABLE = ["SUBMISSIONS_OPEN", "SUBMISSIONS_CLOSED"];
 
-const INTAKE = [
-  "SHIPPED",
-  "DELIVERED",
-  "SUBMISSIONS_OPEN",
-  "SUBMISSIONS_CLOSED",
-  "SCORING",
-];
-
 // After scoring, a repeat answers a follow-up, so the follow-up register sends it.
 const REPEATABLE = [
   "SHIPPED",
@@ -79,6 +69,8 @@ const REPEATABLE = [
   "SUBMISSIONS_OPEN",
   "SUBMISSIONS_CLOSED",
 ];
+
+const INTAKE = [...REPEATABLE, "SCORING"];
 
 const SCORED = ["SCORED", "CLOSED"];
 
@@ -114,6 +106,8 @@ const ReceiptMonitor = ({
   const [scores, setScores] = useState([]);
   const [repeating, setRepeating] = useState(null);
   const [repeatForm, setRepeatForm] = useState({});
+  const patchRepeat = (patch) =>
+    setRepeatForm((prev) => ({ ...prev, ...patch }));
   const [busy, setBusy] = useState(null);
   const [openingSubmissions, setOpeningSubmissions] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -839,52 +833,7 @@ const ReceiptMonitor = ({
               "The repeat comes out of the panel's reserve. If the reserve cannot cover it, a written justification is required before unreserved material is used.",
             )}
           </p>
-          <TextInput
-            id="eqa-repeat-courier"
-            labelText={t("eqa.shipment.courier", "Courier")}
-            value={repeatForm.courier}
-            onChange={(event) =>
-              setRepeatForm({ ...repeatForm, courier: event.target.value })
-            }
-          />
-          <TextInput
-            id="eqa-repeat-tracking"
-            labelText={t("eqa.shipment.tracking", "Tracking number")}
-            value={repeatForm.trackingNumber}
-            onChange={(event) =>
-              setRepeatForm({
-                ...repeatForm,
-                trackingNumber: event.target.value,
-              })
-            }
-          />
-          <DatePicker
-            datePickerType="single"
-            dateFormat="d/m/Y"
-            value={formatDateOnly(repeatForm.estimatedDeliveryDate)}
-            onChange={(dates) =>
-              setRepeatForm({
-                ...repeatForm,
-                estimatedDeliveryDate: dates[0] ? toLocalIsoDate(dates[0]) : "",
-              })
-            }
-          >
-            <DatePickerInput
-              id="eqa-repeat-expected"
-              labelText={t("eqa.shipment.expected", "Expected delivery")}
-              placeholder="dd/mm/yyyy"
-              {...calendarOnlyInput}
-            />
-          </DatePicker>
-          <TextArea
-            id="eqa-repeat-override-note"
-            labelText={t("eqa.receipt.overrideNote", "Override note")}
-            value={repeatForm.overrideNote}
-            onChange={(event) =>
-              setRepeatForm({ ...repeatForm, overrideNote: event.target.value })
-            }
-            rows={3}
-          />
+          <RepeatShipmentFields form={repeatForm} onChange={patchRepeat} />
         </Modal>
       )}
     </>

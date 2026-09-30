@@ -150,6 +150,32 @@ describe("ProviderFollowupRegister", () => {
     );
   });
 
+  it("sends the repeat's courier and tracking number", async () => {
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb(jsonResponse(true, { boxCode: "EQA-C9-550-R1" })),
+    );
+    renderPage();
+
+    await screen.findByText("Mbeya Regional Lab");
+    expand();
+    fireEvent.click(screen.getByRole("button", { name: "Flag for repeat" }));
+    fireEvent.change(screen.getByLabelText("Courier"), {
+      target: { value: "DHL" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking number"), {
+      target: { value: "DHL-4471" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/eqa/provider/followups/12/repeat",
+        JSON.stringify({ courier: "DHL", trackingNumber: "DHL-4471" }),
+        expect.any(Function),
+      ),
+    );
+  });
+
   it("falls back to a downloadable CSV when the lab has no contact email", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(

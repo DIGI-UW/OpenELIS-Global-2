@@ -267,6 +267,11 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         assertEquals("DHL-4471", stored.get("tracking_number"));
         assertEquals(java.sql.Date.valueOf("2026-10-09"), stored.get("expected"));
         assertEquals("2026-10-09", String.valueOf(receiptRow(ORG_A).get("estimatedDeliveryDate")).substring(0, 10));
+        Map<String, Object> shipmentRow = shipmentService.getShipmentRows(cycle.getId()).stream()
+                .filter(row -> Long.valueOf(ORG_A).equals(row.get("organizationId"))).findFirst()
+                .orElseThrow(AssertionError::new);
+        assertEquals(repeat.get("boxCode"), shipmentRow.get("boxCode"));
+        assertEquals("DHL-4471", shipmentRow.get("trackingNumber"));
     }
 
     @Test

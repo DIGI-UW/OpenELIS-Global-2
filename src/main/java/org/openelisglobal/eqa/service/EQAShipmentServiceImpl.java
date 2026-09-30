@@ -282,10 +282,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getShipmentRows(Long cycleId) {
         EQACycle cycle = cycle(cycleId);
-        Map<String, ShippingBox> boxes = boxesByCode(cycleId);
+        Map<Long, ShippingBox> latest = latestBoxes(cycleId);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Long organizationId : eqaCycleService.participantOrganizationIds(cycle)) {
-            ShippingBox box = boxes.get(boxCode(cycleId, organizationId));
+            ShippingBox box = latest.get(organizationId);
             rows.add(toShipmentRow(organizationId, box, box == null ? null : box.getShipment()));
         }
         return rows;

@@ -130,9 +130,8 @@ public class EQAShipmentRestController extends BaseRestController {
     }
 
     /**
-     * Reprovision: {"overrideNote": "...", "courier": "...", "trackingNumber":
-     * "...", "estimatedDeliveryDate": "yyyy-MM-dd"}. The note is required only when
-     * the reserve is short.
+     * Reprovision. estimatedDeliveryDate is yyyy-MM-dd; the note is required only
+     * when the reserve is short.
      */
     @PostMapping(value = "/cycles/{cycleId}/receipts/{organizationId}/repeat", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PROVIDER)
