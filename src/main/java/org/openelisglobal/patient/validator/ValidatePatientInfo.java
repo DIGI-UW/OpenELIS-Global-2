@@ -77,14 +77,19 @@ public class ValidatePatientInfo {
     }
 
     /**
-     * The refusal names the patient who already has the national id, so the user
-     * can find that record instead of entering the person again.
+     * The refusal names the patient who already has the national id, with the birth
+     * date where one is recorded, so the user can find that record in the patient
+     * search instead of entering the person again.
      */
     private static String duplicateNationalIdMessage(String nationalId, PatientSearchResults existing) {
         String name = Stream.of(existing.getLastName(), existing.getFirstName())
                 .filter(part -> !GenericValidator.isBlankOrNull(part)).collect(Collectors.joining(", "));
-        return MessageUtil.getMessage("error.duplicate.nationalId.patient",
-                new Object[] { nationalId, name, existing.getPatientID() });
+        String birthDate = existing.getBirthdate();
+        if (GenericValidator.isBlankOrNull(birthDate)) {
+            return MessageUtil.getMessage("error.duplicate.nationalId.patient", new Object[] { nationalId, name });
+        }
+        return MessageUtil.getMessage("error.duplicate.nationalId.patient.born",
+                new Object[] { nationalId, name, birthDate });
     }
 
     private static void validateBirthdateFormat(PatientManagementInfo patientInfo, Errors errors) {
