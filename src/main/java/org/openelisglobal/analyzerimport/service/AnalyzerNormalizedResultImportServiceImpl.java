@@ -8,12 +8,15 @@ import java.time.ZoneId;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Observation;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.AnalyzerSiteBindingCatalogState;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSnapshot;
@@ -41,6 +44,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private final AnalyzerService analyzerService;
     private final AnalyzerSiteBindingService siteBindingService;
     private final AnalyzerSiteBindingConfirmationService confirmationService;
+    private final AnalyzerMappingCatalogService mappingCatalogService;
     private final AnalyzerResultsService analyzerResultsService;
     private final TestResultService testResultService;
     private final QCResultProcessingService qcResultProcessingService;
@@ -51,7 +55,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             AnalyzerSiteBindingService siteBindingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
             FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
-            AnalyzerSiteBindingConfirmationService confirmationService) {
+            AnalyzerSiteBindingConfirmationService confirmationService,
+            AnalyzerMappingCatalogService mappingCatalogService) {
         this.analyzerService = analyzerService;
         this.siteBindingService = siteBindingService;
         this.analyzerResultsService = analyzerResultsService;
@@ -60,6 +65,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         this.fhirContext = fhirContext;
         this.receiptDAO = receiptDAO;
         this.confirmationService = confirmationService;
+        this.mappingCatalogService = mappingCatalogService;
     }
 
     @Override
@@ -140,18 +146,24 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     held.getSourceProfileId(), held.getSourceProfileRevision(), held.getSourceProtocol(),
                     List.of(source));
             List<AnalyzerResults> mapped = mapResults(contract, analyzer);
-            if (mapped.isEmpty() || mapped.get(0).isReadOnly()) {
+            if (mapped.isEmpty()) {
                 continue;
             }
             AnalyzerResults recovered = mapped.get(0);
+            if (recovered.isReadOnly() && Objects.equals(held.getImportIssueReason(), recovered.getImportIssueReason())
+                    && Objects.equals(held.getTestId(), recovered.getTestId())) {
+                continue;
+            }
             recovered.setId(held.getId());
             recovered.setLastupdated(held.getLastupdated());
             recovered.setSysUserId(effectiveActor);
             analyzerResultsService.update(recovered);
-            if (recovered.getIsControl()) {
-                processControl(recovered, analyzer);
+            if (!recovered.isReadOnly()) {
+                if (recovered.getIsControl()) {
+                    processControl(recovered, analyzer);
+                }
+                recoveredCount++;
             }
-            recoveredCount++;
         }
         return recoveredCount;
     }
@@ -172,13 +184,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 .toMap(row -> new ResultKey(row.getId().getSourceRowKey(), row.getId().getRawValue()), row -> row));
         Set<String> sourcesWithResultMappings = binding.results().stream().map(row -> row.getId().getSourceRowKey())
                 .collect(Collectors.toSet());
+        AnalyzerSiteBindingCatalogState.Validation catalog = AnalyzerSiteBindingCatalogState.load(mappingCatalogService)
+                .validate(binding);
         Map<String, Boolean> confirmedByRecognition = new HashMap<>();
         return contract.results().stream().map(result -> {
             boolean confirmed = confirmedByRecognition.computeIfAbsent(result.recognitionFingerprint(),
-                    fingerprint -> confirmationService.assessCurrent(binding, fingerprint).currentConfirmation()
-                            .isPresent());
+                    fingerprint -> confirmationService.hasMatchingConfirmation(binding, fingerprint));
             return toStagedResult(contract, result, analyzer, testsBySource, resultsBySource, sourcesWithResultMappings,
-                    confirmed);
+                    confirmed, catalog);
         }).flatMap(Optional::stream).toList();
     }
 
@@ -186,7 +199,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             AnalyzerNormalizedResultContract.Result result, Analyzer analyzer,
             Map<String, AnalyzerSiteBindingTest> testsBySource,
             Map<ResultKey, AnalyzerSiteBindingResult> resultsBySource, Set<String> sourcesWithResultMappings,
-            boolean mappingConfirmed) {
+            boolean mappingConfirmed, AnalyzerSiteBindingCatalogState.Validation catalog) {
         AnalyzerResults row = new AnalyzerResults();
         row.setAnalyzerId(analyzer.getId());
         row.setAccessionNumber(result.accessionNumber());
@@ -213,7 +226,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         if (testMapping.getMappingState() == AnalyzerSiteBindingMappingState.EXCLUDED) {
             return Optional.empty();
         }
-        if (testMapping.getMappingState() != AnalyzerSiteBindingMappingState.BOUND || testMapping.getTestId() == null) {
+        if (testMapping.getMappingState() != AnalyzerSiteBindingMappingState.BOUND
+                || !catalog.isCurrentBoundTest(result.rawTestCode())) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
             return Optional.of(row);
         }
@@ -236,6 +250,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return Optional.of(row);
         }
 
+        if (!catalog.isCurrentBoundResult(result.rawTestCode(), result.rawValue())) {
+            hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
+            return Optional.of(row);
+        }
         TestResult option = testResultService.get(resultMapping.getTestResultId());
         if (option == null || option.getValue() == null || option.getTestResultType() == null) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);

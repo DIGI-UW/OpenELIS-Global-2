@@ -21,6 +21,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
+import { parsePath } from "history";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Link, useLocation, useParams } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
@@ -37,6 +38,7 @@ import {
   getAnalyzerTypeMapping,
   getAnalyzerTypeRevision,
   saveAnalyzerTypeMapping,
+  selectAnalyzerSiteBinding,
 } from "../../../services/analyzerService";
 import { includesComboBoxText } from "../comboBoxSearch";
 import "./AnalyzerTypeMappingEditor.scss";
@@ -89,8 +91,10 @@ const AnalyzerTypeMappingEditor = () => {
   );
   const revision = Number(query.get("revision"));
   const returnTo = safeInternalPath(query.get("returnTo"), "/analyzers/types");
+  const returnDestination = { ...parsePath(returnTo), state: location.state };
   const focusTest = query.get("focusTest");
   const focusValue = query.get("focusValue");
+  const analyzerId = query.get("analyzerId");
   const [mapping, setMapping] = useState(null);
   const [typeSummary, setTypeSummary] = useState(null);
   const [draftTests, setDraftTests] = useState([]);
@@ -101,6 +105,7 @@ const AnalyzerTypeMappingEditor = () => {
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
+  const [applying, setApplying] = useState(false);
   const [notification, setNotification] = useState(null);
   const loadedResultOptions = useRef(new Set());
   const focusedResultRow = useRef(null);
@@ -414,6 +419,43 @@ const AnalyzerTypeMappingEditor = () => {
     );
   };
 
+  const applyToAnalyzer = () => {
+    if (
+      !analyzerId ||
+      dirty ||
+      saving ||
+      applying ||
+      !mapping?.siteBindingId ||
+      !mapping?.bindingFingerprint ||
+      mapping?.confirmation?.state !== "CURRENT"
+    ) {
+      return;
+    }
+    setApplying(true);
+    selectAnalyzerSiteBinding(
+      analyzerId,
+      {
+        siteBindingId: mapping.siteBindingId,
+        revision: mapping.siteBindingRevision,
+        bindingFingerprint: mapping.bindingFingerprint,
+      },
+      (response) => {
+        setApplying(false);
+        const applied =
+          !hasApiError(response) && String(response?.id) === String(analyzerId);
+        setNotification({
+          kind: applied ? "success" : "error",
+          title: intl.formatMessage({
+            id: applied
+              ? "analyzerType.mappingEditor.appliedToAnalyzer"
+              : "analyzerType.mappingEditor.error.applyToAnalyzer",
+          }),
+          subtitle: applied ? "" : errorText(response, ""),
+        });
+      },
+    );
+  };
+
   const mappingMatchesRoute =
     mapping?.profileId === profileId && mapping?.profileRevision === revision;
   const currentTypeSummary =
@@ -475,7 +517,7 @@ const AnalyzerTypeMappingEditor = () => {
         breadcrumbs={[
           { label: "home.label", link: "/" },
           { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-          { label: "analyzerType.page.title", link: returnTo },
+          { label: "analyzerType.page.title", link: returnDestination },
           { label: heading, isCurrentPage: true },
         ]}
       />
@@ -499,10 +541,26 @@ const AnalyzerTypeMappingEditor = () => {
                 as={Link}
                 kind="ghost"
                 renderIcon={ArrowLeft}
-                to={returnTo}
+                to={returnDestination}
               >
                 <FormattedMessage id="analyzerType.mappingEditor.return" />
               </Button>
+              {analyzerId && (
+                <Button
+                  kind="primary"
+                  disabled={
+                    dirty ||
+                    saving ||
+                    applying ||
+                    !mapping.siteBindingId ||
+                    !mapping.bindingFingerprint ||
+                    confirmation.state !== "CURRENT"
+                  }
+                  onClick={applyToAnalyzer}
+                >
+                  <FormattedMessage id="analyzerType.mappingEditor.applyToAnalyzer" />
+                </Button>
+              )}
               <Button
                 as={Link}
                 kind="secondary"

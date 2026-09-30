@@ -94,9 +94,9 @@ const OrderReferralRequest = ({
   // only a single entry for a multi-test sample, which the payload builder then
   // collapsed into comma-joined ids such as "4,4" — values the server rejects.
   const defaultReferralRequest = (test) => ({
-    referralRequestObject: referralReasons[0].id,
+    reasonForReferral: referralReasons[0]?.id ?? "",
     referrer: userSessionDetails.firstName + " " + userSessionDetails.lastName,
-    institute: null,
+    institute: referralOrganizations[0]?.id ?? null,
     sentDate: "",
     testId: test.id,
   });

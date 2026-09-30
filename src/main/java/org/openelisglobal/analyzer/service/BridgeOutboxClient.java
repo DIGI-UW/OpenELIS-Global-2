@@ -8,7 +8,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
-import org.openelisglobal.common.log.LogEvent;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -43,13 +42,22 @@ public class BridgeOutboxClient {
             JsonNode body = send("GET",
                     outboxUrl() + "?state=" + state + "&limit=" + PAGE_SIZE + "&offset=" + page * PAGE_SIZE);
             JsonNode pageRows = body.path("rows");
+            if (!pageRows.isArray()) {
+                throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeInvalidResponse");
+            }
             pageRows.forEach(rows::add);
             if (pageRows.size() < PAGE_SIZE) {
                 return rows;
             }
         }
-        LogEvent.logWarn(getClass().getSimpleName(), "list",
-                "Stopped reading the Bridge outbox for state " + state + " after " + MAX_PAGES * PAGE_SIZE + " rows");
+        JsonNode overflow = send("GET", outboxUrl() + "?state=" + state + "&limit=1&offset=" + MAX_PAGES * PAGE_SIZE)
+                .path("rows");
+        if (!overflow.isArray()) {
+            throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.bridgeInvalidResponse");
+        }
+        if (!overflow.isEmpty()) {
+            throw new BridgeAnalyzerConnectionException("analyzer.deliveryIssues.error.incompleteList");
+        }
         return rows;
     }
 

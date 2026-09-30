@@ -110,8 +110,337 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
-    public void reviewerChoice_removesTheHold() {
+    public void acceptingMixedGroupKeepsUnresolvedObservationStaged() {
+        String heldId = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, read_only, import_issue_reason, last_updated)"
+                        + " VALUES (?::numeric, ?, ?, 'Held result', 'RAW', false, ?, true, ?, NOW())",
+                heldId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+
+        String heldControlId = String
+                .valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, read_only, import_issue_reason, last_updated)"
+                        + " VALUES (?::numeric, ?, ?, 'Held control', 'RAW', true, ?, true, ?, NOW())",
+                heldControlId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST,
+                AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+
+        AnalyzerResultItem accepted = acceptedItem();
+        accepted.setTypeOfSampleId(String.valueOf(TYPE_B));
+        AnalyzerResultItem unresolved = acceptedItem();
+        unresolved.setId(heldId);
+        unresolved.setReadOnly(true);
+        unresolved.setIsAccepted(false);
+        AnalyzerResultItem heldControl = acceptedItem();
+        heldControl.setId(heldControlId);
+        heldControl.setSampleGroupingNumber(2);
+        heldControl.setIsControl(true);
+        heldControl.setReadOnly(true);
+        heldControl.setIsAccepted(false);
+        acceptService.acceptAndPersist(List.of(unresolved, accepted, heldControl), "1");
+
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, heldId));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, heldControlId));
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, stagedRowId));
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.result r JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        Integer.class, ACCESSION));
+    }
+
+    @org.junit.Test
+    public void acceptingGroupWithInactiveTestSavesSiblingAndKeepsInactiveRowStaged() {
+        long inactiveTest = 97002L;
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, 'Inactive 1145', 'Inactive 1145', 'N', ?, 'CLINICAL', true, NOW())",
+                inactiveTest, UUID.randomUUID().toString());
+        insertJunction(TYPE_B, inactiveTest);
+        String inactiveRowId = String
+                .valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'Inactive 1145', '7', false,"
+                + " ?, NOW())", inactiveRowId, ANALYZER_ID, ACCESSION, inactiveTest);
+
+        AnalyzerResultItem accepted = acceptedItem();
+        accepted.setTypeOfSampleId(String.valueOf(TYPE_B));
+        AnalyzerResultItem inactive = acceptedItem();
+        inactive.setId(inactiveRowId);
+        inactive.setTestId(String.valueOf(inactiveTest));
+        inactive.setTestName("Inactive 1145");
+        inactive.setResult("7");
+        inactive.setTypeOfSampleId(String.valueOf(TYPE_B));
+        acceptService.acceptAndPersist(List.of(accepted, inactive), "1");
+
+        assertEquals("the accepted sibling leaves staging", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, stagedRowId));
+        assertEquals("the result for the inactive test stays staged", Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, inactiveRowId));
+        assertEquals("only the sibling's result is persisted", Integer.valueOf(1),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.result r JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        Integer.class, ACCESSION));
+    }
+
+    /**
+     * Stages a result and accepts it without a specimen so it is held awaiting one.
+     */
+    private String stageHeldAwaitingSpecimen(String accession, long testId) {
+        String id = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'HoldIT 1145', '42', false,"
+                + " ?, NOW())", id, ANALYZER_ID, accession, testId);
         AnalyzerResultItem item = acceptedItem();
+        item.setId(id);
+        item.setAccessionNumber(accession);
+        item.setTestId(String.valueOf(testId));
+        acceptService.acceptAndPersist(List.of(item), "1");
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN, jdbc.queryForObject(
+                "SELECT import_issue_reason FROM clinlims.analyzer_results WHERE id = ?::numeric", String.class, id));
+        return id;
+    }
+
+    private String specimenTypeOfResult(String accession, long testId) {
+        return jdbc.queryForObject("SELECT si.typeosamp_id::text FROM clinlims.analysis a"
+                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id JOIN clinlims.sample s ON si.samp_id = s.id"
+                + " WHERE s.accession_number = ? AND a.test_id = ?", String.class, accession, testId);
+    }
+
+    @org.junit.Test
+    public void chosenSpecimenIsUsedForANewTestOnAnExistingOrder() {
+        String existingOrder = "123456789";
+        String heldId = stageHeldAwaitingSpecimen(existingOrder, MULTI_TYPE_TEST);
+
+        AnalyzerResultItem chosen = acceptedItem();
+        chosen.setId(heldId);
+        chosen.setAccessionNumber(existingOrder);
+        chosen.setTypeOfSampleId(String.valueOf(TYPE_B));
+        acceptService.acceptAndPersist(List.of(chosen), "1");
+
+        assertEquals("the reviewer's specimen, not the test's first sample type", String.valueOf(TYPE_B),
+                specimenTypeOfResult(existingOrder, MULTI_TYPE_TEST));
+    }
+
+    @org.junit.Test
+    public void releasingAHeldResultKeepsItsStagedAccession() {
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+        AnalyzerResultItem forged = acceptedItem();
+        forged.setTypeOfSampleId(String.valueOf(TYPE_B));
+        forged.setAccessionNumber("FORGED1145");
+        acceptService.acceptAndPersist(List.of(forged), "1");
+
+        assertEquals("no order is created under the submitted accession", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.sample WHERE accession_number = 'FORGED1145'", Integer.class));
+        assertEquals("the result is saved on the staged accession", String.valueOf(TYPE_B),
+                specimenTypeOfResult(ACCESSION, MULTI_TYPE_TEST));
+    }
+
+    private long seedSingleTypeTest(long testId, long sampleTypeId) {
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, ?, ?, 'Y', ?, 'CLINICAL', true, NOW())",
+                testId, "Single " + testId, "Single " + testId, UUID.randomUUID().toString());
+        insertJunction(sampleTypeId, testId);
+        return testId;
+    }
+
+    private AnalyzerResultItem stagedSibling(long testId) {
+        String id = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update("INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'Single', '5', false, ?, NOW())", id,
+                ANALYZER_ID, ACCESSION, testId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setId(id);
+        item.setTestId(String.valueOf(testId));
+        item.setTestName("Single");
+        item.setResult("5");
+        return item;
+    }
+
+    @org.junit.Test
+    public void aSpecimenChoiceASiblingTestCannotUseKeepsTheNewOrderHeld() {
+        AnalyzerResultItem onlyTypeA = stagedSibling(seedSingleTypeTest(97003L, TYPE_A));
+        AnalyzerResultItem chosenB = acceptedItem();
+        chosenB.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(onlyTypeA, chosenB), "1");
+
+        assertEquals("one new specimen cannot be both types, so nothing is saved", Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.sample WHERE accession_number = ?", Integer.class,
+                        ACCESSION));
+        assertEquals("both results stay held for a specimen decision", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.analyzer_results WHERE accession_number = ?"
+                                + " AND import_issue_reason = ?",
+                        Integer.class, ACCESSION, AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN));
+    }
+
+    @org.junit.Test
+    public void aSpecimenChoiceEverySiblingCanUseIsSavedForTheNewOrder() {
+        AnalyzerResultItem onlyTypeB = stagedSibling(seedSingleTypeTest(97004L, TYPE_B));
+        AnalyzerResultItem chosenB = acceptedItem();
+        chosenB.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(onlyTypeB, chosenB), "1");
+
+        assertEquals(String.valueOf(TYPE_B), specimenTypeOfResult(ACCESSION, MULTI_TYPE_TEST));
+        assertEquals(String.valueOf(TYPE_B), specimenTypeOfResult(ACCESSION, 97004L));
+    }
+
+    private AnalyzerResultItem stagedRow(String accession, long testId) {
+        String id = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, last_updated) VALUES (?::numeric, ?, ?, 'Row', '42', false, ?, NOW())",
+                id, ANALYZER_ID, accession, testId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setId(id);
+        item.setAccessionNumber(accession);
+        item.setTestId(String.valueOf(testId));
+        return item;
+    }
+
+    @org.junit.Test
+    public void releasingAHeldResultKeepsItsStagedComponent() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('c-a-1145', ?, 'A', 'A', true, 'Y', NOW()),"
+                + " ('c-b-1145', ?, 'B', 'B', false, 'Y', NOW())", MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                + " component_id, lastupdated) VALUES (97301, ?, 'N', '', true, 1, 'c-a-1145', NOW()),"
+                + " (97302, ?, 'N', '', true, 2, 'c-b-1145', NOW())", MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("UPDATE clinlims.analyzer_results SET component_id = 'c-a-1145' WHERE id = ?::numeric",
+                stagedRowId);
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+
+        AnalyzerResultItem forged = acceptedItem();
+        forged.setTypeOfSampleId(String.valueOf(TYPE_B));
+        forged.setComponentId("c-b-1145");
+        acceptService.acceptAndPersist(List.of(forged), "1");
+
+        assertEquals("the result binds to the staged component's test result", "97301",
+                jdbc.queryForObject(
+                        "SELECT r.test_result_id::text FROM clinlims.result r"
+                                + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        String.class, ACCESSION));
+    }
+
+    @org.junit.Test
+    public void releasingAHeldResultKeepsItsStagedCompletionDate() {
+        jdbc.update("UPDATE clinlims.analyzer_results SET complete_date = '2026-09-01 10:00:00' WHERE id = ?::numeric",
+                stagedRowId);
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+
+        AnalyzerResultItem forged = acceptedItem();
+        forged.setTypeOfSampleId(String.valueOf(TYPE_B));
+        forged.setCompleteDate("01/01/2000");
+        acceptService.acceptAndPersist(List.of(forged), "1");
+
+        assertEquals("the analysis carries the analyzer's completion date", "2026-09-01",
+                jdbc.queryForObject(
+                        "SELECT to_char(a.completed_date, 'YYYY-MM-DD') FROM clinlims.analysis a"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        String.class, ACCESSION));
+    }
+
+    @org.junit.Test
+    public void aReleasedAnalyzerResultIsRecordedAsAnAutomaticAnalysis() {
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+
+        AnalyzerResultItem forged = acceptedItem();
+        forged.setTypeOfSampleId(String.valueOf(TYPE_B));
+        forged.setManual(true);
+        acceptService.acceptAndPersist(List.of(forged), "1");
+
+        assertEquals("analyzer provenance is kept in the analysis type", "AUTO",
+                jdbc.queryForObject(
+                        "SELECT a.analysis_type FROM clinlims.analysis a"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        String.class, ACCESSION));
+    }
+
+    @org.junit.Test
+    public void differentSpecimenChoicesForNewTestsOnAnExistingOrderStayHeld() {
+        String existingOrder = "123456789";
+        long secondMultiType = 97005L;
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, 'HoldIT2 1145', 'HoldIT2 1145', 'Y', ?, 'CLINICAL', true, NOW())",
+                secondMultiType, UUID.randomUUID().toString());
+        insertJunction(TYPE_A, secondMultiType);
+        insertJunction(TYPE_B, secondMultiType);
+        AnalyzerResultItem chosenB = stagedRow(existingOrder, MULTI_TYPE_TEST);
+        chosenB.setTypeOfSampleId(String.valueOf(TYPE_B));
+        AnalyzerResultItem chosenA = stagedRow(existingOrder, secondMultiType);
+        chosenA.setTypeOfSampleId(String.valueOf(TYPE_A));
+
+        acceptService.acceptAndPersist(List.of(chosenB, chosenA), "1");
+
+        assertEquals("the new analyses of one grouping share one specimen, so neither is saved", Integer.valueOf(0),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.analysis a JOIN clinlims.sample_item si"
+                                + " ON a.sampitem_id = si.id JOIN clinlims.sample s ON si.samp_id = s.id"
+                                + " WHERE s.accession_number = ? AND a.test_id IN (?, ?)",
+                        Integer.class, existingOrder, MULTI_TYPE_TEST, secondMultiType));
+        assertEquals("both results wait for a specimen decision", Integer.valueOf(2),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.analyzer_results WHERE accession_number = ?"
+                                + " AND import_issue_reason = ?",
+                        Integer.class, existingOrder, AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN));
+    }
+
+    @org.junit.Test
+    public void aNewTestKeepsItsChosenSpecimenBesideAnExistingAnalysis() {
+        String existingOrder = "123456789";
+        long testWithExistingAnalysis = 8000L;
+        // The dataset's analysis has no version stamp; accepting a result updates it.
+        jdbc.update("UPDATE clinlims.analysis SET lastupdated = NOW() WHERE id = 9000");
+        AnalyzerResultItem existing = stagedRow(existingOrder, testWithExistingAnalysis);
+        AnalyzerResultItem chosenB = stagedRow(existingOrder, MULTI_TYPE_TEST);
+        chosenB.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(existing, chosenB), "1");
+
+        assertEquals("the new test's specimen, not the existing analysis's", String.valueOf(TYPE_B),
+                specimenTypeOfResult(existingOrder, MULTI_TYPE_TEST));
+    }
+
+    @org.junit.Test
+    public void aGroupingWithOnlyInactiveTestsCreatesNoOrder() {
+        long inactiveTest = 97006L;
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, 'Inactive2 1145', 'Inactive2 1145', 'N', ?, 'CLINICAL', true, NOW())",
+                inactiveTest, UUID.randomUUID().toString());
+        insertJunction(TYPE_B, inactiveTest);
+        AnalyzerResultItem inactive = stagedRow(ACCESSION, inactiveTest);
+
+        acceptService.acceptAndPersist(List.of(inactive), "1");
+
+        assertEquals("no order is created when no result is saved", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.sample WHERE accession_number = ?", Integer.class, ACCESSION));
+        assertEquals("the inactive test's result stays staged", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric",
+                        Integer.class, inactive.getId()));
+    }
+
+    @org.junit.Test
+    public void reviewerChoice_removesTheHold() {
+        acceptService.acceptAndPersist(List.of(acceptedItem()), "1");
+        AnalyzerResultItem item = acceptedItem();
+        item.setReadOnly(true); // A stale client flag must not override the valid specimen choice.
         item.setTypeOfSampleId(String.valueOf(TYPE_B));
         acceptService.acceptAndPersist(List.of(item), "1");
 
