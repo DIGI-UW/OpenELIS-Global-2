@@ -421,12 +421,13 @@ test.describe("EQA provider cycle lifecycle", () => {
         timeout: LONG_TIMEOUT,
       });
       await page.getByRole("tab", { name: "Shipments" }).click();
-      await expect(
-        page.locator(`#tracking-${seed.organizationIds[0]}`),
-      ).toHaveValue(`E2E-${RUN}-R1`, { timeout: UI_TIMEOUT });
-      await expect(
-        page.locator("tr", { hasText: seed.organizationNames[0] }),
-      ).toContainText(`EQA-C${cycleId}-${seed.organizationIds[0]}-R1`);
+      const tracking = page.locator(`#tracking-${seed.organizationIds[0]}`);
+      await expect(tracking).toHaveValue(`E2E-${RUN}-R1`, {
+        timeout: UI_TIMEOUT,
+      });
+      await expect(page.locator("tr", { has: tracking })).toContainText(
+        `EQA-C${cycleId}-${seed.organizationIds[0]}-R1`,
+      );
     });
   });
 });
