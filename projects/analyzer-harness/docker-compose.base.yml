@@ -1,4 +1,24 @@
 services:
+  harness-catalog-init:
+    image: alpine:3.21
+    restart: "no"
+    volumes:
+      - configuration-data:/catalog
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        for domain in tests test-results; do
+          target="/catalog/backend/$$domain"
+          mkdir -p "$$target"
+          for source in /templates/$$domain/*.csv; do
+            [ -f "$$source" ] || continue
+            file="$$target/$${source##*/}"
+            [ -e "$$file" ] || cp "$$source" "$$file"
+          done
+        done
+        chown -R 8443:8443 /catalog/backend
+
   certs:
     container_name: oe-certs
     restart: "no"
@@ -32,6 +52,11 @@ services:
       DEFAULT_PW: adminADMIN!
       TZ: Africa/Nairobi
       SPRING_LIQUIBASE_CONTEXTS: test
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      harness-catalog-init:
+        condition: service_completed_successfully
     networks:
       - default
     healthcheck:

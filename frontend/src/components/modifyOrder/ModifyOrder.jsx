@@ -26,6 +26,10 @@ import PatientHeader from "../common/PatientHeader";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import createModifyOrderEntryValidationSchema from "../formModel/validationSchema/ModifyOrderEntryValidationSchema";
 import { sampleObject } from "../addOrder/Index";
+import {
+  samplesMissingTests,
+  samplesWithTests,
+} from "../addOrder/orderSamples";
 /**
  * The edit page of the workflow an order was entered in, when that is not the
  * clinical one. Environmental and vector orders have no patient, so the
@@ -44,6 +48,13 @@ export const nonClinicalEditPath = (order) => {
   return `/order/${workflowType}/enter?labNumber=${encodeURIComponent(order.labNumber)}`;
 };
 
+/**
+ * The configuration used until the site settings load. It is one shared object
+ * because the validation effect depends on it: a fresh default on every render
+ * re-ran that effect without end.
+ */
+const NO_CONFIGURATION = {};
+
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "sample.label.search.Order", link: "/SampleEdit" },
@@ -53,7 +64,8 @@ const ModifyOrder = () => {
   const componentMounted = useRef(false);
 
   const intl = useIntl();
-  const { configurationProperties = {} } = useContext(ConfigurationContext);
+  const { configurationProperties = NO_CONFIGURATION } =
+    useContext(ConfigurationContext);
 
   const firstPageNumber = 0;
   const lastPageNumber = 3;
@@ -290,15 +302,16 @@ const ModifyOrder = () => {
     }
   }, [page]);
 
+  const missingTestSamples = samplesMissingTests(samples);
+
   const attacheSamplesToFormValues = () => {
     let sampleXmlString = "";
-    let referralItems = [];
     if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
+      if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
-        let tests = null;
         samples.map((sampleItem) => {
+          let tests = null;
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {
@@ -315,47 +328,13 @@ const ModifyOrder = () => {
 
             sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
           }
-          if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
-            });
-          }
         });
         sampleXmlString += "</samples>";
       }
     }
     setOrderFormValues({
       ...orderFormValues,
-      // useReferral: true,
       sampleXML: sampleXmlString,
-      // referralItems: referralItems,
     });
   };
 
@@ -488,6 +467,20 @@ const ModifyOrder = () => {
                         data-cy="modify-order-validation-error"
                       />
                     ))}
+                  {page === orderPageNumber &&
+                    missingTestSamples.map((sampleNumber) => (
+                      <InlineNotification
+                        key={sampleNumber}
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage(
+                          { id: "order.sample.missingTests" },
+                          { sampleNumber },
+                        )}
+                        data-cy="modify-order-sample-missing-tests"
+                      />
+                    ))}
                   {page === orderPageNumber && staleSave && (
                     <div data-cy="modify-order-stale-save">
                       <InlineNotification
@@ -536,6 +529,7 @@ const ModifyOrder = () => {
                         disabled={
                           isSubmitting ||
                           Boolean(staleSave) ||
+                          missingTestSamples.length > 0 ||
                           errors?.errors?.length > 0
                             ? true
                             : false

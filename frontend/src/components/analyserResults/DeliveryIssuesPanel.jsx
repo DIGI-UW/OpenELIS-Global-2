@@ -51,17 +51,25 @@ const DeliveryIssuesPanel = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
+  const [loadError, setLoadError] = useState(null);
   const [pendingId, setPendingId] = useState(null);
   const [actionError, setActionError] = useState(null);
 
   const load = useCallback(() => {
     getFromOpenElisServer(ENDPOINT, (response) => {
       const data = response?.status === "success" ? response.data : null;
-      setRows(data?.rows || []);
-      setLoadFailed(!data);
+      const valid =
+        Array.isArray(data?.rows) && data.count === data.rows.length;
+      setRows(valid ? data.rows : []);
+      setLoadFailed(!valid);
+      setLoadError(
+        !valid && response?.messageKey
+          ? formatActionError(intl, response)
+          : null,
+      );
       setLoading(false);
     });
-  }, []);
+  }, [intl]);
 
   useEffect(() => {
     load();
@@ -176,9 +184,12 @@ const DeliveryIssuesPanel = () => {
           kind="error"
           lowContrast
           hideCloseButton
-          title={intl.formatMessage({
-            id: "analyzer.deliveryIssues.loadFailed",
-          })}
+          title={
+            loadError ||
+            intl.formatMessage({
+              id: "analyzer.deliveryIssues.loadFailed",
+            })
+          }
         />
       ) : tableRows.length === 0 ? (
         <InlineNotification

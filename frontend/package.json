@@ -20,6 +20,7 @@
     "dayjs": "^1.10.4",
     "exceljs": "^4.4.0",
     "formik": "^2.2.9",
+    "history": "^4.10.1",
     "i18next": "^21.10.0",
     "jsonpath-plus": "^10.4.0",
     "jspdf": "^4.2.1",
