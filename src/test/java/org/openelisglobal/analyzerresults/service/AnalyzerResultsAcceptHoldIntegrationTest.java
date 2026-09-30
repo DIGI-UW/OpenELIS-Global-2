@@ -3,6 +3,8 @@ package org.openelisglobal.analyzerresults.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.util.List;
 import java.util.UUID;
 import org.junit.Before;
@@ -36,6 +38,8 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private javax.sql.DataSource dataSource;
+    @PersistenceContext
+    private EntityManager entityManager;
 
     private JdbcTemplate jdbc;
     private String stagedRowId;
@@ -434,6 +438,102 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
         assertEquals("the inactive test's result stays staged", Integer.valueOf(1),
                 jdbc.queryForObject("SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric",
                         Integer.class, inactive.getId()));
+    }
+
+    private Integer heldAwaitingSpecimen(AnalyzerResultItem first, AnalyzerResultItem second) {
+        return jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id IN (?::numeric, ?::numeric)"
+                        + " AND import_issue_reason = ?",
+                Integer.class, first.getId(), second.getId(), AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN);
+    }
+
+    private long seedInactiveTest(long testId, long sampleTypeId) {
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, ?, ?, 'N', ?, 'CLINICAL', true, NOW())",
+                testId, "Inactive " + testId, "Inactive " + testId, UUID.randomUUID().toString());
+        insertJunction(sampleTypeId, testId);
+        return testId;
+    }
+
+    @org.junit.Test
+    public void newTestsWithNoSpecimenTypeInCommonStayHeldOnANewOrder() {
+        AnalyzerResultItem onlyTypeA = stagedSibling(seedSingleTypeTest(97010L, TYPE_A));
+        AnalyzerResultItem onlyTypeB = stagedSibling(seedSingleTypeTest(97011L, TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(onlyTypeA, onlyTypeB), "1");
+
+        assertEquals("one new specimen cannot be both types, so nothing is saved", Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.sample WHERE accession_number = ?", Integer.class,
+                        ACCESSION));
+        assertEquals("both results stay held", Integer.valueOf(2), heldAwaitingSpecimen(onlyTypeA, onlyTypeB));
+    }
+
+    @org.junit.Test
+    public void newTestsWithNoSpecimenTypeInCommonStayHeldOnAnExistingOrder() {
+        String existingOrder = "123456789";
+        AnalyzerResultItem onlyTypeA = stagedRow(existingOrder, seedSingleTypeTest(97012L, TYPE_A));
+        AnalyzerResultItem onlyTypeB = stagedRow(existingOrder, seedSingleTypeTest(97013L, TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(onlyTypeA, onlyTypeB), "1");
+
+        assertEquals("neither result is added to the order", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analysis WHERE test_id IN (?, ?)", Integer.class, 97012L, 97013L));
+        assertEquals("both results stay held", Integer.valueOf(2), heldAwaitingSpecimen(onlyTypeA, onlyTypeB));
+    }
+
+    @org.junit.Test
+    public void newTestsOnAnExistingOrderShareASpecimenEveryOneCanUse() {
+        String existingOrder = "123456789";
+        long orderSpecimenType = 8500L;
+        long pinnedTest = 97014L;
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                        + " VALUES (?, 'Pinned 1145', 'Pinned 1145', 'Y', ?, 'CLINICAL', true, NOW())",
+                pinnedTest, UUID.randomUUID().toString());
+        // The order's existing specimen is one of this test's types, so it needs no
+        // choice.
+        insertJunction(orderSpecimenType, pinnedTest);
+        insertJunction(TYPE_B, pinnedTest);
+        AnalyzerResultItem onlyTypeB = stagedRow(existingOrder, seedSingleTypeTest(97015L, TYPE_B));
+        AnalyzerResultItem pinned = stagedRow(existingOrder, pinnedTest);
+
+        acceptService.acceptAndPersist(List.of(onlyTypeB, pinned), "1");
+
+        assertEquals("the only type the single-type test can use", String.valueOf(TYPE_B),
+                specimenTypeOfResult(existingOrder, 97015L));
+        assertEquals("the same specimen for its sibling", String.valueOf(TYPE_B),
+                specimenTypeOfResult(existingOrder, pinnedTest));
+    }
+
+    @org.junit.Test
+    public void anInactiveTestOnAnotherSpecimenTypeDoesNotHoldItsSibling() {
+        AnalyzerResultItem inactive = stagedSibling(seedInactiveTest(97016L, TYPE_A));
+        AnalyzerResultItem onlyTypeB = stagedSibling(seedSingleTypeTest(97017L, TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(inactive, onlyTypeB), "1");
+
+        assertEquals("the active test's result is saved", String.valueOf(TYPE_B),
+                specimenTypeOfResult(ACCESSION, 97017L));
+        assertEquals("the inactive test's result stays staged", Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric",
+                        Integer.class, inactive.getId()));
+    }
+
+    @org.junit.Test
+    public void anExistingOrderIsUnchangedWhenEveryResultForItIsSkipped() {
+        String existingOrder = "123456789";
+        AnalyzerResultItem inactive = stagedRow(existingOrder, seedInactiveTest(97018L, TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(inactive), "1");
+        // The test's transaction never commits; flushing writes what a commit would.
+        entityManager.flush();
+
+        assertEquals("the order keeps its entry date", "2024-06-03 00:00:00",
+                jdbc.queryForObject("SELECT entered_date::text FROM clinlims.sample WHERE accession_number = ?",
+                        String.class, existingOrder));
+        assertEquals("the order keeps its status", "101", jdbc.queryForObject(
+                "SELECT status_id::text FROM clinlims.sample WHERE accession_number = ?", String.class, existingOrder));
     }
 
     @org.junit.Test

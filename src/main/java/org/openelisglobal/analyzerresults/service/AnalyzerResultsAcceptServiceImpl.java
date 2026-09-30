@@ -283,27 +283,76 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     /**
-     * A grouping's new analyses are all persisted on its one sample item. A
-     * specimen choice must therefore be the only one among them and must suit every
-     * test that needs a new analysis; otherwise the grouping waits for a decision
-     * instead of silently using another type.
+     * A grouping's new analyses are all persisted on its one sample item, whose
+     * type must suit every one of them. The grouping waits for a decision when
+     * reviewers chose different types or when no type suits every new test, instead
+     * of saving a result on a specimen its test cannot use.
      */
     private boolean hasUnusableSpecimenChoice(List<AnalyzerResultItem> grouping) {
-        List<AnalyzerResultItem> newAnalyses = grouping.stream()
-                .filter(item -> item.getIsAccepted() && !item.getIsControl()
-                        && !GenericValidator.isBlankOrNull(item.getTestId()) && getExistingAnalysis(item) == null)
+        List<AnalyzerResultItem> newAnalyses = newAnalysisRows(grouping).stream()
+                .filter(AnalyzerResultItem::getIsAccepted).toList();
+        long choices = newAnalyses.stream().map(AnalyzerResultItem::getTypeOfSampleId)
+                .filter(choice -> !GenericValidator.isBlankOrNull(choice)).distinct().count();
+        List<String> sharedTypes = sharedSampleTypeIds(newAnalyses);
+        return choices > 1 || (sharedTypes != null && sharedTypes.isEmpty());
+    }
+
+    /**
+     * The rows that create an analysis: patient results for an active test the
+     * order does not have yet. A result for an inactive test creates nothing and
+     * stays staged.
+     */
+    private List<AnalyzerResultItem> newAnalysisRows(List<AnalyzerResultItem> grouping) {
+        return grouping.stream()
+                .filter(item -> !item.getIsControl() && !GenericValidator.isBlankOrNull(item.getTestId())
+                        && getExistingAnalysis(item) == null
+                        && effectiveTestStatusService.isEffectivelyActive(testService.get(item.getTestId())))
                 .toList();
-        Set<String> choices = newAnalyses.stream().map(AnalyzerResultItem::getTypeOfSampleId)
-                .filter(choice -> !GenericValidator.isBlankOrNull(choice)).collect(Collectors.toSet());
-        if (choices.size() != 1) {
-            return choices.size() > 1;
+    }
+
+    /**
+     * The sample types every given new analysis can be collected on: the first
+     * test's types, in link order, that each other test also has, narrowed to the
+     * reviewer's choice. A test without sample-type links does not constrain them.
+     * Null when none of the tests has links.
+     */
+    private List<String> sharedSampleTypeIds(List<AnalyzerResultItem> newAnalyses) {
+        String chosen = groupingSpecimenChoice(newAnalyses);
+        List<String> shared = null;
+        for (AnalyzerResultItem item : newAnalyses) {
+            List<String> types = typeOfSampleTestService.getTypeOfSampleTestsForTest(item.getTestId()).stream()
+                    .map(TypeOfSampleTest::getTypeOfSampleId).toList();
+            if (types.isEmpty()) {
+                continue;
+            }
+            if (shared == null) {
+                shared = types.stream().filter(type -> chosen == null || chosen.equals(type))
+                        .collect(Collectors.toCollection(ArrayList::new));
+            } else {
+                shared.retainAll(types);
+            }
         }
-        String chosen = choices.iterator().next();
-        return newAnalyses.stream().anyMatch(item -> {
-            List<TypeOfSampleTest> candidates = typeOfSampleTestService.getTypeOfSampleTestsForTest(item.getTestId());
-            return !candidates.isEmpty()
-                    && candidates.stream().noneMatch(candidate -> chosen.equals(candidate.getTypeOfSampleId()));
-        });
+        return shared;
+    }
+
+    /**
+     * The sample types, in preference order, for a grouping's sample item: those
+     * its new analyses share. Otherwise, as for a rejected grouping with no shared
+     * type or new tests without sample-type links, the first new test's types (the
+     * first result's test's when nothing is new), narrowed to the reviewer's
+     * choice.
+     */
+    private List<String> groupingSampleTypeIds(List<AnalyzerResultItem> grouping) {
+        List<AnalyzerResultItem> newAnalyses = newAnalysisRows(grouping);
+        List<String> sharedTypes = sharedSampleTypeIds(newAnalyses);
+        if (sharedTypes != null && !sharedTypes.isEmpty()) {
+            return sharedTypes;
+        }
+        AnalyzerResultItem decidingRow = newAnalyses.isEmpty() ? grouping.get(0) : newAnalyses.get(0);
+        List<String> types = typeOfSampleTestService.getTypeOfSampleTestsForTest(decidingRow.getTestId()).stream()
+                .map(TypeOfSampleTest::getTypeOfSampleId).toList();
+        String chosen = groupingSpecimenChoice(grouping);
+        return !GenericValidator.isBlankOrNull(chosen) && types.contains(chosen) ? List.of(chosen) : types;
     }
 
     private String groupingSpecimenChoice(List<AnalyzerResultItem> groupedAnalyzerResultItems) {
@@ -551,12 +600,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         Map<Result, String> resultToUserSelectionMap = new HashMap<>();
         List<Note> noteList = new ArrayList<>();
 
-        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
-        sample.setSysUserId(sysUserId);
-
         Patient patient = sampleHumanService.getPatientForSample(sample);
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
                 resultToUserSelectionMap, noteList, sampleGrouping.skippedResultIds, patient, sysUserId);
+        recordResultsOnOrder(sample, resultList, false, sysUserId);
 
         SampleItem sampleItem = getOrCreateSampleItem(groupedAnalyzerResultItems, sample, sysUserId);
 
@@ -578,17 +625,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     SampleItem getOrCreateSampleItem(List<AnalyzerResultItem> groupedAnalyzerResultItems, Sample sample,
             String sysUserId) {
         List<Analysis> dBAnalysisList = analysisService.getAnalysesBySampleId(sample.getId());
-
-        List<TypeOfSampleTest> typeOfSampleForNewTest = typeOfSampleTestService
-                .getTypeOfSampleTestsForTest(groupedAnalyzerResultItems.get(0).getTestId());
-        List<String> typeOfSampleIds = typeOfSampleForNewTest.stream().map(e -> e.getTypeOfSampleId())
-                .collect(Collectors.toList());
-        // OGC-1145 FR-8 — the reviewer's chosen sample type narrows the ambiguous
-        // candidate set to exactly that specimen, for both reuse and creation.
-        String chosenTypeOfSampleId = groupingSpecimenChoice(groupedAnalyzerResultItems);
-        if (!GenericValidator.isBlankOrNull(chosenTypeOfSampleId) && typeOfSampleIds.contains(chosenTypeOfSampleId)) {
-            typeOfSampleIds = List.of(chosenTypeOfSampleId);
-        }
+        List<String> typeOfSampleIds = groupingSampleTypeIds(groupedAnalyzerResultItems);
 
         SampleItem sampleItem = null;
         int maxSampleItemSortOrder = 0;
@@ -616,9 +653,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 // awaiting-specimen hold before reaching here; this fallback
                 // (e.g. rejected results) stays deterministic with a warning.
                 LogEvent.logWarn(this.getClass().getSimpleName(), "getOrCreateSampleItem",
-                        "creating sample item for test " + groupedAnalyzerResultItems.get(0).getTestId() + " which has "
-                                + typeOfSampleIds.size() + " sample types and no specimen context; using the primary"
-                                + " link");
+                        "creating sample item for accession " + groupedAnalyzerResultItems.get(0).getAccessionNumber()
+                                + " whose results can use " + typeOfSampleIds.size()
+                                + " sample types and no specimen context; using the primary link");
             }
             TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleIds.get(0));
             sampleItem.setTypeOfSample(typeOfSample);
@@ -639,15 +676,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         Map<Result, String> resultToUserSelectionMap = new HashMap<>();
         List<Note> noteList = new ArrayList<>();
 
-        if (statusService.getStatusID(OrderStatus.Entered).equals(sample.getStatusId())) {
-            sample.setStatusId(statusService.getStatusID(OrderStatus.Started));
-        }
-        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
-        sample.setSysUserId(sysUserId);
-
         Patient patient = sampleHumanService.getPatientForSample(sample);
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
                 resultToUserSelectionMap, noteList, sampleGrouping.skippedResultIds, patient, sysUserId);
+        recordResultsOnOrder(sample, resultList, true, sysUserId);
 
         sampleGrouping.sample = sample;
         sampleGrouping.sampleItem = sampleItem;
@@ -675,12 +707,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<Result> resultList = new ArrayList<>();
         Map<Result, String> resultToUserSelectionMap = new HashMap<>();
         List<Note> noteList = new ArrayList<>();
-
-        if (statusService.getStatusID(OrderStatus.Entered).equals(sample.getStatusId())) {
-            sample.setStatusId(statusService.getStatusID(OrderStatus.Started));
-        }
-        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
-        sample.setSysUserId(sysUserId);
 
         // New analyses are persisted on the grouping's sample item; an existing
         // analysis keeps its own, which serves only when nothing new is added.
@@ -712,49 +738,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 }
                 analysis = new Analysis();
                 analysis.setTest(test);
-                List<TypeOfSample> typeOfSamples = typeOfSampleService.getTypeOfSampleForTest(test.getId());
-                if (typeOfSamples == null) {
-                    typeOfSamples = new ArrayList<>();
+                if (newAnalysisSampleItem == null) {
+                    newAnalysisSampleItem = sampleItemForNewAnalyses(groupedAnalyzerResultItems, sample, sysUserId);
                 }
-                // OGC-1145 FR-8 — the reviewer's chosen specimen narrows this result's
-                // candidates, for both reuse and creation.
-                String chosenTypeOfSampleId = resultItem.getTypeOfSampleId();
-                if (!GenericValidator.isBlankOrNull(chosenTypeOfSampleId)
-                        && typeOfSamples.stream().anyMatch(type -> chosenTypeOfSampleId.equals(type.getId()))) {
-                    typeOfSamples = typeOfSamples.stream().filter(type -> chosenTypeOfSampleId.equals(type.getId()))
-                            .collect(Collectors.toList());
-                }
-                List<SampleItem> sampleItemsForSample = sampleItemService.getSampleItemsBySampleId(sample.getId());
-                List<String> allowedTypeIds = typeOfSamples.stream().map(TypeOfSample::getId)
-                        .collect(Collectors.toList());
-
-                SampleItem rowSampleItem = null;
-                for (SampleItem item : sampleItemsForSample) {
-                    if (!allowedTypeIds.isEmpty() && item.getTypeOfSample() != null
-                            && allowedTypeIds.contains(item.getTypeOfSample().getId())) {
-                        rowSampleItem = item;
-                    }
-                }
-                if (rowSampleItem == null && allowedTypeIds.isEmpty() && !sampleItemsForSample.isEmpty()) {
-                    rowSampleItem = sampleItemsForSample.get(0);
-                }
-                if (rowSampleItem == null && newAnalysisSampleItem != null && newAnalysisSampleItem.getId() == null
-                        && (allowedTypeIds.isEmpty() || (newAnalysisSampleItem.getTypeOfSample() != null
-                                && allowedTypeIds.contains(newAnalysisSampleItem.getTypeOfSample().getId())))) {
-                    rowSampleItem = newAnalysisSampleItem;
-                }
-                if (rowSampleItem == null) {
-                    rowSampleItem = new SampleItem();
-                    rowSampleItem.setSortOrder("1");
-                    rowSampleItem.setStatusId(statusService.getStatusID(SampleStatus.Entered));
-                    rowSampleItem.setCollectionDate(DateUtil.getNowAsTimestamp());
-                    if (!typeOfSamples.isEmpty()) {
-                        rowSampleItem.setTypeOfSample(typeOfSamples.get(0));
-                    }
-                }
-                rowSampleItem.setSysUserId(sysUserId);
-                analysis.setSampleItem(rowSampleItem);
-                newAnalysisSampleItem = rowSampleItem;
+                analysis.setSampleItem(newAnalysisSampleItem);
             } else {
                 dBAnalysisList.remove(analysis);
                 if (existingAnalysisSampleItem == null) {
@@ -780,6 +767,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 noteList.add(note);
             }
         }
+        recordResultsOnOrder(sample, resultList, true, sysUserId);
 
         SampleItem sampleItem = newAnalysisSampleItem != null ? newAnalysisSampleItem : existingAnalysisSampleItem;
         sampleGrouping.sample = sample;
@@ -796,6 +784,54 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         sampleGrouping.resultToUserserSelectionMap = resultToUserSelectionMap;
 
         return sampleGrouping;
+    }
+
+    /**
+     * The one sample item that a grouping's new analyses on an entered order share:
+     * the order's own item of a type they can all use, else a new item of the first
+     * such type.
+     */
+    private SampleItem sampleItemForNewAnalyses(List<AnalyzerResultItem> grouping, Sample sample, String sysUserId) {
+        List<String> typeIds = groupingSampleTypeIds(grouping);
+        List<SampleItem> sampleItemsForSample = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        SampleItem sampleItem = null;
+        for (SampleItem item : sampleItemsForSample) {
+            if (!typeIds.isEmpty() && item.getTypeOfSample() != null
+                    && typeIds.contains(item.getTypeOfSample().getId())) {
+                sampleItem = item;
+            }
+        }
+        if (sampleItem == null && typeIds.isEmpty() && !sampleItemsForSample.isEmpty()) {
+            sampleItem = sampleItemsForSample.get(0);
+        }
+        if (sampleItem == null) {
+            sampleItem = new SampleItem();
+            sampleItem.setSortOrder("1");
+            sampleItem.setStatusId(statusService.getStatusID(SampleStatus.Entered));
+            sampleItem.setCollectionDate(DateUtil.getNowAsTimestamp());
+            if (!typeIds.isEmpty()) {
+                sampleItem.setTypeOfSample(typeOfSampleService.get(typeIds.get(0)));
+            }
+        }
+        sampleItem.setSysUserId(sysUserId);
+        return sampleItem;
+    }
+
+    /**
+     * Marks an existing order as updated by a grouping that saves results on it.
+     * The order is a managed entity, so any change to it is written at commit even
+     * when the grouping is then discarded because every result was skipped.
+     */
+    private void recordResultsOnOrder(Sample sample, List<Result> resultList, boolean startEnteredOrder,
+            String sysUserId) {
+        if (resultList.isEmpty()) {
+            return;
+        }
+        if (startEnteredOrder && statusService.getStatusID(OrderStatus.Entered).equals(sample.getStatusId())) {
+            sample.setStatusId(statusService.getStatusID(OrderStatus.Started));
+        }
+        sample.setEnteredDate(new Date(new java.util.Date().getTime()));
+        sample.setSysUserId(sysUserId);
     }
 
     private SampleGrouping createGroupForNoSampleEntryDone(List<AnalyzerResultItem> groupedAnalyzerResultItems,
@@ -827,8 +863,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         createAndAddItems_Analysis_Results(groupedAnalyzerResultItems, analysisList, resultList,
                 resultToUserSelectionMap, noteList, sampleGrouping.skippedResultIds, patient, sysUserId);
 
-        addSampleTypeToSampleItem(sampleItem, analysisList, sample.getAccessionNumber(),
-                groupingSpecimenChoice(groupedAnalyzerResultItems));
+        addSampleTypeToSampleItem(sampleItem, analysisList, sample.getAccessionNumber(), groupedAnalyzerResultItems);
 
         sampleGrouping.sample = sample;
         sampleGrouping.sampleHuman = sampleHuman;
@@ -1092,41 +1127,26 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // ---------------------------------------------------------------
 
     private void addSampleTypeToSampleItem(SampleItem sampleItem, List<Analysis> analysisList, String accessionNumber,
-            String chosenTypeOfSampleId) {
+            List<AnalyzerResultItem> grouping) {
         if (analysisList.size() > 0) {
-            String typeOfSampleId = getTypeOfSampleId(analysisList, accessionNumber, chosenTypeOfSampleId);
+            String typeOfSampleId = getTypeOfSampleId(groupingSampleTypeIds(grouping), accessionNumber);
             sampleItem.setTypeOfSample(typeOfSampleService.get(typeOfSampleId));
         }
     }
 
-    private String getTypeOfSampleId(List<Analysis> analysisList, String accessionNumber, String chosenTypeOfSampleId) {
-        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && accessionNumber.startsWith("LDBS")) {
-            List<TypeOfSampleTest> typeOfSmapleTestList = typeOfSampleTestService
-                    .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
-
-            for (TypeOfSampleTest typeOfSampleTest : typeOfSmapleTestList) {
-                if (DBS_SAMPLE_TYPE_ID.equals(typeOfSampleTest.getTypeOfSampleId())) {
-                    return DBS_SAMPLE_TYPE_ID;
-                }
-            }
+    private String getTypeOfSampleId(List<String> typeOfSampleIds, String accessionNumber) {
+        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && accessionNumber.startsWith("LDBS")
+                && typeOfSampleIds.contains(DBS_SAMPLE_TYPE_ID)) {
+            return DBS_SAMPLE_TYPE_ID;
         }
-
-        List<TypeOfSampleTest> sampleTests = typeOfSampleTestService
-                .getTypeOfSampleTestsForTest(analysisList.get(0).getTest().getId());
-        // OGC-1145 FR-8 — the reviewer's chosen sample type wins over the
-        // primary link when the test is specimen-ambiguous.
-        if (!GenericValidator.isBlankOrNull(chosenTypeOfSampleId)
-                && sampleTests.stream().anyMatch(st -> chosenTypeOfSampleId.equals(st.getTypeOfSampleId()))) {
-            return chosenTypeOfSampleId;
-        }
-        if (sampleTests.size() > 1) {
+        if (typeOfSampleIds.size() > 1) {
             // Accepted ambiguous groups are intercepted by the FR-8 hold; this
             // fallback stays deterministic with a warning.
             LogEvent.logWarn(this.getClass().getSimpleName(), "getTypeOfSampleId",
-                    "test " + analysisList.get(0).getTest().getId() + " has " + sampleTests.size()
+                    "accession " + accessionNumber + " can use " + typeOfSampleIds.size()
                             + " sample types and no specimen context; using the primary link");
         }
-        return sampleTests.get(0).getTypeOfSampleId();
+        return typeOfSampleIds.get(0);
     }
 
     // ---------------------------------------------------------------

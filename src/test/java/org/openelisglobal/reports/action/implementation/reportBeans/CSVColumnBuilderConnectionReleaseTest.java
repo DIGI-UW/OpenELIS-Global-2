@@ -1,6 +1,5 @@
 package org.openelisglobal.reports.action.implementation.reportBeans;
 
-import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
@@ -31,6 +30,13 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
                 Integer.class);
     }
 
+    // Idle connections from earlier test classes can close during a test, so
+    // the count may fall below the baseline. Only a leak makes it rise.
+    private void assertNoBackendLeaked(int before) {
+        int after = openBackends();
+        assertTrue("open backends rose from " + before + " to " + after, after <= before);
+    }
+
     private int warmedBaseline() throws Exception {
         CSVColumnBuilder warmUp = sampleBuilder("SELECT 1 AS one");
         warmUp.buildDataSource();
@@ -51,7 +57,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
             builder.closeResultSet();
         }
 
-        assertEquals(before, openBackends());
+        assertNoBackendLeaked(before);
     }
 
     @Test
@@ -66,7 +72,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
             builder.closeResultSet();
         }
 
-        assertEquals(before, openBackends());
+        assertNoBackendLeaked(before);
     }
 
     @Test
@@ -80,7 +86,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
             assertThrows(RuntimeException.class, sample::buildDataSource);
         }
 
-        assertEquals(before, openBackends());
+        assertNoBackendLeaked(before);
     }
 
     @Test
@@ -91,7 +97,7 @@ public class CSVColumnBuilderConnectionReleaseTest extends BaseWebContextSensiti
         builder.closeResultSet();
         builder.closeResultSet();
 
-        assertEquals(before, openBackends());
+        assertNoBackendLeaked(before);
     }
 
     private static CSVRoutineColumnBuilder routineBuilder(String sql) {
