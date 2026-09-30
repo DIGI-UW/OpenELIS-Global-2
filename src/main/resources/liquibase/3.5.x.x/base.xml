@@ -594,4 +594,7 @@
   <!-- Order Entry Configuration switches for optional patient sex and date of birth. -->
   <include relativeToChangelogFile="true" file="110-optional-patient-sex-age-config.xml"/>
 
+  <!-- OGC-1151: privilege data for the navigation menu filter -->
+  <include relativeToChangelogFile="true" file="111-menu-privilege-urls.xml"/>
+
 </databaseChangeLog>
