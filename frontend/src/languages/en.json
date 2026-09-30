@@ -11345,7 +11345,7 @@
   "eqa.cycle.history.state": "State",
   "eqa.cycle.history.trigger": "Trigger",
   "eqa.cycle.history.reason": "Reason",
-  "eqa.cycle.history.manual": "Manual override",
+  "eqa.cycle.history.manual": "Manual",
   "eqa.report.comments.tab": "Report comments",
   "eqa.report.comments.hint": "Only pre-approved comments can be printed. Edit the wording under Administration → Dictionary Management.",
   "eqa.report.comments.picker": "Approved comments",
@@ -11860,5 +11860,13 @@
   "eqa.intake.sample": "Sample {code}",
   "eqa.competency.countsFoldedTriage": "Decided by triage",
   "eqa.competency.countsFoldedScore": "Counted with the score",
-  "eqa.performance.titleForScheme": "Participant performance: {scheme}"
+  "eqa.performance.titleForScheme": "Participant performance: {scheme}",
+  "eqa.cycle.trigger.first_shipment_sent": "First shipment sent",
+  "eqa.cycle.trigger.all_shipments_delivered": "All shipments delivered",
+  "eqa.cycle.trigger.score_intake": "Scores recorded",
+  "eqa.cycle.trigger.panel_receipt": "Panel received",
+  "eqa.cycle.trigger.last_validated_result": "Last result validated",
+  "eqa.cycle.trigger.fhir_submit_success": "Results submitted to the provider",
+  "eqa.cycle.trigger.panel_unblind": "Panel unblinded",
+  "eqa.cycle.trigger.v1_backfill": "Carried over from an earlier distribution"
 }

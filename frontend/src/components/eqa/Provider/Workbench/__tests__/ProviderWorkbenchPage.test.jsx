@@ -89,6 +89,7 @@ const ROWS = [
     boxId: 5,
     boxCode: "EQA-C7-100",
     boxState: "READY_TO_SEND",
+    temperatureRequirement: "REFRIGERATED_2_8C",
     courier: "DHL",
     trackingNumber: "TRK-A",
     estimatedDeliveryDate: "2026-09-01 00:00:00",
@@ -374,6 +375,39 @@ describe("ProviderWorkbenchPage", () => {
     expect(manifest.samples[0].accessionNumber).toBe("BLIND-1");
     expect(manifest.samples[1].accessionNumber).toBe("SC-2");
     expect(JSON.stringify(manifest)).not.toContain("targetValue");
+    expect(manifest.state).toBe("Ready to Send");
+    expect(manifest.temperature).toBe("Refrigerated, 2–8°C");
+  });
+
+  test("cycle history names each trigger rather than printing its code", async () => {
+    renderWorkbench(PREP_CLEAR, ROWS, {
+      "/rest/eqa/cycles/7/transitions": [
+        {
+          id: 1,
+          occurredAt: "2026-09-01 08:00:00",
+          newState: "PREP_IN_PROGRESS",
+          triggerType: "MANUAL",
+          triggerEvent: "MANUAL_OVERRIDE",
+          triggeredByName: "Open ELIS",
+          reason: "Cycle created by the provider cycle wizard",
+        },
+        {
+          id: 2,
+          occurredAt: "2026-09-02 08:00:00",
+          newState: "SHIPPED",
+          triggerType: "AUTO",
+          triggerEvent: "FIRST_SHIPMENT_SENT",
+          reason: "First participant shipment dispatched",
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByText("Cycle history"));
+
+    expect(await screen.findByText("First shipment sent")).toBeInTheDocument();
+    expect(screen.getByText("Manual")).toBeInTheDocument();
+    expect(screen.queryByText("FIRST_SHIPMENT_SENT")).toBeNull();
+    expect(screen.queryByText("Manual override")).toBeNull();
   });
 
   test("dispatch posts the selected participants and reports the count", async () => {

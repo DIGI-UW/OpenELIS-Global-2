@@ -264,6 +264,20 @@ public class EQAShipmentWorkbenchIntegrationTest extends EQASpineTestBase {
     }
 
     @Test
+    public void aPackedBoxRecordsWhoPackedIt() {
+        shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-1", null, USER);
+
+        assertEquals(Integer.valueOf(USER), jdbc.queryForObject(
+                "SELECT created_by FROM clinlims.shipping_box WHERE box_id = ?", Integer.class, boxCode(ORG_A)));
+        String packer = jdbc.queryForObject(
+                "SELECT first_name || ' ' || last_name FROM clinlims.system_user WHERE id = ?", String.class,
+                Integer.valueOf(USER));
+        Map<String, Object> row = shipmentService.getShipmentRows(cycle.getId()).stream()
+                .filter(r -> Long.valueOf(ORG_A).equals(r.get("organizationId"))).findFirst().orElseThrow();
+        assertEquals(packer, row.get("boxCreatedBy"));
+    }
+
+    @Test
     public void reSavingDetailsDoesNotPackTheMaterialTwice() {
         shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "DHL", "TRK-1", null, USER);
         shipmentService.saveShipmentDetails(cycle.getId(), ORG_A, "FedEx", "TRK-2", null, USER);

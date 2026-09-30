@@ -78,7 +78,9 @@ test.describe("EQA open submissions on a partial roster", () => {
 
     // The override is on the audited timeline with its reason.
     await page.getByRole("button", { name: "Cycle history" }).click();
-    await expect(page.getByText("Manual override").last()).toBeVisible();
+    await expect(
+      page.getByText("Manual", { exact: true }).last(),
+    ).toBeVisible();
     await expect(
       page.getByText(
         `E2E ${RUN}: second lab dormant, first lab holds its panel`,

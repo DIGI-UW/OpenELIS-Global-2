@@ -220,7 +220,7 @@ const ParticipantRow = ({ row, t }) => {
           {row.mostRecentPerformance ? (
             <Tag type={PERFORMANCE_TAG[row.mostRecentPerformance] || "gray"}>
               {t(
-                `eqa.performanceStatus.${row.mostRecentPerformance.toLowerCase()}`,
+                `eqa.labperf.verdict.${row.mostRecentPerformance.toLowerCase()}`,
                 row.mostRecentPerformance,
               )}
             </Tag>
@@ -277,7 +277,7 @@ const ParticipantRow = ({ row, t }) => {
                       <TableCell>
                         {analyte.performance
                           ? t(
-                              `eqa.performanceStatus.${analyte.performance.toLowerCase()}`,
+                              `eqa.labperf.verdict.${analyte.performance.toLowerCase()}`,
                               analyte.performance,
                             )
                           : "—"}

@@ -401,7 +401,9 @@ test.describe("EQA provider cycle lifecycle", () => {
 
     await test.step("cycle history carries the manual create and system walks", async () => {
       await page.getByRole("button", { name: "Cycle history" }).click();
-      await expect(page.getByText("Manual override").first()).toBeVisible({
+      await expect(
+        page.getByText("Manual", { exact: true }).first(),
+      ).toBeVisible({
         timeout: UI_TIMEOUT,
       });
       await expect(
