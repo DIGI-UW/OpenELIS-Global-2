@@ -69,6 +69,8 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
   const unit = snapshot.unitOfMeasure || "";
   const disposed = Boolean(snapshot.disposed);
   const exhausted = remaining !== null && remaining <= 0;
+  const amountExceedsRemaining =
+    remaining !== null && Number(amount) > remaining;
 
   const statusKey = disposed
     ? "label.results.sampleStatus.disposed"
@@ -203,12 +205,19 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setAmount(e.target.value)
             }
+            invalid={amountExceedsRemaining}
+            invalidText={intl.formatMessage(
+              {
+                id: "sample.management.aliquot.error.quantityExceedsRemaining",
+              },
+              { requested: amount, remaining: `${remaining} ${unit}`.trim() },
+            )}
           />
           {unit && <span className="unifiedHistoryFootnote">{unit}</span>}
           <Button
             kind="primary"
             size="sm"
-            disabled={busy || !amount}
+            disabled={busy || !amount || amountExceedsRemaining}
             onClick={recordUsage}
             data-testid="record-usage-apply"
           >

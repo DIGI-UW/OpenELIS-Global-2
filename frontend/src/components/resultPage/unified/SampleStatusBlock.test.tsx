@@ -63,6 +63,28 @@ describe("SampleStatusBlock (R7 / D13)", () => {
     );
   });
 
+  it("an amount above the remaining volume is refused with the remaining amount", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 1, unitOfMeasure: "mL" }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("record-usage-open"));
+    fireEvent.change(screen.getByLabelText("Amount used this test"), {
+      target: { value: "5" },
+    });
+    expect(
+      screen.getByText(
+        "Requested quantity (5) exceeds remaining quantity (1 mL)",
+      ),
+    ).toBeInTheDocument();
+    fireEvent.click(screen.getByTestId("record-usage-apply"));
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
   it("Mark used up posts markUsedUp and refreshes on success", () => {
     const onChanged = vi.fn();
     postMock.mockImplementation(
