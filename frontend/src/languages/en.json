@@ -9371,7 +9371,7 @@
   "sample.selectType.first": "Select a sample type above to see available panels and tests",
   "sample.testsCount": "{count} tests available",
   "sample.types": "Samples",
-  "sample.referral.listsFailed": "The referral reasons or laboratories could not be loaded. Reload the page to refer a test.",
+  "sample.referral.listsFailed": "The referral reasons or laboratories could not be loaded. Everything you entered is kept; press Retry to refer a test.",
   "sample.tests.loadFailed": "Tests for {sampleType} could not be loaded.",
   "sample.tests.loadFailed.hint": "Everything you entered is kept. Check the connection or sign in again, then press Retry.",
   "sample.tests.loading": "Loading tests…",

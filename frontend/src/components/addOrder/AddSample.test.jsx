@@ -347,9 +347,18 @@ describe("AddSample when a request fails or is slow (OGC-1389)", () => {
   });
 
   test("failed referral lists disable the referral instead of crashing", () => {
-    utilsMock.getFromOpenElisServer.mockImplementation(
-      failing(/REFERRAL_(REASONS|ORGANIZATIONS)/),
-    );
+    let listsFail = true;
+    utilsMock.getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (/REFERRAL_(REASONS|ORGANIZATIONS)/.test(url) && listsFail) {
+        callback(undefined);
+        return;
+      }
+      if (/REFERRAL_(REASONS|ORGANIZATIONS)/.test(url)) {
+        callback([{ id: "1", value: "Test not performed" }]);
+        return;
+      }
+      answerImmediately(url, callback);
+    });
     render(<Harness initialSamples={[emptySample()]} />);
     chooseSampleType("4");
     toggleTest("18");
@@ -357,8 +366,24 @@ describe("AddSample when a request fails or is slow (OGC-1389)", () => {
     expect(document.getElementById("useReferral_0")).toBeDisabled();
     expect(
       screen.getByText(
-        "The referral reasons or laboratories could not be loaded. Reload the page to refer a test.",
+        "The referral reasons or laboratories could not be loaded. Everything you entered is kept; press Retry to refer a test.",
       ),
     ).toBeInTheDocument();
+
+    listsFail = false;
+    act(() => {
+      fireEvent.click(
+        document
+          .querySelector('[data-testid="sample-referral-lists-failed-0"]')
+          .querySelector("button"),
+      );
+    });
+
+    expect(document.getElementById("useReferral_0")).toBeEnabled();
+    expect(
+      screen.queryByText(
+        "The referral reasons or laboratories could not be loaded. Everything you entered is kept; press Retry to refer a test.",
+      ),
+    ).not.toBeInTheDocument();
   });
 });

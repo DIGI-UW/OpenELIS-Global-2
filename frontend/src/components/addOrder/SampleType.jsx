@@ -573,8 +573,7 @@ const SampleType = (props) => {
     }
   }, [selectedPanels, sampleTypeTests]);
 
-  useEffect(() => {
-    componentMounted.current = true;
+  const loadReferralLists = () => {
     getFromOpenElisServer(
       "/rest/displayList/REFERRAL_REASONS",
       displayReferralReasonsOptions,
@@ -583,6 +582,16 @@ const SampleType = (props) => {
       "/rest/displayList/REFERRAL_ORGANIZATIONS",
       displayReferralOrgOptions,
     );
+  };
+
+  const retryReferralLists = () => {
+    setReferralListsFailed(false);
+    loadReferralLists();
+  };
+
+  useEffect(() => {
+    componentMounted.current = true;
+    loadReferralLists();
     const sampleTypesEndpoint =
       domain === "E"
         ? "/rest/environmental-sample-types"
@@ -1100,14 +1109,19 @@ const SampleType = (props) => {
               onChange={handleReferralRequest}
             />
             {referralListsFailed && (
-              <InlineNotification
-                kind="warning"
-                lowContrast
-                hideCloseButton
-                title={intl.formatMessage({
-                  id: "sample.referral.listsFailed",
-                })}
-              />
+              <div data-testid={"sample-referral-lists-failed-" + index}>
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "sample.referral.listsFailed",
+                  })}
+                />
+                <Button kind="tertiary" size="sm" onClick={retryReferralLists}>
+                  <FormattedMessage id="common.retry" />
+                </Button>
+              </div>
             )}
             {requestTestReferral === true && (
               <OrderReferralRequest

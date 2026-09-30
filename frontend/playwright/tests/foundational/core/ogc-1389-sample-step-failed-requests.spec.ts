@@ -141,12 +141,21 @@ test.describe("Sample step failed requests (OGC-1389)", () => {
     await expect(page.locator("#useReferral_0")).toBeDisabled();
     await expect(
       page.getByText(
-        "The referral reasons or laboratories could not be loaded. Reload the page to refer a test.",
+        "The referral reasons or laboratories could not be loaded. Everything you entered is kept; press Retry to refer a test.",
       ),
     ).toBeVisible();
     await expect(
       page.getByText("Sample entry could not be loaded"),
     ).toHaveCount(0);
+
+    await page.unroute(/\/rest\/displayList\/REFERRAL_(REASONS|ORGANIZATIONS)/);
+    await page
+      .getByTestId("sample-referral-lists-failed-0")
+      .getByRole("button", { name: "Retry" })
+      .click();
+    await expect(page.locator("#useReferral_0")).toBeEnabled({
+      timeout: UI_TIMEOUT,
+    });
   });
 
   test("Modify Order shows the failure on the sample instead of a blank page", async ({
