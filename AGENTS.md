@@ -1855,9 +1855,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
->   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
->   `core-demo-video` run on the build stack only.
+> - The `harness-*` projects need the analyzer stack (`scripts/dev-stack up`,
+>   then `eval "$(scripts/dev-stack env)"`). `core-demo` / `core-demo-video` run
+>   on the build stack only.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
