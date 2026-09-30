@@ -12,10 +12,11 @@ import {
 } from "@carbon/react";
 import { Printer } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
-import SaveFailureNotice from "../SaveFailureNotice";
+import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import { describeUnmetRequirements } from "../saveRequirements";
+import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -207,7 +208,7 @@ const ClinicalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -227,7 +228,7 @@ const ClinicalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -258,7 +259,7 @@ const ClinicalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -268,6 +269,7 @@ const ClinicalOrderEnter = () => {
     <OrderWorkflowLayout
       title="order.step.enter"
       canProceed={canProceed}
+      canSave={canSave}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
@@ -384,6 +386,7 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           setPhoneValidation={setPhoneValidation}
           isReadOnly={isReadOnly && !isEditMode}
+          required={patientRequired && !noPatientOverride}
         />
 
         {/* Program Selection */}
@@ -392,6 +395,7 @@ const ClinicalOrderEnter = () => {
           setOrderData={setOrderData}
           samples={samples}
           isReadOnly={isReadOnly && !isEditMode}
+          domain="CLINICAL"
         />
 
         {/* Clinical Information */}
@@ -426,6 +430,7 @@ const ClinicalOrderEnter = () => {
           labNumber={localLabNumber}
           isReadOnly={isReadOnly && !isEditMode}
         />
+        <SaveRequirementsNotice requirements={saveRequirements} />
       </Stack>
     </OrderWorkflowLayout>
   );

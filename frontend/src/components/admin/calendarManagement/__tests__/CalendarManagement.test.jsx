@@ -22,7 +22,9 @@ vi.mock("../../../layout/Layout", () => ({
   }),
 }));
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  toLocalIsoDate: (await importOriginal()).toLocalIsoDate,
+  parseIsoDate: (await importOriginal()).parseIsoDate,
   getFromOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
 }));

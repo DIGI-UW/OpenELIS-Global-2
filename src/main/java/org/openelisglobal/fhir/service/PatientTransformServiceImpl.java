@@ -190,7 +190,7 @@ public class PatientTransformServiceImpl implements PatientTransformService {
             patientSearchResults.setLastName(name.getFamily());
         }
 
-        switch (fhirPatient.getGender()) {
+        switch (fhirPatient.hasGender() ? fhirPatient.getGender() : AdministrativeGender.NULL) {
         case MALE:
             patientSearchResults.setGender("M");
             break;

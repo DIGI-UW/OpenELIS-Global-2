@@ -66,7 +66,11 @@ describe("ImportIssuesPanel", () => {
   });
 
   it("localizes analyzer event labels and unknown failure fallbacks", async () => {
-    getFromOpenElisServer.mockImplementationOnce((_url, callback) => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url !== "/rest/analyzer/import-issues") {
+        callback({ status: "success", data: { count: 0, rows: [] } });
+        return;
+      }
       callback({
         status: "success",
         data: {

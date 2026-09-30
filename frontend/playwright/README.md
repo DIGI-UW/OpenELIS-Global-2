@@ -75,21 +75,18 @@ and then to the `admin` fixture account, which carries the role.
 CI workflows load fixtures via the unified loader script:
 
 - **`src/test/resources/load-test-fixtures.sh --profile=harness`** (analyzer
-  harness job) — foundational data, storage E2E fixtures, then
-  **`src/test/resources/fixtures/analyzer-harness-lane-data.sql`**
-  (isolated `HARN-*` accessions; see **`projects/analyzer-harness/LANE-IDENTIFIERS.md`**)
+  harness job) — foundational data and storage E2E fixtures. Analyzer
+  scenarios create clinical orders through the validated OpenELIS API (see
+  **`projects/analyzer-harness/LANE-IDENTIFIERS.md`** for captured file IDs).
 - **`src/test/resources/fixtures/core-demo-patient.sql`** — Core demo patient fixture loaded by `--profile=core`
 
 Analyzer rows used by harness tests are created via REST API seeding:
 
 - **`projects/analyzer-harness/seed-analyzers.sh`** — Creates
   `Cepheid GeneXpert (ASTM Mode)`, `QuantStudio 5`, `QuantStudio 7`, and
-  `FluoroCycler XT` using profile-based `defaultConfigId`, then prepares the
-  mappings and analyzer traffic required by the visible stories
-- **`projects/analyzer-harness/seed-mvp-traffic.sh`** — Prepares the final
-  assembled story and sends real mock ASTM and FILE traffic through Bridge
-  before the browser opens. The Playwright story does not create or mutate its
-  own fixtures.
+  `FluoroCycler XT` through the ordinary analyzer API. CI uses
+  `--ensure-connections`, preserving mapping and activation for the workflow
+  tests to verify in the UI. Native traffic belongs to those tests.
 
 ### Harness environment contract
 
@@ -106,22 +103,24 @@ Analyzer rows used by harness tests are created via REST API seeding:
 
 ## Demo Contract
 
-`core-demo`, `core-demo-video`, `harness-demo`, and `harness-demo-video` exist
-to prove user stories through visible UI evidence. They are not the place for
-backend or infrastructure assertions.
+`core-demo` and `harness-demo` are UI-only stories. The analyzer result
+stories use API-created clinical prerequisites and native mock traffic, so they
+run in `harness-foundational`; they still perform setup review and result
+acceptance through the visible UI. `harness-demo-video` records the same
+registered UI setup and integrated result stories with their original assertions.
 
-The ordinary CI harness run covers the M1-M2 catalog and mapping stories through
-`harness-foundational`, then the M3 guided setup and M4 result story through
-`harness-demo`. The final M4 story can also run alone through the
-`pw:test:harness-mvp` command, then unchanged as `harness-demo-video` after its
-screenshots, trace, console output, and runtime state have been reviewed.
+The ordinary CI harness run covers the M1-M2 catalog, mapping and M4 integrated
+result stories through `harness-foundational`, then M3 guided setup through
+`harness-demo`. The M4 story can run alone through `pw:test:harness-mvp`.
+Record those same tests with `harness-demo-video` after checking the screenshots,
+trace, console output and runtime state.
 
 Allowed in demo stories:
 
 - User-triggered UI actions
 - Visible page transitions and durable DOM evidence
 - Presentation helpers such as `videoPause()`, `showTitleCard()`, and `showStepCard()`
-- Deterministic fixture loading before the user story begins
+- Deterministic fixture loading by the runner before the UI story begins
 
 Banned in demo specs and demo-facing helpers:
 
@@ -137,9 +136,10 @@ The guard follows runtime local imports from harness demo specs, so moving a
 prohibited operation into a helper does not make the story UI-only. Runner-level
 diagnostics remain separate from demo-facing behavior helpers.
 
-If a behavior needs backend consistency checks, config persistence checks, or
-bridge/file-watcher proof, move it to backend integration tests or CI health
-checks rather than demo specs.
+When a story requires clinical orders created through OE2 APIs or external
+instrument traffic, place the integrated scenario in `harness-foundational`.
+Keep the ordinary UI steps and independent clinical readback in that scenario;
+never use its prerequisite helper to choose or repair analyzer mappings.
 
 ## Bucket Taxonomy
 
@@ -323,7 +323,8 @@ recording mechanics:
    stale loading state, scroll position, and readable timing.
 6. Package WebM as H.264/yuv420p/faststart MP4 and record the app SHA,
    deployment ID, checklist revision, and artifact checksums in the evidence
-   manifest or README.
+   manifest or README. The `tools/code-qa/skills/evidence-bundle` skill does
+   this packaging and drafts the PR comment; it never commits the media.
 7. Compare key screenshots with the authoritative product mock/spec. Record
    intentional OpenELIS-shell or Carbon differences; do not treat prototype
    routes, components, or navigation as implementation contracts.

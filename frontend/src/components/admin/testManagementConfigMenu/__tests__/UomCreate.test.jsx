@@ -157,6 +157,51 @@ describe("UomCreate", () => {
     );
   });
 
+  // OGC-1234: a refusal arrives as an object carrying its HTTP status, not as
+  // a falsy value; it used to be reported as a created unit.
+  it("keeps the typed name when the server refuses the create (400)", async () => {
+    renderScreen();
+    expect(await screen.findByText("mg")).toBeInTheDocument();
+
+    await userEvent.type(field(), "mL");
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) =>
+        callback({ error: "validation", fieldErrors: [], status: 400 }),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    expect(field()).toHaveValue("mL");
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "error" }),
+    );
+    expect(addNotification).not.toHaveBeenCalledWith(
+      expect.objectContaining({ kind: "success" }),
+    );
+  });
+
+  it("names a unit another admin created meanwhile (409) as a duplicate", async () => {
+    renderScreen();
+    expect(await screen.findByText("mg")).toBeInTheDocument();
+
+    await userEvent.type(field(), "mL");
+    postToOpenElisServerJsonResponse.mockImplementation(
+      (url, payload, callback) => callback({ error: "duplicate", status: 409 }),
+    );
+
+    await userEvent.click(screen.getByRole("button", { name: "Next" }));
+    await userEvent.click(screen.getByRole("button", { name: "Accept" }));
+
+    expect(field()).toHaveValue("mL");
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["uom.notification.duplicate"],
+      }),
+    );
+  });
+
   it("goes back to the unit list without leaving the app", async () => {
     renderScreen();
     expect(await screen.findByText("mg")).toBeInTheDocument();

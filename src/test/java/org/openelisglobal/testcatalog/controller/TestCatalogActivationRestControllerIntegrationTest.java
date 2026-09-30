@@ -9,6 +9,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -259,6 +260,9 @@ public class TestCatalogActivationRestControllerIntegrationTest extends BaseWebC
         assertTrue("the success body must still carry the coverage report", result.male != null);
 
         Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        // OGC-1376: the Basic Info editor adopts this token, so its next save is not
+        // refused as stale against the activation it just made.
+        assertEquals(StaleSaveGuard.token(reloaded.getLastupdated()), result.lastupdated);
         assertTrue("the reported flags must match what was persisted", reloaded.isActive());
         assertTrue(Boolean.TRUE.equals(reloaded.getOrderable()));
     }

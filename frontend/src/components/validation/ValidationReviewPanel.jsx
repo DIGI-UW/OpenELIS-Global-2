@@ -36,6 +36,7 @@ import {
 import "../resultPage/unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import { triageRows } from "./validationTriage";
+import { displayRange } from "../common/rangeNotApplied";
 import {
   NOTE_CONTEXT_MODIFICATION,
   NOTE_CONTEXT_VALIDATION,
@@ -273,13 +274,18 @@ const ValidationReviewPanel = ({
             <span className="cds--label" style={LABEL_STYLE}>
               <FormattedMessage id="label.validation.review.result" />
             </span>
-            <strong>{displayResult(row)}</strong>
+            <strong
+              style={{ whiteSpace: "nowrap" }}
+              data-testid="review-result-value"
+            >
+              {displayResult(row)}
+            </strong>
             {unitsOnly(row.units) && <span> {unitsOnly(row.units)}</span>}{" "}
             <FlagChip flag={flag} />
           </div>
           <Field
             labelKey="label.validation.review.normalRange"
-            value={row.normalRange || notRecorded}
+            value={displayRange(intl, row) || notRecorded}
             testId="review-normal-range"
           />
           <Field
@@ -297,6 +303,17 @@ const ValidationReviewPanel = ({
             value={row.analyzerName || notRecorded}
             testId="review-analyzer"
           />
+          {/* Where the result was produced is part of reviewing it. */}
+          {row.referredOut && (
+            <div data-testid="review-referred-out">
+              <span className="cds--label" style={LABEL_STYLE}>
+                <FormattedMessage id="label.validation.review.performedAt" />
+              </span>
+              <Tag size="sm" type="cyan">
+                <FormattedMessage id="label.results.referredOut" />
+              </Tag>
+            </div>
+          )}
           <Field
             labelKey="label.validation.review.enteredBy"
             value={row.enteredBy || notRecorded}

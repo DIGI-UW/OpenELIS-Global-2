@@ -6,11 +6,17 @@ import static org.springframework.security.test.web.servlet.request.SecurityMock
 import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
 import org.openelisglobal.program.controller.pathology.PathologyController;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
@@ -19,11 +25,13 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpStatus;
 import org.springframework.mock.web.MockHttpServletResponse;
+import org.springframework.mock.web.MockHttpSession;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
@@ -217,5 +225,51 @@ public class PathologyControllerCountsTest extends BaseWebContextSensitiveTest {
     private void cleanup() {
         jdbcTemplate.update("DELETE FROM clinlims.pathology_sample WHERE id BETWEEN ? AND ?", FIRST_SEEDED_ID,
                 FIRST_SEEDED_ID + PathologyStatus.values().length - 1);
+    }
+
+    /**
+     * The list comes one server page at a time: the search caches every matching
+     * case in the session in pages of paging.results.pageSize, and {@code ?page=k}
+     * re-slices that cache, so walking the pages covers each case exactly once.
+     */
+    @Test
+    public void dashboardServesTheMatchingCasesOnePageAtATime() throws Exception {
+        PagingProperties pagingProperties = webApplicationContext.getBean(PagingProperties.class);
+        Integer pageSizeBefore = pagingProperties.getResultsPageSize();
+        pagingProperties.setResultsPageSize(4);
+        try {
+            MockHttpSession session = new MockHttpSession();
+            String allStatuses = Arrays.stream(PathologyStatus.values()).map(Enum::name)
+                    .collect(Collectors.joining(","));
+            JsonNode firstPage = dashboardPage(session,
+                    get("/rest/pathology/dashboard").param("statuses", allStatuses));
+            int total = firstPage.get("totalItems").asInt();
+            assertEquals("the fixture's cases plus one seeded per stage",
+                    GROSSING_CASES_IN_THE_FIXTURE + PathologyStatus.values().length, total);
+            int expectedPages = (total + 3) / 4;
+            assertEquals("1", firstPage.get("paging").get("currentPage").asText());
+            assertEquals(String.valueOf(expectedPages), firstPage.get("paging").get("totalPages").asText());
+            assertEquals(4, firstPage.get("items").size());
+
+            Set<Integer> seen = new HashSet<>();
+            firstPage.get("items").forEach(item -> seen.add(item.get("pathologySampleId").asInt()));
+            for (int page = 2; page <= expectedPages; page++) {
+                JsonNode nextPage = dashboardPage(session,
+                        get("/rest/pathology/dashboard").param("page", String.valueOf(page)));
+                assertEquals(String.valueOf(page), nextPage.get("paging").get("currentPage").asText());
+                assertEquals(page < expectedPages ? 4 : total - 4 * (expectedPages - 1), nextPage.get("items").size());
+                nextPage.get("items").forEach(item -> seen.add(item.get("pathologySampleId").asInt()));
+            }
+            assertEquals("every case appears on exactly one page", total, seen.size());
+        } finally {
+            pagingProperties.setResultsPageSize(pageSizeBefore);
+        }
+    }
+
+    private JsonNode dashboardPage(MockHttpSession session, MockHttpServletRequestBuilder request) throws Exception {
+        MockHttpServletResponse response = mockMvc.perform(request.session(session).with(user("technician1")))
+                .andReturn().getResponse();
+        assertEquals(200, response.getStatus());
+        return objectMapper.readTree(response.getContentAsString());
     }
 }

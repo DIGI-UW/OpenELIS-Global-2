@@ -1,4 +1,5 @@
 import { expect, type Download, type Page } from "@playwright/test";
+import { tickCarbonMultiSelectOption } from "./carbon-select";
 import { LONG_TIMEOUT } from "./timeouts";
 
 type WhonetExportFilters = {
@@ -84,25 +85,7 @@ export const selectWhonetFilterOption = async (
   optionName: string,
 ) => {
   const filter = page.getByRole("combobox", { name: filterName });
-  await filter.click();
-  await expect(filter).toHaveAttribute("aria-expanded", "true");
-  const listboxId = await filter.getAttribute("aria-controls");
-  if (!listboxId) {
-    throw new Error(`WHONET filter ${filterName} has no controlled listbox`);
-  }
-  const listbox = page.locator(`[id="${listboxId}"]`);
-  const supportsTextEntry = await filter.evaluate((element) =>
-    element.matches("input, textarea, [contenteditable='true']"),
-  );
-  if (supportsTextEntry) {
-    await filter.fill(optionName);
-  }
-  const option = listbox.getByRole("option", {
-    name: optionName,
-    exact: true,
-  });
-  await expect(option).toBeVisible();
-  await option.click();
+  await tickCarbonMultiSelectOption(filter, optionName);
   await filter.press("Escape");
   await expect(filter).toHaveAttribute("aria-expanded", "false");
 };

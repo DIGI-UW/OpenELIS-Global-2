@@ -7,7 +7,6 @@ import PolymorphicResultCell, {
   blocksSaveOnPrecision,
   enteredDecimalPlaces,
   exceedsConfiguredPrecision,
-  precisionStep,
   worklistRowKey,
 } from "./PolymorphicResultCell";
 
@@ -32,7 +31,7 @@ const baseRow = {
 };
 
 describe("PolymorphicResultCell", () => {
-  it("numeric rows render a number input", () => {
+  it("numeric rows render a text input so scientific notation can be typed", () => {
     const { container } = render(
       <PolymorphicResultCell
         row={{ ...baseRow, resultType: "N", resultValue: "42" }}
@@ -40,9 +39,23 @@ describe("PolymorphicResultCell", () => {
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
-    expect(input).not.toBeNull();
-    expect(input).toHaveValue(42);
+    const input = container.querySelector("input");
+    expect(input).toHaveAttribute("type", "text");
+    expect(input).toHaveValue("42");
+  });
+
+  it("numeric rows report scientific notation as typed", () => {
+    const onValueChange = vi.fn();
+    const { container } = render(
+      <PolymorphicResultCell
+        row={{ ...baseRow, resultType: "N" }}
+        editable
+        onValueChange={onValueChange}
+      />,
+    );
+    const input = container.querySelector("input") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "1.5×10⁵" } });
+    expect(onValueChange).toHaveBeenCalledWith("resultValue", "1.5×10⁵");
   });
 
   it("dictionary rows render a select with readable options", () => {
@@ -120,7 +133,6 @@ describe("titer rows", () => {
     expect(input).toHaveAttribute("type", "text");
     expect(input).toHaveValue("1:10");
     expect(input).toHaveAttribute("placeholder", "e.g. 1:10");
-    expect(container.querySelector('input[type="number"]')).toBeNull();
   });
 
   it("report what was typed as the result value", () => {
@@ -228,11 +240,16 @@ describe("configured precision", () => {
     expect(exceedsConfiguredPrecision("not a number", 0)).toBe(false);
   });
 
-  it("offers a step matching the configured precision", () => {
-    expect(precisionStep(0)).toBe("1");
-    expect(precisionStep(1)).toBe("0.1");
-    expect(precisionStep(2)).toBe("0.01");
-    expect(precisionStep(undefined)).toBe("any");
+  it("judges scientific notation by the mantissa's places", () => {
+    expect(enteredDecimalPlaces("1.5e5")).toBe(1);
+    expect(enteredDecimalPlaces("1.5×10⁵")).toBe(1);
+    expect(enteredDecimalPlaces("3e2")).toBe(0);
+    expect(exceedsConfiguredPrecision("1.5e1", 1)).toBe(false);
+    expect(exceedsConfiguredPrecision("1.5e-7", 2)).toBe(false);
+    expect(exceedsConfiguredPrecision("1.55e1", 1)).toBe(true);
+    expect(exceedsConfiguredPrecision("1.234e5", 2)).toBe(true);
+    expect(exceedsConfiguredPrecision("1.5 x 10^5", 0)).toBe(false);
+    expect(exceedsConfiguredPrecision("3²", 2)).toBe(false);
   });
 
   it("marks the entry field invalid rather than accepting the divergence", () => {
@@ -250,8 +267,7 @@ describe("configured precision", () => {
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
-    expect(input).toHaveAttribute("step", "1");
+    const input = container.querySelector('input[type="text"]');
     expect(input).toHaveAttribute("data-invalid");
   });
 
@@ -269,7 +285,7 @@ describe("configured precision", () => {
         onValueChange={() => {}}
       />,
     );
-    const input = container.querySelector('input[type="number"]');
+    const input = container.querySelector('input[type="text"]');
     expect(input).not.toHaveAttribute("data-invalid");
   });
 });

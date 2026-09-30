@@ -15,6 +15,28 @@ public interface TypeOfSampleService extends BaseObjectService<TypeOfSample, Str
 
     List<TypeOfSample> getAllTypeOfSamples();
 
+    /**
+     * Which field of {@code candidate} collides with another sample type of the
+     * same domain (trimmed, case-insensitive, inactive types included; the
+     * candidate's own row is ignored): {@code "name"}, {@code "abbreviation"}, or
+     * null.
+     */
+    String conflictingField(TypeOfSample candidate);
+
+    /**
+     * A local abbreviation for a new sample type named {@code name} that no other
+     * sample type of {@code domain} uses: the first ten characters of the name, or,
+     * when taken, a shorter stem with a number ("QADedupe S", then "QADedupe2").
+     */
+    String uniqueLocalAbbreviation(String name, String domain);
+
+    /**
+     * True when any sample type, of any domain and active or not, already has this
+     * name (trimmed, case-insensitive). A new sample type's workplan, results and
+     * validation modules are named after it, so a name can be created only once.
+     */
+    boolean nameInUse(String name);
+
     List<TypeOfSample> getAllTypeOfSamplesSortOrdered();
 
     List<TypeOfSample> getTypesForDomain(TypeOfSampleDAO.SampleDomain domain);

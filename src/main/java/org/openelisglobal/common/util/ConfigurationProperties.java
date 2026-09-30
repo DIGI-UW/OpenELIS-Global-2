@@ -202,6 +202,8 @@ public abstract class ConfigurationProperties {
         // new patient
         PATIENT_NATIONAL_ID_REQUIRED("National ID required", "text"), // True if patient national id is required for new
                                                                       // patient
+        PATIENT_SEX_REQUIRED("Patient sex required", "text"), // True if patient sex is required for new patient
+        PATIENT_AGE_REQUIRED("Patient age required", "text"), // True if patient age/DOB is required for new patient
         QA_SAMPLE_ID_REQUIRED("sample id required", "text"), // True if sample id required from referring lab
 
         MAX_ORDER_LABEL_PRINTED("numMaxOrderLabels", "text"), // Max order labels that can be printed
@@ -329,6 +331,8 @@ public abstract class ConfigurationProperties {
         ALLOW_BULK_RELEASE_CLEAR("allowBulkReleaseClear", "text"),
         // OGC-1030 (Validation v4 V4, FR-D3): "Send for retest" must carry a note.
         RETEST_NOTE_REQUIRED("retestNoteRequired", "text"),
+        // OGC-1147: does an open QC failure block release, or only warn
+        QC_FAIL_BLOCKS_VALIDATION("qcFailBlocksValidation", "text"),
 
         // FR-2.3: per-deployment switches for the optional pathology bench
         // stages. The mandatory stages (ACCESSIONED, GROSSING, READY_PATHOLOGIST,

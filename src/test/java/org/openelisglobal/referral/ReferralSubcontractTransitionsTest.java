@@ -114,7 +114,6 @@ public class ReferralSubcontractTransitionsTest extends BaseWebContextSensitiveT
     }
 
     @Test
-    @Transactional
     public void illegalTransition_fromDraftDirectlyToReceived_throws() {
         assertThrows(IllegalStateException.class,
                 () -> referralService.markReferralReceived("1", "42", "operator skipped dispatch"));
@@ -126,8 +125,8 @@ public class ReferralSubcontractTransitionsTest extends BaseWebContextSensitiveT
     // No @Transactional: markReferral* use Propagation.REQUIRES_NEW (to isolate
     // the transition guard's IllegalStateException from auto-trigger callers'
     // transactions). A test-tx would suspend on every inner call and the inner
-    // would read pre-outer DB state. The @Before fixture reload handles cleanup
-    // between tests.
+    // would block on the outer transaction's fixture locks. These transition
+    // checks require committed initial state, including the rejected/no-op cases.
     @Test
     public void fullLifecycle_writesOneHistoryRowPerTransition() {
         Timestamp handoff = Timestamp.valueOf("2026-05-15 10:30:00");
@@ -166,7 +165,6 @@ public class ReferralSubcontractTransitionsTest extends BaseWebContextSensitiveT
     }
 
     @Test
-    @Transactional
     public void noSubcontract_transitionIsNoop_noHistoryWritten() {
         // Referral id=2 has no subcontract row (pre-S-14 historical case).
         long before = statusHistoryDAO.findByReferralIdOrderedByChangedAt("2").size();

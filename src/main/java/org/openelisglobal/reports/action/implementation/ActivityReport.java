@@ -122,7 +122,7 @@ public abstract class ActivityReport extends Report implements IReportCreator {
         Patient patient = sampleHumanService.getPatientForSample(sample);
         Person person = patient.getPerson();
         item.setResultValue(resultService.getResultValueForDisplay(result, "\n", true, true));
-        item.setSampleStatus(sampleService.getSampleStatusForDisplay(sample));
+        item.setSampleStatus(activityStatus(sampleService.getSampleStatusForDisplay(sample), result));
         item.setTechnician(resultService.getSignature(result));
 
         // item.setAccessionNumber(sampleService.getAccessionNumber(sample).substring(PREFIX_LENGTH));
@@ -177,6 +177,19 @@ public abstract class ActivityReport extends Report implements IReportCreator {
         }
 
         return item;
+    }
+
+    /**
+     * A test sent to a reference laboratory still appears here, because the
+     * activity listing is a record of what happened to the sample, but its status
+     * says so rather than reading as work this laboratory finished. The column is
+     * narrow, so this replaces the sample status instead of qualifying it.
+     */
+    private String activityStatus(String sampleStatus, Result result) {
+        if (result.getAnalysis() == null || !result.getAnalysis().isReferredOut()) {
+            return sampleStatus;
+        }
+        return MessageUtil.getMessage("report.activity.referredOut");
     }
 
     @Override

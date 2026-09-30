@@ -60,24 +60,52 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
             + "    AND ct.threshold_type = 'BORDERLINE' " + "    AND ct.is_active = TRUE AND ct.archived = FALSE "
             + "  LIMIT 1" + ") borderline_ct ON TRUE ";
 
-    private static final String IS_NUMERIC = "r.value ~ '^-?[0-9]+(\\.[0-9]+)?$'";
+    /**
+     * A numeric result is stored in the notation the technologist wrote it in.
+     * Postgres casts e-notation natively but not "1.5 x 10^5" or
+     * "1.5\u00d710\u2075", so those written forms are rewritten before the cast,
+     * mirroring StringUtil.normalizeScientificNotation. Anything that is not a
+     * power of ten is left alone, so a stray superscript is never read as another
+     * digit.
+     */
+    private static final String SUPERSCRIPT_CHARS = "\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079\u207a\u207b";
+
+    private static final String WRITTEN_POWER_OF_TEN = "^\\s*(?:[+-]?(?:[0-9]+\\.?[0-9]*|\\.[0-9]+)\\s*[xX\u00d7*]\\s*)?"
+            + "[+-]?10\\s*(?:\\^\\s*[+-]?[0-9]+|[\u207a\u207b]?[\u2070\u00b9\u00b2\u00b3\u2074\u2075\u2076\u2077\u2078\u2079]+)\\s*$";
+
+    private static final String NUMERIC_VALUE = "(CASE WHEN r.value ~ '" + WRITTEN_POWER_OF_TEN + "' THEN "
+            + "translate(regexp_replace(regexp_replace(regexp_replace(btrim(r.value), "
+            + "'\\s*[xX\u00d7*]\\s*10\\s*\\^?\\s*', 'e'), " + "'^\\+?10([" + SUPERSCRIPT_CHARS + "])', '1e\\1'), "
+            + "'^-10([" + SUPERSCRIPT_CHARS + "])', '-1e\\1'), " + "'" + SUPERSCRIPT_CHARS
+            + "', '0123456789+-') ELSE r.value END)";
+
+    private static final String NUMERIC_CAST = "CAST(" + NUMERIC_VALUE + " AS numeric)";
+
+    private static final String IS_NUMERIC = NUMERIC_VALUE + " ~ '^-?[0-9]+(\\.[0-9]+)?([eE][+-]?[0-9]+)?$'";
 
     // Passes primary threshold (RANGE/MIN/MAX/EXACT)
-    private static final String PRIMARY_PASSES = "("
-            + "  (primary_ct.ct_type = 'RANGE'   AND CAST(r.value AS numeric) BETWEEN primary_ct.ct_min AND primary_ct.ct_max) OR "
-            + "  (primary_ct.ct_type = 'MINIMUM' AND CAST(r.value AS numeric) >= primary_ct.ct_min) OR "
-            + "  (primary_ct.ct_type = 'MAXIMUM' AND CAST(r.value AS numeric) <= primary_ct.ct_max) OR "
-            + "  (primary_ct.ct_type = 'EXACT'   AND CAST(r.value AS numeric) = primary_ct.ct_target)" + ")";
+    private static final String PRIMARY_PASSES = "(" + "  (primary_ct.ct_type = 'RANGE'   AND " + NUMERIC_CAST
+            + " BETWEEN primary_ct.ct_min AND primary_ct.ct_max) OR " + "  (primary_ct.ct_type = 'MINIMUM' AND "
+            + NUMERIC_CAST + " >= primary_ct.ct_min) OR " + "  (primary_ct.ct_type = 'MAXIMUM' AND " + NUMERIC_CAST
+            + " <= primary_ct.ct_max) OR " + "  (primary_ct.ct_type = 'EXACT'   AND " + NUMERIC_CAST
+            + " = primary_ct.ct_target)" + ")";
 
     // Has an applicable primary threshold
     private static final String HAS_PRIMARY = "primary_ct.ct_type IS NOT NULL";
 
     // Within the BORDERLINE advisory zone (value outside primary but inside
     // borderline bounds)
-    private static final String IN_BORDERLINE = "borderline_ct.bl_min IS NOT NULL "
-            + "AND CAST(r.value AS numeric) BETWEEN borderline_ct.bl_min AND borderline_ct.bl_max";
+    private static final String IN_BORDERLINE = "borderline_ct.bl_min IS NOT NULL " + "AND " + NUMERIC_CAST
+            + " BETWEEN borderline_ct.bl_min AND borderline_ct.bl_max";
 
     private static final String IS_PASSING = IS_NUMERIC + " AND " + HAS_PRIMARY + " AND " + PRIMARY_PASSES;
+
+    // Judged against a threshold: the compliance rate's denominator. A result no
+    // threshold applies to is neither compliant nor non-compliant, as in
+    // ComplianceEvaluationServiceImpl, so it does not lower the rate (OGC-1192).
+    private static final String IS_EVALUATED = IS_NUMERIC + " AND " + HAS_PRIMARY;
+
+    private static final String EVALUATED_CNT = "SUM(CASE WHEN " + IS_EVALUATED + " THEN 1 ELSE 0 END)";
 
     // FAIL: outside primary AND outside borderline advisory zone (or no borderline
     // defined)
@@ -94,17 +122,31 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
     @PersistenceContext
     private EntityManager em;
 
-    // Core FROM + JOIN block shared by all queries.
+    private static final String SITE_JOIN = "JOIN clinlims.observation_history oh_site "
+            + "  ON oh_site.sample_id = s.id " + "  AND oh_site.observation_history_type_id = "
+            + "    (SELECT id FROM clinlims.observation_history_type WHERE type_name = '" + ENV_SITE_TYPE + "') "
+            + "JOIN clinlims.vector_sampling_site vss ON CAST(vss.id AS text) = oh_site.value ";
+
+    // Core FROM + JOIN block shared by all result queries.
     // result → analysis → test → sample_item → sample → site (via obs_history)
     // THRESHOLD_JOIN resolves compliance_threshold for each (result, sample) pair.
     private String coreFrom() {
         return "FROM clinlims.result r " + "JOIN clinlims.analysis a ON r.analysis_id = a.id AND r.is_reportable = 'Y' "
                 + "JOIN clinlims.test t ON a.test_id = t.id " + "JOIN clinlims.sample_item si ON a.sampitem_id = si.id "
-                + "JOIN clinlims.sample s ON si.samp_id = s.id " + "JOIN clinlims.observation_history oh_site "
-                + "  ON oh_site.sample_id = s.id " + "  AND oh_site.observation_history_type_id = "
-                + "    (SELECT id FROM clinlims.observation_history_type WHERE type_name = '" + ENV_SITE_TYPE + "') "
-                + "JOIN clinlims.vector_sampling_site vss ON CAST(vss.id AS text) = oh_site.value " + THRESHOLD_JOIN;
+                + "JOIN clinlims.sample s ON si.samp_id = s.id " + SITE_JOIN + THRESHOLD_JOIN;
     }
+
+    /**
+     * Orders are counted from the samples themselves, not from their result rows,
+     * so an order counts once however many results it has, and an order with no
+     * result yet still counts (OGC-1192).
+     */
+    private String ordersFrom() {
+        return "FROM clinlims.sample s JOIN clinlims.sample_item si ON si.samp_id = s.id " + SITE_JOIN;
+    }
+
+    private static final String ORDERS_WHERE = "WHERE CAST(si.collection_date AS date) BETWEEN :start AND :end "
+            + "AND s.domain = 'E' ";
 
     private void applyFilters(StringBuilder sql, List<String> siteIds, String standardId) {
         if (siteIds != null && !siteIds.isEmpty()) {
@@ -139,16 +181,18 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
         trend.setTotalOrders(dto.getTotalOrders() - prior.getTotalOrders());
         trend.setTotalExceedances(dto.getTotalExceedances() - prior.getTotalExceedances());
         trend.setSitesMonitored(dto.getSitesMonitored() - prior.getSitesMonitored());
-        trend.setComplianceRate(BigDecimal.valueOf(dto.getComplianceRate() - prior.getComplianceRate())
-                .setScale(1, RoundingMode.HALF_UP).doubleValue());
+        if (dto.getComplianceRate() != null && prior.getComplianceRate() != null) {
+            trend.setComplianceRate(BigDecimal.valueOf(dto.getComplianceRate() - prior.getComplianceRate())
+                    .setScale(1, RoundingMode.HALF_UP).doubleValue());
+        }
         dto.setTrend(trend);
         return dto;
     }
 
     private DashboardSummaryDTO getSummaryRaw(List<String> siteIds, String standardId, LocalDate start, LocalDate end) {
-        StringBuilder sql = new StringBuilder("SELECT COUNT(r.id) AS total_cnt, " + "SUM(CASE WHEN " + IS_PASSING
-                + " THEN 1 ELSE 0 END) AS passing_cnt, " + "SUM(CASE WHEN (" + IS_FAILING + ") OR (" + IS_MARGINAL
-                + ") THEN 1 ELSE 0 END) AS exceedance_cnt, " + "COUNT(DISTINCT vss.id) AS site_cnt ");
+        StringBuilder sql = new StringBuilder("SELECT " + EVALUATED_CNT + " AS evaluated_cnt, " + "SUM(CASE WHEN "
+                + IS_PASSING + " THEN 1 ELSE 0 END) AS passing_cnt, " + "SUM(CASE WHEN (" + IS_FAILING + ") OR ("
+                + IS_MARGINAL + ") THEN 1 ELSE 0 END) AS exceedance_cnt ");
         sql.append(coreFrom());
         sql.append("WHERE CAST(si.collection_date AS date) BETWEEN :start AND :end AND s.domain = 'E' ");
         applyFilters(sql, siteIds, standardId);
@@ -157,15 +201,23 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
         setParams(q, siteIds, standardId, start, end);
 
         Object[] row = (Object[]) q.getSingleResult();
-        long total = row[0] == null ? 0L : ((Number) row[0]).longValue();
+        long evaluated = row[0] == null ? 0L : ((Number) row[0]).longValue();
         long passing = row[1] == null ? 0L : ((Number) row[1]).longValue();
 
+        StringBuilder ordersSql = new StringBuilder(
+                "SELECT COUNT(DISTINCT s.id) AS order_cnt, COUNT(DISTINCT vss.id) AS site_cnt ");
+        ordersSql.append(ordersFrom()).append(ORDERS_WHERE);
+        applyFilters(ordersSql, siteIds, standardId);
+        Query oq = em.createNativeQuery(ordersSql.toString());
+        setParams(oq, siteIds, standardId, start, end);
+        Object[] orders = (Object[]) oq.getSingleResult();
+
         DashboardSummaryDTO dto = new DashboardSummaryDTO();
-        dto.setTotalOrders((int) total);
+        dto.setTotalOrders(orders[0] == null ? 0 : ((Number) orders[0]).intValue());
         dto.setTotalExceedances(row[2] == null ? 0 : ((Number) row[2]).intValue());
-        dto.setSitesMonitored(row[3] == null ? 0 : ((Number) row[3]).intValue());
-        dto.setComplianceRate(total == 0 ? 0.0
-                : BigDecimal.valueOf(passing * 100.0 / total).setScale(1, RoundingMode.HALF_UP).doubleValue());
+        dto.setSitesMonitored(orders[1] == null ? 0 : ((Number) orders[1]).intValue());
+        dto.setComplianceRate(evaluated == 0 ? null
+                : BigDecimal.valueOf(passing * 100.0 / evaluated).setScale(1, RoundingMode.HALF_UP).doubleValue());
         return dto;
     }
 
@@ -176,7 +228,7 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
                 "SELECT TO_CHAR(CAST(si.collection_date AS date), 'YYYY-MM-DD') AS coll_date, "
                         + "CAST(vss.id AS text) AS site_id, vss.name AS site_name, vss.code AS site_code, "
                         + "COUNT(r.id) AS total_cnt, " + "SUM(CASE WHEN " + IS_PASSING
-                        + " THEN 1 ELSE 0 END) AS passing_cnt ");
+                        + " THEN 1 ELSE 0 END) AS passing_cnt, " + EVALUATED_CNT + " AS evaluated_cnt ");
         sql.append(coreFrom());
         sql.append("WHERE CAST(si.collection_date AS date) BETWEEN :start AND :end AND s.domain = 'E' ");
         applyFilters(sql, siteIds, standardId);
@@ -196,6 +248,10 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
             String scode = (String) r[3];
             long total = ((Number) r[4]).longValue();
             long passing = ((Number) r[5]).longValue();
+            long evaluated = ((Number) r[6]).longValue();
+            if (evaluated == 0) {
+                continue;
+            }
             siteMap.computeIfAbsent(sid, id -> {
                 SiteSeriesDTO s = new SiteSeriesDTO();
                 s.setSiteId(id);
@@ -207,9 +263,9 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
             MonthDataPointDTO pt = new MonthDataPointDTO();
             pt.setMonth(date);
             pt.setTotalResults((int) total);
-            pt.setLowData(total < LOW_DATA_THRESHOLD);
-            pt.setComplianceRate(total == 0 ? 0.0
-                    : BigDecimal.valueOf(passing * 100.0 / total).setScale(1, RoundingMode.HALF_UP).doubleValue());
+            pt.setLowData(evaluated < LOW_DATA_THRESHOLD);
+            pt.setComplianceRate(
+                    BigDecimal.valueOf(passing * 100.0 / evaluated).setScale(1, RoundingMode.HALF_UP).doubleValue());
             siteMap.get(sid).getDataPoints().add(pt);
         }
 
@@ -233,11 +289,11 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
 
         StringBuilder sql = new StringBuilder(
                 "SELECT TO_CHAR(CAST(si.collection_date AS date), 'YYYY-MM-DD') AS coll_date, "
-                        + "t.name AS param_name, " + "AVG(CASE WHEN " + IS_NUMERIC
-                        + " THEN CAST(r.value AS numeric) END) AS avg_val, " + "MAX(CASE WHEN " + IS_NUMERIC
-                        + " THEN CAST(r.value AS numeric) END) AS max_val, " + "SUM(CASE WHEN " + IS_FAILING
-                        + " THEN 1 ELSE 0 END) AS exceedances, " + "MIN(primary_ct.ct_max) AS threshold_max, "
-                        + "MIN(primary_ct.ct_min) AS threshold_min, " + "MIN(primary_ct.ct_type) AS threshold_type ");
+                        + "t.name AS param_name, " + "AVG(CASE WHEN " + IS_NUMERIC + " THEN " + NUMERIC_CAST
+                        + " END) AS avg_val, " + "MAX(CASE WHEN " + IS_NUMERIC + " THEN " + NUMERIC_CAST
+                        + " END) AS max_val, " + "SUM(CASE WHEN " + IS_FAILING + " THEN 1 ELSE 0 END) AS exceedances, "
+                        + "MIN(primary_ct.ct_max) AS threshold_max, " + "MIN(primary_ct.ct_min) AS threshold_min, "
+                        + "MIN(primary_ct.ct_type) AS threshold_type ");
         sql.append(coreFrom());
         sql.append("WHERE oh_site.value = :siteId "
                 + "AND CAST(si.collection_date AS date) BETWEEN :start AND :end AND s.domain = 'E' ");
@@ -295,17 +351,18 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
     @Override
     @Transactional(readOnly = true)
     public List<SiteComparisonDTO> getSiteComparison(String standardId, LocalDate start, LocalDate end) {
-        StringBuilder inner = new StringBuilder(
-                "SELECT CAST(vss.id AS text) AS site_id, vss.name AS site_name, COUNT(r.id) AS total_cnt, "
-                        + "SUM(CASE WHEN " + IS_PASSING + " THEN 1 ELSE 0 END) AS passing_cnt, " + "SUM(CASE WHEN ("
-                        + IS_FAILING + ") OR (" + IS_MARGINAL + ") THEN 1 ELSE 0 END) AS failing_cnt ");
+        StringBuilder inner = new StringBuilder("SELECT CAST(vss.id AS text) AS site_id, vss.name AS site_name, "
+                + EVALUATED_CNT + " AS evaluated_cnt, " + "SUM(CASE WHEN " + IS_PASSING
+                + " THEN 1 ELSE 0 END) AS passing_cnt, " + "SUM(CASE WHEN (" + IS_FAILING + ") OR (" + IS_MARGINAL
+                + ") THEN 1 ELSE 0 END) AS failing_cnt ");
         inner.append(coreFrom());
         inner.append("WHERE CAST(si.collection_date AS date) BETWEEN :start AND :end AND s.domain = 'E' ");
         applyFilters(inner, null, standardId);
         inner.append("GROUP BY vss.id, vss.name");
 
-        StringBuilder sql = new StringBuilder("SELECT site_id, site_name, total_cnt, passing_cnt, failing_cnt FROM (")
-                .append(inner).append(") subq ORDER BY passing_cnt * 100.0 / NULLIF(total_cnt, 0) ASC");
+        StringBuilder sql = new StringBuilder(
+                "SELECT site_id, site_name, evaluated_cnt, passing_cnt, failing_cnt FROM (").append(inner)
+                .append(") subq ORDER BY passing_cnt * 100.0 / NULLIF(evaluated_cnt, 0) ASC");
 
         Query q = em.createNativeQuery(sql.toString());
         q.setParameter("start", start);
@@ -313,22 +370,48 @@ public class ComplianceDashboardQueryServiceImpl implements ComplianceDashboardQ
         if (standardId != null && !standardId.isBlank())
             q.setParameter("standardId", standardId);
 
+        StringBuilder ordersSql = new StringBuilder(
+                "SELECT CAST(vss.id AS text) AS site_id, vss.name AS site_name, COUNT(DISTINCT s.id) AS order_cnt ");
+        ordersSql.append(ordersFrom()).append(ORDERS_WHERE);
+        applyFilters(ordersSql, null, standardId);
+        ordersSql.append("GROUP BY vss.id, vss.name ORDER BY vss.name");
+        Query oq = em.createNativeQuery(ordersSql.toString());
+        setParams(oq, null, standardId, start, end);
+        Map<String, Integer> ordersBySite = new LinkedHashMap<>();
+        Map<String, String> siteNames = new LinkedHashMap<>();
+        @SuppressWarnings("unchecked")
+        List<Object[]> orderRows = (List<Object[]>) oq.getResultList();
+        for (Object[] r : orderRows) {
+            ordersBySite.put((String) r[0], ((Number) r[2]).intValue());
+            siteNames.put((String) r[0], (String) r[1]);
+        }
+
         List<SiteComparisonDTO> result = new ArrayList<>();
         @SuppressWarnings("unchecked")
         List<Object[]> rows = (List<Object[]>) q.getResultList();
         for (Object[] r : rows) {
-            long total = ((Number) r[2]).longValue();
+            long evaluated = ((Number) r[2]).longValue();
             long passing = ((Number) r[3]).longValue();
-            double rate = total == 0 ? 0.0
-                    : BigDecimal.valueOf(passing * 100.0 / total).setScale(1, RoundingMode.HALF_UP).doubleValue();
+            Double rate = evaluated == 0 ? null
+                    : BigDecimal.valueOf(passing * 100.0 / evaluated).setScale(1, RoundingMode.HALF_UP).doubleValue();
             SiteComparisonDTO dto = new SiteComparisonDTO();
             dto.setSiteId((String) r[0]);
             dto.setSiteName((String) r[1]);
-            dto.setTotalOrders((int) total);
+            dto.setTotalOrders(ordersBySite.getOrDefault((String) r[0], 0));
             dto.setExceedances(r[4] == null ? 0 : ((Number) r[4]).intValue());
             dto.setComplianceRate(rate);
-            dto.setColorBand(rate >= 90.0 ? SiteComparisonDTO.ColorBand.GREEN
-                    : rate >= 70.0 ? SiteComparisonDTO.ColorBand.YELLOW : SiteComparisonDTO.ColorBand.RED);
+            dto.setColorBand(rate == null ? null
+                    : rate >= 90.0 ? SiteComparisonDTO.ColorBand.GREEN
+                            : rate >= 70.0 ? SiteComparisonDTO.ColorBand.YELLOW : SiteComparisonDTO.ColorBand.RED);
+            result.add(dto);
+            siteNames.remove(dto.getSiteId());
+        }
+        for (Map.Entry<String, String> site : siteNames.entrySet()) {
+            SiteComparisonDTO dto = new SiteComparisonDTO();
+            dto.setSiteId(site.getKey());
+            dto.setSiteName(site.getValue());
+            dto.setTotalOrders(ordersBySite.get(site.getKey()));
+            dto.setExceedances(0);
             result.add(dto);
         }
         return result;

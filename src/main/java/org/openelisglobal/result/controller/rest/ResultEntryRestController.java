@@ -134,6 +134,12 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     /**
      * Lab Units the user may enter results for, each carrying its domain so the
      * page can derive {@code currentDomain} (FR-M1).
+     *
+     * <p>
+     * OGC-189 (M2): a <em>viewer</em> control, so it lists {@code isActive OR
+     * hasContent}. A lab unit deactivated while analyses are still in flight stays
+     * here until they are finished — filtering it out would strand that work on a
+     * worklist nobody can reach.
      */
     @GetMapping(value = "lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -143,7 +149,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (resultsRole == null) {
             return Collections.emptyList();
         }
-        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request), resultsRole.getId());
+        List<IdValuePair> sections = userService.getUserViewerTestSections(getSysUserId(request), resultsRole.getId());
         List<Map<String, String>> labUnits = new ArrayList<>();
         for (IdValuePair pair : sections) {
             Map<String, String> unit = new HashMap<>();
@@ -356,6 +362,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                         LogEvent.logError(ex);
                     }
                 });
+                dataSet.getCalculatedResults().forEach(calculated -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
             }
         } catch (LIMSRuntimeException e) {
             if (e.getCause() instanceof StaleObjectStateException) {
@@ -397,7 +410,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
-                    body.put("rawResultValue", StringUtil.blankIfNull(r.getValue()));
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
                     body.put("resultValue", resultService.getResultValue(r, false));
                 });
         return ResponseEntity.ok(body);

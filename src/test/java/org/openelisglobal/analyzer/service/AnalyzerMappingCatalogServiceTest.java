@@ -17,6 +17,10 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerMappingCatalogServiceTest {
@@ -30,12 +34,17 @@ public class AnalyzerMappingCatalogServiceTest {
     @Mock
     private DictionaryService dictionaryService;
 
+    @Mock
+    private TypeOfSampleService sampleTypes;
+    @Mock
+    private TypeOfSampleTestService sampleTypeTests;
+
     private AnalyzerMappingCatalogService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerMappingCatalogServiceImpl(testService, testResultService, terminologyService,
-                dictionaryService);
+                dictionaryService, sampleTypes, sampleTypeTests);
     }
 
     @Test
@@ -47,6 +56,18 @@ public class AnalyzerMappingCatalogServiceTest {
         when(terminologyService.getActiveBySource("LOINC"))
                 .thenReturn(List.of(loinc("2", "6690-2"), loinc("3", "1111-1")));
 
+        TypeOfSample plasma = new TypeOfSample();
+        plasma.setId("10");
+        plasma.setDescription("Plasma");
+        plasma.setIsActive(true);
+        TypeOfSampleTest link = new TypeOfSampleTest();
+        link.setTestId("1");
+        link.setTypeOfSampleId("10");
+        when(sampleTypes.getAllTypeOfSamples()).thenReturn(List.of(plasma));
+        when(sampleTypeTests.getAllTypeOfSampleTests()).thenReturn(List.of(link));
+
+        assertEquals(List.of("Plasma"), service.searchActiveTests("HIVVL").get(0).specimenTypes());
+        assertEquals(List.of(), service.searchActiveTests("WBC").get(0).specimenTypes());
         assertEquals(List.of("1", "2"), ids(service.searchActiveTests(null)));
         assertEquals(List.of("1"), ids(service.searchActiveTests("viral")));
         assertEquals(List.of("2"), ids(service.searchActiveTests("wbc")));

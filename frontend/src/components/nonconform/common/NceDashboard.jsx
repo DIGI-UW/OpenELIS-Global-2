@@ -34,7 +34,8 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, postToOpenElisServer } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
-import { useHistory } from "react-router-dom";
+import { useHistory, useLocation } from "react-router-dom";
+import { formatActionType } from "./actionTypes";
 import "./NceDashboard.css";
 
 const STATUS_CONFIG = {
@@ -44,15 +45,15 @@ const STATUS_CONFIG = {
     icon: InProgress,
     labelKey: "nce.status.underInvestigation",
   },
-  "Corrective Action": {
+  CAPA: {
     type: "purple",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.correctiveAction",
+    labelKey: "nce.tab.capa",
   },
-  Closed: {
+  Completed: {
     type: "gray",
     icon: CheckmarkFilled,
-    labelKey: "nce.status.closed",
+    labelKey: "common.completed",
   },
 };
 
@@ -68,11 +69,23 @@ export const NceDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [expandedRows, setExpandedRows] = useState({});
 
-  // Filters
+  // Filters — status/severity seed once from URL params so overview tiles
+  // can deep-link a pre-filtered register (e.g. ?severity=CRITICAL&status=Pending)
+  const location = useLocation();
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("");
+  const [statusFilter, setStatusFilter] = useState(
+    () => new URLSearchParams(location.search).get("status") || "",
+  );
   const [categoryFilter, setCategoryFilter] = useState("");
-  const [severityFilter, setSeverityFilter] = useState("");
+  const [severityFilter, setSeverityFilter] = useState(
+    () => new URLSearchParams(location.search).get("severity") || "",
+  );
+  // ?source=eqa is the deep link the EQA Lab Performance tile follows
+  // (docs/eqa/nce-deep-links.md). Both EQA trigger sources share the EQA_
+  // prefix, so one value covers auto-created NCEs and escalations alike.
+  const [sourceFilter, setSourceFilter] = useState(
+    () => new URLSearchParams(location.search).get("source") || "",
+  );
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -155,8 +168,8 @@ export const NceDashboard = () => {
       else if (nce.severity === "MINOR" || nce.severity === "LOW")
         counts.minor++;
 
-      // Check if overdue (more than 7 days old and not closed)
-      if (nce.status !== "Closed" && nce.dateOfEvent) {
+      // Check if overdue (more than 7 days old and not completed)
+      if (nce.status !== "Completed" && nce.dateOfEvent) {
         const eventDate = new Date(nce.dateOfEvent);
         const daysDiff = Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
         if (daysDiff > 7) counts.overdue++;
@@ -195,9 +208,22 @@ export const NceDashboard = () => {
       filtered = filtered.filter((nce) => nce.severity === severityFilter);
     }
 
+    if (sourceFilter === "eqa") {
+      filtered = filtered.filter((nce) =>
+        nce.triggerSourceType?.startsWith("EQA_"),
+      );
+    }
+
     setFilteredList(filtered);
     setCurrentPage(1);
-  }, [searchTerm, statusFilter, categoryFilter, severityFilter, nceList]);
+  }, [
+    searchTerm,
+    statusFilter,
+    categoryFilter,
+    severityFilter,
+    sourceFilter,
+    nceList,
+  ]);
 
   // Clear all filters
   const clearFilters = () => {
@@ -205,6 +231,7 @@ export const NceDashboard = () => {
     setStatusFilter("");
     setCategoryFilter("");
     setSeverityFilter("");
+    setSourceFilter("");
   };
 
   // Toggle row expansion
@@ -225,7 +252,7 @@ export const NceDashboard = () => {
 
   // Check if NCE is overdue
   const isOverdue = (nce) => {
-    if (nce.status === "Closed") return false;
+    if (nce.status === "Completed") return false;
     const days = getDaysSince(nce.dateOfEvent);
     return days !== null && days > 7;
   };
@@ -686,10 +713,13 @@ export const NceDashboard = () => {
               defaultMessage: "All Status",
             })}
           />
-          <SelectItem value="Pending" text="Open" />
-          <SelectItem value="Under Investigation" text="Under Investigation" />
-          <SelectItem value="Corrective Action" text="Corrective Action" />
-          <SelectItem value="Closed" text="Closed" />
+          {Object.entries(STATUS_CONFIG).map(([value, { labelKey }]) => (
+            <SelectItem
+              key={value}
+              value={value}
+              text={intl.formatMessage({ id: labelKey })}
+            />
+          ))}
         </Select>
         <Select
           id="category-filter"
@@ -727,6 +757,28 @@ export const NceDashboard = () => {
           <SelectItem value="MAJOR" text="Major" />
           <SelectItem value="MINOR" text="Minor" />
           <SelectItem value="LOW" text="Low" />
+        </Select>
+        <Select
+          id="source-filter"
+          labelText=""
+          value={sourceFilter}
+          onChange={(e) => setSourceFilter(e.target.value)}
+          className="nce-filter-select"
+        >
+          <SelectItem
+            value=""
+            text={intl.formatMessage({
+              id: "nce.filter.source.all",
+              defaultMessage: "All sources",
+            })}
+          />
+          <SelectItem
+            value="eqa"
+            text={intl.formatMessage({
+              id: "nce.filter.source.eqa",
+              defaultMessage: "EQA-triggered",
+            })}
+          />
         </Select>
         <Button kind="ghost" onClick={clearFilters}>
           <FormattedMessage
@@ -935,6 +987,22 @@ export const NceDashboard = () => {
                                 id="nce.field.linkedItems"
                                 defaultMessage="Linked Items"
                               />
+                              {(nce.affectedSamplesCapReason === "time_24h" ||
+                                nce.affectedSamplesCapReason ===
+                                  "count_50") && (
+                                <Tag
+                                  type="cool-gray"
+                                  size="sm"
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  {intl.formatMessage(
+                                    {
+                                      id: `nce.capReason.${nce.affectedSamplesCapReason}`,
+                                    },
+                                    { count: nce.linkedSpecimens.length },
+                                  )}
+                                </Tag>
+                              )}
                             </h4>
                             <div className="nce-linked-items">
                               {nce.linkedSpecimens.map((specimen, idx) => (
@@ -1107,12 +1175,65 @@ export const NceDashboard = () => {
 
                     {/* CAPA Tab */}
                     <TabPanel>
-                      <p>
-                        <FormattedMessage
-                          id="nce.capa.noItems"
-                          defaultMessage="No corrective/preventive actions recorded yet."
-                        />
-                      </p>
+                      <div style={{ marginBottom: "1rem" }}>
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          renderIcon={Add}
+                          onClick={() =>
+                            history.push(
+                              `/NCECorrectiveAction?nceNumber=${encodeURIComponent(
+                                nce.nceNumber,
+                              )}`,
+                            )
+                          }
+                        >
+                          <FormattedMessage id="label.button.add" />
+                        </Button>
+                      </div>
+                      {nce.actionLogs && nce.actionLogs.length > 0 ? (
+                        <div className="nce-capa-list">
+                          {nce.actionLogs.map((log, idx) => (
+                            <div
+                              key={log.id || idx}
+                              className="nce-detail-section"
+                            >
+                              <h4>
+                                {formatActionType(log.actionType, intl) ||
+                                  intl.formatMessage({ id: "nce.tab.capa" })}
+                              </h4>
+                              <p>{log.correctiveAction || "-"}</p>
+                              <div className="nce-item-meta">
+                                {log.personResponsible && (
+                                  <span>
+                                    <FormattedMessage id="qa.qms.capaRegister.column.assignee" />
+                                    : {log.personResponsible}
+                                  </span>
+                                )}
+                                {log.dueDate && (
+                                  <span>
+                                    <FormattedMessage id="nce.capa.dueDate" />:{" "}
+                                    {log.dueDate}
+                                  </span>
+                                )}
+                                {log.dateCompleted && (
+                                  <span>
+                                    <FormattedMessage id="common.completed" />:{" "}
+                                    {log.dateCompleted}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <p>
+                          <FormattedMessage
+                            id="nce.capa.noItems"
+                            defaultMessage="No corrective/preventive actions recorded yet."
+                          />
+                        </p>
+                      )}
                     </TabPanel>
 
                     {/* History Tab */}

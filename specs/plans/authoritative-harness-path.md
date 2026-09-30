@@ -53,6 +53,12 @@ isProject: false
 
 # Authoritative Harness Path
 
+Historical planning record. The supported local launcher is now
+`scripts/dev-stack`; `projects/analyzer-harness/ci-parity-test.sh` remains the
+separate CI reproduction command. References below to `reset-env.sh` describe
+an abandoned path; that wrapper has been removed. Current analyzer-test work is
+tracked in `specs/roadmaps/analyzer-test-remediation-plan.md`.
+
 ## Validation Summary
 
 This direction matches established best practices:

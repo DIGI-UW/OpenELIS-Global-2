@@ -121,7 +121,10 @@ export function generateCompliancePdf(data, meta) {
     if (summary) {
       var kpis = [
         ["Total Orders", String(summary.totalOrders ?? "—")],
-        ["Compliance Rate", (summary.complianceRate ?? "—") + "%"],
+        [
+          "Compliance Rate",
+          summary.complianceRate != null ? summary.complianceRate + "%" : "—",
+        ],
         ["Total Exceedances", String(summary.totalExceedances ?? "—")],
         ["Sites Monitored", String(summary.sitesMonitored ?? "—")],
       ];

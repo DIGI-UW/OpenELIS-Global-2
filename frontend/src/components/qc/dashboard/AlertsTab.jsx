@@ -36,10 +36,9 @@ import {
 import { CheckmarkFilled } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
-  getFromOpenElisServer,
-  postToOpenElisServerFullResponse,
-} from "../../utils/Utils";
-import {
+  ACKNOWLEDGE_FAILED_KEY,
+  acknowledgeViolation,
+  fetchViolations,
   getSeverityTagType,
   formatTimestamp,
   filterByTimePeriod,
@@ -51,7 +50,6 @@ const AlertsTab = () => {
   const intlRef = useRef(intl);
   intlRef.current = intl;
 
-  console.log("Rendered alerts tab");
   const [violations, setViolations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -84,20 +82,21 @@ const AlertsTab = () => {
     setLoading(true);
     setError(null);
 
-    getFromOpenElisServer("/rest/qc/violations", (response) => {
-      if (response && response.data) {
-        setViolations(response.data.violations || response.data || []);
-      } else if (Array.isArray(response)) {
-        setViolations(response);
-      } else {
+    fetchViolations(
+      {},
+      (rows) => {
+        setViolations(rows);
+        setLoading(false);
+      },
+      () => {
         setError(
           intlRef.current.formatMessage({
             id: "qc.dashboard.error.loadFailed",
           }),
         );
-      }
-      setLoading(false);
-    });
+        setLoading(false);
+      },
+    );
   }, []);
 
   useEffect(() => {
@@ -127,19 +126,8 @@ const AlertsTab = () => {
   }, [filteredViolations]);
 
   const handleAcknowledge = (violationId) => {
-    const endpoint = `/rest/qc/violations/${violationId}/acknowledge`;
-    postToOpenElisServerFullResponse(
-      endpoint,
-      JSON.stringify({}),
-      (response) => {
-        if (response.ok) {
-          loadViolations();
-        } else {
-          setError(
-            intl.formatMessage({ id: "qc.violations.error.acknowledgeFailed" }),
-          );
-        }
-      },
+    acknowledgeViolation(violationId, loadViolations, () =>
+      setError(intl.formatMessage({ id: ACKNOWLEDGE_FAILED_KEY })),
     );
   };
 

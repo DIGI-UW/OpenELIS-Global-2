@@ -99,6 +99,17 @@ public abstract class AuditableBaseObjectServiceImpl<T extends BaseObject<PK>, P
         }
     }
 
+    @Override
+    @Transactional
+    public T updateAgainst(T baseObject, T storedState) {
+        fillSysUserIdIfMissing(baseObject);
+        if (auditTrailLog) {
+            auditTrailService.saveHistory(baseObject, storedState, baseObject.getSysUserId(),
+                    IActionConstants.AUDIT_TRAIL_UPDATE, getBaseObjectDAO().getTableName());
+        }
+        return super.update(baseObject);
+    }
+
     protected T update(T baseObject, String auditTrailType) {
         fillSysUserIdIfMissing(baseObject);
         if (auditTrailLog) {

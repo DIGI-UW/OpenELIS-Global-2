@@ -1,8 +1,6 @@
-import { test, expect, Page } from "../../../helpers/test-base";
-import {
-  SettingsMenu,
-  SiteInformationPage,
-} from "../../../fixtures/esig-admin";
+import { Page } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
+import { isSettingOn, setSetting } from "../../../fixtures/esig-admin";
 import { createSampleOrder } from "../../../helpers/seed-tat-data";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -136,26 +134,6 @@ async function createTestWithCriticalRange(page: Page): Promise<CriticalTest> {
   return { testId: result.testId as string, name };
 }
 
-// The unified-route flag lives in the result configuration domain, the
-// e-signature flag in site identity; each is edited on its own admin menu.
-const SETTING_MENU: Record<string, SettingsMenu> = {
-  [UNIFIED_ROUTE_SETTING]: "ResultConfigurationMenu",
-  [ESIG_SETTING]: "SiteInformationMenu",
-};
-
-async function isSettingOn(page: Page, setting: string): Promise<boolean> {
-  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
-  await menu.goto();
-  const value = await menu.getSettingValue(setting);
-  return /true/i.test(value);
-}
-
-async function setSetting(page: Page, setting: string, on: boolean) {
-  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
-  await menu.goto();
-  await menu.setBooleanSetting(setting, on);
-}
-
 async function orderTest(page: Page, testId: string): Promise<string> {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -253,9 +231,12 @@ test.describe("OGC-1121 critical results look critical", () => {
         await expect(input).toHaveValue(
           expectation === "critical" ? "200" : "120",
         );
-        const background = await input.evaluate(
-          (el) => getComputedStyle(el).backgroundColor,
-        );
+        // Polled, not sampled once. Carbon transitions the field background, so a
+        // single read can land mid-transition: an interpolation from the default
+        // field colour to the abnormal yellow reads rgb(255, 255, 161) at 98.8%
+        // of the way through, one unit short of the value asserted below.
+        const background = () =>
+          input.evaluate((el) => getComputedStyle(el).backgroundColor);
         if (expectation === "critical") {
           await expect(
             row.locator('[data-testid^="critical-flag-"]'),
@@ -263,12 +244,16 @@ test.describe("OGC-1121 critical results look critical", () => {
             timeout: UI_TIMEOUT,
           });
           await expect(row).toContainText("Critical");
-          expect(background).toBe("rgb(255, 215, 217)");
+          await expect
+            .poll(background, { timeout: UI_TIMEOUT })
+            .toBe("rgb(255, 215, 217)");
         } else {
           await expect(
             row.locator('[data-testid^="critical-flag-"]'),
           ).toHaveCount(0);
-          expect(background).toBe("rgb(255, 255, 160)");
+          await expect
+            .poll(background, { timeout: UI_TIMEOUT })
+            .toBe("rgb(255, 255, 160)");
         }
       }
     });

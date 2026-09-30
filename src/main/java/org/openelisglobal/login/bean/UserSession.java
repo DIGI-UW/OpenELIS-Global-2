@@ -12,12 +12,12 @@ public class UserSession {
 
     private Boolean authenticated;
     private LoginMethod loginMethod;
-    private String sessionId;
     private String userId;
     private String loginName;
     private String firstName;
     private String lastName;
     private Set<String> roles;
+    private Set<String> permissions;
     private Map<String, List<String>> userLabRolesMap;
     private String CSRF;
     private String loginLabUnit;
@@ -86,12 +86,12 @@ public class UserSession {
         this.roles = roles;
     }
 
-    public String getSessionId() {
-        return sessionId;
+    public Set<String> getPermissions() {
+        return permissions;
     }
 
-    public void setSessionId(String sessionId) {
-        this.sessionId = sessionId;
+    public void setPermissions(Set<String> permissions) {
+        this.permissions = permissions;
     }
 
     public Map<String, List<String>> getUserLabRolesMap() {

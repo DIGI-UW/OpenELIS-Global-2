@@ -547,9 +547,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-name"
+                      labelText={intl.formatMessage({
+                        id: "organization.organizationName",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
                       })}
@@ -574,9 +577,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-prefix"
+                      labelText={intl.formatMessage({
+                        id: "organization.short.CI",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       maxLength={15}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
@@ -601,9 +607,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="is-active"
+                      labelText={intl.formatMessage({
+                        id: "organization.isActive",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder.active",
                       })}
@@ -626,9 +635,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-internet-address"
+                      labelText={intl.formatMessage({
+                        id: "organization.internetaddress",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder.internetAddress",
                       })}
@@ -652,9 +664,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-street-address"
+                      labelText={intl.formatMessage({
+                        id: "organization.streetAddress",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       maxLength={15}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
@@ -680,9 +695,12 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-city"
+                      labelText={intl.formatMessage({
+                        id: "organization.city",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
-                      labelText=""
                       maxLength={15}
                       placeholder={intl.formatMessage({
                         id: "organization.add.placeholder",
@@ -704,6 +722,10 @@ function OrganizationAddModify() {
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="org-clia-number"
+                      labelText={intl.formatMessage({
+                        id: "organization.clia.number",
+                      })}
+                      hideLabel
                       className="defalut"
                       type="text"
                       placeholder={intl.formatMessage({
