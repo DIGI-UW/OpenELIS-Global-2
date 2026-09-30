@@ -395,7 +395,7 @@ const OrderDashboardContent = () => {
         );
       } else if (p === "asap") {
         return (
-          <Tag type="orange" size="sm">
+          <Tag type="magenta" size="sm">
             ASAP
           </Tag>
         );

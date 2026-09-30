@@ -191,7 +191,7 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
         var rif = tests.getTestByDescription("Xpert RIF Resistance");
         assertNotNull(rif);
         var shipped = BridgeAnalyzerProfile.from(new ObjectMapper().readTree(
-                Path.of("tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles/genexpert-astm-v5.json")
+                Path.of("tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles/genexpert-astm-v7.json")
                         .toFile()));
         Map<String, String> firstOptions = null;
         for (int run = 0; run < 2; run++) {
@@ -210,18 +210,10 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
             assertEquals(Map.of("DETECTED", options.get("DETECTED"), "NOT DETECTED", options.get("NOT DETECTED"),
                     "INDETERMINATE", options.get("Indeterminate")), bindings);
         }
-        var document = shipped.document();
-        for (var mapping : document.path("default_test_mappings")) {
-            if ("COVID19".equals(mapping.path("test_code").asText())) {
-                ((com.fasterxml.jackson.databind.node.ObjectNode) mapping).put("specimen_type_hint", "Respiratory Swab")
-                        .putObject("result_value_hints").put("POSITIVE", "SARS-CoV-2 RNA DETECTED")
-                        .put("NEGATIVE", "SARS-COV-2 RNA NOT DETECTED");
-            }
-        }
         var covid = tests.getTestByDescription("COVIDPCR(Respiratory Swab)");
         var originalCovidOptions = mappingCatalog.getActiveResultOptions(covid.getId()).stream()
                 .collect(Collectors.toMap(option -> option.label(), option -> option.id()));
-        var hinted = defaults.resolve(BridgeAnalyzerProfile.from(document));
+        var hinted = defaults.resolve(shipped);
         assertEquals(covid.getId(), hinted.tests().stream().filter(row -> "COVID19".equals(row.sourceRowKey()))
                 .findFirst().orElseThrow().testId());
         var covidBindings = hinted.results().stream().filter(row -> "COVID19".equals(row.sourceRowKey())).toList();
