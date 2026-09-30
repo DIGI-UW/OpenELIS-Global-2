@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -35,17 +35,28 @@ vi.mock("../../../patient/SearchPatientForm", async () => {
     },
   };
 });
+const createFormProps = vi.hoisted(() => ({ history: [] }));
 vi.mock("../../../patient/CreatePatientForm", () => ({
-  default: (props) => (
-    <div data-testid="create-patient-form">
-      {props.selectedPatient?.firstName || "blank"}
-    </div>
-  ),
+  default: (props) => {
+    createFormProps.history.push(props.selectedPatient);
+    return (
+      <div data-testid="create-patient-form">
+        {props.selectedPatient?.firstName || "blank"}
+      </div>
+    );
+  },
 }));
 
 import PatientSearchSection from "./PatientSearchSection";
+import { OrderContext, SaveStatus } from "../../OrderContext";
 
-const Host = ({ isReadOnly = false, initial = {}, onChange = () => {} }) => {
+const Host = ({
+  isReadOnly = false,
+  initial = {},
+  onChange = () => {},
+  saveStatus = SaveStatus.SAVED,
+  expose = () => {},
+}) => {
   const [orderData, setOrderDataState] = useState({
     patientProperties: {},
     ...initial,
@@ -56,14 +67,17 @@ const Host = ({ isReadOnly = false, initial = {}, onChange = () => {} }) => {
       onChange(next);
       return next;
     });
+  expose(setOrderData);
   return (
     <IntlProvider locale="en" messages={messages}>
-      <PatientSearchSection
-        orderData={orderData}
-        setOrderData={setOrderData}
-        setPhoneValidation={() => {}}
-        isReadOnly={isReadOnly}
-      />
+      <OrderContext.Provider value={{ saveStatus }}>
+        <PatientSearchSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          setPhoneValidation={() => {}}
+          isReadOnly={isReadOnly}
+        />
+      </OrderContext.Provider>
     </IntlProvider>
   );
 };
@@ -72,6 +86,102 @@ describe("PatientSearchSection", () => {
   beforeEach(() => {
     searchFormProps.current = null;
     searchFormProps.mounts = 0;
+    createFormProps.history = [];
+  });
+
+  it("gives the New Patient form the same blank patient on every render", async () => {
+    let setOrderData;
+    const user = userEvent.setup();
+    render(<Host expose={(set) => (setOrderData = set)} />);
+    await user.click(screen.getByRole("button", { name: /New Patient/ }));
+    const blank = createFormProps.history.at(-1);
+
+    act(() => {
+      setOrderData((prev) => ({
+        ...prev,
+        sampleOrderItems: { labNo: "DEV01260000000000552" },
+      }));
+    });
+
+    expect(createFormProps.history.at(-1)).toBe(blank);
+    expect(blank.patientPK).toBeUndefined();
+  });
+
+  it("shows the patient the order saved on the New Patient tab, and does not follow the form's own writes", async () => {
+    let setOrderData;
+    const user = userEvent.setup();
+    render(<Host expose={(set) => (setOrderData = set)} />);
+    await user.click(screen.getByRole("button", { name: /New Patient/ }));
+    expect(screen.getByTestId("create-patient-form")).toHaveTextContent(
+      "blank",
+    );
+
+    act(() => {
+      setOrderData((prev) => ({
+        ...prev,
+        patientProperties: {
+          ...prev.patientProperties,
+          patientPK: "115",
+          firstName: "Nia",
+          lastName: "Qadup",
+          patientUpdateStatus: "NO_ACTION",
+        },
+      }));
+    });
+    expect(screen.getByTestId("create-patient-form")).toHaveTextContent("Nia");
+    const held = createFormProps.history.at(-1);
+
+    act(() => {
+      setOrderData((prev) => ({
+        ...prev,
+        patientProperties: {
+          ...prev.patientProperties,
+          firstName: "Maria",
+          patientUpdateStatus: "UPDATE",
+        },
+      }));
+    });
+
+    expect(createFormProps.history.at(-1)).toBe(held);
+    expect(screen.getByTestId("create-patient-form")).toHaveTextContent("Nia");
+  });
+
+  it("takes the saved record as the patient to compare with once a save completes", async () => {
+    let setOrderData;
+    const user = userEvent.setup();
+    const { rerender } = render(
+      <Host
+        initial={{
+          patientProperties: {
+            patientPK: "115",
+            firstName: "Nia",
+            lastName: "Qadup",
+          },
+        }}
+        saveStatus={SaveStatus.SAVING}
+        expose={(set) => (setOrderData = set)}
+      />,
+    );
+    await user.click(screen.getByRole("button", { name: /New Patient/ }));
+    act(() => {
+      setOrderData((prev) => ({
+        ...prev,
+        patientProperties: { ...prev.patientProperties, firstName: "Maria" },
+      }));
+    });
+    expect(screen.getByTestId("create-patient-form")).toHaveTextContent("Nia");
+
+    rerender(
+      <Host
+        initial={{}}
+        saveStatus={SaveStatus.SAVED}
+        expose={(set) => (setOrderData = set)}
+      />,
+    );
+
+    expect(screen.getByTestId("create-patient-form")).toHaveTextContent(
+      "Maria",
+    );
   });
 
   it("searches with the shared patient search form and leaves toasts to the page", () => {

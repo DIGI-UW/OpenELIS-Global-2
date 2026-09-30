@@ -52,7 +52,9 @@ For an **Awaiting specimen** row, choose one of the displayed specimen types and
 accept it in Analyzer Results. The row stays staged if no valid specimen can be
 selected; a held mapping result cannot be accepted through that choice. Results
 received together that add new tests to an order share one specimen: choose a
-type every one of them can use, or they all stay staged.
+type every one of them can use, or they all stay staged. When their tests have
+no specimen type in common in the test catalog, there is nothing to choose; they
+stay staged until the catalog gives those tests a common specimen type.
 
 Use **Undelivered results → Retry** for messages still queued in Bridge. That is
 separate from mapping recovery: a message already accepted by OE has a delivery

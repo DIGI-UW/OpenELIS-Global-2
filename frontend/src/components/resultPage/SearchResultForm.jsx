@@ -12,6 +12,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
   convertAlphaNumLabNumForDisplay,
+  labNumberForSearch,
   Roles,
 } from "../utils/Utils";
 import {
@@ -78,23 +79,6 @@ import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
 import AcceptUnconditionallyGuard from "./AcceptUnconditionallyGuard";
-
-/**
- * Value for `labNumber` on /rest/LogbookResults. Strips only the legacy
- * two-segment pattern {@code BASE-SUFFIX} where SUFFIX is numeric (analysis ordinal).
- * Multi-segment accessions (e.g. harness {@code HARN-QS7-2026-00001}) must stay intact.
- */
-function labNumberForLogbookSearch(accessionNumber) {
-  if (!accessionNumber) {
-    return "";
-  }
-  const trimmed = accessionNumber.trim();
-  const parts = trimmed.split("-");
-  if (parts.length === 2 && /^\d+$/.test(parts[1])) {
-    return parts[0];
-  }
-  return trimmed;
-}
 
 function ResultSearchPage() {
   const intl = useIntl();
@@ -416,7 +400,7 @@ export function SearchResultForm(props) {
       values.accessionNumber !== ""
         ? values.accessionNumber
         : values.startLabNo;
-    let labNo = labNumberForLogbookSearch(accessionNumber);
+    let labNo = labNumberForSearch(accessionNumber);
     const endLabNo = values.endLabNo ? values.endLabNo : "";
     values.unitType = values.unitType ? values.unitType : "";
 

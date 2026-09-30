@@ -73,6 +73,8 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.validation.Errors;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 
 /** */
 public class SamplePatientUpdateData {
@@ -423,7 +425,26 @@ public class SamplePatientUpdateData {
 
         // check patient errors
         if (patientErrors.hasErrors()) {
-            errors.addAllErrors(patientErrors);
+            addPatientErrors(errors);
+        }
+    }
+
+    /**
+     * The patient's errors are collected on their own holder, which carries a
+     * different object name from the order form. Spring refuses to merge such
+     * holders as a whole, and that refusal used to surface a refused patient (a
+     * duplicate national id, a malformed birth date) as a 500 with no message. Each
+     * error is copied on its own instead, a field error under the form's
+     * patientProperties path.
+     */
+    private void addPatientErrors(Errors errors) {
+        for (ObjectError error : patientErrors.getAllErrors()) {
+            if (error instanceof FieldError fieldError) {
+                errors.rejectValue("patientProperties." + fieldError.getField(), fieldError.getCode(),
+                        fieldError.getArguments(), fieldError.getDefaultMessage());
+            } else {
+                errors.reject(error.getCode(), error.getArguments(), error.getDefaultMessage());
+            }
         }
     }
 

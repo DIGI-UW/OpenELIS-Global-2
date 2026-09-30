@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   fetchFromOpenElisServer,
   getFromOpenElisServer,
+  labNumberForSearch,
   parseIsoDate,
 } from "./Utils";
 
@@ -152,6 +153,18 @@ describe("fetchFromOpenElisServer", () => {
       fetchFromOpenElisServer("/rest/TestActivation"),
     ).rejects.toThrow("Request failed (500): /rest/TestActivation");
     expect(json).not.toHaveBeenCalled();
+  });
+});
+
+describe("labNumberForSearch", () => {
+  it("drops a numeric analysis suffix and keeps every other accession whole", () => {
+    expect(labNumberForSearch("DEV01260000000001-2")).toBe("DEV01260000000001");
+    expect(labNumberForSearch(" DEV01260000000001 ")).toBe("DEV01260000000001");
+    expect(labNumberForSearch("IH-2-01")).toBe("IH-2-01");
+    expect(labNumberForSearch("HARN-QS7-2026-00001")).toBe(
+      "HARN-QS7-2026-00001",
+    );
+    expect(labNumberForSearch(undefined)).toBe("");
   });
 });
 
