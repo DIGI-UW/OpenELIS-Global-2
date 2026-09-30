@@ -19,6 +19,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
+import DeliveryIssuesPanel from "./DeliveryIssuesPanel";
 
 const EVENT_TYPE_MESSAGES = {
   AST_RESULT_AVAILABLE: "analyzer.importIssues.event.astResultAvailable",
@@ -210,6 +211,7 @@ const ImportIssuesPanel = () => {
             ) : null}
           </>
         )}
+        <DeliveryIssuesPanel />
       </Column>
     </Grid>
   );

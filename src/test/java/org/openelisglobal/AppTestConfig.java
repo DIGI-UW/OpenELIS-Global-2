@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.client.apache.ApacheRestfulClientFactory;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,6 @@ import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
@@ -116,7 +116,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testconfiguration", "org.openelisglobal.usertestsection",
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.coldstorage",
-        "org.openelisglobal.labelpreset", "org.openelisglobal.alert", "org.openelisglobal.notification",
+        "org.openelisglobal.labelpreset", "org.openelisglobal.accreditation.service",
+        "org.openelisglobal.accreditation.daoimpl", "org.openelisglobal.alert", "org.openelisglobal.notification",
         "org.openelisglobal.shipment", "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
         "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin",
         "org.openelisglobal.fhir.providers", "org.openelisglobal.fhir.service", "org.openelisglobal.common.dao",
@@ -125,7 +126,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.qachecklist", "org.openelisglobal.esig", "org.openelisglobal.compliance",
         "org.openelisglobal.vector", "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
         "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
-        "org.openelisglobal.questionnaire", "org.openelisglobal.microbiology" }, excludeFilters = {
+        "org.openelisglobal.questionnaire", "org.openelisglobal.qa", "org.openelisglobal.microbiology",
+        "org.openelisglobal.batchworkplan" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.[BS].*"),
@@ -150,6 +152,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org\\.openelisglobal\\..*Test\\$TestConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qc.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qa.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.esig.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerTypeRestControllerSecurityTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerWorkflowAuthorizationSecurityTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.scheduler.*"),
@@ -236,8 +240,13 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public FhirContext fhirContext() {
-        return mock(FhirContext.class);
+    public FhirContext fhirContext(CloseableHttpClient httpClient) {
+        FhirContext context = FhirContext.forR4();
+        // Parse real messages; only the external HTTP transport is substituted.
+        ApacheRestfulClientFactory clientFactory = new ApacheRestfulClientFactory(context);
+        clientFactory.setHttpClient(httpClient);
+        context.setRestfulClientFactory(clientFactory);
+        return context;
     }
 
     @Bean()
@@ -270,11 +279,8 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(NotificationDAO.class);
     }
 
-    @Bean()
-    @Profile("test")
-    public AuditTrailService auditTrailService() {
-        return mock(AuditTrailService.class);
-    }
+    // AuditTrailServiceImpl is component-scanned with its real history and
+    // reference-table services. Database tests must exercise persisted history.
 
     @Bean()
     @Profile("test")

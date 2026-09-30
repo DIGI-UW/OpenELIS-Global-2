@@ -2,12 +2,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Dropdown, Checkbox, SkeletonText } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
-
-const INTERVALS = [
-  { id: "DAILY", labelKey: "reports.tat.daily" },
-  { id: "WEEKLY", labelKey: "reports.tat.weekly" },
-  { id: "MONTHLY", labelKey: "reports.tat.monthly" },
-];
+import { INTERVALS } from "./tatUtils";
 
 const COMPARE_OPTIONS = [
   { id: "", labelKey: "reports.tat.compareNone" },

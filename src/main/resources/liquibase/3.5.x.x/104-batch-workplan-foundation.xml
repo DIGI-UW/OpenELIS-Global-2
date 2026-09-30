@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-427-batch-workplan-foundation" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="batch_workplan"/>
+            </not>
+        </preConditions>
+        <createSequence schemaName="clinlims" sequenceName="batch_workplan_seq" startValue="1" incrementBy="1"/>
+        <createSequence schemaName="clinlims" sequenceName="batch_workplan_item_seq" startValue="1" incrementBy="1"/>
+
+        <createTable schemaName="clinlims" tableName="batch_workplan">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_batch_workplan"/>
+            </column>
+            <column name="name" type="VARCHAR(120)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(20)" defaultValue="DRAFT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="test_section_id" type="numeric(10)"/>
+            <column name="notes" type="VARCHAR(1000)"/>
+            <column name="created_at" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+            <column name="activated_at" type="TIMESTAMP"/>
+            <column name="completed_at" type="TIMESTAMP"/>
+            <column name="archived_at" type="TIMESTAMP"/>
+            <column name="created_by_user_id" type="numeric(10)"/>
+            <column name="updated_by_user_id" type="numeric(10)"/>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <createTable schemaName="clinlims" tableName="batch_workplan_item">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_batch_workplan_item"/>
+            </column>
+            <column name="batch_workplan_id" type="BIGINT">
+                <constraints nullable="false"/>
+            </column>
+            <column name="analysis_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sort_order" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.batch_workplan
+            ADD CONSTRAINT batch_workplan_status_chk
+            CHECK (status IN ('DRAFT', 'ACTIVE', 'COMPLETED', 'ARCHIVED'))
+        </sql>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_test_section"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan" baseColumnNames="test_section_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_section" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_created_by"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan" baseColumnNames="created_by_user_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_updated_by"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan" baseColumnNames="updated_by_user_id"
+            referencedTableSchemaName="clinlims" referencedTableName="system_user" referencedColumnNames="id"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_item_batch"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan_item" baseColumnNames="batch_workplan_id"
+            referencedTableSchemaName="clinlims" referencedTableName="batch_workplan" referencedColumnNames="id"
+            onDelete="CASCADE"/>
+        <addForeignKeyConstraint constraintName="fk_batch_workplan_item_analysis"
+            baseTableSchemaName="clinlims" baseTableName="batch_workplan_item" baseColumnNames="analysis_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analysis" referencedColumnNames="id"/>
+
+        <addUniqueConstraint schemaName="clinlims" tableName="batch_workplan_item"
+            columnNames="batch_workplan_id, analysis_id" constraintName="uq_batch_workplan_item_batch_analysis"/>
+        <createIndex schemaName="clinlims" tableName="batch_workplan" indexName="idx_batch_workplan_status_created">
+            <column name="status"/>
+            <column name="created_at"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="batch_workplan_item" indexName="idx_batch_workplan_item_analysis">
+            <column name="analysis_id"/>
+        </createIndex>
+
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="batch_workplan_item"/>
+            <dropTable schemaName="clinlims" tableName="batch_workplan"/>
+            <dropSequence schemaName="clinlims" sequenceName="batch_workplan_item_seq"/>
+            <dropSequence schemaName="clinlims" sequenceName="batch_workplan_seq"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-427-batch-workplan-menu" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="menu"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_workplan_batch'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="menu" schemaName="clinlims">
+            <column name="id" valueSequenceNext="menu_seq"/>
+            <column name="parent_id" valueComputed="(SELECT id FROM clinlims.menu WHERE element_id = 'menu_workplan')"/>
+            <column name="presentation_order" value="1"/>
+            <column name="element_id" value="menu_workplan_batch"/>
+            <column name="action_url" value="/Workplan"/>
+            <column name="display_key" value="banner.menu.workplan.batch"/>
+            <column name="tool_tip_key" value="tooltip.banner.menu.workplan.batch"/>
+            <column name="new_window" value="false"/>
+            <column name="is_active" value="true"/>
+        </insert>
+        <rollback>
+            <delete tableName="menu" schemaName="clinlims">
+                <where>element_id='menu_workplan_batch'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-427-batch-workplan-module-url" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="system_module_url"/>
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.system_module_url smu
+                WHERE smu.system_module_id = (SELECT sm.id FROM clinlims.system_module sm WHERE sm.name = 'Workplan')
+                AND smu.url_path = '/Workplan'
+            </sqlCheck>
+        </preConditions>
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/Workplan"/>
+            <column name="system_module_id" valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'Workplan')"/>
+        </insert>
+        <rollback>
+            <delete tableName="system_module_url" schemaName="clinlims">
+                <where>url_path='/Workplan' AND system_module_id = (SELECT id FROM clinlims.system_module WHERE name = 'Workplan')</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

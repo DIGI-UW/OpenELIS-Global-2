@@ -24,6 +24,7 @@ import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -61,16 +62,40 @@ public class MenuController {
     }
 
     @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
     public Optional<MenuItem> getEditableMenuItem(@PathVariable String elementId) {
         return findMenuItem(elementId, MenuUtil.getUnfilteredMenuTree());
     }
 
+    @GetMapping(value = "/rest/admin/menu", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<MenuItem> getEditableMenuTree() {
+        return MenuUtil.getUnfilteredMenuTree();
+    }
+
+    @PostMapping("/rest/admin/menu")
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<MenuItem> saveEditableMenus(@RequestBody List<MenuItem> menuItems) {
+        menuService.save(menuItems);
+        return MenuUtil.getUnfilteredMenuTree();
+    }
+
+    // These write the same global navigation as /rest/admin/menu through the same
+    // MenuService.save, so without the identical role check they are simply an
+    // unguarded route to the change the admin endpoints restrict: the default
+    // security chain only requires authentication for otherwise-unmatched
+    // requests, and a React route guard does not protect an API. Nothing posts
+    // here (the admin screens post to /rest/admin/menu and every other
+    // /rest/menu reference is a GET), so requiring ADMIN closes the bypass
+    // without changing any caller.
     @PostMapping("/rest/menu")
+    @PreAuthorize("hasRole('ADMIN')")
     public List<MenuItem> postMenuTree(@RequestBody List<MenuItem> menuItems) {
         return menuService.save(menuItems);
     }
 
     @PostMapping("/rest/menu/{elementId}")
+    @PreAuthorize("hasRole('ADMIN')")
     public MenuItem postMenuTree(@PathVariable String elementId, @RequestBody MenuItem menuItem) {
         return menuService.save(menuItem);
     }

@@ -31,7 +31,8 @@ import { LineChart, SimpleBarChart } from "@carbon/charts-react";
 import "@carbon/charts/styles.css";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
-import { getFromOpenElisServer } from "../utils/Utils";
+import { ConfigurationContext } from "../layout/Layout";
+import { getFromOpenElisServer, toLocalIsoDate } from "../utils/Utils";
 import { generateCompliancePdf } from "./utils/compliancePdfGenerator";
 
 const KPI_KEYS = [
@@ -46,20 +47,18 @@ const KPI_KEYS = [
 ];
 
 function todayStr() {
-  // Add 1 day to avoid timezone skew cutting off samples collected today in UTC+N zones
-  const d = new Date();
-  d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
+  return toLocalIsoDate(new Date());
 }
 function monthsAgoStr(n) {
   const d = new Date();
   d.setMonth(d.getMonth() - n);
-  return d.toISOString().slice(0, 10);
+  return toLocalIsoDate(d);
 }
 
 export default function EnvironmentalDashboard() {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
 
   const excHeaders = [
     {
@@ -182,6 +181,7 @@ export default function EnvironmentalDashboard() {
         setLoadingComparison(false);
       },
     );
+    setExcPage(1);
     fetchExceedances(q, 0, excPageSize);
   }, [buildQuery, fetchExceedances, excPageSize]);
 
@@ -229,10 +229,12 @@ export default function EnvironmentalDashboard() {
 
   const comparisonData = React.useMemo(() => {
     if (!Array.isArray(comparison)) return [];
-    return comparison.map((s) => ({
-      group: s.siteName,
-      value: s.complianceRate,
-    }));
+    return comparison
+      .filter((s) => s.complianceRate != null)
+      .map((s) => ({
+        group: s.siteName,
+        value: s.complianceRate,
+      }));
   }, [comparison]);
 
   const trendOptions = {
@@ -283,11 +285,7 @@ export default function EnvironmentalDashboard() {
   const handleExport = async () => {
     setExportLoading(true);
     try {
-      const labName = await new Promise((resolve) =>
-        getFromOpenElisServer("/rest/site-information?name=siteName", (r) =>
-          resolve((r && r.value) || "OpenELIS Lab"),
-        ),
-      );
+      const labName = configurationProperties?.BANNER_TEXT || "OpenELIS Lab";
       const preparedBy = (
         (userSessionDetails && userSessionDetails.firstName
           ? userSessionDetails.firstName
@@ -358,12 +356,7 @@ export default function EnvironmentalDashboard() {
             dateFormat="Y-m-d"
             value={startDate}
             onChange={([s]) => {
-              if (s)
-                setStartDate(
-                  typeof s.toISOString === "function"
-                    ? s.toISOString().slice(0, 10)
-                    : s,
-                );
+              if (s) setStartDate(toLocalIsoDate(s));
             }}
           >
             <DatePickerInput
@@ -382,12 +375,7 @@ export default function EnvironmentalDashboard() {
             dateFormat="Y-m-d"
             value={endDate}
             onChange={([e]) => {
-              if (e)
-                setEndDate(
-                  typeof e.toISOString === "function"
-                    ? e.toISOString().slice(0, 10)
-                    : e,
-                );
+              if (e) setEndDate(toLocalIsoDate(e));
             }}
           >
             <DatePickerInput
@@ -480,9 +468,11 @@ export default function EnvironmentalDashboard() {
                 ) : (
                   <>
                     <p style={{ fontSize: "2rem", fontWeight: 600 }}>
-                      {summary ? summary[kpi.key] + (kpi.suffix || "") : "—"}
+                      {summary && summary[kpi.key] != null
+                        ? summary[kpi.key] + (kpi.suffix || "")
+                        : "—"}
                     </p>
-                    {summary && summary.trend && (
+                    {summary && summary.trend?.[kpi.key] != null && (
                       <p
                         style={{
                           fontSize: "0.75rem",

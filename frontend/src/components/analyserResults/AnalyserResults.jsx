@@ -20,10 +20,15 @@ import {
 import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
@@ -39,12 +44,18 @@ export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
 };
 
 export const buildHeldResultResolutionUrl = (row, analyzerId) => {
+  const mappingIssues = [
+    "unknown_analyzer_test",
+    "test_mapping_not_ready",
+    "unknown_analyzer_result_value",
+    "result_mapping_not_ready",
+    "invalid_result_mapping",
+  ];
   if (
-    row.importIssueReason !== "unknown_analyzer_result_value" ||
+    !mappingIssues.includes(row.importIssueReason) ||
     !row.sourceProfileId ||
     !row.sourceProfileRevision ||
     !row.rawTestCode ||
-    !row.rawResultValue ||
     !analyzerId
   ) {
     return null;
@@ -52,14 +63,20 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
 
   const query = new URLSearchParams({
     revision: String(row.sourceProfileRevision),
+    analyzerId: String(analyzerId),
     returnTo: buildAnalyzerResultsRedirectUrl(analyzerId),
     focusTest: row.rawTestCode,
-    focusValue: row.rawResultValue,
   });
+  if (row.rawResultValue) {
+    query.set("focusValue", row.rawResultValue);
+  }
   return `/analyzers/types/${encodeURIComponent(row.sourceProfileId)}/mapping?${query.toString()}`;
 };
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
+  const draftEdits = useRef({});
+  const history = useHistory();
+  const location = useLocation();
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -67,8 +84,6 @@ const AnalyserResults = (props) => {
 
   const intl = useIntl();
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -78,13 +93,65 @@ const AnalyserResults = (props) => {
     };
   }, []);
 
+  // Edits restored after a mapping visit stay unsaved drafts, so the next
+  // visit carries them again.
+  useEffect(() => {
+    draftEdits.current = Object.fromEntries(
+      Object.entries(props.restoredEdits ?? {}).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+  }, [props.results, props.restoredEdits]);
+
+  const rememberEdit = (rowId, field, value) => {
+    const id = String(rowId);
+    draftEdits.current[id] = { ...draftEdits.current[id], [field]: value };
+  };
+
+  const openMappingWithDraft = (event, resolutionUrl) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const edits = Object.fromEntries(
+      Object.entries(draftEdits.current).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+    const worklistDraft = {
+      analyzerId: String(props.analyzerId),
+      page: Number(props.results?.paging?.currentPage) || 1,
+      edits,
+    };
+    history.replace({
+      pathname: location.pathname,
+      search: location.search,
+      state: { ...location.state, worklistDraft },
+    });
+    history.push(resolutionUrl, { worklistDraft });
+  };
+
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
   const heldPatientResults = patientResults.filter(
     (result) => result.importIssueReason,
   );
   const actionablePatientResults = patientResults.filter(
-    (result) => !result.importIssueReason,
+    (result) =>
+      !result.importIssueReason ||
+      result.importIssueReason === "awaiting_specimen",
   );
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
@@ -180,10 +247,7 @@ const AnalyserResults = (props) => {
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      // The accepted rows leave the worklist, so the page it was showing may
-      // no longer exist.
-      setPage(1);
-      props.refreshResults?.();
+      props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {
@@ -198,19 +262,12 @@ const AnalyserResults = (props) => {
     setNotificationVisible(true);
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
-
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
     jpSet(form, name, value);
+    const field = name.match(/\.(result|note)$/)?.[1];
+    if (field) rememberEdit(rowId, field, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
@@ -225,6 +282,7 @@ const AnalyserResults = (props) => {
     );
     if (row) {
       row[fieldName] = e.target.checked;
+      rememberEdit(rowId, fieldName, e.target.checked);
     }
   };
 
@@ -235,6 +293,7 @@ const AnalyserResults = (props) => {
     const row = (props.results.resultList || []).find((r) => r.id === rowId);
     if (row) {
       row.typeOfSampleId = e.target.value;
+      rememberEdit(rowId, "typeOfSampleId", e.target.value);
     }
   };
 
@@ -244,6 +303,7 @@ const AnalyserResults = (props) => {
     );
     if (row) {
       row[fieldName] = checked;
+      rememberEdit(rowId, fieldName, checked);
     }
   };
   const validateResults = (e, rowId) => {
@@ -257,6 +317,7 @@ const AnalyserResults = (props) => {
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
+    const awaitingSpecimen = row.importIssueReason === "awaiting_specimen";
     switch (column.id) {
       case "sampleInfo":
         return (
@@ -320,6 +381,9 @@ const AnalyserResults = (props) => {
                 labelText={intl.formatMessage({
                   id: "label.testCatalog.specimenType",
                 })}
+                aria-label={intl.formatMessage({
+                  id: "label.testCatalog.specimenType",
+                })}
                 helperText={intl.formatMessage({
                   id: "notice.testCatalog.intake.awaitingSpecimen",
                 })}
@@ -340,7 +404,7 @@ const AnalyserResults = (props) => {
         );
 
       case "save":
-        if (held) {
+        if (held && !awaitingSpecimen) {
           return null;
         }
         return (
@@ -354,6 +418,7 @@ const AnalyserResults = (props) => {
                       name={"resultList[?(@.id == " + row.id + ")].isAccepted"}
                       labelText=""
                       value={true}
+                      defaultChecked={Boolean(row.isAccepted)}
                       onChange={(e) => handleCheckBox(e, row.id, "isAccepted")}
                     />
                   )}
@@ -377,6 +442,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isRejected"}
                     labelText=""
                     value={true}
+                    defaultChecked={Boolean(row.isRejected)}
                     onChange={(e) => handleCheckBox(e, row.id, "isRejected")}
                   />
                 )}
@@ -399,6 +465,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isDeleted"}
                     labelText=""
                     value={true}
+                    defaultChecked={Boolean(row.isDeleted)}
                     onChange={(e) => handleCheckBox(e, row.id, "isDeleted")}
                   />
                 )}
@@ -421,6 +488,7 @@ const AnalyserResults = (props) => {
                 type="text"
                 labelText=""
                 rows={2}
+                defaultValue={row.note || ""}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
             </div>
@@ -428,7 +496,7 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        if (held) {
+        if (held && !awaitingSpecimen) {
           const resolutionUrl = buildHeldResultResolutionUrl(
             row,
             props.analyzerId,
@@ -448,7 +516,13 @@ const AnalyserResults = (props) => {
                 />
               </div>
               {resolutionUrl && (
-                <CarbonLink as={RouterLink} to={resolutionUrl}>
+                <CarbonLink
+                  as={RouterLink}
+                  to={resolutionUrl}
+                  onClick={(event) =>
+                    openMappingWithDraft(event, resolutionUrl)
+                  }
+                >
                   <FormattedMessage id="analyzer.results.held.reviewMapping" />
                 </CarbonLink>
               )}
@@ -637,52 +711,20 @@ const AnalyserResults = (props) => {
       >
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={patientResults.slice(
-                (page - 1) * pageSize,
-                page * pageSize,
-              )}
+              data={patientResults}
               columns={columns}
               isSortable
             ></DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={patientResults.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging: props.results?.paging,
+                rowsOnPage: patientResults.length,
+                pageSize: props.serverPageSize,
+                onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
 
             {actionablePatientResults.length > 0 && (

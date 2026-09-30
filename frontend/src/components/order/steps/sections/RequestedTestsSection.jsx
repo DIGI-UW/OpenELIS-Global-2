@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -22,6 +16,9 @@ import {
 import { Checkmark } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import TestAssignmentModal from "./TestAssignmentModal";
+
+const compatibilityMapKey = (id, isPanel) =>
+  `${isPanel ? "panel" : "test"}-${id}`;
 
 export const getAssignableSamplesOfType = (samples = [], sampleTypeId) =>
   samples
@@ -51,7 +48,6 @@ const RequestedTestsSection = ({
   isReadOnly,
 }) => {
   const intl = useIntl();
-  const componentMounted = useRef(true);
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,37 +93,47 @@ const RequestedTestsSection = ({
         .join(","),
     [requestedItems],
   );
+  const panelIds = useMemo(
+    () =>
+      requestedItems
+        .filter((item) => item.isPanel)
+        .map((panel) => panel.id)
+        .join(","),
+    [requestedItems],
+  );
+  const compatibilityKey = `${testIds}|${panelIds}`;
   const isLoadingCompatibility =
-    Boolean(testIds) && loadedCompatibilityIds !== testIds;
+    Boolean(testIds || panelIds) && loadedCompatibilityIds !== compatibilityKey;
 
-  // Fetch test-sample-type compatibility when tests change
   useEffect(() => {
-    componentMounted.current = true;
+    if (!testIds && !panelIds) return;
 
-    if (!testIds) return;
-
+    let current = true;
     getFromOpenElisServer(
-      `/rest/test-sample-types?testIds=${testIds}`,
+      `/rest/test-sample-types?testIds=${testIds}&panelIds=${panelIds}`,
       (response) => {
-        if (componentMounted.current && response?.tests) {
-          const map = {};
-          response.tests.forEach((t) => {
-            map[t.testId] = t.compatibleSampleTypes || [];
-          });
-          setTestSampleTypeMap(map);
-          setLoadedCompatibilityIds(testIds);
-        }
+        if (!current) return;
+        const map = {};
+        (response?.tests || []).forEach((t) => {
+          map[compatibilityMapKey(t.testId, false)] =
+            t.compatibleSampleTypes || [];
+        });
+        (response?.panels || []).forEach((p) => {
+          map[compatibilityMapKey(p.panelId, true)] =
+            p.compatibleSampleTypes || [];
+        });
+        setTestSampleTypeMap(map);
+        setLoadedCompatibilityIds(compatibilityKey);
       },
     );
 
     return () => {
-      componentMounted.current = false;
+      current = false;
     };
-  }, [testIds]);
+  }, [testIds, panelIds]);
 
-  // Get compatible sample types for a test
   const getCompatibleSampleTypes = useCallback(
-    (testId) => testSampleTypeMap[testId] || [],
+    (id, isPanel) => testSampleTypeMap[compatibilityMapKey(id, isPanel)] || [],
     [testSampleTypeMap],
   );
 
@@ -248,7 +254,7 @@ const RequestedTestsSection = ({
   const rows = useMemo(
     () =>
       requestedItems.map((item) => {
-        const compatibleTypes = getCompatibleSampleTypes(item.id);
+        const compatibleTypes = getCompatibleSampleTypes(item.id, item.isPanel);
         const assignments = getSampleAssignments(item.id, item.isPanel);
 
         return {
@@ -282,27 +288,20 @@ const RequestedTestsSection = ({
                     type="green"
                     size="sm"
                     className="sample-type-tag clickable"
-                    text={`+ ${st.name}${st.code ? ` (${st.code})` : ""}`}
+                    text={`+ ${st.name}`}
                     onClick={() => handleSampleTypeClick(item, st)}
                   />
                 ))
               ) : (
-                // If no compatibility data, show all sample types as options
-                sampleTypes.slice(0, 5).map((st) => (
-                  <OperationalTag
-                    key={st.id}
-                    type="green"
-                    size="sm"
-                    className="sample-type-tag clickable"
-                    text={`+ ${st.value}`}
-                    onClick={() =>
-                      handleSampleTypeClick(item, {
-                        id: st.id,
-                        name: st.value,
-                      })
-                    }
+                <span
+                  className="no-compatible-types"
+                  data-testid={`no-compatible-types-${item.id}`}
+                >
+                  <FormattedMessage
+                    id="collect.noCompatibleSampleTypes"
+                    defaultMessage="No sample type is set up for this test in the test catalog"
                   />
-                ))
+                </span>
               )}
             </div>
           ),

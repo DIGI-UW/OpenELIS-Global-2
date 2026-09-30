@@ -1,5 +1,62 @@
 # AGENTS.md - README for AI Coding Agents
 
+## Start here — do these three things before any other work
+
+These are not optional and not "if needed". Skipping them is the single most
+common way an agent wastes a session in this repository.
+
+### 1. Install the agent command assets
+
+```bash
+python3 scripts/install-agent-skills.py -y claude
+```
+
+This installs `/fix-ci`, `/download-ci-logs`, `/address-pr-comments`,
+`/careful-rebase` and ~22 others, plus the packaged skills.
+
+**`.claude/` is gitignored.** It is created by this script, not by `git clone`
+and not by `git pull`. A second clone or worktree of this repository therefore
+has **no commands at all** until you run the installer there — and nothing warns
+you, the commands are simply absent. Run it once per checkout, including every
+worktree.
+
+### 2. Never judge CI from a run's conclusion
+
+Use `gh pr checks <PR>`. It matches the GitHub UI and exits non-zero unless
+everything passes.
+
+```bash
+gh pr checks 1234                      # the whole picture
+gh pr checks 1234 | grep -E "fail"     # just the failures
+```
+
+Three checks are required — `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. Early in a run only some of
+them exist, so **confirm all three are present and none are `pending`** before
+calling a PR green.
+
+Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
+a `workflow_run` follow-up stage, so the underlying run's own conclusion does
+not tell you whether the checkpoint passed, and `gh run watch` exits 0 on
+failure for this pipeline. Do not hand-parse `--json statusCheckRollup` either:
+it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes (`.state`),
+and an in-flight check reports an empty conclusion rather than null, so naive
+`jq` reports passing checks as queued and single checks as "all green".
+
+`/fix-ci` automates the whole diagnose-fix-push-recheck loop.
+`specs/plans/ci-e2e-architecture-spec.md` is the authority on checkpoint
+semantics.
+
+### 3. Work in the worktree that owns the branch
+
+```bash
+git worktree list
+```
+
+This project keeps several worktrees. When asked to work on a branch or PR, find
+its worktree first and make every edit there — never in the primary directory.
+Note that each worktree needs its own installer run, per step 1.
+
 ## FILE Ownership Model (014 Remediation)
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
@@ -126,7 +183,9 @@ reporting, serving 30+ countries worldwide.
 **Repository:**
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
-- Branch strategy: `develop` (main development), `main` (production releases)
+- Branch strategy: `develop` (integration and default branch; development PRs
+  target it), `main` (the latest release; changes only through a reviewed
+  release PR). See [RELEASES.md](RELEASES.md).
 - Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
   (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
@@ -681,6 +740,40 @@ scripts/dev-stack up
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
 
+### Git Worktrees
+
+**Every worktree goes in `.worktrees/<short-name>` at the repo root, and every
+new worktree needs `setup-workspace.sh` run inside it.**
+
+```bash
+git worktree add -b <branch> .worktrees/<short-name> <base>
+cd .worktrees/<short-name> && bash scripts/setup-workspace.sh
+```
+
+**Never create a worktree in `/tmp`, `/private/tmp`, or any other system temp
+directory.** macOS reaps those, which destroys the worktree while
+`git worktree list` keeps reporting it, so the failure surfaces later as a
+confusing `not a git repository` error. This has already cost work here:
+`/private/tmp/oe2-reporting-stack-audit.<suffix>` was reaped and took
+`/private/tmp/oe2-reporting-samples-fix` with it, because that worktree's `.git`
+file pointed into the deleted parent. Some `/private/tmp/oe2-*` worktrees may
+still appear in `git worktree list`; they are the legacy mistake, not the
+convention. Relocate one with `git worktree move <old> .worktrees/<short-name>`,
+which preserves commits, and clear dead entries with `git worktree prune`.
+
+**Do not skip the setup step.** `git worktree add` does not initialize
+submodules, so a fresh worktree has all 11 of them empty. Several are build
+inputs rather than optional extras: `./Dockerfile` does
+`WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
+out with `submodules: recursive`. Skip it and a Docker build fails roughly
+twenty minutes in with `there is no POM in this directory`, which reads like a
+broken Dockerfile rather than a missing checkout step. If you only need the
+submodules, `git submodule update --init --recursive` is the relevant part.
+
+The same reasoning applies to anything else worth keeping (evidence, triage
+notes, reports, artifacts): if losing the file would cost something, it does not
+belong in a temp directory.
+
 ### Context Recovery After Session Resume
 
 When resuming work after a context reset (compaction, new session, or tool
@@ -862,8 +955,14 @@ scripts/dev-stack logs -f oe.openelis.org
 
 **Primary Branches:**
 
-- **`develop`** - Main development branch (ALL PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release PR
+  from a `release/<X.Y>.x` branch, merged with a merge commit; each release is
+  tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`, cherry-picked by the release manager.
+
+See [RELEASES.md](RELEASES.md) for supported lines and versioning.
 
 **Feature Development (Principle IX):**
 
@@ -1728,6 +1827,25 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### User-story UAT and implementation E2E ownership
+
+- Original user stories and approved designs in `DIGI-UW/openelis-work` govern
+  acceptance. Implementation specs scope increments and record approved deltas;
+  they do not redefine the story to fit the code.
+- Grist holds the live story-based UAT walkthrough and reviewer feedback. Keep
+  original story/requirement references alongside stable Grist story/step keys.
+- Implementation-specific automated E2E and video proof live with this code.
+  Link assertions, recordings and exact build/test revisions back to the story.
+  Video proof does not establish human acceptance.
+- Run affected checks before merge, refresh video proof for changed workflows,
+  then reuse selected E2E checks on each deployed increment. Human UAT primarily
+  evaluates integrated/post-merge behavior and can begin on usable PR previews.
+- Eventually synchronize story coverage and findings with `DIGI-UW/OpenELIS-QA`;
+  do not duplicate suites or build a new synchronization service in feature
+  work.
+- Cross-project details:
+  [validation ownership](https://github.com/DIGI-UW/openelis-review-tooling/blob/codex/grist-backend-authoring/docs/validation-ownership.md).
+
 ### E2E Tests (Playwright) — RECOMMENDED
 
 > **Playwright is the recommended E2E framework** for all new tests. It provides
@@ -2223,7 +2341,10 @@ Before creating PR, verify ALL items:
 
 3. **Target Branch:**
 
-   - Always target `develop` (unless hotfix to `main`)
+   - Development PRs target `develop`, including hotfixes. Fixes for a released
+     line are cherry-picked onto its `release/<X.Y>.x` branch after they merge.
+     Release PRs from a release branch target `main` (see
+     [RELEASES.md](RELEASES.md)).
 
 4. **Code Formatting (MANDATORY):**
 
@@ -2289,15 +2410,14 @@ Before creating PR, verify ALL items:
 **GitHub Actions workflows (MUST pass):**
 
 - `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
-  tests (PR + push)
-- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
-  harness) with required Playwright gate (PR)
-- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
-  required frontend gate (PR)
-- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
-  deprecated Cypress gate (PR)
-- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
-  releases only)
+  tests; reports the required `01 Checkpoint - Backend` check
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks; reports
+  the required `02 Checkpoint - Frontend` check
+- `e2e-playwright.yml` (`03 - E2E`) — builds the E2E images; `e2e-tests.yml`
+  then runs Playwright (core + analyzer harness) and the deprecated Cypress
+  suite and reports the required `03 Checkpoint - E2E` check
+- `publish-images.yml` (`Publish Images`) — after `03 - E2E` passes, publishes
+  the tested images to Docker Hub (push to `develop`, and releases)
 
 ### Code Review Standards
 
@@ -2428,6 +2548,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
+**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

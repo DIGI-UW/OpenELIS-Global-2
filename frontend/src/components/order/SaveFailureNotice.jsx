@@ -1,6 +1,6 @@
 import React from "react";
 import { InlineNotification } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import { useOrderContext, SaveStatus } from "./OrderContext";
 
 /**
@@ -27,9 +27,30 @@ export const localizeServerMessage = (intl, value) => {
   return value;
 };
 
+const ORDER_LEVEL_FIELD = "sampleOrderItems";
+
+/**
+ * A rejection against the order as a whole names no field the user can find on
+ * the screen, so it reads as the message alone.
+ */
+const withoutOrderLevelField = (text) =>
+  typeof text === "string" && text.startsWith(`${ORDER_LEVEL_FIELD}: `)
+    ? text.slice(ORDER_LEVEL_FIELD.length + 2)
+    : text;
+
+/**
+ * The toast for a failed save. A save the server refused reads as the server's
+ * reason, the same one the inline notice shows, instead of claiming a server
+ * error; only a failure that carries no reason falls back to the generic text.
+ */
+export const saveFailureMessage = (intl, error) =>
+  withoutOrderLevelField(localizeServerMessage(intl, error?.message)) ||
+  intl.formatMessage({ id: "server.error.msg" });
+
 /**
  * What a blocked save asks the user to correct. Fields the screen already marks
- * inline are left out so nothing is reported twice.
+ * inline are left out so nothing is reported twice, and the server's summary is
+ * left out when it only repeats one of the field errors.
  */
 const SaveFailureNotice = ({ inlineFields = [] }) => {
   const intl = useIntl();
@@ -37,36 +58,38 @@ const SaveFailureNotice = ({ inlineFields = [] }) => {
   if (saveStatus !== SaveStatus.ERROR) {
     return null;
   }
-  const remaining = Object.entries(fieldErrors || {}).filter(
-    ([field]) => !inlineFields.includes(field),
+  const entries = Object.entries(fieldErrors || {});
+  const remaining = entries.filter(([field]) => !inlineFields.includes(field));
+  const summaryRepeatsAField = entries.some(
+    ([field, message]) => error === `${field}: ${message}`,
   );
+  const summary = summaryRepeatsAField
+    ? undefined
+    : withoutOrderLevelField(localizeServerMessage(intl, error));
   return (
     <InlineNotification
       kind="error"
       lowContrast
       hideCloseButton
       className="order-save-failure"
-      title={
-        <FormattedMessage
-          id="order.save.blocked"
-          defaultMessage="The order was not saved"
-        />
-      }
-      subtitle={
-        <span>
-          {localizeServerMessage(intl, error)}
-          {remaining.length > 0 && (
-            <ul className="order-save-failure-fields">
-              {remaining.map(([field, message]) => (
-                <li key={field}>
-                  {field}: {localizeServerMessage(intl, message)}
-                </li>
-              ))}
-            </ul>
-          )}
-        </span>
-      }
-    />
+      title={intl.formatMessage({
+        id: "order.save.blocked",
+        defaultMessage: "The order was not saved",
+      })}
+      subtitle={summary}
+    >
+      {remaining.length > 0 && (
+        <ul className="order-save-failure-fields">
+          {remaining.map(([field, message]) => (
+            <li key={field}>
+              {field === ORDER_LEVEL_FIELD
+                ? localizeServerMessage(intl, message)
+                : `${field}: ${localizeServerMessage(intl, message)}`}
+            </li>
+          ))}
+        </ul>
+      )}
+    </InlineNotification>
   );
 };
 

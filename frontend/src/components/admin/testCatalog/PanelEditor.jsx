@@ -1,9 +1,11 @@
-import React, { useCallback, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useHistory, useParams } from "react-router-dom";
 import { Button, Column, Grid, Loading, Section, Tag } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../../utils/Utils";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { AlertDialog } from "../../common/CustomNotification";
+import { NotificationContext } from "../../layout/Layout";
 import {
   DEFAULT_PANEL_SECTION,
   isValidPanelSection,
@@ -25,6 +27,7 @@ const PanelEditor = () => {
   const intl = useIntl();
   const history = useHistory();
   const { panelId, section } = useParams();
+  const { notificationVisible } = useContext(NotificationContext);
   const basePath = history.location.pathname.startsWith("/admin")
     ? "/admin"
     : "/MasterListsPage";
@@ -77,6 +80,11 @@ const PanelEditor = () => {
 
   return (
     <>
+      {/* The sections raise their messages through NotificationContext; the
+          page has to render the AlertDialog for them to reach the operator
+          (app-wide pattern, as in the test editor). Without it every refusal
+          this editor reports was invisible (OGC-1232). */}
+      {notificationVisible === true && <AlertDialog />}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <Grid fullWidth>
         <Column lg={16} md={8} sm={4}>

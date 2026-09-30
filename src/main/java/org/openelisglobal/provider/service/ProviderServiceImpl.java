@@ -29,6 +29,20 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
         return baseObjectDAO;
     }
 
+    /**
+     * Every provider is published to FHIR as a Practitioner addressed by its uuid;
+     * one inserted without it (the placeholder provider orders fall back to, say)
+     * was sent under its bare database id, which a FHIR server refuses.
+     */
+    @Override
+    @Transactional
+    public String insert(Provider provider) {
+        if (provider.getFhirUuid() == null) {
+            provider.setFhirUuid(UUID.randomUUID());
+        }
+        return super.insert(provider);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public void getData(Provider provider) {

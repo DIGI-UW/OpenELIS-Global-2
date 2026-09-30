@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.shipment.dao.BoxSampleItemDAO;
@@ -87,7 +88,12 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
                 initializeAssociations(boxSampleItem);
 
                 SampleItem sampleItem = boxSampleItem.getSampleItem();
-                if (sampleItem != null) {
+                if (sampleItem == null) {
+                    // EQA panel material: it has no accession number and no referral, but
+                    // it is what the box holds, so it renders in the same table rather than
+                    // leaving the box reading as empty.
+                    dtos.add(toPanelMaterialDTO(boxSampleItem, shippingBoxId));
+                } else {
                     // Try referral-based lookup first; fall back to building directly from
                     // SampleItem
                     SampleItemDTO dto = unassignedSampleItemService.getSampleItemById(sampleItem.getId());
@@ -150,6 +156,34 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
     }
 
     /**
+     * The contents row for EQA panel material, in the shape the box contents table
+     * already renders: the panel sample's own code stands in for an accession
+     * number and the panel's material type for the specimen type. Nothing here may
+     * carry the sealed target value.
+     */
+    private SampleItemDTO toPanelMaterialDTO(BoxSampleItem boxSampleItem, Integer shippingBoxId) {
+        EQAPanelSample panelSample = boxSampleItem.getEqaPanelSample();
+        SampleItemDTO dto = new SampleItemDTO();
+        dto.setAccessionNumber(panelSample == null ? null : panelSample.getSampleCode());
+        if (panelSample != null && panelSample.getPanel() != null) {
+            // The panel this material came out of. Not eqa_panel.panel_type: that holds
+            // the scheme kind (international_pt, in_house), which under a "Sample type"
+            // column would read as a specimen type it is not.
+            dto.setTypeOfSample(panelSample.getPanel().getPanelName());
+        }
+        dto.setAssignedBoxId(shippingBoxId);
+        if (boxSampleItem.getShippingBox() != null) {
+            dto.setAssignedBoxName(boxSampleItem.getShippingBox().getBoxId());
+        }
+        dto.setBoxSampleItemId(boxSampleItem.getId());
+        if (boxSampleItem.getReceptionStatus() != null) {
+            dto.setReceptionStatus(boxSampleItem.getReceptionStatus().name());
+        }
+        dto.setReceptionNotes(boxSampleItem.getReceptionNotes());
+        return dto;
+    }
+
+    /**
      * Initialize lazy loaded associations to prevent LazyInitializationException
      */
     private SampleItemDTO buildDTOFromSampleItem(SampleItem sampleItem) {
@@ -167,6 +201,13 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
     }
 
     private void initializeAssociations(BoxSampleItem boxSampleItem) {
+        if (boxSampleItem.getEqaPanelSample() != null) {
+            EQAPanelSample panelSample = boxSampleItem.getEqaPanelSample();
+            panelSample.getSampleCode(); // Force initialization
+            if (panelSample.getPanel() != null) {
+                panelSample.getPanel().getPanelName(); // Force initialization
+            }
+        }
         Hibernate.initialize(boxSampleItem.getSampleItem());
         if (boxSampleItem.getSampleItem() != null) {
             SampleItem si = boxSampleItem.getSampleItem();
@@ -193,6 +234,14 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
             // Get shipping box
             ShippingBox box = shippingBoxDAO.get(shippingBoxId).orElseThrow(
                     () -> new IllegalArgumentException("Shipping box not found with ID: " + shippingBoxId));
+
+            // An EQA box carries panel material to another laboratory; a patient
+            // specimen packed into it would leave this lab outside both the referral
+            // workflow and the cycle's aliquot arithmetic.
+            if (box.getEqaCycleId() != null) {
+                throw new IllegalStateException(
+                        "Box " + box.getBoxId() + " carries EQA panel material, so a patient sample cannot be added");
+            }
 
             // Validate capacity
             if (box.getCapacity() != null && box.getCapacity() > 0) {
@@ -245,9 +294,53 @@ public class BoxSampleItemServiceImpl implements BoxSampleItemService {
             }
 
             return savedBoxSampleItem;
+        } catch (IllegalStateException | IllegalArgumentException e) {
+            // A refusal the caller can act on — already boxed, at capacity, an EQA box —
+            // reads as a 400 with its own sentence rather than a 500 that loses it.
+            logger.error("Refused adding sample item to box: {}", e.getMessage());
+            throw e;
         } catch (Exception e) {
             logger.error("Error adding sample item to box", e);
             throw new LIMSRuntimeException("Error adding sample item to box", e);
+        }
+    }
+
+    @Override
+    public List<BoxSampleItem> addPanelSamplesToBox(Integer shippingBoxId, List<EQAPanelSample> panelSamples,
+            Integer systemUserId) {
+        if (panelSamples == null || panelSamples.isEmpty()) {
+            throw new IllegalArgumentException("No panel material was given to pack into box " + shippingBoxId);
+        }
+        try {
+            ShippingBox box = shippingBoxDAO.get(shippingBoxId).orElseThrow(
+                    () -> new IllegalArgumentException("Shipping box not found with ID: " + shippingBoxId));
+
+            Timestamp now = new Timestamp(System.currentTimeMillis());
+            int position = boxSampleItemDAO.countByShippingBoxId(shippingBoxId);
+            List<BoxSampleItem> packed = new ArrayList<>();
+            for (EQAPanelSample panelSample : panelSamples) {
+                BoxSampleItem contents = new BoxSampleItem();
+                contents.setShippingBox(box);
+                contents.setEqaPanelSample(panelSample);
+                contents.setSystemUserId(systemUserId);
+                contents.setAddedDate(now);
+                contents.setPositionInBox(++position);
+                contents.setReceptionStatus(ReceptionStatus.PENDING);
+                contents.setLastupdated(now);
+                packed.add(boxSampleItemDAO.get(boxSampleItemDAO.insert(contents)).orElse(contents));
+            }
+
+            box.setActualSampleCount(position);
+            box.setLastupdated(now);
+            shippingBoxDAO.update(box);
+            logger.info("Packed {} panel samples into box {}", packed.size(), shippingBoxId);
+            return packed;
+        } catch (IllegalArgumentException e) {
+            logger.error("Refused packing panel material: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            logger.error("Error packing panel material into box", e);
+            throw new LIMSRuntimeException("Error packing panel material into box", e);
         }
     }
 

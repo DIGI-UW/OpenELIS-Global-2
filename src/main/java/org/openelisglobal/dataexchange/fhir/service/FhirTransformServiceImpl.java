@@ -184,6 +184,8 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         LogEvent.logTrace(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                 "transformPersistObjectsUnderSamples called");
 
+        // Resolve the whole selection before generating UUIDs or emitting resources.
+        List<Sample> samples = sampleIds.stream().map(sampleService::get).toList();
         FhirOperations fhirOperations = new FhirOperations();
         CountingTempIdGenerator tempIdGenerator = new CountingTempIdGenerator();
 
@@ -196,10 +198,10 @@ public class FhirTransformServiceImpl implements FhirTransformService {
         Map<String, Practitioner> requesters = new HashMap<>();
         Set<String> includedAnalyzerIds = new HashSet<>();
         Map<String, Analyzer> analyzerCache = new HashMap<>();
-        for (String sampleId : sampleIds) {
+        for (Sample sample : samples) {
+            String sampleId = sample.getId();
             LogEvent.logDebug(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
                     "transforming sampleId: " + sampleId);
-            Sample sample = sampleService.get(sampleId);
             Patient patient = sampleHumanService.getPatientForSample(sample);
             Provider provider = sampleHumanService.getProviderForSample(sample);
             List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sampleId);
@@ -251,9 +253,19 @@ public class FhirTransformServiceImpl implements FhirTransformService {
                 Optional<Task> referringTask = taskTransformService.getReferringTaskForSample(sample);
                 if (referringTask.isPresent()) {
                     taskTransformService.updateReferringTaskWithTaskInfo(referringTask.get(), task);
-                    if (tasks.containsKey(referringTask.get().getIdElement().getIdPart())) {
+                    String referringId = referringTask.get().getIdElement().getIdPart();
+                    if (tasks.containsKey(referringId)) {
                         LogEvent.logWarn(this.getClass().getSimpleName(), "transformPersistObjectsUnderSamples",
-                                "referring task collision with id: " + referringTask.get().getIdElement().getIdPart());
+                                "referring task collision with id: " + referringId);
+                    } else {
+                        // The order-entry path adds the referring task to the
+                        // transaction as soon as it updates it (see
+                        // transformPersistObjectsUnderResultUpdate). Replay only
+                        // mutated it in memory, so the transaction persisted just the
+                        // child task and a finalized referred sample received a 200
+                        // "completed" response while its referring task stayed stale
+                        // instead of being marked completed and receiving the outputs.
+                        tasks.put(referringId, referringTask.get());
                     }
                 }
             }

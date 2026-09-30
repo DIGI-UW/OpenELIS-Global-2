@@ -18,7 +18,8 @@ vi.mock("./OrderContext", () => ({
   },
 }));
 
-import SaveFailureNotice from "./SaveFailureNotice";
+import SaveFailureNotice, { saveFailureMessage } from "./SaveFailureNotice";
+import { createIntl } from "react-intl";
 
 const renderNotice = (inlineFields) =>
   render(
@@ -69,10 +70,29 @@ describe("SaveFailureNotice", () => {
     ).toBeInTheDocument();
     expect(
       screen.getByText(
-        "sampleOrderItems: Enter at least one of Requesting Organization or Requester contact.",
+        "Enter at least one of Requesting Organization or Requester contact.",
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText(/errors\./)).not.toBeInTheDocument();
+    expect(screen.queryByText(/sampleOrderItems/)).not.toBeInTheDocument();
+  });
+
+  // OGC-1266: the server's summary is its first field error, so an
+  // environmental order refused for a missing requester said it twice.
+  it("says a rejection once when the summary repeats the field error", () => {
+    orderContextValue.saveStatus = "error";
+    orderContextValue.error =
+      "sampleOrderItems: errors.requester.org.or.requestor.required";
+    orderContextValue.fieldErrors = {
+      sampleOrderItems: "errors.requester.org.or.requestor.required",
+    };
+    renderNotice([]);
+
+    expect(
+      screen.getAllByText(
+        /Enter at least one of Requesting Organization or Requester contact\./,
+      ),
+    ).toHaveLength(1);
   });
 
   it("keeps a server message that is not a known key", () => {
@@ -87,5 +107,45 @@ describe("SaveFailureNotice", () => {
     expect(
       screen.getByText("sampleOrderItems.labNo: must not be blank"),
     ).toBeInTheDocument();
+  });
+});
+
+// OGC-1192 walk: a refused environmental save showed the server's reason inline
+// and, beside it, a toast saying "Oops, Server error please contact
+// administrator".
+describe("saveFailureMessage", () => {
+  const intl = createIntl({ locale: "en", messages });
+
+  it("gives the server's reason for a refused save", () => {
+    expect(
+      saveFailureMessage(
+        intl,
+        new Error(
+          "sampleOrderItems.requestorFirstName: invalid name format, possibly illegal character",
+        ),
+      ),
+    ).toBe(
+      "sampleOrderItems.requestorFirstName: invalid name format, possibly illegal character",
+    );
+  });
+
+  it("translates a reason the server sends as a message key", () => {
+    expect(
+      saveFailureMessage(
+        intl,
+        new Error(
+          "sampleOrderItems: errors.requester.org.or.requestor.required",
+        ),
+      ),
+    ).toBe(messages["errors.requester.org.or.requestor.required"]);
+  });
+
+  it("falls back to the generic text when the failure has no reason", () => {
+    expect(saveFailureMessage(intl, new Error(""))).toBe(
+      messages["server.error.msg"],
+    );
+    expect(saveFailureMessage(intl, undefined)).toBe(
+      messages["server.error.msg"],
+    );
   });
 });

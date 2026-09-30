@@ -45,6 +45,17 @@ public interface QCControlLotService extends BaseObjectService<QCControlLot, Str
     List<QCControlLot> getActiveControlLots(String testId, String instrumentId);
 
     /**
+     * Get active bench control lots for a test — those configured with no analyzer
+     * at all. This is how a manual quantitative capture discovers the lot that
+     * carries its fixed mean/SD; every other lookup here is keyed by analyzer, so
+     * without it a bench lot exists but is unreachable (OGC-1147).
+     *
+     * @param testId The test ID
+     * @return List of active control lots for the test that have no analyzer
+     */
+    List<QCControlLot> getActiveBenchControlLots(String testId);
+
+    /**
      * Get all ACTIVE control lots for an instrument across every test it's mapped
      * to. Used by bridge registration so the bridge can disambiguate lots embedded
      * in inbound sample names (FILE) or cross-check Q-segment lots (ASTM).

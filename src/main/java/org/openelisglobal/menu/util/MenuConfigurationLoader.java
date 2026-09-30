@@ -19,6 +19,7 @@ import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
@@ -89,16 +90,33 @@ public final class MenuConfigurationLoader {
             menu.setId("configuration:" + elementId);
             menu.setElementId(elementId);
             menu.setIsActive(true);
+            menu.setConfigurationOnly(true);
             if (parent != null) {
                 menu.setParent(parent);
             }
             menus.add(menu);
             configuredMenus.add(menu);
             menusByElementId.put(elementId, menu);
-        } else if (hasConfiguredFields(definition)) {
+        } else if (parent != null || hasConfiguredFields(definition)) {
             menu = replaceWithConfiguredMenu(menu, menus, menusByElementId);
         }
 
+        // Nested configuration owns the instance hierarchy. Work on a copy so
+        // reorganizing a menu never updates its database-backed parent.
+        if (parent != null) {
+            menu.setParent(parent);
+        }
+
+        HashSet<String> fields = new HashSet<>(menu.getConfigurationFields());
+        definition.fieldNames().forEachRemaining(field -> {
+            if (!ELEMENT_ID_FIELD.equals(field) && !CHILD_MENUS_FIELD.equals(field)) {
+                fields.add(field);
+            }
+        });
+        if (parent != null) {
+            fields.add("parent");
+        }
+        menu.setConfigurationFields(fields);
         applyConfiguredFields(menu, definition);
         JsonNode children = definition.get(CHILD_MENUS_FIELD);
         if (children != null && children.isArray()) {
@@ -122,6 +140,11 @@ public final class MenuConfigurationLoader {
         replacement.setOpenInNewWindow(existingMenu.isOpenInNewWindow());
         replacement.setIsActive(existingMenu.getIsActive());
         replacement.setHideInOldUI(existingMenu.isHideInOldUI());
+        replacement.setPresentationStyle(existingMenu.getPresentationStyle());
+        replacement.setIcon(existingMenu.getIcon());
+        replacement.setLastupdated(existingMenu.getLastupdated());
+        replacement.setConfigurationFields(existingMenu.getConfigurationFields());
+        replacement.setConfigurationOnly(existingMenu.isConfigurationOnly());
         if (existingMenu.getParent() != null) {
             replacement.setParent(existingMenu.getParent());
         }
@@ -137,10 +160,17 @@ public final class MenuConfigurationLoader {
     private static boolean hasConfiguredFields(JsonNode definition) {
         return definition.has("actionURL") || definition.has("displayKey") || definition.has("toolTipKey")
                 || definition.has("presentationOrder") || definition.has("openInNewWindow")
-                || definition.has("isActive") || definition.has("hideInOldUI");
+                || definition.has("isActive") || definition.has("hideInOldUI") || definition.has("presentationStyle")
+                || definition.has("icon");
     }
 
     private static void applyConfiguredFields(Menu menu, JsonNode definition) {
+        if (definition.has("presentationStyle")) {
+            menu.setPresentationStyle(text(definition, "presentationStyle"));
+        }
+        if (definition.has("icon")) {
+            menu.setIcon(text(definition, "icon"));
+        }
         if (definition.has("actionURL")) {
             menu.setActionURL(text(definition, "actionURL"));
         }

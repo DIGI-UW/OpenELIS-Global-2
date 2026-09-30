@@ -4,7 +4,7 @@ import {
   Button,
   Tag,
   InlineLoading,
-  ActionableNotification,
+  InlineNotification,
 } from "@carbon/react";
 import { Edit } from "@carbon/icons-react";
 import { useHistory, useLocation } from "react-router-dom";
@@ -16,6 +16,7 @@ import OrderStepper, {
   VECTOR_ORDER_STEPS,
 } from "./OrderStepper";
 import OrderContextCard from "./OrderContextCard";
+import RangeNotAppliedWarning from "./RangeNotAppliedWarning";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
 import { useOrderContext, SaveStatus } from "./OrderContext";
@@ -110,24 +111,29 @@ const SavedNextAction = ({ steps, activeStep }) => {
   ) {
     return null;
   }
+  const nextLabel = intl.formatMessage({ id: next.label });
   return (
-    <ActionableNotification
-      kind="success"
-      lowContrast
-      hideCloseButton
-      inline
-      className="order-saved-next-action"
-      title={intl.formatMessage(
-        { id: "order.saved.title", defaultMessage: "Order {labNumber} saved" },
-        { labNumber },
-      )}
-      subtitle={intl.formatMessage(
-        { id: "order.saved.next", defaultMessage: "Next: {step}" },
-        { step: intl.formatMessage({ id: next.label }) },
-      )}
-      actionButtonLabel={intl.formatMessage({ id: next.label })}
-      onActionButtonClick={() => history.push(next.path)}
-    />
+    <div className="order-saved-next-action">
+      <InlineNotification
+        kind="success"
+        lowContrast
+        hideCloseButton
+        title={intl.formatMessage(
+          {
+            id: "order.saved.title",
+            defaultMessage: "Order {labNumber} saved",
+          },
+          { labNumber },
+        )}
+        subtitle={intl.formatMessage(
+          { id: "order.saved.next", defaultMessage: "Next: {step}" },
+          { step: nextLabel },
+        )}
+      />
+      <Button kind="tertiary" size="sm" onClick={() => history.push(next.path)}>
+        {nextLabel}
+      </Button>
+    </div>
   );
 };
 
@@ -143,8 +149,15 @@ const OrderWorkflowLayout = ({
   showSaveButtons = true,
 }) => {
   const location = useLocation();
-  const { isReadOnly, isEditMode, enableEditMode, labNumber, orderData } =
-    useOrderContext();
+  const {
+    isReadOnly,
+    isEditMode,
+    enableEditMode,
+    labNumber,
+    orderData,
+    rangeNotApplied,
+  } = useOrderContext();
+  const currentLabNumber = labNumber || orderData?.sampleOrderItems?.labNo;
 
   // Infer step set from URL prefix — no workflowType context read needed.
   const steps = (() => {
@@ -248,6 +261,14 @@ const OrderWorkflowLayout = ({
           {(labNumber || orderData?.sampleOrderItems?.labNo) && (
             <OrderContextCard className="order-context-section" />
           )}
+
+          {rangeNotApplied?.labNumber &&
+            rangeNotApplied.labNumber === currentLabNumber && (
+              <RangeNotAppliedWarning
+                tests={rangeNotApplied.tests}
+                labNumber={currentLabNumber}
+              />
+            )}
 
           <SavedNextAction steps={steps} activeStep={activeStep} />
 

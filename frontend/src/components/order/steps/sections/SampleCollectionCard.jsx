@@ -19,11 +19,9 @@ import CustomDatePicker from "../../../common/CustomDatePicker";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import GpsCoordinatesCapture from "../../../addOrder/GpsCoordinatesCapture";
 import {
-  currentLocalTime,
   formatIsoDateForBackend,
   formatPickerDateForIso,
   isCollectionDateBeforeAdmissionDate,
-  todayLocalIso,
 } from "../../dateUtils";
 
 /**
@@ -53,7 +51,7 @@ const SampleCollectionCard = ({
   admissionDate = "",
 }) => {
   const intl = useIntl();
-  const hasInitializedDefaults = useRef(false);
+  const userEditedFields = useRef(new Set());
   const initializedSampleIdentity = useRef(null);
   const sampleIdentity =
     sample.sampleItemId ||
@@ -88,35 +86,32 @@ const SampleCollectionCard = ({
     };
   }, []);
 
+  // Collection and receipt default to the laboratory's current time, taken
+  // from the server, for a sample not yet saved. A default is filled whenever
+  // its field is empty, so it survives the order reloading the sample list,
+  // but never over a value the user has edited or cleared on this sample.
   useEffect(() => {
     if (initializedSampleIdentity.current !== sampleIdentity) {
       initializedSampleIdentity.current = sampleIdentity;
-      hasInitializedDefaults.current = false;
+      userEditedFields.current = new Set();
     }
-    if (
-      !hasInitializedDefaults.current &&
-      !sample.sampleItemId &&
-      !isReadOnly
-    ) {
-      const updates = {};
-
-      if (!sample.collectionDate) {
-        updates.collectionDate = todayLocalIso();
+    if (sample.sampleItemId || isReadOnly || !serverReceivedDate) {
+      return;
+    }
+    const defaults = {
+      collectionDate: serverReceivedDate,
+      collectionTime: serverReceivedTime,
+      receivedDate: serverReceivedDate,
+      receivedTime: serverReceivedTime,
+    };
+    const updates = {};
+    Object.entries(defaults).forEach(([field, value]) => {
+      if (value && !sample[field] && !userEditedFields.current.has(field)) {
+        updates[field] = value;
       }
-      if (!sample.collectionTime) {
-        updates.collectionTime = currentLocalTime();
-      }
-      if (!sample.receivedDate && serverReceivedDate) {
-        updates.receivedDate = serverReceivedDate;
-      }
-      if (!sample.receivedTime && serverReceivedTime) {
-        updates.receivedTime = serverReceivedTime;
-      }
-
-      if (Object.keys(updates).length > 0) {
-        onUpdate(sampleIndex, updates);
-      }
-      hasInitializedDefaults.current = true;
+    });
+    if (Object.keys(updates).length > 0) {
+      onUpdate(sampleIndex, updates);
     }
   }, [
     sample.sampleItemId,
@@ -138,6 +133,10 @@ const SampleCollectionCard = ({
     "";
 
   const handleFieldChange = (field, value) => {
+    if ((sample[field] ?? "") === (value ?? "")) {
+      return;
+    }
+    userEditedFields.current.add(field);
     onUpdate(sampleIndex, { [field]: value });
   };
 

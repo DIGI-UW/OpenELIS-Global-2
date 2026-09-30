@@ -128,6 +128,7 @@ public abstract class CSVRoutineColumnBuilder {
     private static final SimpleDateFormat postgresDateTime = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
     protected ResultSet resultSet;
+    private Session session;
 
     protected String eol = System.getProperty("line.separator");
 
@@ -242,16 +243,22 @@ public abstract class CSVRoutineColumnBuilder {
         // ResultSet.TYPE_SCROLL_SENSITIVE,
         // ResultSet.CONCUR_READ_ONLY);
         // resultSet = stmt.executeQuery();
-        Session session = SpringContext.getBean(SessionFactory.class).openSession();
-        resultSet = session.doReturningWork(new ReturningWork<ResultSet>() {
+        // The session holds a pooled connection until closeResultSet() runs.
+        session = SpringContext.getBean(SessionFactory.class).openSession();
+        try {
+            resultSet = session.doReturningWork(new ReturningWork<ResultSet>() {
 
-            @Override
-            public ResultSet execute(Connection connection) throws SQLException {
+                @Override
+                public ResultSet execute(Connection connection) throws SQLException {
 
-                return connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY)
-                        .executeQuery();
-            }
-        });
+                    return connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY)
+                            .executeQuery();
+                }
+            });
+        } catch (RuntimeException e) {
+            closeResultSet();
+            throw e;
+        }
     }
 
     protected synchronized String formatDateForDatabaseSql(Date date) {
@@ -757,11 +764,23 @@ public abstract class CSVRoutineColumnBuilder {
     }
 
     /**
+     * Closes the result set and the session that owns its connection. Safe to call
+     * more than once, and on a builder whose query never ran.
+     *
      * @throws SQLException
      */
     public void closeResultSet() throws SQLException {
-        resultSet.close();
-        resultSet = null;
+        try {
+            if (resultSet != null) {
+                resultSet.getStatement().close();
+            }
+        } finally {
+            resultSet = null;
+            if (session != null) {
+                session.close();
+                session = null;
+            }
+        }
     }
 
     protected String getGendCD4CountAnalyteId() {

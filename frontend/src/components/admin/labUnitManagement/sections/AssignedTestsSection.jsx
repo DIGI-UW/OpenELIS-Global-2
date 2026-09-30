@@ -465,6 +465,13 @@ function AssignedTestsSection({ labUnitId, onChange }) {
                 id: "placeholder.labUnit.tests.reassign.destination",
               })}
             />
+            {/* OGC-189 (M2, decision D4): reassign destinations are
+                DELIBERATELY unfiltered — inactive units included. Ruled
+                acceptable 2026-09-01 ("fine with moving to a switched off
+                lab"), because emptying a unit into a deactivated one is a
+                legitimate reorganisation step. This is the documented
+                exception to the chooser rule that the test editor's lab unit
+                picker follows; do not "fix" it by filtering on isActive. */}
             {labUnits.map((unit) => (
               <SelectItem key={unit.id} value={unit.id} text={unit.name} />
             ))}

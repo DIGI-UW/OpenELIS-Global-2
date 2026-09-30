@@ -105,7 +105,7 @@ describe("InstrumentDetailPage analyzer context", () => {
       breadcrumbQueries.getByRole("link", {
         name: "Quality Control Dashboard",
       }),
-    ).toHaveAttribute("href", "/analyzers/qc/db");
+    ).toHaveAttribute("href", "/qa/qc/dashboard");
     const currentCrumb = breadcrumb.querySelector('[aria-current="page"]');
     expect(currentCrumb).toHaveTextContent("GeneXpert - Main Lab");
   });

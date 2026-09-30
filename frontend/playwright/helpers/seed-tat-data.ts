@@ -9,7 +9,7 @@ import { Page } from "@playwright/test";
  * (SearchResultForm.js:1918-1933) — same endpoint, same payload shape.
  *
  * Prerequisite: fixture samples already exist (loaded by
- * `load-test-fixtures.sh` via `reset-env.sh --full-reset`). Callers
+ * `load-test-fixtures.sh` in the core E2E setup). Callers
  * pass accessions that already have an analysis in a status that shows
  * up in /rest/LogbookResults (e.g. NotStarted).
  *
@@ -211,10 +211,7 @@ export async function completeAnalysisChains(
  * generated accession numbers.
  *
  * Works in any environment with foundational fixtures loaded, including
- * the core-mode Playwright CI job that runs specs under
- * `tests/demo/core/`. Unlike `completeAnalysisChains(page,
- * HARNESS_LANE_ACCESSIONS)` it does not require pre-loaded HARN lane
- * fixtures — the spec becomes self-contained.
+ * the core-mode Playwright CI job that runs specs under `tests/demo/core/`.
  *
  * Each accession ends up with `released_date` populated, which is what
  * the TAT Report queries.
@@ -241,26 +238,6 @@ export async function createAndCompleteAccessions(
   return accessionNumbers;
 }
 
-/**
- * Fixture accessions seeded by `analyzer-harness-lane-data.sql`.
- * 13 samples, each with 1 analysis in NotStarted status.
- */
-export const HARNESS_LANE_ACCESSIONS = [
-  "DEV01261000000000001",
-  "DEV01262000000000001",
-  "DEV01262000000000002",
-  "DEV01262000000000003",
-  "DEV01262000000000004",
-  "DEV01262000000000005",
-  "DEV01262000000000007",
-  "DEV01262100000000001",
-  "DEV01262100000000002",
-  "DEV01262100000000005",
-  "DEV01263000000000001",
-  "DEV01263000000000002",
-  "DEV01263000000000003",
-];
-
 /* ---------------------------------------------------------------------
  * createSampleOrder — create a fresh sample order from scratch.
  *
@@ -283,6 +260,8 @@ export interface SampleConfig {
   providerPersonId?: string;
   /** Referring site (organization) id; defaults to the TAT-seeded site. */
   referringSiteId?: string;
+  /** Overrides for the new patient, e.g. a blank sex or birth date. */
+  patient?: { gender?: string; birthDateForDisplay?: string };
 }
 
 /**
@@ -393,6 +372,7 @@ export async function createSampleOrder(
       birthDateForDisplay: useMDY ? "01/01/1990" : "01/01/1990",
       nationalId: uniqueId,
       subjectNumber: uniqueId,
+      ...config.patient,
     },
     patientSearch: null,
     patientEnhancedSearch: null,

@@ -450,6 +450,7 @@ async function enterResult(
   const isNeg = (v: string) =>
     /^(not detected|negative)$/i.test((v || "").trim());
   for (const item of body.testResult ?? []) {
+    item.reportable = item.reportable === "N" ? false : true;
     const dict = (item.dictionaryResults ?? []) as Array<{
       id: string;
       value: string;
@@ -458,7 +459,6 @@ async function enterResult(
       ? dict.find((d) => isPos(d.value))
       : dict.find((d) => isNeg(d.value));
     if (!opt) continue;
-    item.reportable = item.reportable === "N" ? false : true;
     item.resultValue = opt.id;
     item.shadowResultValue = opt.id;
     item.isModified = true;
