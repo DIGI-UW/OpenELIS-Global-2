@@ -120,7 +120,7 @@ describe("MyProgramsPage", () => {
   test("renders page subtitle", () => {
     renderPage();
     expect(
-      screen.getByText("Programs this laboratory participates in"),
+      screen.getByText("Schemes this laboratory participates in"),
     ).toBeTruthy();
   });
 

@@ -117,7 +117,7 @@ describe("MyCyclesPage", () => {
   test("New cycle posts the enrolled programme, name and deadline, then confirms", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Programme (from My Programs)"), {
+    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
       target: { value: "CPHL National HIV Viral Load EQA" },
     });
     fireEvent.change(screen.getByLabelText("Cycle name"), {
@@ -150,7 +150,7 @@ describe("MyCyclesPage", () => {
   test("New cycle shows the server's refusal instead of a false success", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Programme (from My Programs)"), {
+    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
       target: { value: "CPHL National HIV Viral Load EQA" },
     });
     fireEvent.change(screen.getByLabelText("Cycle name"), {

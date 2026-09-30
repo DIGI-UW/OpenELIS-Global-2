@@ -513,7 +513,7 @@ describe("ReceiptMonitor", () => {
       organizationId: 550,
       csv: "analyte_name,result_value\nHIV VL,250\nGhost,1",
     });
-    expect(await screen.findByText("1 values imported.")).toBeInTheDocument();
+    expect(await screen.findByText("1 value imported.")).toBeInTheDocument();
     expect(
       screen.getByText("Row 3: no test in this scheme reports 'Ghost'"),
     ).toBeInTheDocument();

@@ -636,9 +636,13 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
               kind="success"
               lowContrast
               hideCloseButton
-              title={t("eqa.intake.imported", "{count} values imported.", {
-                count: intake.imported,
-              })}
+              title={t(
+                "eqa.intake.imported",
+                "{count, plural, one {# value imported.} other {# values imported.}}",
+                {
+                  count: intake.imported,
+                },
+              )}
               style={{ marginBottom: "1rem" }}
             />
           )}

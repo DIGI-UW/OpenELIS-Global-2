@@ -988,13 +988,13 @@ const MyCyclesPage = () => {
             id="new-cycle-scheme"
             labelText={t(
               "eqa.cycle.new.scheme",
-              "Programme (from My Programs)",
+              "Scheme (from My EQA Schemes)",
             )}
             helperText={
               myPrograms.length === 0
                 ? t(
                     "eqa.cycle.new.noPrograms",
-                    "Enroll in a programme under My Programs first.",
+                    "Enroll in a scheme under My EQA Schemes first.",
                   )
                 : undefined
             }
