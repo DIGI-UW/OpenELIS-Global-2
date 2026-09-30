@@ -22,11 +22,8 @@ import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
  * Immutable attribution for one manual action on an undelivered analyzer
  * result. The Bridge records only OpenELIS's service account, so the acting
  * OpenELIS user is retained here. analyzerId is null when the outbox entry came
- * from a sender that matches no OpenELIS analyzer.
- *
- * <p>
- * The identifier is numeric rather than a UUID because audit history stores
- * reference_id numerically, so an audited row must carry a numeric id.
+ * from a sender that matches no OpenELIS analyzer. The identifier is a numeric
+ * sequence, as on AnalyzerActivationRecord.
  */
 @Entity
 @Table(name = "analyzer_delivery_action", schema = "clinlims")

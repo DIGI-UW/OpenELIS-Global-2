@@ -1,6 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import java.util.List;
 import org.openelisglobal.analyzer.valueholder.AnalyzerDeliveryAction;
 
 public interface AnalyzerDeliveryActionService {
@@ -17,6 +16,4 @@ public interface AnalyzerDeliveryActionService {
      *                   from a sender that matches no analyzer
      */
     AnalyzerDeliveryAction retain(String outboxEntryId, String action, String analyzerId, String actor);
-
-    List<AnalyzerDeliveryAction> findByOutboxEntryId(String outboxEntryId);
 }

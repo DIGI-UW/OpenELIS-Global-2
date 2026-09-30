@@ -58,8 +58,8 @@
             </sqlCheck>
         </preConditions>
         <comment>
-            Register the table for audit history, otherwise saveNewHistory resolves no
-            reference table and records nothing.
+            Register the table for audit history, otherwise saveNewHistory throws
+            "Reference Table is null" and the action insert rolls back.
         </comment>
         <insert schemaName="clinlims" tableName="reference_tables">
             <column name="id" valueSequenceNext="reference_tables_seq"/>

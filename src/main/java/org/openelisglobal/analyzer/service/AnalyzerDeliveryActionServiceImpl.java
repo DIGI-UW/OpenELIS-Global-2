@@ -1,8 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import java.sql.Timestamp;
-import java.time.Instant;
-import java.util.List;
 import java.util.Set;
 import org.openelisglobal.analyzer.dao.AnalyzerDeliveryActionDAO;
 import org.openelisglobal.analyzer.valueholder.AnalyzerDeliveryAction;
@@ -39,17 +36,10 @@ public class AnalyzerDeliveryActionServiceImpl implements AnalyzerDeliveryAction
         record.setAction(exactAction);
         record.setAnalyzerId(analyzerId);
         record.setActor(actorId);
-        record.setActedAt(Timestamp.from(Instant.now()));
         record.setSysUserId(actorId);
         actionDAO.insert(record);
         auditTrailService.saveNewHistory(record, actorId, AUDIT_TABLE);
         return record;
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<AnalyzerDeliveryAction> findByOutboxEntryId(String outboxEntryId) {
-        return actionDAO.findByOutboxEntryId(requireText(outboxEntryId, "outbox entry ID"));
     }
 
     private static String requireText(String value, String label) {
