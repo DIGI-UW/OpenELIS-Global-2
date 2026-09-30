@@ -622,4 +622,11 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     public List<Sample> findSamplesWithRequiredByBefore(java.sql.Timestamp horizon) {
         return sampleDAO.findSamplesWithRequiredByBefore(horizon);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Sample> getStatSamplesReceivedBeforeWithAnalysisIn(java.sql.Timestamp cutoff,
+            List<String> analysisStatusIds) {
+        return sampleDAO.getStatSamplesReceivedBeforeWithAnalysisIn(cutoff, analysisStatusIds);
+    }
 }

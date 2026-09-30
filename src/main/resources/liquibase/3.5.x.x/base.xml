@@ -597,4 +597,6 @@
   <!-- Order progress status, release and cancellation records on the order; the order cancel reason list. -->
   <include relativeToChangelogFile="true" file="111-order-progress-status.xml"/>
 
+  <include relativeToChangelogFile="true" file="115-stat-turnaround-config.xml"/>
+
 </databaseChangeLog>

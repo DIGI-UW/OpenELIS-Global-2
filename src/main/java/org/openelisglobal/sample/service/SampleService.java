@@ -132,4 +132,6 @@ public interface SampleService extends BaseObjectService<Sample, String> {
     List<Sample> getSamplesByPriority(OrderPriority priority);
 
     List<Sample> findSamplesWithRequiredByBefore(Timestamp horizon);
+
+    List<Sample> getStatSamplesReceivedBeforeWithAnalysisIn(Timestamp cutoff, List<String> analysisStatusIds);
 }
