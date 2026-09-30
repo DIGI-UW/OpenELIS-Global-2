@@ -17,12 +17,24 @@ export const asList = (data) => (Array.isArray(data) ? data : []);
 // lab-unit-scoped list. Panel material is not lab-unit scoped, and the scoped
 // list is empty for a QA officer, who holds no bench role — which left both
 // wizards with an empty Test column for the very persona they are written for.
-export const fetchTests = (callback) => {
-  getFromOpenElisServer("/rest/eqa/testable-tests", (testable) => {
-    const usable = new Set(asList(testable).map(String));
-    getFromOpenElisServer("/rest/displayList/ALL_TESTS", (tests) =>
-      callback(asList(tests).filter((test) => usable.has(String(test.id)))),
+// Only the scheme's active assignments; a removed assignment keeps its row.
+export const fetchTests = (schemeId, callback) => {
+  getFromOpenElisServer(`/rest/eqa/programs/${schemeId}/tests`, (rows) => {
+    const assigned = new Set(
+      asList(rows)
+        .filter((row) => row.isActive !== false)
+        .map((row) => String(row.testId)),
     );
+    getFromOpenElisServer("/rest/eqa/testable-tests", (testable) => {
+      const usable = new Set(
+        asList(testable)
+          .map(String)
+          .filter((id) => assigned.has(id)),
+      );
+      getFromOpenElisServer("/rest/displayList/ALL_TESTS", (tests) =>
+        callback(asList(tests).filter((test) => usable.has(String(test.id)))),
+      );
+    });
   });
 };
 

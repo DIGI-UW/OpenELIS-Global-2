@@ -11929,5 +11929,6 @@
   "notification.organization.post.error": "The organization was not saved. Check the fields and try again.",
   "organization.email": "Contact Email",
   "eqa.provider.followups.sendFailed": "Could not email {to}. The notification was downloaded as CSV to send by hand.",
-  "label.validation.review.error.qcHold": "Release blocked: a failed QC control holds this result until its non-conformity is closed."
+  "label.validation.review.error.qcHold": "Release blocked: a failed QC control holds this result until its non-conformity is closed.",
+  "eqa.wizard.noSchemeTests": "This scheme has no tests assigned. Assign tests to the scheme before building its panel."
 }
