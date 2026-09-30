@@ -27,3 +27,6 @@
 	path = projects/catalyst
 	url = https://github.com/DIGI-UW/openelis-catalyst.git
 	branch = main
+[submodule "tools/code-qa"]
+	path = tools/code-qa
+	url = https://github.com/DIGI-UW/code-qa

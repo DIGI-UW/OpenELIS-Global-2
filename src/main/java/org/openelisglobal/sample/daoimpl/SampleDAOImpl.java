@@ -119,6 +119,21 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
 
     @Override
     @Transactional(readOnly = true)
+    public List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize) throws LIMSRuntimeException {
+        try {
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery("from Sample s order by s.id desc",
+                    Sample.class);
+            query.setFirstResult(Math.max(startingRecNo, 1) - 1);
+            query.setMaxResults(Math.max(pageSize, 1));
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Sample getSamplesNewestFirst()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public void getSampleByAccessionNumber(Sample sample) throws LIMSRuntimeException {
         try {
             String sql = "from Sample s where s.accessionNumber = :param";
@@ -745,5 +760,18 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
         }
 
         return null;
+    }
+
+    @Override
+    public List<Sample> findSamplesWithRequiredByBefore(java.sql.Timestamp horizon) {
+        String sql = "from Sample s where s.requiredBy is not null and s.requiredBy <= :horizon";
+        try {
+            Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
+            query.setParameter("horizon", horizon);
+            return query.list();
+        } catch (HibernateException e) {
+            handleException(e, "findSamplesWithRequiredByBefore");
+        }
+        return new java.util.ArrayList<>();
     }
 }

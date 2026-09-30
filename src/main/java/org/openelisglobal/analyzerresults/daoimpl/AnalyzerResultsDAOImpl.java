@@ -16,7 +16,9 @@
 package org.openelisglobal.analyzerresults.daoimpl;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.analyzerresults.dao.AnalyzerResultsDAO;
@@ -45,12 +47,17 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
 
             List<AnalyzerResults> list = new ArrayList<>();
 
+            // OGC-1129: a multiplex test stages one row per component, all sharing the
+            // same testName. Include component_id so distinct components of one test are
+            // not treated as duplicates of each other (null = PRIMARY, today's behavior).
             String sql = "from AnalyzerResults a where a.analyzerId = :analyzerId and "
-                    + "a.accessionNumber = :assessionNumber and " + "a.testName = :testName";
+                    + "a.accessionNumber = :assessionNumber and a.testName = :testName and "
+                    + "((:componentId is null and a.componentId is null) or a.componentId = :componentId)";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(sql, AnalyzerResults.class);
             query.setParameter("analyzerId", result.getAnalyzerId());
             query.setParameter("assessionNumber", result.getAccessionNumber());
             query.setParameter("testName", result.getTestName());
+            query.setParameter("componentId", result.getComponentId());
 
             list = query.list();
 
@@ -76,16 +83,51 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerResults> findWithImportIssues(int limit) {
+    public List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId) {
+        return entityManager.unwrap(Session.class).createQuery(
+                "FROM AnalyzerResults a WHERE a.analyzerId = :analyzerId AND a.isReadOnly = true AND a.importIssueReason IN (:reasons)",
+                AnalyzerResults.class).setParameter("analyzerId", analyzerId)
+                .setParameterList("reasons", AnalyzerResults.MAPPING_IMPORT_ISSUES).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<AnalyzerResults> findHeldMappingResultsByProfile(String profileId, int profileRevision) {
         try {
-            String hql = "FROM AnalyzerResults a WHERE a.importIssueReason IS NOT NULL "
+            String hql = "FROM AnalyzerResults a WHERE a.isReadOnly = true AND a.importIssueReason IN (:reasons) "
+                    + "AND a.sourceProfileId = :profileId AND a.sourceProfileRevision = :profileRevision "
                     + "ORDER BY a.lastupdated DESC NULLS LAST, a.id DESC";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(hql, AnalyzerResults.class);
-            query.setMaxResults(Math.max(1, limit));
+            query.setParameterList("reasons", AnalyzerResults.MAPPING_IMPORT_ISSUES);
+            query.setParameter("profileId", profileId);
+            query.setParameter("profileRevision", profileRevision);
             return query.list();
         } catch (RuntimeException e) {
             LogEvent.logError(e);
-            throw new LIMSRuntimeException("Error in AnalyzerResults findWithImportIssues()", e);
+            throw new LIMSRuntimeException("Error finding held analyzer mapping results", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds) {
+        if (analyzerIds == null || analyzerIds.isEmpty()) {
+            return Map.of();
+        }
+        try {
+            String hql = "SELECT a.analyzerId, COUNT(a.id) FROM AnalyzerResults a "
+                    + "WHERE a.analyzerId IN (:analyzerIds) AND a.importIssueReason IS NOT NULL "
+                    + "GROUP BY a.analyzerId";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameterList("analyzerIds", analyzerIds);
+            Map<String, Long> counts = new LinkedHashMap<>();
+            for (Object[] row : query.list()) {
+                counts.put((String) row[0], ((Number) row[1]).longValue());
+            }
+            return counts;
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error counting held analyzer results", e);
         }
     }
 }

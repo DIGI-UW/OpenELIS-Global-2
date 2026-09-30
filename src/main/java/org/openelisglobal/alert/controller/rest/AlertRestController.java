@@ -5,6 +5,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.alert.form.AcknowledgeAlertRequest;
 import org.openelisglobal.alert.form.AlertDTO;
 import org.openelisglobal.alert.form.FreezerDTO;
@@ -15,7 +16,10 @@ import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -28,19 +32,36 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/rest/alerts")
 public class AlertRestController extends ControllerUtills {
 
+    private static final String FREEZER_ENTITY_TYPE = "Freezer";
+
     @Autowired
     private AlertService alertService;
 
     @Autowired
     private FreezerService freezerService;
 
+    /**
+     * Open to every role that owns a page listing alerts: RECEPTION and ADMIN for
+     * the Cold Storage dashboard, RESULTS and VALIDATION for CriticalBanner, which
+     * reads {@code ?entityType=ANALYSIS&entityId=N} here on the unified results and
+     * validation pages. EQAAlertRestController serves the acknowledge half of that
+     * same flow under RECEPTION/RESULTS/VALIDATION.
+     *
+     * <p>
+     * The expression gates the method rather than the query, so RESULTS and
+     * VALIDATION also reach {@code ?entityType=Freezer} and the unscoped listing.
+     */
+    @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
     @GetMapping
     public ResponseEntity<List<AlertDTO>> getAlerts(@RequestParam(required = false) String entityType,
             @RequestParam(required = false) Long entityId) {
 
         List<Alert> alerts;
 
-        if (entityType != null && entityId != null) {
+        // entityId is optional: getAlertsByEntity filters on entityType alone when it
+        // is null. Requiring both here made ?entityType=Freezer fall through to
+        // getAll() and hand the caller every alert in the system.
+        if (entityType != null) {
             alerts = alertService.getAlertsByEntity(entityType, entityId);
         } else {
             alerts = alertService.getAll();
@@ -51,6 +72,7 @@ public class AlertRestController extends ControllerUtills {
         return ResponseEntity.ok(alertDTOs);
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<AlertDTO> getAlertById(@PathVariable Long id) {
         try {
@@ -61,12 +83,13 @@ public class AlertRestController extends ControllerUtills {
         }
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}/acknowledge")
     public ResponseEntity<AlertDTO> acknowledgeAlert(@PathVariable Long id,
             @RequestBody AcknowledgeAlertRequest request, HttpServletRequest httpRequest) {
         try {
             Integer userId = Integer.valueOf(getSysUserId(httpRequest));
-            Alert acknowledgedAlert = alertService.acknowledgeAlert(id, userId);
+            Alert acknowledgedAlert = alertService.acknowledgeAlert(id, userId, request.getNotes());
             return ResponseEntity.ok(convertToDTO(acknowledgedAlert));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
@@ -75,6 +98,7 @@ public class AlertRestController extends ControllerUtills {
         }
     }
 
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}/resolve")
     public ResponseEntity<AlertDTO> resolveAlert(@PathVariable Long id, @RequestBody ResolveAlertRequest request,
             HttpServletRequest httpRequest) {
@@ -89,6 +113,35 @@ public class AlertRestController extends ControllerUtills {
         }
     }
 
+    /**
+     * Deletes an alert record outright. Restricted to ADMIN and to freezer alerts:
+     * unlike acknowledge/resolve (which preserve the record), AlertService.delete
+     * is a hard row delete with no audit trail and nothing referencing alert(id),
+     * so a CRITICAL_RESULT or referral alert removed here is unrecoverable. Only
+     * the Cold Storage dashboard asks for this (issue #3743, item 2 — no way to
+     * clear an alert from Active Alerts), and it raises alerts under "Freezer"
+     * alone.
+     */
+    @PreAuthorize("hasRole('ADMIN')")
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteAlert(@PathVariable Long id, HttpServletRequest httpRequest) {
+        try {
+            Alert alert = alertService.get(id);
+            if (!FREEZER_ENTITY_TYPE.equals(alert.getAlertEntityType())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+            alertService.delete(id, getSysUserId(httpRequest));
+            return ResponseEntity.noContent().build();
+        } catch (ObjectNotFoundException e) {
+            // alertService.get throws rather than returning null, so an id already
+            // cleared by another admin lands here.
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.status(500).build();
+        }
+    }
+
+    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/count")
     public ResponseEntity<Map<String, Long>> countActiveAlerts(@RequestParam String entityType,
             @RequestParam Long entityId) {
@@ -105,6 +158,7 @@ public class AlertRestController extends ControllerUtills {
         dto.setAlertType(alert.getAlertType() != null ? alert.getAlertType().name() : null);
         dto.setAlertEntityType(alert.getAlertEntityType());
         dto.setAlertEntityId(alert.getAlertEntityId());
+        dto.setAlertEntityRef(alert.getAlertEntityRef());
         dto.setSeverity(alert.getSeverity() != null ? alert.getSeverity().name() : null);
         dto.setStatus(alert.getStatus() != null ? alert.getStatus().name() : null);
         dto.setStartTime(alert.getStartTime());
@@ -114,13 +168,14 @@ public class AlertRestController extends ControllerUtills {
         dto.setAcknowledgedAt(alert.getAcknowledgedAt());
         dto.setAcknowledgedBy(
                 alert.getAcknowledgedBy() != null ? Integer.parseInt(alert.getAcknowledgedBy().getId()) : null);
+        dto.setAcknowledgmentNotes(alert.getAcknowledgmentNotes());
         dto.setResolvedAt(alert.getResolvedAt());
         dto.setResolvedBy(alert.getResolvedBy() != null ? Integer.parseInt(alert.getResolvedBy().getId()) : null);
         dto.setResolutionNotes(alert.getResolutionNotes());
         dto.setDuplicateCount(alert.getDuplicateCount());
         dto.setLastDuplicateTime(alert.getLastDuplicateTime());
 
-        if ("Freezer".equals(alert.getAlertEntityType()) && alert.getAlertEntityId() != null) {
+        if (FREEZER_ENTITY_TYPE.equals(alert.getAlertEntityType()) && alert.getAlertEntityId() != null) {
             try {
                 Freezer freezer = freezerService.findById(alert.getAlertEntityId()).orElse(null);
                 if (freezer != null) {

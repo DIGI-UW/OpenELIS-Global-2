@@ -10,8 +10,10 @@ import {
   Column,
   DataTable,
   Grid,
+  InlineNotification,
   Loading,
   Modal,
+  NotificationActionButton,
   Table,
   TableBody,
   TableCell,
@@ -21,15 +23,18 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
+import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import EQABadge from "../eqa/EQABadge";
 import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServerV2,
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
+  putToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 import "./BoxDetails.css";
 import SampleAssignmentModal from "./SampleAssignmentModal";
@@ -49,6 +54,7 @@ const BoxDetails = () => {
   const [showSendModal, setShowSendModal] = useState(false);
   const [showRemoveModal, setShowRemoveModal] = useState(false);
   const [sampleToRemove, setSampleToRemove] = useState(null);
+  const [reconcileBlockCount, setReconcileBlockCount] = useState(null);
 
   useEffect(() => {
     if (boxId) {
@@ -350,11 +356,21 @@ const BoxDetails = () => {
   };
 
   const handleReconcile = () => {
-    putToOpenElisServer(
+    setReconcileBlockCount(null);
+    putToOpenElisServerJsonResponse(
       `/rest/shipping-box/${boxId}/state?newState=RECONCILED`,
       null,
-      (status) => {
-        if (status >= 200 && status < 300) {
+      (res) => {
+        if (res?.blockedReferralCount != null) {
+          // OGC-807: box gated by non-terminal referrals — show inline error + link.
+          setReconcileBlockCount(res.blockedReferralCount);
+        } else if (res?.error || (res?.statusCode && res.statusCode >= 300)) {
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({ id: "notification.error" }),
+            message: intl.formatMessage({ id: "shipment.error.reconcile" }),
+          });
+        } else {
           addNotification({
             kind: "success",
             title: intl.formatMessage({ id: "notification.success" }),
@@ -363,13 +379,6 @@ const BoxDetails = () => {
             }),
           });
           fetchBoxDetails();
-        } else {
-          console.error("Error reconciling box:", status);
-          addNotification({
-            kind: "error",
-            title: intl.formatMessage({ id: "notification.error" }),
-            message: intl.formatMessage({ id: "shipment.error.reconcile" }),
-          });
         }
       },
     );
@@ -403,9 +412,44 @@ const BoxDetails = () => {
     { key: "actions", header: intl.formatMessage({ id: "label.actions" }) },
   ];
 
+  // An imported box has no local contents rows — its manifest travels as
+  // JSON [{label, type}] on the box itself. Render-only: no reception status,
+  // no per-item actions.
+  const importedRows = useMemo(() => {
+    if (samples.length > 0 || !box?.importedContents) {
+      return [];
+    }
+    try {
+      const items = JSON.parse(box.importedContents);
+      return Array.isArray(items)
+        ? items.map((item, i) => ({
+            id: `imported-${i}`,
+            accessionNumber: item.label || "-",
+            typeOfSample: item.type || "-",
+            referralTests: "-",
+            collectionDate: "-",
+            receptionStatus: "-",
+            receptionNotes: "-",
+            actions: "-",
+          }))
+        : [];
+    } catch {
+      return [];
+    }
+  }, [samples, box?.importedContents]);
+
   const renderSampleRows = () => {
+    if (samples.length === 0 && importedRows.length > 0) {
+      return importedRows;
+    }
     return samples.map((sample) => ({
-      id: sample.sampleItemId || sample.id?.toString() || "-",
+      // EQA panel material has no sample item, so its contents row identifies
+      // itself by the box_sample_item id instead.
+      id:
+        sample.sampleItemId ||
+        sample.boxSampleItemId?.toString() ||
+        sample.id?.toString() ||
+        "-",
       accessionNumber: sample.accessionNumber,
       typeOfSample: sample.typeOfSample || "-",
       referralTests: sample.referralTests
@@ -444,6 +488,8 @@ const BoxDetails = () => {
   if (!box) {
     return (
       <div className="error-container">
+        {/* The fetch failure that lands here raises a message of its own. */}
+        <AlertDialog />
         <p>
           <FormattedMessage id="shipment.error.boxNotFound" />
         </p>
@@ -453,10 +499,14 @@ const BoxDetails = () => {
 
   return (
     <div className="box-details">
+      {/* Without this every message this page raises is discarded, so sending a
+          box, removing a sample or a failed state change all passed in silence. */}
+      <AlertDialog />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
           { label: "shipment.breadcrumb", link: "/SampleShipment" },
+          { label: "shipment.box.details", link: "" },
         ]}
       />
       <ShipmentNavigation />
@@ -473,8 +523,9 @@ const BoxDetails = () => {
               </h2>
               <div className="box-meta">
                 {renderStateTag(box.state)}
+                {box.eqaCycleId && <EQABadge />}
                 <span className="box-sample-count">
-                  {samples.length}{" "}
+                  {samples.length || importedRows.length}{" "}
                   <FormattedMessage id="shipment.label.samples" />
                 </span>
               </div>
@@ -544,6 +595,29 @@ const BoxDetails = () => {
               )}
               {box.state === "RECEIVED" && (
                 <>
+                  {reconcileBlockCount != null && (
+                    <InlineNotification
+                      kind="error"
+                      lowContrast
+                      title={intl.formatMessage({ id: "notification.error" })}
+                      subtitle={intl.formatMessage(
+                        { id: "referral.box.cannotReconcileMessage" },
+                        { count: reconcileBlockCount },
+                      )}
+                      onCloseButtonClick={() => setReconcileBlockCount(null)}
+                      actions={
+                        <NotificationActionButton
+                          onClick={() =>
+                            (window.location.href = `/SampleShipment/reference-lab-results?view=returned&boxId=${boxId}`)
+                          }
+                        >
+                          {intl.formatMessage({
+                            id: "referral.box.viewBlockedReferrals",
+                          })}
+                        </NotificationActionButton>
+                      }
+                    />
+                  )}
                   <Button
                     kind="primary"
                     renderIcon={Checkmark}
@@ -632,7 +706,7 @@ const BoxDetails = () => {
               <FormattedMessage id="shipment.label.samples" />
             </h3>
 
-            {samples.length === 0 ? (
+            {samples.length === 0 && importedRows.length === 0 ? (
               <div className="empty-state">
                 <p>
                   <FormattedMessage id="shipment.box.noSamples" />

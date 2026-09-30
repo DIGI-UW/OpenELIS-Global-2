@@ -1,0 +1,659 @@
+package org.openelisglobal.eqa.controller.rest;
+
+import jakarta.servlet.http.HttpServletRequest;
+import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import org.hibernate.ObjectNotFoundException;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQACycleService.PanelSampleRequest;
+import org.openelisglobal.eqa.service.EQACycleService.ProviderCycleRequest;
+import org.openelisglobal.eqa.service.EQAInvalidTransitionException;
+import org.openelisglobal.eqa.service.EQALabProgramEnrollmentService;
+import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
+import org.openelisglobal.eqa.service.EQAReportCommentService;
+import org.openelisglobal.eqa.service.SampleEQAService;
+import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQACycleStateTransition;
+import org.openelisglobal.eqa.valueholder.EQACycleStatus;
+import org.openelisglobal.eqa.valueholder.EQADistributionMethod;
+import org.openelisglobal.eqa.valueholder.EQALabProgramEnrollment;
+import org.openelisglobal.eqa.valueholder.EQAPanelSourceType;
+import org.openelisglobal.eqa.valueholder.EQAProgram;
+import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.eqa.valueholder.EQAStateMachine;
+import org.openelisglobal.eqa.valueholder.EQAStorageTemp;
+import org.openelisglobal.eqa.valueholder.EQATriggerEvent;
+import org.openelisglobal.eqa.valueholder.EQATriggerType;
+import org.openelisglobal.eqa.valueholder.SampleEQA;
+import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import org.springframework.web.bind.annotation.RestController;
+
+/**
+ * Cycle read + transition API.
+ *
+ * <p>
+ * No PUT or DELETE is mapped for the transitions path: audit rows are
+ * immutable, and leaving those methods unmapped makes Spring answer 405.
+ */
+@RestController
+@RequestMapping("/rest/eqa")
+@PreAuthorize(EQAGuards.READ)
+public class EQACycleRestController extends BaseRestController {
+
+    private final EQACycleService cycleService;
+    private final SampleEQAService sampleEQAService;
+    private final SampleService sampleService;
+    private final AnalysisService analysisService;
+    private final ResultService resultService;
+    private final EQAPerformanceReportPDFService performanceReportService;
+    private final EQAReportCommentService reportCommentService;
+    private final SystemUserService systemUserService;
+    private final EQALabProgramEnrollmentService enrollmentService;
+
+    public EQACycleRestController(EQACycleService cycleService, SampleEQAService sampleEQAService,
+            SampleService sampleService, AnalysisService analysisService, ResultService resultService,
+            EQAPerformanceReportPDFService performanceReportService, EQAReportCommentService reportCommentService,
+            SystemUserService systemUserService, EQALabProgramEnrollmentService enrollmentService) {
+        this.cycleService = cycleService;
+        this.sampleEQAService = sampleEQAService;
+        this.sampleService = sampleService;
+        this.analysisService = analysisService;
+        this.resultService = resultService;
+        this.performanceReportService = performanceReportService;
+        this.reportCommentService = reportCommentService;
+        this.systemUserService = systemUserService;
+        this.enrollmentService = enrollmentService;
+    }
+
+    /**
+     * OGC-933: the printed performance report. Streams a PDF rather than JSON, so
+     * the browser can open it straight from a link.
+     *
+     * <p>
+     * An unknown cycle is a missing resource, so it answers 404 rather than the 422
+     * the class's bad-input handler would otherwise give a path variable that names
+     * no row.
+     */
+    @GetMapping(value = "/cycles/{cycleId}/performance-report", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> performanceReport(@PathVariable Long cycleId) {
+        byte[] pdf;
+        try {
+            pdf = performanceReportService.generatePerformanceReport(cycleId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+        String filename = "eqa-performance-report-cycle-" + cycleId + ".pdf";
+        return ResponseEntity.ok().header("Content-Disposition", "inline; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_PDF).body(pdf);
+    }
+
+    /**
+     * The provider's copy of the report for one participating laboratory, built
+     * from what that laboratory reported into this cycle. Same grain as the scores
+     * CSV beside it on the workbench, so the two cannot disagree.
+     */
+    @GetMapping(value = "/cycles/{cycleId}/participants/{organizationId}/performance-report", produces = MediaType.APPLICATION_PDF_VALUE)
+    public ResponseEntity<byte[]> participantPerformanceReport(@PathVariable Long cycleId,
+            @PathVariable Long organizationId) {
+        byte[] pdf;
+        try {
+            pdf = performanceReportService.generateParticipantPerformanceReport(cycleId, organizationId);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.notFound().build();
+        }
+        String filename = "eqa-performance-report-cycle-" + cycleId + "-org-" + organizationId + ".pdf";
+        return ResponseEntity.ok().header("Content-Disposition", "inline; filename=\"" + filename + "\"")
+                .contentType(MediaType.APPLICATION_PDF).body(pdf);
+    }
+
+    /**
+     * OGC-934: the pre-approved comment library the picker offers. Maintained as a
+     * dictionary category, so an installation edits the wording without a release.
+     */
+    @GetMapping(value = "/report-comments", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> reportCommentLibrary() {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQAReportCommentService.LibraryEntry entry : reportCommentService.getLibrary()) {
+            Map<String, Object> dto = new LinkedHashMap<>();
+            dto.put("id", entry.id());
+            dto.put("text", entry.text());
+            rows.add(dto);
+        }
+        return rows;
+    }
+
+    @GetMapping(value = "/cycles/{cycleId}/report-comments", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> reportComments(@PathVariable Long cycleId) {
+        return commentDtos(reportCommentService.getComments(cycleId));
+    }
+
+    /**
+     * Attaches library entries to the cycle's report. The body carries ids only —
+     * there is no text field to fill, so nothing but pre-approved wording can reach
+     * a signed report (FR-V2.3 interpretive comments, OGC-934).
+     */
+    @PostMapping(value = "/cycles/{cycleId}/report-comments", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public List<Map<String, Object>> attachReportComments(HttpServletRequest request, @PathVariable Long cycleId,
+            @RequestBody Map<String, Object> body) {
+        Object ids = body.get("commentIds");
+        if (!(ids instanceof List<?> list)) {
+            throw new IllegalArgumentException("commentIds is required");
+        }
+        List<String> commentIds = new ArrayList<>();
+        for (Object id : list) {
+            commentIds.add(String.valueOf(id));
+        }
+        return commentDtos(reportCommentService.attach(cycleId, commentIds, getSysUserId(request)));
+    }
+
+    @DeleteMapping(value = "/cycles/{cycleId}/report-comments/{commentId}", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    public Map<String, Object> detachReportComment(@PathVariable Long cycleId, @PathVariable String commentId) {
+        reportCommentService.detach(cycleId, commentId);
+        return Map.of("removed", commentId);
+    }
+
+    private List<Map<String, Object>> commentDtos(List<EQAReportCommentService.AttachedComment> comments) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQAReportCommentService.AttachedComment comment : comments) {
+            Map<String, Object> dto = new LinkedHashMap<>();
+            dto.put("id", comment.id());
+            dto.put("libraryEntryId", comment.libraryEntryId());
+            dto.put("text", comment.text());
+            dto.put("attachedBy", comment.attachedBy());
+            dto.put("attachedAt", comment.attachedAt());
+            rows.add(dto);
+        }
+        return rows;
+    }
+
+    /**
+     * Cycles this lab takes part in. OpenELIS runs single-tenant, so every cycle in
+     * the database belongs to this lab; passing a labEnrollmentId adds that
+     * enrollment's derived participant state to each row. Rows carry the display
+     * fields My Cycles renders: scheme name/provider/type, progress and per-sample
+     * entry state, computed from the orders linked via sample_eqa.cycle_id (wired
+     * at receipt).
+     */
+    @GetMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> myCycles(@RequestParam(required = false) Long labEnrollmentId) {
+        // The cycles this laboratory takes part in — programmes it has
+        // enrolled in (My Programs), its own in-house cycles, and any cycle that
+        // already carries one of its EQA orders. A provider's outbound cycles have
+        // their own board and are not "mine".
+        Set<String> enrolledNames = new HashSet<>();
+        for (EQALabProgramEnrollment enrollment : enrollmentService.findActiveEnrollments()) {
+            if (enrollment.getProgramName() != null) {
+                enrolledNames.add(enrollment.getProgramName().trim().toLowerCase());
+            }
+        }
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQACycle cycle : cycleService.getAll()) {
+            Map<String, Object> dto = toCycleDto(cycle);
+            addSampleProgress(dto, cycle.getId());
+            if (!participatesIn(cycle, enrolledNames, dto)) {
+                continue;
+            }
+            if (labEnrollmentId != null) {
+                dto.put("participantState", cycleService.deriveParticipantState(cycle, labEnrollmentId).name());
+            }
+            rows.add(dto);
+        }
+        return rows;
+    }
+
+    private static boolean participatesIn(EQACycle cycle, Set<String> enrolledNames, Map<String, Object> dto) {
+        EQAProgram scheme = cycle.getScheme();
+        if (scheme != null && scheme.getSchemeType() == EQASchemeType.IN_HOUSE) {
+            return true;
+        }
+        if (scheme != null && scheme.getName() != null
+                && enrolledNames.contains(scheme.getName().trim().toLowerCase())) {
+            return true;
+        }
+        Object samples = dto.get("samples");
+        return samples instanceof List<?> linked && !linked.isEmpty();
+    }
+
+    /**
+     * The participant's own way in: a cycle for a programme this lab has enrolled
+     * in, for a provider that does not send consignments to an OpenELIS. The
+     * programme is named, not numbered, because that is all an enrollment carries;
+     * it must exist locally under the same name.
+     */
+    @PostMapping(value = "/cycles/mine", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PARTICIPANT)
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createMyCycle(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        String schemeName = stringField(body, "schemeName");
+        if (schemeName == null) {
+            throw new IllegalArgumentException("A cycle needs a programme");
+        }
+        boolean enrolled = enrollmentService.findActiveEnrollments().stream()
+                .anyMatch(e -> e.getProgramName() != null && e.getProgramName().trim().equalsIgnoreCase(schemeName));
+        if (!enrolled) {
+            throw new IllegalArgumentException("This laboratory is not enrolled in " + schemeName);
+        }
+        EQACycle cycle = cycleService.ensureParticipantCycle(schemeName, null, stringField(body, "cycleName"),
+                dateField(body, "distributionDate"), dateField(body, "submissionDeadline"), getSysUserId(request))
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "No programme named '" + schemeName + "' exists on this instance; add it under EQA Programs"));
+        return toCycleDto(cycle);
+    }
+
+    /**
+     * The in-house wizard's first step creates the cycle it blinds into; the
+     * provider wizard creates one the same way. {@code cycleNumber} may be omitted
+     * — the service takes the scheme's next number, which is what both wizards
+     * suggest.
+     */
+    @PostMapping(value = "/cycles", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    @ResponseStatus(HttpStatus.CREATED)
+    public Map<String, Object> createCycle(HttpServletRequest request, @RequestBody Map<String, Object> body) {
+        Long schemeId = longField(body, "schemeId");
+        if (schemeId == null) {
+            throw new IllegalArgumentException("A cycle needs a scheme");
+        }
+        EQACycle cycle = cycleService.create(schemeId, integerField(body, "cycleNumber"),
+                stringField(body, "cycleName"), dateField(body, "plannedStartDate"), dateField(body, "plannedEndDate"),
+                enumField(body, "distributionMethod", EQADistributionMethod.class), getSysUserId(request));
+        return toCycleDto(cycle);
+    }
+
+    @GetMapping(value = "/cycles/{id}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, Object> getCycle(@PathVariable Long id) {
+        Map<String, Object> dto = toCycleDto(cycleService.get(id));
+        addSampleProgress(dto, id);
+        return dto;
+    }
+
+    /**
+     * Progress and per-sample entry state for a cycle, at analysis grain.
+     *
+     * <p>
+     * What counts as entered depends on the lane, because the two lanes have
+     * different gates. An external analyte counts once its analysis is finalized in
+     * the standard pipeline, which is what auto-submit waits on. An in-house one
+     * counts as soon as a result exists: that lane scores from the unblind and
+     * never goes through validation at all, so the Finalized rule left a fully
+     * answered and scored panel reading <i>0 of 6</i>.
+     *
+     * <p>
+     * When the scheme's review gate is on, each analyte also carries what the lab
+     * is about to submit — reported value and validation timestamp — because The
+     * review gate requires the officer to see the validated results before the
+     * single Submit click. Reading the flag off the DTO keeps that decision with
+     * the scheme without re-fetching it; both callers run {@link #toCycleDto}
+     * first.
+     *
+     * <p>
+     * One query per linked order, plus one per analysis only when the gate is on;
+     * fine at lab scale (a cycle carries a handful of panel samples). Batch it if a
+     * deployment ever links hundreds.
+     */
+    private void addSampleProgress(Map<String, Object> dto, Long cycleId) {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        String finalizedId = statusService.getStatusID(AnalysisStatus.Finalized);
+        String notStartedId = statusService.getStatusID(AnalysisStatus.NotStarted);
+        boolean withReportedValues = Boolean.TRUE.equals(dto.get("requiresCycleReview"));
+        boolean inHouse = EQASchemeType.IN_HOUSE.name().equals(dto.get("schemeType"));
+
+        int entered = 0;
+        int total = 0;
+        List<Map<String, Object>> sampleDtos = new ArrayList<>();
+        for (SampleEQA link : sampleEQAService.getAllMatching("cycleId", cycleId)) {
+            if (link.getSampleId() == null) {
+                continue;
+            }
+            Sample order = sampleService.get(String.valueOf(link.getSampleId()));
+            if (order == null) {
+                continue;
+            }
+            List<Analysis> analyses = analysisService.getAnalysesBySampleId(order.getId());
+            List<Map<String, Object>> analytes = new ArrayList<>();
+            boolean allFinalized = !analyses.isEmpty();
+            boolean anyStarted = false;
+            int enteredHere = 0;
+            for (Analysis analysis : analyses) {
+                total++;
+                boolean finalized = finalizedId.equals(analysis.getStatusId());
+                // In-house: answered is the gate, and an answer is a result. Reading
+                // the status instead would count a cancelled analysis as entered.
+                boolean answered = inHouse ? hasResult(analysis) : finalized;
+                if (answered) {
+                    entered++;
+                    enteredHere++;
+                }
+                if (!finalized) {
+                    allFinalized = false;
+                }
+                if (!notStartedId.equals(analysis.getStatusId())) {
+                    anyStarted = true;
+                }
+                if (analysis.getTest() != null) {
+                    analytes.add(toAnalyteDto(analysis, finalized, withReportedValues));
+                }
+            }
+
+            Map<String, Object> sampleDto = new LinkedHashMap<>();
+            sampleDto.put("id", link.getEqaProviderSampleId());
+            sampleDto.put("labNo", order.getAccessionNumber());
+            sampleDto.put("analytes", analytes);
+            sampleDto.put("entryStatus",
+                    (inHouse ? enteredHere == analyses.size() && !analyses.isEmpty() : allFinalized) ? "entered"
+                            : anyStarted ? "in_progress" : "empty");
+            sampleDtos.add(sampleDto);
+        }
+        dto.put("progress", Map.of("entered", entered, "total", total));
+        dto.put("samples", sampleDtos);
+    }
+
+    /**
+     * Whether the bench has answered this analysis. One query per in-house
+     * analysis, which is the same order of cost as the surrounding loop already
+     * pays per order; an in-house panel carries a handful of samples.
+     */
+    private boolean hasResult(Analysis analysis) {
+        for (Result result : resultService.getResultsByAnalysis(analysis)) {
+            String rendered = resultService.getSimpleResultValue(result);
+            if (rendered != null && !rendered.isBlank()) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * One analyte row. The reported value comes from the standard pipeline rather
+     * than eqa_participant_result: validation there is the authoritative gate, and
+     * nothing writes participant results until auto-submission. Dictionary and
+     * numeric results are rendered by the shared
+     * {@link ResultService#getSimpleResultValue} so a coded answer shows its text,
+     * not its dictionary id. Only a finalized analysis reports a value — an
+     * unvalidated one is not part of what would be submitted.
+     */
+    private Map<String, Object> toAnalyteDto(Analysis analysis, boolean finalized, boolean withReportedValues) {
+        Map<String, Object> analyte = new LinkedHashMap<>();
+        analyte.put("name", analysis.getTest().getName());
+        if (!withReportedValues || !finalized) {
+            return analyte;
+        }
+        StringBuilder value = new StringBuilder();
+        for (Result result : resultService.getResultsByAnalysis(analysis)) {
+            String rendered = resultService.getSimpleResultValue(result);
+            if (rendered != null && !rendered.isBlank()) {
+                value.append(value.length() == 0 ? "" : ", ").append(rendered);
+            }
+        }
+        analyte.put("value", value.toString());
+        analyte.put("validatedAt", analysis.getReleasedDate() == null ? null : analysis.getReleasedDate().toString());
+        return analyte;
+    }
+
+    /**
+     * The five-step cycle wizard's single write. One POST creates the cycle, its
+     * panel, its panel samples and its participant roster, and leaves it in prep —
+     * the service does all of that in one transaction, so a rejected wizard leaves
+     * nothing half-created behind.
+     *
+     * <p>
+     * Running a cycle for other laboratories is the provider's job, so this
+     * declares the provider lane rather than the class's read roles.
+     */
+    @PostMapping(value = "/provider/cycles", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.PROVIDER)
+    public ResponseEntity<Map<String, Object>> createProviderCycle(HttpServletRequest request,
+            @RequestBody Map<String, Object> body) {
+        ProviderCycleRequest wizard = new ProviderCycleRequest(longField(body, "schemeId"),
+                integerField(body, "cycleNumber"), stringField(body, "cycleName"), dateField(body, "plannedStartDate"),
+                dateField(body, "plannedEndDate"), stringField(body, "panelName"),
+                enumField(body, "sourceType", EQAPanelSourceType.class), stringField(body, "lotNumber"),
+                stringField(body, "vendorName"), stringField(body, "vendorLot"),
+                stringField(body, "vendorCertificateRef"), sampleRequests(body.get("samples")),
+                longListField(body, "participantOrganizationIds"), enumField(body, "storageTemp", EQAStorageTemp.class),
+                dateField(body, "expirationDate"), enumField(body, "distributionMethod", EQADistributionMethod.class));
+
+        EQACycle created = cycleService.createProviderCycle(wizard, getSysUserId(request));
+        return ResponseEntity.status(HttpStatus.CREATED).body(toCycleDto(created));
+    }
+
+    private List<PanelSampleRequest> sampleRequests(Object raw) {
+        if (!(raw instanceof List<?> rows)) {
+            throw new IllegalArgumentException("samples must be a list");
+        }
+        List<PanelSampleRequest> samples = new ArrayList<>();
+        for (Object row : rows) {
+            if (!(row instanceof Map<?, ?> map)) {
+                throw new IllegalArgumentException("Each sample must be an object");
+            }
+            @SuppressWarnings("unchecked")
+            Map<String, Object> sample = (Map<String, Object>) map;
+            samples.add(new PanelSampleRequest(stringField(sample, "sampleCode"), stringField(sample, "testId"),
+                    stringField(sample, "targetValue"), stringField(sample, "targetUnit"),
+                    decimalField(sample, "acceptanceRangeLow"), decimalField(sample, "acceptanceRangeHigh")));
+        }
+        return samples;
+    }
+
+    private List<Long> longListField(Map<String, Object> body, String key) {
+        Object value = body.get(key);
+        if (!(value instanceof List<?> raw)) {
+            throw new IllegalArgumentException(key + " must be a list of ids");
+        }
+        List<Long> ids = new ArrayList<>();
+        for (Object element : raw) {
+            try {
+                ids.add(Long.valueOf(String.valueOf(element).trim()));
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(key + " must be a list of ids");
+            }
+        }
+        return ids;
+    }
+
+    private <E extends Enum<E>> E enumField(Map<String, Object> body, String key, Class<E> type) {
+        String value = stringField(body, key);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return Enum.valueOf(type, value.trim().toUpperCase());
+        } catch (IllegalArgumentException e) {
+            throw new IllegalArgumentException(key + " is not one of " + List.of(type.getEnumConstants()));
+        }
+    }
+
+    private BigDecimal decimalField(Map<String, Object> body, String key) {
+        String value = stringField(body, key);
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value.trim());
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException(key + " must be a number");
+        }
+    }
+
+    /** Computed, never stored. */
+    @GetMapping(value = "/cycles/{id}/participant-state", produces = MediaType.APPLICATION_JSON_VALUE)
+    public Map<String, Object> participantState(@PathVariable Long id, @RequestParam Long labEnrollmentId) {
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("cycleId", id);
+        dto.put("labEnrollmentId", labEnrollmentId);
+        dto.put("participantState", cycleService.deriveParticipantState(id, labEnrollmentId).name());
+        return dto;
+    }
+
+    @GetMapping(value = "/cycles/{id}/transitions", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<Map<String, Object>> transitions(@PathVariable Long id) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        for (EQACycleStateTransition t : cycleService.getTransitions(id)) {
+            Map<String, Object> dto = new LinkedHashMap<>();
+            dto.put("id", t.getId());
+            dto.put("priorState", t.getPriorState());
+            dto.put("newState", t.getNewState());
+            dto.put("stateMachine", t.getStateMachine() == null ? null : t.getStateMachine().name());
+            dto.put("triggerType", t.getTriggerType() == null ? null : t.getTriggerType().name());
+            dto.put("triggerEvent", t.getTriggerEvent() == null ? null : t.getTriggerEvent().name());
+            dto.put("triggeredBy", t.getTriggeredBy());
+            dto.put("triggeredByName", resolveUserName(t.getTriggeredBy()));
+            dto.put("reason", t.getReason());
+            dto.put("occurredAt", t.getOccurredAt() == null ? null : t.getOccurredAt().toString());
+            rows.add(dto);
+        }
+        return rows;
+    }
+
+    /**
+     * The timeline shows the actor, not a numeric user id. NULL for AUTO
+     * transitions — the client renders those as the system actor.
+     */
+    private String resolveUserName(Long triggeredBy) {
+        if (triggeredBy == null) {
+            return null;
+        }
+        SystemUser user = systemUserService.get(String.valueOf(triggeredBy));
+        if (user == null) {
+            return String.valueOf(triggeredBy);
+        }
+        String name = ((user.getFirstName() == null ? "" : user.getFirstName() + " ")
+                + (user.getLastName() == null ? "" : user.getLastName())).trim();
+        return name.isEmpty() ? String.valueOf(triggeredBy) : name;
+    }
+
+    /**
+     * Advancing a cycle mutates lab-wide state and writes a permanent audit row, so
+     * it needs a manage-level grant rather than the class-level read roles.
+     *
+     * <p>
+     * Provenance is never taken from the request body: an HTTP call is a person
+     * acting, so it is always recorded as a MANUAL override attributed to the
+     * session user.
+     */
+    @PatchMapping(value = "/cycles/{id}/transition", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PreAuthorize(EQAGuards.MANAGE)
+    public ResponseEntity<Map<String, Object>> transition(HttpServletRequest request, @PathVariable Long id,
+            @RequestBody Map<String, Object> body) {
+        String newState = stringField(body, "newState");
+        if (newState == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "newState is required"));
+        }
+
+        EQACycleStatus targetState;
+        EQAStateMachine machine;
+        try {
+            targetState = EQACycleStatus.valueOf(newState.toUpperCase());
+            String machineName = stringField(body, "stateMachine");
+            machine = machineName == null ? EQAStateMachine.PARTICIPANT
+                    : EQAStateMachine.valueOf(machineName.toUpperCase());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", "Unknown state or state machine"));
+        }
+
+        String sysUserId = getSysUserId(request);
+        EQACycle updated = cycleService.transition(id, targetState, machine, EQATriggerType.MANUAL,
+                EQATriggerEvent.MANUAL_OVERRIDE, actingUserId(sysUserId), stringField(body, "reason"), sysUserId);
+
+        return ResponseEntity.ok(toCycleDto(updated));
+    }
+
+    /** Tolerates non-string JSON values rather than throwing ClassCastException. */
+    /**
+     * The session's user id as the audit actor. A manual transition with no
+     * resolvable actor is refused rather than recorded anonymously.
+     */
+    private Long actingUserId(String sysUserId) {
+        try {
+            return Long.valueOf(sysUserId);
+        } catch (NumberFormatException e) {
+            throw new IllegalArgumentException("Cannot attribute this transition to an authenticated user");
+        }
+    }
+
+    private Map<String, Object> toCycleDto(EQACycle cycle) {
+        Map<String, Object> dto = new LinkedHashMap<>();
+        dto.put("id", cycle.getId());
+        dto.put("cycleNumber", cycle.getCycleNumber());
+        dto.put("cycleName", cycle.getCycleName());
+        dto.put("status", cycle.getStatus() == null ? null : cycle.getStatus().name());
+        dto.put("schemeId", cycle.getScheme() == null ? null : cycle.getScheme().getId());
+        if (cycle.getScheme() != null) {
+            dto.put("schemeName", cycle.getScheme().getName());
+            dto.put("provider", cycle.getScheme().getProvider());
+            dto.put("schemeType",
+                    cycle.getScheme().getSchemeType() == null ? null : cycle.getScheme().getSchemeType().name());
+            // Drives the Review & Submit gate on My Cycles
+            // and stands the auto-submit sweep down.
+            dto.put("requiresCycleReview", Boolean.TRUE.equals(cycle.getScheme().getRequiresCycleReview()));
+        }
+        dto.put("distributionMethod",
+                cycle.getDistributionMethod() == null ? null : cycle.getDistributionMethod().name());
+        // What the automatic channel has spent. My Cycles offers a manual
+        // submission from the point the sweep gives up, and says why.
+        dto.put("submissionAttempts", cycle.getSubmissionAttempts() == null ? 0 : cycle.getSubmissionAttempts());
+        dto.put("plannedStartDate",
+                cycle.getPlannedStartDate() == null ? null : cycle.getPlannedStartDate().toString());
+        dto.put("plannedEndDate", cycle.getPlannedEndDate() == null ? null : cycle.getPlannedEndDate().toString());
+        return dto;
+    }
+
+    @ExceptionHandler(ObjectNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public Map<String, String> handleNotFound(ObjectNotFoundException e) {
+        return Map.of("error", "EQA cycle not found");
+    }
+
+    /** An edge that is not in the machine is a conflict, not bad input. */
+    @ExceptionHandler(EQAInvalidTransitionException.class)
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public Map<String, Object> handleInvalidTransition(EQAInvalidTransitionException e) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", e.getMessage());
+        body.put("priorState", e.getPriorState() == null ? null : e.getPriorState().name());
+        body.put("attemptedState", e.getAttemptedState() == null ? null : e.getAttemptedState().name());
+        return body;
+    }
+
+    /**
+     * A legal edge missing its required reason is unprocessable, not a conflict.
+     */
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.UNPROCESSABLE_ENTITY)
+    public Map<String, String> handleBadInput(IllegalArgumentException e) {
+        return Map.of("error", e.getMessage());
+    }
+}

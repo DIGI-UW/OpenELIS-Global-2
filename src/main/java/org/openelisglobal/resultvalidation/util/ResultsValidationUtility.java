@@ -15,22 +15,28 @@
 package org.openelisglobal.resultvalidation.util;
 
 import jakarta.annotation.PostConstruct;
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.alert.service.AlertService;
+import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyte.service.AnalyteService;
 import org.openelisglobal.analyte.valueholder.Analyte;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.formfields.FormFields.Field;
@@ -46,7 +52,10 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.method.service.MethodService;
+import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -59,19 +68,34 @@ import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
 import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
+import org.openelisglobal.qaevent.service.NCEventService;
+import org.openelisglobal.qaevent.service.NceSpecimenService;
+import org.openelisglobal.qaevent.valueholder.NcEvent;
+import org.openelisglobal.qaevent.valueholder.NceSpecimen;
+import org.openelisglobal.referencetables.service.ReferenceTablesService;
+import org.openelisglobal.referencetables.valueholder.ReferenceTables;
+import org.openelisglobal.result.action.util.CriticalRangeFormat;
+import org.openelisglobal.result.action.util.ResultsLoadUtility;
+import org.openelisglobal.result.action.util.StoredDictionaryResult;
 import org.openelisglobal.result.service.ResultService;
+import org.openelisglobal.result.service.ResultSignatureService;
+import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
+import org.openelisglobal.resultvalidation.bean.QcFailureItem;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.statusofsample.util.StatusRules;
+import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
@@ -106,6 +130,14 @@ public class ResultsValidationUtility {
     protected AnalysisService analysisService;
     @Autowired
     protected ResultLimitService resultLimitService;
+    @Autowired
+    protected org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
+    @Autowired
+    protected org.openelisglobal.vector.service.VectorPoolService vectorPoolService;
+    @Autowired
+    protected org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
+    @Autowired
+    protected org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
     private Patient currentPatient;
     protected String SAMPLE_STATUS_OBSERVATION_HISTORY_TYPE_ID;
@@ -193,12 +225,12 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsInTestSection(String sectionId,
             List<String> statusList) {
 
-        // List<Analysis> analysisList =
-        // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
-        // false);
-        // getPage for validation
-        List<Analysis> analysisList = analysisService.getPageAnalysisByTestSectionAndStatus(sectionId, statusList,
-                false);
+        // QC samples are evaluated automatically by the QC engine and don't require a
+        // validator sign-off, so they're hidden from the validation workbench. Failed
+        // QC is surfaced separately on the validation screen via the QC acknowledgment
+        // banner.
+        List<Analysis> analysisList = analysisService.getPageAnalysisByTestSectionAndStatusExcludingQc(sectionId,
+                statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
@@ -206,12 +238,10 @@ public class ResultsValidationUtility {
     public final List<ResultValidationItem> getPageUnValidatedTestResultItemsAtAccessionNumber(String accessionNumber,
             List<String> statusList) {
 
-        // List<Analysis> analysisList =
-        // analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList,
-        // false);
-        // getPage for validation
-        List<Analysis> analysisList = analysisService.getPageAnalysisAtAccessionNumberAndStatus(accessionNumber,
-                statusList, false);
+        // The DAO query uses LEFT JOIN + EXISTS so it returns both sampleItem-anchored
+        // (member-level) and vectorPoolId-anchored (pool-level) analyses in one call.
+        List<Analysis> analysisList = analysisService
+                .getPageAnalysisAtAccessionNumberAndStatusExcludingQc(accessionNumber, statusList, false);
         return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
     }
 
@@ -221,12 +251,53 @@ public class ResultsValidationUtility {
 
         List<Analysis> analysisList = analysisService.getAnalysisStartedOn(DateUtil.convertStringDateToSqlDate(date))
                 .stream().filter(analysis -> statusList.contains(analysis.getStatusId())).collect(Collectors.toList());
-        return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
+        return getGroupedTestsForAnalysisList(excludeQcAnalyses(analysisList),
+                !StatusRules.useRecordStatusForValidation());
+    }
+
+    /**
+     * Drops any analysis whose sample item has a QC profile (BLANK / DUPLICATE /
+     * CONTROL). QC outcomes are evaluated automatically by the QC engine and
+     * surfaced via the validation-screen acknowledgment banner — they don't need an
+     * individual sign-off.
+     */
+    private List<Analysis> excludeQcAnalyses(List<Analysis> analyses) {
+        if (analyses == null || analyses.isEmpty()) {
+            return analyses;
+        }
+        java.util.Set<Integer> sampleItemIds = new java.util.HashSet<>();
+        for (Analysis a : analyses) {
+            if (a.getSampleItem() != null && a.getSampleItem().getId() != null) {
+                try {
+                    sampleItemIds.add(Integer.valueOf(a.getSampleItem().getId()));
+                } catch (NumberFormatException ignored) {
+                    // SampleItem.id should always be numeric; skip rather than fail.
+                }
+            }
+        }
+        if (sampleItemIds.isEmpty()) {
+            return analyses;
+        }
+        java.util.Set<Integer> qcSampleItemIds = new java.util.HashSet<>();
+        for (org.openelisglobal.qc.valueholder.SampleItemQcProfile profile : sampleItemQcProfileDAO
+                .findBySampleItemIds(new java.util.ArrayList<>(sampleItemIds))) {
+            qcSampleItemIds.add(profile.getSampleItemId());
+        }
+        if (qcSampleItemIds.isEmpty()) {
+            return analyses;
+        }
+        return analyses.stream().filter(a -> {
+            try {
+                return !qcSampleItemIds.contains(Integer.valueOf(a.getSampleItem().getId()));
+            } catch (NumberFormatException e) {
+                return true;
+            }
+        }).collect(Collectors.toList());
     }
 
     @SuppressWarnings("unchecked")
     public final int getCountUnValidatedTestResultItemsInTestSection(String sectionId, List<String> statusList) {
-        return analysisService.getCountAnalysisByTestSectionAndStatus(sectionId, statusList);
+        return analysisService.getCountAnalysisByTestSectionAndStatusExcludingQc(sectionId, statusList);
     }
 
     protected final void sortByAccessionNumberAndOrder(List<AnalysisItem> resultItemList) {
@@ -275,9 +346,16 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
+            // Use AnalysisAnchorService — same pattern as ResultsLoadUtility — so both
+            // sampleItem-anchored and vectorPoolId-anchored analyses resolve correctly.
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+            if (anchor == null || anchor.getSample() == null) {
+                continue;
+            }
 
-            if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
-                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
+            boolean ready = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
+            if (ready) {
+                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
                 for (ResultValidationItem validationItem : testResultItemList) {
@@ -317,9 +395,14 @@ public class ResultsValidationUtility {
         Dictionary dictionary;
 
         for (Analysis analysis : filteredAnalysisList) {
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+            if (anchor == null || anchor.getSample() == null) {
+                continue;
+            }
 
-            if (ignoreRecordStatus || sampleReadyForValidation(analysis.getSampleItem().getSample())) {
-                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis);
+            boolean countReady = ignoreRecordStatus || sampleReadyForValidation(anchor.getSample());
+            if (countReady) {
+                List<ResultValidationItem> testResultItemList = getResultItemFromAnalysis(analysis, anchor);
                 // NB. The resultValue is filled in during getResultItemFromAnalysis as a side
                 // effect of setResult
                 for (ResultValidationItem validationItem : testResultItemList) {
@@ -364,8 +447,41 @@ public class ResultsValidationUtility {
         return valid;
     }
 
+    /**
+     * For a multi-component test, label the row with its component so validators
+     * can tell the values apart (the component is resolved via the result's
+     * test_result row).
+     */
+    protected String appendComponentLabel(String displayTestName, Result result, Test test) {
+        if (result == null || result.getTestResult() == null || result.getTestResult().getComponentId() == null) {
+            return displayTestName;
+        }
+        List<org.openelisglobal.testresultcomponent.valueholder.TestResultComponent> components = testResultComponentService
+                .getActiveComponentsByTestId(test.getId());
+        if (components.size() < 2) {
+            return displayTestName;
+        }
+        for (org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component : components) {
+            if (component.getId().equals(result.getTestResult().getComponentId())
+                    && !GenericValidator.isBlankOrNull(component.getLabel())) {
+                return displayTestName + " — " + component.getLabel();
+            }
+        }
+        return displayTestName;
+    }
+
     public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis) throws LIMSRuntimeException {
+        org.openelisglobal.analysis.service.AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+        return getResultItemFromAnalysis(analysis, anchor);
+    }
+
+    public final List<ResultValidationItem> getResultItemFromAnalysis(Analysis analysis,
+            org.openelisglobal.analysis.service.AnalysisAnchor anchor) throws LIMSRuntimeException {
         List<ResultValidationItem> testResultList = new ArrayList<>();
+
+        if (anchor == null || anchor.getSample() == null) {
+            return testResultList;
+        }
 
         List<Result> resultList = resultService.getResultsByAnalysis(analysis);
         NoteType[] noteTypes = { NoteType.EXTERNAL, NoteType.INTERNAL, NoteType.REJECTION_REASON,
@@ -387,6 +503,11 @@ public class ResultsValidationUtility {
             resultList.add(null);
         }
 
+        // Resolve accession number and sort order via anchor — works for both
+        // sampleItem-anchored (member-level) and vectorPoolId-anchored (pool-level).
+        String accessionNumber = anchor.getSample().getAccessionNumber();
+        String sortOrder = anchor.getSampleItem() != null ? anchor.getSampleItem().getSortOrder() : "1";
+
         ResultValidationItem parentItem = null;
         for (Result result : resultList) {
             if (parentItem != null && result.getParentResult() != null
@@ -397,9 +518,8 @@ public class ResultsValidationUtility {
                 continue;
             }
 
-            ResultValidationItem resultItem = createTestResultItem(analysis, analysis.getTest(),
-                    analysis.getSampleItem().getSortOrder(), result,
-                    analysis.getSampleItem().getSample().getAccessionNumber(), notes);
+            ResultValidationItem resultItem = createTestResultItem(analysis, analysis.getTest(), sortOrder, result,
+                    accessionNumber, notes);
 
             notes = null; // we only want it once
             if (resultItem.getQualifiedDictionaryId() != null) {
@@ -416,12 +536,40 @@ public class ResultsValidationUtility {
             Result result, String accessionNumber, String notes) {
 
         List<TestResult> testResults = getPossibleResultsForTest(test);
+        // Results Entry narrows these to the row's own component so the significant
+        // digits (and hence the rendered range) come from that component; do the same
+        // here or the two screens print the same range to different precision.
+        String rowComponentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (rowComponentId != null) {
+            List<TestResult> componentRows = new ArrayList<>();
+            for (TestResult testResult : testResults) {
+                if (rowComponentId.equals(testResult.getComponentId())) {
+                    componentRows.add(testResult);
+                }
+            }
+            if (!componentRows.isEmpty()) {
+                testResults = componentRows;
+            }
+        }
 
-        String displayTestName = TestServiceImpl.getLocalizedTestNameWithType(test);
-        // displayTestName = augmentTestNameWithRange(displayTestName, result);
+        // The same display name Results Entry shows, so a row reads identically on
+        // both screens — including naming the specimen the row is actually for.
+        String displayTestName = analysisService.getTestDisplayName(analysis);
+        displayTestName = appendComponentLabel(displayTestName, result, test);
 
-        ResultLimit resultLimit = SpringContext.getBean(ResultLimitService.class).getResultLimitForTestAndPatient(test,
-                currentPatient);
+        // Results Entry chooses the range for the sample's patient; this screen used to
+        // leave the patient null, so an age- or sex-specific band never matched and the
+        // row showed a different range from the one the technician entered against.
+        currentPatient = analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null ? null
+                : sampleService.getPatient(analysis.getSampleItem().getSample());
+
+        // The same range selection Results Entry uses: the component's own range on a
+        // multi-component test, else the test-level one, both chosen for the patient
+        // and scoped to this specimen.
+        ResultLimitSelection rangeSelection = SpringContext.getBean(ResultLimitService.class)
+                .selectResultLimitForResult(analysis, result, currentPatient, null);
+        ResultLimit resultLimit = rangeSelection.getResultLimit();
         ResultValidationItem testItem = new ResultValidationItem();
 
         testItem.setAccessionNumber(accessionNumber);
@@ -430,17 +578,32 @@ public class ResultsValidationUtility {
         testItem.setTestName(displayTestName);
         testItem.setTestId(test.getId());
         setResultLimitDependencies(resultLimit, testItem, testResults);
+        testItem.setRangeNotAppliedReason(
+                rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
+        testItem.setCritical(ValidationSignals.isCritical(resultLimit, result));
         testItem.setAnalysisMethod(analysis.getAnalysisType());
         testItem.setResult(result);
-        testItem.setDictionaryResults(getAnyDictonaryValues(testResults));
-        testItem.setResultType(getTestResultType(testResults));
+        testItem.setDictionaryResults(
+                StoredDictionaryResult.withStoredValue(getAnyDictonaryValues(testResults), result, dictionaryService));
+        // The test-level type is the first test_result row's, which for a
+        // multi-component test is the primary's; an entered result knows its
+        // own component's type, so prefer the stored one.
+        if (result != null && !GenericValidator.isBlankOrNull(result.getResultType())) {
+            testItem.setResultType(result.getResultType());
+        } else {
+            testItem.setResultType(getTestResultType(testResults));
+        }
+        testItem.setResultFlag(ValidationSignals.resultFlag(resultLimit, testItem.getResultType(),
+                result == null ? null : result.getValue()));
+        testItem.setCriticalRange(CriticalRangeFormat.display(resultLimit, testItem.getResultType(),
+                testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits()));
         testItem.setTestSortNumber(test.getSortOrder());
         testItem.setReflexGroup(analysis.getTriggeredReflex());
         testItem.setChildReflex(analysis.getTriggeredReflex() && isConclusion(result, analysis));
         testItem.setQualifiedDictionaryId(getQualifiedDictionaryId(testResults));
         testItem.setPastNotes(notes);
 
-        testItem.setNormalResult(isNormalResult(analysis, result));
+        testItem.setNormalResult(ValidationSignals.isNormalResult(resultLimit, result));
 
         return testItem;
     }
@@ -449,37 +612,12 @@ public class ResultsValidationUtility {
             List<TestResult> testResults) {
         if (resultLimit != null) {
             testItem.setResultLimitId(resultLimit.getId());
-            testItem.setLowerCritical(
-                    resultLimit.getLowCritical() == Double.NEGATIVE_INFINITY ? 0 : resultLimit.getLowCritical());
-            testItem.setHigherCritical(
-                    resultLimit.getHighCritical() == Double.POSITIVE_INFINITY ? 0 : resultLimit.getHighCritical());
+            testItem.setLowerCritical(ValidationSignals.authoredBound(resultLimit.getLowCritical()));
+            testItem.setHigherCritical(ValidationSignals.authoredBound(resultLimit.getHighCritical()));
 
             testItem.setNormalRange(SpringContext.getBean(ResultLimitService.class).getDisplayReferenceRange(
                     resultLimit, testResults.isEmpty() ? "0" : testResults.get(0).getSignificantDigits(), " - "));
         }
-    }
-
-    private boolean isNormalResult(Analysis analysis, Result result) {
-        boolean normalResult = false;
-        ResultLimit resultLimit = resultLimitService.getResultLimitForAnalysis(analysis);
-        if (resultLimit != null && result != null) {
-            if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
-                    && result.getValue().equals(resultLimit.getDictionaryNormalId())) {
-                normalResult = true;
-            } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(result.getResultType())
-                    && !GenericValidator.isBlankOrNull(result.getValue())
-                    && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
-                            && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
-                normalResult = true;
-            } else if (!TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())
-                    && !GenericValidator.isBlankOrNull(result.getValue())
-                    && GenericValidator.isDouble(result.getValue(true))
-                    && (resultLimit.getHighNormal() >= Double.parseDouble(result.getValue(true))
-                            && resultLimit.getLowNormal() <= Double.parseDouble(result.getValue(true)))) {
-                normalResult = true;
-            }
-        }
-        return normalResult;
     }
 
     protected final String getQualifiedDictionaryId(List<TestResult> testResults) {
@@ -532,15 +670,18 @@ public class ResultsValidationUtility {
         List<IdValuePair> values = null;
         Dictionary dictionary;
 
-        if (testResults != null && testResults.size() > 0
-                && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResults.get(0).getTestResultType())) {
-            values = new ArrayList<>();
-            values.add(new IdValuePair("0", ""));
-
+        if (testResults != null) {
             for (TestResult testResult : testResults) {
                 // Note: result group use to be a criteria but was removed, if
                 // results are not as expected investigate
+                // A multi-component test mixes row types, so dictionary options
+                // are collected from any dictionary-variant row rather than
+                // gating on the first row's type.
                 if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+                    if (values == null) {
+                        values = new ArrayList<>();
+                        values.add(new IdValuePair("0", ""));
+                    }
                     dictionary = dictionaryService.getDataForId(testResult.getValue());
                     String displayValue = dictionary.getLocalizedName();
 
@@ -572,38 +713,57 @@ public class ResultsValidationUtility {
 
         /*
          * The issue with multiselect results is that each selection is one
-         * ResultValidationItem but they all need to be condensed into one AnalysisItem.
-         * There is a many to one mapping. The first multiselect result we have gets
-         * rolled into one AnalysisItem and the rest are skipped but we want to capture
-         * any qualified results
+         * ResultValidationItem but they all need to be condensed into one AnalysisItem
+         * (whose multiSelectResultValues carries every selection as JSON). The
+         * condensing is scoped per analysis: other results of the same accession —
+         * other analyses, or other components of a multi-component analysis — must
+         * still get their own rows. Qualified results found among an analysis's
+         * multiselect selections are captured onto its condensed item.
          */
-        boolean multiResultEntered = false;
-        String currentAccession = null;
-        AnalysisItem currentMultiSelectAnalysisItem = null;
+        Map<String, AnalysisItem> condensedMultiSelectByAnalysis = new HashMap<>();
         for (ResultValidationItem testResultItem : testResultList) {
-            if (!testResultItem.getAccessionNumber().equals(currentAccession)) {
-                currentAccession = testResultItem.getAccessionNumber();
-                currentMultiSelectAnalysisItem = null;
-                multiResultEntered = false;
-            }
-            if (!multiResultEntered) {
+            String analysisId = testResultItem.getAnalysis().getId();
+            boolean multiSelect = TypeOfTestResultServiceImpl.ResultType
+                    .isMultiSelectVariant(testResultItem.getResultType());
+
+            if (!multiSelect || !condensedMultiSelectByAnalysis.containsKey(analysisId)) {
                 AnalysisItem convertedItem = testResultItemToAnalysisItem(testResultItem);
                 analysisResultList.add(convertedItem);
-                if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(testResultItem.getResultType())) {
-                    multiResultEntered = true;
-                    currentMultiSelectAnalysisItem = convertedItem;
+                if (multiSelect) {
+                    condensedMultiSelectByAnalysis.put(analysisId, convertedItem);
                 }
             }
-            if (currentMultiSelectAnalysisItem != null && testResultItem.isHasQualifiedResult()) {
-                currentMultiSelectAnalysisItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
-                currentMultiSelectAnalysisItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
-                currentMultiSelectAnalysisItem.setHasQualifiedResult(true);
-                currentMultiSelectAnalysisItem.setNormalRange(testResultItem.getNormalRange());
-                currentMultiSelectAnalysisItem.setPatientName(testResultItem.getPatientName());
+
+            AnalysisItem condensedItem = condensedMultiSelectByAnalysis.get(analysisId);
+            if (condensedItem != null && testResultItem.isHasQualifiedResult()) {
+                condensedItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
+                condensedItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
+                condensedItem.setHasQualifiedResult(true);
+                condensedItem.setNormalRange(testResultItem.getNormalRange());
+                condensedItem.setPatientName(testResultItem.getPatientName());
             }
         }
 
+        markClearLane(analysisResultList);
         return analysisResultList;
+    }
+
+    /**
+     * OGC-1226 (FR-4, FR-5) — the lane verdict the page shows, decided here on the
+     * rows the queue serves: an analysis is clear only when every one of its rows
+     * is, so all rows of one analysis carry the same verdict.
+     */
+    private void markClearLane(List<AnalysisItem> rows) {
+        Map<String, List<AnalysisItem>> rowsByAnalysis = new LinkedHashMap<>();
+        for (AnalysisItem row : rows) {
+            rowsByAnalysis.computeIfAbsent(row.getAnalysisId(), key -> new ArrayList<>()).add(row);
+        }
+        for (List<AnalysisItem> group : rowsByAnalysis.values()) {
+            boolean clear = ValidationSignals.allClear(group);
+            for (AnalysisItem row : group) {
+                row.setClear(clear);
+            }
+        }
     }
 
     protected final RecordStatus getSampleRecordStatus(Sample sample) {
@@ -616,6 +776,203 @@ public class ResultsValidationUtility {
         }
 
         return SpringContext.getBean(IStatusService.class).getRecordStatusForID(ohList.get(0).getValue());
+    }
+
+    /**
+     * OGC-1027 — the "Check before release" inputs for one queue row, loaded once
+     * per rendered row. The rules live in {@link ValidationSignals}; this only
+     * fetches what they need. Services are resolved lazily so no new
+     * construction-time edge is added to this bean.
+     */
+    private void populateReleaseSignals(AnalysisItem analysisResultItem, ResultValidationItem testResultItem) {
+        analysisResultItem.setCritical(testResultItem.isCritical());
+        Analysis analysis = testResultItem.getAnalysis();
+        if (analysis == null) {
+            analysisResultItem.setQcStatus(ValidationSignals.QC_UNKNOWN);
+            return;
+        }
+        analysisResultItem.setModified(ValidationSignals.isModified(analysis.getRevision()));
+        analysisResultItem.setNceOpen(hasOpenNonConformity(analysis));
+        analysisResultItem.setAckPending(hasOpenCriticalAlert(analysis));
+        analysisResultItem.setQcStatus(qcStatusFor(analysis));
+    }
+
+    /**
+     * Whether a non-conformity is still open against the analysis's sample item.
+     * Public since OGC-1226 so result entry can feed the same clearance rule.
+     */
+    public boolean hasOpenNonConformity(Analysis analysis) {
+        if (analysis == null || analysis.getSampleItem() == null
+                || GenericValidator.isBlankOrNull(analysis.getSampleItem().getId())) {
+            return false;
+        }
+        Integer sampleItemId;
+        try {
+            sampleItemId = Integer.valueOf(analysis.getSampleItem().getId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        List<NceSpecimen> specimens = SpringContext.getBean(NceSpecimenService.class)
+                .getSpecimenBySampleItemId(sampleItemId);
+        if (specimens == null || specimens.isEmpty()) {
+            return false;
+        }
+        NCEventService ncEventService = SpringContext.getBean(NCEventService.class);
+        for (NceSpecimen specimen : specimens) {
+            if (specimen == null || specimen.getNceId() == null) {
+                continue;
+            }
+            NcEvent event = ncEventService.get(specimen.getNceId());
+            if (event != null && ValidationSignals.isNceOpen(event.getStatus())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean hasOpenCriticalAlert(Analysis analysis) {
+        Long analysisId;
+        try {
+            analysisId = Long.valueOf(analysis.getId());
+        } catch (NumberFormatException e) {
+            return false;
+        }
+        List<Alert> alerts = SpringContext.getBean(AlertService.class).getAlertsByEntity("ANALYSIS", analysisId);
+        return ValidationSignals.hasOpenCriticalAlert(alerts);
+    }
+
+    /**
+     * PASS only when every result of the analysis was evaluated and passed; FAIL as
+     * soon as any failed; otherwise UNKNOWN — never read as passed (FR-A2).
+     */
+    private String qcStatusFor(Analysis analysis) {
+        List<Result> results = resultService.getResultsByAnalysis(analysis);
+        if (results == null || results.isEmpty()) {
+            return ValidationSignals.QC_UNKNOWN;
+        }
+        boolean allPass = true;
+        for (Result result : results) {
+            QcEvaluation evaluation = result == null ? null : result.getQcEvaluation();
+            if (evaluation == QcEvaluation.FAIL) {
+                return ValidationSignals.QC_FAIL;
+            }
+            if (evaluation != QcEvaluation.PASS) {
+                allPass = false;
+            }
+        }
+        return allPass ? ValidationSignals.QC_PASS : ValidationSignals.QC_UNKNOWN;
+    }
+
+    /**
+     * OGC-1028 — the read-only review-summary fields for one queue row (FR-C1,
+     * FR-C4, FR-G1): who entered the result and when, the authored critical range,
+     * and the row's result component for multi-component ordering.
+     */
+    private void populateReviewSummary(AnalysisItem analysisResultItem, ResultValidationItem testResultItem) {
+        analysisResultItem.setCriticalRange(testResultItem.getCriticalRange());
+        analysisResultItem.setRangeNotAppliedReason(testResultItem.getRangeNotAppliedReason());
+        Analysis analysis = testResultItem.getAnalysis();
+        Result result = testResultItem.getResult();
+        if (result != null) {
+            List<ResultSignature> signatures = SpringContext.getBean(ResultSignatureService.class)
+                    .getResultSignaturesByResult(result);
+            String enteredBy = ValidationSignals.enteredBy(signatures);
+            analysisResultItem.setEnteredBy(
+                    GenericValidator.isBlankOrNull(enteredBy) ? recordedByFromHistory(result) : enteredBy);
+        }
+        if (analysis != null && analysis.getEnteredDate() != null) {
+            analysisResultItem.setEnteredDate(DateUtil.convertTimestampToStringDate(analysis.getEnteredDate()) + " "
+                    + DateUtil.convertTimestampToStringTime(analysis.getEnteredDate()));
+        }
+        String componentId = result == null || result.getTestResult() == null ? null
+                : result.getTestResult().getComponentId();
+        if (!GenericValidator.isBlankOrNull(componentId)
+                && !GenericValidator.isBlankOrNull(testResultItem.getTestId())) {
+            org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component = ValidationSignals
+                    .componentOf(testResultComponentService.getComponentsByTestId(testResultItem.getTestId()),
+                            componentId);
+            if (component != null) {
+                analysisResultItem.setComponentLabel(component.getLabel());
+                analysisResultItem.setComponentDisplayOrder(component.getDisplayOrder());
+            }
+        }
+        if (analysis != null && analysis.getLastupdated() != null) {
+            analysisResultItem.setAnalysisLastupdated(String.valueOf(analysis.getLastupdated().getTime()));
+        }
+        if (analysis != null && analysis.getSampleItem() != null) {
+            analysisResultItem.setSampleItemId(analysis.getSampleItem().getId());
+        }
+        analysisResultItem.setMethodName(methodNameFor(analysis));
+        analysisResultItem.setAnalyzerName(analyzerNameFor(analysis));
+        analysisResultItem.setAnalysisNotes(
+                analysis == null ? new ArrayList<>() : reviewNotesLoader().buildAnalysisNotes(analysis));
+    }
+
+    /**
+     * "Entered by" when no bench signature exists (technician names switched off):
+     * the user the audit trail records as last writing the result.
+     */
+    private String recordedByFromHistory(Result result) {
+        if (GenericValidator.isBlankOrNull(result.getId())) {
+            return "";
+        }
+        ReferenceTables resultTable = SpringContext.getBean(ReferenceTablesService.class)
+                .getReferenceTableByName("RESULT");
+        if (resultTable == null) {
+            return "";
+        }
+        String userId = ValidationSignals.lastWriterId(SpringContext.getBean(HistoryService.class)
+                .getHistoryByRefIdAndRefTableId(result.getId(), resultTable.getId()));
+        if (userId == null) {
+            return "";
+        }
+        return SpringContext.getBean(SystemUserService.class).getMatch("id", userId).map(SystemUser::getNameForDisplay)
+                .orElse("");
+    }
+
+    private ResultsLoadUtility reviewNotesLoader;
+
+    /**
+     * The structured-notes builder lives on the Results Entry loader; one prototype
+     * instance is enough because the method is stateless.
+     */
+    private ResultsLoadUtility reviewNotesLoader() {
+        if (reviewNotesLoader == null) {
+            reviewNotesLoader = SpringContext.getBean(ResultsLoadUtility.class);
+        }
+        return reviewNotesLoader;
+    }
+
+    /** FR-G1 — the method as its own field, never folded into the analyzer. */
+    private String methodNameFor(Analysis analysis) {
+        if (analysis == null) {
+            return null;
+        }
+        try {
+            String methodId = analysisService.getMethodId(analysis);
+            if (GenericValidator.isBlankOrNull(methodId)) {
+                return null;
+            }
+            Method method = SpringContext.getBean(MethodService.class).findById(methodId);
+            return method == null ? null : method.getMethodName();
+        } catch (RuntimeException e) {
+            LogEvent.logDebug(e);
+            return null;
+        }
+    }
+
+    /** FR-G1 — the analyzer instance the result came from, by its own name. */
+    private String analyzerNameFor(Analysis analysis) {
+        if (analysis == null || GenericValidator.isBlankOrNull(analysis.getAnalyzerId())) {
+            return null;
+        }
+        try {
+            Analyzer analyzer = SpringContext.getBean(AnalyzerService.class).get(analysis.getAnalyzerId());
+            return analyzer == null ? null : analyzer.getName();
+        } catch (RuntimeException e) {
+            LogEvent.logDebug(e);
+            return null;
+        }
     }
 
     public final AnalysisItem testResultItemToAnalysisItem(ResultValidationItem testResultItem) {
@@ -641,17 +998,22 @@ public class ResultsValidationUtility {
         testUnits = augmentUOMWithRange(testUnits, testResultItem.getResult());
 
         analysisResultItem.setAccessionNumber(testResultItem.getAccessionNumber());
-        analysisResultItem.setLowerCritical(
-                testResultItem.getLowerCritical() == Double.NEGATIVE_INFINITY ? 0 : testResultItem.getLowerCritical());
-        analysisResultItem.setHigherCritical(testResultItem.getHigherCritical() == Double.POSITIVE_INFINITY ? 0
-                : testResultItem.getHigherCritical());
+        analysisResultItem.setLowerCritical(testResultItem.getLowerCritical());
+        analysisResultItem.setHigherCritical(testResultItem.getHigherCritical());
+        analysisResultItem.setResultFlag(testResultItem.getResultFlag());
         analysisResultItem.setNormalRange(testResultItem.getNormalRange());
         analysisResultItem.setPatientName(testResultItem.getPatientName());
         analysisResultItem.setTestName(testName);
         analysisResultItem.setUnits(testUnits);
         analysisResultItem.setAnalysisId(testResultItem.getAnalysis().getId());
+        // Whoever releases this result has to know it came from a reference
+        // laboratory rather than from this laboratory's bench.
+        analysisResultItem.setReferredOut(testResultItem.getAnalysis().isReferredOut());
         analysisResultItem.setPastNotes(testResultItem.getPastNotes());
         analysisResultItem.setResultId(testResultItem.getResultId());
+        if (result != null && result.getTestResult() != null) {
+            analysisResultItem.setTestResultComponentId(result.getTestResult().getComponentId());
+        }
         analysisResultItem.setResultType(testResultItem.getResultType());
         analysisResultItem.setTestId(testResultItem.getTestId());
         analysisResultItem.setTestSortNumber(sortOrder);
@@ -678,10 +1040,44 @@ public class ResultsValidationUtility {
         analysisResultItem
                 .setNonconforming(testResultItem.isNonconforming() || SpringContext.getBean(IStatusService.class)
                         .matches(testResultItem.getAnalysis().getStatusId(), AnalysisStatus.TechnicalRejected));
+        populateReleaseSignals(analysisResultItem, testResultItem);
+        populateReviewSummary(analysisResultItem, testResultItem);
         analysisResultItem.setQualifiedDictionaryId(testResultItem.getQualifiedDictionaryId());
         analysisResultItem.setQualifiedResultValue(testResultItem.getQualifiedResultValue());
         analysisResultItem.setQualifiedResultId(testResultItem.getQualificationResultId());
         analysisResultItem.setHasQualifiedResult(testResultItem.isHasQualifiedResult());
+
+        Analysis itemAnalysis = testResultItem.getAnalysis();
+        if (itemAnalysis != null && itemAnalysis.getSampleItem() != null) {
+            Timestamp holdingStart = itemAnalysis.getSampleItem().getCollectionDate() != null
+                    ? itemAnalysis.getSampleItem().getCollectionDate()
+                    : itemAnalysis.getSampleItem().getReceivedDate();
+            if (holdingStart != null) {
+                analysisResultItem.setCollectionDate(DateUtil.convertTimestampToStringDate(holdingStart) + " "
+                        + DateUtil.convertTimestampToStringTime(holdingStart));
+            }
+        }
+        if (itemAnalysis != null && itemAnalysis.getTest() != null) {
+            analysisResultItem.setTimeHolding(itemAnalysis.getTest().getTimeHolding());
+        }
+        if (itemAnalysis != null && itemAnalysis.getCompletedDate() != null) {
+            analysisResultItem.setResultDate(DateUtil.convertTimestampToStringDate(itemAnalysis.getCompletedDate())
+                    + " " + DateUtil.convertTimestampToStringTime(itemAnalysis.getCompletedDate()));
+        }
+        if (itemAnalysis != null && itemAnalysis.getVectorPoolId() != null
+                && !itemAnalysis.getVectorPoolId().isBlank()) {
+            analysisResultItem.setVectorPoolId(itemAnalysis.getVectorPoolId());
+            try {
+                analysisResultItem.setVectorPoolMemberCount(
+                        vectorPoolService.countMembersByPoolId(Integer.parseInt(itemAnalysis.getVectorPoolId())));
+            } catch (NumberFormatException ignored) {
+            }
+            if (itemAnalysis.getSampleTypeName() != null) {
+                analysisResultItem.setSampleType(itemAnalysis.getSampleTypeName());
+            }
+        }
+
+        analysisResultItem.setExpandedUncertainty(testResultItem.getExpandedUncertainty());
 
         return analysisResultItem;
     }
@@ -730,12 +1126,148 @@ public class ResultsValidationUtility {
         return resultList;
     }
 
+    /**
+     * OGC-1030 (FR-A4) — the sample's analyses that were released at result entry
+     * without a validator: Finalized, with no release date and no validator
+     * e-signature on record. Every validator release (row, bulk "Release all
+     * clear", legacy validation pages) stamps {@code released_date}, and the bulk
+     * release signs once for the whole set, so a missing signature alone does not
+     * mean no validator (OGC-1361). Served read-only behind the queue's "Include
+     * auto-validated" toggle; never part of the queue itself, never releasable.
+     */
+    public List<AnalysisItem> getAutoValidatedAnalysisBySample(Sample sample) {
+        String finalizedId = SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
+        List<Analysis> finalized = new ArrayList<>(
+                analysisService.getAnalysesBySampleIdAndStatusId(sample.getId(), Set.of(finalizedId)));
+        org.openelisglobal.esig.service.ElectronicSignatureService signatures = SpringContext
+                .getBean(org.openelisglobal.esig.service.ElectronicSignatureService.class);
+        List<Analysis> autoValidated = new ArrayList<>();
+        for (Analysis analysis : excludeQcAnalyses(finalized)) {
+            if (analysis.getReleasedDate() != null) {
+                continue;
+            }
+            boolean signedByValidator;
+            try {
+                signedByValidator = !signatures
+                        .getSignaturesForRecord("VALIDATION_BATCH", Long.parseLong(analysis.getId())).isEmpty();
+            } catch (RuntimeException e) {
+                signedByValidator = false;
+            }
+            if (!signedByValidator) {
+                autoValidated.add(analysis);
+            }
+        }
+        List<AnalysisItem> rows = testResultListToAnalysisItemList(
+                getGroupedTestsForAnalysisList(autoValidated, !StatusRules.useRecordStatusForValidation()));
+        for (AnalysisItem row : rows) {
+            row.setAutoValidated(true);
+            row.setReadOnly(true);
+            row.setClear(false);
+        }
+        sortByAccessionNumberAndOrder(rows);
+        return rows;
+    }
+
     public List<ResultValidationItem> getGroupedTestsForSample(Sample sample) {
         Set<String> excludedAnalysisStatus = new HashSet<>();
         excludedAnalysisStatus.addAll(this.notValidStatus);
-        List<Analysis> analysisList = analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(),
-                excludedAnalysisStatus);
-        return getGroupedTestsForAnalysisList(analysisList, !StatusRules.useRecordStatusForValidation());
+        List<Analysis> analysisList = new ArrayList<>(
+                analysisService.getAnalysesBySampleIdExcludedByStatusId(sample.getId(), excludedAnalysisStatus));
+        // For vector-domain samples also include pool-level analyses (vectorPoolId set,
+        // sampleItem null) — the base query joins through sampleItem and misses them.
+        if ("V".equals(sample.getDomain())) {
+            List<org.openelisglobal.vector.valueholder.VectorPool> pools = vectorPoolService
+                    .getBySampleId(sample.getId());
+            for (org.openelisglobal.vector.valueholder.VectorPool pool : pools) {
+                List<Analysis> poolAnalyses = analysisService.getAnalysesByVectorPoolId(String.valueOf(pool.getId()));
+                if (poolAnalyses != null) {
+                    for (Analysis a : poolAnalyses) {
+                        if (!excludedAnalysisStatus.contains(a.getStatusId())) {
+                            analysisList.add(a);
+                        }
+                    }
+                }
+            }
+        }
+        // QC analyses don't require validator sign-off (the QC engine evaluates them
+        // automatically; failures surface via the validation screen's QC banner).
+        return getGroupedTestsForAnalysisList(excludeQcAnalyses(analysisList),
+                !StatusRules.useRecordStatusForValidation());
+    }
+
+    /**
+     * Returns the failed-QC samples in the batch identified by the given accession.
+     * Drives the validation screen's QC acknowledgment panel (S-08 FR-04). A sample
+     * item qualifies only if it has a {@code SampleItemQcProfile} and at least one
+     * of its results carries {@code qcEvaluation = FAIL}.
+     */
+    public List<QcFailureItem> findFailedQcForAccession(String accessionNumber) {
+        if (GenericValidator.isBlankOrNull(accessionNumber)) {
+            return Collections.emptyList();
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
+        if (sample == null) {
+            return Collections.emptyList();
+        }
+        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sample.getId());
+        if (analyses == null || analyses.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        // One DAO call to fetch the QC profile for every sample item in the batch.
+        Set<Integer> sampleItemIds = new HashSet<>();
+        for (Analysis a : analyses) {
+            if (a.getSampleItem() != null && a.getSampleItem().getId() != null) {
+                try {
+                    sampleItemIds.add(Integer.valueOf(a.getSampleItem().getId()));
+                } catch (NumberFormatException ignored) {
+                    // SampleItem.id should always be numeric; skip rather than fail.
+                }
+            }
+        }
+        if (sampleItemIds.isEmpty()) {
+            return Collections.emptyList();
+        }
+        Map<Integer, org.openelisglobal.qc.valueholder.SampleItemQcProfile> profilesById = new HashMap<>();
+        for (org.openelisglobal.qc.valueholder.SampleItemQcProfile profile : sampleItemQcProfileDAO
+                .findBySampleItemIds(new ArrayList<>(sampleItemIds))) {
+            profilesById.put(profile.getSampleItemId(), profile);
+        }
+        if (profilesById.isEmpty()) {
+            return Collections.emptyList();
+        }
+
+        List<QcFailureItem> failures = new ArrayList<>();
+        for (Analysis a : analyses) {
+            Integer sid;
+            try {
+                sid = Integer.valueOf(a.getSampleItem().getId());
+            } catch (NumberFormatException e) {
+                continue;
+            }
+            org.openelisglobal.qc.valueholder.SampleItemQcProfile profile = profilesById.get(sid);
+            if (profile == null) {
+                continue;
+            }
+            List<Result> results = resultService.getResultsByAnalysis(a);
+            if (results == null) {
+                continue;
+            }
+            for (Result r : results) {
+                if (r.getQcEvaluation() == QcEvaluation.FAIL) {
+                    QcFailureItem item = new QcFailureItem();
+                    item.setAnalysisId(a.getId());
+                    item.setAccessionNumber(accessionNumber);
+                    item.setQcType(profile.getQcType());
+                    item.setTestName(a.getTest() != null ? a.getTest().getName() : null);
+                    item.setResultValue(r.getValue());
+                    item.setQcEvaluationDetail(r.getQcEvaluationDetail());
+                    failures.add(item);
+                    break;
+                }
+            }
+        }
+        return failures;
     }
 
     public void addIdentifingPatientInfo(Patient patient, PatientInfoForm form) {

@@ -133,6 +133,7 @@ public abstract class CSVColumnBuilder {
     private static final SimpleDateFormat postgresDateTime = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
     protected ResultSet resultSet;
+    private Session session;
 
     protected String eol = System.getProperty("line.separator");
 
@@ -245,16 +246,21 @@ public abstract class CSVColumnBuilder {
         // ResultSet.TYPE_SCROLL_SENSITIVE,
         // ResultSet.CONCUR_READ_ONLY);
         // resultSet = stmt.executeQuery();
-        Session session = SpringContext.getBean(SessionFactory.class).getCurrentSession();
-        session.beginTransaction();
-        resultSet = session.doReturningWork(new ReturningWork<ResultSet>() {
+        // The session holds a pooled connection until closeResultSet() runs.
+        session = SpringContext.getBean(SessionFactory.class).openSession();
+        try {
+            resultSet = session.doReturningWork(new ReturningWork<ResultSet>() {
 
-            @Override
-            public ResultSet execute(Connection connection) throws SQLException {
-                return connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY)
-                        .executeQuery();
-            }
-        });
+                @Override
+                public ResultSet execute(Connection connection) throws SQLException {
+                    return connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY)
+                            .executeQuery();
+                }
+            });
+        } catch (RuntimeException e) {
+            closeResultSet();
+            throw e;
+        }
     }
 
     protected synchronized String formatDateForDatabaseSql(Date date) {
@@ -491,6 +497,9 @@ public abstract class CSVColumnBuilder {
         public String translateAge(Strategy strategy, String end) throws SQLException, ParseException {
             java.util.Date birthday = resultSet.getDate("birth_date");
             java.util.Date endDate = parseDateTimeForDatabaseSql(end);
+            if (birthday == null || endDate == null) {
+                return "";
+            }
             switch (strategy) {
             case AGE_YEARS:
                 return String.valueOf(DateUtil.getAgeInYears(birthday, endDate));
@@ -742,11 +751,23 @@ public abstract class CSVColumnBuilder {
     }
 
     /**
+     * Closes the result set and the session that owns its connection. Safe to call
+     * more than once, and on a builder whose query never ran.
+     *
      * @throws SQLException
      */
     public void closeResultSet() throws SQLException {
-        resultSet.close();
-        resultSet = null;
+        try {
+            if (resultSet != null) {
+                resultSet.getStatement().close();
+            }
+        } finally {
+            resultSet = null;
+            if (session != null) {
+                session.close();
+                session = null;
+            }
+        }
     }
 
     protected String getGendCD4CountAnalyteId() {

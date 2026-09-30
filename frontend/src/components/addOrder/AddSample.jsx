@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Button, Link, Row, Stack, Column, Grid } from "@carbon/react";
+import { Button, Link, Column, Grid } from "@carbon/react";
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
 import SampleType from "./SampleType";
+import { applySampleTypeUpdate, newSampleKey } from "./sampleTypeUpdate";
 import { FormattedMessage } from "react-intl";
 const AddSample = (props) => {
-  const { samples, setSamples, error } = props;
+  const { samples, setSamples, error, domain, allowReferral } = props;
   const componentMounted = useRef(false);
 
   const [rejectSampleReasons, setRejectSampleReasons] = useState([]);
@@ -13,6 +14,7 @@ const AddSample = (props) => {
   const handleAddNewSample = () => {
     let updateSamples = [...samples];
     updateSamples.push({
+      key: newSampleKey(),
       index: updateSamples.length + 1,
       sampleRejected: false,
       rejectionReason: "",
@@ -23,55 +25,13 @@ const AddSample = (props) => {
       panels: [],
       tests: [],
     });
-    console.debug(JSON.stringify(updateSamples));
     setSamples(updateSamples);
   };
 
   const sampleTypeObject = (object) => {
-    let newState = [...samples];
-    switch (true) {
-      case object.sampleTypeId !== undefined && object.sampleTypeId !== "":
-        newState[object.sampleObjectIndex].sampleTypeId = object.sampleTypeId;
-        break;
-      case object.sampleRejected:
-        newState[object.sampleObjectIndex].sampleRejected =
-          object.sampleRejected;
-        break;
-      case object.rejectionReason !== undefined &&
-        object.rejectionReason !== null:
-        newState[object.sampleObjectIndex].rejectionReason =
-          object.rejectionReason;
-        break;
-      case object.selectedTests !== undefined &&
-        object.selectedTests.length > 0:
-        newState[object.sampleObjectIndex].tests = object.selectedTests;
-        break;
-      case object.selectedPanels !== undefined &&
-        object.selectedPanels.length > 0:
-        newState[object.sampleObjectIndex].panels = object.selectedPanels;
-        break;
-      case object.sampleXML !== undefined && object.sampleXML !== null:
-        newState[object.sampleObjectIndex].sampleXML = object.sampleXML;
-        break;
-      case object.requestReferralEnabled:
-        newState[object.sampleObjectIndex].requestReferralEnabled =
-          object.requestReferralEnabled;
-        break;
-      case object.referralItems !== undefined &&
-        object.referralItems.length > 0:
-        newState[object.sampleObjectIndex].referralItems = object.referralItems;
-        break;
-      default:
-        console.debug(JSON.stringify(newState));
-        props.setSamples(newState);
-    }
-    props.setSamples(newState);
-  };
-
-  const removeSample = (index) => {
-    let updateSamples = samples.splice(index, 1);
-    console.debug(JSON.stringify(updateSamples));
-    setSamples(updateSamples);
+    setSamples((currentSamples) =>
+      applySampleTypeUpdate(currentSamples, object),
+    );
   };
 
   const fetchRejectSampleReasons = (res) => {
@@ -85,7 +45,6 @@ const AddSample = (props) => {
     let filtered = samples.filter(function (element) {
       return element !== sample;
     });
-    console.debug(JSON.stringify(filtered));
     setSamples(filtered);
   };
 
@@ -111,7 +70,7 @@ const AddSample = (props) => {
           <div className="orderLegendBody">
             {samples.map((sample, i) => {
               return (
-                <div className="sampleType" key={i}>
+                <div className="sampleType" key={sample.key ?? i}>
                   <h4>
                     <FormattedMessage id="label.button.sample" /> {i + 1}
                     <span className="requiredlabel">*</span>
@@ -122,7 +81,6 @@ const AddSample = (props) => {
                   <SampleType
                     index={i}
                     rejectSampleReasons={rejectSampleReasons}
-                    removeSample={removeSample}
                     sample={sample}
                     setSample={(newSample) => {
                       let newSamples = [...samples];
@@ -131,6 +89,8 @@ const AddSample = (props) => {
                     }}
                     sampleTypeObject={sampleTypeObject}
                     error={error}
+                    domain={domain}
+                    allowReferral={allowReferral}
                   />
                 </div>
               );

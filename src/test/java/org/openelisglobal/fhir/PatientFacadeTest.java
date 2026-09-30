@@ -263,4 +263,34 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
 
         assertEquals(404, response.getStatus());
     }
+
+    /**
+     * A create the database cannot store answers 422 naming the reason, rather than
+     * a bare 500.
+     *
+     * <p>
+     * This asserts the data-error mapping only. The facade does not apply the
+     * {@code @ValidName} character-set rule: that constraint is declared on the
+     * form classes the controllers bind, and the FHIR providers persist the entity
+     * directly, so no bean validation runs on this path. An earlier version of this
+     * test posted the family name "Probe123" and expected the charset rule to
+     * reject it; it passed only because a stale {@code patient_contact} sequence
+     * made the insert collide on its primary key, so the 422 came from the
+     * duplicate key and any name would have satisfied it.
+     */
+    @Test
+    public void createPatient_withUnstorableName_returns422() throws Exception {
+        String tooLongForTheColumn = "A".repeat(300);
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+        request.setContent(("{\"resourceType\": \"Patient\", \"name\": [{\"family\": \"" + tooLongForTheColumn
+                + "\", \"given\": [\"Live\"]}], \"gender\": \"female\", \"birthDate\": \"1990-05-05\"}").getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(422, response.getStatus());
+        JsonNode outcome = objectMapper.readTree(response.getContentAsString());
+        assertEquals("OperationOutcome", outcome.get("resourceType").asText());
+        assertTrue("the outcome should name the column that refused the value",
+                outcome.get("issue").get(0).get("diagnostics").asText().contains("character varying(255)"));
+    }
 }

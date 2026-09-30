@@ -13,7 +13,9 @@ import org.springframework.scheduling.annotation.EnableAsync;
 public class AsyncConfig extends AsyncConfigurerSupport {
     @Override
     public Executor getAsyncExecutor() {
-        return new SimpleAsyncTaskExecutor();
+        SimpleAsyncTaskExecutor executor = new SimpleAsyncTaskExecutor();
+        executor.setTaskDecorator(new UserContextPropagatingTaskDecorator());
+        return executor;
     }
 
     @Override

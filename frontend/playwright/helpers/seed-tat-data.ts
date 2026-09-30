@@ -9,7 +9,7 @@ import { Page } from "@playwright/test";
  * (SearchResultForm.js:1918-1933) — same endpoint, same payload shape.
  *
  * Prerequisite: fixture samples already exist (loaded by
- * `load-test-fixtures.sh` via `reset-env.sh --full-reset`). Callers
+ * `load-test-fixtures.sh` in the core E2E setup). Callers
  * pass accessions that already have an analysis in a status that shows
  * up in /rest/LogbookResults (e.g. NotStarted).
  *
@@ -211,10 +211,7 @@ export async function completeAnalysisChains(
  * generated accession numbers.
  *
  * Works in any environment with foundational fixtures loaded, including
- * the core-mode Playwright CI job that runs specs under
- * `tests/demo/core/`. Unlike `completeAnalysisChains(page,
- * HARNESS_LANE_ACCESSIONS)` it does not require pre-loaded HARN lane
- * fixtures — the spec becomes self-contained.
+ * the core-mode Playwright CI job that runs specs under `tests/demo/core/`.
  *
  * Each accession ends up with `released_date` populated, which is what
  * the TAT Report queries.
@@ -241,26 +238,6 @@ export async function createAndCompleteAccessions(
   return accessionNumbers;
 }
 
-/**
- * Fixture accessions seeded by `analyzer-harness-lane-data.sql`.
- * 13 samples, each with 1 analysis in NotStarted status.
- */
-export const HARNESS_LANE_ACCESSIONS = [
-  "DEV01261000000000001",
-  "DEV01262000000000001",
-  "DEV01262000000000002",
-  "DEV01262000000000003",
-  "DEV01262000000000004",
-  "DEV01262000000000005",
-  "DEV01262000000000007",
-  "DEV01262100000000001",
-  "DEV01262100000000002",
-  "DEV01262100000000005",
-  "DEV01263000000000001",
-  "DEV01263000000000002",
-  "DEV01263000000000003",
-];
-
 /* ---------------------------------------------------------------------
  * createSampleOrder — create a fresh sample order from scratch.
  *
@@ -275,6 +252,16 @@ export interface SampleConfig {
   receivedDate: string; // "2026-03-15"
   receivedTime: string; // "09:30"
   priority?: "routine" | "stat";
+  /** Sample type to order against; defaults to the seeded type used by TAT data. */
+  sampleTypeId?: string;
+  /** Comma-separated test ids for that sample type. */
+  testIds?: string;
+  /** Provider person id; defaults to the id seeded with the TAT data. */
+  providerPersonId?: string;
+  /** Referring site (organization) id; defaults to the TAT-seeded site. */
+  referringSiteId?: string;
+  /** Overrides for the new patient, e.g. a blank sex or birth date. */
+  patient?: { gender?: string; birthDateForDisplay?: string };
 }
 
 /**
@@ -294,6 +281,10 @@ export async function createSampleOrder(
   config: SampleConfig,
 ): Promise<string> {
   const { receivedTime, priority } = config;
+  const sampleTypeId = config.sampleTypeId || "2";
+  const testIds = config.testIds || "13";
+  const providerPersonId = config.providerPersonId || "9000002";
+  const referringSiteId = config.referringSiteId || "9000100";
 
   // Navigate to Add Order page so the browser has the right session
   // context. The fetch() below runs inside the browser, same as the
@@ -366,8 +357,8 @@ export async function createSampleOrder(
     sampleTypes: null,
     sampleXML:
       `<?xml version="1.0" encoding="utf-8"?>` +
-      `<samples><sample sampleID='2' date='' time='' ` +
-      `collector='' quantity='' uom='' tests='13' testSectionMap='' testSampleTypeMap='' ` +
+      `<samples><sample sampleID='${sampleTypeId}' date='' time='' ` +
+      `collector='' quantity='' uom='' tests='${testIds}' testSectionMap='' testSampleTypeMap='' ` +
       `panels='' rejected='false' rejectReasonId='' initialConditionIds='' ` +
       `storageLocationId='' storageLocationType='' storagePositionCoordinate='' ` +
       `gpsLatitude='' gpsLongitude='' gpsAccuracy='' gpsCaptureMethod='' ` +
@@ -381,6 +372,7 @@ export async function createSampleOrder(
       birthDateForDisplay: useMDY ? "01/01/1990" : "01/01/1990",
       nationalId: uniqueId,
       subjectNumber: uniqueId,
+      ...config.patient,
     },
     patientSearch: null,
     patientEnhancedSearch: null,
@@ -397,7 +389,7 @@ export async function createSampleOrder(
       nextVisitDate: tomorrow,
       requesterSampleID: "",
       referringPatientNumber: "",
-      referringSiteId: "9000100",
+      referringSiteId: referringSiteId,
       referringSiteDepartmentId: "",
       referringSiteCode: "",
       referringSiteName: "",
@@ -405,8 +397,8 @@ export async function createSampleOrder(
       referringSiteList: [],
       referringSiteDepartmentList: [],
       providersList: [],
-      providerId: "9000002",
-      providerPersonId: "9000002",
+      providerId: providerPersonId,
+      providerPersonId: providerPersonId,
       providerFirstName: "Jim",
       providerLastName: "Jam",
       facilityAddressStreet: "",

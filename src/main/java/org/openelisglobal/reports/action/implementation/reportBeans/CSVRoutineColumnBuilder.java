@@ -31,6 +31,7 @@ import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.hibernate.Session;
 import org.hibernate.SessionFactory;
 import org.hibernate.jdbc.ReturningWork;
@@ -115,12 +116,8 @@ public abstract class CSVRoutineColumnBuilder {
     /** All possible tests, so we can have 1 result per test. */
     protected List<Test> allTests;
 
-    /**
-     * This table provide a mapping from test name (CSV column heading also) to the
-     * TestResult record so we can look at the result type (Dictionary vs. constant
-     * etc.)
-     */
-    protected Map<String, TestResult> testResultsByTestName;
+    /** TestResult per result column, for its result type. */
+    protected Map<String, TestResult> testResultsByColumn;
 
     protected String validStatusId;
 
@@ -128,6 +125,7 @@ public abstract class CSVRoutineColumnBuilder {
     private static final SimpleDateFormat postgresDateTime = new SimpleDateFormat("yyyy-MM-dd hh:mm:ss");
 
     protected ResultSet resultSet;
+    private Session session;
 
     protected String eol = System.getProperty("line.separator");
 
@@ -137,16 +135,7 @@ public abstract class CSVRoutineColumnBuilder {
     protected TestService testService = SpringContext.getBean(TestService.class);
     protected TestResultService testResultService = SpringContext.getBean(TestResultService.class);
 
-    // This is the largest value possible for a postgres column name. The code will
-    // convert the
-    // test description to a column name so we need to truncate
-    // It's actually 63 but UTF_8 makes 55 safer.
-    private static final int MAX_POSTGRES_COL_NAME = 55;
-
-    /**
-     * the test have to be sorted by the name, because they have to match the pivot
-     * table order in the results
-     */
+    /** allTests order is the CSV column order. */
     @SuppressWarnings("unchecked")
     protected void defineAllTestsAndResults() {
         if (allTests == null) {
@@ -167,14 +156,24 @@ public abstract class CSVRoutineColumnBuilder {
                 allTests = testService.getAllOrderBy("description");
             }
         }
-        if (testResultsByTestName == null) {
-            testResultsByTestName = new HashMap<>();
+        if (testResultsByColumn == null) {
+            testResultsByColumn = new HashMap<>();
             List<TestResult> allTestResults = testResultService.getAllTestResults();
             for (TestResult testResult : allTestResults) {
-                String key = TestServiceImpl.getLocalizedTestNameWithType(testResult.getTest());
-                testResultsByTestName.put(key, testResult);
+                testResultsByColumn.put(resultColumnName(testResult.getTest()), testResult);
             }
         }
+    }
+
+    /** Ids, not display names: display names repeat across a catalog. */
+    protected static String resultColumnName(Test test) {
+        return "test_" + test.getId();
+    }
+
+    /** Must match the column order that appendResultCrosstab declares. */
+    protected String resultCategorySql() {
+        String ids = allTests.stream().map(Test::getId).collect(Collectors.joining(","));
+        return "SELECT id FROM unnest(ARRAY[" + ids + "]) WITH ORDINALITY AS category(id, position) ORDER BY position";
     }
 
     /** map to provide appropriate tag to identify the project. */
@@ -242,16 +241,22 @@ public abstract class CSVRoutineColumnBuilder {
         // ResultSet.TYPE_SCROLL_SENSITIVE,
         // ResultSet.CONCUR_READ_ONLY);
         // resultSet = stmt.executeQuery();
-        Session session = SpringContext.getBean(SessionFactory.class).openSession();
-        resultSet = session.doReturningWork(new ReturningWork<ResultSet>() {
+        // The session holds a pooled connection until closeResultSet() runs.
+        session = SpringContext.getBean(SessionFactory.class).openSession();
+        try {
+            resultSet = session.doReturningWork(new ReturningWork<ResultSet>() {
 
-            @Override
-            public ResultSet execute(Connection connection) throws SQLException {
+                @Override
+                public ResultSet execute(Connection connection) throws SQLException {
 
-                return connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY)
-                        .executeQuery();
-            }
-        });
+                    return connection.prepareStatement(sql, ResultSet.TYPE_SCROLL_SENSITIVE, ResultSet.CONCUR_READ_ONLY)
+                            .executeQuery();
+                }
+            });
+        } catch (RuntimeException e) {
+            closeResultSet();
+            throw e;
+        }
     }
 
     protected synchronized String formatDateForDatabaseSql(Date date) {
@@ -301,11 +306,10 @@ public abstract class CSVRoutineColumnBuilder {
         String value;
         // look in the data source for a value
         try {
-            value = resultSet.getString(trimToPostgresMaxColumnName(column.dbName));
+            value = resultSet.getString(column.dbName);
         } catch (RuntimeException e) {
             // if you end up where it is because the result set doesn't return a
             // column of the right name
-            // Check MAX_POSTGRES_COL_NAME if this fails on a long name
             LogEvent.logInfo(this.getClass().getSimpleName(), "getValue",
                     "Internal Error: Unable to find db column \"" + column.dbName + "\" in data.");
             return "?" + column.csvName + "?";
@@ -318,23 +322,6 @@ public abstract class CSVRoutineColumnBuilder {
             LogEvent.logInfo(this.getClass().getSimpleName(), "getValue", "A null found " + column.dbName);
         }
         return result;
-    }
-
-    protected String prepareColumnName(String columnName) {
-        // trim and escape the column name so it is more safe from sql injection
-        if (!columnName.matches("(?i)[a-zàâçéèêëîïôûùüÿñæœ0-9_ ()%/\\[\\]+\\-]+")) {
-            LogEvent.logWarn(this.getClass().getSimpleName(), "prepareColumnName",
-                    "potentially dangerous character detected in '" + columnName + "'");
-        }
-        return "\"" + trimToPostgresMaxColumnName(columnName = columnName.replace("\"", "\\\"")) + "\"";
-    }
-
-    private String trimToPostgresMaxColumnName(String name) {
-        if (name.length() <= MAX_POSTGRES_COL_NAME) {
-            return name;
-        } else {
-            return name.substring(0, MAX_POSTGRES_COL_NAME);
-        }
     }
 
     public void add(String dbName, String csvTitle) {
@@ -410,7 +397,7 @@ public abstract class CSVRoutineColumnBuilder {
             case DROP_ZERO:
                 return ("0".equals(value) || value == null) ? "" : value;
             case TEST_RESULT:
-                return isBlankOrNull(value) ? "" : translateTestResult(csvName, value);
+                return isBlankOrNull(value) ? "" : translateTestResult(dbName, value);
             case GEND_CD4:
                 return isBlankOrNull(value) ? "" : translateGendResult(getGendCD4CountAnalyteId(), value);
             case LOG:
@@ -488,8 +475,8 @@ public abstract class CSVRoutineColumnBuilder {
          * @return @
          * @throws SQLException
          */
-        public String translateTestResult(String testName, String value) throws SQLException {
-            TestResult testResult = testResultsByTestName.get(testName);
+        public String translateTestResult(String columnName, String value) throws SQLException {
+            TestResult testResult = testResultsByColumn.get(columnName);
             // if it is not in the table then its just a value in the result
             // that was NOT selected from a list, thus no translation
             if (testResult == null) {
@@ -562,53 +549,35 @@ public abstract class CSVRoutineColumnBuilder {
         query.append(", \n\n ( SELECT si.samp_id, si.id AS sampleItem_id, si.sort_order AS sampleItemNo, " + listName
                 + ".* " + " FROM sample_item AS si JOIN \n ");
         String labUnitFilter = "";
-        String categoryUnitFilter = "";
         if (selectedLabUnit != null && !selectedLabUnit.isEmpty()) {
             labUnitFilter = " AND ts.id = " + selectedLabUnit;
-            // Drive the inner crosstab category SQL from allTests so the row
-            // count cannot drift from the AS-clause column count.
-            StringBuilder ids = new StringBuilder();
-            for (Test t : allTests) {
-                if (ids.length() > 0) {
-                    ids.append(",");
-                }
-                ids.append(t.getId());
-            }
-            categoryUnitFilter = " AND t.id IN (" + ids + ")";
         }
 
         // Begin cross tab / pivot table
-        query.append(" crosstab( \n" + " 'SELECT si.id, t.description, replace(replace(replace(replace(r.value ,E''\\n"
+        query.append(" crosstab( \n" + " 'SELECT si.id, t.id, replace(replace(replace(replace(r.value ,E''\\n"
                 + "'', '' ''), E''\\t'', '' ''), E''\\r" + "'', '' ''),'','',''.'') \n"
                 + " FROM clinlims.result AS r join clinlims.analysis AS a on a.id = r.analysis_id \n"
                 + "  join clinlims.sample_item AS si on si.id = a.sampitem_id \n"
                 + "  join clinlims.sample AS s on s.id = si.samp_id \n"
-                + " join clinlims.test_result AS tr on r.test_result_id = tr.id \n"
-                + " join clinlims.test AS t on tr.test_id = t.id \n"
+                // The analysis names the test: a free-text result has no test_result row.
+                + " join clinlims.test AS t on a.test_id = t.id \n"
                 + " join clinlims.test_section ts on t.test_section_id = ts.id \n"
                 + " left join sample_projects sp on si.samp_id = sp.samp_id \n" + "\n"
-                + " WHERE sp.id IS NULL AND s.entered_date >= date(''" + formatDateForDatabaseSql(lowDate)
-                + "'')  AND s.entered_date <= date(''" + formatDateForDatabaseSql(highDate) + " '') " + "\n "
+                + " WHERE sp.id IS NULL AND r.parent_id IS NULL AND s.entered_date >= date(''"
+                + formatDateForDatabaseSql(lowDate) + "'')  AND s.entered_date <= date(''"
+                + formatDateForDatabaseSql(highDate) + " '') " + "\n "
                 // sql injection safe as user cannot overwrite validStatusId in database
                 /// + ((validStatusId == null) ? "" : " AND a.status_id = " + validStatusId)
                 // + (( excludeAnalytes == null)?"":
                 // " AND r.analyte_id NOT IN ( " + excludeAnalytes) + ")"
                 // + " AND a.test_id = t.id "
-                + labUnitFilter + "\n ORDER BY 1, 2 "
-                + "\n ', 'SELECT t.description FROM test t where t.is_active = ''Y''" + categoryUnitFilter
-                + " ORDER BY 1' ) ");
+                + labUnitFilter + "\n ORDER BY 1, 2 " + "\n ', '" + resultCategorySql() + "' ) ");
         // end of cross tab
 
-        // Name the test pivot table columns . We'll name them all after the
-        // resource name, because some tests have fancy characters in them and
-        // somewhere
-        // between iReport, Java and postgres a complex name (e.g. one including
-        // a beta, " HCG Quant") get messed up and isn't found.
         query.append("\n as " + listName + " ( " // inner use of the list name
                 + "\"si_id\" numeric(10) ");
         for (Test col : allTests) {
-            String testName = TestServiceImpl.getLocalizedTestNameWithType(col);
-            query.append("\n, " + prepareColumnName(testName) + " varchar(200) ");
+            query.append("\n, \"" + resultColumnName(col) + "\" varchar(200) ");
         }
         query.append(" ) \n");
         // left join all sample Items from the right sample range to the results table.
@@ -705,8 +674,7 @@ public abstract class CSVRoutineColumnBuilder {
     /** Generate a column to the list of all columns. One for each possible test. */
     protected void addAllResultsColumns() {
         for (Test test : allTests) {
-            String testTag = TestServiceImpl.getLocalizedTestNameWithType(test);
-            add(testTag, TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
+            add(resultColumnName(test), TestServiceImpl.getLocalizedTestNameWithType(test), TEST_RESULT);
         }
     }
 
@@ -757,11 +725,23 @@ public abstract class CSVRoutineColumnBuilder {
     }
 
     /**
+     * Closes the result set and the session that owns its connection. Safe to call
+     * more than once, and on a builder whose query never ran.
+     *
      * @throws SQLException
      */
     public void closeResultSet() throws SQLException {
-        resultSet.close();
-        resultSet = null;
+        try {
+            if (resultSet != null) {
+                resultSet.getStatement().close();
+            }
+        } finally {
+            resultSet = null;
+            if (session != null) {
+                session.close();
+                session = null;
+            }
+        }
     }
 
     protected String getGendCD4CountAnalyteId() {

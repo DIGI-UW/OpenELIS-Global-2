@@ -55,6 +55,52 @@ public class Operation implements Comparable<Operation> {
     @Column(name = "sample_id")
     private Integer sampleId;
 
+    /**
+     * The result component this operand reads; null means the test's primary
+     * component. A test-level operand authored before components existed is
+     * migrated to the primary rather than left to match whichever component's
+     * result was written last.
+     */
+    @Column(name = "component_id")
+    private String componentId;
+
+    /** The specimen this operand reads; null means every specimen. */
+    @Column(name = "sample_type_id")
+    private Integer sampleTypeId;
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public Integer getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(Integer sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
+    }
+
+    /**
+     * The specimen this operand reads, wherever the builder recorded it.
+     *
+     * <p>
+     * {@code sampleId} is the picker the user chooses the test from, and has held
+     * the operand's specimen since the editor was written. {@code sampleTypeId} was
+     * added beside it for the scoping work and is not written by the form, so
+     * reading only that saw NULL on every operand, treated each one as unscoped,
+     * and let a result from any specimen of the test feed the calculation.
+     */
+    public String getScopedSampleTypeId() {
+        if (sampleTypeId != null) {
+            return sampleTypeId.toString();
+        }
+        return sampleId == null ? null : sampleId.toString();
+    }
+
     public Integer getId() {
         return id;
     }

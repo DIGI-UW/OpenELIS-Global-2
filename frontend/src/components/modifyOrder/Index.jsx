@@ -6,7 +6,10 @@ import SearchOrder from "./SearchOrder";
 import { AlertDialog } from "../common/CustomNotification";
 import { NotificationContext } from "../layout/Layout";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+let breadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "order.label.modify", link: "/SampleEdit" },
+];
 
 const Index = () => {
   const { notificationVisible } = useContext(NotificationContext);

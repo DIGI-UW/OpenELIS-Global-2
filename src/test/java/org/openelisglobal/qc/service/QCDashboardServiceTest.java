@@ -12,7 +12,6 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -20,8 +19,10 @@ import org.openelisglobal.qc.dto.AnalyteDetail;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.dto.TriggeredRuleDetail;
+import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.context.transaction.AfterTransaction;
+import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Integration tests for QCDashboardService.
@@ -29,10 +30,10 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <p>
  * Test data loaded via DBUnit from testdata/qc-dashboard.xml:
  * <ul>
- * <li>Instrument 100: Chemistry Analyzer A (type=Clinical Chemistry,
- * location=Core Lab - Room 101), 1 REJECTION + 1 WARNING violation</li>
- * <li>Instrument 200: Standalone Hematology (no analyzer type,
- * location=Hematology Wing), 1 WARNING violation</li>
+ * <li>Instrument 100: Chemistry Analyzer A (profile=Clinical Chemistry, lab
+ * unit=Core Lab - Room 101), 1 REJECTION + 1 WARNING violation</li>
+ * <li>Instrument 200: Standalone Hematology (profile=Hematology, lab
+ * unit=Hematology Wing), 1 WARNING violation</li>
  * <li>Instrument 300: Resolved Only Analyzer, only RESOLVED violations (should
  * not appear)</li>
  * <li>Instrument 400: Clean Immunoassay Analyzer, has QC results but NO
@@ -44,6 +45,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
  * <li>Resolved violation on instrument 100 (should not be counted)</li>
  * </ul>
  */
+@Transactional
 public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
 
     /**
@@ -58,13 +60,21 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     private QCDashboardService dashboardService;
 
     @Autowired
-    private DataSource dataSource;
+    private TestSectionService testSectionService;
 
     @Before
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/qc-dashboard.xml");
+        testSectionService.refreshNames();
         rebaseTimestampsToNow();
+    }
+
+    @AfterTransaction
+    public void restoreTestSectionNames() {
+        // The fixture changes the name cache as well as database rows. Refresh
+        // only after rollback so the next test sees names from the restored data.
+        testSectionService.refreshNames();
     }
 
     /**
@@ -74,12 +84,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
      * window.
      */
     private void rebaseTimestampsToNow() {
-        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         String interval = "NOW() - INTERVAL '2 days' - TIMESTAMP '" + DATA_ANCHOR + "'";
 
-        jdbc.execute("UPDATE qc_result SET run_date_time = run_date_time + (" + interval + ")");
-        jdbc.execute("UPDATE qc_rule_violation SET violation_date_time = violation_date_time + (" + interval + ")");
-        jdbc.execute("UPDATE qc_rule_violation SET resolved_date_time = resolved_date_time + (" + interval
+        jdbcTemplate.execute("UPDATE qc_result SET run_date_time = run_date_time + (" + interval + ")");
+        jdbcTemplate
+                .execute("UPDATE qc_rule_violation SET violation_date_time = violation_date_time + (" + interval + ")");
+        jdbcTemplate.execute("UPDATE qc_rule_violation SET resolved_date_time = resolved_date_time + (" + interval
                 + ") WHERE resolved_date_time IS NOT NULL");
     }
 
@@ -140,7 +150,7 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     // ==================== Instrument Metadata ====================
 
     @Test
-    public void getInstrumentComplianceStatus_withAnalyzerType_setsNameTypeLocation() {
+    public void getInstrumentComplianceStatus_setsNameProfileAndLabUnit() {
         InstrumentQCStatus instrument100 = dashboardService.getInstrumentComplianceStatus("100");
 
         assertEquals("Chemistry Analyzer A", instrument100.getInstrumentName());
@@ -149,14 +159,12 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getInstrumentComplianceStatus_withoutAnalyzerType_setsNameAndLocation() {
+    public void getInstrumentComplianceStatus_usesPinnedProfileAndAssignedLabUnit() {
         InstrumentQCStatus instrument200 = dashboardService.getInstrumentComplianceStatus("200");
 
         assertEquals("Standalone Hematology", instrument200.getInstrumentName());
         assertEquals("Hematology Wing", instrument200.getInstrumentLocation());
-        // Analyzer 200 has no analyzer_type_id and no analyzer_type column — type
-        // should be null
-        assertNull(instrument200.getInstrumentType());
+        assertEquals("Hematology", instrument200.getInstrumentType());
     }
 
     // ==================== Triggered Rule Details ====================
@@ -251,14 +259,17 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void getInstrumentComplianceStatus_instrumentWithNoViolations_returnsGreen() {
-        // Instrument 999 doesn't exist in test data — no violations
-        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("999");
+    public void getInstrumentComplianceStatus_instrumentWithoutOperationalQc_returnsNotConfigured() {
+        // Instrument 300 has no QC results, active control lots, or unresolved
+        // violations.
+        InstrumentQCStatus status = dashboardService.getInstrumentComplianceStatus("300");
 
         assertNotNull(status);
-        assertEquals("GREEN", status.getComplianceColor());
+        assertEquals("NOT_CONFIGURED", status.getComplianceColor());
         assertEquals(0, status.getUnresolvedRejections());
         assertEquals(0, status.getUnresolvedWarnings());
+        assertEquals(0, status.getActiveControlLots());
+        assertTrue(status.getAnalyteDetails().isEmpty());
     }
 
     // ==================== Instruments with QC results but no violations

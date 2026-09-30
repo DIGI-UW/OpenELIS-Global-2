@@ -1,0 +1,25 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.5.xsd">
+
+    <!-- OGC-1145 Phase 2 (FR-13 companion): a result limit may override for one
+         of its test's sample types. NULL = shared — the limit applies to every
+         specimen the test runs on; a value scopes the row to that specimen,
+         which wins over shared rows at result entry/validation. Mirrors
+         060-terminology-sample-type-scope. -->
+    <changeSet author="OGC" id="OGC-1145-result-limits-sample-type-column">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="result_limits" columnName="sample_type_id"/>
+            </not>
+        </preConditions>
+        <addColumn schemaName="clinlims" tableName="result_limits">
+            <column name="sample_type_id" type="numeric(10,0)"/>
+        </addColumn>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="result_limits"
+            baseColumnNames="sample_type_id" constraintName="result_limits_sample_type_fk"
+            referencedTableSchemaName="clinlims" referencedTableName="type_of_sample" referencedColumnNames="id"/>
+    </changeSet>
+
+</databaseChangeLog>

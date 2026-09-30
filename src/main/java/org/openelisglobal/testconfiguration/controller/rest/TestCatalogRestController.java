@@ -183,10 +183,33 @@ public class TestCatalogRestController extends BaseController {
         return dictionaryList;
     }
 
+    /**
+     * Resolve a dictionary-variant test result to its display value.
+     *
+     * <p>
+     * A test result may reference a dictionary entry that no longer exists (or
+     * carry no value at all) — historic data that the catalog has no way to repair
+     * from here. Such a row is skipped rather than allowed to fail the whole
+     * catalog: this is a read-only view, and one unresolvable value must not cost
+     * the caller every other test.
+     *
+     * @return the display value, or null when there is nothing to show
+     */
     private String getDictionaryValue(TestResult testResult) {
 
         if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(testResult.getTestResultType())) {
+            if (org.apache.commons.validator.GenericValidator.isBlankOrNull(testResult.getValue())) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getDictionaryValue",
+                        "dictionary test result " + testResult.getId() + " has no value; skipping it");
+                return null;
+            }
             Dictionary dictionary = dictionaryService.getDataForId(testResult.getValue());
+            if (dictionary == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "getDictionaryValue",
+                        "test result " + testResult.getId() + " references missing dictionary entry "
+                                + testResult.getValue() + "; skipping it");
+                return null;
+            }
             String displayValue = dictionary.getLocalizedName();
 
             if ("unknown".equals(displayValue)) {

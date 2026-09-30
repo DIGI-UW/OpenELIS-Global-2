@@ -11,10 +11,12 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.hibernate.Hibernate;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestComparator;
@@ -54,6 +56,8 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     private TypeOfSampleTestService typeOfSampleTestService;
     @Autowired
     private PanelService panelService;
+    @Autowired
+    private EffectiveTestStatusService effectiveTestStatusService;
 
     @PostConstruct
     private synchronized void initializeGlobalVariables() {
@@ -100,8 +104,13 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     public synchronized List<Test> getActiveTestsBySampleTypeIdAndTestUnit(String sampleType, boolean b,
             List<String> testUnitIds) {
         List<Test> testList = getActiveTestsBySampleTypeId(sampleType, b);
-        return testList.stream().filter(test -> testUnitIds.contains(test.getTestSection().getId()))
-                .collect(Collectors.toList());
+        // OGC-189 (M4): also drop tests whose lab unit is switched off. This
+        // filter used to consider only the test's own active flag, so a
+        // deactivated lab unit kept taking orders (QA LU-W-11/LU-W-12) — the
+        // unit's status did not participate in orderability at all.
+        return testList.stream()
+                .filter(test -> test.getTestSection() == null || testUnitIds.contains(test.getTestSection().getId()))
+                .filter(effectiveTestStatusService::isEffectivelyActive).collect(Collectors.toList());
     }
 
     @Override
@@ -154,8 +163,19 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
 
         for (TypeOfSampleTest typeTest : typeOfSampleTestList) {
             String testId = typeTest.getTestId();
-            TypeOfSample typeOfSample = typeOfSampleIdtoTypeOfSampleMap
-                    .get(baseObjectDAO.getTypeOfSampleById(typeTest.getTypeOfSampleId()).getId());
+            TypeOfSample loaded = baseObjectDAO.getTypeOfSampleById(typeTest.getTypeOfSampleId());
+            if (loaded == null) {
+                // junction points at a deleted sample type — skip rather than NPE
+                continue;
+            }
+            // The identity map is a singleton built at clearCache/startup; a type
+            // created since then is absent. Fall back to the freshly-loaded row
+            // (and cache it) so the lookup is order-independent, never null.
+            TypeOfSample typeOfSample = typeOfSampleIdtoTypeOfSampleMap.get(loaded.getId());
+            if (typeOfSample == null) {
+                typeOfSample = loaded;
+                typeOfSampleIdtoTypeOfSampleMap.put(loaded.getId(), loaded);
+            }
             if (testIdToTypeOfSampleMap.containsKey(testId)) {
                 testIdToTypeOfSampleMap.get(testId).add(typeOfSample);
             } else {
@@ -373,6 +393,73 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
         return baseObjectDAO.duplicateTypeOfSampleExists(typeOfSample);
     }
 
+    private static final int LOCAL_ABBREVIATION_MAX_LENGTH = 10;
+
+    private static String normalized(String value) {
+        return value == null ? "" : value.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String conflictingField(TypeOfSample candidate) {
+        String domain = normalized(candidate.getDomain());
+        String name = normalized(candidate.getDescription());
+        String abbreviation = normalized(candidate.getLocalAbbreviation());
+        boolean abbreviationTaken = false;
+        for (TypeOfSample other : baseObjectDAO.getAllTypeOfSamples()) {
+            if (candidate.getId() != null && candidate.getId().equals(other.getId())
+                    || !domain.equals(normalized(other.getDomain()))) {
+                continue;
+            }
+            if (!name.isEmpty() && name.equals(normalized(other.getDescription()))) {
+                return "name";
+            }
+            if (!abbreviation.isEmpty() && abbreviation.equals(normalized(other.getLocalAbbreviation()))) {
+                abbreviationTaken = true;
+            }
+        }
+        return abbreviationTaken ? "abbreviation" : null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean nameInUse(String name) {
+        String wanted = normalized(name);
+        for (TypeOfSample other : baseObjectDAO.getAllTypeOfSamples()) {
+            if (!wanted.isEmpty() && wanted.equals(normalized(other.getDescription()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String uniqueLocalAbbreviation(String name, String domain) {
+        String base = name == null ? "" : name.trim();
+        java.util.Set<String> taken = new java.util.HashSet<>();
+        for (TypeOfSample other : baseObjectDAO.getAllTypeOfSamples()) {
+            if (normalized(domain).equals(normalized(other.getDomain()))) {
+                taken.add(normalized(other.getLocalAbbreviation()));
+            }
+        }
+        String first = base.length() > LOCAL_ABBREVIATION_MAX_LENGTH ? base.substring(0, LOCAL_ABBREVIATION_MAX_LENGTH)
+                : base;
+        if (!taken.contains(normalized(first))) {
+            return first;
+        }
+        for (int n = 2; n < 100000; n++) {
+            String suffix = String.valueOf(n);
+            String stem = base.substring(0, Math.min(base.length(), LOCAL_ABBREVIATION_MAX_LENGTH - suffix.length()))
+                    .trim();
+            String candidate = stem + suffix;
+            if (!taken.contains(normalized(candidate))) {
+                return candidate;
+            }
+        }
+        throw new LIMSRuntimeException("No free local abbreviation for sample type " + base);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public Localization getLocalizationForSampleType(String id) {
@@ -385,5 +472,35 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     @Override
     public TypeOfSample getTypeOfSampleByLocalizedName(String typeOfSampleName, Locale locale) {
         return baseObjectDAO.getTypeOfSampleByLocalizedName(typeOfSampleName, locale);
+    }
+
+    @Override
+    @Transactional
+    public List<TypeOfSample> moveToSortOrderPosition(String typeOfSampleId, int position, String sysUserId) {
+        List<TypeOfSample> ordered = new ArrayList<>(baseObjectDAO.getAllTypeOfSamplesSortOrdered());
+        TypeOfSample target = null;
+        for (TypeOfSample type : ordered) {
+            if (type.getId().equals(typeOfSampleId)) {
+                target = type;
+                break;
+            }
+        }
+        if (target == null) {
+            throw new LIMSRuntimeException("Sample type not found: " + typeOfSampleId);
+        }
+        ordered.remove(target);
+        int index = Math.max(0, Math.min(position - 1, ordered.size()));
+        ordered.add(index, target);
+
+        for (int i = 0; i < ordered.size(); i++) {
+            TypeOfSample type = ordered.get(i);
+            if (type.getSortOrder() != i + 1) {
+                type.setSortOrder(i + 1);
+                type.setSysUserId(sysUserId);
+                baseObjectDAO.update(type);
+            }
+        }
+        baseObjectDAO.clearMap();
+        return ordered;
     }
 }

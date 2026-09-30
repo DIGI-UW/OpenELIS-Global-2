@@ -27,12 +27,12 @@ import org.dbunit.operation.DatabaseOperation;
  * # Load a specific dataset
  * mvn exec:java -Dexec.mainClass="org.openelisglobal.testutils.DbUnitDatasetLoader" \
  *     -Dexec.classpathScope=test \
- *     -Dexec.args="testdata/analyzer-mapping-test-data.xml"
+ *     -Dexec.args="testdata/analyzer-results.xml"
  * 
  * # With custom database connection
  * mvn exec:java -Dexec.mainClass="org.openelisglobal.testutils.DbUnitDatasetLoader" \
  *     -Dexec.classpathScope=test \
- *     -Dexec.args="testdata/analyzer-mapping-test-data.xml" \
+ *     -Dexec.args="testdata/analyzer-results.xml" \
  *     -Ddb.url="jdbc:postgresql://localhost:15432/clinlims" \
  *     -Ddb.user="clinlims" \
  *     -Ddb.password="clinlims"
@@ -217,12 +217,12 @@ public class DbUnitDatasetLoader {
         System.out.println("  # Load analyzer test data");
         System.out.println("  mvn exec:java -Dexec.mainClass=\"org.openelisglobal.testutils.DbUnitDatasetLoader\" \\");
         System.out.println("      -Dexec.classpathScope=test \\");
-        System.out.println("      -Dexec.args=\"testdata/analyzer-mapping-test-data.xml\"");
+        System.out.println("      -Dexec.args=\"testdata/analyzer-results.xml\"");
         System.out.println();
         System.out.println("  # Use INSERT (don't delete existing data)");
         System.out.println("  mvn exec:java -Dexec.mainClass=\"org.openelisglobal.testutils.DbUnitDatasetLoader\" \\");
         System.out.println("      -Dexec.classpathScope=test \\");
-        System.out.println("      -Dexec.args=\"testdata/analyzer-mapping-test-data.xml INSERT\"");
+        System.out.println("      -Dexec.args=\"testdata/analyzer-results.xml INSERT\"");
         System.out.println();
         System.out.println("Environment/System Properties:");
         System.out.println("  -Ddb.url=<jdbc-url>       Database URL (default: localhost:15432)");

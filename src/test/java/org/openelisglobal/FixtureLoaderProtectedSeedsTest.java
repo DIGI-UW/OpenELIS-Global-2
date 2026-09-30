@@ -1,13 +1,23 @@
 package org.openelisglobal;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.junit.Test;
+import org.openelisglobal.inventory.service.InventoryItemService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
+import org.openelisglobal.inventory.valueholder.InventoryItem;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
+import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.service.PersonService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +50,19 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
     private ReferenceTablesService referenceTablesService;
 
     @Autowired
+    private ObservationHistoryTypeService observationHistoryTypeService;
+
+    @Autowired
     private DataSource dataSource;
+
+    @Autowired
+    private PersonService personService;
+
+    @Autowired
+    private PatientService patientService;
+
+    @Autowired
+    private InventoryItemService inventoryItemService;
 
     /**
      * Seed tables that should survive any fixture load. Mirrors the constant on
@@ -78,12 +100,96 @@ public class FixtureLoaderProtectedSeedsTest extends BaseWebContextSensitiveTest
                 + "from BaseWebContextSensitiveTest.PROTECTED_SEED_TABLES?", seedSizeAfter >= seedSizeBefore);
     }
 
+    @Test
+    public void loadingFixtureWithExplicitPersonIds_advancesSequenceForServiceInsert() throws Exception {
+        executeDataSetWithStateManagement("testdata/person.xml");
+
+        Person person = new Person();
+        person.setFirstName("Sequence");
+        person.setLastName("Canary");
+        person.setSysUserId(TEST_SYS_USER_ID);
+        String insertedId = personService.insert(person);
+
+        assertNotNull(personService.get(insertedId));
+        assertTrue("service insert reused a fixture-owned Person id", Integer.parseInt(insertedId) > 3);
+    }
+
+    @Test
+    public void loadingLegacyFixtureWithExplicitIds_advancesSequencesForServiceInserts() throws Exception {
+        executeDataSetWithStateManagement("testdata/logbook-db.xml");
+
+        Person person = new Person();
+        person.setFirstName("Sequence");
+        person.setLastName("Patient canary");
+        person.setSysUserId(TEST_SYS_USER_ID);
+        String personId = personService.insert(person);
+
+        Patient patient = new Patient();
+        patient.setPerson(person);
+        patient.setNationalId("SEQUENCE-CANARY-" + UUID.randomUUID());
+        patient.setSysUserId(TEST_SYS_USER_ID);
+        String patientId = patientService.insert(patient);
+
+        InventoryItem item = new InventoryItem();
+        item.setFhirUuid(UUID.randomUUID());
+        item.setName("Sequence canary inventory item");
+        item.setDescription("Verifies service inserts follow legacy fixture IDs");
+        item.setItemType(ItemType.REAGENT);
+        item.setUnits("unit");
+        item.setSysUserId(TEST_SYS_USER_ID);
+        Long insertedId = inventoryItemService.insert(item);
+
+        assertNotNull(personService.get(personId));
+        assertTrue("service insert reused a fixture-owned Person id", Integer.parseInt(personId) > 2);
+        assertNotNull(patientService.get(patientId));
+        assertTrue("service insert reused a fixture-owned Patient id", Integer.parseInt(patientId) > 2);
+        assertNotNull(inventoryItemService.get(insertedId));
+        assertTrue("service insert reused a fixture-owned InventoryItem id", insertedId > 2L);
+    }
+
+    @Test
+    public void loadingFixture_doesNotRewindUnrelatedCachedSequence() throws Exception {
+        long sequenceValueBefore = readSequenceLastValue("dictionary_seq");
+
+        executeDataSetWithStateManagement("testdata/dictionary.xml");
+
+        assertEquals("fixture loading must not rewind sequences outside the explicit synchronization allowlist",
+                sequenceValueBefore, readSequenceLastValue("dictionary_seq"));
+    }
+
+    @Test
+    public void loadingObservationFixture_doesNotReplaceCanonicalHistoryTypes() throws Exception {
+        int seedSizeBefore = observationHistoryTypeService.getAll().size();
+        assertNotNull("SampleRecordStatus must exist before fixture load",
+                observationHistoryTypeService.getByName("SampleRecordStatus"));
+        assertNotNull("PatientRecordStatus must exist before fixture load",
+                observationHistoryTypeService.getByName("PatientRecordStatus"));
+
+        executeDataSetWithStateManagement("testdata/observation-history.xml");
+
+        assertNotNull("SampleRecordStatus was wiped by the fixture loader",
+                observationHistoryTypeService.getByName("SampleRecordStatus"));
+        assertNotNull("PatientRecordStatus was wiped by the fixture loader",
+                observationHistoryTypeService.getByName("PatientRecordStatus"));
+        assertTrue("Observation history type seed shrank after fixture load",
+                observationHistoryTypeService.getAll().size() >= seedSizeBefore);
+    }
+
     private int countReferenceTables() throws Exception {
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) FROM clinlims.reference_tables");
                 ResultSet rs = stmt.executeQuery()) {
             rs.next();
             return rs.getInt(1);
+        }
+    }
+
+    private long readSequenceLastValue(String sequenceName) throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT last_value FROM clinlims." + sequenceName);
+                ResultSet rs = stmt.executeQuery()) {
+            rs.next();
+            return rs.getLong(1);
         }
     }
 }

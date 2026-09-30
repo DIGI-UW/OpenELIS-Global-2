@@ -29,6 +29,9 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/pathology-sample.xml");
+        // Fixture replaces system_user with technician1 / pathologist1 etc.;
+        // authenticate as technician1 so audit attribution lands on a real user.
+        authenticateAs("technician1");
     }
 
     @Test
@@ -102,7 +105,7 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void updateWithFormValues_shouldUpdatePathologySampleWithFormValues() {
         PathologySampleForm pathologySampleForm = new PathologySampleForm();
-        pathologySampleForm.setSystemUserId("2");
+        pathologySampleForm.setSystemUserId("1001");
 
         PathologyBlock block1 = new PathologyBlock();
         block1.setBlockNumber(12);
@@ -119,8 +122,14 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
         pathologySampleForm.setReports(Collections.singletonList(new PathologySampleForm.PathologyReportForm()));
         pathologySampleService.updateWithFormValues(2, pathologySampleForm);
 
-        Assert.assertEquals(Integer.parseInt("2"), pathologySampleForm.getBlocks().size());
-        Assert.assertEquals("2", pathologySampleForm.getSystemUserId());
+        PathologySample saved = pathologySampleService.get(2);
+        Assert.assertEquals(2, saved.getBlocks().size());
+        Assert.assertEquals(List.of(12, 13),
+                saved.getBlocks().stream().map(PathologyBlock::getBlockNumber).sorted().toList());
+        Assert.assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.pathology_slide WHERE pathology_sample_id = 2", Integer.class));
+        Assert.assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.pathology_report WHERE pathology_sample_id = 2", Integer.class));
     }
 
 }

@@ -40,4 +40,19 @@ public interface ObservationHistoryService extends BaseObjectService<Observation
     String getRawValueForSample(ObservationType type, String sampleId);
 
     ObservationHistory getLastObservationForPatient(ObservationType type, String patientId);
+
+    /**
+     * Drop and rebuild the in-memory {@code ObservationType -> id} cache from the
+     * current {@code observation_history_type} rows. The cache is populated lazily
+     * on first access and otherwise never invalidates, so callers that mutate the
+     * underlying table (test fixtures truncating + reloading; admin tools reloading
+     * config CSVs) must call this to avoid stale lookups.
+     */
+    void refreshTypeIdCache();
+
+    /**
+     * Every observation of one type, whatever its value; empty when the type is
+     * unknown.
+     */
+    List<ObservationHistory> getObservationHistoriesByType(ObservationType type);
 }

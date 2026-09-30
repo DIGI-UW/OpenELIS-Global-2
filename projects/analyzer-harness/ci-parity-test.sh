@@ -15,9 +15,10 @@
 #   projects/analyzer-harness/ci-parity-test.sh --seed-only
 #   projects/analyzer-harness/ci-parity-test.sh --mode video
 #   projects/analyzer-harness/ci-parity-test.sh --project harness-demo-video
-#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/demo/harness/analyzer-demo-flow.spec.ts
+#   projects/analyzer-harness/ci-parity-test.sh --test-file playwright/tests/foundational/harness/ogc-1054-analyzer-mvp.spec.ts
 #   projects/analyzer-harness/ci-parity-test.sh --shard 2/2
 #   projects/analyzer-harness/ci-parity-test.sh --artifact-dir /tmp/oe-ci-parity
+#   projects/analyzer-harness/ci-parity-test.sh --build
 
 set -euo pipefail
 
@@ -25,13 +26,19 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
 FRONTEND_DIR="$REPO_ROOT/frontend"
 source "$SCRIPT_DIR/compose-stack.sh"
+source "$SCRIPT_DIR/playwright-project-policy.sh"
 CI_COMPOSE_FILES=($(compose_args_ci))
+CI_PARITY_OVERLAY="$SCRIPT_DIR/docker-compose.ci-parity-isolated.yml"
+CI_COMPOSE_FILES+=(-f "$CI_PARITY_OVERLAY")
 FIXTURE_SCRIPT="$REPO_ROOT/src/test/resources/load-test-fixtures.sh"
 SEED_SCRIPT="$REPO_ROOT/projects/analyzer-harness/seed-analyzers.sh"
-REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-analyzer-harness-reusable.yml"
+FIXTURE_DB_TARGET_TEST="$REPO_ROOT/projects/analyzer-harness/scripts/test-fixture-loader-db-target.sh"
+REUSABLE_WORKFLOW="$REPO_ROOT/.github/workflows/e2e-playwright-reusable.yml"
 
 PRECHECK_ONLY=false
 SEED_ONLY=false
+BUILD_SOURCE=false
+KEEP_STACK=false
 SHARD=""
 ARTIFACT_DIR=""
 TEST_USER_INPUT="${TEST_USER:-}"
@@ -39,7 +46,8 @@ TEST_PASS_INPUT="${TEST_PASS:-}"
 MODE="parity"
 PLAYWRIGHT_PROJECT=""
 PLAYWRIGHT_TEST_FILE=""
-PLAYWRIGHT_SLOWMO_INPUT="${PLAYWRIGHT_SLOWMO:-500}"
+# Empty keeps the video projects' own slowMo default in playwright.config.ts.
+PLAYWRIGHT_SLOWMO_INPUT="${PLAYWRIGHT_SLOWMO:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -49,6 +57,14 @@ while [[ $# -gt 0 ]]; do
       ;;
     --seed-only)
       SEED_ONLY=true
+      shift
+      ;;
+    --build)
+      BUILD_SOURCE=true
+      shift
+      ;;
+    --keep-stack)
+      KEEP_STACK=true
       shift
       ;;
     --shard)
@@ -74,7 +90,7 @@ while [[ $# -gt 0 ]]; do
     --project)
       PLAYWRIGHT_PROJECT="${2:-}"
       if [[ -z "$PLAYWRIGHT_PROJECT" ]]; then
-        echo "ERROR: --project requires value harness-demo|harness-demo-video" >&2
+        echo "ERROR: --project requires a harness Playwright project" >&2
         exit 2
       fi
       shift 2
@@ -114,10 +130,25 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
+read -r parity_digest parity_octet < <(python3 - "$REPO_ROOT" <<'PY'
+import hashlib
+import sys
+
+digest = hashlib.sha256(sys.argv[1].encode()).hexdigest()
+print(digest[:8], 64 + int(digest[:4], 16) % 160)
+PY
+)
+parity_slug="$(printf '%s' "$(basename "$REPO_ROOT")" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-')"
+export CI_PARITY_IMAGE_PREFIX="oe2-ci-${parity_slug}-${parity_digest}"
+export CI_PARITY_COMPOSE_PROJECT="${CI_PARITY_IMAGE_PREFIX}-$(date -u +%Y%m%d%H%M%S)-$$"
+export CI_PARITY_ANALYZER_SUBNET_PREFIX="10.${parity_octet}"
+export COMPOSE_PROJECT_NAME="$CI_PARITY_COMPOSE_PROJECT"
+
 if [[ -z "$ARTIFACT_DIR" ]]; then
   ARTIFACT_DIR="/tmp/oe-ci-parity-$(date +%Y%m%d_%H%M%S)"
 fi
 mkdir -p "$ARTIFACT_DIR"
+printf '%s\n' "$CI_PARITY_COMPOSE_PROJECT" > "$ARTIFACT_DIR/compose-project.txt"
 PRECHECK_LOG="$ARTIFACT_DIR/preflight.log"
 RUN_LOG="$ARTIFACT_DIR/run.log"
 
@@ -125,7 +156,38 @@ pass() { echo "PASS: $*" | tee -a "$PRECHECK_LOG"; }
 fail() { echo "FAIL: $*" | tee -a "$PRECHECK_LOG"; PRECHECK_FAILED=true; }
 note() { echo "INFO: $*" | tee -a "$PRECHECK_LOG"; }
 
+container_id() {
+  docker compose "${CI_COMPOSE_FILES[@]}" ps -a -q "$1"
+}
+
+published_port() {
+  local published
+  for attempt in 1 2 3 4 5 6 7 8 9 10; do
+    published="$(docker compose "${CI_COMPOSE_FILES[@]}" port "$1" "$2" 2>/dev/null || true)"
+    if [[ "$published" =~ :([0-9]+)$ ]]; then
+      printf '%s\n' "${BASH_REMATCH[1]}"
+      return 0
+    fi
+    sleep 1
+  done
+  echo "ERROR: no published port for $1:$2 in $CI_PARITY_COMPOSE_PROJECT" >&2
+  return 1
+}
+
 PRECHECK_FAILED=false
+
+cleanup() {
+  local exit_code=$?
+  trap - EXIT
+  if [[ "$KEEP_STACK" == false && "$PRECHECK_ONLY" == false ]]; then
+    if [[ "$exit_code" -ne 0 ]]; then
+      collect_failure_artifacts || true
+    fi
+    docker compose "${CI_COMPOSE_FILES[@]}" down --volumes > "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
+  fi
+  return "$exit_code"
+}
+trap cleanup EXIT
 
 require_command() {
   local cmd="$1"
@@ -194,7 +256,7 @@ require_images_for_compose() {
   done < "$images_file"
 
   if [[ "$missing" -eq 1 ]]; then
-    note "build missing images first via the shared harness build flow, e.g.: ./projects/analyzer-harness/build.sh --skip-war"
+    note "build this checkout's parity images with: ./projects/analyzer-harness/ci-parity-test.sh --build"
   fi
 }
 
@@ -248,12 +310,14 @@ collect_failure_artifacts() {
   docker compose "${CI_COMPOSE_FILES[@]}" ps \
     > "$ARTIFACT_DIR/docker-logs/compose-ps.txt" 2>&1 || true
 
-  for service in openelisglobal-webapp openelis-analyzer-bridge openelis-astm-simulator; do
-    docker logs "$service" > "$ARTIFACT_DIR/docker-logs/${service}.log" 2>&1 || true
+  for service in proxy oe.openelis.org openelis-analyzer-bridge astm-simulator; do
+    docker logs "$(container_id "$service")" > "$ARTIFACT_DIR/docker-logs/${service}.log" 2>&1 || true
   done
 
-  docker cp openelisglobal-webapp:/var/lib/openelis-global/logs/. "$ARTIFACT_DIR/oe-logs/" 2>/dev/null || true
-  docker cp openelisglobal-webapp:/usr/local/tomcat/logs/. "$ARTIFACT_DIR/tomcat-logs/" 2>/dev/null || true
+  local webapp_container
+  webapp_container="$(container_id oe.openelis.org)"
+  docker cp "$webapp_container":/var/lib/openelis-global/logs/. "$ARTIFACT_DIR/oe-logs/" 2>/dev/null || true
+  docker cp "$webapp_container":/usr/local/tomcat/logs/. "$ARTIFACT_DIR/tomcat-logs/" 2>/dev/null || true
 
   if [[ -d "$FRONTEND_DIR/test-results" ]]; then
     mkdir -p "$ARTIFACT_DIR/playwright"
@@ -265,89 +329,35 @@ collect_failure_artifacts() {
   fi
 }
 
-required_analyzers=(
-  "Cepheid GeneXpert (ASTM Mode)"
-  "QuantStudio 5"
-  "QuantStudio 7"
-  "FluoroCycler XT"
-  "Mindray BC-5380"
-  "Mindray BS-200"
-  "Mindray BS-300"
-)
-
-mapping_count_for_analyzer() {
-  local analyzer_name="$1"
-  docker exec -i openelisglobal-database psql -U clinlims -d clinlims -t -A \
-    -c "SELECT COUNT(*) FROM clinlims.analyzer_test_map m JOIN clinlims.analyzer a ON a.id = m.analyzer_id WHERE a.name = '${analyzer_name}';" \
-    2>/dev/null | tr -d '[:space:]' || echo 0
-}
-
-verify_required_mappings() {
-  local max_attempts=12
-  local sleep_seconds=5
-  local attempt=1
-  local missing=0
-  local mappings=0
-
-  while (( attempt <= max_attempts )); do
-    missing=0
-    echo "Verifying analyzer test mappings (attempt ${attempt}/${max_attempts})..." | tee -a "$RUN_LOG"
-    for analyzer in "${required_analyzers[@]}"; do
-      mappings="$(mapping_count_for_analyzer "$analyzer")"
-      mappings="${mappings:-0}"
-      echo "$analyzer: $mappings test mappings" | tee -a "$RUN_LOG"
-      if [[ "$mappings" == "0" ]]; then
-        missing=1
-      fi
-    done
-    if [[ "$missing" -eq 0 ]]; then
-      echo "Analyzer mapping gate passed." | tee -a "$RUN_LOG"
-      return 0
-    fi
-    if (( attempt < max_attempts )); then
-      echo "Mappings still missing; waiting ${sleep_seconds}s before retry..." | tee -a "$RUN_LOG"
-      sleep "$sleep_seconds"
-    fi
-    attempt=$((attempt + 1))
-  done
-
-  echo "ERROR: Analyzer mapping gate failed. At least one required analyzer has 0 test mappings." | tee -a "$RUN_LOG"
-  return 1
-}
-
-verify_bridge_registry() {
-  local registry_file="$1"
-  if [[ ! -s "$registry_file" ]]; then
-    echo "ERROR: bridge registry capture failed or empty" | tee -a "$RUN_LOG"
+verify_analyzer_connections() {
+  local connections_file="$1"
+  if [[ ! -s "$connections_file" ]]; then
+    echo "ERROR: analyzer connection capture failed or empty" | tee -a "$RUN_LOG"
     return 1
   fi
 
   local missing
   missing="$(
-    python3 - "$registry_file" <<'PY'
+    python3 - "$connections_file" <<'PY'
 import json, sys
 try:
-    registry = json.load(open(sys.argv[1]))
+    response = json.load(open(sys.argv[1]))
 except Exception:
     print("__PARSE_ERROR__")
     raise SystemExit(0)
 
-if isinstance(registry, dict):
-    entries = [value for value in registry.values() if isinstance(value, dict)]
-elif isinstance(registry, list):
-    entries = [value for value in registry if isinstance(value, dict)]
-else:
-    entries = []
+entries = response.get("analyzers", []) if isinstance(response, dict) else []
 
-names = {item.get("name", "") for item in entries}
+names = {
+    item.get("name", "")
+    for item in entries
+    if item.get("connected") is True and item.get("bridgeConnectionId")
+}
 required = {
     "Cepheid GeneXpert (ASTM Mode)",
     "QuantStudio 5",
     "QuantStudio 7",
     "FluoroCycler XT",
-    "Mindray BC-5380",
-    "Mindray BS-200",
-    "Mindray BS-300",
 }
 missing = sorted(required - names)
 print("\n".join(missing))
@@ -355,23 +365,24 @@ PY
   )"
 
   if [[ "$missing" == "__PARSE_ERROR__" ]]; then
-    echo "ERROR: bridge registry payload is not valid JSON" | tee -a "$RUN_LOG"
+    echo "ERROR: analyzer connection payload is not valid JSON" | tee -a "$RUN_LOG"
     return 1
   fi
 
   if [[ -n "$missing" ]]; then
-    echo "ERROR: bridge registry missing required analyzers:" | tee -a "$RUN_LOG"
+    echo "ERROR: required analyzers are missing durable Bridge connection references:" | tee -a "$RUN_LOG"
     echo "$missing" | tee -a "$RUN_LOG"
     return 1
   fi
 
-  echo "Bridge registry gate passed." | tee -a "$RUN_LOG"
+  echo "Analyzer connection reference gate passed." | tee -a "$RUN_LOG"
   return 0
 }
 
 {
   echo "=== CI Parity Preflight ==="
   echo "Repo root: $REPO_ROOT"
+  echo "Compose project: $CI_PARITY_COMPOSE_PROJECT"
   echo "Artifacts: $ARTIFACT_DIR"
   echo
 } | tee "$PRECHECK_LOG"
@@ -386,10 +397,21 @@ require_command npm
 check_file "$HARNESS_BASE_COMPOSE"
 check_file "$CI_BUILD_COMPOSE"
 check_file "$CI_HARNESS_COMPOSE"
+check_file "$CI_PARITY_OVERLAY"
 check_file "$FIXTURE_SCRIPT"
 check_file "$SEED_SCRIPT"
+check_file "$FIXTURE_DB_TARGET_TEST"
 check_file "$REUSABLE_WORKFLOW"
 check_file "$FRONTEND_DIR/package-lock.json"
+if [[ "$BUILD_SOURCE" == true ]]; then
+  require_command mvn
+fi
+
+if bash "$FIXTURE_DB_TARGET_TEST"; then
+  pass "fixture loader honors an explicit database container"
+else
+  fail "fixture loader ignored an explicit database container"
+fi
 
 if [[ -f "$REPO_ROOT/.env" ]]; then
   pass ".env exists at repo root"
@@ -413,12 +435,6 @@ else
   fail "TEST_PASS not set (export TEST_PASS or add TEST_PASS in .env)"
 fi
 
-if compgen -G "$REPO_ROOT/volume/plugins/*.jar" >/dev/null; then
-  pass "plugin jars present in volume/plugins"
-else
-  fail "no plugin jars found in volume/plugins (stage plugin jars before parity run)"
-fi
-
 if [[ "$SEED_ONLY" == false ]]; then
   if [[ -d "$FRONTEND_DIR/node_modules" ]] && [[ -x "$FRONTEND_DIR/node_modules/.bin/playwright" ]]; then
     pass "frontend dependencies installed (node_modules/.bin/playwright present)"
@@ -427,6 +443,20 @@ if [[ "$SEED_ONLY" == false ]]; then
   fi
 
   check_playwright_chromium_installed
+fi
+if [[ "$BUILD_SOURCE" == true && "$PRECHECK_ONLY" == true ]]; then
+  fail "--build cannot be combined with --preflight-only"
+fi
+if [[ "$BUILD_SOURCE" == true && "$PRECHECK_FAILED" == false ]]; then
+  note "Building the current checkout WAR and worktree-scoped CI images"
+  git -C "$REPO_ROOT" rev-parse HEAD > "$ARTIFACT_DIR/source-head.txt"
+  (
+    cd "$REPO_ROOT"
+    mvn -q clean install -DskipTests -Dmaven.test.skip=true
+    docker compose "${CI_COMPOSE_FILES[@]}" build
+    # `build` skips image-only services such as harness-catalog-init.
+    docker compose "${CI_COMPOSE_FILES[@]}" pull --ignore-buildable --quiet
+  ) 2>&1 | tee "$ARTIFACT_DIR/build.log"
 fi
 require_images_for_compose
 
@@ -440,18 +470,7 @@ if [[ "$PRECHECK_ONLY" == true ]]; then
   exit 0
 fi
 
-if [[ -z "$PLAYWRIGHT_PROJECT" ]]; then
-  if [[ "$MODE" == "video" ]]; then
-    PLAYWRIGHT_PROJECT="harness-demo-video"
-  else
-    PLAYWRIGHT_PROJECT="harness-demo"
-  fi
-fi
-
-if [[ "$PLAYWRIGHT_PROJECT" != "harness-demo" && "$PLAYWRIGHT_PROJECT" != "harness-demo-video" ]]; then
-  echo "ERROR: unsupported project '$PLAYWRIGHT_PROJECT' (expected harness-demo or harness-demo-video)" >&2
-  exit 2
-fi
+PLAYWRIGHT_PROJECT="$(resolve_harness_playwright_project "$MODE" "$PLAYWRIGHT_PROJECT")"
 
 if [[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" && -n "$SHARD" ]]; then
   echo "ERROR: sharding is unsupported in harness-demo-video mode" >&2
@@ -479,34 +498,45 @@ chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" ||
 
 (
   cd "$REPO_ROOT"
-  docker compose "${CI_COMPOSE_FILES[@]}" up -d --no-build
+  OE_UAT_SCENARIOS_ENABLED=true docker compose "${CI_COMPOSE_FILES[@]}" up -d --no-build
 ) 2>&1 | tee -a "$RUN_LOG"
 
-with_timeout_wait 60 "webapp cert material" "docker exec openelisglobal-webapp sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
-with_timeout_wait 60 "bridge cert material" "docker exec openelis-analyzer-bridge sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
+WEBAPP_CONTAINER="$(container_id oe.openelis.org)"
+BRIDGE_CONTAINER="$(container_id openelis-analyzer-bridge)"
+DB_CONTAINER="$(container_id db.openelis.org)"
+BASE_URL="https://localhost:$(published_port proxy 443)"
+BRIDGE_URL="https://localhost:$(published_port openelis-analyzer-bridge 8443)"
+MOCK_URL="http://localhost:$(published_port astm-simulator 8080)"
+echo "Isolated parity endpoints: OpenELIS=$BASE_URL Bridge=$BRIDGE_URL Mock=$MOCK_URL" | tee -a "$RUN_LOG"
+
+with_timeout_wait 60 "webapp cert material" "docker exec $WEBAPP_CONTAINER sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
+with_timeout_wait 60 "bridge cert material" "docker exec $BRIDGE_CONTAINER sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
 
 (
   cd "$REPO_ROOT"
   export TEST_USER="$TEST_USER_RESOLVED"
   export TEST_PASS="$TEST_PASS_RESOLVED"
   export TIMEOUT_SECONDS=240
+  export BASE_URL
   bash scripts/e2e/wait-for-openelis-login.sh
 ) 2>&1 | tee -a "$RUN_LOG"
-with_timeout_wait 120 "bridge readiness" "curl -k -s -f --connect-timeout 2 --max-time 3 https://localhost:8442/actuator/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
-with_timeout_wait 120 "simulator readiness" "curl -s -f --connect-timeout 2 --max-time 3 http://localhost:8085/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
+with_timeout_wait 120 "bridge readiness" "curl -k -s -f --connect-timeout 2 --max-time 3 $BRIDGE_URL/actuator/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
+with_timeout_wait 120 "simulator readiness" "curl -s -f --connect-timeout 2 --max-time 3 $MOCK_URL/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
 
 (
   cd "$REPO_ROOT"
-  ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
+  DB_CONTAINER="$DB_CONTAINER" ./src/test/resources/load-test-fixtures.sh --profile=harness --no-verify
 ) 2>&1 | tee -a "$RUN_LOG"
 
 (
   cd "$REPO_ROOT"
-  BASE_URL="https://localhost" \
+  BASE_URL="$BASE_URL" \
+  MOCK_URL="$MOCK_URL" \
+  BRIDGE_ADMIN_URL="$BRIDGE_URL" \
   TEST_USER="$TEST_USER_RESOLVED" \
   TEST_PASS="$TEST_PASS_RESOLVED" \
-  DB_CONTAINER="openelisglobal-database" \
-  bash projects/analyzer-harness/seed-analyzers.sh
+  DB_CONTAINER="$DB_CONTAINER" \
+  bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
 ) 2>&1 | tee -a "$RUN_LOG"
 
 if rg -n "WARN: Mock API failed|fallback|using stable IP|using fallback" "$RUN_LOG" >/dev/null 2>&1; then
@@ -531,18 +561,14 @@ for dir in \
 done
 chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" || true
 
-if ! verify_required_mappings; then
-  collect_failure_artifacts
-  exit 5
-fi
-
-bridge_registry="$ARTIFACT_DIR/bridge-registry.json"
-curl -k -s "https://localhost:8442/api/analyzers" > "$bridge_registry" || true
-if ! verify_bridge_registry "$bridge_registry"; then
+analyzer_connections="$ARTIFACT_DIR/analyzer-connections.json"
+curl -k -s -u "$TEST_USER_RESOLVED:$TEST_PASS_RESOLVED" \
+  "$BASE_URL/api/OpenELIS-Global/rest/analyzer/analyzers" > "$analyzer_connections" || true
+if ! verify_analyzer_connections "$analyzer_connections"; then
   collect_failure_artifacts
   exit 6
 fi
-echo "Bridge registry captured at $bridge_registry" | tee -a "$RUN_LOG"
+echo "Analyzer connection references captured at $analyzer_connections" | tee -a "$RUN_LOG"
 
 PLAYWRIGHT_CMD=(npm run pw:test -- --project="$PLAYWRIGHT_PROJECT" --workers=1)
 if [[ -n "$SHARD" ]]; then
@@ -557,13 +583,13 @@ set +e
   cd "$FRONTEND_DIR"
   CI=true \
   ANALYZER_HARNESS=true \
-  BASE_URL=https://localhost \
+  BASE_URL="$BASE_URL" \
+  BRIDGE_ADMIN_URL="$BRIDGE_URL" \
+  MOCK_SIMULATOR_URL="$MOCK_URL" \
   TEST_USER="$TEST_USER_RESOLVED" \
   TEST_PASS="$TEST_PASS_RESOLVED" \
   PLAYWRIGHT_VIDEO="$([[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" ]] && echo "on" || echo "off")" \
   PLAYWRIGHT_SLOWMO="$PLAYWRIGHT_SLOWMO_INPUT" \
-  FILE_IMPORT_POLL_MS=5000 \
-  FILE_IMPORT_DROP_BUFFER_MS=45000 \
   "${PLAYWRIGHT_CMD[@]}"
 ) 2>&1 | tee -a "$RUN_LOG"
 pw_exit=$?

@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-285 M2: seed 5 system label presets from legacy site_information.barcode.* keys (FRS §2.7).
+         Presets only - field rows are seeded in 031 (needs the preset PKs generated here). -->
+
+    <changeSet id="label-preset-seed-001-system-presets" author="ogc-285">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.label_preset WHERE is_system = true
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Seed 5 system label presets from legacy site_information.barcode.* keys per FRS §2.7</comment>
+
+        <sql>
+            WITH si AS (
+                SELECT name, value FROM clinlims.site_information
+                WHERE name LIKE 'barcode.order.%' OR name LIKE 'barcode.specimen.%'
+                   OR name LIKE 'barcode.block.%' OR name LIKE 'barcode.slide.%'
+                   OR name LIKE 'barcode.freezer.%'
+            ),
+            normalized AS (
+                SELECT
+                    CASE WHEN value ~ '^[0-9]+$' THEN value::INTEGER ELSE NULL END AS num,
+                    name
+                FROM si
+            )
+            INSERT INTO clinlims.label_preset
+                (id, name, height_mm, width_mm, barcode_type,
+                 prints_per_order, prints_per_sample,
+                 default_per_order, max_per_order,
+                 default_per_sample, max_per_sample,
+                 is_system, is_active, last_updated)
+            SELECT
+                nextval('clinlims.label_preset_seq'),
+                preset_name,
+                COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.height'), 25)  AS height_mm,
+                COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.width'),  76)  AS width_mm,
+                'CODE_128',
+                (legacy_key = 'order')      AS prints_per_order,
+                (legacy_key &lt;&gt; 'order') AS prints_per_sample,
+                CASE WHEN legacy_key = 'order'      THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.order.default'), 1) ELSE 0 END,
+                CASE WHEN legacy_key = 'order'      THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.order.max'),    10) ELSE 10 END,
+                CASE WHEN legacy_key &lt;&gt; 'order' THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.default'), 1) ELSE 0 END,
+                CASE WHEN legacy_key &lt;&gt; 'order' THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.max'),    10) ELSE 10 END,
+                true,
+                true,
+                CURRENT_TIMESTAMP
+            FROM (VALUES
+                ('order',    'Order Label'),
+                ('specimen', 'Specimen Label'),
+                ('block',    'Block Label'),
+                ('slide',    'Slide Label'),
+                ('freezer',  'Freezer Label')
+            ) AS seed(legacy_key, preset_name);
+        </sql>
+
+        <rollback>
+            <sql>DELETE FROM clinlims.label_preset WHERE is_system = true;</sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

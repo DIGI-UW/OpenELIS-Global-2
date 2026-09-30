@@ -40,6 +40,7 @@ import PostSavePrintDialog from "../barcodeWorkflow/PostSavePrintDialog";
 let breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "cytology.label.dashboard", link: "/CytologyDashboard" },
+  { label: "breadcrumb.caseView", link: "" },
 ];
 
 function CytologyCaseView() {
@@ -315,7 +316,7 @@ function CytologyCaseView() {
 
   const setInitialPathologySampleInfo = (e) => {
     if (
-      hasRole(userSessionDetails, "CytoPathologist") &&
+      hasRole(userSessionDetails, "Cytopathologist") &&
       !e.assignedPathologistId &&
       e.status === "READY_FOR_CYTOPATHOLOGIST"
     ) {
@@ -526,7 +527,7 @@ function CytologyCaseView() {
               });
             }}
           >
-            <SelectItem />
+            <SelectItem value="" text="" />
             {technicianUsers.map((user, index) => {
               return (
                 <SelectItem key={index} text={user.value} value={user.id} />
@@ -550,7 +551,7 @@ function CytologyCaseView() {
               });
             }}
           >
-            <SelectItem />
+            <SelectItem value="" text="" />
             {pathologistUsers.map((user, index) => {
               return (
                 <SelectItem key={index} text={user.value} value={user.id} />
@@ -959,7 +960,7 @@ function CytologyCaseView() {
                       });
                     }}
                   >
-                    <SelectItem />
+                    <SelectItem value="" text="" />
                     {adequacySatisfactionList.map((user, index) => {
                       return (
                         <SelectItem

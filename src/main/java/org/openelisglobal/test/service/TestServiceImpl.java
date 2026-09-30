@@ -3,6 +3,7 @@ package org.openelisglobal.test.service;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
@@ -10,7 +11,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Vector;
+import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -26,6 +29,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
+import org.openelisglobal.qc.valueholder.TestQcThreshold;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.test.beanItems.TestResultItem.ResultDisplayType;
@@ -63,12 +67,6 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     // .getPropertyValue(ConfigurationProperties.Property.DEFAULT_LANG_LOCALE);
     private static Map<Entity, Map<String, String>> entityToMap;
 
-    protected static TestDAO baseObjectDAO = SpringContext.getBean(TestDAO.class);
-
-    private static TestResultService testResultService = SpringContext.getBean(TestResultService.class);
-    private static TypeOfSampleTestService typeOfSampleTestService = SpringContext
-            .getBean(TypeOfSampleTestService.class);
-    private static TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
     private PanelItemService panelItemService = SpringContext.getBean(PanelItemService.class);
     private PanelService panelService = SpringContext.getBean(PanelService.class);
     private TestAnalyteService testAnalyteService = SpringContext.getBean(TestAnalyteService.class);
@@ -84,7 +82,8 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     synchronized void initializeGlobalVariables() {
-        TypeOfSample variableTypeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("Variable", "H");
+        TypeOfSample variableTypeOfSample = SpringContext.getBean(TypeOfSampleService.class)
+                .getTypeOfSampleByLocalAbbrevAndDomain("Variable", "H");
         VARIABLE_TYPE_OF_SAMPLE_ID = variableTypeOfSample == null ? "-1" : variableTypeOfSample.getId();
 
         if (entityToMap == null) {
@@ -105,13 +104,17 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
         initializeGlobalVariables();
     }
 
+    private static TestDAO currentTestDAO() {
+        return SpringContext.getBean(TestDAO.class);
+    }
+
     @Override
     protected TestDAO getBaseObjectDAO() {
-        return baseObjectDAO;
+        return currentTestDAO();
     }
 
     public static List<Test> getTestsInTestSectionById(String testSectionId) {
-        return baseObjectDAO.getTestsByTestSectionId(testSectionId);
+        return currentTestDAO().getTestsByTestSectionId(testSectionId);
     }
 
     @Override
@@ -139,7 +142,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Override
     @Transactional(readOnly = true)
     public List<TestResult> getPossibleTestResults(Test test) {
-        return testResultService.getAllActiveTestResultsPerTest(test);
+        return SpringContext.getBean(TestResultService.class).getAllActiveTestResultsPerTest(test);
     }
 
     @Override
@@ -192,13 +195,20 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     @Override
+    /**
+     * Primary (first-linked) sample type only. A test may associate several sample
+     * types (OGC-1145); callers that have a specimen in context must use
+     * {@link #getActiveTestByLoincCodeAndSampleType} or
+     * {@link #getTypeOfSamples(Test)} — never assume this is THE sample type.
+     */
     @Transactional(readOnly = true)
     public TypeOfSample getTypeOfSample(Test test) {
         if (test == null) {
             return null;
         }
 
-        List<TypeOfSampleTest> typeOfSampleTests = typeOfSampleTestService.getTypeOfSampleTestsForTest(test.getId());
+        List<TypeOfSampleTest> typeOfSampleTests = SpringContext.getBean(TypeOfSampleTestService.class)
+                .getTypeOfSampleTestsForTest(test.getId());
 
         if (typeOfSampleTests == null || typeOfSampleTests.isEmpty()) {
             return null;
@@ -206,7 +216,20 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
         String typeOfSampleId = typeOfSampleTests.get(0).getTypeOfSampleId();
 
-        return typeOfSampleService.getTypeOfSampleById(typeOfSampleId);
+        return SpringContext.getBean(TypeOfSampleService.class).getTypeOfSampleById(typeOfSampleId);
+    }
+
+    /** All sample types associated with the test (OGC-1145 m:n model). */
+    @Override
+    @Transactional(readOnly = true)
+    public List<TypeOfSample> getTypeOfSamples(Test test) {
+        if (test == null) {
+            return new ArrayList<>();
+        }
+        // the cached testId→types map holds no entry (null) for zero-link tests
+        List<TypeOfSample> types = SpringContext.getBean(TypeOfSampleService.class)
+                .getTypeOfSampleForTest(test.getId());
+        return types == null ? new ArrayList<>() : types;
     }
 
     @Override
@@ -263,7 +286,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
      * @return the localized test name
      */
     public static String getUserLocalizedTestName(String testId) {
-        Optional<Test> testOpt = baseObjectDAO.get(testId);
+        Optional<Test> testOpt = currentTestDAO().get(testId);
         if (testOpt.isEmpty()) {
             return "";
         }
@@ -284,13 +307,26 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     /**
+     * The reporting name with the specimen it was run on, "Culture (Blood)". A test
+     * associated with several specimens reports under one name, which cannot be
+     * told apart on a patient report carrying more than one of them.
+     */
+    public static String getUserLocalizedReportingTestName(Test test, String sampleTypeName) {
+        String reportingName = getUserLocalizedReportingTestName(test);
+        if (GenericValidator.isBlankOrNull(reportingName) || GenericValidator.isBlankOrNull(sampleTypeName)) {
+            return reportingName;
+        }
+        return reportingName + " (" + sampleTypeName + ")";
+    }
+
+    /**
      * Get the localized reporting test name for the current request's locale.
      *
      * @param testId the test ID
      * @return the localized reporting test name
      */
     public static String getUserLocalizedReportingTestName(String testId) {
-        Optional<Test> testOpt = baseObjectDAO.get(testId);
+        Optional<Test> testOpt = currentTestDAO().get(testId);
         if (testOpt.isEmpty()) {
             return "";
         }
@@ -323,7 +359,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
      * @return The test name or the augmented test name
      */
     public static String getLocalizedTestNameWithType(String testId) {
-        Optional<Test> testOpt = baseObjectDAO.get(testId);
+        Optional<Test> testOpt = currentTestDAO().get(testId);
         if (testOpt.isEmpty()) {
             return "";
         }
@@ -331,23 +367,95 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     /**
+     * The test name augmented with the one specimen the caller is working on, for
+     * screens where the specimen is known — a results or validation row is for a
+     * single sample item, and the catalog summary ("(DBS +1)") cannot tell the user
+     * which specimen they are entering a result against.
+     *
+     * @param sampleTypeName the specimen to name; falls back to the catalog summary
+     *                       when blank
+     */
+    public static String getLocalizedTestNameWithType(Test test, String sampleTypeName) {
+        if (test == null) {
+            return "";
+        }
+        return buildAugmentedTestNameForLocale(test, sampleTypeName);
+    }
+
+    /**
+     * The test name with every associated specimen named, e.g. "Actin Smooth Muscle
+     * (Immunohistochemistry specimen, Serum, Plasma)". The list view abbreviates to
+     * "(first +n)" to stay readable; a screen showing one test has room for the
+     * whole configuration.
+     */
+    public static String getLocalizedTestNameWithAllTypes(Test test) {
+        if (test == null) {
+            return "";
+        }
+        Localization localization = test.getLocalizedTestName();
+        String baseName;
+        try {
+            baseName = localization.getLocalizedValue();
+        } catch (RuntimeException e) {
+            LogEvent.logInfo("TestServiceImpl", "getLocalizedTestNameWithAllTypes", "augmented caught LAZY");
+            baseName = test.getDescription() != null ? test.getDescription() : "";
+        }
+        if (!ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(ConfigurationProperties.Property.TEST_NAME_AUGMENTED, "true")) {
+            return baseName;
+        }
+        List<TypeOfSampleTest> typeOfSampleTests = SpringContext.getBean(TypeOfSampleTestService.class)
+                .getTypeOfSampleTestsForTest(test.getId());
+        if (typeOfSampleTests == null || typeOfSampleTests.isEmpty()) {
+            return baseName;
+        }
+        List<String> names = new ArrayList<>();
+        for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTests) {
+            TypeOfSample typeOfSample = SpringContext.getBean(TypeOfSampleService.class)
+                    .get(typeOfSampleTest.getTypeOfSampleId());
+            if (typeOfSample == null || typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
+                continue;
+            }
+            String name = typeOfSample.getLocalizedName();
+            if (!GenericValidator.isBlankOrNull(name) && !names.contains(name)) {
+                names.add(name);
+            }
+        }
+        return names.isEmpty() ? baseName : baseName + "(" + String.join(", ", names) + ")";
+    }
+
+    /**
      * Build augmented test name using current request's locale. This is a static
      * helper that doesn't use instance state.
      */
     private static String buildAugmentedTestNameForLocale(Test test) {
+        return buildAugmentedTestNameForLocale(test, null);
+    }
+
+    private static String buildAugmentedTestNameForLocale(Test test, String explicitSampleName) {
         Localization localization = test.getLocalizedTestName();
 
         String sampleName = "";
 
         if (ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(ConfigurationProperties.Property.TEST_NAME_AUGMENTED, "true")) {
-            List<TypeOfSampleTest> typeOfSampleTests = typeOfSampleTestService
-                    .getTypeOfSampleTestsForTest(test.getId());
-            if (typeOfSampleTests != null && !typeOfSampleTests.isEmpty()) {
-                TypeOfSampleTest typeOfSampleTest = typeOfSampleTests.get(0);
-                TypeOfSample typeOfSample = typeOfSampleService.get(typeOfSampleTest.getTypeOfSampleId());
-                if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
-                    sampleName = "(" + typeOfSample.getLocalizedName() + ")";
+            if (!GenericValidator.isBlankOrNull(explicitSampleName)) {
+                sampleName = "(" + explicitSampleName + ")";
+            } else {
+                List<TypeOfSampleTest> typeOfSampleTests = SpringContext.getBean(TypeOfSampleTestService.class)
+                        .getTypeOfSampleTestsForTest(test.getId());
+                if (typeOfSampleTests != null && !typeOfSampleTests.isEmpty()) {
+                    TypeOfSampleTest typeOfSampleTest = typeOfSampleTests.get(0);
+                    TypeOfSample typeOfSample = SpringContext.getBean(TypeOfSampleService.class)
+                            .get(typeOfSampleTest.getTypeOfSampleId());
+                    if (typeOfSample != null && !typeOfSample.getId().equals(VARIABLE_TYPE_OF_SAMPLE_ID)) {
+                        // OGC-1145: a test may associate several sample types; with no
+                        // specimen in hand the display name summarizes rather than
+                        // implying one
+                        sampleName = typeOfSampleTests.size() > 1
+                                ? "(" + typeOfSample.getLocalizedName() + " +" + (typeOfSampleTests.size() - 1) + ")"
+                                : "(" + typeOfSample.getLocalizedName() + ")";
+                    }
                 }
             }
         }
@@ -365,7 +473,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     private static Map<String, String> createTestIdToNameMap() {
         Map<String, String> testIdToNameMap = new HashMap<>();
 
-        List<Test> tests = baseObjectDAO.getAllTests(false);
+        List<Test> tests = currentTestDAO().getAllTests(false);
 
         for (Test test : tests) {
             testIdToNameMap.put(test.getId(), buildTestName(test).replace("\n", " "));
@@ -396,7 +504,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     private Map<String, String> createTestIdToAugmentedNameMap() {
         Map<String, String> testIdToNameMap = new HashMap<>();
 
-        List<Test> tests = baseObjectDAO.getAllTests(false);
+        List<Test> tests = currentTestDAO().getAllTests(false);
 
         for (Test test : tests) {
             testIdToNameMap.put(test.getId(), buildAugmentedTestName(test).replace("\n", " "));
@@ -409,7 +517,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     private static Map<String, String> createTestIdToReportingNameMap() {
         Map<String, String> testIdToNameMap = new HashMap<>();
 
-        List<Test> tests = baseObjectDAO.getAllActiveTests(false);
+        List<Test> tests = currentTestDAO().getAllActiveTests(false);
 
         for (Test test : tests) {
             testIdToNameMap.put(test.getId(), buildReportingTestName(test));
@@ -545,9 +653,24 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @Override
     public Optional<Test> getActiveTestByLoincCodeAndSampleType(String loincCode, String sampleTypeId) {
+        // OGC-1145 (FR-14): a specimen-scoped terminology mapping (e.g. CSF
+        // 2342-4) routes directly to its (test, specimen); shared mappings and
+        // the legacy test.loinc column resolve via the junction filter below.
+        // Resolved lazily via SpringContext: the mapping service already
+        // injects TestService, so field injection here would be circular.
+        for (org.openelisglobal.testterminology.valueholder.TestTerminologyMapping mapping : SpringContext
+                .getBean(org.openelisglobal.testterminology.service.TestTerminologyMappingService.class)
+                .getActiveMappingsForCode("LOINC", loincCode, sampleTypeId)) {
+            if (mapping.getSampleTypeId() != null && mapping.getSampleTypeId().equals(sampleTypeId)) {
+                Test mappedTest = get(mapping.getTestId());
+                if (mappedTest != null && "Y".equals(mappedTest.getIsActive())) {
+                    return Optional.of(mappedTest);
+                }
+            }
+        }
         List<Test> tests = getBaseObjectDAO().getActiveTestsByLoinc(loincCode);
         for (Test test : tests) {
-            for (TypeOfSampleTest typeOfSampleTest : typeOfSampleTestService
+            for (TypeOfSampleTest typeOfSampleTest : SpringContext.getBean(TypeOfSampleTestService.class)
                     .getTypeOfSampleTestsForTest(test.getId())) {
                 if (typeOfSampleTest.getTypeOfSampleId().equals(sampleTypeId)) {
                     return Optional.of(test);
@@ -573,6 +696,24 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Transactional(readOnly = true)
     public Test getTestByNormalizedDescription(String description) {
         return getBaseObjectDAO().getTestByNormalizedDescription(description);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Test getTestByLocalCode(String localCode) {
+        return getBaseObjectDAO().getTestByLocalCode(localCode);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByLocalCode(String localCode) {
+        return getBaseObjectDAO().getTestsByLocalCode(localCode);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByNormalizedDescriptionPrefix(String plainName) {
+        return getBaseObjectDAO().getTestsByNormalizedDescriptionPrefix(plainName);
     }
 
     @Override
@@ -627,6 +768,32 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     @Transactional(readOnly = true)
     public Test getTestById(String testId) {
         return getBaseObjectDAO().getTestById(testId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByIds(Collection<String> testIds) {
+        if (testIds == null || testIds.isEmpty()) {
+            return List.of();
+        }
+        return getBaseObjectDAO().get(new ArrayList<>(testIds));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public String getLabelOrDefault(String testId, Function<Test, String> label, String fallback) {
+        if (testId == null) {
+            return fallback;
+        }
+        try {
+            Test test = getBaseObjectDAO().getTestById(testId);
+            String resolved = test == null ? null : label.apply(test);
+            return resolved == null || resolved.isBlank() ? fallback : resolved;
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getName(), "getLabelOrDefault",
+                    "Could not resolve test name for " + testId + ": " + e.getMessage());
+            return fallback;
+        }
     }
 
     @Override
@@ -806,6 +973,12 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Test> getAllTestsByTestSectionIds(List<String> ids) {
+        return getBaseObjectDAO().getAllTestsByTestSectionIds(ids);
+    }
+
+    @Override
     public List<Test> getTbTestByMethod(String method) {
         return getBaseObjectDAO().getTbTestByMethod(method);
     }
@@ -824,5 +997,37 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     public List<Test> getTriggeringAntimicrobialResistanceTests() {
         return getAllMatching("antimicrobialResistance", Boolean.TRUE).stream()
                 .filter(e -> TestReflexUtil.isTriggeringReflexTestId(e.getId())).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<TestQcThreshold> getQcThreshold(String testId) {
+        return SpringContext.getBean(org.openelisglobal.qc.dao.TestQcThresholdDAO.class)
+                .findByTestId(Integer.valueOf(testId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<String, String> getNameLocalizationIds(String testId) {
+        Map<String, String> ids = new HashMap<>();
+        Test test = get(testId);
+        if (test == null) {
+            return ids;
+        }
+        Localization name = test.getLocalizedTestName();
+        if (name != null) {
+            ids.put("name", name.getId());
+        }
+        Localization reportingName = test.getLocalizedReportingName();
+        if (reportingName != null) {
+            ids.put("reportingName", reportingName.getId());
+        }
+        return ids;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean isNameLocalization(String localizationId) {
+        return getBaseObjectDAO().isNameLocalization(localizationId);
     }
 }

@@ -219,6 +219,7 @@ public class AnalyzerTestNameCache {
         mappedTest.setAnalyzerTestName(mapping.getAnalyzerTestName());
         mappedTest.setTestId(mapping.getTestId());
         mappedTest.setAnalyzerId(mapping.getAnalyzerId());
+        mappedTest.setComponentId(mapping.getComponentId());
         if (mapping.getTestId() != null) {
             Test test = new Test();
             test.setId(mapping.getTestId());

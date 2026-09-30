@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-949: mark the PRIMARY result component with an explicit boolean instead
+         of relying on the magic code='PRIMARY'. The legacy→component backfill (041)
+         creates the migrated single component as PRIMARY, so it defaults to true. -->
+    <changeSet author="openelis" id="component-add-is-primary">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="test_result_component" columnName="is_primary" />
+            </not>
+        </preConditions>
+        <comment>Add is_primary boolean to test_result_component and seed it from the PRIMARY code.</comment>
+        <addColumn schemaName="clinlims" tableName="test_result_component">
+            <column name="is_primary" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false" />
+            </column>
+        </addColumn>
+        <!-- Migrated legacy tests: the backfilled single component is the primary. -->
+        <sql>UPDATE clinlims.test_result_component SET is_primary = true WHERE code = 'PRIMARY'</sql>
+        <!-- Robustness: any test with active components but no primary yet gets its
+             lowest-display-order active component marked primary, so every test has
+             exactly one primary regardless of how its components were coded. -->
+        <sql>
+            UPDATE clinlims.test_result_component c SET is_primary = true
+            WHERE c.is_active = 'Y'
+              AND NOT EXISTS (
+                SELECT 1 FROM clinlims.test_result_component p
+                WHERE p.test_id = c.test_id AND p.is_active = 'Y' AND p.is_primary = true)
+              AND c.id = (
+                SELECT c2.id FROM clinlims.test_result_component c2
+                WHERE c2.test_id = c.test_id AND c2.is_active = 'Y'
+                ORDER BY c2.display_order, c2.id LIMIT 1)
+        </sql>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="test_result_component" columnName="is_primary" />
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

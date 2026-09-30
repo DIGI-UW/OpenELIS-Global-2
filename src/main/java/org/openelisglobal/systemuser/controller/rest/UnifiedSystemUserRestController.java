@@ -70,6 +70,7 @@ public class UnifiedSystemUserRestController extends BaseController {
     private static final String YES = "Y";
     private static final String NO = "N";
     public static final String ALL_LAB_UNITS = "AllLabUnits";
+    public static final String ERROR_ALL_LAB_UNITS_EXCLUSIVE = "labUnitRoles.allLabUnitsExclusive";
     private static final String RESERVED_ADMIN_NAME = "admin";
     // private static final String GLOBAL_ADMIN_ID = "globalAdminId";
     // private static final String ID = "id";
@@ -439,7 +440,7 @@ public class UnifiedSystemUserRestController extends BaseController {
     }
 
     @PostMapping(value = "/UnifiedSystemUser")
-    public Map<String, String> showUpdateUnifiedSystemUser(HttpServletRequest request,
+    public ResponseEntity<Map<String, String>> showUpdateUnifiedSystemUser(HttpServletRequest request,
             @RequestBody @Valid UnifiedSystemUserForm form, BindingResult result) {
         boolean doFiltering = true;
         formValidator.validate(form, result);
@@ -452,6 +453,10 @@ public class UnifiedSystemUserRestController extends BaseController {
             response.put("forward", findForward(FWD_FAIL_INSERT));
             // return response;
             // return findForward(FWD_FAIL_INSERT);
+        }
+
+        if (NO.equals(form.getAllowCopyUserRoles()) && combinesAllLabUnitsWithSpecificLabUnits(form)) {
+            return ResponseEntity.badRequest().body(Map.of("error", ERROR_ALL_LAB_UNITS_EXCLUSIVE));
         }
 
         request.setAttribute(ALLOW_EDITS_KEY, "true");
@@ -481,7 +486,24 @@ public class UnifiedSystemUserRestController extends BaseController {
             response.put("forward", findForward(forward));
         }
 
-        return response;
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * "All Lab Units" is exclusive with per-lab-unit grants: whichever wins, the
+     * other is dead data, because every authorization check treats an
+     * {@value #ALL_LAB_UNITS} entry as superseding the lab-unit-specific ones. A
+     * submission holding both is therefore refused outright rather than written and
+     * quietly normalized, which used to strip the scoped grants while still
+     * reporting success.
+     */
+    private boolean combinesAllLabUnitsWithSpecificLabUnits(UnifiedSystemUserForm form) {
+        Map<String, Set<String>> selectedLabUnitRoles = form.getSelectedTestSectionLabUnits();
+        if (selectedLabUnitRoles == null || !selectedLabUnitRoles.containsKey(ALL_LAB_UNITS)) {
+            return false;
+        }
+        return selectedLabUnitRoles.keySet().stream()
+                .anyMatch(labUnit -> StringUtils.isNotBlank(labUnit) && !ALL_LAB_UNITS.equals(labUnit));
     }
 
     private String validateAndUpdateSystemUser(HttpServletRequest request, UnifiedSystemUserForm form) {

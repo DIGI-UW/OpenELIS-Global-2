@@ -10,6 +10,7 @@ import { Add } from "@carbon/icons-react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import useCreateLocation from "../../pages/hooks/useCreateLocation";
+import { STORAGE_LEVELS } from "../../storageLevels";
 import "./CreateForm.css";
 
 /**
@@ -35,64 +36,12 @@ import "./CreateForm.css";
  *   POST /rest/storage/{rooms|devices|shelves|racks|boxes}
  */
 
-// Backend naming inconsistency captured here so callers don't branch:
-//   - GET list parent param: "{parent}Id"   (e.g. roomId, deviceId)
-//   - POST body parent field: "parent{Parent}Id" (e.g. parentRoomId)
-//   - Identifier field: "name" for Room/Device, "label" for Shelf/Rack/Box
-const LEVELS = [
-  {
-    key: "room",
-    label: "Room",
-    labelId: "storage.nav.room",
-    endpoint: "rooms",
-    parentLevel: null,
-    listParam: null,
-    createParam: null,
-    createField: "name",
-  },
-  {
-    key: "device",
-    label: "Device",
-    labelId: "storage.nav.device",
-    endpoint: "devices",
-    parentLevel: "room",
-    listParam: "roomId",
-    createParam: "parentRoomId",
-    createField: "name",
-  },
-  {
-    key: "shelf",
-    label: "Shelf",
-    labelId: "storage.nav.shelf",
-    endpoint: "shelves",
-    parentLevel: "device",
-    listParam: "deviceId",
-    createParam: "parentDeviceId",
-    createField: "label",
-  },
-  {
-    key: "rack",
-    label: "Rack",
-    labelId: "storage.nav.rack",
-    endpoint: "racks",
-    parentLevel: "shelf",
-    listParam: "shelfId",
-    createParam: "parentShelfId",
-    createField: "label",
-  },
-  {
-    key: "box",
-    label: "Box",
-    labelId: "storage.nav.box",
-    endpoint: "boxes",
-    parentLevel: "rack",
-    listParam: "rackId",
-    createParam: "parentRackId",
-    createField: "label",
-  },
-];
-
-export default function CreateForm({ selection, onLevelChange }) {
+// allowCreate=false (OrderLabel) turns the cascade into a pick-only browser.
+export default function CreateForm({
+  selection,
+  onLevelChange,
+  allowCreate = true,
+}) {
   const intl = useIntl();
   const createLocation = useCreateLocation();
   const [options, setOptions] = useState({
@@ -230,10 +179,10 @@ export default function CreateForm({ selection, onLevelChange }) {
     ) {
       return;
     }
-    const meta = LEVELS.find((l) => l.key === level);
+    const meta = STORAGE_LEVELS.find((l) => l.key === level);
     // Map to the right backend field — Room/Device use `name`,
-    // Shelf/Rack/Box use `label` (see LEVELS.createField).
-    const body = { [meta.createField]: name.trim(), active: true };
+    // Shelf/Rack/Box use `label` (see storageLevels.nameField).
+    const body = { [meta.nameField]: name.trim(), active: true };
     if (level === "device") {
       body.type = type;
     }
@@ -256,8 +205,8 @@ export default function CreateForm({ selection, onLevelChange }) {
     // disables the "Add new" button until the parent is selected so we
     // can rely on it being present here. Backend uses `parent{Parent}Id`
     // for POST bodies (distinct from GET's `{parent}Id` query param).
-    if (meta.parentLevel) {
-      body[meta.createParam] = selection[meta.parentLevel].id;
+    if (meta.parentKey) {
+      body[meta.parentField] = selection[meta.parentKey].id;
     }
     try {
       const response = await createLocation(meta.endpoint, body);
@@ -284,7 +233,7 @@ export default function CreateForm({ selection, onLevelChange }) {
   // Carbon's design guidance and produces fighting sentinel focus traps
   // that leave inner inputs unfocusable.
   const renderInlineCreate = () => {
-    const levelMeta = LEVELS.find((l) => l.key === inlineCreate.level);
+    const levelMeta = STORAGE_LEVELS.find((l) => l.key === inlineCreate.level);
     const heading = intl.formatMessage(
       {
         id: "storage.picker.inlineCreate.heading",
@@ -345,7 +294,7 @@ export default function CreateForm({ selection, onLevelChange }) {
               defaultMessage: "Device type",
             })}
             label={intl.formatMessage({
-              id: "storage.picker.select",
+              id: "storage.picker.selectDeviceType",
               defaultMessage: "Select device type",
             })}
             items={deviceTypes}
@@ -430,8 +379,8 @@ export default function CreateForm({ selection, onLevelChange }) {
 
   return (
     <div className="storage-location-picker-create-form">
-      {LEVELS.map(({ key, label, labelId, parentLevel }) => {
-        const parentValue = parentLevel ? selection[parentLevel] : true;
+      {STORAGE_LEVELS.map(({ key, label, labelId, parentKey }) => {
+        const parentValue = parentKey ? selection[parentKey] : true;
         const enabled = parentValue != null;
         const items = options[key] || [];
         const levelLabel = intl.formatMessage({
@@ -469,23 +418,25 @@ export default function CreateForm({ selection, onLevelChange }) {
                   );
                 }}
               />
-              <Button
-                kind="ghost"
-                size="sm"
-                renderIcon={Add}
-                disabled={!enabled}
-                onClick={() => openInlineCreate(key)}
-              >
-                {intl.formatMessage(
-                  {
-                    id: "storage.picker.addNewLevel",
-                    defaultMessage: "Add new {level}",
-                  },
-                  { level: levelLabel },
-                )}
-              </Button>
+              {allowCreate && (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={Add}
+                  disabled={!enabled}
+                  onClick={() => openInlineCreate(key)}
+                >
+                  {intl.formatMessage(
+                    {
+                      id: "storage.picker.addNewLevel",
+                      defaultMessage: "Add new {level}",
+                    },
+                    { level: levelLabel },
+                  )}
+                </Button>
+              )}
             </div>
-            {inlineCreate?.level === key && renderInlineCreate()}
+            {allowCreate && inlineCreate?.level === key && renderInlineCreate()}
           </React.Fragment>
         );
       })}

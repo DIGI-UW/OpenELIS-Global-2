@@ -100,15 +100,42 @@ public interface TestDAO extends BaseDAO<Test, String> {
 
     Test getTestByNormalizedDescription(String description) throws LIMSRuntimeException;
 
+    Test getTestByLocalCode(String localCode) throws LIMSRuntimeException;
+
+    List<Test> getTestsByLocalCode(String localCode) throws LIMSRuntimeException;
+
+    /**
+     * Tests whose normalized description starts with the normalized form of the
+     * plain name (see {@code TestDescriptionNormalizer}), oldest first. Empty when
+     * the name normalizes to nothing.
+     */
+    List<Test> getTestsByNormalizedDescriptionPrefix(String plainName) throws LIMSRuntimeException;
+
     List<Test> getTestsByTestSectionId(String id) throws LIMSRuntimeException;
 
     List<Test> getTestsByTestSectionIds(List<String> ids) throws LIMSRuntimeException;
+
+    /**
+     * OGC-189: as {@link #getTestsByTestSectionIds(List)} but WITHOUT the
+     * {@code isActive='Y'} restriction, for viewer paths that filter work the lab
+     * has already started.
+     *
+     * <p>
+     * The active-only variant strands in-flight work: deactivating a test made
+     * every pending analysis of it vanish from results entry, validation, workplan
+     * and reports — counted by the dashboard but unreachable and impossible to
+     * complete. Completion and history must never be gated on configuration status
+     * (comment 37313 §2).
+     */
+    List<Test> getAllTestsByTestSectionIds(List<String> ids) throws LIMSRuntimeException;
 
     Test getTestByGUID(String guid) throws LIMSRuntimeException;
 
     List<Test> getTestsByLoincCode(String loincCode);
 
     List<Test> getActiveTestsByLoinc(String loincCode);
+
+    boolean isNameLocalization(String localizationId);
 
     List<Test> getActiveTestsByLoinc(String[] loincCodes);
 

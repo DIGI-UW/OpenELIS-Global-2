@@ -1,45 +1,33 @@
-FROM hapiproject/hapi:v6.6.0-tomcat
+# Retain the HAPI application without inheriting its retired Bullseye runtime.
+FROM hapiproject/hapi:v6.6.0-tomcat AS hapi
+
+FROM tomcat:9.0.121-jre17-temurin-noble
 
 USER root
-RUN apt-get update && apt-get install -y curl
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends curl \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY ./tomcat/hapi_server.xml /opt/bitnami/tomcat/conf/server.xml
+RUN groupadd tomcat \
+    && groupadd -g 8443 tomcat-ssl-cert \
+    && useradd -M -s /bin/bash -u 8443 -g tomcat -G tomcat-ssl-cert tomcat_admin \
+    && mkdir -p "$CATALINA_HOME/target" /opt/openelis/config \
+    && printf '\norg.apache.tomcat.util.digester.PROPERTY_SOURCE=org.apache.tomcat.util.digester.Digester$EnvironmentPropertySource\n' >> "$CATALINA_HOME/conf/catalina.properties"
 
-RUN chown tomcat:tomcat /opt/bitnami/tomcat/conf/server.xml \
-    && chmod 640 /opt/bitnami/tomcat/conf/server.xml
+COPY --from=hapi --chown=tomcat_admin:tomcat /opt/bitnami/tomcat/webapps/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+COPY --chown=tomcat_admin:tomcat ./tomcat/hapi_server.xml /usr/local/tomcat/conf/server.xml
+COPY --chown=tomcat_admin:tomcat ./fhir/hapi_application.yaml /opt/openelis/config/hapi_application.yaml
+COPY ./fhir/docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh
 
-# Create groups and custom user, set ownership and folder permissions
-RUN groupadd tomcat; \
-    groupadd tomcat-ssl-cert -g 8443; \
-    useradd -M -s /bin/bash -u 8443 tomcat_admin; \
-    usermod -a -G tomcat,tomcat-ssl-cert tomcat_admin; \
-    chown -R tomcat_admin:tomcat /opt/bitnami/tomcat; \
-    chown -R tomcat_admin:tomcat /target; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/conf; \
-    chmod o-rwx /opt/bitnami/tomcat/logs; \
-    chmod o-rwx /opt/bitnami/tomcat/temp; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/bin; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/webapps; \
-    chmod 770 /opt/bitnami/tomcat/conf/catalina.policy; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/conf/catalina.properties; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/conf/context.xml; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/conf/logging.properties; \
-    chmod 640 /opt/bitnami/tomcat/conf/server.xml; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/conf/tomcat-users.xml; \
-    chmod g-w,o-rwx /opt/bitnami/tomcat/conf/web.xml;\
-    chown -R tomcat_admin:tomcat /bitnami/tomcat/
+RUN chown -R tomcat_admin:tomcat "$CATALINA_HOME" \
+    && chmod g-w,o-rwx "$CATALINA_HOME" "$CATALINA_HOME/conf" "$CATALINA_HOME/bin" "$CATALINA_HOME/webapps" \
+    && chmod o-rwx "$CATALINA_HOME/logs" "$CATALINA_HOME/temp" "$CATALINA_HOME/work" "$CATALINA_HOME/target" \
+    && chmod g-w,o-rwx "$CATALINA_HOME"/conf/* \
+    && chmod 640 "$CATALINA_HOME/conf/server.xml" \
+    && chmod 600 /opt/openelis/config/hapi_application.yaml \
+    && chmod 755 /usr/local/bin/docker-entrypoint.sh
 
-# Ensure the target directory exists
-RUN mkdir -p /opt/openelis/config
-
-# Copy your HAPI application YAML into the image
-COPY ./fhir/hapi_application.yaml /opt/openelis/config/hapi_application.yaml
-
-# Ensure proper permissions so tomcat can read it
-RUN chown tomcat_admin:tomcat /opt/openelis/config/hapi_application.yaml \
-    && chmod 600 /opt/openelis/config/hapi_application.yaml
-
-# Optionally, set SPRING_CONFIG_LOCATION so the container automatically picks it up
 ENV SPRING_CONFIG_LOCATION=file:///opt/openelis/config/hapi_application.yaml
+EXPOSE 8443
 USER tomcat_admin
+ENTRYPOINT ["docker-entrypoint.sh"]

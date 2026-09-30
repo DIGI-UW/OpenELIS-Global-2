@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
@@ -22,6 +23,7 @@ import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientIdDocument;
 import org.openelisglobal.patientidentity.service.PatientIdentityService;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.search.service.SearchResultsService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -56,6 +58,8 @@ public class PatientManagementRestController extends BaseRestController {
     PatientPhotoService photoService;
     @Autowired
     PatientIdDocumentService idDocumentService;
+    @Autowired
+    StaleSaveGuard staleSaveGuard;
 
     @PostMapping(value = "PatientManagement", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -68,6 +72,12 @@ public class PatientManagementRestController extends BaseRestController {
         } else {
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.ADD);
         }
+        if (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE) {
+            ResponseEntity<Map<String, Object>> stale = rejectIfStale(patientInfo);
+            if (stale != null) {
+                return stale;
+            }
+        }
         Patient patient = new Patient();
 
         if (patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION) {
@@ -79,30 +89,30 @@ public class PatientManagementRestController extends BaseRestController {
                 // "attempt to create event with null entity").
                 LogEvent.logError(new BindException(bindingResult));
                 org.springframework.validation.FieldError fe = bindingResult.getFieldError();
+                org.springframework.validation.ObjectError globalError = bindingResult.getGlobalError();
                 String message = fe != null
                         ? fe.getField() + ": " + StringUtils.defaultIfBlank(fe.getDefaultMessage(), "invalid value")
-                        : "Validation failed";
+                        : globalError != null && StringUtils.isNotBlank(globalError.getDefaultMessage())
+                                ? globalError.getDefaultMessage()
+                                : "Validation failed";
                 return ResponseEntity.badRequest().body(Map.of("error", message));
             }
             try {
                 String sysUserId = getSysUserId(request);
-                patientService.persistPatientData(patientInfo, patient, sysUserId);
+                // One transaction for the patient and everything submitted with it: a
+                // failure saving the photo used to leave the patient persisted behind
+                // an error message, so the user could not tell what had been kept.
+                patientService.persistPatientDataWithAttachments(patientInfo, patient, sysUserId);
                 fhirTransformService.transformPersistPatient(patientInfo,
                         (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD));
-                photoService.savePhoto(patient.getId(), patientInfo.getPhoto(), sysUserId);
-                if (patientInfo.getIdDocuments() != null) {
-                    for (PatientIdDocumentInfo docInfo : patientInfo.getIdDocuments()) {
-                        if (docInfo.getId() == null && docInfo.getData() != null) {
-                            idDocumentService.saveDocument(patient.getId(), docInfo.getData(), docInfo.getCategory(),
-                                    docInfo.getDescription(), sysUserId);
-                        }
-                    }
-                }
             } catch (LIMSRuntimeException e) {
                 // Previously this exception was logged and silently swallowed,
                 // so the client got HTTP 200 even when the save failed. Now we
                 // surface the actual message so the UI can display it.
                 LogEvent.logError(e);
+                if (StaleSaveGuard.isOptimisticLockFailure(e)) {
+                    return staleConflict(patientInfo);
+                }
                 request.setAttribute(ALLOW_EDITS_KEY, "false");
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(Map.of("error", StringUtils.defaultIfBlank(e.getMessage(), "Failed to save patient")));
@@ -117,6 +127,9 @@ public class PatientManagementRestController extends BaseRestController {
                 // an empty 500 body, so the UI fell back to "Check server
                 // logs" instead of the real message.
                 LogEvent.logError(e);
+                if (StaleSaveGuard.isOptimisticLockFailure(e)) {
+                    return staleConflict(patientInfo);
+                }
                 return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                         .body(Map.of("error", StringUtils.defaultIfBlank(e.getMessage(), "Failed to save patient")));
             }
@@ -125,9 +138,53 @@ public class PatientManagementRestController extends BaseRestController {
         // the saved record's results page (or skip the redirect for the
         // NO_ACTION path where the patient row wasn't actually written).
         if (patient.getId() != null) {
-            return ResponseEntity.ok(Map.of("status", "success", "patientId", patient.getId()));
+            Map<String, Object> saved = new HashMap<>();
+            saved.put("status", "success");
+            saved.put("patientId", patient.getId());
+            Patient stored = patientService.get(patient.getId());
+            if (stored != null) {
+                Person person = patientService.getPerson(stored);
+                saved.put("patientLastUpdated",
+                        stored.getLastupdated() == null ? null : stored.getLastupdated().toString());
+                saved.put("personLastUpdated",
+                        person == null || person.getLastupdated() == null ? null : person.getLastupdated().toString());
+            }
+            return ResponseEntity.ok(saved);
         }
         return ResponseEntity.ok(Map.of("status", "success"));
+    }
+
+    /**
+     * A save made from a screen loaded before someone else saved this patient is
+     * refused before anything is written, naming who saved and when (OGC-1376).
+     */
+    private ResponseEntity<Map<String, Object>> rejectIfStale(PatientManagementInfo patientInfo) {
+        Patient stored = patientService.get(patientInfo.getPatientPK());
+        if (stored == null) {
+            return null;
+        }
+        Person person = patientService.getPerson(stored);
+        if (person != null && StaleSaveGuard.isStale(patientInfo.getPersonLastUpdated(), person.getLastupdated())) {
+            return staleSaveGuard.conflict("error.patient.staleSave", "PERSON", person.getId(),
+                    person.getLastupdated());
+        }
+        if (StaleSaveGuard.isStale(patientInfo.getPatientLastUpdated(), stored.getLastupdated())) {
+            return staleSaveGuard.conflict("error.patient.staleSave", "PATIENT", stored.getId(),
+                    stored.getLastupdated());
+        }
+        return null;
+    }
+
+    private ResponseEntity<Map<String, Object>> staleConflict(PatientManagementInfo patientInfo) {
+        Patient stored = StringUtils.isBlank(patientInfo.getPatientPK()) ? null
+                : patientService.get(patientInfo.getPatientPK());
+        if (stored == null) {
+            return staleSaveGuard.conflict("error.patient.staleSave", "PATIENT", null, null);
+        }
+        Person person = patientService.getPerson(stored);
+        return person == null
+                ? staleSaveGuard.conflict("error.patient.staleSave", "PATIENT", stored.getId(), stored.getLastupdated())
+                : staleSaveGuard.conflict("error.patient.staleSave", "PERSON", person.getId(), person.getLastupdated());
     }
 
     @GetMapping("patient-photos/{id}/{isThumbnail}")

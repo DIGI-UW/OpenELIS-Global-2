@@ -9,6 +9,7 @@ import {
   Form,
   Grid,
   InlineNotification,
+  Link as CarbonLink,
   Pagination,
   Select,
   SelectItem,
@@ -19,27 +20,63 @@ import {
 import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
+import {
+  serverPageArrowsProps,
+  serverPaginationProps,
+} from "../utils/serverPaging";
+import ServerPageArrows from "../common/ServerPageArrows";
 import { NotificationContext } from "../layout/Layout";
 import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
 
-export const buildAnalyzerResultsRedirectUrl = (queryMode, queryValue) => {
-  if (!queryValue) {
+export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
+  if (!analyzerId) {
     return "/AnalyzerResults";
   }
 
-  return queryMode === "id"
-    ? `/AnalyzerResults?id=${queryValue}`
-    : `/AnalyzerResults?type=${queryValue}`;
+  return `/AnalyzerResults?id=${encodeURIComponent(analyzerId)}`;
 };
 
+export const buildHeldResultResolutionUrl = (row, analyzerId) => {
+  const mappingIssues = [
+    "unknown_analyzer_test",
+    "test_mapping_not_ready",
+    "unknown_analyzer_result_value",
+    "result_mapping_not_ready",
+    "invalid_result_mapping",
+  ];
+  if (
+    !mappingIssues.includes(row.importIssueReason) ||
+    !row.sourceProfileId ||
+    !row.sourceProfileRevision ||
+    !row.rawTestCode ||
+    !analyzerId
+  ) {
+    return null;
+  }
+
+  const query = new URLSearchParams({
+    revision: String(row.sourceProfileRevision),
+    analyzerId: String(analyzerId),
+    returnTo: buildAnalyzerResultsRedirectUrl(analyzerId),
+    focusTest: row.rawTestCode,
+  });
+  if (row.rawResultValue) {
+    query.set("focusValue", row.rawResultValue);
+  }
+  return `/analyzers/types/${encodeURIComponent(row.sourceProfileId)}/mapping?${query.toString()}`;
+};
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
+  const draftEdits = useRef({});
+  const history = useHistory();
+  const location = useLocation();
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -47,8 +84,6 @@ const AnalyserResults = (props) => {
 
   const intl = useIntl();
 
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(100);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
@@ -58,10 +93,66 @@ const AnalyserResults = (props) => {
     };
   }, []);
 
-  // Split results into patient rows and QC control rows. The bridge tags
-  // QC rows with meta.tag[QC] → OE sets isControl=true on import.
+  // Edits restored after a mapping visit stay unsaved drafts, so the next
+  // visit carries them again.
+  useEffect(() => {
+    draftEdits.current = Object.fromEntries(
+      Object.entries(props.restoredEdits ?? {}).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+  }, [props.results, props.restoredEdits]);
+
+  const rememberEdit = (rowId, field, value) => {
+    const id = String(rowId);
+    draftEdits.current[id] = { ...draftEdits.current[id], [field]: value };
+  };
+
+  const openMappingWithDraft = (event, resolutionUrl) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const edits = Object.fromEntries(
+      Object.entries(draftEdits.current).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+    const worklistDraft = {
+      analyzerId: String(props.analyzerId),
+      page: Number(props.results?.paging?.currentPage) || 1,
+      edits,
+    };
+    history.replace({
+      pathname: location.pathname,
+      search: location.search,
+      state: { ...location.state, worklistDraft },
+    });
+    history.push(resolutionUrl, { worklistDraft });
+  };
+
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
+  const arrows = serverPageArrowsProps({
+    paging: props.results?.paging,
+    onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+  });
+  const heldPatientResults = patientResults.filter(
+    (result) => result.importIssueReason,
+  );
+  const actionablePatientResults = patientResults.filter(
+    (result) =>
+      !result.importIssueReason ||
+      result.importIssueReason === "awaiting_specimen",
+  );
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
@@ -156,10 +247,7 @@ const AnalyserResults = (props) => {
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
-      window.location.href = buildAnalyzerResultsRedirectUrl(
-        props.queryMode,
-        props.queryValue || props.type,
-      );
+      props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
     } else {
       const detail = await response.text().catch(() => "");
       if (detail) {
@@ -174,19 +262,12 @@ const AnalyserResults = (props) => {
     setNotificationVisible(true);
   };
 
-  const handlePageChange = (pageInfo) => {
-    if (page != pageInfo.page) {
-      setPage(pageInfo.page);
-    }
-    if (pageSize != pageInfo.pageSize) {
-      setPageSize(pageInfo.pageSize);
-    }
-  };
-
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
     jpSet(form, name, value);
+    const field = name.match(/\.(result|note)$/)?.[1];
+    if (field) rememberEdit(rowId, field, value);
   };
 
   const handleDatePickerChange = (date, rowId) => {
@@ -195,15 +276,35 @@ const AnalyserResults = (props) => {
     var form = props.results;
     jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
-  const handleCheckBox = (e, rowId) => {
-    const { name, id, checked } = e.target;
-    let form = props.results;
-    jpSet(form, name, checked);
+  const handleCheckBox = (e, rowId, fieldName) => {
+    const row = (props.results.resultList || []).find(
+      (result) => String(result.id) === String(rowId),
+    );
+    if (row) {
+      row[fieldName] = e.target.checked;
+      rememberEdit(rowId, fieldName, e.target.checked);
+    }
   };
 
-  const handleAutomatedCheck = (checked, name) => {
-    let form = props.results;
-    jpSet(form, name, checked);
+  // OGC-1145 FR-8 — set the choice directly on the row: the field is absent
+  // from the loaded JSON (nulls are stripped), and a jsonpath set cannot
+  // create a missing terminal property.
+  const handleSampleTypeChoice = (e, rowId) => {
+    const row = (props.results.resultList || []).find((r) => r.id === rowId);
+    if (row) {
+      row.typeOfSampleId = e.target.value;
+      rememberEdit(rowId, "typeOfSampleId", e.target.value);
+    }
+  };
+
+  const handleAutomatedCheck = (checked, rowId, fieldName) => {
+    const row = (props.results.resultList || []).find(
+      (result) => String(result.id) === String(rowId),
+    );
+    if (row) {
+      row[fieldName] = checked;
+      rememberEdit(rowId, fieldName, checked);
+    }
   };
   const validateResults = (e, rowId) => {
     handleChange(e, rowId);
@@ -215,6 +316,8 @@ const AnalyserResults = (props) => {
 
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
+    const held = Boolean(row.importIssueReason);
+    const awaitingSpecimen = row.importIssueReason === "awaiting_specimen";
     switch (column.id) {
       case "sampleInfo":
         return (
@@ -268,10 +371,42 @@ const AnalyserResults = (props) => {
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
             {row.testName}
+            {/* OGC-1145 FR-8 — specimen-ambiguous row: the reviewer picks the
+                sample type; accepting without a choice keeps the row staged
+                (awaiting specimen) instead of guessing. */}
+            {row.sampleTypeOptions && row.sampleTypeOptions.length > 0 && (
+              <Select
+                id={"resultList" + row.id + ".typeOfSampleId"}
+                name={"resultList[?(@.id == " + row.id + ")].typeOfSampleId"}
+                labelText={intl.formatMessage({
+                  id: "label.testCatalog.specimenType",
+                })}
+                aria-label={intl.formatMessage({
+                  id: "label.testCatalog.specimenType",
+                })}
+                helperText={intl.formatMessage({
+                  id: "notice.testCatalog.intake.awaitingSpecimen",
+                })}
+                defaultValue={row.typeOfSampleId || ""}
+                onChange={(e) => handleSampleTypeChoice(e, row.id)}
+              >
+                <SelectItem value="" text="--" />
+                {row.sampleTypeOptions.map((option) => (
+                  <SelectItem
+                    key={option.id}
+                    value={option.id}
+                    text={option.value}
+                  />
+                ))}
+              </Select>
+            )}
           </div>
         );
 
       case "save":
+        if (held && !awaitingSpecimen) {
+          return null;
+        }
         return (
           <>
             <div>
@@ -283,7 +418,8 @@ const AnalyserResults = (props) => {
                       name={"resultList[?(@.id == " + row.id + ")].isAccepted"}
                       labelText=""
                       value={true}
-                      onChange={(e) => handleCheckBox(e, row.id)}
+                      defaultChecked={Boolean(row.isAccepted)}
+                      onChange={(e) => handleCheckBox(e, row.id, "isAccepted")}
                     />
                   )}
                 </Field>
@@ -293,6 +429,9 @@ const AnalyserResults = (props) => {
         );
 
       case "retest":
+        if (held) {
+          return null;
+        }
         return (
           <>
             {sampleGroupHasId(row.id) && (
@@ -303,7 +442,8 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isRejected"}
                     labelText=""
                     value={true}
-                    onChange={(e) => handleCheckBox(e, row.id)}
+                    defaultChecked={Boolean(row.isRejected)}
+                    onChange={(e) => handleCheckBox(e, row.id, "isRejected")}
                   />
                 )}
               </Field>
@@ -312,6 +452,9 @@ const AnalyserResults = (props) => {
         );
 
       case "ignore":
+        if (held) {
+          return null;
+        }
         return (
           <>
             {sampleGroupHasId(row.id) && (
@@ -322,7 +465,8 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isDeleted"}
                     labelText=""
                     value={true}
-                    onChange={(e) => handleCheckBox(e, row.id)}
+                    defaultChecked={Boolean(row.isDeleted)}
+                    onChange={(e) => handleCheckBox(e, row.id, "isDeleted")}
                   />
                 )}
               </Field>
@@ -331,6 +475,9 @@ const AnalyserResults = (props) => {
         );
 
       case "notes":
+        if (held) {
+          return null;
+        }
         return (
           <>
             <div className="note">
@@ -341,6 +488,7 @@ const AnalyserResults = (props) => {
                 type="text"
                 labelText=""
                 rows={2}
+                defaultValue={row.note || ""}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
             </div>
@@ -348,16 +496,49 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        switch (row.resultType) {
+        if (held && !awaitingSpecimen) {
+          const resolutionUrl = buildHeldResultResolutionUrl(
+            row,
+            props.analyzerId,
+          );
+          return (
+            <div data-testid={`held-analyzer-result-${row.id}`}>
+              <Tag type="warm-gray" size="sm">
+                <FormattedMessage id="analyzer.results.held.tag" />
+              </Tag>
+              <div>
+                <strong>{row.rawResultValue || row.result}</strong>
+              </div>
+              <div>
+                <FormattedMessage
+                  id="analyzer.results.held.code"
+                  values={{ code: row.rawTestCode || row.testName }}
+                />
+              </div>
+              {resolutionUrl && (
+                <CarbonLink
+                  as={RouterLink}
+                  to={resolutionUrl}
+                  onClick={(event) =>
+                    openMappingWithDraft(event, resolutionUrl)
+                  }
+                >
+                  <FormattedMessage id="analyzer.results.held.reviewMapping" />
+                </CarbonLink>
+              )}
+            </div>
+          );
+        }
+        switch (row.testResultType) {
           case "M":
           case "C":
           case "D":
             return (
               <>
                 {
-                  row.dictionaryResults.find(
+                  row.dictionaryResultList.find(
                     (result) => result.id == row.result,
-                  )?.value
+                  )?.displayValue
                 }
               </>
             );
@@ -400,6 +581,21 @@ const AnalyserResults = (props) => {
           <FormattedMessage id="validation.no.records.display" />
         </div>
       )}
+      {heldPatientResults.length > 0 && (
+        <InlineNotification
+          kind="warning"
+          title={intl.formatMessage(
+            { id: "analyzer.results.held.title" },
+            { count: heldPatientResults.length },
+          )}
+          subtitle={intl.formatMessage({
+            id: "analyzer.results.held.subtitle",
+          })}
+          lowContrast
+          hideCloseButton
+          style={{ marginTop: "16px", marginBottom: "8px" }}
+        />
+      )}
       {hasQcFailures && (
         <InlineNotification
           kind="warning"
@@ -426,7 +622,7 @@ const AnalyserResults = (props) => {
           })}
         </Tag>
       )}
-      {patientResults.length > 0 && (
+      {actionablePatientResults.length > 0 && (
         <Grid style={{ marginTop: "20px" }} className="gridBoundary">
           <Column lg={7} md={8} sm={2}>
             <picture>
@@ -448,14 +644,17 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.accept.all" })}
               onChange={(e) => {
-                const nomalResults = patientResults;
-                nomalResults.forEach((result) => {
+                actionablePatientResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isAccepted",
                   );
                   if (!checkbox) return;
                   checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
+                  handleAutomatedCheck(
+                    e.target.checked,
+                    result.id,
+                    "isAccepted",
+                  );
                 });
               }}
             />
@@ -466,14 +665,17 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.reject.all" })}
               onChange={(e) => {
-                const nomalResults = patientResults;
-                nomalResults.forEach((result) => {
+                actionablePatientResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isRejected",
                   );
                   if (!checkbox) return;
                   checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
+                  handleAutomatedCheck(
+                    e.target.checked,
+                    result.id,
+                    "isRejected",
+                  );
                 });
               }}
             />
@@ -484,14 +686,17 @@ const AnalyserResults = (props) => {
               name={"autochecks"}
               labelText={intl.formatMessage({ id: "validation.ignore.all" })}
               onChange={(e) => {
-                const nomalResults = patientResults;
-                nomalResults.forEach((result) => {
+                actionablePatientResults.forEach((result) => {
                   const checkbox = document.getElementById(
                     "resultList" + result.id + ".isDeleted",
                   );
                   if (!checkbox) return;
                   checkbox.checked = e.target.checked;
-                  handleAutomatedCheck(e.target.checked, checkbox.name);
+                  handleAutomatedCheck(
+                    e.target.checked,
+                    result.id,
+                    "isDeleted",
+                  );
                 });
               }}
             />
@@ -506,64 +711,34 @@ const AnalyserResults = (props) => {
       >
         {({ values, errors, touched, handleChange }) => (
           <Form onChange={handleChange}>
+            {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={patientResults.slice(
-                (page - 1) * pageSize,
-                page * pageSize,
-              )}
+              data={patientResults}
               columns={columns}
               isSortable
             ></DataTable>
             <Pagination
-              onChange={handlePageChange}
-              page={page}
-              pageSize={pageSize}
-              pageSizes={[10, 20, 30, 50, 100]}
-              totalItems={patientResults.length}
-              forwardText={intl.formatMessage({ id: "pagination.forward" })}
-              backwardText={intl.formatMessage({ id: "pagination.backward" })}
-              itemRangeText={(min, max, total) =>
-                intl.formatMessage(
-                  { id: "pagination.item-range" },
-                  { min: min, max: max, total: total },
-                )
-              }
-              itemsPerPageText={intl.formatMessage({
-                id: "pagination.items-per-page",
+              {...serverPaginationProps({
+                paging: props.results?.paging,
+                rowsOnPage: patientResults.length,
+                pageSize: props.serverPageSize,
+                onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
+                intl,
               })}
-              itemText={(min, max) =>
-                intl.formatMessage(
-                  { id: "pagination.item" },
-                  { min: min, max: max },
-                )
-              }
-              pageNumberText={intl.formatMessage({
-                id: "pagination.page-number",
-              })}
-              pageRangeText={(_current, total) =>
-                intl.formatMessage(
-                  { id: "pagination.page-range" },
-                  { total: total },
-                )
-              }
-              pageText={(page, pagesUnknown) =>
-                intl.formatMessage(
-                  { id: "pagination.page" },
-                  { page: pagesUnknown ? "" : page },
-                )
-              }
             />
 
-            <Button
-              type="button"
-              onClick={() => handleSave(values)}
-              id="submit"
-              style={{ marginTop: "16px" }}
-              data-testid="Save-btn"
-              disabled={isSubmitting}
-            >
-              <FormattedMessage id="label.button.save" />
-            </Button>
+            {actionablePatientResults.length > 0 && (
+              <Button
+                type="button"
+                onClick={() => handleSave(values)}
+                id="submit"
+                style={{ marginTop: "16px" }}
+                data-testid="Save-btn"
+                disabled={isSubmitting}
+              >
+                <FormattedMessage id="label.button.save" />
+              </Button>
+            )}
             {isSubmitting && (
               <span data-testid="analyzer-results-save-in-progress" />
             )}

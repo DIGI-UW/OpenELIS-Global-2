@@ -3,7 +3,7 @@ set -euo pipefail
 
 echo "=== OpenELIS Workspace Setup ==="
 
-# 1. Initialize ALL git submodules (plugins, dataexport, tools/*)
+# 1. Initialize all git submodules (dataexport and tools/*)
 echo "Initializing git submodules..."
 git submodule update --init --recursive
 echo "  Submodules initialized."

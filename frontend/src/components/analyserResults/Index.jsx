@@ -8,133 +8,302 @@ import {
   Grid,
   Column,
   Section,
-  Link,
   Button,
   Loading,
+  Stack,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { Redirect, useHistory, useLocation } from "react-router-dom";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { ArrowLeft, ArrowRight } from "@carbon/react/icons";
+import { serverPageSizeOf } from "../utils/serverPaging";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
+import ImportIssuesPanel from "./ImportIssuesPanel";
 
-let breadcrumbs = [{ label: "home.label", link: "/" }];
+const importIssuesBreadcrumbs = [
+  { label: "home.label", link: "/" },
+  { label: "analyzer.navigation.analyzers", link: "/analyzers" },
+  {
+    label: "analyzer.importIssues.title",
+    link: "/AnalyzerResults?view=import-issues",
+  },
+];
+
+const groupActionFields = ["isAccepted", "isRejected", "isDeleted"];
+
+const restorableResultFields = [
+  "isAccepted",
+  "isRejected",
+  "isDeleted",
+  "typeOfSampleId",
+  "note",
+  "result",
+];
+
+/**
+ * The page title for an analyzer worklist. The URL carries the analyzer's id;
+ * the name is resolved server-side, so until it arrives (or when the id matches
+ * no analyzer) the bare label is shown — the id is never surfaced as a title.
+ */
+export const analyzerPageTitle = (label, analyzerName) =>
+  analyzerName ? `${label}: ${analyzerName}` : label;
+
+export const getAnalyzerResultsView = (search) =>
+  new URLSearchParams(search).get("view") || "";
 
 const Index = () => {
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
   const [results, setResults] = useState({ resultList: [] });
-  const [type, setType] = useState("");
-  const [queryMode, setQueryMode] = useState("type");
+  const [restoredEdits, setRestoredEdits] = useState({});
+  // The analyzer's display name, resolved server-side from the id in the URL.
+  const [analyzerName, setAnalyzerName] = useState("");
   const [queryValue, setQueryValue] = useState("");
-  const [nextPage, setNextPage] = useState(null);
-  const [previousPage, setPreviousPage] = useState(null);
-  const [pagination, setPagination] = useState(false);
-  const [currentApiPage, setCurrentApiPage] = useState(null);
-  const [totalApiPages, setTotalApiPages] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [url, setUrl] = useState("");
   const [sampleGroup, setSampleGroup] = useState([]);
-  const [searchTermToPage, setSearchTermToPage] = useState({});
+  const [searchTermToPage, setSearchTermToPage] = useState([]);
+  // The rows a full server page holds, read off the responses; Carbon's items
+  // per page is pinned to it so Carbon's page is the server's page.
+  const [serverPageSize, setServerPageSize] = useState();
   const [labNumber, setLabNumber] = useState("");
+  const location = useLocation();
+  const history = useHistory();
+  const selectedAnalyzerId = new URLSearchParams(location.search).get("id");
+  const worklistDraft = location.state?.worklistDraft;
+  const restoringDraft =
+    worklistDraft &&
+    String(worklistDraft.analyzerId) === String(selectedAnalyzerId);
+  const view = getAnalyzerResultsView(location.search);
   const intl = useIntl();
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    // Prefer ID-based lookup (unambiguous). Fall back to name for legacy URLs.
-    const analyzerId = params.get("id");
-    const analyserType = params.get("type");
-    if (analyzerId) {
-      setQueryMode("id");
-      setQueryValue(analyzerId);
-      setType(analyzerId);
-      setUrl("/rest/AnalyzerResults?id=" + analyzerId);
-    } else if (analyserType) {
-      setQueryMode("type");
-      setQueryValue(analyserType);
-      setType(analyserType);
-      setUrl("/rest/AnalyzerResults?type=" + analyserType);
+    if (!selectedAnalyzerId) {
+      return;
     }
-  }, []);
+    setQueryValue(selectedAnalyzerId);
+    setUrl("/rest/AnalyzerResults?id=" + selectedAnalyzerId);
+    // drop the previous analyzer's name so a stale title never shows while the
+    // new one is in flight
+    setAnalyzerName("");
+  }, [selectedAnalyzerId]);
 
   useEffect(() => {
     if (url) {
       setIsLoading(true);
-      getFromOpenElisServer(url, handleResults);
+      const page = restoringDraft ? Number(worklistDraft.page) : 1;
+      getFromOpenElisServer(
+        url + (Number.isInteger(page) && page > 1 ? `&page=${page}` : ""),
+        handleResults,
+      );
     }
   }, [url]);
 
-  const extractUniqueGroups = (data) => {
-    const seenGroups = new Set();
-    return data.filter((item) => {
-      if (!seenGroups.has(item.sampleGroupingNumber)) {
-        seenGroups.add(item.sampleGroupingNumber);
-        return true;
+  /**
+   * Rereads the worklist the address bar names, after a write changes it, and
+   * reopens the page the user was on when the reread worklist still has it.
+   */
+  const refreshResults = (pageToReopen) => {
+    if (!url) {
+      return;
+    }
+    setIsLoading(true);
+    getFromOpenElisServer(url, (data) => {
+      const totalPages = Number(data?.paging?.totalPages) || 1;
+      if (pageToReopen > 1 && pageToReopen <= totalPages) {
+        getFromOpenElisServer(url + "&page=" + pageToReopen, handleResults);
+      } else {
+        handleResults(data);
       }
-      return false;
     });
   };
 
-  const loadNextResultsPage = () => {
-    setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + nextPage, handleResults);
+  const extractUniqueGroups = (data) => {
+    const reviewPriority = (item) =>
+      !item.importIssueReason
+        ? 2
+        : item.importIssueReason === "awaiting_specimen"
+          ? 1
+          : 0;
+    const groups = new Map();
+    data.forEach((item) => {
+      const current = groups.get(item.sampleGroupingNumber);
+      if (!current || reviewPriority(item) > reviewPriority(current)) {
+        groups.set(item.sampleGroupingNumber, item);
+      }
+    });
+    return Array.from(groups.values());
   };
 
-  const loadPreviousResultsPage = () => {
+  /** One server page, the same request for the arrows, the lab number search and Carbon. */
+  const loadResultsPage = (pageNumber) => {
     setIsLoading(true);
-    getFromOpenElisServer(url + "&page=" + previousPage, handleResults);
+    getFromOpenElisServer(url + "&page=" + pageNumber, handleResults);
+  };
+
+  // A grouping's action checkboxes are shown on its representative row, which
+  // changes when a held row is recovered; a restored action moves with it.
+  const moveGroupActionsToRepresentatives = (rows, serverRows, applied) => {
+    const representatives = new Map(
+      extractUniqueGroups(rows).map((row) => [
+        row.sampleGroupingNumber,
+        String(row.id),
+      ]),
+    );
+    const serverById = new Map(serverRows.map((row) => [String(row.id), row]));
+    const actionsByGrouping = new Map();
+    rows.forEach((row) => {
+      const edits = applied[String(row.id)] ?? {};
+      groupActionFields.forEach((field) => {
+        if (!Object.prototype.hasOwnProperty.call(edits, field)) return;
+        const actions = actionsByGrouping.get(row.sampleGroupingNumber) ?? {};
+        if (!Object.prototype.hasOwnProperty.call(actions, field)) {
+          actions[field] = edits[field];
+        }
+        actionsByGrouping.set(row.sampleGroupingNumber, actions);
+      });
+    });
+    return rows.map((row) => {
+      const actions = actionsByGrouping.get(row.sampleGroupingNumber);
+      if (!actions) return row;
+      const id = String(row.id);
+      const isRepresentative =
+        representatives.get(row.sampleGroupingNumber) === id;
+      const moved = { ...row };
+      const edits = { ...applied[id] };
+      Object.entries(actions).forEach(([field, value]) => {
+        if (isRepresentative) {
+          moved[field] = value;
+          edits[field] = value;
+        } else if (Object.prototype.hasOwnProperty.call(edits, field)) {
+          moved[field] = serverById.get(id)?.[field];
+          delete edits[field];
+        }
+      });
+      if (Object.keys(edits).length) {
+        applied[id] = edits;
+      } else {
+        delete applied[id];
+      }
+      return moved;
+    });
   };
 
   const handleResults = (data) => {
     if (data) {
-      setResults(data);
-      setIsLoading(false);
-      if (data.paging) {
-        var { totalPages, currentPage, searchTermToPage } = data.paging;
-        if (totalPages > 1) {
-          setPagination(true);
-          setCurrentApiPage(currentPage);
-          setTotalApiPages(totalPages);
-          setSearchTermToPage(searchTermToPage);
-          if (parseInt(currentPage) < parseInt(totalPages)) {
-            setNextPage(parseInt(currentPage) + 1);
-          } else {
-            setNextPage(null);
-          }
-          if (parseInt(currentPage) > 1) {
-            setPreviousPage(parseInt(currentPage) - 1);
-          } else {
-            setPreviousPage(null);
-          }
-        }
+      const applied = {};
+      const restoredList = restoringDraft
+        ? data.resultList.map((row) => {
+            if (
+              row.importIssueReason &&
+              row.importIssueReason !== "awaiting_specimen"
+            ) {
+              return row;
+            }
+            const edits = worklistDraft.edits?.[String(row.id)];
+            if (!edits) return row;
+            const restored = { ...row };
+            restorableResultFields.forEach((field) => {
+              if (Object.prototype.hasOwnProperty.call(edits, field)) {
+                restored[field] = edits[field];
+                applied[String(row.id)] = {
+                  ...applied[String(row.id)],
+                  [field]: edits[field],
+                };
+              }
+            });
+            return restored;
+          })
+        : data.resultList;
+      const resultList = restoringDraft
+        ? moveGroupActionsToRepresentatives(
+            restoredList,
+            data.resultList,
+            applied,
+          )
+        : restoredList;
+      setRestoredEdits(applied);
+      setResults({ ...data, resultList });
+      if (restoringDraft) {
+        const remainingState = { ...location.state };
+        delete remainingState.worklistDraft;
+        history.replace({
+          pathname: location.pathname,
+          search: location.search,
+          hash: location.hash,
+          state: Object.keys(remainingState).length
+            ? remainingState
+            : undefined,
+        });
       }
+      setIsLoading(false);
+      // the server echoes the analyzer's name in `type`, resolved from the id;
+      // it comes back null for an id that matches no analyzer
+      if (typeof data.type === "string" && data.type.trim()) {
+        setAnalyzerName(data.type.trim());
+      }
+      setServerPageSize((previous) =>
+        serverPageSizeOf(data.paging, data.resultList?.length ?? 0, previous),
+      );
+      setSearchTermToPage(
+        Array.isArray(data.paging?.searchTermToPage)
+          ? data.paging.searchTermToPage
+          : [],
+      );
 
-      if (data.resultList.length == 0) {
+      if (resultList.length == 0) {
+        setSampleGroup([]);
         addNotification({
           kind: NotificationKinds.warning,
           title: intl.formatMessage({ id: "notification.title" }),
           message:
             intl.formatMessage({ id: "validation.search.noresult.analyser" }) +
-            type,
+            (data.type || analyzerName || queryValue),
         });
         setNotificationVisible(true);
       } else {
-        setSampleGroup(extractUniqueGroups(data.resultList));
+        setSampleGroup(extractUniqueGroups(resultList));
       }
     }
   };
+  if (view === "import-issues") {
+    return (
+      <>
+        <PageBreadCrumb breadcrumbs={importIssuesBreadcrumbs} />
+        <ImportIssuesPanel />
+      </>
+    );
+  }
+
+  if (!selectedAnalyzerId) {
+    return <Redirect to="/analyzers" />;
+  }
+
+  const pageTitle = analyzerPageTitle(
+    intl.formatMessage({ id: "banner.menu.results.analyzer" }),
+    analyzerName,
+  );
+  const breadcrumbs = [
+    { label: "home.label", link: "/" },
+    { label: "analyzer.navigation.analyzers", link: "/analyzers" },
+    {
+      label: analyzerName || "banner.menu.results.analyzer",
+      isCurrentPage: true,
+    },
+  ];
+
   return (
     <>
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
-      <Grid fullWidth={true}>
-        <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Section>
-              <Heading>{type}</Heading>
+      <Stack gap={5}>
+        <PageBreadCrumb breadcrumbs={breadcrumbs} />
+        <Grid fullWidth={true}>
+          <Column lg={16} md={8} sm={4}>
+            <Section level={1}>
+              <Heading>{pageTitle}</Heading>
             </Section>
-          </Section>
-        </Column>
-      </Grid>
+          </Column>
+        </Grid>
+      </Stack>
       <div className="orderLegendBody">
         {notificationVisible === true ? <AlertDialog /> : ""}
         {isLoading && <Loading></Loading>}
@@ -158,61 +327,28 @@ const Index = () => {
               <Button
                 style={{ marginTop: "20px" }}
                 onClick={() => {
-                  const page = searchTermToPage.find(
+                  const pageMapping = searchTermToPage.find(
                     (item) => item.id === labNumber,
-                  ).value;
-                  setIsLoading(true);
-                  getFromOpenElisServer(url + "&page=" + page, handleResults);
+                  );
+                  if (!pageMapping) {
+                    return;
+                  }
+                  loadResultsPage(pageMapping.value);
                 }}
               >
                 <FormattedMessage id="referral.search" />{" "}
               </Button>
             </Column>
-            {pagination && (
-              <>
-                <Column lg={4} md={4} sm={2}></Column>
-                <Column
-                  lg={2}
-                  style={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    gap: "10px",
-                    width: "110%",
-                  }}
-                >
-                  <Link>
-                    {currentApiPage} / {totalApiPages}
-                  </Link>
-                  <div style={{ display: "flex", gap: "10px" }}>
-                    <Button
-                      hasIconOnly
-                      id="loadpreviousresults"
-                      onClick={loadPreviousResultsPage}
-                      disabled={previousPage != null ? false : true}
-                      renderIcon={ArrowLeft}
-                      iconDescription="previous"
-                    ></Button>
-                    <Button
-                      hasIconOnly
-                      id="loadnextresults"
-                      onClick={loadNextResultsPage}
-                      disabled={nextPage != null ? false : true}
-                      renderIcon={ArrowRight}
-                      iconDescription="next"
-                    ></Button>
-                  </div>
-                </Column>
-              </>
-            )}
           </Grid>
         </>
         <AnalyserResults
-          type={type}
-          queryMode={queryMode}
-          queryValue={queryValue}
+          analyzerId={queryValue}
           results={results}
+          restoredEdits={restoredEdits}
           sampleGroup={sampleGroup}
+          refreshResults={refreshResults}
+          serverPageSize={serverPageSize}
+          loadPage={loadResultsPage}
         />
       </div>
     </>

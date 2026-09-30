@@ -42,9 +42,9 @@ export class Sidenav {
     }
   }
 
-  /** Click a menu item by text */
+  /** Click a menu item by text (exact match) */
   async clickMenu(text: string) {
-    await this.nav.getByRole("link", { name: text }).click();
+    await this.nav.getByRole("link", { name: text, exact: true }).click();
   }
 
   /** Expand a parent menu by text (exact match) */
@@ -106,15 +106,15 @@ export class Sidenav {
     return infos;
   }
 
-  /** Check if a menu item is active/current */
+  /** Check if a menu item is active/current (exact match) */
   async expectMenuActive(text: string) {
-    const link = this.nav.getByRole("link", { name: text });
+    const link = this.nav.getByRole("link", { name: text, exact: true });
     await expect(link).toHaveClass(/cds--side-nav__link--current/);
   }
 
-  /** Check if a menu item is NOT active */
+  /** Check if a menu item is NOT active (exact match) */
   async expectMenuInactive(text: string) {
-    const link = this.nav.getByRole("link", { name: text });
+    const link = this.nav.getByRole("link", { name: text, exact: true });
     await expect(link).not.toHaveClass(/cds--side-nav__link--current/);
   }
 
@@ -124,7 +124,7 @@ export class Sidenav {
       waitUntil: "domcontentloaded",
     });
     await expect(this.page).toHaveURL(new RegExp(`/Storage/${path}`));
-    await expect(this.menuButton).toBeVisible();
+    await expect(this.page.locator("#mainHeader")).toBeVisible();
   }
 
   /**
@@ -147,7 +147,7 @@ export class Sidenav {
       waitUntil: "domcontentloaded",
     });
     await expect(this.page).toHaveURL(/FreezerMonitoring/);
-    await expect(this.menuButton).toBeVisible();
+    await expect(this.page.locator("#mainHeader")).toBeVisible();
   }
 
   /**

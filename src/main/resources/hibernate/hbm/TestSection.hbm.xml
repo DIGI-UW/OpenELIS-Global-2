@@ -41,6 +41,11 @@
 
         <property name="isActive" column="is_active"
             type="java.lang.String" />
+
+        <!-- OGC-1020 (R1): CLINICAL / ENVIRONMENTAL / VECTOR lab-unit domain -->
+        <property name="domain" type="java.lang.String">
+            <column name="DOMAIN" length="20" />
+        </property>
         <many-to-one name="localization"
             class="org.openelisglobal.localization.valueholder.Localization"
             fetch="select" lazy="false">

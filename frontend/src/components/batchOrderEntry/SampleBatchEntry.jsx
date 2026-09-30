@@ -13,8 +13,6 @@ import {
   Link,
   Accordion,
   AccordionItem,
-  Row,
-  FlexGrid,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -117,7 +115,7 @@ const SampleBatchEntry = (props) => {
       })
       .catch((errors) => {
         setErrors(errors);
-        console.error("Validation Errors:", errors.errors);
+        console.debug("Validation Errors:", errors.errors);
       });
   }, [configurationProperties, orderFormValues]);
 

@@ -1,7 +1,8 @@
 import React from "react";
-import { render, screen, act } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
+import { MemoryRouter } from "react-router-dom";
 import messages from "../../../languages/en.json";
 import AlertsDashboard from "../AlertsDashboard";
 import { getFromOpenElisServer } from "../../utils/Utils";
@@ -21,7 +22,7 @@ vi.mock("../../utils/Utils", async (importOriginal) => {
 const renderWithIntl = (component) => {
   return render(
     <IntlProvider locale="en" messages={messages}>
-      {component}
+      <MemoryRouter>{component}</MemoryRouter>
     </IntlProvider>,
   );
 };
@@ -52,8 +53,16 @@ const mockDashboard = {
       message: "Sample expiring soon",
       startTime: "2026-01-15T11:00:00Z",
     },
+    {
+      id: 3,
+      alertType: "EQA_SUBMISSION_FAILED",
+      severity: "CRITICAL",
+      status: "OPEN",
+      message: "Automatic EQA submission failed 5 times",
+      startTime: "2026-01-15T12:00:00Z",
+    },
   ],
-  totalCount: 2,
+  totalCount: 3,
   page: 0,
   pageSize: 25,
 };
@@ -77,7 +86,22 @@ describe("AlertsDashboard", () => {
 
   test("renders dashboard title", () => {
     renderWithIntl(<AlertsDashboard />);
-    expect(screen.getByText("Alerts Dashboard")).toBeTruthy();
+    // the page name also appears as the current breadcrumb, so scope to the heading
+    expect(
+      screen.getByRole("heading", { name: "Alerts Dashboard" }),
+    ).toBeTruthy();
+  });
+
+  test("renders the full breadcrumb path with Home clickable", () => {
+    renderWithIntl(<AlertsDashboard />);
+    const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
+    expect(breadcrumb).toBeTruthy();
+    expect(breadcrumb.querySelector('a[href="/"]')?.textContent).toBe("Home");
+    // the current page is named but not a link
+    expect(breadcrumb.textContent).toContain("Alerts Dashboard");
+    expect(
+      Array.from(breadcrumb.querySelectorAll("a")).map((a) => a.textContent),
+    ).toEqual(["Home"]);
   });
 
   test("renders summary tiles with counts", async () => {
@@ -92,6 +116,18 @@ describe("AlertsDashboard", () => {
     renderWithIntl(<AlertsDashboard />);
     expect(screen.getByText("EQA deadline approaching")).toBeTruthy();
     expect(screen.getByText("Sample expiring soon")).toBeTruthy();
+  });
+
+  // Every alert type the enum can produce needs a label, or the Type column
+  // prints the raw enum beside rows that read as English.
+  test("every alert type reads as a label, not as its enum", () => {
+    renderWithIntl(<AlertsDashboard />);
+
+    // The filter's own options carry the same labels, so read the table.
+    const table = document.querySelector("table");
+    expect(within(table).getByText("EQA Deadline")).toBeTruthy();
+    expect(within(table).getByText("EQA Submission Failed")).toBeTruthy();
+    expect(within(table).queryByText("EQA_SUBMISSION_FAILED")).toBeNull();
   });
 
   test("renders filter controls", () => {
@@ -117,5 +153,38 @@ describe("AlertsDashboard", () => {
   test("fetches data on mount", () => {
     renderWithIntl(<AlertsDashboard />);
     expect(getFromOpenElisServer).toHaveBeenCalled();
+  });
+
+  test("offers the microbiology critical alert type filter", () => {
+    renderWithIntl(<AlertsDashboard />);
+    expect(screen.getByText("Microbiology Critical")).toBeTruthy();
+  });
+
+  test("renders a microbiology critical alert row", () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.includes("/summary")) {
+        callback(mockSummary);
+      } else if (url.includes("/alerts/dashboard")) {
+        callback({
+          alerts: [
+            {
+              id: 3,
+              alertType: "MICROBIOLOGY_CRITICAL",
+              severity: "CRITICAL",
+              status: "OPEN",
+              message: "Positive blood culture called",
+              startTime: "2026-01-15T12:00:00Z",
+            },
+          ],
+          totalCount: 1,
+          page: 0,
+          pageSize: 25,
+        });
+      }
+    });
+
+    renderWithIntl(<AlertsDashboard />);
+
+    expect(screen.getByText("Positive blood culture called")).toBeTruthy();
   });
 });

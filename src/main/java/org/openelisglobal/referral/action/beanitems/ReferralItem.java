@@ -15,6 +15,7 @@ package org.openelisglobal.referral.action.beanitems;
 
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Pattern;
+import jakarta.validation.constraints.Size;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
@@ -101,6 +102,39 @@ public class ReferralItem implements IReferralResultTest, Serializable {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
     private String qualifiedResultValue;
+
+    // S-14 / OGC-624 subcontract metadata. Captured per-referral on Refer Out save;
+    // all fields are nullable at this layer. FRS marks Handoff Datetime as
+    // required,
+    // but that constraint is enforced at status-transition time (DRAFT ->
+    // DISPATCHED),
+    // which is out of scope for the metadata-persistence ticket.
+
+    @Size(max = 100)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    private String agreementReference;
+
+    @ValidDate(groups = { ReferredOutTestsForm.ReferredOut.class })
+    private String handoffDatetime;
+
+    @ValidDate(groups = { ReferredOutTestsForm.ReferredOut.class })
+    private String expectedReturnDate;
+
+    @Size(max = 100)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    private String cocContactName;
+
+    @Size(max = 50)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    private String cocContactPhone;
+
+    @Size(max = 255)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    private String cocContactEmail;
+
+    @Size(max = 500)
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ReferredOutTestsForm.ReferredOut.class })
+    private String subcontractNotes;
 
     @Override
     public String getReferralId() {
@@ -352,5 +386,61 @@ public class ReferralItem implements IReferralResultTest, Serializable {
 
     public void setReferralStatus(ReferralStatus referralStatus) {
         this.referralStatus = referralStatus;
+    }
+
+    public String getAgreementReference() {
+        return agreementReference;
+    }
+
+    public void setAgreementReference(String agreementReference) {
+        this.agreementReference = agreementReference;
+    }
+
+    public String getHandoffDatetime() {
+        return handoffDatetime;
+    }
+
+    public void setHandoffDatetime(String handoffDatetime) {
+        this.handoffDatetime = handoffDatetime;
+    }
+
+    public String getExpectedReturnDate() {
+        return expectedReturnDate;
+    }
+
+    public void setExpectedReturnDate(String expectedReturnDate) {
+        this.expectedReturnDate = expectedReturnDate;
+    }
+
+    public String getCocContactName() {
+        return cocContactName;
+    }
+
+    public void setCocContactName(String cocContactName) {
+        this.cocContactName = cocContactName;
+    }
+
+    public String getCocContactPhone() {
+        return cocContactPhone;
+    }
+
+    public void setCocContactPhone(String cocContactPhone) {
+        this.cocContactPhone = cocContactPhone;
+    }
+
+    public String getCocContactEmail() {
+        return cocContactEmail;
+    }
+
+    public void setCocContactEmail(String cocContactEmail) {
+        this.cocContactEmail = cocContactEmail;
+    }
+
+    public String getSubcontractNotes() {
+        return subcontractNotes;
+    }
+
+    public void setSubcontractNotes(String subcontractNotes) {
+        this.subcontractNotes = subcontractNotes;
     }
 }

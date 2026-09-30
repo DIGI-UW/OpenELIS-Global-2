@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+      OGC-949 / OGC-937 — repair NULL @Version values on result components.
+
+      The 041 backfill inserted PRIMARY rows via raw SQL and set only the
+      DB-default `lastupdated` column, leaving `last_updated` (the Hibernate
+      @Version column from BaseObject) NULL. Optimistic-lock UPDATEs then emit
+      `... WHERE id=? AND last_updated=?` with a NULL version, which matches
+      zero rows (NULL = NULL is never true) and throws StaleStateException when
+      editing a test in the Test Catalog editor.
+
+      Seed every NULL version from the populated `lastupdated` so Hibernate has
+      a non-null version to lock on. Runs on existing installs (repair) and
+      fresh installs (after 041's backfill leaves NULLs). Idempotent.
+    -->
+    <changeSet author="openelis" id="OGC-937-fix-test-result-component-version">
+        <update schemaName="clinlims" tableName="test_result_component">
+            <column name="last_updated" valueComputed="lastupdated"/>
+            <where>last_updated IS NULL</where>
+        </update>
+    </changeSet>
+
+    <changeSet author="openelis" id="OGC-937-fix-test-result-interpretation-version">
+        <update schemaName="clinlims" tableName="test_result_interpretation">
+            <column name="last_updated" valueComputed="lastupdated"/>
+            <where>last_updated IS NULL</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

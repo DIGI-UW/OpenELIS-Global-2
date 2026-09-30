@@ -10,9 +10,7 @@ import {
 } from "@carbon/react";
 import {
   getFromOpenElisServer,
-  postToOpenElisServer,
   postToOpenElisServerFullResponse,
-  postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";

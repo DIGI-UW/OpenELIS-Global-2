@@ -1,7 +1,9 @@
 package org.openelisglobal.panelitem.service;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -23,6 +25,8 @@ public class PanelItemServiceImpl extends AuditableBaseObjectServiceImpl<PanelIt
     protected PanelItemDAO baseObjectDAO;
     @Autowired
     private PanelService panelService;
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
 
     PanelItemServiceImpl() {
         super(PanelItem.class);
@@ -153,6 +157,92 @@ public class PanelItemServiceImpl extends AuditableBaseObjectServiceImpl<PanelIt
             panel.setIsActive("N");
             panel.setSysUserId(currentUser);
             panelService.update(panel);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void setMembershipsForTest(Test test, Map<String, Integer> positionByPanelId, String sysUserId) {
+        if (test == null) {
+            return;
+        }
+        List<PanelItem> existing = getPanelItemByTestId(test.getId());
+        Map<String, PanelItem> existingByPanelId = new HashMap<>();
+        for (PanelItem pi : existing) {
+            if (pi.getPanel() != null) {
+                existingByPanelId.put(pi.getPanel().getId(), pi);
+            }
+        }
+        // Upsert this test's position in each desired panel.
+        for (Map.Entry<String, Integer> entry : positionByPanelId.entrySet()) {
+            String panelId = entry.getKey();
+            String sortOrder = entry.getValue() == null ? null : String.valueOf(entry.getValue());
+            PanelItem pi = existingByPanelId.get(panelId);
+            if (pi != null) {
+                pi.setSortOrder(sortOrder);
+                pi.setSysUserId(sysUserId);
+                update(pi);
+            } else {
+                Panel panel = panelService.getPanelById(panelId);
+                if (panel == null) {
+                    continue;
+                }
+                PanelItem fresh = new PanelItem();
+                fresh.setPanel(panel);
+                fresh.setTest(test);
+                fresh.setSortOrder(sortOrder);
+                fresh.setSysUserId(sysUserId);
+                insert(fresh);
+            }
+        }
+        // Remove memberships no longer desired (membership has no soft-delete flag).
+        for (PanelItem pi : existing) {
+            if (pi.getPanel() != null && !positionByPanelId.containsKey(pi.getPanel().getId())) {
+                pi.setSysUserId(sysUserId);
+                delete(pi);
+            }
+        }
+    }
+
+    @Override
+    @Transactional
+    public void setMembershipsForPanel(Panel panel, Map<String, Integer> positionByTestId, String sysUserId) {
+        if (panel == null) {
+            return;
+        }
+        List<PanelItem> existing = getPanelItemsForPanel(panel.getId());
+        Map<String, PanelItem> existingByTestId = new HashMap<>();
+        for (PanelItem pi : existing) {
+            if (pi.getTest() != null) {
+                existingByTestId.put(pi.getTest().getId(), pi);
+            }
+        }
+        for (Map.Entry<String, Integer> entry : positionByTestId.entrySet()) {
+            String testId = entry.getKey();
+            String sortOrder = entry.getValue() == null ? null : String.valueOf(entry.getValue());
+            PanelItem pi = existingByTestId.get(testId);
+            if (pi != null) {
+                pi.setSortOrder(sortOrder);
+                pi.setSysUserId(sysUserId);
+                update(pi);
+            } else {
+                Test test = testService.getTestById(testId);
+                if (test == null) {
+                    continue;
+                }
+                PanelItem fresh = new PanelItem();
+                fresh.setPanel(panel);
+                fresh.setTest(test);
+                fresh.setSortOrder(sortOrder);
+                fresh.setSysUserId(sysUserId);
+                insert(fresh);
+            }
+        }
+        for (PanelItem pi : existing) {
+            if (pi.getTest() != null && !positionByTestId.containsKey(pi.getTest().getId())) {
+                pi.setSysUserId(sysUserId);
+                delete(pi);
+            }
         }
     }
 

@@ -140,6 +140,11 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return baseObjectDAO.getCountWithStatus(statuses);
     }
 
+    @Override
+    public Long getCountWithOpenRequests() {
+        return baseObjectDAO.getCountWithOpenRequests();
+    }
+
     private PathologySample copyPathologySample(PathologySample oldPathologySample) {
         PathologySample pathologySample = new PathologySample();
         pathologySample.setBlocks(new ArrayList<>(oldPathologySample.getBlocks()));
@@ -220,6 +225,21 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         }
     }
 
+    // OGC-285 flow migration — TODO (NEEDS-DESIGN-CALL, do NOT force):
+    // The pathology / cytology / immunohistochemistry case-save flow is
+    // intentionally NOT migrated to the OGC-285 preset/snapshot model and remains
+    // on the legacy BarcodeWorkflowPrintService below. The gap is a product/design
+    // decision, not missing wiring: the Block / Slide / Freezer system presets are
+    // prints_per_sample and, like all per-sample presets, surface in the
+    // aggregation (OrderEntryLabelRequestService) ONLY via test->preset links — but
+    // this flow injects block/slide/freezer counts directly onto the order
+    // (form.getNumBlockLabels()/Slide/Freezer), with no test linking to those
+    // presets. The aggregation therefore cannot emit Block/Slide/Freezer columns
+    // for a pathology order. Decision needed before migrating: extend the
+    // aggregation/snapshot model to surface these per-sample presets without a
+    // test link (e.g. a pathology-context preset set), or drive them from an
+    // explicit non-test source. Until then, migrating here would silently drop the
+    // Block/Slide/Freezer labels. See the OGC-285 flow-migration report.
     private void populatePathologyWorkflowPrintModels(PathologySample pathologySample, PathologySampleForm form) {
         int orderLabels = normalizePathologyLabelQuantity(form.getNumOrderLabels());
         int specimenLabels = normalizePathologyLabelQuantity(form.getNumSpecimenLabels());
@@ -419,11 +439,20 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return conclusion;
     }
 
+    /**
+     * A request the case view raises carries no status of its own: the status is
+     * chosen later, when the request is answered or withdrawn.
+     * {@link PathologyRequest} declares {@link RequestStatus#OPENED} as its own
+     * default for exactly that reason, but passing the form's null through would
+     * overwrite it and leave a row that reads as neither open nor closed, which no
+     * query can see and no screen can act on. A request that has just been raised
+     * is open.
+     */
     private PathologyRequest createRequest(String text, RequestType type, RequestStatus status) {
         PathologyRequest request = new PathologyRequest();
         request.setValue(text);
         request.setType(type);
-        request.setStatus(status);
+        request.setStatus(status == null ? RequestStatus.OPENED : status);
         return request;
     }
 

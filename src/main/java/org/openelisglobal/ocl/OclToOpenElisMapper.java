@@ -16,6 +16,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
@@ -23,6 +24,7 @@ import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.panelterminology.service.PanelTerminologyMappingService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.spring.util.SpringContext;
@@ -34,6 +36,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testconfiguration.form.TestAddForm;
 import org.openelisglobal.testconfiguration.service.PanelCreateService;
+import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultService;
@@ -47,7 +50,7 @@ public class OclToOpenElisMapper {
     private String defaultTestSection;
     private String defaultSampleType;
     private JsonNode rootNode;
-    private String systemUserId = "1";
+    private String systemUserId;
     private Set<JsonNode> labSetPanelNodes;
 
     public Set<JsonNode> getLabSetPanelNodes() {
@@ -67,10 +70,15 @@ public class OclToOpenElisMapper {
     private PanelCreateService panelCreateService = SpringContext.getBean(PanelCreateService.class);
     private PanelService panelService = SpringContext.getBean(PanelService.class);
     private TestService testService = SpringContext.getBean(TestService.class);
+    private TestTerminologyMappingService testTerminologyMappingService = SpringContext
+            .getBean(TestTerminologyMappingService.class);
+    private PanelTerminologyMappingService panelTerminologyMappingService = SpringContext
+            .getBean(PanelTerminologyMappingService.class);
 
     public OclToOpenElisMapper(String defaultTestSection, String defaultSampleType) {
         this.defaultTestSection = defaultTestSection;
         this.defaultSampleType = defaultSampleType;
+        this.systemUserId = SpringContext.getBean(UserContextHolder.class).requireSysUserId();
     }
 
     private static final Set<String> SUPPORTED_DATATYPES = Set.of("NUMERIC", "TEXT", "CODED");
@@ -187,6 +195,12 @@ public class OclToOpenElisMapper {
                             workplanResultModule, resultResultModule, validationValidationModule, typeOfSample.getId(),
                             systemUserId);
                 }
+                // Bridge the panel LOINC into the panel terminology mappings as a
+                // LOINC / SAME_AS entry so it appears in the new Panel Editor —
+                // panelCreateService/panelService.update do not do this themselves.
+                if (StringUtils.isNotBlank(loinc)) {
+                    syncPanelLoinc(panel.getId(), loinc);
+                }
                 getLabSetPanelNodes().add(concept);
                 return null;
             }
@@ -209,6 +223,10 @@ public class OclToOpenElisMapper {
                     dbTest.setLoinc(loinc);
                     dbTest.setSysUserId(systemUserId);
                     testService.update(dbTest);
+                    // New tests get their LOINC SAME_AS mapping via
+                    // TestAddService; the update path must do it too, otherwise a
+                    // re-imported test's LOINC never reaches the terminology store.
+                    syncTestLoinc(dbTest.getId(), loinc);
                 }
                 return null;
             }
@@ -725,6 +743,26 @@ public class OclToOpenElisMapper {
             }
         }
         return null;
+    }
+
+    // Insert/refresh a test's LOINC / SAME_AS terminology mapping. A mapping
+    // failure must never abort the OCL import.
+    private void syncTestLoinc(String testId, String loinc) {
+        try {
+            testTerminologyMappingService.syncLegacyLoinc(testId, loinc, systemUserId);
+        } catch (Exception e) {
+            log.error("Failed to sync LOINC SAME_AS mapping for test " + testId + ": " + e.getMessage());
+        }
+    }
+
+    // Insert/refresh a panel's LOINC / SAME_AS terminology mapping. A mapping
+    // failure must never abort the OCL import.
+    private void syncPanelLoinc(String panelId, String loinc) {
+        try {
+            panelTerminologyMappingService.syncLegacyLoinc(panelId, loinc, systemUserId);
+        } catch (Exception e) {
+            log.error("Failed to sync LOINC SAME_AS mapping for panel " + panelId + ": " + e.getMessage());
+        }
     }
 
     private Panel createPanel(String name, String decription, String userId, String loinc) {

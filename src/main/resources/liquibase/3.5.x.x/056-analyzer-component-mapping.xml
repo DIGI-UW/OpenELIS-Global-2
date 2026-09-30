@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    OGC-949 / OGC-1129 — per-component analyzer ingestion.
+      1. analyzer_test_map.component_id — maps an analyzer target/channel to a
+         result component of the resolved test (in addition to today's target→test
+         mapping). Null = the test's PRIMARY component (today's behavior); existing
+         rows keep component_id = null, so no mapping is re-pointed.
+      2. analyzer_results.component_id — carries the resolved component through the
+         staging row so accept binds the created Result to the right component.
+    Both are additive/nullable and backward-compatible.
+    -->
+
+    <changeSet id="OGC-1129-analyzer-test-map-component-id" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="analyzer_test_map" columnName="component_id"/>
+            </not>
+        </preConditions>
+        <comment>Add nullable component_id to analyzer_test_map (target → component).</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_test_map">
+            <column name="component_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_analyzer_test_map_component"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_test_map" baseColumnNames="component_id"
+            referencedTableSchemaName="clinlims" referencedTableName="test_result_component"
+            referencedColumnNames="id" onDelete="SET NULL"/>
+        <rollback>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer_test_map"
+                constraintName="fk_analyzer_test_map_component"/>
+            <dropColumn schemaName="clinlims" tableName="analyzer_test_map" columnName="component_id"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-1129-analyzer-results-component-id" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="analyzer_results" columnName="component_id"/>
+            </not>
+        </preConditions>
+        <comment>Add nullable component_id to the analyzer_results staging table.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_results">
+            <column name="component_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <rollback>
+            <dropColumn schemaName="clinlims" tableName="analyzer_results" columnName="component_id"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

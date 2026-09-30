@@ -13,20 +13,31 @@
  */
 package org.openelisglobal.testreflex.action.util;
 
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.scriptlet.service.ScriptletService;
 import org.openelisglobal.scriptlet.valueholder.Scriptlet;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 public abstract class ReflexAction {
 
@@ -82,6 +93,40 @@ public abstract class ReflexAction {
             Analysis currentAnalysis = result.getAnalysis();
             analysisService.getData(currentAnalysis);
 
+            // OGC-189 (M4, decision D5): a reflex must never file work into a
+            // deactivated lab unit. The rule is about WHERE THE WORK LANDS, and
+            // a reflexed analysis is filed under the PARENT's lab unit (see the
+            // note on setTestSection below) — so that is the unit to test, not
+            // the reflexed test's own configured one.
+            //
+            // Gating on the reflexed test's own unit instead would get both
+            // edge cases wrong: it would block a reflex that was going to land
+            // in a perfectly active parent unit, and let one through into a
+            // deactivated parent unit.
+            //
+            // The test's own active flag still applies — an inactive test is
+            // not orderable by any route.
+            EffectiveTestStatusService effectiveTestStatus = SpringContext.getBean(EffectiveTestStatusService.class);
+            TestSection owningSection = currentAnalysis == null ? null : currentAnalysis.getTestSection();
+            boolean testItselfInactive = !"Y".equals(test.getIsActive());
+            boolean owningSectionInactive = effectiveTestStatus.isLabUnitInactive(owningSection);
+            if (testItselfInactive || owningSectionInactive) {
+                // Logged at ERROR deliberately. A susceptibility reflex that
+                // silently fails to fire is a patient-safety event, not a
+                // configuration annoyance: no user is present at this point, so
+                // the only way anyone learns is from the record left here
+                // (comment 37313 §7).
+                String reason = testItselfInactive ? "the test itself is inactive"
+                        : "its lab unit '" + (owningSection == null ? "(none)" : owningSection.getTestSectionName())
+                                + "' is inactive";
+                LogEvent.logError(this.getClass().getSimpleName(), "createReflexedAnalysis",
+                        "REFLEX BLOCKED: test '" + test.getName() + "' (id " + test.getId()
+                                + ") was not generated because " + reason
+                                + ". Reactivate it, or reassign the test, to restore this reflex.");
+                generatedAnalysis = null;
+                return;
+            }
+
             generatedAnalysis = new Analysis();
             generatedAnalysis.setTest(test);
             generatedAnalysis.setIsReportable(currentAnalysis.getIsReportable());
@@ -92,10 +137,80 @@ public abstract class ReflexAction {
                     .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
             generatedAnalysis.setParentAnalysis(currentAnalysis);
             generatedAnalysis.setParentResult(result);
-            generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+            SampleItem targetItem = sampleItemForGeneratedTest(test, currentAnalysis);
+            if (targetItem != null) {
+                generatedAnalysis.setSampleItem(targetItem);
+                generatedAnalysis.setSampleTypeName(
+                        targetItem.getTypeOfSample() == null ? null : targetItem.getTypeOfSample().getLocalizedName());
+            } else {
+                generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
+                generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
+            }
+            // The generated analysis inherits the PARENT's lab unit rather than
+            // the reflexed test's own — pre-existing routing, deliberately
+            // unchanged. The gate above tests this same unit, so the check and
+            // the filing now agree: a reflex fires only when the unit it will
+            // actually land in is active (OGC-189 T159).
             generatedAnalysis.setTestSection(currentAnalysis.getTestSection());
-            generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
         }
+    }
+
+    /**
+     * The specimen the reflexed test is reported on.
+     *
+     * <p>
+     * The rule says so. The builder collects a specimen alongside the test to add,
+     * and that pairing is the lab's instruction about where the generated result
+     * belongs: trigger on Respiratory Swab, report on DBS. The order is given that
+     * specimen when it does not already hold one, because the generated test is the
+     * reason to have it.
+     *
+     * <p>
+     * Read from add_sample_type_id and never from sample_type_id - the latter
+     * scopes which result triggers the rule, and reading it here would file the
+     * generated test against the specimen that fired it, which is the conflation
+     * the two columns exist to prevent.
+     *
+     * <p>
+     * Only where the rule names no target specimen is one inferred from the added
+     * test's own configuration, and then only when the answer is unambiguous: a
+     * test the order holds several eligible specimens for names no single one, and
+     * the triggering specimen stays the safer choice over guessing between them.
+     */
+    private SampleItem sampleItemForGeneratedTest(Test test, Analysis currentAnalysis) {
+        if (test == null || currentAnalysis == null || currentAnalysis.getSampleItem() == null) {
+            return null;
+        }
+        if (reflex != null && !GenericValidator.isBlankOrNull(reflex.getAddedSampleTypeId())) {
+            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
+                    currentAnalysis.getSampleItem().getSample(), reflex.getAddedSampleTypeId(), result.getSysUserId());
+        }
+        List<TypeOfSample> configured = SpringContext.getBean(TypeOfSampleService.class)
+                .getTypeOfSampleForTest(test.getId());
+        if (configured == null || configured.isEmpty()) {
+            return null;
+        }
+        Set<String> allowed = new HashSet<>();
+        configured.forEach(type -> allowed.add(type.getId()));
+        List<SampleItem> items = SpringContext.getBean(SampleItemService.class)
+                .getSampleItemsBySampleId(currentAnalysis.getSampleItem().getSample().getId());
+        if (items == null) {
+            return null;
+        }
+        SampleItem match = null;
+        for (SampleItem item : items) {
+            if (allowed.contains(item.getTypeOfSampleId())) {
+                if (match != null) {
+                    return null;
+                }
+                match = item;
+            }
+        }
+        if (match == null && configured.size() == 1) {
+            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
+                    currentAnalysis.getSampleItem().getSample(), configured.get(0).getId(), result.getSysUserId());
+        }
+        return match;
     }
 
     /*

@@ -1,0 +1,109 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-ast-analyzer-lifecycle" author="OGC">
+        <dropUniqueConstraint schemaName="clinlims" tableName="micro_ast_reading"
+            constraintName="uq_micro_ast_reading_run_antibiotic"/>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_run DROP CONSTRAINT micro_ast_run_status_chk
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_run
+            ADD CONSTRAINT micro_ast_run_status_chk
+            CHECK (status IN ('IN_PROGRESS', 'AWAITING_RESULTS', 'RESULTS_IN', 'QC_FAILED', 'REVIEWED',
+                'RERUN_REQUIRED', 'INVALIDATED', 'CANCELLED'))
+        </sql>
+        <addColumn schemaName="clinlims" tableName="micro_ast_run">
+            <column name="analyzer_instrument_id" type="INTEGER"/>
+            <column name="analyzer_card_id" type="VARCHAR(100)"/>
+            <column name="analyzer_software_version" type="VARCHAR(100)"/>
+            <column name="analyzer_organism_id" type="VARCHAR(100)"/>
+            <column name="analyzer_organism_name" type="VARCHAR(255)"/>
+            <column name="analyzer_organism_confidence" type="numeric(7,3)"/>
+            <column name="analyzer_expert_flags" type="TEXT"/>
+            <column name="instrument_qc_reference" type="VARCHAR(100)"/>
+            <column name="qc_state" type="VARCHAR(20)" defaultValue="NOT_REPORTED">
+                <constraints nullable="false"/>
+            </column>
+            <column name="qc_override_reason" type="TEXT"/>
+            <column name="qc_overridden_at" type="TIMESTAMP"/>
+            <column name="qc_overridden_by" type="VARCHAR(20)"/>
+            <column name="analyzer_flags_acknowledged_at" type="TIMESTAMP"/>
+            <column name="analyzer_flags_acknowledged_by" type="VARCHAR(20)"/>
+            <column name="analyzer_flags_acknowledgement_reason" type="TEXT"/>
+            <column name="analyzer_loaded_at" type="TIMESTAMP"/>
+            <column name="analyzer_completed_at" type="TIMESTAMP"/>
+            <column name="analyzer_message_codes" type="TEXT"/>
+            <column name="source_event_id" type="VARCHAR(100)"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="micro_ast_reading">
+            <column name="instrument_interpretation" type="VARCHAR(40)"/>
+            <column name="analyzer_result_reference" type="VARCHAR(100)"/>
+        </addColumn>
+        <addForeignKeyConstraint constraintName="fk_micro_ast_run_analyzer"
+            baseTableSchemaName="clinlims" baseTableName="micro_ast_run" baseColumnNames="analyzer_instrument_id"
+            referencedTableSchemaName="clinlims" referencedTableName="analyzer" referencedColumnNames="id"/>
+        <createIndex schemaName="clinlims" tableName="micro_ast_run" indexName="idx_micro_ast_run_analyzer_card">
+            <column name="analyzer_instrument_id"/>
+            <column name="analyzer_card_id"/>
+        </createIndex>
+        <createIndex schemaName="clinlims" tableName="micro_ast_reading" indexName="idx_micro_ast_reading_revision">
+            <column name="ast_run_id"/>
+            <column name="antibiotic_id"/>
+            <column name="created_at"/>
+        </createIndex>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_run
+            ADD CONSTRAINT micro_ast_run_qc_state_chk
+            CHECK (qc_state IN ('NOT_REPORTED', 'PASSED', 'FAILED', 'OVERRIDDEN'))
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_ast_reading
+            ADD CONSTRAINT micro_ast_reading_instrument_interp_chk
+            CHECK (instrument_interpretation IS NULL OR instrument_interpretation IN
+                ('SUSCEPTIBLE', 'INTERMEDIATE', 'RESISTANT', 'NO_BREAKPOINT'))
+        </sql>
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.micro_ast_reading DROP CONSTRAINT micro_ast_reading_instrument_interp_chk;
+                ALTER TABLE clinlims.micro_ast_run DROP CONSTRAINT micro_ast_run_qc_state_chk;
+            </sql>
+            <dropIndex schemaName="clinlims" tableName="micro_ast_reading" indexName="idx_micro_ast_reading_revision"/>
+            <dropIndex schemaName="clinlims" tableName="micro_ast_run" indexName="idx_micro_ast_run_analyzer_card"/>
+            <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_ast_run"
+                constraintName="fk_micro_ast_run_analyzer"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_reading" columnName="analyzer_result_reference"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_reading" columnName="instrument_interpretation"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="source_event_id"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_message_codes"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_completed_at"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_loaded_at"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_flags_acknowledgement_reason"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_flags_acknowledged_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_flags_acknowledged_at"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="qc_overridden_by"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="qc_overridden_at"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="qc_override_reason"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="qc_state"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="instrument_qc_reference"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_expert_flags"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_organism_confidence"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_organism_name"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_organism_id"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_software_version"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_card_id"/>
+            <dropColumn schemaName="clinlims" tableName="micro_ast_run" columnName="analyzer_instrument_id"/>
+            <sql>
+                ALTER TABLE clinlims.micro_ast_run DROP CONSTRAINT micro_ast_run_status_chk;
+                ALTER TABLE clinlims.micro_ast_run ADD CONSTRAINT micro_ast_run_status_chk
+                CHECK (status IN ('IN_PROGRESS', 'REVIEWED', 'CANCELLED'));
+            </sql>
+            <addUniqueConstraint constraintName="uq_micro_ast_reading_run_antibiotic"
+                schemaName="clinlims" tableName="micro_ast_reading" columnNames="ast_run_id, antibiotic_id"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

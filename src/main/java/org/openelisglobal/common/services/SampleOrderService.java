@@ -20,12 +20,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
-import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
@@ -39,6 +37,7 @@ import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.program.valueholder.ProgramSample;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
+import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
@@ -56,7 +55,6 @@ import org.springframework.stereotype.Service;
 public class SampleOrderService {
 
     private ProgramSampleService programSampleService = SpringContext.getBean(ProgramSampleService.class);
-    private FhirUtil fhirUtil = SpringContext.getBean(FhirUtil.class);
     private static SampleService sampleService = SpringContext.getBean(SampleService.class);
     private static OrganizationService orgService = SpringContext.getBean(OrganizationService.class);
     private ObservationHistoryService observationHistoryService = SpringContext
@@ -171,11 +169,8 @@ public class SampleOrderService {
                     .getProgrammeSampleBySample(Integer.valueOf(sample.getId()), programName);
             if (programSample != null) {
                 sampleOrder.setProgramId(programSample.getProgram().getId());
-                if (programSample.getQuestionnaireResponseUuid() != null) {
-                    sampleOrder.setAdditionalQuestions(
-                            fhirUtil.getLocalFhirClient().read().resource(QuestionnaireResponse.class)
-                                    .withId(programSample.getQuestionnaireResponseUuid().toString()).execute());
-                }
+                sampleOrder.setAdditionalQuestions(SpringContext.getBean(QuestionnaireStorageService.class)
+                        .getQuestionnaireResponse(programSample.getQuestionnaireResponseUuid()).orElse(null));
             }
 
             RequesterService requesterService = new RequesterService(sample.getId());
@@ -196,6 +191,20 @@ public class SampleOrderService {
             sampleOrder.setReferringSiteDepartmentId(requesterService.getReferringDepartmentId());
             sampleOrder.setReferringSiteCode(requesterService.getReferringSiteCode());
             sampleOrder.setReferringSiteName(requesterService.getReferringSiteName());
+            if (requesterService.getOrganization() != null) {
+                sampleOrder.setReferringSitePhone(requesterService.getOrganization().getPhone());
+                sampleOrder.setReferringSiteFax(requesterService.getOrganization().getFax());
+                sampleOrder.setReferringSiteEmail(requesterService.getOrganization().getEmail());
+            }
+
+            // Env/Vector Requestor contact — independent of Provider above
+            sampleOrder.setRequestorPersonId(requesterService.getRequestorPersonId());
+            sampleOrder.setRequestorFirstName(requesterService.getRequestorFirstName());
+            sampleOrder.setRequestorLastName(requesterService.getRequestorLastName());
+            sampleOrder.setRequestorPhone(requesterService.getRequestorPhone());
+            sampleOrder.setRequestorFax(requesterService.getRequestorFax());
+            sampleOrder.setRequestorEmail(requesterService.getRequestorEmail());
+            sampleOrder.setRequestorDepartment(requesterService.getRequestorDepartment());
 
             // Map consent audit fields
             if (sample.getConsentRecordedAt() != null) {
@@ -276,6 +285,27 @@ public class SampleOrderService {
             }
         }
 
+        if (providerPerson == null && !GenericValidator.isBlankOrNull(sampleOrder.getProviderPersonId())) {
+            Person picked = SpringContext.getBean(PersonService.class).get(sampleOrder.getProviderPersonId());
+            if (picked != null && sameNames(picked, sampleOrder)) {
+                provider = SpringContext.getBean(ProviderService.class).getProviderByPerson(picked);
+                if (provider != null) {
+                    providerPerson = picked;
+                    providerPerson.setSysUserId(currentUserId);
+                }
+            }
+        }
+
+        if (providerPerson == null && noRequesterInformation(sampleOrder)) {
+            List<SampleRequester> clearedRequesters = requesterService
+                    .getSampleRequestersByType(RequesterService.Requester.PERSON, false);
+            if (!clearedRequesters.isEmpty()) {
+                clearedRequesters.get(0).setSysUserId(currentUserId);
+                artifacts.setDeletableSamplePersonRequester(clearedRequesters.get(0));
+            }
+            return;
+        }
+
         if (providerPerson == null) {
             provider = new Provider();
             provider.setFhirUuid(UUID.randomUUID());
@@ -305,6 +335,29 @@ public class SampleOrderService {
         artifacts.setProvider(provider);
     }
 
+    /**
+     * A requester whose names and contact details are all blank is no requester, as
+     * in order entry, so no blank Person/Provider is created for it. The person id
+     * is not part of the test: Modify Order sends back the linked requester's id
+     * when the user clears the fields.
+     */
+    private boolean noRequesterInformation(SampleOrderItem sampleOrder) {
+        return GenericValidator.isBlankOrNull(sampleOrder.getProviderFirstName())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderLastName())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderWorkPhone())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderFax())
+                && GenericValidator.isBlankOrNull(sampleOrder.getProviderEmail());
+    }
+
+    /**
+     * A requester picked from the search: the form sends that person's id with the
+     * names it shows, so the existing provider is linked instead of a copy.
+     */
+    private boolean sameNames(Person person, SampleOrderItem sampleOrder) {
+        return StringUtil.compareWithNulls(person.getFirstName(), sampleOrder.getProviderFirstName()) == 0
+                && StringUtil.compareWithNulls(person.getLastName(), sampleOrder.getProviderLastName()) == 0;
+    }
+
     private boolean namesDiffer(Person providerPerson, SampleOrderItem sampleOrder) {
         if (providerPerson == null || sampleOrder.getProviderPersonId() == null) {
             return true;
@@ -323,7 +376,7 @@ public class SampleOrderService {
         List<ObservationHistory> observations = new ArrayList<>();
         SampleHumanService sampleHumanService = SpringContext.getBean(SampleHumanService.class);
         Patient patient = sampleHumanService.getPatientForSample(artifacts.getSample());
-        String patientId = patient.getId();
+        String patientId = patient == null ? null : patient.getId();
 
         createOrUpdateObservation(currentUserId, observations, patientId, ObservationType.REFERRERS_PATIENT_ID,
                 sampleOrder.getReferringPatientNumber(), ValueType.LITERAL);
@@ -425,7 +478,9 @@ public class SampleOrderService {
         }
 
         orgRequester = new SampleRequester();
-        orgRequester.setRequesterId(Long.parseLong(sampleOrder.getReferringSiteId())); // may be overridden latter
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteId())) {
+            orgRequester.setRequesterId(Long.parseLong(sampleOrder.getReferringSiteId()));
+        }
         orgRequester.setSampleId(Long.parseLong(sampleOrder.getSampleId()));
         orgRequester.setRequesterTypeId(RequesterService.Requester.ORGANIZATION.getId());
         orgRequester.setSysUserId(currentUserId);
@@ -433,7 +488,7 @@ public class SampleOrderService {
 
         // Either there is an existing org else a new org
         Organization org;
-        if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteName())) {
+        if (!GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteId())) {
             org = orgService.getOrganizationById(sampleOrder.getReferringSiteId());
             // all of these are reasons to have nothing to do with the organization
             if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteCode()) || org == null
@@ -480,7 +535,7 @@ public class SampleOrderService {
         }
 
         Organization org = null;
-        if (!GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteName())) {
+        if (GenericValidator.isBlankOrNull(sampleOrder.getReferringSiteId())) {
             org = new Organization();
             org.setIsActive("Y");
             org.setMlsSentinelLabFlag("N");
@@ -552,6 +607,7 @@ public class SampleOrderService {
         private Organization providerOrganization;
         private Organization providerDepartmentOrganization;
         private SampleRequester deletableSampleOrganizationRequester;
+        private SampleRequester deletableSamplePersonRequester;
         private List<ObservationHistory> observations = new ArrayList<>();
         private SampleRequester sampleOrganizationRequester;
         private SampleRequester samplePersonRequester;
@@ -603,6 +659,14 @@ public class SampleOrderService {
 
         public void setDeletableSampleOrganizationRequester(SampleRequester deletableSampleOrganizationRequester) {
             this.deletableSampleOrganizationRequester = deletableSampleOrganizationRequester;
+        }
+
+        public SampleRequester getDeletableSamplePersonRequester() {
+            return deletableSamplePersonRequester;
+        }
+
+        public void setDeletableSamplePersonRequester(SampleRequester deletableSamplePersonRequester) {
+            this.deletableSamplePersonRequester = deletableSamplePersonRequester;
         }
 
         public SampleRequester getSamplePersonRequester() {

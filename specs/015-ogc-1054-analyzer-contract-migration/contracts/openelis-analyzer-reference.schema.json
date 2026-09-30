@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://openelis-global.org/contracts/analyzer/v1/openelis-analyzer-reference.schema.json",
+  "title": "OpenELIS analyzer reference and LIMS-owned state v1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "analyzerId",
+    "name",
+    "labUnitIds",
+    "bridgeConnectionId",
+    "bindingRef",
+    "verification",
+    "activation"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1.0" },
+    "analyzerId": { "type": "string", "minLength": 1 },
+    "name": { "type": "string", "minLength": 1 },
+    "labUnitIds": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "type": "string", "minLength": 1 }
+    },
+    "bridgeConnectionId": { "type": "string", "minLength": 1 },
+    "bindingRef": { "$ref": "#/$defs/bindingRef" },
+    "verification": { "$ref": "#/$defs/verification" },
+    "activation": { "$ref": "#/$defs/activation" }
+  },
+  "$defs": {
+    "fingerprint": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "profileRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["profileId", "revision", "fingerprint"],
+      "properties": {
+        "profileId": { "type": "string", "minLength": 1 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "fingerprint": { "$ref": "#/$defs/fingerprint" }
+      }
+    },
+    "bindingRef": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["bindingId", "profileRef", "revision", "fingerprint"],
+      "properties": {
+        "bindingId": { "type": "string", "minLength": 1 },
+        "profileRef": { "$ref": "#/$defs/profileRef" },
+        "revision": { "type": "integer", "minimum": 1 },
+        "fingerprint": { "$ref": "#/$defs/fingerprint" }
+      }
+    },
+    "actor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "display"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "display": { "type": "string", "minLength": 1 }
+      }
+    },
+    "rowState": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["rowKey", "state"],
+      "properties": {
+        "rowKey": { "type": "string", "minLength": 1 },
+        "state": { "enum": ["BOUND", "ACKNOWLEDGED_INCOMPLETE"] },
+        "testId": { "type": "string", "minLength": 1 },
+        "resultOptionIds": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string", "minLength": 1 }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "state": { "const": "BOUND" } },
+            "required": ["state"]
+          },
+          "then": { "required": ["testId", "resultOptionIds"] }
+        },
+        {
+          "if": {
+            "properties": { "state": { "const": "ACKNOWLEDGED_INCOMPLETE" } },
+            "required": ["state"]
+          },
+          "then": {
+            "not": {
+              "anyOf": [
+                { "required": ["testId"] },
+                { "required": ["resultOptionIds"] }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "status",
+        "profileRef",
+        "bindingRevision",
+        "bindingFingerprint",
+        "recognitionFingerprint",
+        "rowStates",
+        "actor",
+        "verifiedAt"
+      ],
+      "properties": {
+        "status": { "enum": ["UNVERIFIED", "VERIFIED", "STALE"] },
+        "profileRef": { "$ref": "#/$defs/profileRef" },
+        "bindingRevision": { "type": "integer", "minimum": 1 },
+        "bindingFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "recognitionFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "rowStates": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/rowState" }
+        },
+        "actor": { "$ref": "#/$defs/actor" },
+        "verifiedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "runtimeAcknowledgement": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "commandId",
+        "connectionId",
+        "profileRef",
+        "configRevision",
+        "configFingerprint",
+        "runtimeRevision",
+        "runtimeFingerprint",
+        "actualRuntimeState",
+        "acknowledgedAt"
+      ],
+      "properties": {
+        "commandId": { "type": "string", "minLength": 1 },
+        "connectionId": { "type": "string", "minLength": 1 },
+        "profileRef": { "$ref": "#/$defs/profileRef" },
+        "configRevision": { "type": "integer", "minimum": 1 },
+        "configFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "runtimeRevision": { "type": "integer", "minimum": 1 },
+        "runtimeFingerprint": { "$ref": "#/$defs/fingerprint" },
+        "actualRuntimeState": { "enum": ["ACTIVE", "INACTIVE"] },
+        "acknowledgedAt": { "type": "string", "format": "date-time" }
+      }
+    },
+    "activation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["intent", "acknowledgement"],
+      "properties": {
+        "intent": { "enum": ["ACTIVE", "INACTIVE"] },
+        "acknowledgement": {
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/runtimeAcknowledgement" }
+          ]
+        }
+      }
+    }
+  }
+}

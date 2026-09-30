@@ -19,6 +19,7 @@ import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.action.workers.AuditTrailViewWorker;
 import org.openelisglobal.audittrail.form.AuditTrailViewForm;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.http.ResponseEntity;
@@ -82,10 +83,11 @@ public class AuditTrailReportRestController {
                 MessageUtil.getMessage("auditTrail.export.header.newValue"));
         for (AuditTrailItem item : items) {
             writer.printf("%s,%s,%s,%s,%s,%s,%s,%s%n",
-                    csvEscape(item.getTimeStamp() != null ? sdf.format(item.getTimeStamp()) : ""),
-                    csvEscape(item.getAction()), csvEscape(item.getUser()), csvEscape(item.getItem()),
-                    csvEscape(item.getIdentifier()), csvEscape(item.getAttribute()), csvEscape(item.getOldValue()),
-                    csvEscape(item.getNewValue()));
+                    StringUtil.csvEscape(item.getTimeStamp() != null ? sdf.format(item.getTimeStamp()) : ""),
+                    StringUtil.csvEscape(item.getAction()), StringUtil.csvEscape(item.getUser()),
+                    StringUtil.csvEscape(item.getItem()), StringUtil.csvEscape(item.getIdentifier()),
+                    StringUtil.csvEscape(item.getAttribute()), StringUtil.csvEscape(item.getOldValue()),
+                    StringUtil.csvEscape(item.getNewValue()));
         }
         writer.flush();
     }
@@ -158,20 +160,4 @@ public class AuditTrailReportRestController {
         }
     }
 
-    private String csvEscape(String value) {
-        if (value == null) {
-            return "";
-        }
-        // Prevent CSV formula injection (CWE-1236): prefix dangerous leading chars
-        if (!value.isEmpty()) {
-            char first = value.charAt(0);
-            if (first == '=' || first == '+' || first == '-' || first == '@') {
-                value = "'" + value;
-            }
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
-    }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useContext } from "react";
+import React, { useState, useContext, useEffect, useCallback } from "react";
 import {
   Grid,
   Column,
@@ -20,7 +20,7 @@ import {
   Select,
   SelectItem,
 } from "@carbon/react";
-import { Scan, Checkmark, Close, CloudDownload } from "@carbon/icons-react";
+import { Scan, Checkmark, CloudDownload, View } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServerV2,
@@ -48,6 +48,40 @@ const ReceptionWorkflow = () => {
   const [importing, setImporting] = useState(false);
   const [sampleScanInput, setSampleScanInput] = useState("");
   const [validationErrors, setValidationErrors] = useState({});
+  const [expectedSpecimens, setExpectedSpecimens] = useState([]);
+  const [incomingBoxes, setIncomingBoxes] = useState([]);
+
+  const fetchIncomingBoxes = useCallback(() => {
+    getFromOpenElisServerV2("/rest/shipping-box/incoming").then((data) => {
+      setIncomingBoxes(Array.isArray(data) ? data : []);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchIncomingBoxes();
+  }, [fetchIncomingBoxes]);
+
+  const handleOpenIncomingBox = (incomingBox) => {
+    setBoxId(incomingBox.boxId);
+    handleScanBox(incomingBox.boxId);
+  };
+
+  // Build the reception-status map keyed by boxSampleItemId (required by the PUT
+  // endpoint); default to RECEIVED_GOOD unless the backend already set a status.
+  const buildStatuses = (list) => {
+    const statuses = {};
+    list.forEach((sample) => {
+      const sampleKey =
+        sample.boxSampleItemId || sample.sampleItemId || sample.id;
+      const hasBeenReceived =
+        sample.receptionStatus && sample.receptionStatus !== "PENDING";
+      statuses[sampleKey] = {
+        status: hasBeenReceived ? sample.receptionStatus : "RECEIVED_GOOD",
+        notes: sample.receptionNotes || "",
+      };
+    });
+    return statuses;
+  };
 
   const handleImportFromFhir = () => {
     setImporting(true);
@@ -67,6 +101,7 @@ const ReceptionWorkflow = () => {
                 { count },
               ),
             });
+            fetchIncomingBoxes();
           } else {
             addNotification({
               kind: "error",
@@ -92,8 +127,9 @@ const ReceptionWorkflow = () => {
     );
   };
 
-  const handleScanBox = async () => {
-    if (!boxId.trim()) {
+  const handleScanBox = async (scanId) => {
+    const idToScan = (scanId ?? boxId).trim();
+    if (!idToScan) {
       addNotification({
         kind: "warning",
         title: intl.formatMessage({ id: "notification.warning" }),
@@ -106,7 +142,7 @@ const ReceptionWorkflow = () => {
     try {
       // Fetch box by boxId (not database ID)
       const boxResponse = await getFromOpenElisServerV2(
-        `/rest/shipping-box/by-box-id/${encodeURIComponent(boxId.trim())}`,
+        `/rest/shipping-box/by-box-id/${encodeURIComponent(idToScan)}`,
       );
 
       if (!boxResponse) {
@@ -128,20 +164,20 @@ const ReceptionWorkflow = () => {
 
       if (samplesResponse && Array.isArray(samplesResponse)) {
         setSamples(samplesResponse);
-        // Initialize statuses — use boxSampleItemId as key (required for PUT endpoint)
-        // If receptionStatus is already set from backend, use it; otherwise default to RECEIVED_GOOD for new receptions
-        const initialStatuses = {};
-        samplesResponse.forEach((sample) => {
-          const sampleKey =
-            sample.boxSampleItemId || sample.sampleItemId || sample.id;
-          const hasBeenReceived =
-            sample.receptionStatus && sample.receptionStatus !== "PENDING";
-          initialStatuses[sampleKey] = {
-            status: hasBeenReceived ? sample.receptionStatus : "RECEIVED_GOOD",
-            notes: sample.receptionNotes || "",
-          };
-        });
-        setSampleStatuses(initialStatuses);
+        setSampleStatuses(buildStatuses(samplesResponse));
+      }
+
+      // Resolve declared specimens to their orders and surface ones awaiting acceptance.
+      // Reconciliation may auto-link specimens, creating new box_sample_item rows,
+      // so re-fetch samples afterwards to pick up any newly linked items.
+      await reconcileExpectedSpecimens(boxResponse.id);
+
+      const refreshedSamples = await getFromOpenElisServerV2(
+        `/rest/box-sample/items/by-box/${boxResponse.id}`,
+      );
+      if (refreshedSamples && Array.isArray(refreshedSamples)) {
+        setSamples(refreshedSamples);
+        setSampleStatuses(buildStatuses(refreshedSamples));
       }
     } catch (error) {
       console.error("Error fetching box:", error);
@@ -153,6 +189,37 @@ const ReceptionWorkflow = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const reconcileExpectedSpecimens = (shippingBoxDbId) =>
+    new Promise((resolve) => {
+      postToOpenElisServerFullResponse(
+        `/rest/box-sample/items/reconcile-shipment/${shippingBoxDbId}`,
+        JSON.stringify({}),
+        async (response) => {
+          try {
+            const result = response.ok ? await response.json() : [];
+            // LINKED ones show in the sample verification table; list only the rest here.
+            setExpectedSpecimens(
+              (Array.isArray(result) ? result : []).filter(
+                (s) => s.status !== "LINKED",
+              ),
+            );
+          } catch (error) {
+            console.error("Error reconciling shipment specimens:", error);
+            setExpectedSpecimens([]);
+          } finally {
+            resolve();
+          }
+        },
+      );
+    });
+
+  const handleAcceptSpecimen = (specimen) => {
+    // Open the pre-filled sample-entry form; re-scanning after save links the sample to the box.
+    window.location.href = `/SamplePatientEntry?ID=${encodeURIComponent(
+      specimen.externalOrderNumber,
+    )}`;
   };
 
   const handleSampleStatusChange = (sampleKey, status) => {
@@ -290,12 +357,13 @@ const ReceptionWorkflow = () => {
 
       if (!allUpdatesSucceeded) {
         addNotification({
-          kind: "warning",
-          title: intl.formatMessage({ id: "notification.warning" }),
+          kind: "error",
+          title: intl.formatMessage({ id: "notification.error" }),
           message: intl.formatMessage({
             id: "shipment.error.partialReception",
           }),
         });
+        return;
       }
 
       // Update box state to RECEIVED (only if not already RECEIVED or RECONCILED)
@@ -333,6 +401,7 @@ const ReceptionWorkflow = () => {
       setSampleStatuses({});
       setBoxId("");
       setGeneralNotes("");
+      setExpectedSpecimens([]);
       setShowConfirmModal(false);
     } catch (error) {
       console.error("Error confirming reception:", error);
@@ -514,6 +583,7 @@ const ReceptionWorkflow = () => {
     setSampleStatuses({});
     setBoxId("");
     setGeneralNotes("");
+    setExpectedSpecimens([]);
   };
 
   return (
@@ -559,7 +629,7 @@ const ReceptionWorkflow = () => {
         <Column lg={4} md={2} sm={4}>
           <Button
             renderIcon={Scan}
-            onClick={handleScanBox}
+            onClick={() => handleScanBox()}
             disabled={loading || box !== null}
             className="scan-button"
           >
@@ -583,6 +653,73 @@ const ReceptionWorkflow = () => {
         </Column>
       </Grid>
 
+      {!box && incomingBoxes.length > 0 && (
+        <Grid fullWidth className="incoming-boxes-section">
+          <Column lg={16} md={8} sm={4}>
+            <h3 className="section-title">
+              <FormattedMessage id="shipment.reception.incomingBoxes" />
+            </h3>
+            <TableContainer>
+              <Table size="sm">
+                <TableHead>
+                  <TableRow>
+                    <TableHeader>
+                      <FormattedMessage id="shipment.label.boxId" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="shipment.reception.originFacility" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="shipment.reception.shipped" />
+                    </TableHeader>
+                    <TableHeader>
+                      <FormattedMessage id="shipment.label.state" />
+                    </TableHeader>
+                    <TableHeader />
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {incomingBoxes.map((incomingBox) => (
+                    <TableRow key={incomingBox.id}>
+                      <TableCell>{incomingBox.boxId}</TableCell>
+                      <TableCell>
+                        {incomingBox.originFacilityName || "-"}
+                      </TableCell>
+                      <TableCell>
+                        {incomingBox.actualSampleCount || 0}
+                      </TableCell>
+                      <TableCell>
+                        {renderBoxStateTag(incomingBox.state)}
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          kind="tertiary"
+                          renderIcon={View}
+                          onClick={() => handleOpenIncomingBox(incomingBox)}
+                        >
+                          <FormattedMessage id="shipment.reception.openBox" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          </Column>
+        </Grid>
+      )}
+
+      {!box && incomingBoxes.length === 0 && !loading && (
+        <Grid fullWidth>
+          <Column lg={16} md={8} sm={4}>
+            <p className="empty-state-message">
+              <FormattedMessage id="shipment.reception.noIncomingBoxes" />
+            </p>
+          </Column>
+        </Grid>
+      )}
+
       {loading && (
         <div className="loading-container">
           <Loading />
@@ -603,10 +740,17 @@ const ReceptionWorkflow = () => {
               <div className="box-info-details">
                 <div className="info-row">
                   <span className="info-label">
-                    <FormattedMessage id="shipment.box.destination" />:
+                    {box.inbound ? (
+                      <FormattedMessage id="shipment.reception.originFacility" />
+                    ) : (
+                      <FormattedMessage id="shipment.box.destination" />
+                    )}
+                    :
                   </span>
                   <span className="info-value">
-                    {box.destinationFacilityName}
+                    {box.inbound
+                      ? box.originFacilityName || "-"
+                      : box.destinationFacilityName}
                   </span>
                 </div>
                 <div className="info-row">
@@ -621,11 +765,80 @@ const ReceptionWorkflow = () => {
                   <span className="info-label">
                     <FormattedMessage id="shipment.label.sampleCount" />:
                   </span>
-                  <span className="info-value">{samples.length}</span>
+                  <span className="info-value">
+                    {intl.formatMessage(
+                      { id: "shipment.reception.sampleCountSummary" },
+                      {
+                        accepted: samples.length,
+                        expected: samples.length + expectedSpecimens.length,
+                      },
+                    )}
+                  </span>
                 </div>
               </div>
             </div>
           </Column>
+
+          {expectedSpecimens.length > 0 && (
+            <Column lg={16} md={8} sm={4}>
+              <div className="verification-header">
+                <h3 className="section-title">
+                  <FormattedMessage id="shipment.reception.pendingAcceptance" />
+                </h3>
+              </div>
+              <TableContainer>
+                <Table size="sm">
+                  <TableHead>
+                    <TableRow>
+                      <TableHeader>
+                        <FormattedMessage id="shipment.reception.specimen" />
+                      </TableHeader>
+                      <TableHeader>
+                        <FormattedMessage id="shipment.reception.referralOrder" />
+                      </TableHeader>
+                      <TableHeader>
+                        <FormattedMessage id="shipment.reception.status" />
+                      </TableHeader>
+                      <TableHeader />
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {expectedSpecimens.map((specimen) => (
+                      <TableRow key={specimen.specimenUuid}>
+                        <TableCell>
+                          {specimen.typeDisplay || specimen.specimenUuid}
+                        </TableCell>
+                        <TableCell>{specimen.externalOrderNumber}</TableCell>
+                        <TableCell>
+                          {specimen.status === "UNRESOLVED" ? (
+                            <Tag type="red">
+                              <FormattedMessage id="shipment.reception.unresolved" />
+                            </Tag>
+                          ) : (
+                            <Tag type="blue">
+                              <FormattedMessage id="shipment.reception.awaitingAcceptance" />
+                            </Tag>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {specimen.status === "PENDING" && (
+                            <Button
+                              size="sm"
+                              kind="tertiary"
+                              renderIcon={Checkmark}
+                              onClick={() => handleAcceptSpecimen(specimen)}
+                            >
+                              <FormattedMessage id="shipment.reception.acceptSample" />
+                            </Button>
+                          )}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Column>
+          )}
 
           <Column lg={16} md={8} sm={4}>
             <div className="verification-header">
@@ -633,22 +846,6 @@ const ReceptionWorkflow = () => {
                 <FormattedMessage id="shipment.reception.sampleVerification" />
               </h3>
               <div className="apply-all-actions">
-                <Button
-                  size="sm"
-                  kind="ghost"
-                  renderIcon={Checkmark}
-                  onClick={() => handleApplyStatusToAll("RECEIVED_GOOD")}
-                >
-                  <FormattedMessage id="shipment.reception.markAllReceived" />
-                </Button>
-                <Button
-                  size="sm"
-                  kind="ghost"
-                  renderIcon={Close}
-                  onClick={() => handleApplyStatusToAll("MISSING")}
-                >
-                  <FormattedMessage id="shipment.reception.markAllMissing" />
-                </Button>
                 <Dropdown
                   id="applyStatusToAll"
                   size="sm"
@@ -657,6 +854,12 @@ const ReceptionWorkflow = () => {
                   })}
                   titleText=""
                   items={[
+                    {
+                      id: "RECEIVED_GOOD",
+                      text: intl.formatMessage({
+                        id: "shipment.reception.received",
+                      }),
+                    },
                     {
                       id: "RECEIVED_DAMAGED",
                       text: intl.formatMessage({
@@ -667,6 +870,12 @@ const ReceptionWorkflow = () => {
                       id: "RECEIVED_LEAKED",
                       text: intl.formatMessage({
                         id: "shipment.reception.leaked",
+                      }),
+                    },
+                    {
+                      id: "MISSING",
+                      text: intl.formatMessage({
+                        id: "shipment.reception.missing",
                       }),
                     },
                     {

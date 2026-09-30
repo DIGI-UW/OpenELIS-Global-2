@@ -1,0 +1,164 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Vector Trap Types -->
+  <changeSet id="3.4.0.0-create-vector-trap-type-seq" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="vector_trap_type_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="vector_trap_type_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-create-vector-trap-type-table" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="vector_trap_type" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Trap types for vector collection</comment>
+    <createTable tableName="vector_trap_type" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="name" type="VARCHAR(100)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="description" type="VARCHAR(255)"/>
+      <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+      <column name="sys_user_id" type="VARCHAR(255)"/>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+  <!-- Join table: vector_trap_type ↔ type_of_sample (many-to-many) -->
+  <changeSet id="3.4.0.0-create-vector-trap-type-sample-type-table" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="vector_trap_type_sample_type" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createTable tableName="vector_trap_type_sample_type" schemaName="clinlims">
+      <column name="trap_type_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="sample_type_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"/>
+      </column>
+    </createTable>
+    <addPrimaryKey tableName="vector_trap_type_sample_type" schemaName="clinlims"
+                   columnNames="trap_type_id, sample_type_id"
+                   constraintName="pk_vec_trap_sample_type"/>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="vector_trap_type_sample_type"
+      baseColumnNames="trap_type_id"
+      constraintName="fk_vtts_trap_type"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="vector_trap_type"
+      referencedColumnNames="id"/>
+    <addForeignKeyConstraint
+      baseTableSchemaName="clinlims"
+      baseTableName="vector_trap_type_sample_type"
+      baseColumnNames="sample_type_id"
+      constraintName="fk_vtts_sample_type"
+      referencedTableSchemaName="clinlims"
+      referencedTableName="type_of_sample"
+      referencedColumnNames="id"/>
+  </changeSet>
+
+  <!-- Vector Species -->
+  <changeSet id="3.4.0.0-create-vector-species-seq" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <sequenceExists sequenceName="vector_species_seq" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <createSequence sequenceName="vector_species_seq" schemaName="clinlims" startValue="1" incrementBy="1"/>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-create-vector-species-table" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <not>
+        <tableExists tableName="vector_species" schemaName="clinlims"/>
+      </not>
+    </preConditions>
+    <comment>Vector species with genus/species/subspecies, pathogens of interest, and lifecycle stages</comment>
+    <createTable tableName="vector_species" schemaName="clinlims">
+      <column name="id" type="NUMERIC(10,0)">
+        <constraints primaryKey="true" nullable="false"/>
+      </column>
+      <column name="genus" type="VARCHAR(100)">
+        <constraints nullable="false"/>
+      </column>
+      <column name="species" type="VARCHAR(100)"/>
+      <column name="subspecies" type="VARCHAR(100)"/>
+      <column name="sample_type_id" type="NUMERIC(10,0)">
+        <constraints nullable="false"
+                     foreignKeyName="fk_vector_species_sample_type"
+                     references="clinlims.type_of_sample(id)"/>
+      </column>
+      <column name="active" type="BOOLEAN" defaultValueBoolean="true"/>
+      <column name="sys_user_id" type="VARCHAR(255)"/>
+      <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="CURRENT_TIMESTAMP"/>
+    </createTable>
+  </changeSet>
+
+  <!-- Seed: Trap Types -->
+  <changeSet id="3.4.0.0-seed-vector-trap-bg-sentinel" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.vector_trap_type WHERE name = 'BG-Sentinel Trap'
+      </sqlCheck>
+    </preConditions>
+    <sql>
+      INSERT INTO clinlims.vector_trap_type (id, name, description, active, sys_user_id, lastupdated)
+      VALUES (nextval('clinlims.vector_trap_type_seq'), 'BG-Sentinel Trap',
+              'CO2-baited adult mosquito trap; widely used for Aedes surveillance', true, '1', NOW());
+
+      INSERT INTO clinlims.vector_trap_type_sample_type (trap_type_id, sample_type_id)
+      SELECT currval('clinlims.vector_trap_type_seq'), id
+      FROM clinlims.type_of_sample WHERE domain = 'V' AND local_abbrev = 'MOSQUITO';
+    </sql>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-seed-vector-trap-cdc-light" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.vector_trap_type WHERE name = 'CDC Light Trap'
+      </sqlCheck>
+    </preConditions>
+    <sql>
+      INSERT INTO clinlims.vector_trap_type (id, name, description, active, sys_user_id, lastupdated)
+      VALUES (nextval('clinlims.vector_trap_type_seq'), 'CDC Light Trap',
+              'UV-light trap for nocturnal mosquitoes', true, '1', NOW());
+
+      INSERT INTO clinlims.vector_trap_type_sample_type (trap_type_id, sample_type_id)
+      SELECT currval('clinlims.vector_trap_type_seq'), id
+      FROM clinlims.type_of_sample WHERE domain = 'V' AND local_abbrev = 'MOSQUITO';
+    </sql>
+  </changeSet>
+
+  <changeSet id="3.4.0.0-seed-vector-trap-ovitrap" author="reagan-meant">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.vector_trap_type WHERE name = 'Ovitrap'
+      </sqlCheck>
+    </preConditions>
+    <sql>
+      INSERT INTO clinlims.vector_trap_type (id, name, description, active, sys_user_id, lastupdated)
+      VALUES (nextval('clinlims.vector_trap_type_seq'), 'Ovitrap',
+              'Egg trap for Aedes aegypti surveillance', true, '1', NOW());
+
+      INSERT INTO clinlims.vector_trap_type_sample_type (trap_type_id, sample_type_id)
+      SELECT currval('clinlims.vector_trap_type_seq'), id
+      FROM clinlims.type_of_sample WHERE domain = 'V' AND local_abbrev = 'MOSQUITO';
+    </sql>
+  </changeSet>
+
+
+</databaseChangeLog>

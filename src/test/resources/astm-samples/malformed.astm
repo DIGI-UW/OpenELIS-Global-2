@@ -1,6 +1,6 @@
 # ASTM LIS2-A2 Sample: Malformed/Invalid Messages
 # Purpose: Test error handling for invalid ASTM format (Edge Case)
-# Reference: specs/004-astm-analyzer-mapping/research.md
+# Historical context: Git history for specs/004-astm-analyzer-mapping
 #
 # This file contains intentionally malformed ASTM messages to test:
 # - Protocol error detection
@@ -89,7 +89,6 @@ L|1|N
 H|\^&|||VeryLongManufacturerNameThatExceedsReasonableLimitsAndShouldBeTruncatedOrRejectedByTheParser^ExtremelyLongModelNameThatIsAlsoUnreasonablyLongForAnAnalyzerModel^V999.999.999|||||||LIS2-A2|20250115156000
 P|1||PATIENT-ID-THAT-IS-WAY-TOO-LONG-AND-SHOULD-FAIL-VALIDATION-BECAUSE-IDS-HAVE-LENGTH-LIMITS-IN-MOST-SYSTEMS|ThisIsAnExtremelyLongPatientNameThatNoRealSystemWouldEverHaveBecauseItExceedsAllReasonableLimits^AlsoVeryLongFirstName^MiddleNamesAreUsuallyShort||M|19900101
 L|1|N
-
 
 
 

@@ -1,0 +1,53 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+    <supported_locale id="2" locale_code="fr"
+        display_name="Français" is_active="true" is_fallback="false"
+        sort_order="2" />
+
+    <localization id="1" description="Microscopy Method" />
+    <localization id="2" description="PCR Method" />
+    <localization id="3" description="Culture Method" />
+
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Microscopy" />
+    <localization_value id="2" localization_id="1"
+        locale="fr" value="Microscopie" />
+    <localization_value id="3" localization_id="2"
+        locale="en" value="PCR" />
+    <localization_value id="4" localization_id="2"
+        locale="fr" value="PCR" />
+    <localization_value id="5" localization_id="3"
+        locale="en" value="Culture" />
+    <localization_value id="6" localization_id="3"
+        locale="fr" value="Culture" />
+
+    <test_section id="1" name="Microbiology"
+        description="Microbiology Section" name_localization_id="1"
+        is_active="Y" sort_order="1" />
+
+    <test id="10" name="TB Test" description="TB Test" is_active="Y"
+        test_section_id="1" guid="guid-10" />
+    <test id="20" name="Malaria Test" description="Malaria Test"
+        is_active="Y" test_section_id="1" guid="guid-20" />
+
+    <method id="100" name="Microscopy"
+        description="Light Microscopy" code="MIC" name_localization_id="1"
+        is_active="Y" />
+    <method id="200" name="PCR"
+        description="Polymerase Chain Reaction" code="PCR"
+        name_localization_id="2" is_active="Y" />
+    <method id="300" name="Culture" description="Bacterial Culture"
+        code="CUL" name_localization_id="3" is_active="Y" />
+
+    <test_method id="1000" test_id="10" method_id="100"
+        is_default="true" effective_date="2025-01-01" is_active="Y" />
+    <test_method id="1001" test_id="10" method_id="200"
+        is_default="false" effective_date="2025-01-15" is_active="Y" />
+    <test_method id="1002" test_id="10" method_id="300"
+        is_default="false" effective_date="2025-02-01" is_active="N" />
+    <test_method id="2000" test_id="20" method_id="200"
+        is_default="true" effective_date="2025-01-01" is_active="Y" />
+</dataset>

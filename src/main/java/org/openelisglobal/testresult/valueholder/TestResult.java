@@ -38,6 +38,11 @@ public class TestResult extends BaseObject<String> {
     private Boolean isQuantifiable = false;
     private Boolean isNormal = false;
     private Boolean isActive = true;
+    // Surveillance result classification (POSITIVE / NEGATIVE / INDETERMINATE),
+    // catalog-configured per (test, value). Null when not configured.
+    private String significance;
+    // OGC-949 M5: links a select-list option to its result component (UUID FK).
+    private String componentId;
 
     // transient
     private Boolean isDefault = false;
@@ -199,12 +204,28 @@ public class TestResult extends BaseObject<String> {
         isNormal = normal;
     }
 
+    public String getSignificance() {
+        return significance;
+    }
+
+    public void setSignificance(String significance) {
+        this.significance = significance;
+    }
+
     public void setDefault(boolean isDefault) {
         this.isDefault = isDefault;
     }
 
     public Boolean getDefault() {
         return isDefault;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
     }
 
 }

@@ -9,6 +9,8 @@ import org.openelisglobal.inventory.valueholder.InventoryLot;
 
 public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
 
+    InventoryLot getForUpdate(Long lotId) throws LIMSRuntimeException;
+
     /**
      * Get all lots for a specific inventory item
      */
@@ -39,11 +41,6 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      * Get lot by barcode
      */
     InventoryLot getByBarcode(String barcode) throws LIMSRuntimeException;
-
-    /**
-     * Get lots by storage location
-     */
-    List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException;
 
     /**
      * Get lots by QC status

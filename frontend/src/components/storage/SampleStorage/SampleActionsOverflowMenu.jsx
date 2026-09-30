@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect } from "react";
+import React, { useCallback } from "react";
 import { OverflowMenu, OverflowMenuItem } from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import { useIntl } from "react-intl";
 import "./SampleActionsOverflowMenu.css";
 
 /**
@@ -72,10 +72,12 @@ const SampleActionsOverflowMenu = ({
   return (
     <div className="sample-actions-overflow-menu">
       <OverflowMenu
-        ariaLabel={intl.formatMessage({
+        flipped
+        aria-label={intl.formatMessage({
           id: "storage.sample.actions",
           defaultMessage: "Sample actions",
         })}
+        menuOptionsClass="sample-actions-overflow-menu__options"
         data-testid="sample-actions-overflow-menu"
       >
         <OverflowMenuItem

@@ -3,13 +3,14 @@ import { Checkbox } from "@carbon/react";
 import { jpSet } from "../../utils/JsonPath";
 import { useIntl } from "react-intl";
 
-export const updateMenuWithElementId = (newMenus, field, value) => {};
-
 export const MenuCheckBox = (props) => {
   const intl = useIntl();
 
   const setMenuIsActiveToValueIncludeChildren = (value, currentMenuItem) => {
-    let newCurrentMenuItem = { ...currentMenuItem };
+    let newCurrentMenuItem = {
+      ...currentMenuItem,
+      menu: { ...currentMenuItem.menu },
+    };
     if (newCurrentMenuItem.childMenus) {
       newCurrentMenuItem.childMenus = newCurrentMenuItem.childMenus.map(
         (childMenuItem) => {
@@ -17,7 +18,12 @@ export const MenuCheckBox = (props) => {
         },
       );
     }
-    newCurrentMenuItem.menu.isActive = value;
+    if (
+      !currentMenuItem.menu.configurationOnly &&
+      !currentMenuItem.menu.configurationFields?.includes("isActive")
+    ) {
+      newCurrentMenuItem.menu.isActive = value;
+    }
     return newCurrentMenuItem;
   };
 
@@ -48,7 +54,11 @@ export const MenuCheckBox = (props) => {
                   ? curMenuItem.menu.displayKey
                   : "missing display key",
             })}
-            disabled={curMenuItem.menu.elementId === "menu_sidenav"}
+            disabled={
+              curMenuItem.menu.elementId === "menu_sidenav" ||
+              curMenuItem.menu.configurationOnly ||
+              curMenuItem.menu.configurationFields?.includes("isActive")
+            }
             checked={curMenuItem?.menu.isActive}
             onChange={(_, { checked }) => {
               if (path === "$" || !path) {
@@ -71,6 +81,12 @@ export const MenuCheckBox = (props) => {
               }
             }}
           />
+          {(curMenuItem.menu.configurationOnly ||
+            curMenuItem.menu.configurationFields?.includes("isActive")) && (
+            <span>
+              {intl.formatMessage({ id: "menu.configuration.managed" })}
+            </span>
+          )}
         </div>
         {recurse &&
           curMenuItem?.childMenus?.map((childMenuItem, index) => {

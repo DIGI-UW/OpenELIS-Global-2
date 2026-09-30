@@ -1,18 +1,13 @@
-import React, { useEffect, useRef, useState } from "react";
-import {
-  FilterableMultiSelect,
-  Select,
-  SelectItem,
-  TextInput,
-  Stack,
-  InlineLoading,
-} from "@carbon/react";
-import { FormattedMessage, useIntl } from "react-intl";
+import React, { useEffect, useState } from "react";
+import { Stack, InlineLoading } from "@carbon/react";
+import { FormattedMessage } from "react-intl";
 import "../../index.css";
-import "../../App.css";
 import "../Style.css";
 import { getFromOpenElisServer } from "../utils/Utils";
-import { ProgramSelect } from "../addOrder/OrderEntryAdditionalQuestions";
+import {
+  ProgramSelect,
+  programDomainForOrder,
+} from "../addOrder/OrderEntryAdditionalQuestions";
 import Questionnaire from "../common/Questionnaire";
 
 const EditOrderEntryAdditionalQuestions = ({
@@ -158,6 +153,7 @@ const EditOrderEntryAdditionalQuestions = ({
             orderFormValues={orderFormValues}
             programChange={handleProgramSelection}
             editable={true}
+            domain={programDomainForOrder(orderFormValues)}
           />
           <Questionnaire questionnaire={questionnaire} getAnswer={getAnswer} />
           {questionnaireResponse && (

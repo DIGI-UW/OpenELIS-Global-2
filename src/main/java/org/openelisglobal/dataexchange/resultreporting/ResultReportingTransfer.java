@@ -21,6 +21,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportExternalExport;
 import org.openelisglobal.dataexchange.aggregatereporting.valueholder.ReportQueueType;
 import org.openelisglobal.dataexchange.common.ITransmissionResponseHandler;
@@ -135,10 +136,16 @@ public class ResultReportingTransfer {
             messageOutService.insert(messageOut);
         }
 
+        private String resolveSysUserId() {
+            UserContextHolder uch = SpringContext.getBean(UserContextHolder.class);
+            String id = uch.getCurrentSysUserId();
+            return id != null ? id : uch.getDaemonSysUserId();
+        }
+
         private void bufferResults(String msg) {
             ReportExternalExport report = new ReportExternalExport();
             report.setData(msg);
-            report.setSysUserId("1");
+            report.setSysUserId(resolveSysUserId());
             report.setEventDate(DateUtil.getNowAsTimestamp());
             report.setCollectionDate(DateUtil.getNowAsTimestamp());
             report.setTypeId(QUEUE_TYPE_ID);
@@ -179,7 +186,7 @@ public class ResultReportingTransfer {
                     document.setRecordId(result.getId());
                     document.setReportTime(now);
                     document.setTableId(RESULT_REFERRANCE_TABLE_ID);
-                    document.setSysUserId("1");
+                    document.setSysUserId(resolveSysUserId());
                     documents.add(document);
                 }
             }

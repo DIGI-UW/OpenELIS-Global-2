@@ -11,6 +11,13 @@ public interface FreezerService {
 
     List<Freezer> getAllFreezers(String search);
 
+    /**
+     * Every device that has ever existed, soft-deleted ones included. For the
+     * reporting and audit-trail paths only - a device list cleanup must not rewrite
+     * what a cold-chain inspector can pull.
+     */
+    List<Freezer> getAllFreezersForReporting();
+
     Optional<Freezer> findByName(String name);
 
     Optional<Freezer> findById(Long id);

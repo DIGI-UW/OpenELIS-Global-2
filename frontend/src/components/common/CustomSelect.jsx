@@ -4,7 +4,7 @@ import { Select, SelectItem } from "@carbon/react";
 const CustomSelect = (props) => {
   const handleSelect = (e) => {
     const value = e.target.value;
-    props.onChange(value);
+    props.onChange?.(value);
   };
   return (
     <>
@@ -12,7 +12,6 @@ const CustomSelect = (props) => {
         onChange={handleSelect}
         labelText={props.labelText || ""}
         id={props.id}
-        defaultValue={props.value ? props.value : ""}
         value={props.value ? props.value : ""}
         disabled={props.disabled}
       >

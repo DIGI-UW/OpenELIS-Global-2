@@ -22,6 +22,11 @@ public class ResultLimit extends BaseObject<String> {
     private double highReportingRange = Double.POSITIVE_INFINITY;
     private String dictionaryNormalId;
     private boolean alwaysValidate;
+    // OGC-949 M7: links a reference range to its result component (UUID FK).
+    private String componentId;
+    // OGC-1145 Phase 2: null = shared across every sample type the test runs
+    // on; a value scopes this limit to that specimen, which wins over shared.
+    private String sampleTypeId;
 
     public String getId() {
         return id;
@@ -153,5 +158,21 @@ public class ResultLimit extends BaseObject<String> {
 
     public double getHighCritical() {
         return highCritical;
+    }
+
+    public String getComponentId() {
+        return componentId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getSampleTypeId() {
+        return sampleTypeId;
+    }
+
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
     }
 }

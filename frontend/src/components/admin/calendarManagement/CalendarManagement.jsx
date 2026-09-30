@@ -26,6 +26,8 @@ import {
   postToOpenElisServerJsonResponse,
   putToOpenElisServer,
   deleteFromOpenElisServer,
+  toLocalIsoDate,
+  parseIsoDate,
 } from "../../utils/Utils";
 import config from "../../../config.json";
 import { NotificationContext } from "../../layout/Layout";
@@ -207,13 +209,10 @@ function CalendarManagement() {
   }));
 
   const breadcrumb = [
-    { label: intl.formatMessage({ id: "home.label" }), link: "/" },
+    { label: "home.label", link: "/" },
+    { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
     {
-      label: intl.formatMessage({ id: "breadcrums.admin.managment" }),
-      link: "/MasterListsPage",
-    },
-    {
-      label: intl.formatMessage({ id: "calendar.management.title" }),
+      label: "calendar.management.title",
       link: "/MasterListsPage/calendarManagement",
     },
   ];
@@ -327,12 +326,12 @@ function CalendarManagement() {
                         <TableCell>
                           <DatePicker
                             datePickerType="single"
+                            dateFormat="Y-m-d"
+                            parseDate={parseIsoDate}
                             onChange={([date]) =>
                               setEditForm((f) => ({
                                 ...f,
-                                date: date
-                                  ? date.toISOString().split("T")[0]
-                                  : "",
+                                date: date ? toLocalIsoDate(date) : "",
                               }))
                             }
                           >
@@ -416,13 +415,13 @@ function CalendarManagement() {
                             <TableCell>
                               <DatePicker
                                 datePickerType="single"
+                                dateFormat="Y-m-d"
+                                parseDate={parseIsoDate}
                                 value={editForm.date}
                                 onChange={([date]) =>
                                   setEditForm((f) => ({
                                     ...f,
-                                    date: date
-                                      ? date.toISOString().split("T")[0]
-                                      : "",
+                                    date: date ? toLocalIsoDate(date) : "",
                                   }))
                                 }
                               >

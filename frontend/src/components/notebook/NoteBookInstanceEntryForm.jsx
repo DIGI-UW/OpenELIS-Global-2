@@ -7,12 +7,9 @@ import {
   TextArea,
   Select,
   SelectItem,
-  MultiSelect,
-  FileUploader,
   FilterableMultiSelect,
   Grid,
   Column,
-  InlineLoading,
   Section,
   Heading,
   Tile,
@@ -22,9 +19,6 @@ import {
   FileUploaderItem,
   Loading,
   Tag,
-  Tabs,
-  TabList,
-  Tab,
   Accordion,
   AccordionItem,
   ContentSwitcher,
@@ -39,13 +33,7 @@ import {
   TableRow,
   Pagination,
 } from "@carbon/react";
-import {
-  Launch,
-  Subtract,
-  ArrowLeft,
-  ArrowRight,
-  Checkmark,
-} from "@carbon/react/icons";
+import { Launch, Checkmark } from "@carbon/react/icons";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
@@ -58,12 +46,15 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   postToOpenElisServer,
-  hasRole,
   toBase64,
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";
 import AddSample from "../addOrder/AddSample";
 import { sampleObject } from "../addOrder/Index";
+import {
+  samplesMissingTests,
+  samplesWithTests,
+} from "../addOrder/orderSamples";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { SearchResults } from "../resultPage/SearchResultForm";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
@@ -81,6 +72,7 @@ const NoteBookInstanceEntryForm = () => {
   let breadcrumbs = [
     { label: "home.label", link: "/" },
     { label: "notebook.label.dashboard", link: "/NoteBookDashboard" },
+    { label: "notebook.label.instanceEntry", link: "" },
   ];
 
   const MODES = Object.freeze({
@@ -283,6 +275,10 @@ const NoteBookInstanceEntryForm = () => {
         "/rest/notebook/samples?accession=" + accession,
         setSampleList,
       );
+      getFromOpenElisServer(
+        "/rest/SampleEdit?accessionNumber=" + accession,
+        loadOrderValues,
+      );
     } else {
       showAlertMessage(
         <FormattedMessage id="server.error.msg" />,
@@ -302,13 +298,12 @@ const NoteBookInstanceEntryForm = () => {
 
   const getSamplesXmlValues = () => {
     let sampleXmlString = "";
-    let referralItems = [];
     if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
+      if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
-        let tests = null;
         samples.map((sampleItem) => {
+          let tests = null;
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {
@@ -322,38 +317,6 @@ const NoteBookInstanceEntryForm = () => {
             const storagePositionCoordinate =
               storageLocation?.positionCoordinate || "";
             sampleXmlString += `<sample sampleID='${sampleItem.sampleTypeId}' date='${sampleItem.sampleXML.collectionDate}' time='${sampleItem.sampleXML.collectionTime}' collector='${sampleItem.sampleXML.collector}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='' rejected='${sampleItem.sampleXML.rejected}' rejectReasonId='${sampleItem.sampleXML.rejectionReason}' initialConditionIds=''  storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' />`;
-          }
-          if (sampleItem.referralItems.length > 0) {
-            const referredInstitutes = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].institute;
-              })
-              .join(",");
-
-            const sentDates = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].sentDate;
-              })
-              .join(",");
-
-            const referralReasonIds = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].reasonForReferral;
-              })
-              .join(",");
-
-            const referrers = Object.keys(sampleItem.referralItems)
-              .map(function (i) {
-                return sampleItem.referralItems[i].referrer;
-              })
-              .join(",");
-            referralItems.push({
-              referrer: referrers,
-              referredInstituteId: referredInstitutes,
-              referredTestId: tests,
-              referredSendDate: sentDates,
-              referralReasonId: referralReasonIds,
-            });
           }
         });
         sampleXmlString += "</samples>";
@@ -1690,6 +1653,10 @@ const NoteBookInstanceEntryForm = () => {
                       id="accession"
                       name="accession"
                       value={accession}
+                      labelText={intl.formatMessage({
+                        id: "notebook.search.byAccession",
+                      })}
+                      hideLabel
                       placeholder={intl.formatMessage({
                         id: "notebook.search.byAccession",
                       })}
@@ -1697,13 +1664,7 @@ const NoteBookInstanceEntryForm = () => {
                     />
                   </Column>
                   <Column lg={8} md={8} sm={4}>
-                    <Button
-                      size="md"
-                      onClick={handleAccesionSearch}
-                      labelText={intl.formatMessage({
-                        id: "label.button.search",
-                      })}
-                    >
+                    <Button size="md" onClick={handleAccesionSearch}>
                       <FormattedMessage id="label.button.search" />
                     </Button>
                   </Column>
@@ -1715,22 +1676,44 @@ const NoteBookInstanceEntryForm = () => {
                     {orderFormValues?.sampleOrderItems.labNo === accession &&
                       accession != "" && (
                         <Accordion>
-                          <AccordionItem title="Add Sample">
+                          <AccordionItem
+                            title={intl.formatMessage({
+                              id: "sample.add.action",
+                            })}
+                          >
                             <Grid className="gridBoundary">
                               <Column lg={16} md={8} sm={4}>
                                 <AddSample
                                   error={elementError}
                                   setSamples={setSamples}
                                   samples={samples}
+                                  allowReferral={false}
                                 />
                               </Column>
                               <Column lg={16} md={8} sm={4}>
+                                {samplesMissingTests(samples).map(
+                                  (sampleNumber) => (
+                                    <InlineNotification
+                                      key={sampleNumber}
+                                      kind="error"
+                                      lowContrast
+                                      hideCloseButton
+                                      title={intl.formatMessage(
+                                        { id: "order.sample.missingTests" },
+                                        { sampleNumber },
+                                      )}
+                                    />
+                                  ),
+                                )}
                                 <Button
                                   data-cy="submit-order"
                                   kind="primary"
                                   className="forwardButton"
                                   onClick={handleSubmitOrderForm}
-                                  disabled={isSubmittingSample}
+                                  disabled={
+                                    isSubmittingSample ||
+                                    samplesMissingTests(samples).length > 0
+                                  }
                                 >
                                   <FormattedMessage id="label.button.submit" />
                                 </Button>
@@ -2675,7 +2658,7 @@ const NoteBookInstanceEntryForm = () => {
                 }}
                 disabled={isViewMode}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {statuses.map((status, index) => {
                   return (
                     <SelectItem

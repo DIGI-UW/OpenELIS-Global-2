@@ -1,9 +1,9 @@
 package org.openelisglobal.dictionary.rest.controller;
 
 import static org.hamcrest.CoreMatchers.is;
-import static org.hamcrest.CoreMatchers.notNullValue;
 import static org.hamcrest.MatcherAssert.assertThat;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 
@@ -13,11 +13,13 @@ import java.util.Random;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.dictionary.form.DictionaryMenuForm;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.Rollback;
@@ -36,7 +38,12 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        executeDataSetWithStateManagement("testdata/system-user.xml");
         executeDataSetWithStateManagement("testdata/dictionary.xml");
+        // dictionary.xml declares no system_user; ensure the audit user so the delete
+        // flow can emit history regardless of which sibling test ran (and wiped it)
+        // first.
+        ensureAuditSystemUser();
     }
 
     @Test
@@ -65,7 +72,8 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         assertEquals(200, status);
         String content = mvcResult.getResponse().getContentAsString();
         List<DictionaryCategory> menuList = Arrays.asList(super.mapFromJson(content, DictionaryCategory[].class));
-        assertThat(menuList, notNullValue());
+        assertFalse("fetchDictionaryCategories must return at least one category", menuList.isEmpty());
+        assertThat(menuList.get(0).getCategoryName(), is("Category Name 1"));
     }
 
     @Test
@@ -79,14 +87,24 @@ public class DictionaryMenuRestControllerTest extends BaseWebContextSensitiveTes
         List<DictionaryMenuForm> menuList = Arrays.asList(super.mapFromJson(content, DictionaryMenuForm[].class));
         String idToBeDeleted = menuList.get(0).getMenuList().get(2).getId();
 
-        // deleting the selected ID
-        MvcResult mvcResult = super.mockMvc.perform(post("/rest/DeleteDictionary").param("ID", idToBeDeleted))
-                .andReturn();
+        // The DeleteDictionary controller stamps audit history with the current user's
+        // id via getSysUserId(request): session UserSessionData first, else a
+        // login_user
+        // lookup of the authenticated principal. Provide the session user explicitly so
+        // this audit-emitting delete is order-independent (doesn't rely on a sibling
+        // test
+        // leaving the login_user 'admin' seed intact). ensureAuditSystemUser() in setUp
+        // separately guarantees the system_user id=1 FK target exists.
+        UserSessionData usd = new UserSessionData();
+        usd.setSytemUserId(1);
+        MvcResult mvcResult = super.mockMvc.perform(post("/rest/DeleteDictionary").param("ID", idToBeDeleted)
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, usd)).andReturn();
 
         status = mvcResult.getResponse().getStatus();
         assertEquals(200, status);
         content = mvcResult.getResponse().getContentAsString();
-        assertEquals(content, "Dictionary Menu deleted successfully");
+        // production's Jackson-at-index-0 serializes String bodies as JSON
+        assertEquals(content, "\"Dictionary Menu deleted successfully\"");
     }
 
     private Dictionary createDictionaryObject() {

@@ -198,17 +198,12 @@ public class Localization extends BaseObject<String> {
             return lv.getValue();
         }
 
-        // Fall back to English
+        // Fall back to English — the single universal fallback (OGC-1112 FR-23).
+        // We deliberately do NOT fall back to "any other locale": that would leak a
+        // language the user isn't working in (FR-24). Locale → English → blank.
         lv = values.get(FALLBACK_LOCALE);
         if (lv != null && !GenericValidator.isBlankOrNull(lv.getValue())) {
             return lv.getValue();
-        }
-
-        // Last resort: return any available value
-        for (LocalizationValue value : values.values()) {
-            if (!GenericValidator.isBlankOrNull(value.getValue())) {
-                return value.getValue();
-            }
         }
 
         return "";

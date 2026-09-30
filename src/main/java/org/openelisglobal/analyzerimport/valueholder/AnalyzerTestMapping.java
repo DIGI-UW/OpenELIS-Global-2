@@ -15,15 +15,8 @@
  */
 package org.openelisglobal.analyzerimport.valueholder;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
-import jakarta.persistence.EmbeddedId;
-import jakarta.persistence.Entity;
-import jakarta.persistence.Table;
-import jakarta.persistence.Transient;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 /**
  * Maps analyzer-specific test names to OpenELIS test IDs. Uses composite
@@ -33,20 +26,22 @@ import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
  * Test mappings are per-analyzer — each physical instrument owns its own set of
  * test code → OE test mappings, loaded from its profile.
  */
-@Entity
-@Table(name = "analyzer_test_map")
+@Deprecated(forRemoval = true)
 public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
     private static final long serialVersionUID = 3L;
 
-    @EmbeddedId
     private AnalyzerTestMappingPK compoundId = new AnalyzerTestMappingPK();
 
-    @Column(name = "test_id")
-    @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
-    @Transient
+    /**
+     * OGC-1129 — optional result component this analyzer target maps to
+     * ({@code test_result_component.id}, VARCHAR(36)). Null = the test's PRIMARY
+     * component (today's behavior); existing rows are unaffected.
+     */
+    private String componentId;
+
     private String uniqueIdentifyer;
 
     public void setCompoundId(AnalyzerTestMappingPK compoundId) {
@@ -87,6 +82,14 @@ public class AnalyzerTestMapping extends BaseObject<AnalyzerTestMappingPK> {
 
     public String getTestId() {
         return testId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
     }
 
     public void setUniqueIdentifyer(String uniqueIdentifyer) {

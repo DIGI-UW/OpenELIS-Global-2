@@ -97,7 +97,6 @@ public class SuccessReportHandler implements IRowTransmissionResponseHandler {
                 document.setRecordId(resultIdList[i]);
                 document.setReportTime(now);
                 document.setTableId(resultTableId);
-                document.setSysUserId("1");
                 documentList.add(document);
             }
         }

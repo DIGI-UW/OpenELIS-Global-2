@@ -25,7 +25,13 @@ public interface ProviderService extends BaseObjectService<Provider, String> {
 
     List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter);
 
+    /** The same page, narrowed to one provider title (OGC-1223). */
+    List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter, String titleCode);
+
     int getTotalSearchedProviderCount(String parameter);
+
+    /** The same count, narrowed to one provider title (OGC-1223). */
+    int getTotalSearchedProviderCount(String parameter, String titleCode);
 
     /**
      * Search providers by phone number.

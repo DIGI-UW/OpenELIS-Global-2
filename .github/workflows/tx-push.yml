@@ -20,3 +20,6 @@ jobs:
         uses: transifex/cli-action@v2
         with:
           token: ${{ secrets.TRANSIFEX_TOKEN }}
+          # Without a TTY the CLI truncates every message to 78 characters,
+          # which hides upload errors; --silent prints errors untruncated.
+          args: push --silent

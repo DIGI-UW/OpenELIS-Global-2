@@ -8,13 +8,23 @@ import org.dom4j.DocumentHelper;
 import org.dom4j.Element;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
+import org.openelisglobal.organization.service.OrganizationService;
+import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.Errors;
 import org.springframework.validation.Validator;
 
 @Component
 public class SamplePatientEntryFormValidator implements Validator {
+
+    private static final String WORKFLOW_TYPE_FIELD = "workflowType";
+    private static final String WORKFLOW_ENVIRONMENTAL = "environmental";
+    private static final String WORKFLOW_VECTOR = "vector";
+
+    @Autowired
+    private OrganizationService organizationService;
 
     @Override
     public boolean supports(Class<?> clazz) {
@@ -27,17 +37,67 @@ public class SamplePatientEntryFormValidator implements Validator {
 
         // sampleXML
         if (!GenericValidator.isBlankOrNull(form.getSampleXML())) {
-            validateSampleXML(form.getSampleXML(), errors);
+            validateSampleXML(form.getSampleXML(), collectionDateRelation(form), errors);
         }
 
+        SampleOrderItem sampleOrder = form.getSampleOrderItems();
+        if (sampleOrder != null) {
+            validateOrganizationId(sampleOrder.getReferringSiteId(), "sampleOrderItems.referringSiteId",
+                    "referring site", errors);
+            validateOrganizationId(sampleOrder.getReferringSiteDepartmentId(),
+                    "sampleOrderItems.referringSiteDepartmentId", "referring site department", errors);
+        }
     }
 
-    private void validateSampleXML(String sampleXML, Errors errors) {
+    /**
+     * An order may name an existing referring site (or site department) by id; one
+     * that does not exist is refused here, naming the id, rather than failing later
+     * in {@code SamplePatientUpdateData} with a NullPointerException that reached
+     * the caller as a bare HTTP 500 (a stale remembered site, a site removed while
+     * the form was open, or an API client).
+     */
+    private void validateOrganizationId(String organizationId, String field, String displayName, Errors errors) {
+        if (GenericValidator.isBlankOrNull(organizationId)) {
+            return;
+        }
+        ValidationHelper.validateIdField(organizationId, field, displayName, errors, false);
+        if (errors.hasFieldErrors(field)) {
+            return;
+        }
+        if (organizationService.getOrganizationById(organizationId) == null) {
+            errors.rejectValue(field, "error.organization.notFound", new Object[] { displayName, organizationId },
+                    "The " + displayName + " with id " + organizationId + " does not exist");
+        }
+    }
+
+    /**
+     * Clinical specimens can only have been collected in the past, so the clinical
+     * path keeps {@link DateRelation#PAST}. Environmental and vector collections
+     * are planned field activities whose collection date may legitimately be in the
+     * future, so the relation is relaxed to {@link DateRelation#ANY} for those two
+     * workflows only. The discriminator is the order's {@code workflowType}, the
+     * same value {@code SamplePatientUpdateData.initSampleData} uses to derive
+     * {@code Sample.domain}; forms that carry no order item (batch entry setup)
+     * fall back to the strict clinical rule.
+     */
+    private DateRelation collectionDateRelation(SamplePatientEntryForm form) {
+        SampleOrderItem sampleOrder = form.getSampleOrderItems();
+        if (sampleOrder == null) {
+            return DateRelation.PAST;
+        }
+        String workflowType = sampleOrder.getEnvironmentalFieldAsString(WORKFLOW_TYPE_FIELD);
+        if (WORKFLOW_ENVIRONMENTAL.equalsIgnoreCase(workflowType) || WORKFLOW_VECTOR.equalsIgnoreCase(workflowType)) {
+            return DateRelation.ANY;
+        }
+        return DateRelation.PAST;
+    }
+
+    private void validateSampleXML(String sampleXML, DateRelation collectionDateRelation, Errors errors) {
         try {
             Document sampleDom = DocumentHelper.parseText(sampleXML);
             for (Iterator<Element> iter = sampleDom.getRootElement().elementIterator("sample"); iter.hasNext();) {
                 Element sampleItem = iter.next();
-                validateSampleItem(sampleItem, errors);
+                validateSampleItem(sampleItem, collectionDateRelation, errors);
                 if (errors.hasErrors()) {
                     return;
                 }
@@ -47,7 +107,7 @@ public class SamplePatientEntryFormValidator implements Validator {
         }
     }
 
-    private void validateSampleItem(Element sampleItem, Errors errors) {
+    private void validateSampleItem(Element sampleItem, DateRelation collectionDateRelation, Errors errors) {
         // validate test ids
         String[] testIDs = sampleItem.attributeValue("tests").split(",");
         for (int j = 0; j < testIDs.length; ++j) {
@@ -65,8 +125,8 @@ public class SamplePatientEntryFormValidator implements Validator {
         }
         // validate date not required
         String collectionDate = sampleItem.attributeValue("date").trim();
-        ValidationHelper.validateDateField(collectionDate, "sampleXML", "sampleXML date", errors, DateRelation.PAST,
-                false);
+        ValidationHelper.validateDateField(collectionDate, "sampleXML", "sampleXML date", errors,
+                collectionDateRelation, false);
         if (errors.hasErrors()) {
             return;
         }

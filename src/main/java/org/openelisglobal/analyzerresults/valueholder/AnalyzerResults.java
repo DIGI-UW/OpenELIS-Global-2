@@ -20,6 +20,7 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.sql.Timestamp;
+import java.util.Set;
 import org.hibernate.annotations.GenericGenerator;
 import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
@@ -75,14 +76,71 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Convert(converter = StringToIntegerConverter.class)
     private String testId;
 
+    // OGC-1129 — the result component this staged value belongs to
+    // (test_result_component.id). Null = the test's PRIMARY component.
+    @Column(name = "component_id", length = 36)
+    private String componentId;
+
     @Column(name = "test_result_type", length = 1)
     private String resultType = "N";
 
     @Column(name = "complete_date")
     private Timestamp completeDate;
 
+    // OGC-1145 FR-8: staged row held because its test runs on several sample
+    // types and the message carried no specimen; the review page's chooser
+    // resolves it.
+    public static final String IMPORT_ISSUE_AWAITING_SPECIMEN = "awaiting_specimen";
+    public static final String IMPORT_ISSUE_UNKNOWN_TEST = "unknown_analyzer_test";
+    public static final String IMPORT_ISSUE_TEST_MAPPING_NOT_READY = "test_mapping_not_ready";
+    public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
+    public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
+    public static final String IMPORT_ISSUE_INVALID_RESULT_MAPPING = "invalid_result_mapping";
+    public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
+            IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING);
+
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
+
+    @Column(name = "source_message_id", length = 255)
+    private String sourceMessageId;
+
+    @Column(name = "source_connection_id", length = 255)
+    private String sourceConnectionId;
+
+    @Column(name = "source_profile_id", length = 128)
+    private String sourceProfileId;
+
+    @Column(name = "source_profile_revision")
+    private Integer sourceProfileRevision;
+
+    @Column(name = "source_protocol", length = 20)
+    private String sourceProtocol;
+
+    @Column(name = "source_transport", length = 20)
+    private String sourceTransport;
+
+    @Column(name = "raw_test_code", length = 255)
+    private String rawTestCode;
+
+    @Column(name = "raw_result_value", columnDefinition = "TEXT")
+    private String rawResultValue;
+
+    @Column(name = "result_classification", length = 12)
+    private String resultClassification;
+
+    @Column(name = "recognition_mode", length = 12)
+    private String recognitionMode;
+
+    @Column(name = "recognition_outcome", length = 20)
+    private String recognitionOutcome;
+
+    @Column(name = "recognition_fingerprint", length = 71)
+    private String recognitionFingerprint;
+
+    @Column(name = "source_payload", columnDefinition = "TEXT")
+    private String sourcePayload;
 
     // QC metadata propagated from the analyzer-bridge for control samples.
     // Transient — only carried in-memory from FHIR ingest
@@ -106,6 +164,110 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setImportIssueReason(String importIssueReason) {
         this.importIssueReason = importIssueReason;
+    }
+
+    public String getSourceMessageId() {
+        return sourceMessageId;
+    }
+
+    public void setSourceMessageId(String sourceMessageId) {
+        this.sourceMessageId = sourceMessageId;
+    }
+
+    public String getSourceConnectionId() {
+        return sourceConnectionId;
+    }
+
+    public void setSourceConnectionId(String sourceConnectionId) {
+        this.sourceConnectionId = sourceConnectionId;
+    }
+
+    public String getSourceProfileId() {
+        return sourceProfileId;
+    }
+
+    public void setSourceProfileId(String sourceProfileId) {
+        this.sourceProfileId = sourceProfileId;
+    }
+
+    public Integer getSourceProfileRevision() {
+        return sourceProfileRevision;
+    }
+
+    public void setSourceProfileRevision(Integer sourceProfileRevision) {
+        this.sourceProfileRevision = sourceProfileRevision;
+    }
+
+    public String getSourceProtocol() {
+        return sourceProtocol;
+    }
+
+    public void setSourceProtocol(String sourceProtocol) {
+        this.sourceProtocol = sourceProtocol;
+    }
+
+    public String getSourceTransport() {
+        return sourceTransport;
+    }
+
+    public void setSourceTransport(String sourceTransport) {
+        this.sourceTransport = sourceTransport;
+    }
+
+    public String getRawTestCode() {
+        return rawTestCode;
+    }
+
+    public void setRawTestCode(String rawTestCode) {
+        this.rawTestCode = rawTestCode;
+    }
+
+    public String getRawResultValue() {
+        return rawResultValue;
+    }
+
+    public void setRawResultValue(String rawResultValue) {
+        this.rawResultValue = rawResultValue;
+    }
+
+    public String getResultClassification() {
+        return resultClassification;
+    }
+
+    public void setResultClassification(String resultClassification) {
+        this.resultClassification = resultClassification;
+    }
+
+    public String getRecognitionMode() {
+        return recognitionMode;
+    }
+
+    public void setRecognitionMode(String recognitionMode) {
+        this.recognitionMode = recognitionMode;
+    }
+
+    public String getRecognitionOutcome() {
+        return recognitionOutcome;
+    }
+
+    public void setRecognitionOutcome(String recognitionOutcome) {
+        this.recognitionOutcome = recognitionOutcome;
+    }
+
+    public String getRecognitionFingerprint() {
+        return recognitionFingerprint;
+    }
+
+    public void setRecognitionFingerprint(String recognitionFingerprint) {
+        this.recognitionFingerprint = recognitionFingerprint;
+    }
+
+    public String getSourcePayload() {
+        return sourcePayload;
+    }
+
+    public void setSourcePayload(String sourcePayload) {
+        this.sourcePayload = sourcePayload;
     }
 
     public String getLotNumber() {
@@ -218,6 +380,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public String getTestId() {
         return testId;
+    }
+
+    public void setComponentId(String componentId) {
+        this.componentId = componentId;
+    }
+
+    public String getComponentId() {
+        return componentId;
     }
 
     public void setResultType(String resultType) {

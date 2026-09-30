@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpSession;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
@@ -36,9 +35,6 @@ public class EQAEnrollmentRestControllerTest {
     @Mock
     private HttpServletRequest request;
 
-    @Mock
-    private HttpSession session;
-
     @InjectMocks
     private EQAEnrollmentRestController controller;
 
@@ -49,8 +45,7 @@ public class EQAEnrollmentRestControllerTest {
     public void setUp() {
         UserSessionData usd = new UserSessionData();
         usd.setSytemUserId(1);
-        when(request.getSession()).thenReturn(session);
-        when(session.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
+        when(request.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(usd);
 
         program = new EQAProgram();
         program.setId(1L);
@@ -87,6 +82,63 @@ public class EQAEnrollmentRestControllerTest {
         ResponseEntity<?> response = controller.createEnrollments(request, 1L, body);
 
         assertEquals(HttpStatus.CREATED, response.getStatusCode());
+    }
+
+    @Test
+    public void testCreateEnrollments_AcceptsStringOrgIds() {
+        when(enrollmentService.bulkEnroll(eq(1L), eq(List.of(100L)), eq("1")))
+                .thenReturn(List.of(enrollment1));
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("organizationIds", List.of("100"));
+
+        ResponseEntity<?> response = controller.createEnrollments(request, 1L, body);
+
+        assertEquals(HttpStatus.CREATED, response.getStatusCode());
+    }
+
+    /**
+     * A laboratory already on the roster writes nothing, and Created with an empty
+     * list let the caller report a success that never happened.
+     */
+    @Test
+    public void testCreateEnrollments_AlreadyEnrolledIsAConflictNotACreation() {
+        when(enrollmentService.bulkEnroll(eq(1L), anyList(), eq("1"))).thenReturn(List.of());
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("organizationIds", List.of(100));
+
+        ResponseEntity<?> response = controller.createEnrollments(request, 1L, body);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("That laboratory is already enrolled in this scheme",
+                ((Map<?, ?>) response.getBody()).get("error"));
+    }
+
+    /** The same refusal, worded for a batch. */
+    @Test
+    public void testCreateEnrollments_EveryLabAlreadyEnrolledIsAConflict() {
+        when(enrollmentService.bulkEnroll(eq(1L), anyList(), eq("1"))).thenReturn(List.of());
+
+        Map<String, Object> body = new HashMap<>();
+        body.put("organizationIds", List.of(100, 200));
+
+        ResponseEntity<?> response = controller.createEnrollments(request, 1L, body);
+
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("Every laboratory named is already enrolled in this scheme",
+                ((Map<?, ?>) response.getBody()).get("error"));
+    }
+
+    @Test
+    public void testCreateEnrollments_NonNumericOrgIds() {
+        Map<String, Object> body = new HashMap<>();
+        body.put("organizationIds", List.of("abc"));
+
+        ResponseEntity<?> response = controller.createEnrollments(request, 1L, body);
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("organizationIds must be numeric", ((Map<?, ?>) response.getBody()).get("error"));
     }
 
     @Test
