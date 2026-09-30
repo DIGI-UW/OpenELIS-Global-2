@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1266 (Clinical Order Entry v4, FR-F5, FR-A4, FR-A12): an explicit
+         order progress status with the time each step was completed, the
+         release record for the optional Sample check, and the cancellation
+         record. Completion is no longer inferred from a QA checklist row. -->
+
+    <changeSet author="mozzy11" id="OGC-1266-order-progress-status">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <columnExists schemaName="clinlims" tableName="sample" columnName="order_progress_status"/>
+            </not>
+        </preConditions>
+        <comment>Order progress status and per-step completion times on the order</comment>
+        <addColumn schemaName="clinlims" tableName="sample">
+            <column name="order_progress_status" type="varchar(30)"/>
+            <column name="order_entered_at" type="timestamp"/>
+            <column name="order_prepared_at" type="timestamp"/>
+            <column name="order_ready_at" type="timestamp"/>
+            <column name="order_release_note" type="varchar(255)"/>
+            <column name="order_cancelled_at" type="timestamp"/>
+            <column name="order_cancelled_by" type="numeric(10)"/>
+            <column name="order_cancel_reason" type="varchar(255)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="mozzy11" id="OGC-1266-order-cancel-reasons">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'Order cancel reasons'
+            </sqlCheck>
+        </preConditions>
+        <comment>Reason list offered when an order is cancelled</comment>
+        <insert tableName="dictionary_category" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_category_seq"/>
+            <column name="description" value="Reasons offered when an order is cancelled"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="ORDCANCEL"/>
+            <column name="name" value="Order cancel reasons"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Registered in the wrong domain"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="WRONGDOM"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Order cancel reasons')"/>
+            <column name="sort_order" value="1"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Duplicate order"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="DUPORDER"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Order cancel reasons')"/>
+            <column name="sort_order" value="2"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Request withdrawn"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="WITHDRAWN"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Order cancel reasons')"/>
+            <column name="sort_order" value="3"/>
+        </insert>
+        <insert tableName="dictionary" schemaName="clinlims">
+            <column name="id" valueSequenceNext="dictionary_seq"/>
+            <column name="is_active" value="Y"/>
+            <column name="dict_entry" value="Other"/>
+            <column name="lastupdated" valueComputed="${now}"/>
+            <column name="local_abbrev" value="OTHERCAN"/>
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Order cancel reasons')"/>
+            <column name="sort_order" value="9"/>
+        </insert>
+    </changeSet>
+
+    <!-- FR-A12: the clinical side menu names the three steps of the
+         workflow. Label &amp; Store is folded into Prepare Samples, so its
+         entry goes; the environmental and vector menus keep theirs. -->
+    <changeSet author="mozzy11" id="OGC-1266-clinical-menu-steps">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT count(*) FROM clinlims.menu WHERE element_id = 'menu_clinical_collect'
+            </sqlCheck>
+        </preConditions>
+        <comment>Clinical order menu: Prepare Samples and Sample check, no Label and Store</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="display_key" value="sidenav.label.order.prepare"/>
+            <column name="tool_tip_key" value="sidenav.label.order.prepare"/>
+            <where>element_id = 'menu_clinical_collect'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false"/>
+            <where>element_id = 'menu_clinical_label'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="display_key" value="sidenav.label.order.sampleCheck"/>
+            <column name="tool_tip_key" value="sidenav.label.order.sampleCheck"/>
+            <where>element_id = 'menu_clinical_qa'</where>
+        </update>
+    </changeSet>
+
+</databaseChangeLog>

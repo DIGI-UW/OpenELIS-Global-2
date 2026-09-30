@@ -77,6 +77,7 @@ import org.openelisglobal.requester.service.SampleRequesterService;
 import org.openelisglobal.requester.valueholder.SampleRequester;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
+import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
@@ -124,6 +125,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private ProviderService providerService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private OrderProgressService orderProgressService;
     @Autowired
     private SampleHumanService sampleHumanService;
     @Autowired
@@ -279,6 +282,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
 
         persistOrderEntryReferrals(updateData, form);
+        recordStepProgress(updateData.getSample(), form.getSampleOrderItems());
 
         request.getSession().setAttribute("lastAccessionNumber", updateData.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", updateData.getPatientId());
@@ -292,6 +296,22 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         // tx had already committed by the time listeners ran.
         eventPublisher.publishEvent(new org.openelisglobal.sample.event.SamplePatientUpdateDataCreatedEvent(this,
                 updateData, patientInfo, form));
+    }
+
+    /**
+     * The storage decision and the step's completion travel with the step's save
+     * (OGC-1266 FR-A5): the order-level "storage skipped" flag is applied here
+     * instead of by a separate call, and the order's progress status advances in
+     * the same transaction as everything else the step saved.
+     */
+    private void recordStepProgress(Sample sample, SampleOrderItem sampleOrder) {
+        if (sample == null || sample.getId() == null || sampleOrder == null) {
+            return;
+        }
+        if (sampleOrder.getStorageSkipped() != null) {
+            sample.setStorageSkipped(sampleOrder.getStorageSkipped());
+        }
+        orderProgressService.recordStepSave(sample, sampleOrder.getProgressStep());
     }
 
     /**

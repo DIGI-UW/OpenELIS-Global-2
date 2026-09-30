@@ -329,6 +329,18 @@ public class SampleOrderItem implements Serializable {
     /** The imported consignment (shipping box) this receipt takes delivery of. */
     private String eqaShippingBoxId;
 
+    /**
+     * Storage decisions that travel with the step's save (OGC-1266 FR-A5): the
+     * order-level "storage skipped" flag, and the step the client has completed at
+     * its complete level (a value of {@link OrderProgressStatus}), which the server
+     * records as the order's progress.
+     */
+    private Boolean storageSkipped;
+
+    @Pattern(regexp = "^(|ENTERED|SAMPLES_PREPARED)$", groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String progressStep;
+
     // Informed consent fields
     private Boolean consentGiven;
 
@@ -997,6 +1009,22 @@ public class SampleOrderItem implements Serializable {
             return (String) value;
         }
         return value.toString();
+    }
+
+    public Boolean getStorageSkipped() {
+        return storageSkipped;
+    }
+
+    public void setStorageSkipped(Boolean storageSkipped) {
+        this.storageSkipped = storageSkipped;
+    }
+
+    public String getProgressStep() {
+        return progressStep;
+    }
+
+    public void setProgressStep(String progressStep) {
+        this.progressStep = progressStep;
     }
 
     public Boolean getConsentGiven() {
