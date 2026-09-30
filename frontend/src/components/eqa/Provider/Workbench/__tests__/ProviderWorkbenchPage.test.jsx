@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -292,6 +293,39 @@ describe("ProviderWorkbenchPage", () => {
     await userEvent.type(field, "10/09/2026");
 
     expect(field).toHaveValue("");
+  });
+
+  test("a saved expected delivery stays in the field once the rows reload", async () => {
+    renderWorkbench();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/prep")) cb(PREP_SHORT);
+      else if (url.endsWith("/shipments"))
+        cb([
+          ROWS[0],
+          { ...ROWS[1], estimatedDeliveryDate: "2026-09-01 00:00:00.0" },
+        ]);
+      else cb([]);
+    });
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb({ ok: true, status: 200, json: () => Promise.resolve({}) }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
+
+    const field = screen.getByLabelText("Expected delivery for District Lab B");
+    act(() => field._flatpickr.setDate("01/09/2026", true));
+    expect(field).toHaveValue("01/09/2026");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/eqa/cycles/7/shipments",
+        expect.stringContaining('"estimatedDeliveryDate":"2026-09-01"'),
+        expect.any(Function),
+      ),
+    );
+    await screen.findByText("Shipment details saved.");
+    expect(field).toHaveValue("01/09/2026");
   });
 
   test("a pack list is refused rather than produced empty when samples cannot be read", async () => {

@@ -85,7 +85,6 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
       ({ ok, body }) => {
         setBusy(null);
         if (ok) {
-          setDrafts((prev) => ({ ...prev, [row.organizationId]: undefined }));
           onChanged();
           onNotice({
             kind: "success",
