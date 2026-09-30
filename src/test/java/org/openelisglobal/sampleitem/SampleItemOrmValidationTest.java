@@ -18,6 +18,9 @@ import static org.junit.Assert.assertNotNull;
 import org.hibernate.SessionFactory;
 import org.hibernate.cfg.Configuration;
 import org.junit.Test;
+import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.localization.valueholder.LocalizationValue;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
@@ -68,6 +71,11 @@ public class SampleItemOrmValidationTest {
         // Arrange: Configure Hibernate with SampleItem entity
         Configuration config = new Configuration();
         config.addAnnotatedClass(SampleItem.class);
+        config.addAnnotatedClass(Sample.class);
+        config.addAnnotatedClass(Localization.class);
+        config.addAnnotatedClass(LocalizationValue.class);
+        config.addResource("hibernate/hbm/TypeOfSample.hbm.xml");
+        config.addResource("hibernate/hbm/UnitOfMeasure.hbm.xml");
         config.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");
 
         // Act: Build SessionFactory (validates all mappings)

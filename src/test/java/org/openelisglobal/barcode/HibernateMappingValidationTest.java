@@ -9,6 +9,8 @@ import org.openelisglobal.barcode.valueholder.SampleBarcodeInfo;
 import org.openelisglobal.barcode.valueholder.SampleItemBarcodeInfo;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.localization.valueholder.LocalizationValue;
+import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 
 /**
  * Validates barcode ORM mappings without requiring a database connection.
@@ -22,8 +24,8 @@ public class HibernateMappingValidationTest {
         config.addAnnotatedClass(SampleItemBarcodeInfo.class);
         config.addAnnotatedClass(Localization.class);
         config.addAnnotatedClass(LocalizationValue.class);
-        config.addResource("hibernate/hbm/Sample.hbm.xml");
-        config.addResource("hibernate/hbm/SampleItem.hbm.xml");
+        config.addAnnotatedClass(SampleItem.class);
+        config.addAnnotatedClass(Sample.class);
         config.addResource("hibernate/hbm/TypeOfSample.hbm.xml");
         config.addResource("hibernate/hbm/UnitOfMeasure.hbm.xml");
         config.setProperty("hibernate.dialect", "org.hibernate.dialect.PostgreSQLDialect");

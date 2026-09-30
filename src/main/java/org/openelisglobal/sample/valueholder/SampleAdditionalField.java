@@ -13,10 +13,14 @@ import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
 import java.io.Serializable;
 import java.util.Objects;
+import lombok.Getter;
+import lombok.Setter;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.SampleAdditionalFieldId;
 
+@Setter
+@Getter
 @Entity
 @Table(name = "sample_additional_fields")
 public class SampleAdditionalField extends BaseObject<SampleAdditionalFieldId> {
@@ -48,14 +52,6 @@ public class SampleAdditionalField extends BaseObject<SampleAdditionalFieldId> {
         this.id = id;
     }
 
-    public Sample getSample() {
-        return sample;
-    }
-
-    public void setSample(Sample sample) {
-        this.sample = sample;
-    }
-
     public AdditionalFieldName getFieldName() {
         if (id == null) {
             id = new SampleAdditionalFieldId();
@@ -70,14 +66,8 @@ public class SampleAdditionalField extends BaseObject<SampleAdditionalFieldId> {
         this.id.setFieldName(fieldName);
     }
 
-    public String getFieldValue() {
-        return fieldValue;
-    }
-
-    public void setFieldValue(String fieldValue) {
-        this.fieldValue = fieldValue;
-    }
-
+    @Setter
+    @Getter
     @Embeddable
     public static class SampleAdditionalFieldId implements Serializable {
         private static final long serialVersionUID = -9097137007120585441L;
@@ -88,22 +78,6 @@ public class SampleAdditionalField extends BaseObject<SampleAdditionalFieldId> {
 
         @Convert(converter = StringToIntegerConverter.class)
         private String sampleId;
-
-        public AdditionalFieldName getFieldName() {
-            return fieldName;
-        }
-
-        public void setFieldName(AdditionalFieldName fieldName) {
-            this.fieldName = fieldName;
-        }
-
-        public String getSampleId() {
-            return sampleId;
-        }
-
-        public void setSampleId(String sampleId) {
-            this.sampleId = sampleId;
-        }
 
         public boolean equals(Object o) {
             if (this == o)
