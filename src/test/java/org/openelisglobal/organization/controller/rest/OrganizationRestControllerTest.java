@@ -49,14 +49,22 @@ public class OrganizationRestControllerTest extends BaseWebContextSensitiveTest 
 
     @Before
     public void seedOrganization() throws Exception {
+        jdbc = new JdbcTemplate(dataSource);
         super.setUp();
+        // The controller constructor needs these; other fixtures replace address_part.
+        for (String part : List.of("commune", "village")) {
+            jdbc.update(
+                    "INSERT INTO clinlims.address_part (id, part_name)"
+                            + " SELECT nextval('clinlims.address_part_seq'), ?"
+                            + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.address_part WHERE part_name = ?)",
+                    part, part);
+        }
         // The shared test context does not scan the organization controllers.
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.setMessageInterpolator(new ParameterMessageInterpolator());
         validator.afterPropertiesSet();
         organizationMvc = MockMvcBuilders.standaloneSetup(beanFactory.createBean(OrganizationRestController.class))
                 .setValidator(validator).build();
-        jdbc = new JdbcTemplate(dataSource);
         jdbc.update(
                 "INSERT INTO clinlims.organization (id, name, mls_sentinel_lab_flag, is_active, lastupdated)"
                         + " VALUES (?, 'Seeded lab', 'N', 'Y', ?::timestamp)",
