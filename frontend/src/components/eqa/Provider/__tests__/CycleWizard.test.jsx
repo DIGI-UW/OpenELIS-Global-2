@@ -117,6 +117,15 @@ describe("CycleWizard", () => {
     vi.clearAllMocks();
   });
 
+  test("the name error waits until the field has been left empty", () => {
+    renderWizard();
+    const name = screen.getByLabelText("Cycle name");
+
+    expect(screen.queryByText("A cycle needs a name.")).toBeNull();
+    fireEvent.focusOut(name);
+    expect(screen.getByText("A cycle needs a name.")).toBeInTheDocument();
+  });
+
   test("step 1 holds until the cycle has a name and both its dates", () => {
     renderWizard();
     const nextButton = () => screen.getByRole("button", { name: "Next" });

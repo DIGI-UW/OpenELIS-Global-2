@@ -339,7 +339,7 @@ const MyCyclesPage = () => {
     if (typeFilter !== "all" && c.schemeType !== typeFilter) return false;
     if (
       search &&
-      !`${c.schemeName} ${c.provider} ${c.cycleNumber}`
+      !`${c.schemeName} ${c.provider} ${c.cycleName} ${c.cycleNumber}`
         .toLowerCase()
         .includes(search.toLowerCase())
     ) {
@@ -862,7 +862,7 @@ const MyCyclesPage = () => {
                         {schemeTypeLabel(c.schemeType)}
                       </Tag>
                     </TableCell>
-                    <TableCell>{c.cycleNumber}</TableCell>
+                    <TableCell>{c.cycleName || `#${c.cycleNumber}`}</TableCell>
                     <TableCell>
                       <CycleStatusTag status={c.status} />
                     </TableCell>

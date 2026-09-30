@@ -191,12 +191,16 @@ describe("ProviderWorkbenchPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Open the Shipments tab")).toBeNull();
+    expect(
+      screen.getByText(/Prep must clear the inventory/),
+    ).toBeInTheDocument();
   });
 
   test("a cycle past prep says which state it is in and offers the next step", () => {
     renderWorkbench({ ...PREP_CLEAR, cycleStatus: "SHIPPED" });
 
     expect(readyToShipButton()).toBeDisabled();
+    expect(screen.queryByText(/Prep must clear the inventory/)).toBeNull();
     expect(
       screen.getByText(
         "Cycle state: Shipped. Clearing to ship is only offered while the cycle is in prep.",
@@ -226,6 +230,15 @@ describe("ProviderWorkbenchPage", () => {
   test("ready-to-ship is offered as soon as the server allows it", () => {
     renderWorkbench({ ...PREP_CLEAR, readyToShipAllowed: true });
     expect(readyToShipButton()).toBeEnabled();
+  });
+
+  test("the prep hint goes once the gate is met", () => {
+    renderWorkbench({
+      ...PREP_CLEAR,
+      cycleStatus: "PREP_IN_PROGRESS",
+      readyToShipAllowed: true,
+    });
+    expect(screen.queryByText(/Prep must clear the inventory/)).toBeNull();
   });
 
   test("a refused ready-to-ship shows the server's own reason", async () => {

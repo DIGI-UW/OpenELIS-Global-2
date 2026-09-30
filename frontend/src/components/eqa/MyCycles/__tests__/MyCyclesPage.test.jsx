@@ -79,6 +79,15 @@ describe("MyCyclesPage", () => {
     expect(screen.queryByTestId("cycle-row-4")).not.toBeInTheDocument();
   });
 
+  test("the Cycle column shows the cycle's name", () => {
+    renderPage();
+    const row = screen.getByTestId("cycle-row-1");
+    expect(
+      within(row).getByText("WHO AFRO HIV VL 2026-02"),
+    ).toBeInTheDocument();
+    expect(within(row).queryByText("Cycle 2026-02")).toBeNull();
+  });
+
   test("Receive panel deep-links to Add Order with the cycle in the query string", () => {
     const planned = {
       ...MOCK_CYCLES[0],
