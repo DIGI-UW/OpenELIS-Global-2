@@ -346,7 +346,6 @@ button {
   padding: 0.5%;
 }
 
-/* Text wrapping for select list result values */
 .resultCellText {
   white-space: normal;
   word-wrap: break-word;
