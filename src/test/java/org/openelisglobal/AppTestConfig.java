@@ -415,6 +415,16 @@ public class AppTestConfig implements WebMvcConfigurer {
         return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
     }
 
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsRestController locationsRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsRestController();
+    }
+
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsImportRestController locationsImportRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsImportRestController();
+    }
+
     /**
      * Explicit bean (the testcatalog.controller package is not scanned — a sibling
      * controller's class init breaks the test context) so MockMvc can exercise the
