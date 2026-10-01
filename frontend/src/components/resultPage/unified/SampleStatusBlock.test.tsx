@@ -170,4 +170,38 @@ describe("SampleStatusBlock (R7 / D13)", () => {
     ).toBeInTheDocument();
     expect(onChanged).not.toHaveBeenCalled();
   });
+
+  /**
+   * OGC-1408 — a request that got no answer reaches the callback as status 0,
+   * which a bare `status >= 400` test read as success: the block refreshed as
+   * if the sample had been marked used up.
+   */
+  it("a request that got no answer reports the failure and never refreshes", () => {
+    const onChanged = vi.fn();
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({
+            error: "Failed to fetch",
+            message: "Failed to fetch",
+            status: 0,
+          });
+        }
+      },
+    );
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 3.5 }}
+        editable
+        onChanged={onChanged}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("mark-used-up"));
+    expect(
+      screen.getByText(messages["label.results.sampleStatus.updateFailed"]),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Failed to fetch")).not.toBeInTheDocument();
+    expect(onChanged).not.toHaveBeenCalled();
+  });
 });
