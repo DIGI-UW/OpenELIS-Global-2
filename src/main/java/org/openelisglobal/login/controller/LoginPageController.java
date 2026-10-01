@@ -180,7 +180,13 @@ public class LoginPageController extends BaseController {
             } finally {
                 SystemInitFlag.exit(wasSet);
             }
-            setLabunitRolesForExistingUser(request, session);
+            // NB setLabunitRolesForExistingUser is called INSIDE the block above,
+            // not here. It reaches TestSection.getLocalizedName ->
+            // getUserLocalizedTesSectionName, which this branch gates on
+            // result:view; outside system context that denied /session itself for
+            // every role without it (Reception), and the frontend retried in a
+            // loop. The merge had left a second, unguarded call at this line.
+            //
             // qa.* permission keys derive from the same role names on every
             // login path — setLabunitRolesForExistingUser populates roles for
             // form, SAML, and OAuth logins before this line.

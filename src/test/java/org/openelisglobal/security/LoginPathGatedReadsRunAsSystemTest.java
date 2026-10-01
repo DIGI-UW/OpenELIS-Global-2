@@ -117,6 +117,33 @@ public class LoginPathGatedReadsRunAsSystemTest {
         return ranges;
     }
 
+    /**
+     * Every call that assembles the session view must sit inside the system block,
+     * not after it.
+     *
+     * <p>
+     * The merge left a SECOND, unguarded {@code setLabunitRolesForExistingUser}
+     * call just past the {@code SystemInitFlag.exit}. That method reaches
+     * {@code TestSection.getLocalizedName()} ->
+     * {@code getUserLocalizedTesSectionName}, which this branch gates on
+     * result:view. Reception does not hold it, so {@code /session} itself returned
+     * 403 and the frontend retried it in a loop - the endpoint that tells the UI
+     * what the user may see, failing for the users the filter exists for.
+     */
+    @Test
+    public void sessionAssemblyCallsAreNotDuplicatedOutsideSystemContext() throws IOException {
+        String src = Files.readString(Paths.get(LOGIN_PATH_METHODS[1][0]));
+        String body = bodyOf(src, LOGIN_PATH_METHODS[1][1]);
+        int calls = body.split("setLabunitRolesForExistingUser\\(request, session\\)", -1).length - 1;
+        assertTrue("setLabunitRolesForExistingUser must be called exactly once, inside the system block;" + " found "
+                + calls + " call(s)", calls == 1);
+        List<int[]> safe = systemContextRanges(body);
+        int at = body.indexOf("setLabunitRolesForExistingUser(request, session)");
+        final int pos = at;
+        assertTrue("the surviving setLabunitRolesForExistingUser call must be inside SystemInitFlag/SystemContext",
+                at >= 0 && safe.stream().anyMatch(r -> pos > r[0] && pos < r[1]));
+    }
+
     @Test
     public void gatedReadsOnTheLoginPathRunInSystemContext() throws IOException {
         List<String> unwrapped = new ArrayList<>();
