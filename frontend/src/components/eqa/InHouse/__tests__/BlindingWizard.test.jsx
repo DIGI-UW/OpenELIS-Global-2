@@ -103,6 +103,7 @@ describe("BlindingWizard", () => {
     fireEvent.change(container.querySelector("#test-S01"), {
       target: { value: "56" },
     });
+    expect(container.querySelector("#test-S01")).toHaveValue("56");
 
     fireEvent.click(screen.getByRole("button", { name: "Back" }));
     pickScheme("4");
@@ -140,7 +141,7 @@ describe("BlindingWizard", () => {
 
     expect(offeredTests(container)).toEqual([]);
     expect(
-      screen.getByText(/This scheme has no tests assigned/),
+      screen.getByText(/This scheme has no tests a panel can use/),
     ).toBeInTheDocument();
   });
 });

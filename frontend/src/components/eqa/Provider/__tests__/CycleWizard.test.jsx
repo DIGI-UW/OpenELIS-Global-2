@@ -174,7 +174,7 @@ describe("CycleWizard", () => {
     expect(screen.queryByText("Malaria RDT")).not.toBeInTheDocument();
     expect(screen.queryByText("CD4 count")).not.toBeInTheDocument();
     expect(
-      screen.queryByText(/This scheme has no tests assigned/),
+      screen.queryByText(/This scheme has no tests a panel can use/),
     ).not.toBeInTheDocument();
   });
 
@@ -186,7 +186,7 @@ describe("CycleWizard", () => {
     expect(screen.queryByText("HIV Viral Load")).not.toBeInTheDocument();
     expect(screen.queryByText("Malaria RDT")).not.toBeInTheDocument();
     expect(
-      screen.getByText(/This scheme has no tests assigned/),
+      screen.getByText(/This scheme has no tests a panel can use/),
     ).toBeInTheDocument();
   });
 

@@ -114,9 +114,9 @@ const BlindingWizard = () => {
   }, []);
 
   useEffect(() => {
+    setRoster([]);
+    setTests([]);
     if (!cycle.schemeId) {
-      setRoster([]);
-      setTests([]);
       return;
     }
     let current = true;
@@ -462,8 +462,7 @@ const BlindingWizard = () => {
                 hideCloseButton
                 title={intl.formatMessage({
                   id: "eqa.wizard.noSchemeTests",
-                  defaultMessage:
-                    "This scheme has no tests assigned. Assign tests to the scheme before building its panel.",
+                  defaultMessage: "This scheme has no tests a panel can use.",
                 })}
               />
             )}

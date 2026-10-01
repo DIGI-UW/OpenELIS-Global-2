@@ -35,8 +35,6 @@ import {
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { calendarOnlyInput, hintStyle } from "../eqaCommon";
 import { createProviderCycle } from "./Workbench/workbenchApi";
-// The same test list the in-house wizard picks from: the scheme's tests that
-// carry an analyte, since a panel target is stored against one.
 import { asList, fetchTests } from "../eqaApi";
 
 /** Panel vocabularies, as the server spells them. */
@@ -447,7 +445,7 @@ const CycleWizard = () => {
                   hideCloseButton
                   title={t(
                     "eqa.wizard.noSchemeTests",
-                    "This scheme has no tests assigned. Assign tests to the scheme before building its panel.",
+                    "This scheme has no tests a panel can use.",
                   )}
                 />
               )}
