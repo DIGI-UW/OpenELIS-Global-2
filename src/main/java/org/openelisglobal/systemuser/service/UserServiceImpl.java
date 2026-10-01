@@ -13,6 +13,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.ObjectUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
@@ -67,6 +69,8 @@ public class UserServiceImpl implements UserService {
     private SystemUserService systemUserService;
     @Autowired
     private RoleService roleService;
+    @Autowired
+    private AnalysisService analysisService;
     @Autowired
     private TypeOfSampleService typeOfSampleService;
     @Autowired
@@ -179,6 +183,52 @@ public class UserServiceImpl implements UserService {
         if (deletedUserRoles.size() > 0) {
             userRoleService.deleteAll(deletedUserRoles);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<IdValuePair> getUserViewerTestSections(String systemUserId, String roleId) {
+        // Start from the authorized active set, so this can only ever add units
+        // the user is already entitled to see — never widen authorization.
+        List<IdValuePair> active = getUserTestSections(systemUserId, roleId);
+        // "hasContent" counts EVERY analysis, not just in-flight ones. Counting
+        // only pending work meant a finalized result in a deactivated unit
+        // vanished from the results pages and from reporting the instant it was
+        // entered — the guardrail covers viewing historical data too, not only
+        // completing pending work.
+        Set<String> pendingSectionIds = analysisService.getTestSectionIdsWithAnyAnalyses();
+        if (pendingSectionIds.isEmpty()) {
+            return active;
+        }
+        Set<String> alreadyListed = active.stream().map(IdValuePair::getId).collect(Collectors.toSet());
+
+        // Which inactive units may this user see? Re-derive from their lab-unit
+        // roles rather than trusting the caller: an admin (or ALL_LAB_UNITS)
+        // sees every one, anyone else only their assigned units.
+        String adminRoleId = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId();
+        boolean isAdmin = userRoleService.getRoleIdsForUser(systemUserId).contains(adminRoleId);
+        List<String> userLabUnits = new ArrayList<>();
+        UserLabUnitRoles userLabRoles = getUserLabUnitRoles(systemUserId);
+        if (userLabRoles != null) {
+            userLabRoles.getLabUnitRoleMap().forEach(roles -> {
+                if (roleId == null || roles.getRoles().contains(roleId)) {
+                    userLabUnits.add(roles.getLabUnit());
+                }
+            });
+        }
+        boolean allLabUnits = isAdmin || userLabUnits.contains(UnifiedSystemUserController.ALL_LAB_UNITS);
+
+        List<IdValuePair> result = new ArrayList<>(active);
+        for (IdValuePair inactive : DisplayListService.getInstance().getList(ListType.TEST_SECTION_INACTIVE)) {
+            // Only inactive units that still hold in-flight work come back, so
+            // an emptied-then-deactivated unit disappears immediately while one
+            // switched off mid-run stays reachable until that run finishes.
+            if (!alreadyListed.contains(inactive.getId()) && pendingSectionIds.contains(inactive.getId())
+                    && (allLabUnits || userLabUnits.contains(inactive.getId()))) {
+                result.add(inactive);
+            }
+        }
+        return result;
     }
 
     @Override
@@ -372,14 +422,53 @@ public class UserServiceImpl implements UserService {
         return userSampleTypes;
     }
 
+    /**
+     * OGC-189: whether the analysis behind a result row belongs to one of
+     * {@code allowedUnitIds}, judged by the analysis's OWN lab unit.
+     *
+     * <p>
+     * The row's test may be configured for a different unit than the analysis was
+     * filed under — a reflexed analysis inherits the parent's unit — so matching
+     * via the test hid reflexed work that was sitting in a perfectly active unit.
+     * Falls back to the test's configured unit when the analysis cannot be
+     * resolved, so a row is never dropped for lack of information.
+     */
+    private boolean analysisIsInAllowedUnit(String analysisId, String testId, Set<String> allowedUnitIds) {
+        if (!GenericValidator.isBlankOrNull(analysisId)) {
+            try {
+                Analysis analysis = analysisService.get(analysisId);
+                if (analysis != null && analysis.getTestSection() != null
+                        && analysis.getTestSection().getId() != null) {
+                    return allowedUnitIds.contains(analysis.getTestSection().getId());
+                }
+            } catch (RuntimeException e) {
+                // Unresolvable id — fall through to the test's configured unit.
+            }
+        }
+        if (GenericValidator.isBlankOrNull(testId)) {
+            return true;
+        }
+        Test test = testService.getTestById(testId);
+        if (test == null || test.getTestSection() == null || test.getTestSection().getId() == null) {
+            return true;
+        }
+        return allowedUnitIds.contains(test.getTestSection().getId());
+    }
+
     @Override
     public List<TestResultItem> filterResultsByLabUnitRoles(String systemUserId, List<TestResultItem> results,
             String roleName) {
-        Set<String> allTestsIds = getTestIdsInUserLabUnits(systemUserId, roleName);
-        List<TestResultItem> allowed = results.stream().filter(result -> allTestsIds.contains(result.getTestId()))
+        // OGC-189 (M2): viewer semantics — this filters results the lab has
+        // already started, across 21 call sites (workplan, logbook results,
+        // status results, patient results, accession lookup, patient reports).
+        // With the active-only set, deactivating a lab unit made every pending
+        // result in it vanish from all of them and become uncompletable.
+        Set<String> allowedUnitIds = getViewerLabUnitIds(systemUserId, roleName);
+        List<TestResultItem> allowed = results.stream()
+                .filter(r -> analysisIsInAllowedUnit(r.getAnalysisId(), r.getTestId(), allowedUnitIds))
                 .collect(Collectors.toList());
         org.openelisglobal.common.log.LogEvent.logInfo(this.getClass().getSimpleName(), "filterResultsByLabUnitRoles",
-                "User " + systemUserId + " may work on " + allTestsIds.size() + " tests; kept " + allowed.size()
+                "User " + systemUserId + " may view " + allowedUnitIds.size() + " lab units; kept " + allowed.size()
                         + " of " + results.size() + " results");
         return allowed;
     }
@@ -396,15 +485,39 @@ public class UserServiceImpl implements UserService {
     @Override
     public List<AnalysisItem> filterAnalysisResultsByLabUnitRoles(String SystemUserId, List<AnalysisItem> results,
             String roleName) {
-        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
-        return results.stream().filter(result -> allTestsIds.contains(result.getTestId())).collect(Collectors.toList());
+        // OGC-189 (M2): a VIEWER over work that already exists, so it must use
+        // the isActive-OR-hasContent set. getUserTestSections returns active
+        // units only, which silently dropped every pending analysis whose lab
+        // unit had since been switched off — the dashboard counted the work but
+        // the page came back empty, and it could no longer be completed.
+        Set<String> allowedUnitIds = getViewerLabUnitIds(SystemUserId, roleName);
+        // Same as the TestResultItem variant: judge by the analysis's own unit.
+        return results.stream().filter(r -> analysisIsInAllowedUnit(r.getAnalysisId(), r.getTestId(), allowedUnitIds))
+                .collect(Collectors.toList());
     }
 
     @Override
     public List<Analysis> filterAnalysesByLabUnitRoles(String SystemUserId, List<Analysis> results, String roleName) {
-        Set<String> allTestsIds = getTestIdsInUserLabUnits(SystemUserId, roleName);
-        return results.stream().filter(result -> allTestsIds.contains(result.getTest().getId()))
-                .collect(Collectors.toList());
+        // OGC-189 (M2): viewer semantics — see the note on
+        // filterAnalysisResultsByLabUnitRoles above. Completion of existing
+        // work is never gated on the lab unit's status.
+        Set<String> allowedUnitIds = getViewerLabUnitIds(SystemUserId, roleName);
+        // OGC-189: judge each analysis by ITS OWN lab unit, not by the unit its
+        // test is configured for. A reflexed analysis is filed under the parent's
+        // unit, so the two differ: matching via the test made a reflexed analysis
+        // sitting in an active unit invisible because its test is configured
+        // elsewhere (a deactivated unit).
+        return results.stream().filter(analysis -> {
+            TestSection section = analysis.getTestSection();
+            // No section recorded: fall back to the test's configured unit
+            // rather than dropping the row.
+            if (section == null || section.getId() == null) {
+                Test test = analysis.getTest();
+                return test == null || test.getTestSection() == null
+                        || allowedUnitIds.contains(test.getTestSection().getId());
+            }
+            return allowedUnitIds.contains(section.getId());
+        }).collect(Collectors.toList());
     }
 
     /**
@@ -442,7 +555,12 @@ public class UserServiceImpl implements UserService {
             return cached;
         }
         String roleId = roleService.getRoleByName(roleName).getId();
-        List<IdValuePair> testSections = getUserTestSections(systemUserId, roleId);
+        // OGC-189 (M2): viewer semantics here too. Every caller of this set is
+        // looking at work that already exists (patient reports, the result tree,
+        // the batch workplan, incoming orders, the test filters on Results and
+        // Workplan), so a unit switched off with work still in it keeps
+        // contributing its tests until that work is done.
+        List<IdValuePair> testSections = getUserViewerTestSections(systemUserId, roleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
             testSections.forEach(testSection -> testUnitIds.add(testSection.getId()));
@@ -450,6 +568,29 @@ public class UserServiceImpl implements UserService {
         Set<String> testIds = testIdsInSections(testUnitIds);
         cacheTestIdsInRequest(cacheKey, testIds);
         return testIds;
+    }
+
+    /**
+     * The lab units a viewer may see in a role — active, or still holding analyses
+     * — read once per request. The filters above judge every row by its own unit
+     * against this set, so a page that filters several lists in one request reads
+     * the user's sections once.
+     */
+    private Set<String> getViewerLabUnitIds(String systemUserId, String roleName) {
+        String cacheKey = "userViewerLabUnitIds:" + systemUserId + ":" + roleName;
+        Set<String> cached = testIdsCachedInRequest(cacheKey);
+        if (cached != null) {
+            return cached;
+        }
+        String roleId = roleService.getRoleByName(roleName).getId();
+        Set<String> unitIds = new LinkedHashSet<>();
+        List<IdValuePair> testSections = getUserViewerTestSections(systemUserId, roleId);
+        if (testSections != null) {
+            testSections.forEach(testSection -> unitIds.add(testSection.getId()));
+        }
+        Set<String> shared = Collections.unmodifiableSet(unitIds);
+        cacheTestIdsInRequest(cacheKey, shared);
+        return shared;
     }
 
     /**

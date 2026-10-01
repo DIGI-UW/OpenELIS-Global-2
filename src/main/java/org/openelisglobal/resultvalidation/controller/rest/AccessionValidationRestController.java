@@ -24,6 +24,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -187,7 +188,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
             // load testSections for drop down
             String resultsRoleId = roleService.getRoleByName(Constants.ROLE_VALIDATION).getId();
-            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
+            List<IdValuePair> testSections = userService.getUserViewerTestSections(getSysUserId(request),
+                    resultsRoleId);
             form.setTestSections(testSections);
             form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
 
@@ -254,9 +256,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                                             : (StringUtils.trimToEmpty(itemPatient.getPerson().getLastName()) + " "
                                                     + StringUtils.trimToEmpty(itemPatient.getPerson().getFirstName()))
                                                     .trim());
-            analysisItem.setPatientInfo(StringUtils.trimToEmpty(itemPatient.getNationalId()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getGender()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getBirthDateForDisplay()));
+            analysisItem.setPatientInfo(StringUtil.joinNonBlank(", ", itemPatient.getNationalId(),
+                    itemPatient.getGender(), itemPatient.getBirthDateForDisplay()));
         }
 
         // Surface failed QC samples for the batch so the frontend can render the
@@ -1123,7 +1124,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     /**
      * OGC-1030 (FR-A4) — the accession's auto-validated results: released at result
-     * entry with no validator signature. Read-only, never part of the queue.
+     * entry, never by a validator. Read-only, never part of the queue.
      */
     @GetMapping(value = "AccessionValidation/auto-validated", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody

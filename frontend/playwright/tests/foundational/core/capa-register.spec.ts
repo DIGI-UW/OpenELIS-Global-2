@@ -2,6 +2,7 @@ import { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
 import { withAuthedPage } from "../../../helpers/api-session";
 import { seedCapa } from "../../../helpers/seed-capa-data";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 
 /**
  * CAPA Register (OGC-707) — cross-NCE corrective/preventive action view at
@@ -72,8 +73,10 @@ async function tileValue(page: Page, title: string): Promise<number> {
 }
 
 async function selectStatus(page: Page, label: string): Promise<void> {
-  await page.getByRole("combobox", { name: "Status" }).click();
-  await page.getByRole("option", { name: label, exact: true }).click();
+  await chooseCarbonOption(
+    page.getByRole("combobox", { name: "Status" }),
+    label,
+  );
 }
 
 test.describe("CAPA Register (OGC-707)", () => {

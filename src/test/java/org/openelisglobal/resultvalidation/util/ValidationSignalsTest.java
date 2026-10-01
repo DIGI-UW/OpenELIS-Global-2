@@ -12,6 +12,7 @@ import org.junit.Test;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
@@ -113,6 +114,43 @@ public class ValidationSignalsTest {
         result.setResultType("N");
         result.setValue(value);
         return result;
+    }
+
+    private static Result dictionary(String value) {
+        Result result = new Result();
+        result.setResultType("D");
+        result.setValue(value);
+        return result;
+    }
+
+    // OGC-1266: validation judged a component's answer against the test-level
+    // range, so "SARS-CoV-2 RNA NOT DETECTED" (the component's normal answer)
+    // showed Abnormal.
+    @Test
+    public void isNormalResult_aSelectListAnswerIsNormalWhenItIsTheRangesNormalChoice() {
+        ResultLimit componentRange = new ResultLimit();
+        componentRange.setDictionaryNormalId("1334");
+
+        assertTrue(ValidationSignals.isNormalResult(componentRange, dictionary("1334")));
+        assertFalse(ValidationSignals.isNormalResult(componentRange, dictionary("1335")));
+        assertFalse(ValidationSignals.isNormalResult(new ResultLimit(), dictionary("1334")));
+    }
+
+    @Test
+    public void isNormalResult_aNumberIsNormalInsideTheBoundsInclusive() {
+        ResultLimit range = authoredLimit();
+
+        assertTrue(ValidationSignals.isNormalResult(range, numeric("5")));
+        assertTrue(ValidationSignals.isNormalResult(range, numeric("100")));
+        assertFalse(ValidationSignals.isNormalResult(range, numeric("4.99")));
+        assertFalse(ValidationSignals.isNormalResult(range, numeric("100.1")));
+    }
+
+    @Test
+    public void isNormalResult_falseWithoutARangeOrAValue() {
+        assertFalse(ValidationSignals.isNormalResult(null, numeric("5")));
+        assertFalse(ValidationSignals.isNormalResult(authoredLimit(), null));
+        assertFalse(ValidationSignals.isNormalResult(authoredLimit(), numeric("")));
     }
 
     @Test
@@ -242,6 +280,27 @@ public class ValidationSignalsTest {
         assertEquals("", ValidationSignals.enteredBy(Collections.emptyList()));
         assertEquals("", ValidationSignals.enteredBy(Collections.singletonList(signature("Supervisor", true))));
         assertEquals("", ValidationSignals.enteredBy(Collections.singletonList(signature("", false))));
+    }
+
+    private static History history(String activity, String sysUserId) {
+        History entry = new History();
+        entry.setActivity(activity);
+        entry.setSysUserId(sysUserId);
+        return entry;
+    }
+
+    @Test
+    public void lastWriterId_isTheNewestInsertOrUpdate() {
+        assertEquals("7",
+                ValidationSignals.lastWriterId(Arrays.asList(history("D", "9"), history("U", "7"), history("I", "1"))));
+        assertEquals("1", ValidationSignals.lastWriterId(Collections.singletonList(history("I", "1"))));
+    }
+
+    @Test
+    public void lastWriterId_nullWithoutAWrite() {
+        assertNull(ValidationSignals.lastWriterId(null));
+        assertNull(ValidationSignals.lastWriterId(Collections.emptyList()));
+        assertNull(ValidationSignals.lastWriterId(Arrays.asList(history("D", "9"), history("U", ""))));
     }
 
     // ---- Clear lane, server-side (OGC-1029 FR-B1, OGC-1226 FR-1 to FR-4) ------

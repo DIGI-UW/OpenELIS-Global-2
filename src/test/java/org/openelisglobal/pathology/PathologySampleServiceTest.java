@@ -105,7 +105,7 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
     @Test
     public void updateWithFormValues_shouldUpdatePathologySampleWithFormValues() {
         PathologySampleForm pathologySampleForm = new PathologySampleForm();
-        pathologySampleForm.setSystemUserId("2");
+        pathologySampleForm.setSystemUserId("1001");
 
         PathologyBlock block1 = new PathologyBlock();
         block1.setBlockNumber(12);
@@ -124,8 +124,19 @@ public class PathologySampleServiceTest extends BaseWebContextSensitiveTest {
         pathologySampleForm.setReports(Collections.singletonList(new PathologySampleForm.PathologyReportForm()));
         pathologySampleService.updateWithFormValues(2, pathologySampleForm);
 
-        Assert.assertEquals(Integer.parseInt("2"), pathologySampleForm.getBlocks().size());
-        Assert.assertEquals("2", pathologySampleForm.getSystemUserId());
+        PathologySample saved = pathologySampleService.get(2);
+        Assert.assertEquals(2, saved.getBlocks().size());
+        Assert.assertEquals("the server names the cassettes it stores, whatever number the form carried",
+                List.of("A1", "A2"), saved.getBlocks().stream().map(PathologyBlock::getDesignation).sorted().toList());
+        Assert.assertTrue("the number typed on the form is not stored; the designation is the identity",
+                saved.getBlocks().stream().allMatch(block -> block.getBlockNumber() == null));
+        Assert.assertEquals(
+                "no slide was posted, so none exists; a slide under a block is covered by"
+                        + " PathologySampleSaveIdentityTest",
+                Integer.valueOf(0), jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM clinlims.pathology_slide WHERE pathology_sample_id = 2", Integer.class));
+        Assert.assertEquals(Integer.valueOf(1), jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.pathology_report WHERE pathology_sample_id = 2", Integer.class));
     }
 
 }

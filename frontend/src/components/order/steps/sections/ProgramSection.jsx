@@ -14,6 +14,7 @@ import {
   Modal,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import { filterByTypedLabel } from "../../comboFilter";
 import Questionnaire from "../../../common/Questionnaire";
 import VectorFieldSurveyPanel from "./VectorFieldSurveyPanel";
 import MicrobiologyOrderEntrySection from "../../../microbiology/MicrobiologyOrderEntrySection";
@@ -667,6 +668,7 @@ const ProgramSection = ({
             })}
             items={programs}
             itemToString={(item) => (item ? item.value : "")}
+            shouldFilterItem={filterByTypedLabel(selectedProgram?.value)}
             selectedItem={selectedProgram}
             onChange={handleProgramChange}
             placeholder={intl.formatMessage({

@@ -11,6 +11,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { rangeNotAppliedKey } from "../../common/rangeNotApplied";
 import PolymorphicResultCell, {
   ResultCellRow,
   worklistRowKey,
@@ -75,6 +76,7 @@ export interface PanelRow extends ResultCellRow {
   patientInfo?: string;
   sampleType?: string;
   normalRange?: string;
+  rangeNotAppliedReason?: string | null;
   testDate?: string;
   receivedDate?: string;
   technician?: string;
@@ -313,6 +315,14 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
               <FlagChip flag={flag} />
             </div>
+            {rangeNotAppliedKey(row) && (
+              <div
+                className="unifiedWorkZoneRange"
+                data-testid="range-not-applied"
+              >
+                <FormattedMessage id={rangeNotAppliedKey(row) as string} />
+              </div>
+            )}
             {row.normalRange && (
               <div className="unifiedWorkZoneRange">
                 {formatDomainMessage(intl, "label.results.range", domain)}:{" "}

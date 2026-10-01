@@ -389,7 +389,8 @@ public class ResultUtil {
                 testResultItem.setResultValue("");
                 testResultItem.setShadowResultValue("");
                 String rejectedReasonId = testResultItem.getRejectReasonId();
-                for (IdValuePair rejectReason : DisplayListService.getInstance().getList(ListType.REJECTION_REASONS)) {
+                for (IdValuePair rejectReason : SpringContext.getBean(DisplayListService.class)
+                        .getList(ListType.REJECTION_REASONS)) {
                     if (rejectedReasonId.equals(rejectReason.getId())) {
                         actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                                 NoteType.REJECTION_REASON, rejectReason.getValue(), RESULT_SUBJECT,
@@ -651,11 +652,26 @@ public class ResultUtil {
             if (resultLimit != null && resultLimit.isAlwaysValidate()) {
                 return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
             }
-            if (!clearAtEntry(testResult, analysis, resultLimit)) {
+            if (rangeNotApplied(testResult, analysis) || !clearAtEntry(testResult, analysis, resultLimit)) {
                 return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
             }
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         }
+    }
+
+    /**
+     * The patient's missing sex or birth date kept a range that depends on it from
+     * applying. Decided here from the stored patient, not from the page's range, so
+     * such a result always waits for a validator.
+     */
+    private static boolean rangeNotApplied(TestResultItem testResult, Analysis analysis) {
+        if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return false;
+        }
+        Patient patient = SpringContext.getBean(SampleService.class).getPatient(analysis.getSampleItem().getSample());
+        String componentId = GenericValidator.isBlankOrNull(testResult.getTestResultComponentId()) ? null
+                : testResult.getTestResultComponentId();
+        return resultLimitService.selectResultLimitForResult(analysis, null, patient, componentId).isRangeNotApplied();
     }
 
     /**

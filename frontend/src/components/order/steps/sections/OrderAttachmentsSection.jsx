@@ -14,6 +14,7 @@ import {
   postToOpenElisServerFormData,
 } from "../../../utils/Utils";
 import config from "../../../../config.json";
+import { useOrderContext } from "../../OrderContext";
 
 const MAX_FILES = 5;
 const MAX_SIZE_BYTES = 10 * 1024 * 1024;
@@ -31,10 +32,13 @@ const formatFileSize = (bytes) => {
  *
  * The capability existed on the legacy screen and its REST API is unchanged;
  * only the new lanes had no way in. Attachments are keyed by accession number,
- * so the section appears once the order has a lab number.
+ * so the section appears once the order has a lab number, and files can be
+ * listed and added once the order has been saved under that number.
  */
 const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
   const intl = useIntl();
+  const { orderId } = useOrderContext();
+  const isSaved = Boolean(orderId);
   const componentMounted = useRef(true);
   const [attachments, setAttachments] = useState([]);
   const [error, setError] = useState(null);
@@ -47,7 +51,8 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
   }, []);
 
   const load = useCallback(() => {
-    if (!labNumber) {
+    if (!labNumber || !isSaved) {
+      setAttachments([]);
       return;
     }
     getFromOpenElisServer(
@@ -58,7 +63,7 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
         }
       },
     );
-  }, [labNumber]);
+  }, [labNumber, isSaved]);
 
   useEffect(() => {
     load();
@@ -93,7 +98,7 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
 
   const handleAdd = (addedFiles) => {
     setError(null);
-    if (!addedFiles || addedFiles.length === 0 || !labNumber) {
+    if (!addedFiles || addedFiles.length === 0 || !labNumber || !isSaved) {
       return;
     }
     const problem = reject(addedFiles);
@@ -154,7 +159,16 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
         />
       )}
 
-      {!isReadOnly && (
+      {!isSaved && (
+        <p className="helper-text" data-testid="order-attachment-save-first">
+          <FormattedMessage
+            id="order.attachment.saveFirst"
+            defaultMessage="Save the order to add attachments."
+          />
+        </p>
+      )}
+
+      {isSaved && !isReadOnly && (
         <FileUploaderDropContainer
           accept={ALLOWED_EXTENSIONS}
           multiple
@@ -164,7 +178,7 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
         />
       )}
 
-      {attachments.length === 0 && (
+      {isSaved && attachments.length === 0 && (
         <p className="helper-text">
           <FormattedMessage
             id="order.attachment.empty"
@@ -186,7 +200,7 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
               {attachment.fileName}
             </Link>
             <span className="order-attachment-size">
-              {formatFileSize(attachment.fileSize)}
+              {formatFileSize(attachment.fileSizeBytes)}
             </span>
             <Button
               kind="ghost"
@@ -200,7 +214,7 @@ const OrderAttachmentsSection = ({ labNumber, isReadOnly }) => {
             </Button>
             {!isReadOnly && (
               <Button
-                kind="danger--ghost"
+                kind="ghost"
                 size="sm"
                 hasIconOnly
                 renderIcon={TrashCan}

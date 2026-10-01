@@ -57,7 +57,7 @@ public class SiteBrandingServiceImpl extends BaseObjectServiceImpl<SiteBranding,
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public SiteBranding getBranding() {
         try {
             SiteBranding branding = siteBrandingDAO.getBranding();

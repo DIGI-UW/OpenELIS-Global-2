@@ -30,16 +30,10 @@
                 AND t.source_row_key = 'upgrade-test' AND t.mapping_state = 'BOUND'
                 AND t.test_id = (SELECT MIN(id) FROM test)
             </sqlCheck>
-            <not>
-                <tableExists tableName="analyzer_test_map" />
-            </not>
-            <not>
-                <tableExists tableName="analyzer_plugin_config" />
-            </not>
-            <not>
-                <columnExists tableName="analyzer"
-                    columnName="machine_id" />
-            </not>
+            <tableExists tableName="analyzer_test_map" />
+            <tableExists tableName="analyzer_plugin_config" />
+            <columnExists tableName="analyzer"
+                columnName="machine_id" />
         </preConditions>
         <sql>SELECT 1;</sql>
     </changeSet>

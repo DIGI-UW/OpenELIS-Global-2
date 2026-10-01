@@ -3,7 +3,10 @@ package org.openelisglobal.eqa.service;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.eqa.dao.EQAResultDAO;
 import org.openelisglobal.eqa.valueholder.EQAPerformanceStatus;
@@ -25,24 +28,39 @@ public class EQAStatisticsServiceImpl implements EQAStatisticsService {
     @Autowired
     private EQAResultDAO eqaResultDAO;
 
+    /**
+     * Peer statistics are per test: a cycle's panel carries several analytes, and
+     * pooling a viral load with a CD4 count would score every participant against a
+     * mean that describes nothing. Where a result answers a panel sample, the peers
+     * are the results for that sample: a low and a high level of one test are two
+     * populations. A group with fewer numeric results than the floor keeps its Z
+     * and verdict blank; qualitative results (result_text) are judged elsewhere,
+     * against the panel target.
+     */
     @Override
     public void calculateAndUpdateStatistics(Long distributionId) {
-        List<EQAResult> results = eqaResultDAO.findByDistributionId(distributionId);
-
-        List<BigDecimal> values = results.stream().map(EQAResult::getResultValue).filter(v -> v != null)
-                .collect(Collectors.toList());
-
-        if (values.size() < MIN_PARTICIPANTS_FOR_STATS) {
-            logger.info("Distribution {} has only {} results, minimum {} required for statistics", distributionId,
-                    values.size(), MIN_PARTICIPANTS_FOR_STATS);
-            return;
+        Map<String, List<EQAResult>> byTest = new LinkedHashMap<>();
+        for (EQAResult result : eqaResultDAO.findByDistributionId(distributionId)) {
+            if (result.getResultValue() != null) {
+                String key = result.getPanelSampleId() != null ? "panel sample " + result.getPanelSampleId()
+                        : "test " + result.getTestId();
+                byTest.computeIfAbsent(key, k -> new ArrayList<>()).add(result);
+            }
         }
 
-        BigDecimal mean = calculateMean(values);
-        BigDecimal sd = calculateStandardDeviation(values, mean);
+        for (Map.Entry<String, List<EQAResult>> group : byTest.entrySet()) {
+            List<BigDecimal> values = group.getValue().stream().map(EQAResult::getResultValue)
+                    .collect(Collectors.toList());
+            if (values.size() < MIN_PARTICIPANTS_FOR_STATS) {
+                logger.info("Distribution {} {} has only {} numeric results, minimum {} required for statistics",
+                        distributionId, group.getKey(), values.size(), MIN_PARTICIPANTS_FOR_STATS);
+                continue;
+            }
 
-        for (EQAResult result : results) {
-            if (result.getResultValue() != null) {
+            BigDecimal mean = calculateMean(values);
+            BigDecimal sd = calculateStandardDeviation(values, mean);
+
+            for (EQAResult result : group.getValue()) {
                 BigDecimal zScore = calculateZScore(result.getResultValue(), mean, sd);
                 result.setZScore(zScore);
                 result.setPerformanceStatus(classifyPerformance(zScore));

@@ -442,11 +442,13 @@ async function findCaseId(
   await expect
     .poll(
       async () => {
-        const entries = await apiGet<DashboardEntry[]>(
+        // The dashboard answers a page, `{ items, paging, totalItems }`, the
+        // shape PathologyDashboard.jsx reads.
+        const response = await apiGet<{ items?: DashboardEntry[] }>(
           page,
           `${API_PREFIX}/rest/pathology/dashboard?statuses=ACCESSIONED&searchTerm=${encodeURIComponent(accessionNumber)}`,
         );
-        const entry = entries.find(
+        const entry = (response?.items ?? []).find(
           (item) => item.labNumber === accessionNumber,
         );
         if (entry?.pathologySampleId != null) {

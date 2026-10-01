@@ -25,6 +25,9 @@ import { useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   getAnalyzerDeliveryIssues,
+  getAnalyzerUpgrade,
+  retryAnalyzerUpgrade,
+  type AnalyzerUpgradeOutcome,
   getAnalyzers,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -63,6 +66,19 @@ interface AnalyzerTableRow {
 
 const profileRevisionKey = (profileId: string, revision: number) =>
   `${profileId}@${revision}`;
+
+const upgradeReasonKeys = new Set([
+  "analyzer.upgrade.reason.serialSettings",
+  "analyzer.upgrade.reason.invalidConfiguration",
+  "analyzer.upgrade.reason.fileColumnsMismatch",
+  "analyzer.upgrade.reason.invalidFileColumns",
+  "analyzer.upgrade.reason.componentMapping",
+  "analyzer.upgrade.reason.sharedMapping",
+  "analyzer.upgrade.reason.profileMismatch",
+  "analyzer.upgrade.reason.selectProfile",
+  "analyzer.upgrade.reason.fileFormatMismatch",
+  "analyzer.upgrade.reason.bridgeConnection",
+]);
 
 const hasHeldResults = (analyzer: Analyzer) =>
   Number(analyzer.heldResultCount || 0) > 0;
@@ -103,6 +119,25 @@ const AnalyzersList = () => {
   > | null>(null);
   const [labUnitNames, setLabUnitNames] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [upgradePending, setUpgradePending] = useState<
+    AnalyzerUpgradeOutcome[]
+  >([]);
+  const [upgrading, setUpgrading] = useState(false);
+  useEffect(() => {
+    getAnalyzerUpgrade((rows) =>
+      setUpgradePending(Array.isArray(rows) ? rows : []),
+    );
+  }, []);
+  const retryUpgrade = () => {
+    setUpgrading(true);
+    retryAnalyzerUpgrade(() => {
+      getAnalyzerUpgrade((rows) =>
+        setUpgradePending(Array.isArray(rows) ? rows : []),
+      );
+      getAnalyzers({}, (data) => setAnalyzers(data?.analyzers || []));
+      setUpgrading(false);
+    });
+  };
   const [searchTerm, setSearchTerm] = useState("");
   const [filters, setFilters] = useState<AnalyzerFilters>({
     status: "",
@@ -343,14 +378,15 @@ const AnalyzersList = () => {
     }
 
     searchTimeoutRef.current = setTimeout(() => {
-      const params = new URLSearchParams(location.search);
+      const currentLocation = history.location;
+      const params = new URLSearchParams(currentLocation.search);
       if (value.trim()) {
         params.set("search", value.trim());
       } else {
         params.delete("search");
       }
       history.replace({
-        pathname: location.pathname,
+        pathname: currentLocation.pathname,
         search: params.toString(),
       });
     }, 300);
@@ -473,6 +509,32 @@ const AnalyzersList = () => {
           {intl.formatMessage({ id: "analyzer.action.add" })}
         </Button>
       </div>
+
+      {upgradePending.length > 0 && (
+        <Callout
+          kind="warning"
+          lowContrast
+          title={intl.formatMessage(
+            { id: "analyzer.upgrade.pending" },
+            { count: upgradePending.length },
+          )}
+          subtitle={upgradePending
+            .map(
+              (row) =>
+                `${row.name}: ${intl.formatMessage({
+                  id:
+                    row.reason && upgradeReasonKeys.has(row.reason)
+                      ? row.reason
+                      : "analyzer.upgrade.reason.unexpected",
+                })}`,
+            )
+            .join("; ")}
+          actionButtonLabel={intl.formatMessage({
+            id: "analyzer.upgrade.retry",
+          })}
+          onActionButtonClick={upgrading ? undefined : retryUpgrade}
+        />
+      )}
 
       {visibleSetupStep && (
         <AnalyzerSetup

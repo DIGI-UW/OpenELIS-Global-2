@@ -7,6 +7,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
+import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultSignature;
@@ -142,6 +143,29 @@ public final class ValidationSignals {
         }
     }
 
+    /**
+     * Whether a result sits in the range the row shows: a select-list answer when
+     * it is the range's expected-normal choice, a number when it lies inside the
+     * normal bounds. {@code limit} is the one the row was built with (a component's
+     * own range on a multi-component test, chosen for the patient and specimen);
+     * judging against the test-level range instead flagged a component's normal
+     * answer ("SARS-CoV-2 RNA NOT DETECTED") as abnormal.
+     */
+    public static boolean isNormalResult(ResultLimit limit, Result result) {
+        if (limit == null || result == null || GenericValidator.isBlankOrNull(result.getValue())) {
+            return false;
+        }
+        if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(result.getResultType())) {
+            return result.getValue().equals(limit.getDictionaryNormalId());
+        }
+        String numeric = result.getValue(true);
+        if (!GenericValidator.isDouble(numeric)) {
+            return false;
+        }
+        double value = Double.parseDouble(numeric);
+        return limit.getLowNormal() <= value && value <= limit.getHighNormal();
+    }
+
     /** An authored (finite) bound as itself, an unauthored one as null. */
     public static Double authoredBound(double bound) {
         return Double.isFinite(bound) ? Double.valueOf(bound) : null;
@@ -192,6 +216,25 @@ public final class ValidationSignals {
     }
 
     /**
+     * The user who last wrote the result value, from its audit history (newest
+     * first, as {@code HistoryService} returns it): the fallback for "Entered by"
+     * when the lab does not record technician names, so no bench signature exists.
+     * Null when the history holds no insert or update.
+     */
+    public static String lastWriterId(List<History> newestFirst) {
+        if (newestFirst == null) {
+            return null;
+        }
+        for (History entry : newestFirst) {
+            if (entry != null && ("I".equals(entry.getActivity()) || "U".equals(entry.getActivity()))
+                    && !GenericValidator.isBlankOrNull(entry.getSysUserId())) {
+                return entry.getSysUserId();
+            }
+        }
+        return null;
+    }
+
+    /**
      * The clearance rule, stated once for every consumer: the queue's lanes, the
      * bulk release and automated validation at result entry (OGC-1029 FR-B1 as
      * superseded by OGC-1226 FR-1 to FR-3). A row is clear when its reference range
@@ -219,7 +262,7 @@ public final class ValidationSignals {
         if (row == null) {
             return false;
         }
-        boolean rangeKnown = !GenericValidator.isBlankOrNull(row.getNormalRange());
+        boolean rangeKnown = !GenericValidator.isBlankOrNull(row.getNormalRange()) && !row.isRangeNotApplied();
         return isClear(rangeKnown, row.isNormal(), row.getQcStatus(), row.isNceOpen(), row.isModified(),
                 row.isCritical(), row.isNonconforming(), row.isAckPending());
     }

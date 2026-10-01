@@ -133,7 +133,7 @@ const SaveNavigationButtons = ({
           <Button
             kind="primary"
             className="forward-button"
-            onClick={handleSave}
+            onClick={onSaveAndNext ? handleSaveAndNext : handleSave}
             disabled={isSubmitting || !canProceed || !canSave}
           >
             <FormattedMessage id="label.button.submit" />

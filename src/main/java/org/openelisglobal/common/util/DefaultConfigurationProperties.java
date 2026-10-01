@@ -319,6 +319,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.PATIENT_ID_REQUIRED, "true");
         properties.setPropertyValue(Property.PATIENT_SUBJECT_NUMBER_REQUIRED, "true");
         properties.setPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED, "true");
+        properties.setPropertyValue(Property.PATIENT_SEX_REQUIRED, "true");
+        properties.setPropertyValue(Property.PATIENT_AGE_REQUIRED, "true");
 
         properties.setPropertyValue(Property.QA_SAMPLE_ID_REQUIRED, "false");
         properties.setPropertyValue(Property.MAX_ORDER_LABEL_PRINTED, "10");

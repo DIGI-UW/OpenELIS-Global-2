@@ -69,6 +69,7 @@ const CONFIG = { AccessionFormat: "", ALLOW_BULK_RELEASE_CLEAR: "true" };
  */
 let queue;
 let assign;
+let notify;
 
 const renderQueue = (rows = [row(0)], paging) => {
   queue = { resultList: rows, qcFailureList: [], paging };
@@ -81,7 +82,7 @@ const renderQueue = (rows = [row(0)], paging) => {
           value={{
             notificationVisible: false,
             setNotificationVisible: vi.fn(),
-            addNotification: vi.fn(),
+            addNotification: notify,
           }}
         >
           <IntlProvider locale="en" messages={messages}>
@@ -96,6 +97,7 @@ const renderQueue = (rows = [row(0)], paging) => {
 describe("Validation queue refresh", () => {
   beforeEach(() => {
     assign = vi.fn();
+    notify = vi.fn();
     Object.defineProperty(window, "location", {
       configurable: true,
       value: {
@@ -190,5 +192,36 @@ describe("Validation queue refresh", () => {
     expect(assign).not.toHaveBeenCalled();
     expect(screen.getByText(/ACC7/)).toBeInTheDocument();
     expect(screen.queryByText(/ACC0/)).toBeNull();
+  });
+
+  const noResultWarnings = () =>
+    notify.mock.calls.filter(
+      ([n]) => n.message === "No Results found to be validated",
+    );
+
+  it("says nothing was found when a search comes back empty (OGC-1361 control)", () => {
+    queue = { resultList: [], qcFailureList: [] };
+    renderQueue([]);
+
+    expect(noResultWarnings()).toHaveLength(1);
+  });
+
+  it("does not follow the last row's action with a 'no results' warning (OGC-1361)", () => {
+    renderQueue([row(0, { normal: false, clear: false })]);
+    notify.mockClear();
+    fireEvent.click(screen.getByTestId("review-row-0"));
+
+    queue = { resultList: [], qcFailureList: [] };
+    fireEvent.click(screen.getByTestId("review-retest"));
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ outcome: "retest" }),
+    );
+    fireEvent.click(screen.getByTestId("review-confirm-retest"));
+
+    expect(noResultWarnings()).toHaveLength(0);
+    expect(notify.mock.calls.map(([n]) => n.kind)).toContain("success");
+    expect(
+      screen.getByTestId("release-all-clear-why-queueEmpty"),
+    ).toHaveTextContent("Nothing is waiting for validation.");
   });
 });

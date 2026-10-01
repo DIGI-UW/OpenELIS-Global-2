@@ -14,6 +14,7 @@ import {
 } from "@carbon/react";
 import { Copy, Launch, WarningAltFilled } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
+import { displayRange } from "../common/rangeNotApplied";
 import { FormattedMessage, useIntl } from "react-intl";
 import { NotificationKinds } from "../common/CustomNotification";
 import {
@@ -33,6 +34,7 @@ import ServerPageArrows from "../common/ServerPageArrows";
 import ESignatureButton, {
   SignatureMeaning,
 } from "../esignature/ESignatureButton";
+import { isEsigEnabled } from "../esignature/api";
 import {
   FILTERS,
   LANE_CLEAR,
@@ -101,6 +103,7 @@ const Validation = (props) => {
   const [activeFilter, setActiveFilter] = useState("all");
   const [bulkOpen, setBulkOpen] = useState(false);
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [bulkEsigEnabled, setBulkEsigEnabled] = useState(false);
   const [expandedRowIds, setExpandedRowIds] = useState([]);
   // OGC-1030 (FR-A4): auto-validated rows live behind a toggle, read-only.
   const [includeAutoValidated, setIncludeAutoValidated] = useState(false);
@@ -157,6 +160,11 @@ const Validation = (props) => {
         return intl.formatMessage({
           id: "label.validation.emptyState.queueEmpty",
         });
+      case "rangeNotApplied":
+        return intl.formatMessage(
+          { id: "label.validation.emptyState.rangeNotApplied" },
+          { count: reason.count },
+        );
       case "noReference":
         return `${intl.formatMessage(
           { id: "label.validation.emptyState.noReference" },
@@ -212,8 +220,9 @@ const Validation = (props) => {
     {
       id: "normalRange",
       name: intl.formatMessage({ id: "column.name.normalRange" }),
-      selector: (row) => row.normalRange,
+      selector: (row) => displayRange(intl, row),
       sortable: true,
+      wrap: true,
       width: "8rem",
     },
     {
@@ -368,6 +377,25 @@ const Validation = (props) => {
       (rows) => setAutoValidatedRows(Array.isArray(rows) ? rows : []),
     );
   }, [includeAutoValidated, autoValidatedAccession]);
+
+  /**
+   * OGC-1361 — the bulk dialog promises an e-signature only when the site
+   * actually asks for one.
+   */
+  useEffect(() => {
+    if (!bulkOpen) {
+      return undefined;
+    }
+    let active = true;
+    Promise.resolve(isEsigEnabled())
+      .then(
+        (response) => active && setBulkEsigEnabled(response?.enabled === true),
+      )
+      .catch(() => active && setBulkEsigEnabled(false));
+    return () => {
+      active = false;
+    };
+  }, [bulkOpen]);
 
   /**
    * OGC-1028 — the review panel's composer is the single note input for a row.
@@ -706,7 +734,12 @@ const Validation = (props) => {
                 style={{ padding: "2px", ...holdingStyle }}
                 data-testid={`validation-result-${row.id}`}
               >
-                {row.result}
+                <span
+                  style={{ whiteSpace: "nowrap" }}
+                  data-testid={`validation-result-value-${row.id}`}
+                >
+                  {row.result}
+                </span>
                 <FlagChip flag={flag === "NORMAL" ? undefined : flag} />
               </div>
             );
@@ -805,10 +838,20 @@ const Validation = (props) => {
           onRequestClose={() => setBulkOpen(false)}
         >
           <div data-testid="release-all-clear-modal">
-            <p>
+            <p data-testid="release-all-clear-body">
               {intl.formatMessage(
-                { id: "label.validation.bulk.body" },
+                { id: "label.validation.bulk.bodyClear" },
                 { count: clearLaneRows.length },
+              )}
+              {bulkEsigEnabled && (
+                <>
+                  {" "}
+                  <span data-testid="release-all-clear-esig">
+                    {intl.formatMessage({
+                      id: "label.validation.bulk.bodyEsig",
+                    })}
+                  </span>
+                </>
               )}
             </p>
             <p data-testid="release-all-clear-scope">
@@ -946,7 +989,7 @@ const Validation = (props) => {
           </span>
         </div>
       )}
-      {triaged.length > 0 && autoValidatedAccession && (
+      {showBulkBar && autoValidatedAccession && (
         <div
           data-testid="auto-validated-toggle"
           style={{ margin: "0 0 0.5rem 0" }}

@@ -26,7 +26,9 @@ const PatientInfo = (props) => {
   const isEQASample = orderFormValues?.sampleOrderItems?.isEQASample || false;
 
   const getSelectedPatient = (patient) => {
-    setSelectedPatient(patient);
+    if (componentMounted.current) {
+      setSelectedPatient(patient);
+    }
     if (orderFormValues) {
       setOrderFormValues({
         ...orderFormValues,
@@ -46,6 +48,9 @@ const PatientInfo = (props) => {
   };
 
   const handleNewPatientTab = () => {
+    if (!componentMounted.current) {
+      return;
+    }
     setNewPatientTab({ kind: "primary", active: true });
     setSearchPatientTab({ kind: "tertiary", active: false });
   };

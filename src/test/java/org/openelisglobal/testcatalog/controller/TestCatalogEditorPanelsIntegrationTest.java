@@ -841,6 +841,43 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
     }
 
     /**
+     * OGC-1234: a description may repeat another panel's (it used to fail the save
+     * with a blank 500), while a rename onto another panel's name, in any letter
+     * case, is refused as name.duplicate and writes nothing, the display
+     * localization included.
+     */
+    @org.junit.Test
+    public void savePanelBasicInfo_sharedDescriptionSaves_andRenameOntoAnotherPanelsNameIsRefused() throws Exception {
+        long panelA = Long.parseLong(panelAId);
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"PanelsITAlpha\",\"description\":\"PanelsITBeta\"}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.description")
+                        .value("PanelsITBeta"));
+        assertEquals("PanelsITBeta",
+                jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?", String.class, panelA));
+
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/test-catalog/panels/" + panelAId + "/basic-info")
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"name\":\"panelsitbeta\",\"description\":\"changed\"}").session(authedSession()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status()
+                        .isUnprocessableEntity())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.refusal")
+                        .value("name.duplicate"));
+        assertEquals("PanelsITAlpha",
+                jdbc.queryForObject("SELECT name FROM clinlims.panel WHERE id = ?", String.class, panelA));
+        assertEquals("PanelsITBeta",
+                jdbc.queryForObject("SELECT description FROM clinlims.panel WHERE id = ?", String.class, panelA));
+        assertEquals("PanelsITAlpha",
+                jdbc.queryForObject("SELECT lv.value FROM clinlims.localization_value lv"
+                        + " JOIN clinlims.panel p ON p.name_localization_id = lv.localization_id"
+                        + " WHERE p.id = ? AND lv.locale = 'en'", String.class, panelA));
+    }
+
+    /**
      * OGC-224 C4 — the panel terminology mapper: reconcile keyed (source, code)
      * with reactivation, WHONET accepted, validation 422s, and panel.loinc kept
      * denormalized to the SAME_AS LOINC mapping (the FHIR routing key) — cleared
