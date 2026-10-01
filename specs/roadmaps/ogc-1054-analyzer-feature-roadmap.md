@@ -70,7 +70,7 @@ populated-catalog reconciliation; and upgrade from a supported previous version.
 Bridge 3.2.5 (released 30 September) adds only #70: the image keeps its outbox
 and FILE state on its data volume by default. Bridge 3.2.6 (released 1 October)
 requires HTTP Basic on every Bridge endpoint except the health status and
-removes `POST /` and `POST /api/query` (#73); it needs OE2 3.2.3.0 or later.
+removes `POST /` and `POST /api/query` (Bridge #73); it needs OE2 3.2.3.0 or later.
 OE2 still pins 3.2.4; #4497 repins to 3.2.6.
 
 ## Remaining work, in order
