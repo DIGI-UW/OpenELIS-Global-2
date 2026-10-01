@@ -11,6 +11,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 import CustomDatePicker from "../common/CustomDatePicker";
 import { ConfigurationContext } from "../layout/Layout";
+import { formatIsoDateForBackend } from "../order/dateUtils";
 
 const OPEN_FOR_RESULTS = [
   "PLANNED",
@@ -52,15 +53,11 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
   const cycleId = sampleOrder.eqaCycleId || "";
   const enrollmentId = sampleOrder.eqaProgramId || "";
 
-  const cycleDeadline = (cycle) => {
-    const [year, month, day] = (cycle?.plannedEndDate || "")
-      .slice(0, 10)
-      .split("-");
-    if (!day) return "";
-    return configurationProperties.DEFAULT_DATE_LOCALE === "fr-FR"
-      ? `${day}/${month}/${year}`
-      : `${month}/${day}/${year}`;
-  };
+  const cycleDeadline = (cycle) =>
+    formatIsoDateForBackend(
+      cycle?.plannedEndDate,
+      configurationProperties.DEFAULT_DATE_LOCALE,
+    );
 
   useEffect(() => {
     componentMounted.current = true;
@@ -272,19 +269,11 @@ const EQAOrderForm = ({ orderFormValues, setOrderFormValues }) => {
                 labelText={intl.formatMessage({ id: "eqa.order.cycle" })}
                 value={cycleId}
                 onChange={(e) => {
-                  const cycle = cycles.find(
-                    (c) => String(c.id) === e.target.value,
+                  const deadline = cycleDeadline(
+                    cycles.find((c) => String(c.id) === e.target.value),
                   );
-                  setOrderFormValues((prev) => ({
-                    ...prev,
-                    sampleOrderItems: {
-                      ...prev.sampleOrderItems,
-                      eqaCycleId: e.target.value,
-                      eqaDeadline:
-                        cycleDeadline(cycle) ||
-                        prev.sampleOrderItems.eqaDeadline,
-                    },
-                  }));
+                  updateField("eqaCycleId", e.target.value);
+                  if (deadline) updateField("eqaDeadline", deadline);
                 }}
               >
                 <SelectItem value="" text="" />
