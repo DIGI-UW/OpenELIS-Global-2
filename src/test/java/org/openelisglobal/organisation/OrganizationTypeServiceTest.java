@@ -53,4 +53,12 @@ public class OrganizationTypeServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Healthcare", organizationType2.getName());
         assertEquals("Healthcare Organization", organizationType2.getDescription());
     }
+
+    @Test
+    public void testGetOrganizationIdsForType_ShouldReturnTypesMatchingThePassedID() {
+        List<String> returnedTypes = organizationTypeService.getOrganizationIdsForType("1");
+        assertNotNull(returnedTypes);
+        assertFalse(returnedTypes.isEmpty());
+        assertEquals(2, returnedTypes.size());
+    }
 }
