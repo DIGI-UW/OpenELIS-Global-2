@@ -6,8 +6,10 @@ import { Stack, InlineNotification, Button } from "@carbon/react";
 import { Warning } from "@carbon/icons-react";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
-import SaveFailureNotice from "../SaveFailureNotice";
+import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
+import PrepareStorageSection from "./sections/PrepareStorageSection";
+import OrderReferOutSection from "./referOut/OrderReferOutSection";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -48,6 +50,7 @@ const OrderCollect = () => {
     orderData,
     samples,
     setSamples,
+    seedSamples,
     saveOrder,
     markStepComplete,
     isReadOnly,
@@ -58,6 +61,9 @@ const OrderCollect = () => {
     updateSampleCollectionDetails,
     setOrderData,
     labNumber,
+    storageSkipped,
+    stageStorageSkipped,
+    sampleCheckEnabled,
   } = useOrderContext();
 
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -156,7 +162,7 @@ const OrderCollect = () => {
             }
             return reqSample;
           });
-          setSamples(mergedSamples);
+          seedSamples(mergedSamples);
         }
       } catch {
         // Failed to load pending requests
@@ -166,12 +172,14 @@ const OrderCollect = () => {
     loadPendingRequests();
   }, [orderId]);
 
-  // Validate that at least one sample with a sample type is present.
-  // Informed consent stays advisory by default, which is what FRS FR-5-001/
-  // FR-5-002 describes, but a site whose regulator requires consent before
-  // collection can turn consentRequiredForCollection on and have it gate.
-  // Environmental and vector samples have no human subject, so they capture
-  // no consent and the gate never applies to them.
+  // Two levels of required (FR-A7, FR-D7). Save and exit needs the save
+  // level: a sample with a sample type and no collection date before the
+  // admission date. Save and next needs the complete level as well: collection
+  // date and collector for every sample, and consent where the laboratory
+  // requires it. Informed consent stays advisory by default (FRS FR-5-001/
+  // FR-5-002); a site whose regulator requires it turns
+  // consentRequiredForCollection on. Environmental and vector samples have no
+  // human subject, so consent never applies to them.
   const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
   const hasCollectionDateConflict = samples.some((sample) =>
     isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate),
@@ -180,46 +188,119 @@ const OrderCollect = () => {
   const consentRequired =
     configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
   const consentSatisfied = !consentRequired || consentData.consentGiven;
-  const canProceed =
+  const liveSamples = samples
+    .map((sample, index) => ({ sample, index }))
+    .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected);
+  const sampleName = ({ sample, index }) =>
+    `${labNumber || ""}-${index + 1} ${sample.sampleTypeName || ""}`.trim();
+  const canSave =
     samples?.length > 0 &&
     samples.some((s) => s.sampleTypeId) &&
-    !hasCollectionDateConflict &&
-    consentSatisfied;
+    !hasCollectionDateConflict;
+  const toContinue = [];
+  if (!samples.some((s) => s.sampleTypeId)) {
+    toContinue.push({
+      id: "order.continue.item.sampleType",
+      label: intl.formatMessage({ id: "order.continue.item.sampleType" }),
+      targetId: "sampleType-0",
+    });
+  }
+  liveSamples.forEach((entry) => {
+    const { sample, index } = entry;
+    if (
+      isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate)
+    ) {
+      toContinue.push({
+        id: `collectionConflict-${index}`,
+        label: intl.formatMessage(
+          { id: "order.continue.item.collectionConflict" },
+          { sample: sampleName(entry) },
+        ),
+        targetId: `collectionDate-${index}`,
+      });
+    }
+    if (!sample.collectionDate || !sample.collectionTime) {
+      toContinue.push({
+        id: `collectionTime-${index}`,
+        label: intl.formatMessage(
+          { id: "order.continue.item.collectionTime" },
+          { sample: sampleName(entry) },
+        ),
+        targetId: `collectionDate-${index}`,
+      });
+    }
+    if (!sample.collectorId && !sample.labPerformedSampling) {
+      toContinue.push({
+        id: `collector-${index}`,
+        label: intl.formatMessage(
+          { id: "order.continue.item.collector" },
+          { sample: sampleName(entry) },
+        ),
+        targetId: `collector-${index}`,
+      });
+    }
+  });
+  if (!consentSatisfied) {
+    toContinue.push({
+      id: "order.continue.item.consent",
+      label: intl.formatMessage({ id: "order.continue.item.consent" }),
+      targetId: "consent-section",
+    });
+  }
+  const canProceed = canSave && toContinue.length === 0;
 
   // Check if we have any tests ordered
   const hasOrderedTests = samples.some(
     (s) => (s.tests && s.tests.length > 0) || (s.panels && s.panels.length > 0),
   );
 
+  // The step's completion travels with its save (FR-F5): a save made while
+  // the complete level is met marks the order Samples prepared.
+  const progressStep = canProceed ? "SAMPLES_PREPARED" : null;
+
   const handleSave = async () => {
     try {
-      await saveOrder();
+      await saveOrder(false, false, null, false, progressStep);
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
-    } catch {
+      return true;
+    } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
+      return false;
     }
   };
 
+  // Save and next opens Sample check when the laboratory uses it; otherwise
+  // this save finishes order entry (FR-K15) and the dashboard says so.
   const handleSaveAndNext = async () => {
     try {
-      await saveOrder();
+      await saveOrder(false, false, null, false, progressStep);
       markStepComplete("collect");
-      history.push(`${workflowPrefix}/label`);
-    } catch {
+      if (sampleCheckEnabled) {
+        history.push(
+          labNumber
+            ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
+            : `${workflowPrefix}/qa`,
+        );
+      } else {
+        history.push(
+          `${workflowPrefix}?done=${encodeURIComponent(labNumber || "")}`,
+        );
+      }
+    } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -241,11 +322,12 @@ const OrderCollect = () => {
 
   return (
     <OrderWorkflowLayout
-      title="order.step.collect"
+      title="order.step.prepare"
       canProceed={canProceed}
-      canSave={!hasCollectionDateConflict}
+      canSave={canSave}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
+      toContinue={toContinue}
       extraButtons={
         labNumber && (
           <Button
@@ -320,11 +402,13 @@ const OrderCollect = () => {
         />
 
         {/* Section 2: Informed Consent */}
-        <ConsentAccordionSection
-          consentData={consentData}
-          onConsentChange={handleConsentChange}
-          isReadOnly={isReadOnly && !isEditMode}
-        />
+        <div id="consent-section">
+          <ConsentAccordionSection
+            consentData={consentData}
+            onConsentChange={handleConsentChange}
+            isReadOnly={isReadOnly && !isEditMode}
+          />
+        </div>
 
         {/* A collector holding a hemolyzed specimen could log an NCE here but
             had to walk to QA Review to reject or resample it. The same
@@ -349,6 +433,19 @@ const OrderCollect = () => {
           isReadOnly={isReadOnly && !isEditMode}
           admissionDate={admissionDate}
         />
+
+        {/* Storage and referral, per sample, saved with this step (FR-E1,
+            FR-E2, FR-E5). Formerly the Label & Store step. */}
+        <PrepareStorageSection
+          samples={samples}
+          updateSampleCollectionDetails={updateSampleCollectionDetails}
+          storageSkipped={storageSkipped}
+          onStorageSkippedChange={stageStorageSkipped}
+          labNumber={labNumber}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
+        {orderId && <OrderReferOutSection />}
 
         {showNceForm && labNumber && (
           <InlineNceForm

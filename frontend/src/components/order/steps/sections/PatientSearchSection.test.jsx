@@ -107,6 +107,51 @@ describe("PatientSearchSection", () => {
     expect(blank.patientPK).toBeUndefined();
   });
 
+  // OGC-1266: Save and exit replaced the in-page save, so a reopened order
+  // shows its patient as the selected patient; Edit details opens the locked
+  // form for it, where the Edit toggle lives.
+  it("opens the order's patient in the form from the selected card", async () => {
+    const user = userEvent.setup();
+    render(
+      <Host
+        initial={{
+          patientProperties: {
+            patientPK: "115",
+            firstName: "Nia",
+            lastName: "Qadup",
+            nationalId: "QA1407N1",
+          },
+        }}
+      />,
+    );
+
+    const card = screen.getByText("Nia Qadup").closest(".selected-entity-card");
+    expect(card).toHaveTextContent("ID: QA1407N1");
+    expect(screen.queryByTestId("create-patient-form")).toBeNull();
+
+    await user.click(screen.getByRole("button", { name: "Edit details" }));
+
+    expect(screen.getByTestId("create-patient-form")).toHaveTextContent("Nia");
+    expect(createFormProps.history.at(-1).patientPK).toBe("115");
+  });
+
+  it("offers no Edit details on a read-only order", () => {
+    render(
+      <Host
+        isReadOnly
+        initial={{
+          patientProperties: {
+            patientPK: "115",
+            firstName: "Nia",
+            lastName: "Q",
+          },
+        }}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Edit details" })).toBeNull();
+  });
+
   it("shows the patient the order saved on the New Patient tab, and does not follow the form's own writes", async () => {
     let setOrderData;
     const user = userEvent.setup();
