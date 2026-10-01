@@ -2,7 +2,7 @@
 <databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
-    <changeSet id="111-analyzer-delivery-action" author="Satyam087">
+    <changeSet id="112-analyzer-delivery-action" author="Satyam087">
         <comment>
             Durable attribution for manual Retry and Dismiss on undelivered analyzer
             results. The Bridge records only OpenELIS's service account, so the acting
@@ -50,7 +50,7 @@
         </rollback>
     </changeSet>
 
-    <changeSet id="111-analyzer-delivery-action-audit" author="Satyam087">
+    <changeSet id="112-analyzer-delivery-action-audit" author="Satyam087">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.reference_tables

@@ -161,7 +161,7 @@ public class AnalyzerDeliveryIssueServiceTest {
     @Test
     public void retainsTheActionWithoutAnAnalyzerWhenTheSenderIsUnrecognized() throws Exception {
         when(outboxClient.get("ob-9")).thenReturn(row("""
-                {"id":"ob-9","state":"DISMISSED","sourceId":"10.9.9.9","attempts":0}"""));
+                {"id":"ob-9","state":"DMQ","sourceId":"10.9.9.9","attempts":0,"dismissedAt":"2026-09-30T12:00:00Z"}"""));
 
         service.dismiss("ob-9", "17");
 
