@@ -75,7 +75,7 @@ public class ControllerDenialRelabelRatchetTest {
             Map.entry("SampleAcceptanceRestController", 15), Map.entry("SampleEditRestController", 1),
             Map.entry("SampleEntryByProjectController", 2), Map.entry("SampleItemController", 1),
             Map.entry("SampleManagementRestController", 4), Map.entry("SamplePatientEntryController", 1),
-            Map.entry("SamplePatientEntryRestController", 0), Map.entry("SampleQaChecklistRestController", 4),
+            Map.entry("SamplePatientEntryRestController", 0), Map.entry("SampleQaChecklistRestController", 3),
             Map.entry("SampleRestController", 2), Map.entry("SampleStorageRestController", 5),
             Map.entry("SampleTbEntryController", 1), Map.entry("SampleTypeManagementRestController", 2),
             Map.entry("SampleTypeRequestRestController", 2), Map.entry("ShippingBoxRestController", 0),
