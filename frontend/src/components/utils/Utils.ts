@@ -998,19 +998,42 @@ export const ROUTE_GUARDS = {
     privilege: Privileges.RESULT_ENTER,
     role: [Roles.RESULTS],
   },
+  // App.jsx guards this through REPORTING_ROUTE_PATHS (a constant), so the
+  // menu map never mirrored it and the sidebar offered Custom Data Export to
+  // every role; SecureRoute then rendered a blank page. Mirrors role={Roles.REPORTS}.
+  "/CustomDataExport": { role: [Roles.REPORTS] },
   "/MasterListsPage": {
     privilege: Privileges.SYSTEM_CONFIGURE,
     role: [Roles.GLOBAL_ADMIN],
   },
-  "/MicrobiologyCaseView/:caseId": {
+  // Both are guarded in App.jsx through MICROBIOLOGY_*_PATH constants, which
+  // the menu map never mirrored, so the bench worklist and the WHONET export
+  // showed for every role and then rendered blank. Mirrors App.jsx exactly.
+  "/Microbiology/whonet": {
     role: [Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.REPORTS],
+  },
+  "/Microbiology/worklist": {
+    role: [Roles.GLOBAL_ADMIN, Roles.RESULTS, Roles.VALIDATION],
   },
   "/ModifyOrder": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
   },
-  "/NCECorrectiveAction": { role: [Roles.RECEPTION, Roles.VALIDATION] },
-  "/NceDashboard": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/NCECorrectiveAction": {
+    permission: "qa.view.eqa",
+    role: [Roles.RECEPTION, Roles.VALIDATION],
+  },
+  "/NceDashboard": {
+    permission: "qa.view.eqa",
+    role: [Roles.RECEPTION, Roles.VALIDATION],
+  },
+  // /rest/menu serves /NotebookDashboard while App.jsx routes
+  // /NoteBookDashboard. React Router matches either, but the menu map was keyed
+  // only on App.jsx's spelling, so the row the menu actually emits was
+  // unguarded. Same guard as its twin below.
+  "/NotebookDashboard": {
+    role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION],
+  },
   "/NoteBookDashboard": {
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION],
   },
@@ -1071,7 +1094,10 @@ export const ROUTE_GUARDS = {
     role: [Roles.RESULTS],
   },
   "/Report": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
-  "/ReportNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/ReportNonConformingEvent": {
+    permission: "qa.view.eqa",
+    role: [Roles.RECEPTION, Roles.VALIDATION],
+  },
   "/ResultValidation": {
     privilege: Privileges.RESULT_VALIDATE,
     role: [Roles.VALIDATION],
@@ -1139,7 +1165,10 @@ export const ROUTE_GUARDS = {
     privilege: Privileges.REPORT_RUN,
     role: [Roles.REPORTS],
   },
-  "/ViewNonConformingEvent": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/ViewNonConformingEvent": {
+    permission: "qa.view.eqa",
+    role: [Roles.RECEPTION, Roles.VALIDATION],
+  },
   "/WorkPlanByTestSection": {
     privilege: Privileges.RESULT_ENTER,
     role: [Roles.RESULTS],
@@ -1205,48 +1234,75 @@ export const ROUTE_GUARDS = {
     role: [Roles.RECEPTION],
   },
   "/qa/eqa/analyst-competency": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/follow-up-queue": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/in-house": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/in-house/new": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/lab-performance/coverage": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/lab-performance/recent": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
+  // Scheme administration, not a participant view: the page edits EQA schemes,
+  // enrolment and lab-wide System Settings (FHIR integration, Z-score
+  // acceptance bounds, notification policy). Its writes already require
+  // EQAGuards.PROVIDER/MANAGE server-side, so a role holding only qa.view.eqa
+  // could read the whole admin console and be refused only on Save. Guarded on
+  // qa.manage.eqa so the menu stops offering it to Reception and Results, who
+  // hold the participant tier.
   "/qa/eqa/management": {
-    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+    permission: "qa.manage.eqa",
   },
   "/qa/eqa/my-cycles": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/my-programs": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
+  // Scheme administration, not a participant view: the page edits EQA schemes,
+  // enrolment and lab-wide System Settings (FHIR integration, Z-score
+  // acceptance bounds, notification policy). Its writes already require
+  // EQAGuards.PROVIDER/MANAGE server-side, so a role holding only qa.view.eqa
+  // could read the whole admin console and be refused only on Save. Guarded on
+  // qa.manage.eqa so the menu stops offering it to Reception and Results, who
+  // hold the participant tier.
   "/qa/eqa/participants": {
-    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+    permission: "qa.manage.eqa",
   },
   "/qa/eqa/provider/cycles/:cycleId/workbench": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/provider/follow-ups": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/provider/schemes": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/provider/schemes/:schemeId/cycles/new": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/eqa/provider/schemes/:schemeId/performance": {
+    permission: "qa.view.eqa",
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/qa/overview": { role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION] },
@@ -1258,20 +1314,35 @@ export const ROUTE_GUARDS = {
   "/qa/qc/rule-config": { role: [Roles.LAB_SUPERVISOR] },
   "/qa/qi/amendment": { role: [Roles.RESULTS, Roles.REPORTS] },
   "/qa/qi/callback": { role: [Roles.RESULTS, Roles.REPORTS] },
-  "/qa/qi/config": { role: [Roles.GLOBAL_ADMIN] },
+  "/qa/qi/config": {
+    permission: "qa.manage.qi",
+    role: [Roles.GLOBAL_ADMIN],
+  },
   "/qa/qi/dashboard": {
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION],
   },
   "/qa/qi/rejection": { role: [Roles.RESULTS, Roles.REPORTS] },
   "/qa/qi/tat": { role: [Roles.RESULTS, Roles.REPORTS] },
-  "/qa/qms/accreditation": { role: [Roles.GLOBAL_ADMIN] },
+  "/qa/qms/accreditation": {
+    permission: "qa.view.qms",
+    role: [Roles.GLOBAL_ADMIN],
+  },
   "/qa/qms/audit-trail": {
     privilege: Privileges.AUDIT_VIEW,
     role: [Roles.GLOBAL_ADMIN],
   },
-  "/qa/qms/capa-register": { role: [Roles.GLOBAL_ADMIN] },
-  "/qa/qms/e-signature-log": { role: [Roles.GLOBAL_ADMIN] },
-  "/qa/qms/nce-register": { role: [Roles.RECEPTION, Roles.VALIDATION] },
+  "/qa/qms/capa-register": {
+    permission: "qa.view.qms",
+    role: [Roles.GLOBAL_ADMIN],
+  },
+  "/qa/qms/e-signature-log": {
+    permission: "qa.view.qms",
+    role: [Roles.GLOBAL_ADMIN],
+  },
+  "/qa/qms/nce-register": {
+    permission: "qa.view.qms",
+    role: [Roles.RECEPTION, Roles.VALIDATION],
+  },
   "/result": { privilege: Privileges.RESULT_ENTER, role: [Roles.RESULTS] },
   "/validation": {
     privilege: Privileges.RESULT_VALIDATE,

@@ -523,7 +523,13 @@ export default function App() {
                   privilege={Privileges.ORDER_CREATE}
                 />
                 <SecureRoute
-                  path="/NoteBookDashboard"
+                  /* /rest/menu serves /NotebookDashboard (lowercase b) while
+                     this route was registered as /NoteBookDashboard. React
+                     Router matched either, so the page worked, but the menu
+                     map was keyed on a path App.jsx did not list and the row
+                     the menu actually emits went unguarded. Both spellings are
+                     routed here so the guard covers whichever one is used. */
+                  path={["/NotebookDashboard", "/NoteBookDashboard"]}
                   exact
                   render={() => <NoteBookDashBoard />}
                   role={[Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION]}
@@ -1011,15 +1017,13 @@ export default function App() {
                   path="/qa/eqa/management"
                   exact
                   component={() => <EQAProgramManagement />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                  permission="qa.manage.eqa"
                 />
                 <SecureRoute
                   path="/qa/eqa/participants"
                   exact
                   component={() => <EQAParticipantsPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                  permission="qa.manage.eqa"
                 />
                 {/* Provider lane: the scheme list is the entry
                     point qa/030 points the menu row at, the wizard creates a

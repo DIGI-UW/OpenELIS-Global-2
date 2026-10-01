@@ -31,22 +31,60 @@ const readGuardsFromApp = () => {
   starts.forEach((start, i) => {
     const end = i + 1 < starts.length ? starts[i + 1] : start + 2500;
     const block = source.slice(start, end);
-    const routePath = block.match(/path="([^"]+)"/);
-    if (!routePath || routePath[1] in guards) {
+    // A route whose path is a CONSTANT (path={MICROBIOLOGY_WORKLIST_PATH}) was
+    // invisible to this parser, so ROUTE_GUARDS could not list it without
+    // failing the equality check - and the sidebar then offered those pages to
+    // every role while SecureRoute rendered a blank page. Resolve the ones
+    // App.jsx uses so they are mirrored like any literal path.
+    const PATH_CONSTANTS = {
+      MICROBIOLOGY_WORKLIST_PATH: ["/Microbiology/worklist"],
+      MICROBIOLOGY_WHONET_PATH: ["/Microbiology/whonet"],
+      REPORTING_ROUTE_PATHS: ["/CustomDataExport"],
+    };
+    // A block runs to the NEXT <SecureRoute>, so it can swallow a following
+    // plain <Route path="...">. Whichever `path=` appears first is this
+    // route's own; comparing indices keeps a sibling's literal from
+    // overriding this route's constant.
+    // Take whichever path= comes FIRST: a block runs to the next
+    // <SecureRoute> and can swallow a following plain <Route path="...">, so
+    // the earliest match is the one belonging to this route.
+    const firstPath = block.match(
+      /path=(?:"([^"]+)"|\{\[([^\]]+)\]\}|\{(\w+)\})/,
+    );
+    const routePaths = !firstPath
+      ? null
+      : firstPath[1]
+        ? [firstPath[1]]
+        : firstPath[2]
+          ? // An array literal: every spelling the route answers to.
+            [...firstPath[2].matchAll(/"([^"]+)"/g)].map((m) => m[1])
+          : PATH_CONSTANTS[firstPath[3]] || null;
+    if (!routePaths) {
       return;
     }
+    if (routePaths.every((rp) => rp in guards)) {
+      return;
+    }
+    const routeLabel = routePaths.join(", ");
     const privilege = block.match(/privilege=\{Privileges\.(\w+)\}/);
     const role = block.match(/role=\{([^}]*)\}/);
-    if (!privilege && !role) {
+    // qa.* permission keys are a third guard shape (EQA V2). A route guarded
+    // only by one of them was invisible to this parser, so ROUTE_GUARDS could
+    // not mirror it without failing the equality check below.
+    const permission = block.match(/permission="([^"]+)"/);
+    if (!privilege && !role && !permission) {
       return;
     }
     const guard = {};
+    if (permission) {
+      guard.permission = permission[1];
+    }
     if (privilege) {
       // A guard naming a constant that does not exist grants to nobody, since
       // `undefined` matches no privilege in the session.
       expect(
         Privileges[privilege[1]],
-        `App.jsx guards ${routePath[1]} with Privileges.${privilege[1]}, which is not declared`,
+        `App.jsx guards ${routeLabel} with Privileges.${privilege[1]}, which is not declared`,
       ).toBeDefined();
       guard.privilege = Privileges[privilege[1]];
     }
@@ -56,7 +94,7 @@ const readGuardsFromApp = () => {
         guard.role = names.map((name) => {
           expect(
             Roles[name],
-            `App.jsx guards ${routePath[1]} with Roles.${name}, which is not declared`,
+            `App.jsx guards ${routeLabel} with Roles.${name}, which is not declared`,
           ).toBeDefined();
           return Roles[name];
         });
@@ -70,7 +108,11 @@ const readGuardsFromApp = () => {
         guard.role = "SHARED_CONSTANT";
       }
     }
-    guards[routePath[1]] = guard;
+    routePaths.forEach((rp) => {
+      if (!(rp in guards)) {
+        guards[rp] = guard;
+      }
+    });
   });
   return guards;
 };
