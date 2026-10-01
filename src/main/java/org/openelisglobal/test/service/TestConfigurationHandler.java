@@ -54,9 +54,10 @@ import org.springframework.transaction.PlatformTransactionManager;
  * editor uses. New tests are written through {@link TestCatalogCreationService}
  * so they take the same shape as tests created in the editor.
  * <p>
- * Identity, in order: {@code localCode} when the column is filled, then the
- * plain {@code testName} by exact and then normalized description. Translations
- * never identify a test. Records created by earlier loaders in the
+ * Identity, in order: {@code localCode} when the column is filled
+ * (disambiguated by the listed specimens when several tests share the code),
+ * then the plain {@code testName} by exact and then normalized description.
+ * Translations never identify a test. Records created by earlier loaders in the
  * {@code Name(SampleType)} form are recognised through
  * {@link LegacyTestVariantFinder} (the name compared in its normalized form,
  * the parenthesised part a known sample type). Those whose specimen the row
@@ -267,7 +268,7 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
             return LoadedRow.skipped("none of the sample types '" + sampleTypesValue + "' exist");
         }
 
-        Test existing = localCode.isEmpty() ? null : testService.getTestByLocalCode(localCode);
+        Test existing = localCode.isEmpty() ? null : findTestByLocalCode(localCode, sampleTypes);
         boolean matchedByCode = existing != null;
         if (existing == null) {
             existing = findTestByPlainName(testName);
@@ -303,6 +304,36 @@ public class TestConfigurationHandler implements DomainConfigurationHandler {
         LogEvent.logInfo(this.getClass().getSimpleName(), "processRow",
                 "Created new test: " + testName + " with " + sampleTypes.size() + " sample type(s)");
         return LoadedRow.created(List.of(testId));
+    }
+
+    private Test findTestByLocalCode(String localCode, List<TypeOfSample> sampleTypes) {
+        List<Test> candidates = testService.getTestsByLocalCode(localCode);
+        if (candidates.size() <= 1) {
+            return candidates.isEmpty() ? null : candidates.get(0);
+        }
+        // Older catalogs reuse one code for separate specimen-specific tests.
+        // A code alone must not rename or widen whichever record sorts first.
+        Set<String> requestedSpecimens = new LinkedHashSet<>();
+        for (TypeOfSample sampleType : sampleTypes) {
+            requestedSpecimens.add(sampleType.getId());
+        }
+        List<Test> matches = new ArrayList<>();
+        if (!requestedSpecimens.isEmpty()) {
+            for (Test candidate : candidates) {
+                Set<String> existingSpecimens = new LinkedHashSet<>();
+                for (TypeOfSampleTest link : typeOfSampleTestService.getTypeOfSampleTestsForTest(candidate.getId())) {
+                    existingSpecimens.add(link.getTypeOfSampleId());
+                }
+                if (existingSpecimens.containsAll(requestedSpecimens)) {
+                    matches.add(candidate);
+                }
+            }
+        }
+        if (matches.size() != 1) {
+            throw new IllegalArgumentException("localCode '" + localCode + "' identifies " + candidates.size()
+                    + " tests; the listed sample types must identify exactly one of them");
+        }
+        return matches.get(0);
     }
 
     private String createTest(String testName, TestSection testSection, String localCode,

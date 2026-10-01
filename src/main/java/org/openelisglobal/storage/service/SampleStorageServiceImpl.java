@@ -238,6 +238,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         Map<String, Object> result = new HashMap<>();
         result.put("sampleItemId", sampleItemId);
         putQuantitySnapshot(result, sampleItemId);
+        result.put("locationId", assignment.getLocationId() != null ? String.valueOf(assignment.getLocationId()) : "");
+        result.put("locationType", assignment.getLocationType() != null ? assignment.getLocationType() : "");
 
         String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
         result.put("location", hierarchicalPath != null ? hierarchicalPath : "");

@@ -20,11 +20,13 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
+import org.hibernate.proxy.HibernateProxy;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.service.PersonAddressService;
@@ -49,6 +51,8 @@ import org.openelisglobal.observationhistory.service.ObservationHistoryServiceIm
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.panel.service.PanelService;
+import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
 import org.openelisglobal.panelitem.valueholder.PanelItem;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
@@ -74,8 +78,10 @@ import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
+import org.openelisglobal.sample.service.OrderProgressService;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -102,6 +108,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -182,6 +190,9 @@ public class OrderSearchRestController extends BaseRestController {
     private SampleQaChecklistService sampleQaChecklistService;
 
     @Autowired
+    private OrderProgressService orderProgressService;
+
+    @Autowired
     private SampleItemQcProfileDAO sampleItemQcProfileDAO;
 
     @Autowired
@@ -195,6 +206,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private PanelItemService panelItemService;
+
+    @Autowired
+    private PanelService panelService;
 
     @Autowired
     private UserService userService;
@@ -234,23 +248,39 @@ public class OrderSearchRestController extends BaseRestController {
      */
     private final DashboardPaging<String> dashboardPaging = new DashboardPaging<>("orderDashboard");
 
-    /** The three step flags a row shows, and the order status they add up to. */
+    /**
+     * The dashboard's cancelled filter; cancelled orders are hidden from every
+     * other one.
+     */
+    private static final String CANCELLED_FILTER = "cancelled";
+
+    /**
+     * The three step flags a row shows, the order's progress status, and the
+     * dashboard status they add up to.
+     */
     private static final class StepState {
         final boolean collect;
         final boolean label;
         final boolean qa;
+        final OrderProgressStatus progress;
+        final boolean complete;
 
-        StepState(boolean collect, boolean label, boolean qa) {
+        StepState(boolean collect, boolean label, boolean qa, OrderProgressStatus progress, boolean complete) {
             this.collect = collect;
             this.label = label;
             this.qa = qa;
+            this.progress = progress;
+            this.complete = complete;
         }
 
         String status() {
-            if (qa) {
+            if (progress == OrderProgressStatus.CANCELLED) {
+                return CANCELLED_FILTER;
+            }
+            if (complete) {
                 return "completed";
             }
-            return label ? "pending_qa" : "in_progress";
+            return label && collect ? "pending_qa" : "in_progress";
         }
     }
 
@@ -360,15 +390,28 @@ public class OrderSearchRestController extends BaseRestController {
             if (!searchLower.isEmpty() && !matchesSearch(sample, searchLower)) {
                 continue;
             }
+            boolean cancelled = OrderProgressStatus
+                    .fromStored(sample.getOrderProgressStatus()) == OrderProgressStatus.CANCELLED;
             if (statusAsked) {
-                List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
-                if (REFERRED_OUT_FILTER.equals(status)) {
-                    if (!hasReferral(sampleItems)) {
+                if (CANCELLED_FILTER.equals(status)) {
+                    if (!cancelled) {
                         continue;
                     }
-                } else if (!stepState(sample, sampleItems).status().equals(status)) {
+                } else if (cancelled) {
                     continue;
+                } else {
+                    List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
+                    if (REFERRED_OUT_FILTER.equals(status)) {
+                        if (!hasReferral(sampleItems)) {
+                            continue;
+                        }
+                    } else if (!stepState(sample, sampleItems, workflowBySample.get(sample.getId())).status()
+                            .equals(status)) {
+                        continue;
+                    }
                 }
+            } else if (cancelled) {
+                continue;
             }
             ids.add(sample.getId());
         }
@@ -433,7 +476,7 @@ public class OrderSearchRestController extends BaseRestController {
         return bySample;
     }
 
-    private StepState stepState(Sample sample, List<SampleItem> sampleItems) {
+    private StepState stepState(Sample sample, List<SampleItem> sampleItems, String sampleWorkflowType) {
         // Collect is complete if all sample items with tests have collection dates
         boolean collectComplete = false;
         if (!sampleItems.isEmpty()) {
@@ -459,13 +502,24 @@ public class OrderSearchRestController extends BaseRestController {
 
         // QA is complete if the QA step has been saved (checklist record exists)
         boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
-        return new StepState(collectComplete, labelComplete, qaComplete);
+        String workflowType = GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType;
+        OrderProgressStatus progress = orderProgressService.statusOf(sample, collectComplete && labelComplete,
+                qaComplete);
+        if (OrderProgressStatus.fromStored(sample.getOrderProgressStatus()) != null
+                && "clinical".equalsIgnoreCase(workflowType)) {
+            boolean prepared = progress.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
+            collectComplete = prepared;
+            labelComplete = prepared;
+            qaComplete = progress == OrderProgressStatus.READY_FOR_TESTING;
+        }
+        return new StepState(collectComplete, labelComplete, qaComplete, progress,
+                orderProgressService.isComplete(progress, workflowType));
     }
 
     /** One dashboard row, built only for the samples on the page shown. */
     private Map<String, Object> orderRow(Sample sample, String sampleWorkflowType) {
         List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
-        StepState steps = stepState(sample, sampleItems);
+        StepState steps = stepState(sample, sampleItems, sampleWorkflowType);
 
         Map<String, Object> orderData = new HashMap<>();
         orderData.put("id", sample.getId());
@@ -518,6 +572,8 @@ public class OrderSearchRestController extends BaseRestController {
         stepProgress.put("qa", steps.qa);
         orderData.put("stepProgress", stepProgress);
         orderData.put("status", steps.status());
+        putProgress(orderData, sample,
+                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress);
         orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
         if (sampleWorkflowType != null) {
@@ -539,6 +595,40 @@ public class OrderSearchRestController extends BaseRestController {
      * @param labNumber the lab/accession number to search for (required)
      * @return Order data with 200 OK, or 404 if not found
      */
+
+    /**
+     * The panel an analysis was ordered through, as recorded on the analysis. A
+     * test that is also a member of some panel but was ordered on its own has no
+     * panel, and is reloaded as a standalone test.
+     */
+    private String panelIdOf(Analysis analysis) {
+        Object panel = analysis.getPanel();
+        if (panel == null) {
+            return null;
+        }
+        if (panel instanceof HibernateProxy proxy) {
+            Object id = proxy.getHibernateLazyInitializer().getIdentifier();
+            return id == null ? null : id.toString();
+        }
+        return ((Panel) panel).getId();
+    }
+
+    private String panelNameFor(String panelId, String testId) {
+        try {
+            for (PanelItem panelItem : panelItemService.getPanelItemByTestId(testId)) {
+                if (panelItem.getPanel() != null && panelId.equals(panelItem.getPanel().getId())) {
+                    return panelItem.getPanel().getLocalizedName();
+                }
+            }
+            String name = panelService.getNameForPanelId(panelId);
+            return name == null ? "" : name;
+        } catch (Exception e) {
+            LogEvent.logDebug(this.getClass().getSimpleName(), "panelNameFor",
+                    "Panel name lookup failed for panel " + panelId);
+            return "";
+        }
+    }
+
     @GetMapping(value = "/search", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<Map<String, Object>> searchOrder(@RequestParam(required = false) String labNumber) {
 
@@ -656,7 +746,7 @@ public class OrderSearchRestController extends BaseRestController {
                     var typeOfSample = typeOfSampleService.get(sampleItem.getTypeOfSampleId());
                     if (typeOfSample != null) {
                         sampleItemData.put("name", typeOfSample.getLocalizedName());
-                        sampleItemData.put("sampleTypeName", typeOfSample.getDescription());
+                        sampleItemData.put("sampleTypeName", typeOfSample.getLocalizedName());
                     }
                 }
 
@@ -729,9 +819,7 @@ public class OrderSearchRestController extends BaseRestController {
                 List<TestSelectionDTO> testsData = new ArrayList<>();
                 List<Map<String, Object>> panelsData = new ArrayList<>();
 
-                // panelId → testIds accumulator — built from PanelItem records so that
-                // lazy-load failures on Analysis.getPanel() don't silently drop panels.
-                Map<String, List<String>> panelTestIdsMap = new HashMap<>();
+                Map<String, List<String>> panelTestIdsMap = new LinkedHashMap<>();
                 Map<String, String> panelNameMap = new HashMap<>();
                 for (Analysis analysis : analyses) {
                     if (analysis.getTest() == null) {
@@ -739,20 +827,13 @@ public class OrderSearchRestController extends BaseRestController {
                     }
                     testsData.add(buildSelectedTestData(analysis.getTest()));
 
-                    try {
-                        List<PanelItem> panelItems = panelItemService.getPanelItemByTestId(analysis.getTest().getId());
-                        for (PanelItem pi : panelItems) {
-                            if (pi.getPanel() == null) {
-                                continue;
-                            }
-                            String pid = pi.getPanel().getId();
-                            panelTestIdsMap.computeIfAbsent(pid, k -> new ArrayList<>())
-                                    .add(analysis.getTest().getId());
-                            panelNameMap.putIfAbsent(pid, pi.getPanel().getLocalizedName());
-                        }
-                    } catch (Exception e) {
-                        LogEvent.logDebug(this.getClass().getSimpleName(), "searchOrder",
-                                "Panel lookup failed for test " + analysis.getTest().getId());
+                    String panelId = panelIdOf(analysis);
+                    if (GenericValidator.isBlankOrNull(panelId)) {
+                        continue;
+                    }
+                    panelTestIdsMap.computeIfAbsent(panelId, k -> new ArrayList<>()).add(analysis.getTest().getId());
+                    if (!panelNameMap.containsKey(panelId)) {
+                        panelNameMap.put(panelId, panelNameFor(panelId, analysis.getTest().getId()));
                     }
                 }
                 for (Map.Entry<String, List<String>> entry : panelTestIdsMap.entrySet()) {
@@ -905,7 +986,14 @@ public class OrderSearchRestController extends BaseRestController {
             // regardless of whether all items are checked (checklist is advisory)
             boolean qaComplete = sampleQaChecklistService.findBySampleId(Integer.parseInt(sample.getId())) != null;
             stepProgress.put("qa", qaComplete);
+
+            String workflowType = workflowTypeOf(sample);
+            OrderProgressStatus progressStatus = orderProgressService.statusOf(sample,
+                    stepProgress.get("collect") && labelComplete, qaComplete);
+            applyStoredProgress(sample, workflowType, progressStatus, stepProgress);
             response.put("stepProgress", stepProgress);
+            response.put("workflowType", workflowType);
+            putProgress(response, sample, workflowType, progressStatus);
 
             response.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
@@ -914,6 +1002,84 @@ public class OrderSearchRestController extends BaseRestController {
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "searchOrder", "Error searching for order: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
+    /**
+     * The stored workflow type of an order; a clinical order saved before the types
+     * were recorded has none.
+     */
+    private String workflowTypeOf(Sample sample) {
+        String stored = observationHistoryService.getRawValueForSample(ObservationType.ENV_WORKFLOW_TYPE,
+                sample.getId());
+        return GenericValidator.isBlankOrNull(stored) ? "clinical" : stored;
+    }
+
+    /**
+     * A clinical order with a stored progress status reports its steps from that
+     * status (OGC-1266 FR-F5): Prepare Samples is done once the order is Samples
+     * prepared, and Sample check once it is Ready for testing. Orders without one,
+     * and the environmental and vector lanes, keep the flags derived from their
+     * data.
+     */
+    private void applyStoredProgress(Sample sample, String workflowType, OrderProgressStatus status,
+            Map<String, Boolean> stepProgress) {
+        if (OrderProgressStatus.fromStored(sample.getOrderProgressStatus()) == null
+                || !"clinical".equalsIgnoreCase(workflowType)) {
+            return;
+        }
+        boolean prepared = status.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
+        stepProgress.put("collect", prepared);
+        stepProgress.put("label", prepared);
+        stepProgress.put("qa", status == OrderProgressStatus.READY_FOR_TESTING);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType,
+            OrderProgressStatus status) {
+        target.put("progressStatus", status.name());
+        target.put("complete", orderProgressService.isComplete(status, workflowType));
+        target.put("sampleCheckEnabled", orderProgressService.sampleCheckEnabled(workflowType));
+        Map<String, Object> progress = new HashMap<>();
+        progress.put("enteredAt", timestampText(sample.getOrderEnteredAt()));
+        progress.put("preparedAt", timestampText(sample.getOrderPreparedAt()));
+        progress.put("readyAt", timestampText(sample.getOrderReadyAt()));
+        progress.put("releaseNote", sample.getOrderReleaseNote());
+        progress.put("cancelledAt", timestampText(sample.getOrderCancelledAt()));
+        progress.put("cancelReason", sample.getOrderCancelReason());
+        target.put("progress", progress);
+    }
+
+    private static String timestampText(java.sql.Timestamp value) {
+        return value == null ? null : value.toString();
+    }
+
+    /**
+     * Cancels an order that has not finished order entry (FR-A4): its tests are
+     * cancelled and the order is marked Cancelled with the reason, who and when.
+     * Nothing is deleted. A complete or already cancelled order is refused.
+     */
+    @PostMapping(value = "/cancel", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<Map<String, Object>> cancelOrder(@RequestBody Map<String, String> body,
+            HttpServletRequest request) {
+        String labNumber = body == null ? null : body.get("labNumber");
+        if (GenericValidator.isBlankOrNull(labNumber)) {
+            return ResponseEntity.badRequest().body(Map.of("error", "order.cancel.labNumberRequired"));
+        }
+        Sample sample = sampleService.getSampleByAccessionNumber(labNumber.trim());
+        if (sample == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(Map.of("error", "order.notFound"));
+        }
+        try {
+            Sample cancelled = orderProgressService.cancel(sample.getId(), body.get("reason"), getSysUserId(request));
+            Map<String, Object> response = new HashMap<>();
+            response.put("labNumber", cancelled.getAccessionNumber());
+            putProgress(response, cancelled, workflowTypeOf(cancelled),
+                    OrderProgressStatus.fromStored(cancelled.getOrderProgressStatus()));
+            return ResponseEntity.ok(response);
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
         }
     }
 

@@ -65,10 +65,10 @@ public class UserServiceLabUnitTestIdsCacheTest {
         role.setId(ROLE_ID);
         when(roleService.getRoleByName(Constants.ROLE_RESULTS)).thenReturn(role);
         when(testService.getTestsByTestSectionIds(anyList())).thenReturn(tests("11", "12"));
-        doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService).getUserTestSections(READER,
+        doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService).getUserViewerTestSections(READER,
                 ROLE_ID);
-        doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService).getUserTestSections(COLLEAGUE,
-                ROLE_ID);
+        doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService)
+                .getUserViewerTestSections(COLLEAGUE, ROLE_ID);
     }
 
     @After
@@ -105,7 +105,7 @@ public class UserServiceLabUnitTestIdsCacheTest {
 
     @Test
     public void testIdsInUserLabUnits_areEmptyForAUserWithNoLabUnits() {
-        doReturn(Arrays.asList()).when(userService).getUserTestSections(READER, ROLE_ID);
+        doReturn(Arrays.asList()).when(userService).getUserViewerTestSections(READER, ROLE_ID);
 
         assertEquals("no lab unit means no test", 0,
                 userService.getTestIdsInUserLabUnits(READER, Constants.ROLE_RESULTS).size());

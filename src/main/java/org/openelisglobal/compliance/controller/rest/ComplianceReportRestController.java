@@ -290,11 +290,11 @@ public class ComplianceReportRestController {
     }
 
     private byte[] buildOriginalPdfBytes(ComplianceReportOrderDTO dto) throws DocumentException, IOException {
-        Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-        Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-        Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
-        Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
-        Font labelFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
+        Font titleFont = CertificateFonts.bold(14);
+        Font sectionFont = CertificateFonts.bold(11);
+        Font headerFont = CertificateFonts.bold(9, BaseColor.WHITE);
+        Font cellFont = CertificateFonts.regular(9);
+        Font labelFont = CertificateFonts.bold(9);
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);
@@ -420,11 +420,11 @@ public class ComplianceReportRestController {
 
     private byte[] buildAmendmentPdfBytes(Sample sample, ComplianceReportOrderDTO dto)
             throws DocumentException, IOException {
-        Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-        Font sectionFont = new Font(Font.FontFamily.HELVETICA, 11, Font.BOLD);
-        Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
-        Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
-        Font labelFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD);
+        Font titleFont = CertificateFonts.bold(14);
+        Font sectionFont = CertificateFonts.bold(11);
+        Font headerFont = CertificateFonts.bold(9, BaseColor.WHITE);
+        Font cellFont = CertificateFonts.regular(9);
+        Font labelFont = CertificateFonts.bold(9);
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         Document document = new Document(PageSize.A4);

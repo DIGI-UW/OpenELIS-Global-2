@@ -401,6 +401,39 @@ public class MicrobiologyTestFixtures {
         throw new IllegalStateException("Unable to provision SampleStatus.Entered for microbiology tests");
     }
 
+    /**
+     * The status a cancelled order's sample takes (OGC-1266). Fixtures that
+     * truncate and re-seed the status table leave the status cache pointing at ids
+     * that no longer exist, so the cache is refreshed against the row.
+     */
+    public String ensureSampleCanceledStatus() {
+        String statusId = statusService.getStatusID(SampleStatus.Canceled);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "SAMPLE".equals(status.getStatusType()))
+                .filter(status -> "SampleCanceled".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample canceled = new StatusOfSample();
+            canceled.setStatusOfSampleName("SampleCanceled");
+            canceled.setDescription("The sample has been canceled by the user");
+            canceled.setCode(nextAvailableStatusCode("SAMPLE"));
+            canceled.setStatusType("SAMPLE");
+            canceled.setNameKey("status.sample.canceled");
+            canceled.setIsActive(IActionConstants.YES);
+            canceled.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(canceled);
+        }
+        statusService.refreshCache();
+        statusId = statusService.getStatusID(SampleStatus.Canceled);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision SampleStatus.Canceled");
+        }
+        return statusId;
+    }
+
     public void ensureRequiredWorkflowStatuses() {
         ensureSampleEnteredStatus();
         ensureAnalysisNotStartedStatus();

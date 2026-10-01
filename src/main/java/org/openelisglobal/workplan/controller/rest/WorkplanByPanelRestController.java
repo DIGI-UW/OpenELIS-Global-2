@@ -120,6 +120,7 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
                     testResultItem.setTestId(analysis.getTest().getId());
                     Sample sample = analysis.getSampleItem().getSample();
                     testResultItem.setAccessionNumber(sample.getAccessionNumber());
+                    markEqaSample(testResultItem, sample);
                     testResultItem.setPatientInfo(getSubjectNumber(analysis));
                     testResultItem.setNextVisitDate(SpringContext.getBean(ObservationHistoryService.class)
                             .getValueForSample(ObservationType.NEXT_VISIT_DATE, sample.getId()));

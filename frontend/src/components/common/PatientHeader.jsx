@@ -49,6 +49,8 @@ const PatientHeader = (props) => {
   // destructuring default does not cover, so normalise once.
   const staff = Array.isArray(assignedStaff) ? assignedStaff : [];
   const hasCaseState = Boolean(statusTag) || staff.length > 0;
+  const displayName =
+    patientName || [lastName, firstName].filter(Boolean).join(" ");
   return (
     <Grid fullWidth={true}>
       <Column lg={16} md={8} sm={4}>
@@ -61,18 +63,14 @@ const PatientHeader = (props) => {
                     <AsyncAvatar
                       patientId={String(id)}
                       hasPhoto={true}
-                      patientName={
-                        patientName ? patientName : lastName + " " + firstName
-                      }
+                      patientName={displayName}
                       size={56}
                       gender={gender}
                     />
                   </Column>
                   <Column lg={hasCaseState ? 11 : 15} md={5} sm={3}>
                     <div>
-                      <span className="patient-name">
-                        {patientName ? patientName : lastName + " " + firstName}
-                      </span>
+                      <span className="patient-name">{displayName}</span>
                       <span className="patient-dob">
                         {" "}
                         {gender === "M" ? (

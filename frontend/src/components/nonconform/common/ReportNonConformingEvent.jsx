@@ -21,6 +21,7 @@ import {
   Tag,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { useLocation } from "react-router-dom";
 import {
   NotificationKinds,
   AlertDialog,
@@ -56,6 +57,7 @@ export const ReportNonConformingEvent = () => {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
 
   const intl = useIntl();
+  const location = useLocation();
 
   const [nceForm, setnceForm] = useState({
     nceNumber: "",
@@ -186,6 +188,29 @@ export const ReportNonConformingEvent = () => {
     { key: "type", value: "Specimen type" },
   ];
 
+  const searchFor = (type, value) => {
+    setReportFormValues({ type, value, error: undefined });
+
+    getFromOpenElisServer(
+      `/rest/nonconformevents?${type}=${encodeURIComponent(value)}`,
+      (data) => {
+        if (data && data.length > 0) {
+          setSearchResults(data);
+        } else {
+          setSearchResults(null);
+          setReportFormValues({
+            type,
+            value,
+            error: intl.formatMessage({
+              id: "error.nonconform.report.data.found",
+              defaultMessage: "No data found",
+            }),
+          });
+        }
+      },
+    );
+  };
+
   const handleSearch = () => {
     if (reportFormValues.type === undefined || reportFormValues.value === "") {
       setReportFormValues({
@@ -196,27 +221,20 @@ export const ReportNonConformingEvent = () => {
       });
       return;
     }
-
-    setReportFormValues({ ...reportFormValues, error: undefined });
-
-    getFromOpenElisServer(
-      `/rest/nonconformevents?${reportFormValues.type}=${reportFormValues.value}`,
-      (data) => {
-        if (data && data.length > 0) {
-          setSearchResults(data);
-        } else {
-          setSearchResults(null);
-          setReportFormValues({
-            ...reportFormValues,
-            error: intl.formatMessage({
-              id: "error.nonconform.report.data.found",
-              defaultMessage: "No data found",
-            }),
-          });
-        }
-      },
-    );
+    searchFor(reportFormValues.type, reportFormValues.value);
   };
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const labNumber = params.get("labNumber");
+    const description = params.get("description");
+    if (description) {
+      setnceForm((prev) => ({ ...prev, description }));
+    }
+    if (labNumber) {
+      searchFor("labNumber", labNumber);
+    }
+  }, [location.search]);
 
   const handleLinkSamples = () => {
     const labNo = Object.keys(orderSampleMap)[0];

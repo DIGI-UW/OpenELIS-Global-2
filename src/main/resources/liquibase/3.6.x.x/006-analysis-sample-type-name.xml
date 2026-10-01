@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <!-- OGC-1171: the analysis copies the sample type's localized name, which has no
+       length limit, so a name over 40 characters failed every order save. -->
+  <changeSet id="OGC-1171-widen-analysis-type-of-sample-name" author="mozzy11">
+    <modifyDataType schemaName="clinlims" tableName="analysis" columnName="type_of_sample_name" newDataType="text"/>
+    <rollback>
+      <sql>ALTER TABLE clinlims.analysis ALTER COLUMN type_of_sample_name TYPE varchar(40) USING left(type_of_sample_name, 40)</sql>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

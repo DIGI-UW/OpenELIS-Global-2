@@ -1,18 +1,9 @@
 import React, { useContext, useState, useEffect, useCallback } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import { useIntl, FormattedMessage } from "react-intl";
-import {
-  Grid,
-  Column,
-  Stack,
-  Button,
-  Tile,
-  Accordion,
-  AccordionItem,
-} from "@carbon/react";
-import { Printer } from "@carbon/icons-react";
+import { Grid, Column, Stack, Tile } from "@carbon/react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
-import SaveFailureNotice from "../SaveFailureNotice";
+import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
 import { describeUnmetRequirements } from "../saveRequirements";
@@ -41,11 +32,11 @@ const ClinicalOrderEnter = () => {
   const {
     orderData,
     setOrderData,
+    seedOrderData,
     samples,
     setSamples,
     labNumber,
     saveOrderEntry,
-    isSubmitting,
     fieldErrors,
     markStepComplete,
     isReadOnly,
@@ -67,7 +58,6 @@ const ClinicalOrderEnter = () => {
   // Initialise empty — populated by the sync effect below after the mount
   // reset runs, preventing stale cross-domain lab numbers from bleeding in.
   const [localLabNumber, setLocalLabNumber] = useState("");
-  const [printLabelsExpanded, setPrintLabelsExpanded] = useState(false);
   const [errors, setErrors] = useState({});
   const [phoneValidation, setPhoneValidation] = useState({
     primaryPhone: { body: "", status: true },
@@ -84,7 +74,7 @@ const ClinicalOrderEnter = () => {
     if (new URLSearchParams(location.search).get("eqa") !== "true") {
       return;
     }
-    setOrderData((prev) => ({
+    seedOrderData((prev) => ({
       ...prev,
       sampleOrderItems: {
         ...prev.sampleOrderItems,
@@ -101,7 +91,7 @@ const ClinicalOrderEnter = () => {
     const current =
       orderData?.sampleOrderItems?.environmentalFields?.workflowType;
     if (current !== WORKFLOW_TYPE) {
-      setOrderData((prev) => ({
+      seedOrderData((prev) => ({
         ...prev,
         patientUpdateStatus:
           prev.patientUpdateStatus !== undefined
@@ -130,10 +120,12 @@ const ClinicalOrderEnter = () => {
     }
   }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
+  // A generated lab number is a default the form set for itself, not a change
+  // the user made, so it does not mark the order dirty.
   const handleLabNumberChange = useCallback(
-    (newLabNo) => {
+    (newLabNo, { generated = false } = {}) => {
       setLocalLabNumber(newLabNo);
-      setOrderData((prev) => ({
+      (generated ? seedOrderData : setOrderData)((prev) => ({
         ...prev,
         sampleOrderItems: {
           ...prev.sampleOrderItems,
@@ -141,7 +133,7 @@ const ClinicalOrderEnter = () => {
         },
       }));
     },
-    [setOrderData],
+    [setOrderData, seedOrderData],
   );
 
   const hasPatient = !!(
@@ -158,31 +150,53 @@ const ClinicalOrderEnter = () => {
     orderData?.sampleOrderItems?.providerPersonId ||
     orderData?.sampleOrderItems?.providerId,
   );
-  // These settings have always existed; the lanes just never read them.
-  // SampleEntryReferralSiteNameRequired marks the field — that is all it has
-  // ever done, in the legacy screen it was written for — so it drives the
-  // asterisk that regressed, not a save gate. REQUESTER_REQUIRED is a real
-  // validation gate in the legacy flow, and PatientRequired is honoured with
-  // the recorded no-patient override as its escape hatch.
+  // Two levels of required (FR-A7, FR-B13). Save and exit needs the save
+  // level: a lab number, a patient (or the recorded no-patient decision) and
+  // a sample type. Save and next needs the complete level as well: the
+  // provider where the deployment requires one. The site setting only marks
+  // the field (OGC-1201 K: no server validation reads it), so it never holds
+  // the step. Each missing item is listed in the To continue checklist with a
+  // link to its field.
   const saveRequirements = [
     {
       met: Boolean(localLabNumber),
       labelId: "order.save.requirement.labNumber",
+      itemId: "order.continue.item.labNumber",
+      targetId: "labNumber",
     },
     {
       met: hasPatient || noPatientOverride || !patientRequired,
       labelId: "order.save.requirement.patient",
+      itemId: "order.continue.item.patient",
+      targetId: "order-patient-search-lastName",
     },
+    {
+      met: hasSampleTypes,
+      labelId: "order.save.requirement.sampleType",
+      itemId: "order.continue.item.sampleType",
+      targetId: "sampleType-0",
+    },
+  ];
+  const completeRequirements = [
     {
       met: hasProvider || !providerRequired,
       labelId: "order.save.requirement.provider",
+      itemId: "order.continue.item.provider",
+      targetId: "providerName",
     },
-    { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
   ];
   const canSave = saveRequirements.every((requirement) => requirement.met);
+  const toContinue = [...saveRequirements, ...completeRequirements]
+    .filter((requirement) => !requirement.met)
+    .map((requirement) => ({
+      id: requirement.itemId,
+      label: intl.formatMessage({ id: requirement.itemId }),
+      targetId: requirement.targetId,
+    }));
 
   const canProceed =
     canSave &&
+    completeRequirements.every((requirement) => requirement.met) &&
     Object.values(phoneValidation).every((item) => item.status !== false);
 
   const handleSave = async () => {
@@ -193,7 +207,7 @@ const ClinicalOrderEnter = () => {
         message: describeUnmetRequirements(intl, saveRequirements),
       });
       setNotificationVisible(true);
-      return;
+      return false;
     }
     try {
       await saveOrderEntry();
@@ -203,13 +217,15 @@ const ClinicalOrderEnter = () => {
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
+      return true;
     } catch (error) {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
+      return false;
     }
   };
 
@@ -227,38 +243,7 @@ const ClinicalOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
-      });
-      setNotificationVisible(true);
-    }
-  };
-
-  const handleSaveAsDraft = async () => {
-    if (!canSave) {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: describeUnmetRequirements(intl, saveRequirements),
-      });
-      setNotificationVisible(true);
-      return;
-    }
-    try {
-      await saveOrderEntry();
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.saved.draft",
-          defaultMessage: "Order saved as draft",
-        }),
-      });
-      setNotificationVisible(true);
-    } catch (error) {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -268,27 +253,18 @@ const ClinicalOrderEnter = () => {
     <OrderWorkflowLayout
       title="order.step.enter"
       canProceed={canProceed}
+      canSave={canSave}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
-      extraButtons={
-        <Button
-          kind="tertiary"
-          onClick={handleSaveAsDraft}
-          size="md"
-          disabled={isSubmitting || !canSave}
-        >
-          <FormattedMessage
-            id="button.save.draft"
-            defaultMessage="Save as Draft"
-          />
-        </Button>
-      }
+      toContinue={toContinue}
     >
       {notificationVisible && <AlertDialog />}
       <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
 
       <Stack gap={7}>
-        {/* Lab Number */}
+        {/* 1. Order: the lab number, with the EQA and no-patient decisions
+            (FR-B1, FR-B3). The dead Print Labels accordion is gone; labels
+            print from Prepare Samples. */}
         <Tile className="order-section">
           <h4 className="section-title">
             <FormattedMessage
@@ -309,65 +285,6 @@ const ClinicalOrderEnter = () => {
               />
             </Column>
           </Grid>
-
-          <Accordion>
-            <AccordionItem
-              title={
-                <span className="print-labels-title">
-                  <Printer size={16} />
-                  <FormattedMessage
-                    id="order.printLabels"
-                    defaultMessage="Print Labels"
-                  />
-                </span>
-              }
-              open={printLabelsExpanded}
-              onHeadingClick={() =>
-                setPrintLabelsExpanded(!printLabelsExpanded)
-              }
-            >
-              <div className="print-labels-content">
-                <p className="helper-text">
-                  <FormattedMessage
-                    id="order.printLabels.info"
-                    defaultMessage="Labels can be printed here or from Step 3 (Label & Store)."
-                  />
-                </p>
-                <div className="label-buttons">
-                  <Button kind="tertiary" size="sm" disabled={!localLabNumber}>
-                    <FormattedMessage
-                      id="label.order"
-                      defaultMessage="Order Label"
-                    />
-                  </Button>
-                  <Button kind="tertiary" size="sm" disabled>
-                    <FormattedMessage
-                      id="label.sample"
-                      defaultMessage="Sample Label"
-                    />
-                  </Button>
-                  <Button kind="tertiary" size="sm" disabled={!localLabNumber}>
-                    <FormattedMessage
-                      id="label.slide"
-                      defaultMessage="Slide Label"
-                    />
-                  </Button>
-                  <Button kind="tertiary" size="sm" disabled={!localLabNumber}>
-                    <FormattedMessage
-                      id="label.block"
-                      defaultMessage="Block Label"
-                    />
-                  </Button>
-                  <Button kind="tertiary" size="sm" disabled={!localLabNumber}>
-                    <FormattedMessage
-                      id="label.freezer"
-                      defaultMessage="Freezer Label"
-                    />
-                  </Button>
-                </div>
-              </div>
-            </AccordionItem>
-          </Accordion>
         </Tile>
 
         {/* AL and W: the two adjacent decisions — EQA, and no patient. */}
@@ -378,31 +295,16 @@ const ClinicalOrderEnter = () => {
           patientRequired={patientRequired}
         />
 
-        {/* Patient Search */}
+        {/* 2. Patient */}
         <PatientSearchSection
           orderData={orderData}
           setOrderData={setOrderData}
           setPhoneValidation={setPhoneValidation}
           isReadOnly={isReadOnly && !isEditMode}
+          required={patientRequired && !noPatientOverride}
         />
 
-        {/* Program Selection */}
-        <ProgramSection
-          orderData={orderData}
-          setOrderData={setOrderData}
-          samples={samples}
-          isReadOnly={isReadOnly && !isEditMode}
-          domain="CLINICAL"
-        />
-
-        {/* Clinical Information */}
-        <ClinicalInfoSection
-          orderData={orderData}
-          setOrderData={setOrderData}
-          isReadOnly={isReadOnly && !isEditMode}
-        />
-
-        {/* Requester / Ordering Provider */}
+        {/* 3. Requester, before the request details, as on the paper form */}
         <RequesterSection
           orderData={orderData}
           setOrderData={setOrderData}
@@ -412,7 +314,22 @@ const ClinicalOrderEnter = () => {
           providerRequired={providerRequired}
         />
 
-        {/* Sample & Test Selection */}
+        {/* 4. Request details: program, then clinical information */}
+        <ProgramSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          samples={samples}
+          isReadOnly={isReadOnly && !isEditMode}
+          domain="CLINICAL"
+        />
+
+        <ClinicalInfoSection
+          orderData={orderData}
+          setOrderData={setOrderData}
+          isReadOnly={isReadOnly && !isEditMode}
+        />
+
+        {/* 5. Tests */}
         <SampleTestSection
           samples={samples}
           setSamples={setSamples}

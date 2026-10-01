@@ -36,6 +36,7 @@ import {
 import "../resultPage/unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import { triageRows } from "./validationTriage";
+import { displayRange } from "../common/rangeNotApplied";
 import {
   NOTE_CONTEXT_MODIFICATION,
   NOTE_CONTEXT_VALIDATION,
@@ -93,6 +94,7 @@ const ValidationReviewPanel = ({
   onActionDone,
   onNoteChange,
   onStale,
+  onQcHold,
 }) => {
   const intl = useIntl();
   const triage =
@@ -185,6 +187,10 @@ const ValidationReviewPanel = ({
           onStale(response, row);
           return;
         }
+        if (response?.error === "qcHold" && onQcHold) {
+          onQcHold(response, row);
+          return;
+        }
         setErrorKey(errorMessageKey(response));
       },
     );
@@ -232,7 +238,10 @@ const ValidationReviewPanel = ({
     );
 
   const qcAckBlocksRelease = Boolean(qcAck?.required && !qcAck?.satisfied);
-  const releaseBlocked = busy || qcAckBlocksRelease;
+  const qcHoldBlocksRelease =
+    row.qcHold === true &&
+    configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
+  const releaseBlocked = busy || qcAckBlocksRelease || qcHoldBlocksRelease;
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
@@ -273,13 +282,18 @@ const ValidationReviewPanel = ({
             <span className="cds--label" style={LABEL_STYLE}>
               <FormattedMessage id="label.validation.review.result" />
             </span>
-            <strong>{displayResult(row)}</strong>
+            <strong
+              style={{ whiteSpace: "nowrap" }}
+              data-testid="review-result-value"
+            >
+              {displayResult(row)}
+            </strong>
             {unitsOnly(row.units) && <span> {unitsOnly(row.units)}</span>}{" "}
             <FlagChip flag={flag} />
           </div>
           <Field
             labelKey="label.validation.review.normalRange"
-            value={row.normalRange || notRecorded}
+            value={displayRange(intl, row) || notRecorded}
             testId="review-normal-range"
           />
           <Field
@@ -587,6 +601,14 @@ const ValidationReviewPanel = ({
                 onBeforeSign={qcAck?.beforeSign}
                 onSign={release}
                 disabled={releaseBlocked}
+                ariaDescribedBy={
+                  [
+                    qcAckBlocksRelease && `review-qc-ack-hint-${row.id}`,
+                    qcHoldBlocksRelease && `review-qc-hold-hint-${row.id}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
+                }
                 size="sm"
               >
                 <FormattedMessage id="label.validation.review.action.release" />
@@ -723,8 +745,21 @@ const ValidationReviewPanel = ({
             <FormattedMessage id="label.validation.review.action.refer" />
           </Button>
           {qcAckBlocksRelease && (
-            <span className="unifiedFieldHint" data-testid="review-qc-ack-hint">
+            <span
+              id={`review-qc-ack-hint-${row.id}`}
+              className="unifiedFieldHint"
+              data-testid="review-qc-ack-hint"
+            >
               <FormattedMessage id="label.validation.review.release.qcAckFirst" />
+            </span>
+          )}
+          {qcHoldBlocksRelease && (
+            <span
+              id={`review-qc-hold-hint-${row.id}`}
+              className="unifiedFieldHint"
+              data-testid="review-qc-hold-hint"
+            >
+              <FormattedMessage id="label.validation.review.error.qcHold" />
             </span>
           )}
         </div>

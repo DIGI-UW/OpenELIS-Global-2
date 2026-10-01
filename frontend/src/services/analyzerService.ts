@@ -246,7 +246,7 @@ export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
   kind?: "CREATE" | "DUPLICATE" | "UPDATE" | string;
   baseProfileId?: string | null;
   baseRevision?: number | null;
-  profile?: {
+  profile?: JsonObject & {
     profileMeta?: {
       id?: string;
       displayName?: string;
@@ -744,6 +744,19 @@ export const getAnalyzerTypeDraft = (
   );
 };
 
+export const updateAnalyzerTypeDraft = (
+  draftId: string,
+  profile: JsonObject,
+  callback: ApiCallback<AnalyzerProfileDraftResponse>,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer-types/drafts/${encodeURIComponent(draftId)}`,
+    "PUT",
+    { profile },
+    callback,
+  );
+};
+
 export const getAnalyzerTypeControlRecognition = (
   draftId: string,
   callback: DataCallback<AnalyzerControlRecognitionDraft | undefined>,
@@ -802,3 +815,21 @@ export const publishAnalyzerTypeDraft = (
     callback,
   );
 };
+
+export interface AnalyzerUpgradeOutcome {
+  analyzerId: string;
+  name: string;
+  status: string;
+  reason?: string | null;
+}
+export const getAnalyzerUpgrade = (
+  callback: DataCallback<AnalyzerUpgradeOutcome[] | undefined>,
+) => getFromOpenElisServer("/rest/analyzer/upgrade", callback);
+export const retryAnalyzerUpgrade = (
+  callback: ApiCallback<AnalyzerUpgradeOutcome[]>,
+) =>
+  postToOpenElisServerJsonResponse(
+    "/rest/analyzer/upgrade",
+    JSON.stringify({}),
+    callback,
+  );

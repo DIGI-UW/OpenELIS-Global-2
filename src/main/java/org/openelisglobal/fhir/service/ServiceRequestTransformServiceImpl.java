@@ -242,18 +242,18 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
                     new Coding(fhirConfig.getOeFhirSystem() + "/samp_domain", sample.getDomain(), sample.getDomain())));
         }
         serviceRequest.setPriority(convertToServiceRequestPriority(sample.getPriority()));
+        // Pool-level vector analyses have no specific Specimen — FHIR
+        // Specimen is per-sample-item, and the test runs against the pool
+        // grouping until deconvolution narrows it down.
+        SampleItem analysisSampleItem = analysis.getSampleItem();
         serviceRequest.setCode(terminologyTransformService.transformTestToCodeableConcept(test.getId(),
-                analysis.getSampleItem().getTypeOfSampleId()));
+                analysisSampleItem == null ? null : analysisSampleItem.getTypeOfSampleId()));
         serviceRequest.setAuthoredOn(new Date());
         for (Note note : noteService.getNotes(analysis)) {
             serviceRequest.addNote(common.transformNoteToAnnotation(note));
         }
         // TODO performer type?
 
-        // Pool-level vector analyses have no specific Specimen — FHIR
-        // Specimen is per-sample-item, and the test runs against the pool
-        // grouping until deconvolution narrows it down.
-        SampleItem analysisSampleItem = analysis.getSampleItem();
         if (analysisSampleItem != null) {
             serviceRequest.addSpecimen(
                     common.createReferenceFor(ResourceType.Specimen, analysisSampleItem.getFhirUuidAsString()));

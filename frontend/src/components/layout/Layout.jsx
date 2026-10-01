@@ -112,13 +112,15 @@ export default function Layout(props) {
     userSessionDetails.authenticated && navPersistent && !isFocusedAuthRoute;
 
   const addNotification = (notificationBody) => {
-    setNotifications([...notifications, notificationBody]);
+    setNotifications((current) => [...current, notificationBody]);
   };
 
   const removeNotification = (index) => {
-    const newNotifications = [...notifications];
-    newNotifications.splice(index, 1);
-    setNotifications(newNotifications);
+    setNotifications((current) => {
+      const newNotifications = [...current];
+      newNotifications.splice(index, 1);
+      return newNotifications;
+    });
   };
 
   const fetchConfigurationProperties = (res) => {

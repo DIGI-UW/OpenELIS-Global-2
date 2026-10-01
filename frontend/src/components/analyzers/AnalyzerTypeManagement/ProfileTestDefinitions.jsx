@@ -1,0 +1,147 @@
+import React from "react";
+import { Button, Select, SelectItem, TextInput } from "@carbon/react";
+import { useIntl } from "react-intl";
+import { profileAuthoringMessage } from "./profileAuthoringMessages";
+import ProfileStringList from "./ProfileStringList";
+
+const ProfileTestDefinitions = ({ rows, onChange }) => {
+  const intl = useIntl();
+  // i18n-keys: analyzerType.editor.*
+  const text = (key, values) => profileAuthoringMessage(intl, key, values);
+  const update = (index, key, value) =>
+    onChange(
+      rows.map((row, current) => {
+        if (current !== index) return row;
+        const changed = { ...row };
+        if (value === undefined) delete changed[key];
+        else changed[key] = value;
+        return changed;
+      }),
+    );
+  return (
+    <section aria-label={text("testDefinitions")}>
+      <h4>{text("testDefinitions")}</h4>
+      <p>{text("testDefinitionsHelp")}</p>
+      {rows.map((row, index) => (
+        <fieldset
+          key={index}
+          aria-label={text("testNumber", { number: index + 1 })}
+          className="analyzer-type-modal__form"
+        >
+          <legend>{text("testNumber", { number: index + 1 })}</legend>
+          {[
+            ["test_code", "testCode"],
+            ["test_name_hint", "testName"],
+            ["specimen_type_hint", "specimenType"],
+            ["loinc", "loinc"],
+            ["unit", "testUnit"],
+          ].map(([key, label]) => (
+            <TextInput
+              key={key}
+              id={`profile-test-${index}-${key}`}
+              labelText={text(label)}
+              value={row[key] ?? ""}
+              onChange={(event) =>
+                update(
+                  index,
+                  key,
+                  event.target.value === "" && key !== "unit"
+                    ? undefined
+                    : event.target.value,
+                )
+              }
+            />
+          ))}
+          <Select
+            id={`profile-test-${index}-result-type`}
+            labelText={text("resultType")}
+            aria-label={text("resultType")}
+            value={row.result_type || ""}
+            onChange={(event) =>
+              update(index, "result_type", event.target.value || undefined)
+            }
+          >
+            <SelectItem value="" text={text("choose")} />
+            {["quantitative", "qualitative", "text"].map((value) => (
+              <SelectItem
+                key={value}
+                value={value}
+                text={text(`resultType.${value}`)}
+              />
+            ))}
+          </Select>
+          <ProfileStringList
+            id={`test-${index}-aliases`}
+            label={text("testAliases")}
+            values={row.aliases || []}
+            onChange={(values) =>
+              update(index, "aliases", values.length ? values : undefined)
+            }
+          />
+          {(row.result_type === "qualitative" || row.values) && (
+            <ProfileStringList
+              id={`test-${index}-values`}
+              label={text("testValues")}
+              values={row.values || []}
+              onChange={(values) => {
+                const hints = Object.fromEntries(
+                  Object.entries(row.result_value_hints || {}).filter(([raw]) =>
+                    values.includes(raw),
+                  ),
+                );
+                const changed = { ...row, values };
+                if (!values.length) delete changed.values;
+                if (Object.keys(hints).length)
+                  changed.result_value_hints = hints;
+                else delete changed.result_value_hints;
+                onChange(
+                  rows.map((item, current) =>
+                    current === index ? changed : item,
+                  ),
+                );
+              }}
+            />
+          )}
+          {(row.values || [])
+            .filter(
+              (raw, valueIndex, values) =>
+                raw.trim() && values.indexOf(raw) === valueIndex,
+            )
+            .map((raw, valueIndex) => (
+              <TextInput
+                key={raw}
+                id={`profile-test-${index}-result-hint-${valueIndex}`}
+                labelText={text("resultValueHint", { value: raw })}
+                helperText={text("resultValueHintHelp")}
+                value={row.result_value_hints?.[raw] || ""}
+                onChange={(event) => {
+                  const hints = { ...row.result_value_hints };
+                  if (event.target.value.trim())
+                    hints[raw] = event.target.value;
+                  else delete hints[raw];
+                  update(
+                    index,
+                    "result_value_hints",
+                    Object.keys(hints).length ? hints : undefined,
+                  );
+                }}
+              />
+            ))}
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={() =>
+              onChange(rows.filter((_, current) => current !== index))
+            }
+          >
+            {text("removeTest")}
+          </Button>
+        </fieldset>
+      ))}
+      <Button kind="tertiary" size="sm" onClick={() => onChange([...rows, {}])}>
+        {text("addTest")}
+      </Button>
+    </section>
+  );
+};
+export default ProfileTestDefinitions;

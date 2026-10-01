@@ -597,6 +597,25 @@ public class StringUtil {
         return constructed.substring(0, constructed.length() - separator.length());
     }
 
+    /**
+     * The non-blank parts, trimmed and joined with the separator, so a missing
+     * value leaves no empty slot (a patient with no recorded sex reads "ID-1,
+     * 01/01/1990", not "ID-1, , 01/01/1990").
+     */
+    public static String joinNonBlank(String separator, String... parts) {
+        StringBuilder joined = new StringBuilder();
+        for (String part : parts) {
+            if (part == null || part.trim().isEmpty()) {
+                continue;
+            }
+            if (joined.length() > 0) {
+                joined.append(separator);
+            }
+            joined.append(part.trim());
+        }
+        return joined.toString();
+    }
+
     public static String replaceTail(String value, String tail) {
         return value.substring(0, value.length() - tail.length()) + tail;
     }

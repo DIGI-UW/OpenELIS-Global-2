@@ -14,7 +14,8 @@ import { Save } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
-  postToOpenElisServerJsonResponse,
+  postToOpenElisServerFullResponse,
+  resolveApiErrorMessage,
 } from "../../utils/Utils";
 
 const SystemSettingsTab = () => {
@@ -126,22 +127,30 @@ const SystemSettingsTab = () => {
       generateReports: generateReports,
     };
 
-    postToOpenElisServerJsonResponse(
+    postToOpenElisServerFullResponse(
       "/rest/alert-notification-config",
       JSON.stringify(payload),
       (response) => {
         setSaving(false);
-        if (response) {
-          setNotification({
-            kind: "success",
-            message: intl.formatMessage({ id: "eqa.settings.saveSuccess" }),
-          });
-        } else {
-          setNotification({
-            kind: "error",
-            message: intl.formatMessage({ id: "eqa.settings.saveError" }),
-          });
+        if (!response || !response.ok) {
+          Promise.resolve(
+            response ? response.json().catch(() => null) : null,
+          ).then((body) =>
+            setNotification({
+              kind: "error",
+              message: resolveApiErrorMessage(
+                intl,
+                body,
+                "eqa.settings.saveError",
+              ),
+            }),
+          );
+          return;
         }
+        setNotification({
+          kind: "success",
+          message: intl.formatMessage({ id: "eqa.settings.saveSuccess" }),
+        });
       },
     );
   };

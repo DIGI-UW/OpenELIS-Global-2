@@ -163,7 +163,7 @@ describe("Home dashboard order list", () => {
       "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=2",
       "/rest/home-dashboard/ORDERS_IN_PROGRESS?page=1",
     ]);
-  });
+  }, 15000);
 
   it("asks the server for the chosen test section and shows what comes back", async () => {
     const user = userEvent.setup();

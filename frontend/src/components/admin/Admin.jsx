@@ -31,8 +31,9 @@ import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import CatalogImport from "./catalogImport/CatalogImport";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
-import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
-import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
+import LocationsPage, {
+  legacyOrganizationEditTarget,
+} from "./locations/LocationsPage";
 import UserManagement from "./userManagement/UserManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod";
@@ -138,13 +139,22 @@ function Admin() {
         from={`${path}/barcodeConfiguration`}
         to={`${path}/labelPresets`}
       />
-      <Route
-        path={`${path}/organizationManagement`}
-        component={OrganizationManagement}
+      {/* OGC-1363: Locations & Organizations replaces Organization Management
+          and absorbs the vector Sampling Sites page; the old routes redirect. */}
+      <Route path={`${path}/locations`} component={LocationsPage} />
+      <Redirect
+        from={`${path}/organizationManagement`}
+        to={`${path}/locations`}
       />
       <Route
         path={`${path}/organizationEdit`}
-        component={OrganizationAddModify}
+        render={({ location }) => (
+          <Redirect to={legacyOrganizationEditTarget(path, location)} />
+        )}
+      />
+      <Redirect
+        from={`${path}/vectorSurveillanceSetup/sampling-sites`}
+        to={`${path}/locations/sites`}
       />
       <Route
         path={`${path}/resultReportingConfiguration`}
@@ -268,7 +278,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="NonConformityConfigurationMenu"
-            label="Non Conformity Configuration Menu"
             id="sidenav.label.admin.formEntry.nonconformityconfig"
           />
         )}
@@ -278,7 +287,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="MenuStatementConfigMenu"
-            label="Menu Statement Configuration Menu"
             id="sidenav.label.admin.formEntry.menustatementconfig"
           />
         )}
@@ -288,7 +296,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="ValidationConfigurationMenu"
-            label="Validation Configuration Menu"
             id="sidenav.label.admin.formEntry.validationconfig"
           />
         )}
@@ -298,7 +305,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="SampleEntryConfigMenu"
-            label="Sample Entry Configuration Menu"
             id="sidenav.label.admin.formEntry.sampleEntryconfig"
           />
         )}
@@ -308,7 +314,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="WorkplanConfigurationMenu"
-            label="WorkPlan Configuration Menu"
             id="sidenav.label.admin.formEntry.Workplanconfig"
           />
         )}
@@ -318,7 +323,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="SiteInformationMenu"
-            label="Site Information Menu"
             id="sidenav.label.admin.formEntry.siteInfoconfig"
           />
         )}
@@ -328,7 +332,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="ResultConfigurationMenu"
-            label="Result Configuration Menu"
             id="sidenav.label.admin.formEntry.resultConfig"
           />
         )}
@@ -338,7 +341,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="PatientConfigurationMenu"
-            label="Patient Configuration Menu"
             id="sidenav.label.admin.formEntry.patientconfig"
           />
         )}
@@ -348,7 +350,6 @@ function Admin() {
         render={() => (
           <ConfigMenuDisplay
             menuType="PrintedReportsConfigurationMenu"
-            label="PrintedReports Configuration Menu"
             id="sidenav.label.admin.formEntry.PrintedReportsconfig"
           />
         )}

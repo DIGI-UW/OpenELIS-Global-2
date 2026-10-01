@@ -16,7 +16,6 @@ package org.openelisglobal.patient.action.bean;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 import java.io.Serializable;
@@ -136,7 +135,8 @@ public class PatientManagementInfo implements Serializable {
             SamplePatientEntryBatch.class })
     private String addressDepartment;
 
-    @NotBlank(groups = { SamplePatientEntryForm.SamplePatientEntry.class })
+    @OptionalNotBlank(properties = { Property.PATIENT_SEX_REQUIRED }, groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class })
     @Pattern(regexp = ValidationHelper.GENDER_REGEX, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String gender;
@@ -145,6 +145,8 @@ public class PatientManagementInfo implements Serializable {
     private String ageMonths;
     private String ageDays;
 
+    @OptionalNotBlank(properties = { Property.PATIENT_AGE_REQUIRED }, groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class })
     @ValidDate(relative = DateRelation.PAST, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
             SamplePatientEntryBatch.class })
     private String birthDateForDisplay = "";

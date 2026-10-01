@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -41,6 +42,8 @@ import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -58,6 +61,7 @@ import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
@@ -189,6 +193,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     private SystemUserService systemUserService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private SampleHumanService sampleHumanService;
 
     @Autowired
     private SampleOrderOverrideService sampleOrderOverrideService;
@@ -318,6 +324,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
+        resolveRetriedOrder(sampleOrder, patientInfo);
+        reuseOrderPatient(sampleOrder, patientInfo);
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -377,6 +385,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
             updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
             updateData.setEqaPriority(sampleOrder.getEqaPriority());
+            updateData.setEqaCycleId(sampleOrder.getEqaCycleId());
+            updateData.setEqaReceivedTempC(sampleOrder.getEqaReceivedTempC());
+            updateData.setEqaIntegrityOk(sampleOrder.getEqaIntegrityOk());
+            updateData.setEqaIntegrityNotes(sampleOrder.getEqaIntegrityNotes());
+            updateData.setEqaShippingBoxId(sampleOrder.getEqaShippingBoxId());
         }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
@@ -489,7 +502,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             persistFailed = true;
         }
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
-        if (form.getRememberSiteAndRequester()) {
+        if (Boolean.TRUE.equals(form.getRememberSiteAndRequester())) {
             redirectAttributes.addFlashAttribute("sampleOrderItems.providerId",
                     form.getSampleOrderItems().getProviderId());
             redirectAttributes.addFlashAttribute("sampleOrderItems.providerPersonId",
@@ -556,7 +569,26 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     .body(Map.of("error", "Order save did not persist (verification check failed). See server logs."));
         }
 
+        if (!ordersWithoutPatient) {
+            form.setRangeNotAppliedTests(rangeNotAppliedTests(persistedSample));
+        }
+
         return ResponseEntity.ok(form);
+    }
+
+    /**
+     * The saved order's tests whose reference range will not be applied because the
+     * patient's sex or birth date is missing, for the non-blocking warning shown
+     * after the save. A failure here is logged and never fails a save that already
+     * succeeded.
+     */
+    private List<String> rangeNotAppliedTests(Sample sample) {
+        try {
+            return samplePatientService.getTestNamesWithRangeNotApplied(sample);
+        } catch (RuntimeException e) {
+            logger.error("Could not list tests without an applicable range for sample {}", sample.getId(), e);
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -654,6 +686,81 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             field.setFieldValue(sampleOrder.getContactTracingIndexRecordNumber());
             updateData.addSampleField(field);
         }
+    }
+
+    /**
+     * A new-order save whose reply was lost is retried with the same order key.
+     * When the lab number is already held by the order that key created, the retry
+     * is applied to that order as an update, instead of failing with "accession
+     * number already in use", and the patient the first attempt added or updated is
+     * reused as saved: adding it again would duplicate it, and updating it again
+     * with the retry's now-stale timestamps would fail as a concurrent edit.
+     */
+    void resolveRetriedOrder(SampleOrderItem sampleOrder, PatientManagementInfo patientInfo) {
+        if (sampleOrder == null || !GenericValidator.isBlankOrNull(sampleOrder.getSampleId())
+                || GenericValidator.isBlankOrNull(sampleOrder.getLabNo())) {
+            return;
+        }
+        UUID orderKey = SamplePatientUpdateData.orderKeyAsUuid(sampleOrder.getOrderKey());
+        if (orderKey == null) {
+            return;
+        }
+        Sample existing = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+        if (existing == null || existing.getId() == null || !orderKey.equals(existing.getFhirUuid())) {
+            return;
+        }
+        sampleOrder.setSampleId(existing.getId());
+        if (patientInfo != null && (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD
+                || patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE)) {
+            Patient patient = sampleHumanService.getPatientForSample(existing);
+            if (patient != null && patient.getId() != null) {
+                patientInfo.setPatientPK(patient.getId());
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+            }
+        }
+    }
+
+    /**
+     * A save of an existing order that asks to add its patient again, with no
+     * patient id, keeps the patient the order already has when the two are the same
+     * person: the same national id, or, where neither has one, the same name, date
+     * of birth and sex. A client that lost the id after the first save used to add
+     * one patient per save (OGC-1407). A different person is still added, so an
+     * order can be moved to a patient entered in its place.
+     */
+    void reuseOrderPatient(SampleOrderItem sampleOrder, PatientManagementInfo patientInfo) {
+        if (sampleOrder == null || patientInfo == null || GenericValidator.isBlankOrNull(sampleOrder.getSampleId())
+                || patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.ADD
+                || !GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
+            return;
+        }
+        Sample existing = sampleService.get(sampleOrder.getSampleId());
+        if (existing == null) {
+            return;
+        }
+        Patient patient = sampleHumanService.getPatientForSample(existing);
+        if (patient == null || patient.getId() == null || !isSamePerson(patient, patientInfo)) {
+            return;
+        }
+        patientInfo.setPatientPK(patient.getId());
+        patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+    }
+
+    private static boolean isSamePerson(Patient patient, PatientManagementInfo patientInfo) {
+        String heldNationalId = StringUtils.trimToNull(patient.getNationalId());
+        String sentNationalId = StringUtils.trimToNull(patientInfo.getNationalId());
+        if (heldNationalId != null || sentNationalId != null) {
+            return heldNationalId != null && heldNationalId.equalsIgnoreCase(sentNationalId);
+        }
+        Person person = patient.getPerson();
+        return person != null && sameText(person.getLastName(), patientInfo.getLastName())
+                && sameText(person.getFirstName(), patientInfo.getFirstName())
+                && sameText(patient.getBirthDateForDisplay(), patientInfo.getBirthDateForDisplay())
+                && sameText(patient.getGender(), patientInfo.getGender());
+    }
+
+    private static boolean sameText(String held, String sent) {
+        return StringUtils.trimToEmpty(held).equalsIgnoreCase(StringUtils.trimToEmpty(sent));
     }
 
     private void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,

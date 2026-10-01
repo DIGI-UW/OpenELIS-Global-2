@@ -59,6 +59,10 @@ interface SearchPatientFormProps {
   idPrefix?: string;
   /** Patients (by patientID) left out of the results, e.g. one already chosen elsewhere on the page. */
   excludePatientIds?: string[];
+  /** False when the host page already renders the notification toasts. */
+  renderNotifications?: boolean;
+  /** False when the page's own `labNumber` URL parameter names the order it loads, not a patient search. */
+  followUrlLabNumber?: boolean;
   [key: string]: unknown;
 }
 
@@ -347,7 +351,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
     // Deep link from elsewhere (e.g. the Validation page) — prefill the lab
     // number and run the search so the matching patient surfaces immediately.
     const labNumber = params.get("labNumber");
-    if (labNumber) {
+    if (labNumber && props.followUrlLabNumber !== false) {
       autoSelectOnResults.current = true;
       setSearchFormValues({ ...SearchPatientFormValues, labNumber });
       handleSubmit({ ...SearchPatientFormValues, labNumber });
@@ -355,7 +359,11 @@ function SearchPatientForm(props: SearchPatientFormProps) {
   }, []);
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true && props.renderNotifications !== false ? (
+        <AlertDialog />
+      ) : (
+        ""
+      )}
       {loading && <Loading />}
       <Formik
         key={formInstance}
@@ -501,7 +509,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                       defaultSelected=""
                       legendText={intl.formatMessage({
                         id: "patient.gender",
-                        defaultMessage: "Gender",
+                        defaultMessage: "Sex",
                       })}
                       name={field.name}
                       id={fieldId("search_patient_gender")}

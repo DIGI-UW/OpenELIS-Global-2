@@ -2,6 +2,7 @@ import { test, expect, Page } from "../../../helpers/test-base";
 import { SiteInformationPage } from "../../../fixtures/esig-admin";
 import { createSampleOrder } from "../../../helpers/seed-tat-data";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
+import { tickCarbonMultiSelectOption } from "../../../helpers/carbon-select";
 
 /**
  * OGC-1186 — on a test with several result components, saving a multi-select
@@ -257,13 +258,7 @@ test.describe("OGC-1186 multi-component result routing", () => {
 
     await test.step("Tick one option on the Multi-Select row and save it", async () => {
       const row = rowFor("Multi-Select Result");
-      // The Dictionary row's <select> also has an option named "Detected", so
-      // the pick is scoped to the open multi-select menu.
-      await row.getByRole("combobox").click();
-      await page
-        .getByRole("listbox")
-        .getByRole("option", { name: DETECTED, exact: true })
-        .click();
+      await tickCarbonMultiSelectOption(row.getByRole("combobox"), DETECTED);
       await page.keyboard.press("Escape");
 
       const save = row.getByRole("button", { name: /^save$/i });

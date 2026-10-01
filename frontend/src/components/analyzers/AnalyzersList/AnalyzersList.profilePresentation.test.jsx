@@ -15,6 +15,8 @@ vi.mock("../../../services/analyzerService", () => ({
   createAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
   getAnalyzers: vi.fn(),
+  getAnalyzerUpgrade: vi.fn((callback) => callback([])),
+  retryAnalyzerUpgrade: vi.fn(),
   getAnalyzerDeliveryIssues: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
