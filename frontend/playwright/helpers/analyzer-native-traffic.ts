@@ -12,6 +12,7 @@ export async function sendGeneXpertAstm(
   testCode: string,
   value: string,
   senderId: string,
+  additionalResults: Array<{ testCode: string; value: string }> = [],
 ): Promise<string> {
   const bridgeUrl =
     process.env.ANALYZER_BRIDGE_URL ||
@@ -93,7 +94,13 @@ export async function sendGeneXpertAstm(
       destination,
       sample_id: accession,
       sender_id: senderId,
-      results: [{ test_code: testCode, value }],
+      results: [
+        { test_code: testCode, value },
+        ...additionalResults.map((result) => ({
+          test_code: result.testCode,
+          value: result.value,
+        })),
+      ],
     },
   });
   expect(

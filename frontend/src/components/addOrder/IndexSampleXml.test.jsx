@@ -114,4 +114,32 @@ describe("Add Order sample XML", () => {
     expect(xml).toMatch(/<sample sampleID='2'[^>]* tests='39'[^>]* panels='4'/);
     expect(xml).toMatch(/<sample sampleID='3'[^>]* tests='40'[^>]* panels=''/);
   });
+
+  it("keeps a sample added after a blank Sample 1 (OGC-1406)", async () => {
+    stepSamples.value = [
+      sample("", []),
+      sample("37", [{ id: "322", name: "Histopathology examination" }]),
+    ];
+
+    const xml = await submittedSampleXml();
+
+    expect(xml).toMatch(/<sample sampleID='37'[^>]* tests='322'/);
+    expect(xml).not.toMatch(/sampleID=''/);
+  });
+
+  it("names a sample with a type but no test on the last step (OGC-1406)", async () => {
+    stepSamples.value = [
+      sample("2", [{ id: "4", name: "Creatinine" }]),
+      sample("37", []),
+    ];
+
+    await submittedSampleXml();
+
+    expect(
+      screen.getByText(
+        "Sample 2 has a sample type but no test. Add a test or remove the sample before saving.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Submit" })).toBeDisabled();
+  });
 });

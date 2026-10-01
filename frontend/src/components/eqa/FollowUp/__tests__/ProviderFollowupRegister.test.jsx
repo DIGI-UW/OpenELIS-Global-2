@@ -208,6 +208,38 @@ describe("ProviderFollowupRegister", () => {
     click.mockRestore();
   });
 
+  it("names the address it could not reach when the mail fails to send", async () => {
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb(
+        jsonResponse(true, {
+          followupId: 12,
+          emailed: false,
+          recipient: "qa@mbeya.example.org",
+        }),
+      ),
+    );
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    global.URL.createObjectURL = vi.fn(() => "blob:csv");
+    global.URL.revokeObjectURL = vi.fn();
+    renderPage();
+
+    await screen.findByText("Mbeya Regional Lab");
+    expand();
+    fireEvent.click(screen.getByRole("button", { name: "Notify lab" }));
+
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(
+      await screen.findByText(/Could not email qa@mbeya\.example\.org/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No contact email on file/)).toBeNull();
+    expect(
+      document.querySelector(".cds--inline-notification--warning"),
+    ).not.toBeNull();
+    click.mockRestore();
+  });
+
   it("shows the server's own refusal when a triage move is rejected", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(

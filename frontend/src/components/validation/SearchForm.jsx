@@ -13,7 +13,11 @@ import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { FormattedMessage, useIntl } from "react-intl";
 import { Formik, Field } from "formik";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import { getFromOpenElisServer, Roles } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  labNumberForSearch,
+  Roles,
+} from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
 import CustomDatePicker from "../common/CustomDatePicker";
@@ -100,9 +104,7 @@ const SearchForm = (props) => {
 
   const handleSubmit = (values) => {
     setIsLoading(true);
-    var accessionNumber = values.accessionNumber
-      ? values.accessionNumber.split("-")[0]
-      : "";
+    var accessionNumber = labNumberForSearch(values.accessionNumber);
     var unitType = values.unitType ? values.unitType : "";
     var defaultDate = values.defaultDate ? values.defaultDate : "";
     var date = testDate ? testDate : defaultDate;

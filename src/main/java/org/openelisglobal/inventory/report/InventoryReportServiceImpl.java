@@ -53,8 +53,12 @@ public class InventoryReportServiceImpl implements InventoryReportService {
     @Autowired
     private SystemUserService systemUserService;
 
-    private final ThreadLocal<SimpleDateFormat> dateFormat = ThreadLocal
-            .withInitial(() -> new SimpleDateFormat("yyyy-MM-dd"));
+    // Dates are stored as midnight UTC; format them in UTC to keep the day.
+    private final ThreadLocal<SimpleDateFormat> dateFormat = ThreadLocal.withInitial(() -> {
+        SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
+        format.setTimeZone(java.util.TimeZone.getTimeZone("UTC"));
+        return format;
+    });
     private final ThreadLocal<SimpleDateFormat> dateTimeFormat = ThreadLocal
             .withInitial(() -> new SimpleDateFormat("yyyy-MM-dd HH:mm"));
 

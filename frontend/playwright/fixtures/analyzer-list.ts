@@ -106,6 +106,9 @@ export class AnalyzerListPage {
   /** Type into the search input */
   async search(term: string) {
     await this.searchInput.fill(term);
+    await expect(this.page).toHaveURL(
+      (url) => url.searchParams.get("search") === term,
+    );
   }
 
   /** Click the Add Analyzer button */

@@ -14,6 +14,7 @@ import {
   getAnalyzerTypeMapping,
   getAnalyzerTypeRevision,
   saveAnalyzerTypeMapping,
+  selectAnalyzerSiteBinding,
 } from "../../../services/analyzerService";
 import AnalyzerTypeMappingEditor from "./AnalyzerTypeMappingEditor";
 
@@ -24,6 +25,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerTypeMapping: vi.fn(),
   getAnalyzerTypeRevision: vi.fn(),
   saveAnalyzerTypeMapping: vi.fn(),
+  selectAnalyzerSiteBinding: vi.fn(),
 }));
 
 const recognition = {
@@ -187,6 +189,13 @@ const LocationProbe = () => {
   );
 };
 
+const ReturnStateProbe = () => {
+  const location = useLocation();
+  return (
+    <output data-testid="return-state">{JSON.stringify(location.state)}</output>
+  );
+};
+
 const renderEditor = (
   entry = "/analyzers/types/shipped.genexpert/mapping?revision=2&returnTo=%2Fanalyzers%2Ftypes%3Fmapping%3DINCOMPLETE",
 ) =>
@@ -196,6 +205,9 @@ const renderEditor = (
         <Route path="/analyzers/types/:profileId/mapping">
           <AnalyzerTypeMappingEditor />
           <LocationProbe />
+        </Route>
+        <Route path="/AnalyzerResults">
+          <ReturnStateProbe />
         </Route>
       </IntlProvider>
     </MemoryRouter>,
@@ -249,6 +261,84 @@ describe("AnalyzerTypeMappingEditor", () => {
       callback(resultOptions[testId] || []),
     );
   });
+
+  it("returns to the worklist with its unsaved review choices", async () => {
+    const worklistDraft = {
+      analyzerId: "501",
+      page: 2,
+      edits: { 1005: { isAccepted: true, note: "Reviewed" } },
+    };
+    renderEditor({
+      pathname: "/analyzers/types/shipped.genexpert/mapping",
+      search: "?revision=2&returnTo=%2FAnalyzerResults%3Fid%3D501",
+      state: { worklistDraft },
+    });
+
+    await userEvent.click(
+      (await screen.findAllByRole("link", { name: "Analyzer Types" }))[1],
+    );
+
+    expect(screen.getByTestId("return-state")).toHaveTextContent(
+      JSON.stringify({ worklistDraft }),
+    );
+  });
+
+  it("applies the current mapping only to the named analyzer and retries its holds", async () => {
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...mapping,
+          confirmation: { ...unconfirmed, state: "CURRENT" },
+        }),
+    );
+    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+      callback({ id: "501" }),
+    );
+    renderEditor(
+      "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501&returnTo=%2FAnalyzerResults%3Fid%3D501",
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Apply mappings and retry held results",
+      }),
+    );
+
+    expect(selectAnalyzerSiteBinding).toHaveBeenCalledWith(
+      "501",
+      {
+        siteBindingId: mapping.siteBindingId,
+        revision: mapping.siteBindingRevision,
+        bindingFingerprint: mapping.bindingFingerprint,
+      },
+      expect.any(Function),
+    );
+    expect(
+      screen.getByText(
+        "Current mappings applied to this analyzer. Eligible held results were retried.",
+      ),
+    ).toBeVisible();
+  });
+
+  it.each(["UNCONFIRMED", "STALE"])(
+    "does not apply a %s mapping to held results",
+    async (state) => {
+      getAnalyzerTypeMapping.mockImplementation(
+        (_profileId, _revision, callback) =>
+          callback({ ...mapping, confirmation: { ...unconfirmed, state } }),
+      );
+      renderEditor(
+        "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501",
+      );
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Apply mappings and retry held results",
+        }),
+      ).toBeDisabled();
+      expect(selectAnalyzerSiteBinding).not.toHaveBeenCalled();
+    },
+  );
 
   it("restores a bookmarkable shared-type editor with breadcrumbs and every independent source row", async () => {
     renderEditor();

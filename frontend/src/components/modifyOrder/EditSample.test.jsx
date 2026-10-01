@@ -4,7 +4,8 @@
  */
 import React from "react";
 import { vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
+import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 import EditSample from "./EditSample";
@@ -101,5 +102,78 @@ describe("EditSample added samples (OGC-1388)", () => {
     const update = setSamples.mock.calls[0][0];
     expect(update([added])[0].tests).toEqual([]);
     expect(added.tests).toHaveLength(1);
+  });
+});
+
+describe("EditSample rows for a test on two samples", () => {
+  const glucose = (analysisId, sampleItemId, accessionNumber) => ({
+    ...test("3", "Glucose", accessionNumber),
+    analysisId,
+    sampleItemId,
+    sampleType: "Plasma",
+  });
+  const possible = (sampleItemId, accessionNumber) => ({
+    ...test("9", "Platelets", accessionNumber),
+    sampleItemId,
+  });
+
+  const renderTwoSamples = (setOrderFormValues) => {
+    window.scrollTo = vi.fn();
+    return render(
+      <IntlProvider locale="en" messages={messages}>
+        <EditSample
+          samples={[]}
+          setSamples={vi.fn()}
+          orderFormValues={{
+            existingTests: [
+              glucose("276", "291", "DEV01260000000000454-2"),
+              glucose("315", "312", "DEV01260000000000454-3"),
+            ],
+            possibleTests: [
+              possible("291", "DEV01260000000000454-2"),
+              possible("312", "DEV01260000000000454-3"),
+            ],
+          }}
+          setOrderFormValues={setOrderFormValues}
+          error={() => null}
+        />
+      </IntlProvider>,
+    );
+  };
+
+  it("shows each sample's row and cancels only the ticked one", () => {
+    const setOrderFormValues = vi.fn();
+    const { container } = renderTwoSamples(setOrderFormValues);
+
+    const currentTests = within(container.querySelectorAll("table")[0]);
+    expect(
+      currentTests.getByText("DEV01260000000000454-2"),
+    ).toBeInTheDocument();
+    expect(
+      currentTests.getByText("DEV01260000000000454-3"),
+    ).toBeInTheDocument();
+    const cancelBoxes = container.querySelectorAll('input[name="canceled"]');
+    expect(new Set([...cancelBoxes].map((box) => box.id)).size).toBe(2);
+
+    fireEvent.click(cancelBoxes[1]);
+
+    const saved = setOrderFormValues.mock.calls.at(-1)[0].existingTests;
+    expect(saved.map((t) => [t.analysisId, t.canceled])).toEqual([
+      ["276", false],
+      ["315", true],
+    ]);
+  });
+
+  it("adds a test to only the sample it was ticked on", () => {
+    const setOrderFormValues = vi.fn();
+    const { container } = renderTwoSamples(setOrderFormValues);
+
+    fireEvent.click(container.querySelectorAll('input[name="add"]')[0]);
+
+    const saved = setOrderFormValues.mock.calls.at(-1)[0].possibleTests;
+    expect(saved.map((t) => [t.sampleItemId, t.add])).toEqual([
+      ["291", true],
+      ["312", false],
+    ]);
   });
 });
