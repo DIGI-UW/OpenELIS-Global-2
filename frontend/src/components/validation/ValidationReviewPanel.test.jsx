@@ -326,6 +326,17 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     );
   });
 
+  it("a held result that also waits on a QC acknowledgment names both hints", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "true" },
+      qcAck: { required: true, satisfied: false },
+    });
+    expect(screen.getByText("Validate & release")).toHaveAttribute(
+      "aria-describedby",
+      `${screen.getByTestId("review-qc-ack-hint").id} ${screen.getByTestId("review-qc-hold-hint").id}`,
+    );
+  });
+
   it("a release the server refuses for a QC hold goes to the page, not to a success", () => {
     const onActionDone = vi.fn();
     const onQcHold = vi.fn();

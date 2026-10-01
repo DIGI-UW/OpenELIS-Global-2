@@ -190,16 +190,9 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
                 analysisService.get(CLEAR_ID).getStatusId());
     }
 
-    private void holdByAFailedControl(String analysisId) {
-        jdbcTemplate.update("INSERT INTO clinlims.nc_event (id, nce_number, trigger_source_type) VALUES (98001,"
-                + " 'NCE-HOLD-1', 'QC_BENCH_CONTROL')");
-        jdbcTemplate.update("INSERT INTO clinlims.nce_specimen (id, nce_id, analysis_id) VALUES (98001, 98001, ?)",
-                Integer.valueOf(analysisId));
-    }
-
     @Test
     public void aClearRowHeldByAFailedControlLeavesTheClearLaneAndIsNotBulkReleased() throws Exception {
-        holdByAFailedControl(CLEAR_ID);
+        QcHoldFixture.holdByAFailedControl(jdbcTemplate, CLEAR_ID);
 
         mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
                 .session(session)).andExpect(status().isOk())

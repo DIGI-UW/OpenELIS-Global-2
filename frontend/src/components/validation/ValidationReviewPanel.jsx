@@ -602,11 +602,12 @@ const ValidationReviewPanel = ({
                 onSign={release}
                 disabled={releaseBlocked}
                 ariaDescribedBy={
-                  qcHoldBlocksRelease
-                    ? `review-qc-hold-hint-${row.id}`
-                    : qcAckBlocksRelease
-                      ? `review-qc-ack-hint-${row.id}`
-                      : undefined
+                  [
+                    qcAckBlocksRelease && `review-qc-ack-hint-${row.id}`,
+                    qcHoldBlocksRelease && `review-qc-hold-hint-${row.id}`,
+                  ]
+                    .filter(Boolean)
+                    .join(" ") || undefined
                 }
                 size="sm"
               >
