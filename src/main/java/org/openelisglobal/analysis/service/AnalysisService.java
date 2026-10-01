@@ -185,7 +185,17 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getAllChildAnalysesByResult(Result result);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    /**
+     * The analyses on a sample, i.e. which tests were ordered on it, not their
+     * results. Same rationale as getPendingAnalysesForWorkplan above: the order
+     * path needs it. SamplePatientEntryServiceImpl#getTestNamesWithRangeNotApplied
+     * calls it while assembling the save response, reading only each analysis's
+     * test id and sample-item type to warn which ordered tests have no applicable
+     * reference range. Under PRIV_RESULT_VIEW alone that denied Reception, and
+     * because the read runs AFTER the order has already committed, the save
+     * succeeded and the caller still got a 403.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
     List<Analysis> getAnalysesBySampleId(String id);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")

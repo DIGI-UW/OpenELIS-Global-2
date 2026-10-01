@@ -566,8 +566,14 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         try {
             return samplePatientService.getTestNamesWithRangeNotApplied(sample);
         } catch (AccessDeniedException denied) {
-            // A gate denial is a 403, not whatever the broad catch below relabels it as.
-            throw denied;
+            // Deliberately NOT rethrown, unlike the relabel fixes elsewhere. This
+            // runs after the order has already committed, so answering 403 here
+            // reported a failure for a save that succeeded - the caller re-sent it
+            // and got a duplicate. The warning is cosmetic: a role that may create
+            // the order but not read back its analyses simply does not get it.
+            logger.warn("Not permitted to list tests without an applicable range for sample {};"
+                    + " the order was saved and the warning is omitted", sample.getId());
+            return new ArrayList<>();
         } catch (RuntimeException e) {
             logger.error("Could not list tests without an applicable range for sample {}", sample.getId(), e);
             return new ArrayList<>();

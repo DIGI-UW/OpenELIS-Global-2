@@ -155,7 +155,13 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * The ordered tests whose reference range will not be applied for the patient
      * because the patient's sex or birth date is missing, by display name and
      * without repeats; empty when every range applies.
+     *
+     * <p>
+     * Also accepts PRIV_ORDER_VIEW: this reads reference-range CONFIGURATION and
+     * test names, never a patient's result values, and the order-save path calls it
+     * to build the warning shown after the save. On PRIV_RESULT_VIEW alone it
+     * denied Reception after the order had already committed.
      */
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
     List<String> getTestNamesWithRangeNotApplied(List<OrderedTest> orderedTests, Patient patient);
 }
