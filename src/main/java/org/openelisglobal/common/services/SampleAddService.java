@@ -229,6 +229,7 @@ public class SampleAddService {
                 String storageLocationId = sampleItem.attributeValue("storageLocationId");
                 String storageLocationType = sampleItem.attributeValue("storageLocationType");
                 String storagePositionCoordinate = sampleItem.attributeValue("storagePositionCoordinate");
+                String storageNotes = sampleItem.attributeValue("storageNotes");
 
                 String gpsLatitude = sampleItem.attributeValue("gpsLatitude");
                 String gpsLongitude = sampleItem.attributeValue("gpsLongitude");
@@ -246,6 +247,7 @@ public class SampleAddService {
                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
                 stc.existingSampleItemId = existingSampleItemId;
+                stc.storageNotes = storageNotes;
                 stc.panelIds = splitIds(panelIDs);
 
                 stc.qcType = sampleItem.attributeValue("qcType");
@@ -406,6 +408,7 @@ public class SampleAddService {
         public String storageLocationId;
         public String storageLocationType;
         public String storagePositionCoordinate;
+        public String storageNotes;
 
         public String gpsLatitude;
         public String gpsLongitude;

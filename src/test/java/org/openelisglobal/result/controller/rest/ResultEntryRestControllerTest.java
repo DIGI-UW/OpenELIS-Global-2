@@ -213,6 +213,24 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .content(saveBody("2", "4", "2", "15.0", null)).session(session)).andExpect(status().isBadRequest());
     }
 
+    /**
+     * OGC-1408 — a refused value is reported with the accession it belongs to and
+     * the value itself. The message keys carry {0} placeholders that were never
+     * filled, so the bench read "Errors for accession number {0} :; {0} is not a
+     * number."
+     */
+    @Test
+    public void save_ofTextInANumericResult_isRefused400_namingTheAccessionAndTheValue() throws Exception {
+        String valueBefore = resultService.get("3").getValue();
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "abc", currentToken("1"))).session(session))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Errors for accession number 12345 : abc is not a number."));
+
+        assertEquals("nothing was written", valueBefore, resultService.get("3").getValue());
+    }
+
     @Test
     public void presence_isVisibleToOtherSessions_andNeverToOwn() throws Exception {
         MockHttpSession sessionA = buildAuthenticatedSession("admin");

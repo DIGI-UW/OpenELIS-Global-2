@@ -173,6 +173,21 @@ const PatientSearchSection = ({
                   ` · ID: ${selectedPatient.nationalId}`}
               </p>
             </div>
+            {/* The order's patient opens locked in the form, with its Edit
+                toggle, the way a saved patient did before Save and exit
+                replaced the in-page save (OGC-1266). */}
+            {!isReadOnly && (
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => setActiveTab("new")}
+              >
+                <FormattedMessage
+                  id="label.button.edit.details"
+                  defaultMessage="Edit details"
+                />
+              </Button>
+            )}
           </div>
         </div>
       )}

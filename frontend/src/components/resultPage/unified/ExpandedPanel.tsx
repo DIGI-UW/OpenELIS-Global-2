@@ -240,11 +240,16 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const reported = computeReportedValue(
     dilutionDraft.measuredValue,
     dilutionDraft.factor,
+    row.significantDigits,
   );
 
   const applyDilution = (draft: DilutionDraft) => {
     onDilutionDraftChange(draft);
-    const computed = computeReportedValue(draft.measuredValue, draft.factor);
+    const computed = computeReportedValue(
+      draft.measuredValue,
+      draft.factor,
+      row.significantDigits,
+    );
     if (computed !== null) {
       onValueChange("resultValue", computed);
     }

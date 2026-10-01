@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Button, Select, SelectItem, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
 
 /**
  * OGC-1026 (R7, D13) — the Sample status block inside the Storage & sample
@@ -81,10 +82,15 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
     postToOpenElisServerJsonResponse(
       url,
       JSON.stringify(body),
-      (response?: { message?: string; status?: number }) => {
+      (response?: { message?: string; error?: string; status?: number }) => {
         setBusy(false);
-        if (response && response.status && response.status >= 400) {
-          setError(response.message || "");
+        if (requestFailed(response)) {
+          setError(
+            serverMessage(response) ||
+              intl.formatMessage({
+                id: "label.results.sampleStatus.updateFailed",
+              }),
+          );
           return;
         }
         setRecording(false);

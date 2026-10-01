@@ -13,7 +13,9 @@ import {
  * of the order, from Enter Order or from Collect, refers to it by id.
  *
  * The walk that found the bug: Save, Save, Save & Next left three patients
- * with the same national id, and only the last one on the order.
+ * with the same national id, and only the last one on the order. With the
+ * OGC-1266 footer the same walk is Save and exit, reopen, Save and exit,
+ * reopen, Save and next.
  */
 
 const SAVE_ENDPOINT = "/rest/SamplePatientEntry";
@@ -59,6 +61,17 @@ async function openEnterOrder(page: Page) {
   return page.locator("#labNumber").inputValue();
 }
 
+/** Reopens a saved order on Enter Order, the way the dashboard does. */
+async function reopenEnterOrder(page: Page, labNumber: string) {
+  await page.goto(
+    `/order/clinical/enter?order=${encodeURIComponent(labNumber)}`,
+    { waitUntil: "domcontentloaded" },
+  );
+  await expect(page.locator("#labNumber")).toHaveValue(labNumber, {
+    timeout: NAV_TIMEOUT,
+  });
+}
+
 async function enterNewPatient(page: Page, nationalId: string) {
   const section = page.getByTestId("patient-search-section");
   await section.getByRole("button", { name: "New Patient" }).click();
@@ -97,7 +110,7 @@ async function saveWith(page: Page, name: RegExp | string) {
 }
 
 test.describe("OGC-1407: one patient per order, however often it is saved", () => {
-  test("Save, Save, Save & Next on Enter Order keeps one patient", async ({
+  test("Save and exit, reopen, Save and exit, reopen, Save and next keeps one patient", async ({
     page,
   }) => {
     test.setTimeout(240_000);
@@ -108,22 +121,31 @@ test.describe("OGC-1407: one patient per order, however often it is saved", () =
     await enterNewPatient(page, nationalId);
     await chooseSerumWithOneTest(page);
 
-    await saveWith(page, "Save");
-    await expect(page.getByText(`Order ${labNumber} saved`)).toBeVisible({
-      timeout: UI_TIMEOUT,
-    });
+    await saveWith(page, "Save and exit");
+    await expect(page.locator("tr.order-highlighted")).toContainText(
+      labNumber,
+      { timeout: UI_TIMEOUT },
+    );
 
-    // The patient is now a saved record: the form shows it locked, with an
-    // Edit toggle, instead of a form that would add the patient again.
+    // The patient is now a saved record: the reopened order shows it as the
+    // selected patient, and its details open locked, with an Edit toggle,
+    // instead of a form that would add the patient again.
+    await reopenEnterOrder(page, labNumber);
     const section = page.getByTestId("patient-search-section");
+    await expect(section.locator(".selected-entity-card")).toContainText(
+      nationalId,
+      { timeout: UI_TIMEOUT },
+    );
+    await section.getByRole("button", { name: "Edit details" }).click();
     await expect(section.locator("#patient-edit-toggle")).toBeVisible({
       timeout: UI_TIMEOUT,
     });
     await expect(section.locator("#nationalId")).toHaveValue(nationalId);
     await expect(section.locator("#nationalId")).toBeDisabled();
 
-    await saveWith(page, "Save");
-    await saveWith(page, "Save & Next");
+    await saveWith(page, "Save and exit");
+    await reopenEnterOrder(page, labNumber);
+    await saveWith(page, "Save and next");
     await expect(page).toHaveURL(/\/order\/clinical\/collect/, {
       timeout: LONG_TIMEOUT,
     });
@@ -144,7 +166,7 @@ test.describe("OGC-1407: one patient per order, however often it is saved", () =
       .toHaveLength(1);
   });
 
-  test("Save & Next then Save on Collect keeps one patient", async ({
+  test("Save and next then Save and exit on Prepare Samples keeps one patient", async ({
     page,
   }) => {
     test.setTimeout(240_000);
@@ -154,15 +176,15 @@ test.describe("OGC-1407: one patient per order, however often it is saved", () =
     await openEnterOrder(page);
     await enterNewPatient(page, nationalId);
     await chooseSerumWithOneTest(page);
-    await saveWith(page, "Save & Next");
+    await saveWith(page, "Save and next");
     await expect(page).toHaveURL(/\/order\/clinical\/collect/, {
       timeout: LONG_TIMEOUT,
     });
 
     await expect(
-      page.getByRole("button", { name: "Save", exact: true }).last(),
+      page.getByRole("button", { name: "Save and exit", exact: true }).last(),
     ).toBeEnabled({ timeout: LONG_TIMEOUT });
-    await saveWith(page, "Save");
+    await saveWith(page, "Save and exit");
 
     expect(sent).toHaveLength(2);
     expect(sent[1].patientPK).toBeTruthy();
@@ -181,12 +203,14 @@ test.describe("OGC-1407: one patient per order, however often it is saved", () =
     const nationalId = `QA1407C${Date.now()}`;
     const sent = recordPatientSaves(page);
 
-    await openEnterOrder(page);
+    const labNumber = await openEnterOrder(page);
     await enterNewPatient(page, nationalId);
     await chooseSerumWithOneTest(page);
-    await saveWith(page, "Save");
+    await saveWith(page, "Save and exit");
+    await reopenEnterOrder(page, labNumber);
 
     const section = page.getByTestId("patient-search-section");
+    await section.getByRole("button", { name: "Edit details" }).click();
     await expect(section.locator("#patient-edit-toggle")).toBeVisible({
       timeout: UI_TIMEOUT,
     });
@@ -195,7 +219,7 @@ test.describe("OGC-1407: one patient per order, however often it is saved", () =
       timeout: UI_TIMEOUT,
     });
     await section.locator("#primaryPhone").fill("0788123456");
-    await saveWith(page, "Save");
+    await saveWith(page, "Save and exit");
 
     expect(sent).toHaveLength(2);
     expect(sent[1].patientPK).toBeTruthy();
@@ -230,7 +254,7 @@ test.describe("OGC-1407: one patient per order, however often it is saved", () =
     const labNumber = await openEnterOrder(page);
     await enterNewPatient(page, nationalId);
     await chooseSerumWithOneTest(page);
-    await saveWith(page, "Save");
+    await saveWith(page, "Save and exit");
     expect(firstSave).toBeTruthy();
 
     const order = await page.request.get(
