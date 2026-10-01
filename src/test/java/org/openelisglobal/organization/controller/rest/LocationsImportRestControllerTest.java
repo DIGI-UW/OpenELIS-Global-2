@@ -12,22 +12,13 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.configuration.service.ConfigurationInitializationService;
-import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
-import org.springframework.test.annotation.DirtiesContext;
-import org.springframework.test.context.ContextConfiguration;
-import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
@@ -38,23 +29,11 @@ import org.springframework.test.web.servlet.MvcResult;
  *
  * <p>
  * Apply stores the file and hands it to the shared catalog loader, which the
- * test scan leaves out because it loads every domain on refresh. This context
- * carries a real loader with auto-loading off, so the apply path is exercised
- * end to end: the stored file, its checksum and the handler's plan.
+ * test profile provides with auto-loading off (AppTestConfig), so the apply
+ * path is exercised end to end: the stored file, its checksum and the handler's
+ * plan.
  */
-@ContextConfiguration(classes = LocationsImportRestControllerTest.TestConfig.class)
-@TestPropertySource(properties = { "org.openelisglobal.configuration.dir=${java.io.tmpdir}/ogc1363-import-test",
-        "org.openelisglobal.configuration.autocreate=false" })
-@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_CLASS)
 public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTest {
-
-    @Configuration
-    public static class TestConfig {
-        @Bean
-        public ConfigurationInitializationService configurationInitializationService() {
-            return BeanUtils.instantiateClass(ConfigurationInitializationService.class);
-        }
-    }
 
     private static final ObjectMapper JSON = new ObjectMapper();
 
@@ -70,7 +49,6 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        Files.createDirectories(Path.of(System.getProperty("java.io.tmpdir"), "ogc1363-import-test"));
         executeDataSetWithStateManagement("testdata/organization.xml");
         jdbc = new JdbcTemplate(dataSource);
         jdbc.update("INSERT INTO clinlims.organization_type (id, short_name, description, name_display_key,"
