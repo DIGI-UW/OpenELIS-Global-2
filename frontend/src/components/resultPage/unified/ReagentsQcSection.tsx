@@ -6,6 +6,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
 
 /**
  * OGC-1024 (R5, D5/D11) — the "Reagents, QC & Controls" combo section:
@@ -231,12 +232,11 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
       }),
       (response?: { message?: string; error?: string; status?: number }) => {
         setBusyItem(null);
-        if (response && response.status && response.status >= 400) {
+        if (requestFailed(response)) {
           setMessage({
             kind: "error",
             text:
-              response.message ||
-              response.error ||
+              serverMessage(response) ||
               intl.formatMessage({
                 id: "label.results.reagents.recordFailed",
               }),
@@ -332,8 +332,7 @@ const ReagentsQcSection: React.FC<ReagentsQcSectionProps> = ({
           setQcMessage({
             kind: "error",
             text:
-              response?.message ||
-              response?.error ||
+              serverMessage(response) ||
               intl.formatMessage({
                 id: "label.results.control.capture.failed",
               }),

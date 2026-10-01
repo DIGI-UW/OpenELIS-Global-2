@@ -272,41 +272,47 @@ const Validation = (props) => {
     props.refreshResults?.(Number(props.results?.paging?.currentPage) || 1);
   };
 
-  /**
-   * OGC-1030 (FR-J1) — another validator acted on the row since this page
-   * loaded: say who and when, then refresh so nobody works from a stale queue.
-   */
-  const handleStale = (response) => {
+  const notifyAndRefresh = (kind, message) => {
     addNotification({
-      kind: NotificationKinds.warning,
+      kind,
       title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage(
-        { id: "label.validation.review.error.stale" },
-        {
-          who: response?.modifiedBy || "",
-          when: response?.modifiedAt || "",
-        },
-      ),
+      message,
     });
     setNotificationVisible(true);
     refreshQueue();
   };
 
   /**
+   * OGC-1030 (FR-J1) — another validator acted on the row since this page
+   * loaded: say who and when, then refresh so nobody works from a stale queue.
+   */
+  const handleStale = (response) =>
+    notifyAndRefresh(
+      NotificationKinds.warning,
+      intl.formatMessage(
+        { id: "label.validation.review.error.stale" },
+        {
+          who: response?.modifiedBy || "",
+          when: response?.modifiedAt || "",
+        },
+      ),
+    );
+
+  const handleQcHold = () =>
+    notifyAndRefresh(
+      NotificationKinds.error,
+      intl.formatMessage({ id: "label.validation.review.error.qcHold" }),
+    );
+
+  /**
    * OGC-1028 — a per-row action (release / modify / retest / reject) succeeded:
    * refresh the queue so the row's new state is served fresh.
    */
-  const handleRowActionDone = (outcome) => {
-    addNotification({
-      kind: NotificationKinds.success,
-      title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({
-        id: `label.validation.review.success.${outcome}`,
-      }),
-    });
-    setNotificationVisible(true);
-    refreshQueue();
-  };
+  const handleRowActionDone = (outcome) =>
+    notifyAndRefresh(
+      NotificationKinds.success,
+      intl.formatMessage({ id: `label.validation.review.success.${outcome}` }),
+    );
 
   /**
    * Posts the QC failure acknowledgment for the current batch. Resolves on 2xx,
@@ -1044,6 +1050,7 @@ const Validation = (props) => {
                 onActionDone: handleRowActionDone,
                 onNoteChange: handleRowNoteChange,
                 onStale: handleStale,
+                onQcHold: handleQcHold,
               }}
             ></DataTable>
             <Pagination

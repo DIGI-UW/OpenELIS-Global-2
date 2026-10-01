@@ -6,7 +6,11 @@ import { MemoryRouter } from "react-router-dom";
 import messages from "../../../../languages/en.json";
 import InHousePanelsPage from "../InHousePanelsPage";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
-import { fetchInHouseSchemes, fetchPanelsForScheme } from "../inHouseApi";
+import {
+  fetchInHouseSchemes,
+  fetchPanelsForScheme,
+  unblindPanel,
+} from "../inHouseApi";
 
 vi.mock("../inHouseApi", () => ({
   fetchInHouseSchemes: vi.fn(),
@@ -93,5 +97,33 @@ describe("InHousePanelsPage", () => {
 
     expect(screen.getByText("Panel of B")).toBeInTheDocument();
     expect(screen.queryByText("Panel of A")).toBeNull();
+  });
+
+  // OGC-1408: an unblind whose request got no answer (status 0) must not be
+  // reported as done, and the panel list is not reloaded over a seal that
+  // may still be in place.
+  it("an unblind that got no answer reports the failure and keeps the panel", () => {
+    fetchPanelsForScheme.mockImplementation((_schemeId, callback) =>
+      callback([
+        { id: 7, panelName: "Panel 7", status: "DISTRIBUTED", sampleCount: 3 },
+      ]),
+    );
+    unblindPanel.mockImplementation((_panelId, callback) =>
+      callback({
+        error: "Failed to fetch",
+        message: "Failed to fetch",
+        status: 0,
+      }),
+    );
+    renderPage(["qa.view.eqa", "qa.manage.eqa"]);
+
+    fireEvent.click(screen.getByRole("button", { name: "Unblind now" }));
+
+    expect(
+      screen.getByText(messages["eqa.inhouse.unblind.error"]),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(messages["eqa.inhouse.unblind.done"])).toBeNull();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+    expect(fetchPanelsForScheme).toHaveBeenCalledTimes(1);
   });
 });
