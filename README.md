@@ -181,10 +181,10 @@ accessing any of these links, simply follow these steps:
 ```
 
 The runner uses detached checkouts at the current commit and runs backend,
-frontend, the shared plugin build, core Playwright, analyzer Playwright, and all
-three Cypress shards. Each E2E suite gets a fresh isolated database. It reports
-every lane and exits unsuccessfully if any required lane fails or does not run.
-Logs and the source commit are saved in the printed artifact directory. Run
+frontend, the shared build, core Playwright, analyzer Playwright, and all three
+Cypress shards. Each E2E suite gets a fresh isolated database. It reports every
+lane and exits unsuccessfully if any required lane fails or does not run. Logs
+and the source commit are saved in the printed artifact directory. Run
 `./scripts/run-ci-checks.sh --plan` to see the lanes without starting them, or
 use `--artifact-dir PATH` to choose where evidence is saved. The targeted E2E
 scripts remain available for debugging a single lane; their passing result alone
