@@ -103,6 +103,23 @@ jobs:
           # requester, notification, testconfiguration, labunit modules). They predate
           # this check being added and are excluded so the gate reflects NEW violations
           # only. Removing them is tracked separately, not in the RBAC migration.
+          # NOTE: the QA/QC/accreditation/analyzer/reports/menu/esig controllers
+          # in the list below arrived with develop's own features. Verified
+          # develop-side: this branch carries zero @PreAuthorize on each of
+          # them. Same inherited-debt category as the blocks above.
+          # NOTE: ResultEntryRestController and
+          # NotificationTriggerConfigRestController: develop added six
+          # hasRole('RESULTS')/hasAnyRole gates there after this branch removed
+          # them in favour of service-layer gating. They are left in place
+          # rather than stripped: the handlers reach services whose own gates
+          # were not verified as equivalent, and removing a working gate to
+          # satisfy a lint rule is the wrong trade. Note they carry the
+          # inheriting-role problem (a Results Validator holding result:enter is
+          # refused by hasRole('RESULTS')), tracked with the route-guard debt in
+          # routeGuards.test.js.
+          # NOTE: every exemption below is a `| grep -v` link in one pipeline.
+          # A comment between those lines ends the command and makes bash fail
+          # on the next `|`, so explanations belong here, not inline.
           # NOTE: the EQA controllers below arrived from develop with EQA V2
           # (OGC-608/609), which gates authorization at the controller layer via
           # EQAGuards against the parallel qa.* permission model. Its 59 guards
@@ -162,10 +179,6 @@ jobs:
                | grep -v "EQAShipmentRestController.java" \
                | grep -v "EQASubmissionRestController.java" \
                | grep -v "EQADistributionRestController.java" \
-               # Controller gating that arrived with develop's own features (QA,
-               # QC, accreditation, analyzer, reports, menu, esig). Verified
-               # develop-side: this branch carries zero @PreAuthorize on each of
-               # them. Same inherited-debt category as the block above.
                | grep -v "NceEnhancementRestController.java" \
                | grep -v "CriticalCallbackRestController.java" \
                | grep -v "QiConfigRestController.java" \
@@ -183,14 +196,6 @@ jobs:
                | grep -v "AmendmentReportRestController.java" \
                | grep -v "RejectionReportRestController.java" \
                | grep -v "FhirReplayRestController.java" \
-               # develop added six hasRole('RESULTS')/hasAnyRole gates here after
-               # this branch removed them in favour of service-layer gating. They
-               # are left in place rather than stripped: the handlers reach
-               # services whose own gates were not verified as equivalent, and
-               # removing a working gate to satisfy a lint rule is the wrong
-               # trade. Note they carry the inheriting-role problem (a Results
-               # Validator holding result:enter is refused by hasRole('RESULTS')),
-               # tracked with the route-guard debt in routeGuards.test.js.
                | grep -v "ResultEntryRestController.java" \
                | grep -v "NotificationTriggerConfigRestController.java" || true)
           if [ -n "$violations" ]; then
