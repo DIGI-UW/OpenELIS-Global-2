@@ -1,4 +1,6 @@
-import { toLocalIsoDate } from "../../utils/Utils";
+import { useContext } from "react";
+import { toLocalIsoDate, hasPrivilege, Privileges } from "../../utils/Utils";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { useServerData } from "../../utils/useServerData";
 import { tatDelta } from "../../reports/tat/tatUtils";
 import { isoDaysFromToday, weekStart } from "../common/qaDates";
@@ -142,16 +144,26 @@ const tatQuery = (from, to) =>
  * has no completed runs at all.
  */
 export const useTatRollup = () => {
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // /rest/reports/tat/summary is gated on PRIV_REPORT_RUN, while the QA
+  // overview is open to Reception and Validation, who do not hold it. Passing
+  // null to useServerData is what stops the request, so the rollup reports no
+  // TAT rather than firing a guaranteed 403 on every visit.
+  const permitted = hasPrivilege(userSessionDetails, Privileges.REPORT_RUN);
   const current = useServerData(
-    tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(new Date())),
+    permitted
+      ? tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(new Date()))
+      : null,
   );
   const prior = useServerData(
-    tatQuery(
-      isoDaysFromToday(-(2 * TAT_WINDOW_DAYS + 1)),
-      isoDaysFromToday(-(TAT_WINDOW_DAYS + 1)),
-    ),
+    permitted
+      ? tatQuery(
+          isoDaysFromToday(-(2 * TAT_WINDOW_DAYS + 1)),
+          isoDaysFromToday(-(TAT_WINDOW_DAYS + 1)),
+        )
+      : null,
   );
-  const loading = current.isLoading || prior.isLoading;
+  const loading = permitted && (current.isLoading || prior.isLoading);
   return {
     loading,
     tat:

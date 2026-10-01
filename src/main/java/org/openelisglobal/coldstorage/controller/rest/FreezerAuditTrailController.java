@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -228,6 +229,11 @@ public class FreezerAuditTrailController extends BaseRestController {
 
             auditEvents.sort(MOST_RECENT_FIRST);
 
+        } catch (AccessDeniedException denied) {
+            // The service gate's denial is a 403, not a server fault: let
+            // ControllerSetup answer it rather than the broad catch below
+            // relabelling it as a 500.
+            throw denied;
         } catch (Exception e) {
             // A malformed date already returned a 400, so a failure here is server-side.
             LOGGER.error("Unexpected error building freezer audit trail for freezerId={}", freezerId, e);

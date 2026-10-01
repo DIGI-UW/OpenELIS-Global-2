@@ -15,13 +15,25 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
  * notification context and a query cache of its own — a fresh cache per render,
  * so one test never reads another's server data.
  *
- * Options: `entries` (router history), `permissions` / `roles` (session), and
- * `notifications` (overrides for the notification context spies, which are
- * returned so a test can assert on them).
+ * Options: `entries` (router history), `permissions` / `privileges` / `roles`
+ * (session), and `notifications` (overrides for the notification context
+ * spies, which are returned so a test can assert on them).
+ *
+ * `privileges` defaults to every privilege a QA screen gates a tile on, so a
+ * test that does not care about authorization still sees the whole dashboard.
+ * A test about hiding a tile passes its own list.
  */
+export const DEFAULT_QA_PRIVILEGES = ["report:run"];
+
 export const renderQa = (
   ui,
-  { entries = ["/"], permissions = [], roles = [], notifications } = {},
+  {
+    entries = ["/"],
+    permissions = [],
+    privileges = DEFAULT_QA_PRIVILEGES,
+    roles = [],
+    notifications,
+  } = {},
 ) => {
   const notificationContext = {
     notifications: [],
@@ -37,7 +49,12 @@ export const renderQa = (
       <QueryClientProvider client={createQueryClient()}>
         <UserSessionDetailsContext.Provider
           value={{
-            userSessionDetails: { authenticated: true, roles, permissions },
+            userSessionDetails: {
+              authenticated: true,
+              roles,
+              permissions,
+              privileges,
+            },
             errorLoadingSessionDetails: false,
             isCheckingLogin: () => false,
             logout: vi.fn(),

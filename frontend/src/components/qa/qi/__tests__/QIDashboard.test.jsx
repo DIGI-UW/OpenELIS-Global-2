@@ -16,9 +16,9 @@ vi.mock("../../../utils/Utils", async (importOriginal) => {
 
 import { fetchFromOpenElisServer } from "../../../utils/Utils";
 
-const renderPage = async () => {
+const renderPage = async (options = {}) => {
   await act(async () => {
-    renderQa(<QIDashboard />, { entries: ["/qa/qi/dashboard"] });
+    renderQa(<QIDashboard />, { entries: ["/qa/qi/dashboard"], ...options });
   });
   // Every tile reads its window and the one before it; no skeleton left means
   // all of them have settled, whether with a number or with an error line.
@@ -167,6 +167,28 @@ beforeEach(() => {
 });
 
 describe("QIDashboard", () => {
+  // The QI dashboard is routed to Reception and Validation, who do not hold
+  // report:run; /rest/reports/tat/summary does require it. The tile is left out
+  // for them rather than fetching a guaranteed 403 and showing a permanent
+  // error where a number belongs.
+  test("leaves out the TAT tile, and its read, without report:run", async () => {
+    mockApis();
+    await renderPage({ privileges: [] });
+
+    expect(screen.queryByTestId("qi-tile-tat")).not.toBeInTheDocument();
+    // The other four still render, so this hides one tile rather than the page.
+    expect(screen.getByTestId("qi-tile-rejection")).toBeInTheDocument();
+    expect(screen.getByTestId("qi-tile-nce-pulse")).toBeInTheDocument();
+
+    // Inversion: with the privilege the same mocks DO produce the tile and the
+    // call, so the assertions above cannot pass for an unrelated reason.
+    expect(
+      fetchFromOpenElisServer.mock.calls.some(([url]) =>
+        url.includes("/rest/reports/tat/summary"),
+      ),
+    ).toBe(false);
+  });
+
   test("renders five tiles in fixed order with a live TAT tile", async () => {
     mockApis();
     await renderPage();

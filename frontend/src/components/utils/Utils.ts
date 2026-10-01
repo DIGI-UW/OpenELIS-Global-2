@@ -965,7 +965,12 @@ export const ROUTE_GUARDS = {
     privilege: Privileges.RESULT_ENTER,
     role: [Roles.RESULTS],
   },
-  "/FreezerMonitoring": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
+  // Guarded by the privilege the cold-storage services actually enforce
+  // (PRIV_COLDSTORAGE_VIEW), not by role. The role form offered the five
+  // freezer tabs to Reception, which holds storage:view but not
+  // coldstorage:view, so every tab rendered an empty page and retried its
+  // denied reads in a loop.
+  "/FreezerMonitoring": { privilege: Privileges.COLDSTORAGE_VIEW },
   "/GenericSample/Edit": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
@@ -1304,9 +1309,17 @@ export const menuSubtreeVisible = (menuItem, userSessionDetails) => {
   // route" as unguarded. Answering true here would keep every empty section,
   // so a parent with no openable route of its own stands or falls with its
   // children.
+  //
+  // A LEAF with no actionURL is a different thing: ConfiguredSideNav renders it
+  // as a deliberate disabled "not yet connected" placeholder with its
+  // toolTipKey, so it is kept. Only a parent whose children all dropped out is
+  // the empty section this guards against.
   const actionURL = menuItem.menu.actionURL;
   if (!actionURL || actionURL.length <= 1) {
-    return false;
+    return (
+      (menuItem.childMenus || []).length === 0 &&
+      Boolean(menuItem.menu.toolTipKey)
+    );
   }
   return menuEntryVisible(actionURL, userSessionDetails);
 };

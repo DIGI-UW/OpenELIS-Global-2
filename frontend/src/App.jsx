@@ -678,7 +678,7 @@ export default function App() {
                       <FreezerMonitoringDashboard />
                     </Suspense>
                   )}
-                  role={[Roles.RECEPTION, Roles.GLOBAL_ADMIN]}
+                  privilege={Privileges.COLDSTORAGE_VIEW}
                 />
                 <SecureRoute
                   path="/SamplePatientEntry"

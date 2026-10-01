@@ -14,6 +14,7 @@ import org.openelisglobal.referral.service.ReferralService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -57,6 +58,11 @@ public class ReferenceLabResultsRestController extends BaseRestController {
         }
         try {
             return ResponseEntity.ok(referenceLabResultsService.getDashboardReferrals(parsed));
+        } catch (AccessDeniedException denied) {
+            // The service gate's denial is a 403, not a server fault: let
+            // ControllerSetup answer it rather than the broad catch below
+            // relabelling it as a 500.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -67,6 +73,11 @@ public class ReferenceLabResultsRestController extends BaseRestController {
     public ResponseEntity<ReferenceLabMetricsDTO> metrics() {
         try {
             return ResponseEntity.ok(referenceLabResultsService.getDashboardMetrics());
+        } catch (AccessDeniedException denied) {
+            // The service gate's denial is a 403, not a server fault: let
+            // ControllerSetup answer it rather than the broad catch below
+            // relabelling it as a 500.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

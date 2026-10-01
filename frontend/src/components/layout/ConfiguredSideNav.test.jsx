@@ -17,6 +17,34 @@ const profile = JSON.parse(
   ),
 );
 
+// This instance's sidebar is what the test asserts on, so the session has to
+// permit every row it expects: the component hides a route the session cannot
+// open (SecureRoute's guards, and the modules
+// ModuleAuthenticationInterceptor enforces), and with no session at all the
+// whole "Patient & Orders" section drops out.
+const session = {
+  authenticated: true,
+  roles: ["Global Administrator"],
+  privileges: [
+    "order:create",
+    "order:view",
+    "patient:view",
+    "result:enter",
+    "result:view",
+    "result:validate",
+    "report:run",
+  ],
+  modules: [
+    "SamplePatientEntry",
+    "PatientResults",
+    "PatientManagement",
+    "Results",
+    "ResultValidation",
+    "AccessionValidation",
+    "ValidationResults",
+  ],
+};
+
 const menus = (definitions) =>
   definitions.map(({ childMenus = [], ...menu }) => ({
     menu: { isActive: true, ...menu },
@@ -38,6 +66,7 @@ test.each([false, true])(
               <ConfiguredSideNav
                 menus={menus(profile.menus)}
                 unifiedResultsOn={unifiedResultsOn}
+                userSessionDetails={session}
               />
             </SideNavItems>
           </SideNav>

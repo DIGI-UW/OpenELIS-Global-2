@@ -19,7 +19,9 @@ import React, { useEffect, useRef, useState } from "react";
 import { Button, Dropdown } from "@carbon/react";
 import { Renew } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { toLocalIsoDate } from "../../utils/Utils";
+import { toLocalIsoDate, hasPrivilege, Privileges } from "../../utils/Utils";
+import { useContext } from "react";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import {
   useInvalidateServerData,
   useServerData,
@@ -84,6 +86,11 @@ const INDICATORS = [
     key: "TAT",
     name: "tat",
     testId: "qi-tile-tat",
+    // /rest/reports/tat/summary is gated on PRIV_REPORT_RUN. The QI dashboard
+    // itself is open to Reception and Validation, who do not hold it, so the
+    // tile is left out for them rather than fetching a guaranteed 403 and
+    // showing a permanent error where a number belongs.
+    privilege: Privileges.REPORT_RUN,
     detailPath: "/qa/qi/tat",
     url: tatUrl,
     value: (data) => data.mean,
@@ -206,12 +213,23 @@ const QIIndicatorTile = ({ indicator, win }) => {
   const { enabled, config } = useQiConfig(indicator.key);
   const dates = windowDates(win.id);
   const windowed = indicator.windowed !== false;
-  const current = useServerData(indicator.url(dates.fromDate, dates.toDate));
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // Checked before the fetch, not just before the render: passing null to
+  // useServerData is what stops the request, so a tile the user may not read
+  // never issues its call.
+  const permitted =
+    !indicator.privilege ||
+    hasPrivilege(userSessionDetails, indicator.privilege);
+  const current = useServerData(
+    permitted ? indicator.url(dates.fromDate, dates.toDate) : null,
+  );
   const prior = useServerData(
-    windowed ? indicator.url(dates.priorFromDate, dates.priorToDate) : null,
+    permitted && windowed
+      ? indicator.url(dates.priorFromDate, dates.priorToDate)
+      : null,
   );
 
-  if (!enabled) {
+  if (!enabled || !permitted) {
     return null;
   }
 
@@ -292,9 +310,16 @@ const QIDashboard = () => {
   const cooldownRef = useRef(null);
 
   // When the numbers on screen were last read from the server. The TAT tile
-  // shares this cache entry, so watching it costs no extra request.
+  // shares this cache entry, so watching it costs no extra request - but only
+  // where that tile actually reads: without report:run the tile is left out,
+  // and subscribing here would issue the 403 the tile was spared.
   const dates = windowDates(windowId);
-  const { dataUpdatedAt } = useServerData(tatUrl(dates.fromDate, dates.toDate));
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const { dataUpdatedAt } = useServerData(
+    hasPrivilege(userSessionDetails, Privileges.REPORT_RUN)
+      ? tatUrl(dates.fromDate, dates.toDate)
+      : null,
+  );
 
   useEffect(() => {
     const timer = setInterval(() => setTick((t) => t + 1), 60000);

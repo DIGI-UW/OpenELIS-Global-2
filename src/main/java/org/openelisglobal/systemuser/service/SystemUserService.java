@@ -16,7 +16,11 @@ public interface SystemUserService extends BaseObjectService<SystemUser, String>
     @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
     List<SystemUser> getPagesOfSearchedUsers(int startRecNo, String searchString);
 
-    @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
+    // A name lookup, not user administration: its three callers populate the
+    // NCE dashboard's "performed by" picker, the EQA analyst-competency list
+    // and the QC alert recipient list, all reached by non-admin roles. Under
+    // PRIV_SYSTEM_USER_MANAGE (held by no seeded role) every one of them 403s.
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_VIEW')")
     List<SystemUser> getAllSystemUsers();
 
     @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")

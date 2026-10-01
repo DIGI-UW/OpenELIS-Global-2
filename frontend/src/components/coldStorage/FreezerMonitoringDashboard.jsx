@@ -429,8 +429,8 @@ function FreezerMonitoringDashboard({ intl }) {
       setLastUpdated(new Date().toISOString());
     } catch (error) {
       // getFromOpenElisServerV2 rejects with a plain string, so there is no
-      // status to branch on here - the reads themselves are RECEPTION-or-ADMIN,
-      // the same roles the page is routed to.
+      // status to branch on here - the reads require PRIV_COLDSTORAGE_VIEW,
+      // which is the privilege the route is guarded on.
       notify({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "coldStorage.error.updateFailed" }),

@@ -1216,4 +1216,74 @@
         </rollback>
     </changeSet>
 
+    <!--
+      Three grants the Reception walkthrough of this branch showed missing. Each
+      is a read a page the role is ALREADY routed to performs on load, so
+      without them the page renders and then 403s on its own data.
+
+      notebook:view / notebook:manage were defined in 012-003 but never granted
+      to anyone, so /NoteBookDashboard - routed to Reception, Results and
+      Validation - answered 403 on all three of its dashboard reads for every
+      non-admin role. Granted to exactly the three roles the route names.
+
+      system_user:view goes to the roles whose dashboards populate a user
+      picker from getAllSystemUsers (NCE "performed by", EQA analyst
+      competency). That read's gate moves from PRIV_SYSTEM_USER_MANAGE - held
+      by no seeded role at all - to PRIV_SYSTEM_USER_VIEW in the same change;
+      this grant is what makes the picker resolve.
+
+      referral:view goes to Reception for the same reason: the Referred Out
+      dashboard (/SampleShipment/reference-lab-results) is routed to Reception
+      but its two reads are gated on it, so the page loaded and then answered
+      500 on both - a denial the controller's broad catch relabelled. The
+      privilege covers 23 read methods across the referral services and no
+      write at all, which is the shipment data Reception already handles.
+
+      No :manage privilege is widened beyond the notebook one the dashboard
+      itself needs, and nothing here grants a role access to a page it could
+      not already open.
+    -->
+    <changeSet author="openelis" id="012-004u-grant-notebook-and-user-lookup-reads">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the notebook dashboard and user-picker reads their routed roles require (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Reception', 'Results', 'Validation')
+              AND p.name IN ('notebook:view', 'notebook:manage')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('Reception', 'Results', 'Validation')
+              AND p.name = 'system_user:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Reception'
+              AND p.name = 'referral:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) IN ('Reception', 'Results', 'Validation')
+                  AND p.name IN ('notebook:view', 'notebook:manage', 'system_user:view');
+
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Reception' AND p.name = 'referral:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

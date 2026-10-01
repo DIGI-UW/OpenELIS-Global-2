@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -103,6 +104,11 @@ public class CorrectiveActionRestController extends BaseRestController {
                     .collect(Collectors.toList());
 
             return ResponseEntity.ok(actionDTOs);
+        } catch (AccessDeniedException denied) {
+            // The service gate's denial is a 403, not a server fault: let
+            // ControllerSetup answer it rather than the broad catch below
+            // relabelling it as a 500.
+            throw denied;
         } catch (IllegalArgumentException e) {
             logger.error("Invalid filter parameter", e);
             return ResponseEntity.badRequest().build();
