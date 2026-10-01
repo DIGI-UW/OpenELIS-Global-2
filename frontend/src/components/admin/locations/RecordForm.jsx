@@ -418,6 +418,7 @@ const RecordForm = ({
               id={`name-${id || "new"}`}
               labelText={`${intl.formatMessage({ id: "label.locations.column.name" })} *${fromRegistry}`}
               value={form.name}
+              maxLength={200}
               onChange={set("name")}
               invalid={!!errorFor("name")}
               invalidText={errorFor("name")}
@@ -787,6 +788,7 @@ const RecordForm = ({
                 id: "label.locations.field.email",
               })}
               value={form.email}
+              maxLength={255}
               invalid={!!errorFor("email")}
               invalidText={errorFor("email")}
               onChange={set("email")}
