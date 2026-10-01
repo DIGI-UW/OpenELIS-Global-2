@@ -68,14 +68,17 @@ Not yet covered: further FluoroCycler exports, assays, units and status/control
 semantics; a shipped core HL7 profile; OE2-side outage, restart and replay;
 populated-catalog reconciliation; and upgrade from a supported previous version.
 Bridge 3.2.5 (released 30 September) adds only #70: the image keeps its outbox
-and FILE state on its data volume by default. OE2 still pins 3.2.4.
+and FILE state on its data volume by default. Bridge 3.2.6 (released 1 October)
+requires HTTP Basic on every Bridge endpoint except the health status and
+removes `POST /` and `POST /api/query` (#73); it needs OE2 3.2.3.0 or later.
+OE2 still pins 3.2.4; #4497 repins to 3.2.6.
 
 ## Remaining work, in order
 
 | Order | Work | Next step | Acceptance |
 | ----- | ---- | --------- | ---------- |
 | 1 | Broader FILE and HL7 qualification | Qualify additional supported FluoroCycler exports/assays, units and status/control semantics, plus a shipped core HL7 profile. | UI directory configuration reaches Bridge watching; native files and HL7 messages save correct clinical values. Archive/error retention is verified. No distro mount or fabricated concentration makes the test pass. |
-| 2 | Durable delivery and upgrade | Repin OE2 to Bridge 3.2.6 once released (OGC-1409; it includes 3.2.5). Prove OE2 queue outage, restart and replay on the current traffic helper, and operator retry after another transient failure (after #4421). Restore mock attachment after Bridge replacement. Reconcile populated catalogs and upgrade a supported previous version through the existing #4433 migration and catalog-loading services. | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery. |
+| 2 | Durable delivery and upgrade | Repin OE2 to Bridge 3.2.6 (#4497, OGC-1409; it includes 3.2.5). Prove OE2 queue outage, restart and replay on the current traffic helper, and operator retry after another transient failure (after #4421). Restore mock attachment after Bridge replacement. Reconcile populated catalogs and upgrade a supported previous version through the existing #4433 migration and catalog-loading services. | Retained pending messages deliver once after recovery; processed FILE inputs are not duplicated. Existing analyzer IDs, clinical history and deliberate mappings survive upgrade. No SQL feature setup or resend is needed for claimed recovery. |
 | 3 | Core qualification | Run every supported workflow and present recordings from the same registered tests. | Every supported ASTM/FILE/HL7 workflow and required recovery/upgrade scenario has passing independent readback, exact image identities and accessible reviewed video. |
 | 4 | Madagascar distro | Publish qualified core versions, update distro pins and run limited packaging/configuration checks. | The distro consumes working core profiles/defaults without site-specific mapping repair. Its checks prove packaging differences, not replacement core acceptance. |
 
@@ -98,8 +101,7 @@ without evidence.
 | PR | Disposition |
 | -- | ----------- |
 | OE2 #4421 | Persists Retry/Dismiss of undelivered results in the audit trail. Open. |
-| Bridge #73 | Requires HTTP Basic on every Bridge endpoint except the health status, and removes `POST /` and `POST /api/query`. Stacked on Bridge #72; ships as 3.2.6 and needs OE2 3.2.3.0 or later. Rollout in OGC-1409. |
-| OE2 #4494 | Repins to Bridge 3.2.5. The 3.2.6 repin covers it if Bridge #73 is released first. |
+| OE2 #4497 | Repins to Bridge 3.2.6 and publishes the harness Bridge API on localhost only. Distro repins follow it (OGC-1409). |
 | OE2 #4072 | Worktree-isolated development stack. Reconcile it with `scripts/dev-stack`; keep CI and interactive entry points separate without competing launchers. |
 | OE2 #3974 | TypeScript migration of analyzer forms. September's rework removed 17 of its 18 target components; close it, or narrow it to `AnalyzerTypeManagement.jsx`. |
 | Madagascar test harness #4, #9, #10, #11 | After core qualification: reconcile #4 with merged #15; narrow #10; review the outbound proof in #9 and its child #11. |
