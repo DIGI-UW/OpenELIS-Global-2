@@ -10,15 +10,12 @@ import { Edit } from "@carbon/icons-react";
 import { useHistory, useLocation } from "react-router-dom";
 import { FormattedMessage, useIntl } from "react-intl";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import OrderStepper, {
-  CLINICAL_ORDER_STEPS,
-  ENVIRONMENTAL_ORDER_STEPS,
-  VECTOR_ORDER_STEPS,
-} from "./OrderStepper";
+import OrderStepper, { stepsForPath } from "./OrderStepper";
 import OrderContextCard from "./OrderContextCard";
 import RangeNotAppliedWarning from "./RangeNotAppliedWarning";
 import BarcodeScannerBar from "./BarcodeScannerBar";
 import SaveNavigationButtons from "./SaveNavigationButtons";
+import ToContinueChecklist from "./ToContinueChecklist";
 import { useOrderContext, SaveStatus } from "./OrderContext";
 import "./order-workflow.scss";
 
@@ -145,9 +142,14 @@ const OrderWorkflowLayout = ({
   canSave = true,
   onSave,
   onSaveAndNext,
+  onDiscard,
+  toContinue = [],
+  primaryLabelId,
+  secondaryAction,
   extraButtons,
   showSaveButtons = true,
 }) => {
+  const intl = useIntl();
   const location = useLocation();
   const {
     isReadOnly,
@@ -156,17 +158,14 @@ const OrderWorkflowLayout = ({
     labNumber,
     orderData,
     rangeNotApplied,
+    sampleCheckEnabled,
+    progress,
   } = useOrderContext();
   const currentLabNumber = labNumber || orderData?.sampleOrderItems?.labNo;
 
-  // Infer step set from URL prefix — no workflowType context read needed.
-  const steps = (() => {
-    const path = location.pathname;
-    if (path.startsWith("/order/vector")) return VECTOR_ORDER_STEPS;
-    if (path.startsWith("/order/environmental"))
-      return ENVIRONMENTAL_ORDER_STEPS;
-    return CLINICAL_ORDER_STEPS;
-  })();
+  // The steps this workflow shows; the clinical Sample check exists only while
+  // the laboratory's acceptance setting is not Off (FR-F1).
+  const steps = stepsForPath(location.pathname, sampleCheckEnabled);
 
   // Determine current step from URL if not provided
   const activeStep =
@@ -200,7 +199,23 @@ const OrderWorkflowLayout = ({
     // Order loaded via barcode scan - context is already updated
   };
 
-  const canEdit = isReadOnly && !isEditMode;
+  // A cancelled order opens read-only and stays that way (FR-A4).
+  const cancelled = progress?.status === "CANCELLED";
+  const canEdit = isReadOnly && !isEditMode && !cancelled;
+  const nextStep = steps[activeStep + 1];
+  const nextStepLabel = intl.formatMessage({
+    id: nextStep ? nextStep.label : "order.status.complete",
+  });
+  const toContinueCount = toContinue.length;
+  const currentStepNote =
+    progress?.status === "CANCELLED"
+      ? undefined
+      : toContinueCount > 0
+        ? intl.formatMessage(
+            { id: "order.step.toDo" },
+            { count: toContinueCount },
+          )
+        : intl.formatMessage({ id: "order.step.ready" });
 
   return (
     <>
@@ -255,7 +270,21 @@ const OrderWorkflowLayout = ({
           <OrderStepper
             currentStep={activeStep}
             className="order-stepper-section"
+            currentStepNote={showSaveButtons ? currentStepNote : undefined}
           />
+
+          {progress?.status === "CANCELLED" && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "order.status.cancelled" })}
+              subtitle={intl.formatMessage(
+                { id: "order.cancelled.notice" },
+                { reason: progress.cancelReason || "" },
+              )}
+            />
+          )}
 
           {/* Persistent Order Context Card */}
           {(labNumber || orderData?.sampleOrderItems?.labNo) && (
@@ -279,15 +308,25 @@ const OrderWorkflowLayout = ({
             {children}
           </div>
 
-          {/* Save Navigation Buttons - NAV-4 */}
+          {/* To continue checklist (FR-A9) and the footer (FR-A1) */}
           {showSaveButtons && (
             <div className="order-navigation-section">
+              {!(isReadOnly && !isEditMode) && (
+                <ToContinueChecklist
+                  nextStep={nextStepLabel}
+                  items={toContinue}
+                />
+              )}
               <SaveNavigationButtons
                 currentStep={activeStep}
                 canProceed={canProceed}
                 canSave={canSave}
                 onSave={onSave}
                 onSaveAndNext={onSaveAndNext}
+                onDiscard={onDiscard}
+                toContinueCount={toContinueCount}
+                primaryLabelId={primaryLabelId}
+                secondaryAction={secondaryAction}
               />
               {extraButtons && (
                 <div className="order-extra-buttons">{extraButtons}</div>

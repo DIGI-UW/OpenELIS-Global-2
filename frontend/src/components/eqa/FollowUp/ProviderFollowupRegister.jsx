@@ -143,11 +143,11 @@ const ProviderFollowupRegister = () => {
 
   useEffect(load, [load]);
 
-  const report = ({ ok, body }, successText) => {
+  const report = ({ ok, body }, successText, successKind = "success") => {
     setBusy(false);
     setNotice(
       ok
-        ? { kind: "success", text: successText }
+        ? { kind: successKind, text: successText }
         : {
             kind: "error",
             text:
@@ -199,10 +199,17 @@ const ProviderFollowupRegister = () => {
                 to: body?.recipient || "",
               },
             )
-          : t(
-              "eqa.provider.followups.csvFallback",
-              "No contact email on file — the notification was downloaded as CSV to send by hand.",
-            ),
+          : body?.recipient
+            ? t(
+                "eqa.provider.followups.sendFailed",
+                "Could not email {to}. The notification was downloaded as CSV to send by hand.",
+                { to: body.recipient },
+              )
+            : t(
+                "eqa.provider.followups.csvFallback",
+                "No contact email on file — the notification was downloaded as CSV to send by hand.",
+              ),
+        body?.emailed ? "success" : "warning",
       );
     });
   };
