@@ -151,7 +151,8 @@ function SelectedCard({ onClear, isNew, isLocked, onUnlock, children }) {
 
 function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   const intl = useIntl();
-  const { samples, setSamples } = useOrderContext();
+  const { samples, setSamples, hydrateOrderData, hydrateSamples } =
+    useOrderContext();
 
   const isEnv = workflowType === "environmental";
 
@@ -200,16 +201,15 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
     });
   }, []);
 
-  const initialCollectionDate =
+  const collectionDate = (
     orderData?.sampleOrderItems?.environmentalFields?.[COLLECTION_DATE_KEY] ||
     samples?.[0]?.collectionDate ||
-    todayIso();
-  const [collectionDate, setCollectionDate] = useState(initialCollectionDate);
+    todayIso()
+  ).slice(0, 10);
 
   const handleCollectionDateChange = useCallback(
     (isoDate) => {
       if (!isoDate) return;
-      setCollectionDate(isoDate);
       setOrderData((prev) => ({
         ...prev,
         sampleOrderItems: {
@@ -230,7 +230,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
   useEffect(() => {
     if (!samples || samples.length === 0) return;
     if (samples.every((s) => s.collectionDate)) return;
-    setSamples(
+    hydrateSamples(
       samples.map((s) =>
         s.collectionDate ? s : { ...s, collectionDate: collectionDate },
       ),
@@ -265,7 +265,7 @@ function VectorSection({ orderData, setOrderData, isReadOnly, workflowType }) {
       if (match) {
         setSelectedSite(match);
         setIsSamplingSiteLocked(true);
-        setOrderData((prev) => ({
+        hydrateOrderData((prev) => ({
           ...prev,
           sampleOrderItems: {
             ...prev.sampleOrderItems,

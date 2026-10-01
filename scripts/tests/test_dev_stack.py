@@ -349,6 +349,18 @@ class DevStackContractTest(unittest.TestCase):
             commands[1][-6:], ["exec", "-T", "proxy", "nginx", "-s", "reload"]
         )
 
+    def test_image_build_refreshes_backend_runtime_without_rebuilding_the_mounted_war(self):
+        context = self.dev_stack.make_context(REPO_ROOT)
+        environment = {"DEV_STACK_BUILD_FRONTEND": "false"}
+        with patch.object(self.dev_stack, "run") as run:
+            self.dev_stack.build_images(context, environment)
+        command = run.call_args.args[0]
+        self.assertEqual(command[-4:],
+                         ["build", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"])
+        compose = (context.project_dir / "docker-compose.dev.yml").read_text()
+        self.assertIn("target: dev-runtime", compose)
+        self.assertIn("../../target/OpenELIS-Global.war:", compose)
+
     def test_backend_running_probe_is_scoped_to_the_worktree(self):
         context = self.dev_stack.make_context(REPO_ROOT)
         environment = self.dev_stack.build_environment(context)

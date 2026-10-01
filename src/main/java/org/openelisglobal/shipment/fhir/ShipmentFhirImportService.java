@@ -1,15 +1,22 @@
 package org.openelisglobal.shipment.fhir;
 
 import ca.uhn.fhir.rest.client.api.IGenericClient;
+import ca.uhn.fhir.rest.server.exceptions.ResourceGoneException;
+import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
+import org.hl7.fhir.r4.model.BaseDateTimeType;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.IntegerType;
+import org.hl7.fhir.r4.model.Location;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.StringType;
 import org.hl7.fhir.r4.model.SupplyDelivery;
@@ -19,15 +26,28 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
+import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQAShipmentService;
+import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.shipment.dao.ShippingBoxDAO;
+import org.openelisglobal.shipment.service.ShipmentService;
+import org.openelisglobal.shipment.service.ShippingBoxService;
 import org.openelisglobal.shipment.valueholder.BoxState;
+import org.openelisglobal.shipment.valueholder.Shipment;
+import org.openelisglobal.shipment.valueholder.ShipmentStatus;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
+import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.scheduling.annotation.Async;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,7 +57,11 @@ import org.springframework.transaction.annotation.Transactional;
  * reconciliation.
  *
  * Follows the same polling pattern as FhirApiWorkFlowServiceImpl for Task
- * resources.
+ * resources — including status backflow: when this lab receives an imported
+ * box, the origin store's SupplyDelivery is completed, and a sender polls its
+ * own store to learn its consignments arrived. Both directions ride the same
+ * {@code org.openelisglobal.remote.source.updateStatus} flag the Task workflow
+ * honours, so switching it off restores strictly manual confirmation.
  */
 @Service
 public class ShipmentFhirImportService {
@@ -67,6 +91,40 @@ public class ShipmentFhirImportService {
     @Autowired
     private FhirPersistanceService fhirPersistanceService;
 
+    @Autowired
+    private SiteInformationService siteInformationService;
+
+    @Value("${org.openelisglobal.remote.source.updateStatus:false}")
+    private Optional<Boolean> remoteStoreUpdateStatus;
+
+    /**
+     * Consignments whose occurrence is older than this many days are not imported —
+     * dedup is local-only, so a fresh install would otherwise resurrect
+     * long-delivered consignments whose sender never advanced the status.
+     */
+    @Value("${org.openelisglobal.shipment.import.maxAgeDays:30}")
+    private int importMaxAgeDays;
+
+    /**
+     * Off by default: the consignment import stays a button on the Reception screen
+     * unless the deployment turns the poll on. It then runs on the same cadence as
+     * the delivery reconcile below.
+     */
+    @Value("${org.openelisglobal.shipment.import.scheduled:false}")
+    private boolean importScheduled;
+
+    /**
+     * The scheduled poll goes through the proxy so pollAndImportShipments keeps
+     * its @Async and @Transactional behaviour; a plain self-call would bypass both.
+     */
+    @Autowired
+    @Lazy
+    private ShipmentFhirImportService self;
+
+    private boolean statusBackflowEnabled() {
+        return remoteStoreUpdateStatus.isPresent() && remoteStoreUpdateStatus.get();
+    }
+
     /**
      * Poll all configured remote FHIR servers for SupplyDelivery resources with
      * status in-progress (SENT/IN_TRANSIT boxes). Import them as local ShippingBox
@@ -84,6 +142,14 @@ public class ShipmentFhirImportService {
      */
     @Transactional
     public int importShipments() {
+        // With no site organization configured the addressed-to-us filter falls back
+        // to remote.source.identifier. Said once per run so the log distinguishes
+        // over-import from intent.
+        if (getSiteOrganizationFhirUuid() == null) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "importShipments",
+                    "site organization not configured — accepting all consignments (set siteOrganizationFhirUuid on"
+                            + " Shipment Settings to filter to this site)");
+        }
         int totalImported = 0;
         for (String remoteStorePath : fhirConfig.getRemoteStorePaths()) {
             if (remoteStorePath == null || remoteStorePath.isBlank()) {
@@ -129,10 +195,10 @@ public class ShipmentFhirImportService {
             }
         }
 
-        if (imported > 0) {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "importFromRemote",
-                    "Imported " + imported + " shipments from " + remoteStorePath);
-        }
+        // Always reported: a poll that finds consignments and imports none of them is
+        // the failure mode that looks exactly like success from the outside.
+        LogEvent.logInfo(this.getClass().getSimpleName(), "importFromRemote", "Polled " + remoteStorePath + ": "
+                + allDeliveries.size() + " in-progress deliveries, " + imported + " imported");
 
         return imported;
     }
@@ -180,6 +246,21 @@ public class ShipmentFhirImportService {
                 return false; // Already exists
             }
 
+            // Staleness window. A consignment sent long ago whose status never
+            // advanced is history, not an arrival — importing it as IN_TRANSIT invents
+            // a ghost. No occurrence date means age is unknowable: imported as today,
+            // matching prior behaviour.
+            if (delivery.hasOccurrenceDateTimeType() && delivery.getOccurrenceDateTimeType().getValue() != null) {
+                long ageDays = java.time.temporal.ChronoUnit.DAYS
+                        .between(delivery.getOccurrenceDateTimeType().getValue().toInstant(), java.time.Instant.now());
+                if (ageDays > importMaxAgeDays) {
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "importSupplyDelivery", "Box " + boxId
+                            + " occurrence is " + ageDays + " days old, beyond the " + importMaxAgeDays
+                            + "-day import window (org.openelisglobal.shipment.import.maxAgeDays); skipping (age)");
+                    return false;
+                }
+            }
+
             // Create new local ShippingBox from SupplyDelivery
             ShippingBox box = new ShippingBox();
             box.setBoxId(boxId);
@@ -217,41 +298,80 @@ public class ShipmentFhirImportService {
                 box.setActualSampleCount(delivery.getSuppliedItem().getQuantity().getValue().intValue());
             }
 
+            // The consignment's manifest. Contents rows cannot be created here
+            // (their FKs name rows only the sender has), so what the payload says is
+            // inside is kept read-side for BoxDetails to render.
+            box.setImportedContents(extractImportedContents(delivery));
+
             // Sent date from occurrence
             if (delivery.hasOccurrenceDateTimeType()) {
                 box.setSentDate(new Timestamp(delivery.getOccurrenceDateTimeType().getValue().getTime()));
             }
 
-            // Destination org UUID travels in an extension (R4 forbids an Organization ref
-            // here).
-            String destinationUuid = extractExtensionString(delivery, EXT_DESTINATION_ORG);
+            // Destination facility. The sender writes the receiving laboratory as the
+            // managingOrganization of the contained Location that destination points
+            // at, because R4 types destination as Reference(Location) and a server
+            // rejects an Organization there outright. A sender that still writes it as
+            // an extension is read too, so nothing older is silently ignored.
+            String destinationUuid = destinationOrganizationUuid(delivery);
             if (destinationUuid == null || destinationUuid.isBlank()) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
-                        "Box " + boxId + " has no destination organization UUID, skipping import");
-                return false;
+                destinationUuid = extractExtensionString(delivery, EXT_DESTINATION_ORG);
             }
 
-            // Recognition is config-driven, like referral's Task.owner vs
-            // remote.source.identifier.
-            List<String> selfIdentifiers = fhirConfig.getRemoteStoreIdentifier();
-            if (selfIdentifiers.isEmpty()) {
-                LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
-                        "remote.source.identifier is not configured; cannot determine box ownership, skipping import");
-                return false;
-            }
-            if (!matchesSelfIdentity(destinationUuid, selfIdentifiers)) {
-                return false; // not destined for this lab
+            // Only accept boxes addressed to this laboratory. The Shipment Settings
+            // site organization is the explicit answer when a site has one;
+            // remote.source.identifier is the fallback for sites that never set it.
+            String siteOrgUuid = getSiteOrganizationFhirUuid();
+            if (siteOrgUuid != null && !siteOrgUuid.isBlank()) {
+                if (destinationUuid == null || !destinationUuid.equalsIgnoreCase(siteOrgUuid)) {
+                    // Said out loud, because a site that has its own organization
+                    // configured wrongly cannot otherwise tell this apart from "the
+                    // partner has sent nothing".
+                    LogEvent.logInfo(this.getClass().getSimpleName(), "importSupplyDelivery",
+                            "Box " + boxId + " is addressed to " + destinationUuid + ", not to this site ("
+                                    + siteOrgUuid + "); skipping [destinationRef="
+                                    + (delivery.hasDestination() ? delivery.getDestination().getReference() : "none")
+                                    + ", contained=" + delivery.getContained().size() + "]");
+                    return false;
+                }
+            } else if (destinationUuid != null && !destinationUuid.isBlank()) {
+                List<String> selfIdentifiers = fhirConfig.getRemoteStoreIdentifier();
+                if (!selfIdentifiers.isEmpty() && !matchesSelfIdentity(destinationUuid, selfIdentifiers)) {
+                    return false; // not destined for this lab
+                }
             }
 
-            // Resolve the destination org by shared UUID; materialize it if absent (like
-            // referral's
-            // referring org), so no manual provisioning is needed.
-            Organization destinationOrg = organizationService.getOrganizationByFhirId(destinationUuid);
+            // Resolve the destination organization by shared UUID, materializing it if
+            // absent so no manual provisioning is needed. A sender that publishes no
+            // UUID at all still has to land, so fall back to the name it put on the
+            // receiver or the destination reference.
+            Organization destinationOrg = null;
+            if (destinationUuid != null && !destinationUuid.isBlank()) {
+                destinationOrg = organizationService.getOrganizationByFhirId(destinationUuid);
+                if (destinationOrg == null) {
+                    destinationOrg = createDestinationOrganization(destinationUuid,
+                            delivery.hasDestination() ? delivery.getDestination().getDisplay() : null);
+                }
+            }
             if (destinationOrg == null) {
-                destinationOrg = createDestinationOrganization(destinationUuid,
-                        delivery.hasDestination() ? delivery.getDestination().getDisplay() : null);
+                String display = receiverDisplay(delivery);
+                if (display == null && delivery.hasDestination()) {
+                    display = delivery.getDestination().getDisplay();
+                }
+                if (display != null) {
+                    Organization probe = new Organization();
+                    probe.setOrganizationName(display);
+                    destinationOrg = organizationService.getOrganizationByName(probe, true);
+                }
+            }
+            if (destinationOrg == null) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "importSupplyDelivery",
+                        "No matching local organization for box " + boxId + ", skipping import");
+                return false;
             }
             box.setDestinationFacility(destinationOrg);
+
+            linkParticipantCycle(box, delivery);
 
             shippingBoxDAO.insert(box);
             LogEvent.logInfo(this.getClass().getSimpleName(), "importSupplyDelivery",
@@ -265,6 +385,180 @@ public class ShipmentFhirImportService {
             LogEvent.logError(this.getClass().getSimpleName(), "importSupplyDelivery",
                     "Error importing SupplyDelivery: " + e.getMessage());
             return false;
+        }
+    }
+
+    /**
+     * The laboratory a consignment is addressed to. The sender writes it as the
+     * managingOrganization of the contained Location destination points at (R4
+     * types destination as Reference(Location)); a bare Organization reference is
+     * still read so anything written by an older sender is not silently ignored.
+     */
+    private String destinationOrganizationUuid(SupplyDelivery delivery) {
+        if (!delivery.hasDestination()) {
+            return null;
+        }
+        Reference destination = delivery.getDestination();
+        String reference = destination.getReference();
+        if (reference != null && reference.startsWith("Organization/")) {
+            return reference.substring("Organization/".length());
+        }
+
+        // The parser may hand back the contained Location already resolved onto the
+        // reference, or leave it as a "#id" pointer into contained — accept either,
+        // since which one you get depends on how the resource was parsed.
+        Location destinationLocation = null;
+        if (destination.getResource() instanceof Location resolved) {
+            destinationLocation = resolved;
+        } else if (reference != null && reference.startsWith("#")) {
+            String containedId = reference.substring(1);
+            for (Resource contained : delivery.getContained()) {
+                if (contained instanceof Location location && containedId.equals(location.getIdElement().getIdPart())) {
+                    destinationLocation = location;
+                    break;
+                }
+            }
+        }
+
+        if (destinationLocation != null && destinationLocation.hasManagingOrganization()) {
+            String managing = destinationLocation.getManagingOrganization().getReference();
+            if (managing != null && managing.startsWith("Organization/")) {
+                return managing.substring("Organization/".length());
+            }
+        }
+        return null;
+    }
+
+    private String receiverDisplay(SupplyDelivery delivery) {
+        for (var receiver : delivery.getReceiver()) {
+            if (receiver.hasDisplay()) {
+                return receiver.getDisplay();
+            }
+        }
+        return null;
+    }
+
+    // ---: delivery-status backflow ----
+
+    /**
+     * Receiver side: this lab has taken delivery of a box, so the store it was
+     * imported from should say {@code completed} — that is the only signal the
+     * sender's monitor can see. The origin store is discovered rather than stored:
+     * the box's FHIR UUID is the origin's resource id, so whichever configured
+     * remote answers the read is where it came from. A box created locally exists
+     * on no remote and every read misses, which is exactly the no-op it should be.
+     */
+    @Async
+    public void completeRemoteSupplyDelivery(ShippingBox box) {
+        if (!statusBackflowEnabled() || box == null || box.getFhirUuid() == null
+                || fhirConfig.getRemoteStorePaths() == null) {
+            return;
+        }
+        for (String remoteStorePath : fhirConfig.getRemoteStorePaths()) {
+            if (remoteStorePath == null || remoteStorePath.isBlank()) {
+                continue;
+            }
+            try {
+                IGenericClient remoteClient = fhirUtil.getFhirClient(remoteStorePath);
+                SupplyDelivery delivery = remoteClient.read().resource(SupplyDelivery.class)
+                        .withId(box.getFhirUuidAsString()).execute();
+                if (delivery.getStatus() == SupplyDeliveryStatus.COMPLETED) {
+                    return;
+                }
+                delivery.setStatus(SupplyDeliveryStatus.COMPLETED);
+                remoteClient.update().resource(delivery).execute();
+                LogEvent.logInfo(this.getClass().getSimpleName(), "completeRemoteSupplyDelivery",
+                        "Completed SupplyDelivery for box " + box.getBoxId() + " on " + remoteStorePath);
+                return;
+            } catch (ResourceNotFoundException | ResourceGoneException e) {
+                // Not this remote's consignment — or not a consignment at all.
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "completeRemoteSupplyDelivery",
+                        "Could not complete SupplyDelivery for box " + box.getBoxId() + " on " + remoteStorePath + ": "
+                                + e.getMessage());
+            }
+        }
+    }
+
+    /**
+     * Sender side: a dispatched box whose own-store SupplyDelivery reads
+     * {@code completed} was received by the partner (their backflow wrote it), so
+     * delivery is recorded here without anyone clicking — an EQA box through the
+     * same path the Receipt Monitor's manual confirm uses (cycle auto-advance and
+     * audit included), any other box as box RECEIVED + shipment DELIVERED.
+     *
+     * <p>
+     * Collaborators are fetched at call time, not injected: this service sits below
+     * ShippingBoxService (which calls the backflow above on every RECEIVED), so
+     * injecting them back up would be a bean cycle.
+     *
+     * <p>
+     * Deliberately not atomic across boxes: each delivery is applied in its own
+     * transaction, so a fault mid-loop keeps every box already applied and the next
+     * run picks up the rest.
+     */
+    /**
+     * Scheduled counterpart of the Reception screen's Import from FHIR button,
+     * enabled by {@code org.openelisglobal.shipment.import.scheduled=true}. A
+     * participant laboratory then sees a dispatched consignment within one poll
+     * with nobody clicking; with the property unset nothing changes.
+     */
+    @Scheduled(initialDelay = 45 * 1000, fixedRateString = "${org.openelisglobal.remote.poll.frequency:120000}")
+    public void importShipmentsOnSchedule() {
+        if (!importScheduled) {
+            return;
+        }
+        self.pollAndImportShipments();
+    }
+
+    @Scheduled(initialDelay = 30 * 1000, fixedRateString = "${org.openelisglobal.remote.poll.frequency:120000}")
+    public void reconcileDeliveredShipments() {
+        if (!statusBackflowEnabled()) {
+            return;
+        }
+        List<ShippingBox> inFlight = new ArrayList<>();
+        inFlight.addAll(shippingBoxDAO.findByState(BoxState.SENT));
+        inFlight.addAll(shippingBoxDAO.findByState(BoxState.IN_TRANSIT));
+
+        int delivered = 0;
+        IGenericClient ownStore = fhirUtil.getLocalFhirClient();
+        for (ShippingBox box : inFlight) {
+            if (box.getFhirUuid() == null) {
+                continue;
+            }
+            try {
+                SupplyDelivery delivery = ownStore.read().resource(SupplyDelivery.class)
+                        .withId(box.getFhirUuidAsString()).execute();
+                if (delivery.getStatus() != SupplyDeliveryStatus.COMPLETED) {
+                    continue;
+                }
+                applyRemoteDelivery(box);
+                delivered++;
+            } catch (ResourceNotFoundException | ResourceGoneException e) {
+                // Never exported (or imported-only) — nothing to reconcile against.
+            } catch (Exception e) {
+                LogEvent.logError(this.getClass().getSimpleName(), "reconcileDeliveredShipments",
+                        "Could not reconcile box " + box.getBoxId() + ": " + e.getMessage());
+            }
+        }
+        if (delivered > 0) {
+            LogEvent.logInfo(this.getClass().getSimpleName(), "reconcileDeliveredShipments",
+                    delivered + " shipment(s) recorded as delivered from partner receipts");
+        }
+    }
+
+    private void applyRemoteDelivery(ShippingBox box) {
+        String sysUserId = String.valueOf(getAutomatedImportUserId());
+        if (box.getEqaCycleId() != null) {
+            SpringContext.getBean(EQAShipmentService.class).applyRemoteDelivery(box.getId(), sysUserId);
+            return;
+        }
+        SpringContext.getBean(ShippingBoxService.class).changeBoxState(box.getId(), BoxState.RECEIVED,
+                getAutomatedImportUserId());
+        ShipmentService shipmentService = SpringContext.getBean(ShipmentService.class);
+        Shipment shipment = shipmentService.getShipmentByShippingBoxId(box.getId());
+        if (shipment != null && shipment.getStatus() != ShipmentStatus.DELIVERED) {
+            shipmentService.updateShipmentStatus(shipment.getId(), ShipmentStatus.DELIVERED);
         }
     }
 
@@ -312,6 +606,101 @@ public class ShipmentFhirImportService {
             // Not a valid UUID, ignore
         }
         return null;
+    }
+
+    /**
+     * Read the consignment's manifest off the SupplyDelivery as a JSON list of
+     * {label, type}. Prefers the content-item extensions (nested label/type); falls
+     * back to the bare specimen-reference displays an older sender writes, which
+     * carry only a type. Null when the payload names nothing.
+     */
+    private String extractImportedContents(SupplyDelivery delivery) {
+        List<Map<String, String>> items = new ArrayList<>();
+        for (Extension ext : delivery.getExtensionsByUrl(ShippingBoxFhirTransform.EXT_CONTENT_ITEM)) {
+            Map<String, String> item = new LinkedHashMap<>();
+            Extension label = ext.getExtensionByUrl("label");
+            if (label != null && label.getValue() instanceof StringType st) {
+                item.put("label", st.getValue());
+            }
+            Extension type = ext.getExtensionByUrl("type");
+            if (type != null && type.getValue() instanceof StringType st) {
+                item.put("type", st.getValue());
+            }
+            if (!item.isEmpty()) {
+                items.add(item);
+            }
+        }
+        if (items.isEmpty()) {
+            for (Extension ext : delivery.getExtensionsByUrl("http://openelis.org/fhir/extension/shipment-specimen")) {
+                if (ext.getValue() instanceof Reference ref && ref.hasDisplay()) {
+                    Map<String, String> item = new LinkedHashMap<>();
+                    item.put("type", ref.getDisplay());
+                    items.add(item);
+                }
+            }
+        }
+        if (items.isEmpty()) {
+            return null;
+        }
+        try {
+            return new com.fasterxml.jackson.databind.ObjectMapper().writeValueAsString(items);
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "extractImportedContents",
+                    "Could not serialise imported contents: " + e.getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * A consignment from an OpenELIS provider names the EQA cycle it belongs to.
+     * Open (or find) the local cycle of the same scheme name and number and link
+     * the box to it, so My Cycles offers "Receive panel" and the Add Order receipt
+     * can point at this consignment. A lab that has no programme of that name gets
+     * the box without a cycle, and a failure here never blocks the import.
+     */
+    private void linkParticipantCycle(ShippingBox box, SupplyDelivery delivery) {
+        Extension ext = delivery.getExtensionByUrl(ShippingBoxFhirTransform.EXT_EQA_CYCLE);
+        if (ext == null) {
+            return;
+        }
+        try {
+            String schemeName = subExtensionString(ext, "scheme");
+            Integer number = subExtensionInteger(ext, "number");
+            java.sql.Date distribution = subExtensionDate(ext, "distributionDate");
+            java.sql.Date deadline = subExtensionDate(ext, "submissionDeadline");
+            Optional<EQACycle> cycle = SpringContext.getBean(EQACycleService.class).ensureParticipantCycle(schemeName,
+                    number, subExtensionString(ext, "name"), distribution, deadline,
+                    String.valueOf(getAutomatedImportUserId()));
+            if (cycle.isPresent()) {
+                box.setEqaCycleId(cycle.get().getId());
+                LogEvent.logInfo(this.getClass().getSimpleName(), "linkParticipantCycle", "Consignment "
+                        + box.getBoxId() + " belongs to EQA cycle " + cycle.get().getId() + " (" + schemeName + ")");
+            } else {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "linkParticipantCycle",
+                        "Consignment " + box.getBoxId() + " names EQA programme '" + schemeName
+                                + "' but this laboratory has no programme of that name — imported without a cycle");
+            }
+        } catch (Exception e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "linkParticipantCycle",
+                    "Consignment " + box.getBoxId() + " imported without its EQA cycle: " + e.getMessage());
+        }
+    }
+
+    private static String subExtensionString(Extension parent, String url) {
+        Extension ext = parent.getExtensionByUrl(url);
+        return ext != null && ext.getValue() instanceof StringType st ? st.getValue() : null;
+    }
+
+    private static Integer subExtensionInteger(Extension parent, String url) {
+        Extension ext = parent.getExtensionByUrl(url);
+        return ext != null && ext.getValue() instanceof IntegerType it ? it.getValue() : null;
+    }
+
+    private static java.sql.Date subExtensionDate(Extension parent, String url) {
+        Extension ext = parent.getExtensionByUrl(url);
+        return ext != null && ext.getValue() instanceof BaseDateTimeType dt && dt.getValue() != null
+                ? new java.sql.Date(dt.getValue().getTime())
+                : null;
     }
 
     private String extractExtensionString(SupplyDelivery delivery, String url) {
@@ -381,5 +770,23 @@ public class ShipmentFhirImportService {
             }
         }
         return false;
+    }
+
+    /**
+     * The FHIR Organization UUID this laboratory publishes itself as, from Shipment
+     * Settings. Null when unset, which leaves the addressed-to-us filter to fall
+     * back on remote.source.identifier.
+     */
+    private String getSiteOrganizationFhirUuid() {
+        try {
+            SiteInformation siteInfo = siteInformationService.getSiteInformationByName("siteOrganizationFhirUuid");
+            if (siteInfo != null && siteInfo.getValue() != null && !siteInfo.getValue().isBlank()) {
+                return siteInfo.getValue().trim();
+            }
+        } catch (Exception e) {
+            LogEvent.logError(this.getClass().getSimpleName(), "getSiteOrganizationFhirUuid",
+                    "Error reading site organization UUID: " + e.getMessage());
+        }
+        return null;
     }
 }

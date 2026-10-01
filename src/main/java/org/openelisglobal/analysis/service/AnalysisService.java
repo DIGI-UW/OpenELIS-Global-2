@@ -47,6 +47,44 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     List<Analysis> getAllAnalysisByTestSectionAndStatus(String testSectionId, List<String> statusIdList,
             boolean sortedByDateAndAccession);
 
+    /**
+     * OGC-189 (M2): ids of the lab units (test sections) that still hold in-flight
+     * work — at least one analysis not yet Finalized, Canceled or rejected.
+     *
+     * <p>
+     * Drives the "isActive OR hasContent" rule for viewer controls, so a
+     * deactivated unit stays on worklists until its pending analyses are finished
+     * and then drops out by itself. Never used to gate order entry — choosers
+     * filter on {@code isActive} alone.
+     */
+    Set<String> getTestSectionIdsWithPendingAnalyses();
+
+    /**
+     * OGC-189: ids of the lab units that hold <em>any</em> analysis, whatever its
+     * status — including finalized, canceled and rejected.
+     *
+     * <p>
+     * This is the "hasContent" half of the viewer rule. It deliberately counts
+     * completed work: the guardrail requires that "ALL tests should be able to be
+     * completed, <b>and the historical data viewed</b>, regardless of these
+     * settings" (comment 37313 §2). Counting only pending analyses meant a
+     * finalized result in a deactivated unit became invisible on the results pages
+     * and unreachable for reporting the moment it was entered — the data was there,
+     * and nobody could retrieve it.
+     *
+     * <p>
+     * Consequence, accepted deliberately: a unit that has ever processed work stays
+     * in viewer lists for good. Its results are permanent records, so that is the
+     * correct trade against a shorter dropdown.
+     */
+    Set<String> getTestSectionIdsWithAnyAnalyses();
+
+    /**
+     * OGC-189 (M3): analysis counts for a lab unit's deactivation impact summary.
+     * Index 0 = pending (still in flight), index 1 = historical.
+     */
+    long[] countAnalysesForLabUnit(String testSectionId);
+
     List<Analysis> getMaxRevisionAnalysesBySampleIncludeCanceled(SampleItem sampleItem);
 
     List<Analysis> getAnalysisByTestNamesAndCompletedDateRange(List<String> testNames, Date lowDate, Date highDate);

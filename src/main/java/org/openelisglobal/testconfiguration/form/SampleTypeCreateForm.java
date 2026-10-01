@@ -26,6 +26,10 @@ public class SampleTypeCreateForm extends BaseForm {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String sampleTypeFrenchName;
 
+    // Optional: a blank description falls back to the English name.
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
+    private String description;
+
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE)
     private String domain;
 
@@ -87,6 +91,14 @@ public class SampleTypeCreateForm extends BaseForm {
 
     public void setSampleTypeFrenchName(String sampleTypeFrenchName) {
         this.sampleTypeFrenchName = sampleTypeFrenchName;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public String getDomain() {

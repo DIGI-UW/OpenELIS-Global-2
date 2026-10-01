@@ -15,8 +15,6 @@ nav:
     - Install OpenELIS Global: install.md
     - Upgrade to the Newest Version: upgrade.md
     - Upgrade from 2.x to 2.7: 27upgrade.md
-    - Analyzers: analyzer.md
-    - ASTM Bi-Directional Analyzer Setup: astm.md
     - Deploy:
        - Technical Requirements for Deployment: implementation.md 
        - Implementation Best Practices: implementation-bestpract.md

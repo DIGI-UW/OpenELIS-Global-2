@@ -34,6 +34,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
 import {
   serverPageArrowsProps,
   serverPageSizeOf,
@@ -89,6 +90,7 @@ import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
+import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
 const replaceResultsUrl = (urlState: URLSearchParams) => {
   const query = urlState.toString();
@@ -134,6 +136,7 @@ interface WorklistRow extends ResultCellRow, PanelRow {
   patientName?: string;
   sampleType?: string;
   normalRange?: string;
+  rangeNotAppliedReason?: string | null;
   analysisStatusId?: string;
   analysisLastupdated?: string;
   testResultComponentId?: string;
@@ -293,8 +296,14 @@ const UnifiedResults: React.FC = () => {
     );
   }, []);
 
+  const rowsRef = useRef<WorklistRow[]>(rows);
+  rowsRef.current = rows;
+  const rowStatesRef = useRef(rowStates);
+  rowStatesRef.current = rowStates;
+
   const applyLoadedRows = useCallback(
-    (results: WorklistResponse | undefined) => {
+    (results: WorklistResponse | undefined, savedRowKey?: string) => {
+      const keepUnsaved = savedRowKey !== undefined;
       // A worklist that failed to load and a worklist with nothing in it look
       // the same once the rows are empty, and the page said nothing either
       // way: a technician was shown an empty queue with no sign the request
@@ -311,7 +320,31 @@ const UnifiedResults: React.FC = () => {
         return;
       }
       setLoadError(false);
-      const loaded = (results?.testResult || []).filter((r) => r.analysisId);
+      let loaded = (results?.testResult || []).filter((r) => r.analysisId);
+      const unsaved: Record<string, WorklistRow> = {};
+      if (keepUnsaved) {
+        for (const row of rowsRef.current) {
+          const key = worklistRowKey(row);
+          if (
+            key !== savedRowKey &&
+            showSave(rowStatesRef.current[key] || "EMPTY")
+          ) {
+            unsaved[key] = row;
+          }
+        }
+        loaded = loaded.map((row) => {
+          const edited = unsaved[worklistRowKey(row)];
+          return edited
+            ? {
+                ...row,
+                resultValue: edited.resultValue,
+                multiSelectResultValues: edited.multiSelectResultValues,
+                testMethod: edited.testMethod,
+                analyzerId: edited.analyzerId,
+              }
+            : row;
+        });
+      }
       setRows(loaded);
       setPaging(results?.paging);
       setServerPageSize((previous) =>
@@ -328,6 +361,10 @@ const UnifiedResults: React.FC = () => {
               row.multiSelectResultValues !== "{}",
             ),
         );
+        if (unsaved[worklistRowKey(row)]) {
+          states[worklistRowKey(row)] =
+            rowStatesRef.current[worklistRowKey(row)];
+        }
       }
       setRowStates(states);
       const loadedByKey: Record<string, string> = {};
@@ -337,15 +374,17 @@ const UnifiedResults: React.FC = () => {
         }
       }
       setLoadedAnalyzers(loadedByKey);
-      setNoteDrafts({});
-      setDilutionDrafts({});
-      setReferralDrafts({});
-      setRejectDrafts({});
-      setInterpretationDrafts({});
-      setNceOpenKey(null);
-      setExpandedRowKey(null);
-      setStaleInfo({});
-      setEditingAnalysisId(null);
+      if (!keepUnsaved) {
+        setNoteDrafts({});
+        setDilutionDrafts({});
+        setReferralDrafts({});
+        setRejectDrafts({});
+        setInterpretationDrafts({});
+        setNceOpenKey(null);
+        setExpandedRowKey(null);
+        setStaleInfo({});
+        setEditingAnalysisId(null);
+      }
       setLoading(false);
     },
     [],
@@ -374,7 +413,11 @@ const UnifiedResults: React.FC = () => {
    * mode while the state still holds a patient (the Clear button).
    */
   const loadWorklist = useCallback(
-    (labNumberOverride?: string, patientOverride?: PatientRecord | null) => {
+    (
+      labNumberOverride?: string,
+      patientOverride?: PatientRecord | null,
+      savedRowKey?: string,
+    ) => {
       setLoading(true);
       const params = new URLSearchParams();
       // guard: when wired directly to onClick the argument is the click
@@ -400,7 +443,9 @@ const UnifiedResults: React.FC = () => {
       params.set("doRange", "false");
       params.set("finished", "false");
       worklistUrl.current = "/rest/LogbookResults?" + params.toString();
-      getFromOpenElisServer(worklistUrl.current, applyLoadedRows);
+      getFromOpenElisServer(worklistUrl.current, (results?: WorklistResponse) =>
+        applyLoadedRows(results, savedRowKey),
+      );
       // FRS: the selected Lab Unit (and filters) are the page's primary
       // state — keep them in the URL so refresh and share links reproduce
       // the same worklist
@@ -782,11 +827,8 @@ const UnifiedResults: React.FC = () => {
 
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
-      if (!response) {
-        return;
-      }
       const key = worklistRowKey(target);
-      if (response.status === 409) {
+      if (response && response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
           ...current,
@@ -803,11 +845,17 @@ const UnifiedResults: React.FC = () => {
         }));
         return;
       }
-      if (response.status && response.status >= 400) {
+      if (!response || requestFailed(response)) {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message:
-            response.error || intl.formatMessage({ id: "error.save.msg" }),
+            serverMessage(response) ||
+            intl.formatMessage({
+              id:
+                !response || response.status === 0
+                  ? "error.results.save.noResponse"
+                  : "error.save.msg",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -884,10 +932,10 @@ const UnifiedResults: React.FC = () => {
       // A reflex or calculation adds analyses to this order that the save
       // response only names. Naming them in a toast and leaving the worklist
       // as it was asks the user to refresh to see the work they just caused,
-      // so the rows are re-read when — and only when — some were generated:
-      // an unconditional reload would discard every other row's unsaved edit.
+      // so the rows are re-read when — and only when — some were generated,
+      // keeping every other row's unsaved edit rather than discarding it.
       if (triggered.length) {
-        loadWorklist();
+        loadWorklist(undefined, undefined, key);
       }
     },
     [addNotification, intl, setNotificationVisible, loadWorklist],
@@ -975,7 +1023,7 @@ const UnifiedResults: React.FC = () => {
         JSON.stringify({ testResult: item }),
         (response: SaveResponse | undefined) => {
           handleSaveResponse(row, response);
-          if (response && (!response.status || response.status < 400)) {
+          if (!requestFailed(response)) {
             setNoteDrafts((current) => {
               const next = { ...current };
               delete next[key];
@@ -1418,8 +1466,10 @@ const UnifiedResults: React.FC = () => {
                           {row.sampleType || "—"}
                         </TableCell>
                         <TableCell>
-                          {row.normalRange}{" "}
-                          {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
+                          {displayRange(intl, row)}{" "}
+                          {row.unitsOfMeasure && !rangeNotAppliedKey(row)
+                            ? row.unitsOfMeasure
+                            : ""}
                         </TableCell>
                         <TableCell className="unifiedResultsValueCell">
                           <span className={accentClass(flag)}>

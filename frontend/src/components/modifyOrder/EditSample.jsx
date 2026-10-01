@@ -20,11 +20,26 @@ import {
 import { Add } from "@carbon/react/icons";
 import { getFromOpenElisServer } from "../utils/Utils";
 import SampleType from "../addOrder/SampleType";
+import {
+  applySampleTypeUpdate,
+  newSampleKey,
+} from "../addOrder/sampleTypeUpdate";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   OrderCurrentTestsHeaders,
   OrderPossibleTestsHeaders,
 } from "../data/orderCurrentTestsHeaders";
+/**
+ * The row id of a test on Modify Order: the analysis for a current test, the
+ * sample item and test for one that can be added. A test id alone repeats
+ * whenever two samples carry the same test, which made those rows share one
+ * React key and one checkbox, so ticking one ticked the other.
+ */
+export const editTestRowId = (test) =>
+  test.analysisId
+    ? "analysis-" + test.analysisId
+    : "item-" + test.sampleItemId + "-test-" + test.testId;
+
 const EditSample = (props) => {
   const { samples, setSamples, orderFormValues, setOrderFormValues, error } =
     props;
@@ -45,6 +60,7 @@ const EditSample = (props) => {
     let updateSamples = [...samples];
     let count = elementsCounter + 1;
     updateSamples.push({
+      key: newSampleKey(),
       index: count,
       sampleRejected: false,
       rejectionReason: "",
@@ -60,7 +76,7 @@ const EditSample = (props) => {
   };
   const formatTestsObject = (tests) => {
     return tests.map((test) => {
-      test.id = test.testId;
+      test.id = editTestRowId(test);
       if (!test.accessionNumber) {
         test.accessionNumber = "";
       }
@@ -76,13 +92,13 @@ const EditSample = (props) => {
       return test;
     });
   };
-  const handleChecked = (e, testId) => {
+  const handleChecked = (e, rowId) => {
     var tests = [];
     var updatedTests = [];
     if (e.currentTarget.name === "add") {
       tests = orderFormValues.possibleTests;
       updatedTests = tests.map((test) => {
-        if (test.testId === testId) {
+        if (editTestRowId(test) === rowId) {
           return { ...test, add: e.currentTarget.checked };
         } else {
           return test;
@@ -95,7 +111,7 @@ const EditSample = (props) => {
     } else if (e.currentTarget.name === "removeSample") {
       tests = orderFormValues.existingTests;
       updatedTests = tests.map((test) => {
-        if (test.testId === testId) {
+        if (editTestRowId(test) === rowId) {
           return { ...test, removeSample: e.currentTarget.checked };
         }
         {
@@ -109,7 +125,7 @@ const EditSample = (props) => {
     } else if (e.currentTarget.name === "canceled") {
       tests = orderFormValues.existingTests;
       updatedTests = tests.map((test) => {
-        if (test.testId === testId) {
+        if (editTestRowId(test) === rowId) {
           return { ...test, canceled: e.currentTarget.checked };
         }
         {
@@ -124,42 +140,9 @@ const EditSample = (props) => {
   };
 
   const sampleTypeObject = (object) => {
-    let newState = [...samples];
-    switch (true) {
-      case object.sampleTypeId !== undefined && object.sampleTypeId !== "":
-        newState[object.sampleObjectIndex].sampleTypeId = object.sampleTypeId;
-        break;
-      case object.sampleRejected:
-        newState[object.sampleObjectIndex].sampleRejected =
-          object.sampleRejected;
-        break;
-      case object.rejectionReason !== undefined &&
-        object.rejectionReason !== null:
-        newState[object.sampleObjectIndex].rejectionReason =
-          object.rejectionReason;
-        break;
-      case object.selectedTests !== undefined &&
-        object.selectedTests.length > 0:
-        newState[object.sampleObjectIndex].tests = object.selectedTests;
-        break;
-      case object.selectedPanels !== undefined &&
-        object.selectedPanels.length > 0:
-        newState[object.sampleObjectIndex].panels = object.selectedPanels;
-        break;
-      case object.sampleXML !== undefined && object.sampleXML !== null:
-        newState[object.sampleObjectIndex].sampleXML = object.sampleXML;
-        break;
-      case object.requestReferralEnabled:
-        newState[object.sampleObjectIndex].requestReferralEnabled =
-          object.requestReferralEnabled;
-        break;
-      case object.referralItems !== undefined &&
-        object.referralItems.length > 0:
-        newState[object.sampleObjectIndex].referralItems = object.referralItems;
-        break;
-      default:
-        props.setSamples(newState);
-    }
+    setSamples((currentSamples) =>
+      applySampleTypeUpdate(currentSamples, object),
+    );
   };
 
   const handlePageChange = (pageInfo) => {
@@ -180,11 +163,6 @@ const EditSample = (props) => {
     if (pageSize2 != pageInfo.pageSize) {
       setPageSize2(pageInfo.pageSize);
     }
-  };
-
-  const removeSample = (index) => {
-    let updateSamples = samples.splice(index, 1);
-    setSamples(updateSamples);
   };
 
   const fetchRejectSampleReasons = (res) => {
@@ -253,22 +231,18 @@ const EditSample = (props) => {
         </TableCell>
       );
     } else if (cell.info.header === "removeSample") {
-      return (
-        <>
-          {accession !== "" ? (
-            <TableCell key={cell.id}>
-              <Checkbox
-                id={cell.id + cell.info.header}
-                labelText=""
-                name="removeSample"
-                checked={cell.value}
-                onChange={(e) => handleChecked(e, row.id)}
-              ></Checkbox>
-            </TableCell>
-          ) : (
-            <TableCell key={cell.id}></TableCell>
-          )}
-        </>
+      return accession !== "" ? (
+        <TableCell key={cell.id}>
+          <Checkbox
+            id={cell.id + cell.info.header}
+            labelText=""
+            name="removeSample"
+            checked={cell.value}
+            onChange={(e) => handleChecked(e, row.id)}
+          ></Checkbox>
+        </TableCell>
+      ) : (
+        <TableCell key={cell.id}></TableCell>
       );
     } else if (cell.info.header === "testName") {
       return <TableCell key={cell.id}>{cell.value}</TableCell>;
@@ -482,7 +456,7 @@ const EditSample = (props) => {
           </h3>
           {samples.map((sample, i) => {
             return (
-              <div className="sampleType" key={i}>
+              <div className="sampleType" key={sample.key ?? i}>
                 <h4>
                   <FormattedMessage id="label.button.sample" /> {i + 1}
                 </h4>
@@ -492,7 +466,6 @@ const EditSample = (props) => {
                 <SampleType
                   index={i}
                   rejectSampleReasons={rejectSampleReasons}
-                  removeSample={removeSample}
                   sample={sample}
                   setSample={(newSample) => {
                     let newSamples = [...samples];
@@ -501,6 +474,7 @@ const EditSample = (props) => {
                   }}
                   sampleTypeObject={sampleTypeObject}
                   error={error}
+                  allowReferral={false}
                 />
               </div>
             );

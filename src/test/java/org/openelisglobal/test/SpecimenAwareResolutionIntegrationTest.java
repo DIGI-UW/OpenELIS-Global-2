@@ -169,16 +169,9 @@ public class SpecimenAwareResolutionIntegrationTest extends BaseWebContextSensit
         assertFalse("a single-specimen test never needs clarification", interpreter.isSpecimenClarificationNeeded());
     }
 
-    /**
-     * A fresh prototype interpreter with a REAL FhirContext — the test context
-     * mocks the FhirContext bean, whose newJsonParser() returns null.
-     */
     private org.openelisglobal.dataexchange.fhir.service.TaskInterpreter freshInterpreter() {
-        org.openelisglobal.dataexchange.fhir.service.TaskInterpreter interpreter = org.openelisglobal.spring.util.SpringContext
+        return org.openelisglobal.spring.util.SpringContext
                 .getBean(org.openelisglobal.dataexchange.fhir.service.TaskInterpreter.class);
-        org.springframework.test.util.ReflectionTestUtils.setField(interpreter, "fhirContext",
-                ca.uhn.fhir.context.FhirContext.forR4Cached());
-        return interpreter;
     }
 
     private org.hl7.fhir.r4.model.ServiceRequest serviceRequestForLoinc(String loincCode, boolean withSpecimen) {
