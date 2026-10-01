@@ -66,7 +66,7 @@ public class ControllerDenialRelabelRatchetTest {
             Map.entry("ManualEntryFieldMapRestController", 3), Map.entry("ManualEntryRestController", 2),
             Map.entry("MassIndexerRestController", 1), Map.entry("NceEnhancementRestController", 3),
             Map.entry("NotificationRestController", 1), Map.entry("OrderAttachmentRestController", 1),
-            Map.entry("OrderSearchRestController", 5), Map.entry("OrganizationRestController", 2),
+            Map.entry("OrderSearchRestController", 4), Map.entry("OrganizationRestController", 2),
             Map.entry("PatientSearchPopulateRestController", 1), Map.entry("ProviderRestController", 2),
             Map.entry("QCAlertRestController", 4), Map.entry("QCChartDataRestController", 2),
             Map.entry("QCRestController", 0), Map.entry("ReferenceLabResultsRestController", 4),

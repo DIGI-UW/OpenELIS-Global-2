@@ -271,10 +271,24 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    /**
+     * The analyses on one sample item, i.e. which tests were ordered on it. Same
+     * rationale as getAnalysesBySampleId: the order dashboard calls this for every
+     * item of every row to work out each order's step state (it only asks whether
+     * the list is empty), to list the ordered tests and their panels, and to see
+     * whether any analysis has a referral. None of those reads a result value, so
+     * it also accepts PRIV_ORDER_VIEW; on PRIV_RESULT_VIEW alone the whole clinical
+     * dashboard denied for Reception.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
     List<Analysis> getAnalysesBySampleItem(SampleItem sampleItem);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    /**
+     * The analyses on a vector pool, read by the order dashboard to size the pool
+     * and list its members' tests. Same order-facing read as
+     * getAnalysesBySampleItem above, so it takes the same pair of authorities.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
     List<Analysis> getAnalysesByVectorPoolId(String vectorPoolId);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")

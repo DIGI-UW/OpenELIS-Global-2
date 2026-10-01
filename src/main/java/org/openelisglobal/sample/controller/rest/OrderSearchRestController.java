@@ -108,6 +108,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -352,6 +353,11 @@ public class OrderSearchRestController extends BaseRestController {
 
             return ResponseEntity.ok(response);
 
+        } catch (AccessDeniedException denied) {
+            // The service gate's denial is a 403, not a server fault: let
+            // ControllerSetup answer it (and name the gate in its log) rather
+            // than the broad catch below relabelling it as a 500.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(this.getClass().getName(), "getDashboard", "Error fetching dashboard: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
