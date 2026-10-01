@@ -34,6 +34,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
+import org.openelisglobal.dataexchange.service.order.ElectronicOrderLabUnitScope;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.service.SampleService;
@@ -50,6 +51,7 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.userrole.service.UserRoleService;
 import org.openelisglobal.userrole.valueholder.UserLabUnitRoles;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -61,6 +63,9 @@ import org.springframework.web.bind.annotation.ResponseBody;
 @Controller
 @RequestMapping(value = "/rest/")
 public class PatientDashBoardProvider {
+
+    /** The test-section tab that stands for every section the user holds. */
+    private static final String ALL_SECTIONS = "all";
 
     @Autowired
     AnalysisService analysisService;
@@ -90,16 +95,25 @@ public class PatientDashBoardProvider {
     SystemUserService systemUserService;
 
     @Autowired
-    private UserService userService;
+    UserService userService;
 
     @Autowired
     AnalysisAnchorService analysisAnchorService;
 
     @Autowired
-    private TestSectionService testSectionService;
+    TestSectionService testSectionService;
 
     @Autowired
-    private UserRoleService userRoleService;
+    UserRoleService userRoleService;
+
+    /**
+     * Injected lazily: creating it eagerly pulls in the FHIR transform service
+     * before the FHIR beans have settled their own circular reference, which
+     * cancels the whole context refresh and leaves every request redirecting.
+     */
+    @Autowired
+    @Lazy
+    private ElectronicOrderLabUnitScope electronicOrderLabUnitScope;
 
     private long calculateAverageReceptionToValidationTime() {
         List<Analysis> analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
@@ -368,11 +382,12 @@ public class PatientDashBoardProvider {
             case ORDERS_IN_PROGRESS:
                 statusIdList = new ArrayList<>();
                 statusIdList.add(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-                // Counts the same set as the ORDERS_IN_PROGRESS list (excluding QC, not
-                // restricted by test section, and not gated on collection date) so the tile
-                // count matches the list.
-                metrics.setOrdersInProgress(
-                        analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList));
+                // Counts the same set as the ORDERS_IN_PROGRESS list (excluding QC and not
+                // gated on collection date) so the tile count matches the list.
+                metrics.setOrdersInProgress(restricted
+                        ? analysisService.getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(
+                                statusIdList, userSectionIds)
+                        : analysisService.getCountOfCollectedAnalysesForStatusIdsExcludingQc(statusIdList));
                 break;
             case ORDERS_READY_FOR_VALIDATION:
                 statusIdList = new ArrayList<>();
@@ -421,20 +436,19 @@ public class PatientDashBoardProvider {
                                 statusIdList));
                 break;
             case UN_PRINTED_RESULTS:
-                metrics.setUnPritendResults(unprintedResults().size());
+                metrics.setUnPritendResults(
+                        restrictToSections(unprintedResults(), restricted ? userSectionIds : null).size());
                 break;
             case INCOMING_ORDERS:
-                List<String> estausIds = new ArrayList<>();
-                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
-                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
-                estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
-                metrics.setIncomigOrders(electronicOrderService.getCountOfElectronicOrdersByStatusList(estausIds));
+                metrics.setIncomigOrders(incomingOrders(sysUserId).size());
                 break;
             case AVERAGE_TURN_AROUND_TIME:
                 metrics.setAverageTurnAroudTime(calculateAverageReceptionToValidationTime());
                 break;
             case DELAYED_TURN_AROUND:
-                metrics.setDelayedTurnAround(analysesWithDelayedTurnAroundTime().size());
+                metrics.setDelayedTurnAround(
+                        restrictToSections(analysesWithDelayedTurnAroundTime(), restricted ? userSectionIds : null)
+                                .size());
                 break;
             default:
                 break;
@@ -444,6 +458,46 @@ public class PatientDashBoardProvider {
         LogEvent.logInfo(this.getClass().getSimpleName(), "getDasBoardTiles", "metrics=" + metrics);
 
         return metrics;
+    }
+
+    /**
+     * The incoming electronic orders the user may see: the ones awaiting entry,
+     * narrowed to the user's Reception lab units the way the Incoming Orders screen
+     * narrows them. A user holding every lab unit gets the whole list.
+     */
+    private List<ElectronicOrder> incomingOrders(String sysUserId) {
+        List<String> statusIds = new ArrayList<>();
+        statusIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
+        statusIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
+        statusIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
+        List<ElectronicOrder> eOrders = electronicOrderService.getAllElectronicOrdersByStatusList(statusIds,
+                ElectronicOrder.SortOrder.STATUS_ID);
+        return electronicOrderLabUnitScope.restrictToUserLabUnits(eOrders, sysUserId);
+    }
+
+    /**
+     * The analyses filed under one of the given test sections. A null section list
+     * means the caller may see the whole lab and the list passes through unchanged;
+     * an empty list means no section is in scope and nothing is returned. An
+     * analysis with no test section belongs to no lab unit, so a scoped caller
+     * never sees it.
+     */
+    private List<Analysis> restrictToSections(List<Analysis> analyses, List<String> sectionIds) {
+        if (analyses == null) {
+            return new ArrayList<>();
+        }
+        if (sectionIds == null) {
+            return analyses;
+        }
+        Set<String> allowed = new HashSet<>(sectionIds);
+        List<Analysis> scoped = new ArrayList<>();
+        for (Analysis analysis : analyses) {
+            if (analysis != null && analysis.getTestSection() != null
+                    && allowed.contains(analysis.getTestSection().getId())) {
+                scoped.add(analysis);
+            }
+        }
+        return scoped;
     }
 
     /**
@@ -464,6 +518,16 @@ public class PatientDashBoardProvider {
         for (IdValuePair pair : userSections) {
             ids.add(pair.getId());
         }
+        expandWithChildSections(ids);
+        LogEvent.logInfo(this.getClass().getSimpleName(), "resolveUserSectionIds", "expanded sectionIds=" + ids);
+        return new ArrayList<>(ids);
+    }
+
+    /** Adds to the set every active section whose parent is already in it. */
+    private void expandWithChildSections(Set<String> ids) {
+        if (ids.isEmpty()) {
+            return;
+        }
         List<TestSection> allSections = testSectionService.getAllActiveTestSections();
         for (TestSection section : allSections) {
             TestSection parent = section.getParentTestSection();
@@ -471,8 +535,30 @@ public class PatientDashBoardProvider {
                 ids.add(section.getId());
             }
         }
-        LogEvent.logInfo(this.getClass().getSimpleName(), "resolveUserSectionIds", "expanded sectionIds=" + ids);
-        return new ArrayList<>(ids);
+    }
+
+    /**
+     * The sections a dashboard list is read with: {@code null} when the whole lab
+     * is in scope, otherwise the sections whose rows the caller may see. Choosing a
+     * test-section tab narrows the list to that section, and a scoped user cannot
+     * widen their view by naming a section they do not hold — the tab is
+     * intersected with their own sections, and asking for someone else's section
+     * returns nothing.
+     */
+    private List<String> sectionScopeForList(String requestedSectionId, List<String> userSectionIds,
+            boolean restricted) {
+        boolean sectionChosen = !GenericValidator.isBlankOrNull(requestedSectionId)
+                && !ALL_SECTIONS.equalsIgnoreCase(requestedSectionId);
+        if (!sectionChosen) {
+            return restricted ? userSectionIds : null;
+        }
+        Set<String> chosen = new HashSet<>();
+        chosen.add(requestedSectionId);
+        expandWithChildSections(chosen);
+        if (restricted) {
+            chosen.retainAll(new HashSet<>(userSectionIds));
+        }
+        return new ArrayList<>(chosen);
     }
 
     /**
@@ -501,11 +587,19 @@ public class PatientDashBoardProvider {
     /**
      * Get the list of orders to be displayed on the dashboard. It will returna a
      * list of orders based on the type of the list in paginated manner.
+     *
+     * <p>
+     * The list carries the same lab-unit scope as the tile counts, and
+     * {@code testSectionId} narrows it further to one test-section tab. Both happen
+     * before paging, so every page holds rows the reader can see: the browser used
+     * to receive the whole lab and hide most of it, which left the page count
+     * describing rows that were never shown and Next leading to empty pages.
      */
     @GetMapping(value = "home-dashboard/{listType}", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     public PatientDashBoardForm getDashBoardDisplayList(HttpServletRequest request,
-            @PathVariable DashBoardTile.TileType listType, @RequestParam(required = false) String systemUserId)
+            @PathVariable DashBoardTile.TileType listType, @RequestParam(required = false) String systemUserId,
+            @RequestParam(required = false) String testSectionId)
             throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
 
         PatientDashBoardForm response = new PatientDashBoardForm();
@@ -514,7 +608,11 @@ public class PatientDashBoardProvider {
 
         String requestedPage = request.getParameter("page");
         if (GenericValidator.isBlankOrNull(requestedPage)) {
-            orderDisplayBeans = retreiveOrders(listType, systemUserId);
+            String sysUserId = ControllerUtills.getSysUserId(request);
+            List<String> userSectionIds = resolveUserSectionIds(sysUserId);
+            boolean restricted = !isGlobalScopeUser(sysUserId) && !userSectionIds.isEmpty();
+            orderDisplayBeans = retreiveOrders(listType, systemUserId, sysUserId,
+                    sectionScopeForList(testSectionId, userSectionIds, restricted));
 
             // All the orders retreived are fed into paging to return the first page of the
             // list.
@@ -532,39 +630,44 @@ public class PatientDashBoardProvider {
     /**
      * Returns the list of orders based on the type of the list provided by the
      * getdashBoardDisplayList method.
+     *
+     * <p>
+     * {@code sectionIds} carries the lab-unit scope of the signed-in user, empty
+     * for a user who may see the whole lab. Every list is narrowed by it before it
+     * reaches paging, so the number of pages and the rows on them match the tile
+     * count, which is scoped by the same sections. Scoping only the rows the client
+     * displays left a restricted user paging through pages that held nothing for
+     * them.
      */
-    private List<OrderDisplayBean> retreiveOrders(DashBoardTile.TileType listType, String systemUserId) {
+    private List<OrderDisplayBean> retreiveOrders(DashBoardTile.TileType listType, String systemUserId,
+            String sysUserId, List<String> sectionIds) {
         Set<String> statusIdSet;
         List<Analysis> analyses;
-        java.sql.Timestamp startTimestamp = DateUtil
-                .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "00:00:00.0");
-        java.sql.Timestamp endTimestamp = DateUtil
-                .convertStringDateStringTimeToTimestamp(DateUtil.getCurrentDateAsText(), "23:59:59");
         switch (listType) {
         case ORDERS_IN_PROGRESS:
             analyses = analysisService
                     .getCollectedAnalysesForStatusIdExcludingQc(iStatusService.getStatusID(AnalysisStatus.NotStarted));
-            return convertAnalysesToOrderBean(analyses);
+            return convertAnalysesToOrderBean(restrictToSections(analyses, sectionIds));
         case ORDERS_READY_FOR_VALIDATION:
             analyses = analysisService
                     .getAnalysesForStatusIdExcludingQc(iStatusService.getStatusID(AnalysisStatus.TechnicalAcceptance));
-            return convertAnalysesToOrderBean(analyses);
+            return convertAnalysesToOrderBean(restrictToSections(analyses, sectionIds));
         case ORDERS_COMPLETED_TODAY:
             analyses = analysisService.getAnalysesCompletedOnByStatusId(DateUtil.getNowAsSqlDate(),
                     iStatusService.getStatusID(AnalysisStatus.Finalized));
-            return convertAnalysesToOrderBean(analyses);
+            return convertAnalysesToOrderBean(restrictToSections(analyses, sectionIds));
         case ORDERS_PARTIALLY_COMPLETED_TODAY:
         case ORDERS_PATIALLY_COMPLETED_TODAY: // OGC-742 legacy spelling — deprecated, kept for back-compat
             statusIdSet = new HashSet<>();
             statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.Finalized));
             analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
-            return convertAnalysesToOrderBean(analyses);
+            return convertAnalysesToOrderBean(restrictToSections(analyses, sectionIds));
         case ORDERS_ENTERED_BY_USER_TODAY:
             statusIdSet = new HashSet<>();
             statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(), statusIdSet);
-            return convertAnalysesToUserOrdersBean(analyses);
+            return convertAnalysesToUserOrdersBean(restrictToSections(analyses, sectionIds));
         case ORDERS_REJECTED_TODAY:
             // Use the same predicate as the count metric so the tile number and its
             // drill-down list agree (previously a BETWEEN-range query that could
@@ -572,28 +675,22 @@ public class PatientDashBoardProvider {
             List<String> rejectedStatusIds = new ArrayList<>();
             rejectedStatusIds.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
             analyses = analysisService.getAnalysisStartedOnByStatusId(DateUtil.getNowAsSqlDate(), rejectedStatusIds);
-            return convertAnalysesToOrderBean(analyses);
+            return convertAnalysesToOrderBean(restrictToSections(analyses, sectionIds));
         case UN_PRINTED_RESULTS:
-            return convertAnalysesToOrderBean(unprintedResults());
+            return convertAnalysesToOrderBean(restrictToSections(unprintedResults(), sectionIds));
         case INCOMING_ORDERS:
-            List<String> estausIds = new ArrayList<>();
-            estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.Entered));
-            estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.NonConforming));
-            estausIds.add(iStatusService.getStatusID(ExternalOrderStatus.AwaitingSpecimen));
-            List<ElectronicOrder> eOrders = electronicOrderService.getAllElectronicOrdersByStatusList(estausIds,
-                    ElectronicOrder.SortOrder.STATUS_ID);
-            return convertElectronicToOrderBean(eOrders);
+            return convertElectronicToOrderBean(incomingOrders(sysUserId));
         case AVERAGE_TURN_AROUND_TIME:
             return new ArrayList<>();
         case DELAYED_TURN_AROUND:
-            return convertAnalysesToOrderBean(analysesWithDelayedTurnAroundTime());
+            return convertAnalysesToOrderBean(restrictToSections(analysesWithDelayedTurnAroundTime(), sectionIds));
         case ORDERS_FOR_USER:
             if (StringUtils.isNotBlank(systemUserId)) {
                 statusIdSet = new HashSet<>();
                 statusIdSet.add(iStatusService.getStatusID(AnalysisStatus.SampleRejected));
                 analyses = analysisService.getAnalysisStartedOnExcludedByStatusId(DateUtil.getNowAsSqlDate(),
                         statusIdSet);
-                return getUserOrderBeans(analyses, systemUserId);
+                return getUserOrderBeans(restrictToSections(analyses, sectionIds), systemUserId);
             }
         }
         return new ArrayList<>();

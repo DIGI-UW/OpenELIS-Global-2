@@ -5,8 +5,6 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
-import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.parser.IParser;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
@@ -34,9 +32,6 @@ public class TaskInterpreterImplNullPatientTest extends BaseWebContextSensitiveT
     private ApplicationContext applicationContext;
 
     @Autowired
-    private FhirContext fhirContext;
-
-    @Autowired
     private org.openelisglobal.dataexchange.fhir.FhirConfig fhirConfig;
 
     private Task task;
@@ -44,9 +39,6 @@ public class TaskInterpreterImplNullPatientTest extends BaseWebContextSensitiveT
 
     @Before
     public void setUp() throws Exception {
-        // Set up mocked FhirContext to use a real JSON parser
-        IParser jsonParser = FhirContext.forR4().newJsonParser();
-        when(fhirContext.newJsonParser()).thenReturn(jsonParser);
         when(fhirConfig.getOeFhirSystem()).thenReturn("http://openelis-global.org");
 
         task = new Task();

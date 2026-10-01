@@ -5,18 +5,12 @@
     <modelVersion>4.0.0</modelVersion>
     <groupId>org.openelisglobal</groupId>
     <artifactId>openelisglobal</artifactId>
-    <!-- for deployment cycles -->
-    <!-- <version>${major.version}.${minor.version}.${fix.version}</version> -->
-    <!-- for development cycles -->
-    <version>${major.version}.${minor.version}.${state.version}.${fix.version}</version>
+    <version>${revision}</version>
     <packaging>war</packaging>
     <properties>
         <maven.java.release>21</maven.java.release>
-        <major.version>3</major.version>
-        <minor.version>2</minor.version>
-        <state.version>2</state.version>
-        <!-- 0 = alpha, 1 = beta, 2 = rc, 3 = deployable -->
-        <fix.version>0</fix.version>
+        <!-- Semantic Versioning; see RELEASES.md -->
+        <revision>3.3.0-SNAPSHOT</revision>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
@@ -639,6 +633,14 @@
                 </exclusion>
             </exclusions>
         </dependency>
+        <!-- DejaVu fonts: generated PDFs embed them so characters outside the
+            built-in Helvetica encoding (for example the compliance certificate's threshold
+            signs) print instead of being dropped. -->
+        <dependency>
+            <groupId>net.sf.jasperreports</groupId>
+            <artifactId>jasperreports-fonts</artifactId>
+            <version>6.15.0</version>
+        </dependency>
         <dependency>
             <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
@@ -1026,6 +1028,12 @@
                 <version>3.2.5</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
+                    <!-- The integration suite shares one static PostgreSQL container and
+                        does not roll back, so results depend on class order. Surefire's default
+                        "filesystem" order differs per runner VM, which made the same commit pass
+                        on one runner and fail on another. Alphabetical is deterministic and stable
+                        as classes are added. -->
+                    <runOrder>alphabetical</runOrder>
                 </configuration>
             </plugin>
             <plugin>

@@ -5,6 +5,7 @@ import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -24,6 +25,7 @@ import org.openelisglobal.common.services.registration.interfaces.IResultUpdate;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.dataexchange.fhir.exception.FhirLocalPersistingException;
@@ -34,6 +36,7 @@ import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.qc.service.QcHoldService;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.reports.service.DocumentTypeService;
@@ -80,6 +83,9 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     @Autowired
     SearchResultsService searchService;
+
+    @Autowired
+    private QcHoldService qcHoldService;
     @Autowired
     private SampleService sampleService;
     @Autowired
@@ -183,7 +189,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
             // load testSections for drop down
             String resultsRoleId = roleService.getRoleByName(Constants.ROLE_VALIDATION).getId();
-            List<IdValuePair> testSections = userService.getUserTestSections(getSysUserId(request), resultsRoleId);
+            List<IdValuePair> testSections = userService.getUserViewerTestSections(getSysUserId(request),
+                    resultsRoleId);
             form.setTestSections(testSections);
             form.setTestSectionsByName(DisplayListService.getInstance().getList(ListType.TEST_SECTION_BY_NAME));
 
@@ -220,6 +227,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 filteredresultList = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), resultList,
                         Constants.ROLE_VALIDATION);
+                markQcHolds(filteredresultList);
                 request.setAttribute("pageSize", filteredresultList.size());
                 form.setSearchFinished(true);
             } else {
@@ -249,9 +257,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                                             : (StringUtils.trimToEmpty(itemPatient.getPerson().getLastName()) + " "
                                                     + StringUtils.trimToEmpty(itemPatient.getPerson().getFirstName()))
                                                     .trim());
-            analysisItem.setPatientInfo(StringUtils.trimToEmpty(itemPatient.getNationalId()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getGender()) + ", "
-                    + StringUtils.trimToEmpty(itemPatient.getBirthDateForDisplay()));
+            analysisItem.setPatientInfo(StringUtil.joinNonBlank(", ", itemPatient.getNationalId(),
+                    itemPatient.getGender(), itemPatient.getBirthDateForDisplay()));
         }
 
         // Surface failed QC samples for the batch so the frontend can render the
@@ -287,6 +294,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             return getResultValidation(request, form, false);
         }
         form.setSearchFinished(false);
+        // Response-only field; Jackson binding bypasses the @InitBinder allowlist,
+        // so clear anything the client posted before the early returns below echo
+        // the form back.
+        form.setWithheldAccessions(null);
 
         if (result.hasErrors()) {
             saveErrors(result);
@@ -336,8 +347,11 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         // if (testSectionName.equals("serology")) {
         // createUpdateElisaList(resultItemList, analysisUpdateList);
         // } else {
-        createUpdateList(resultItemList, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
-                resultSaveService, areListeners);
+        List<String> withheldAccessions = createUpdateList(resultItemList, analysisUpdateList, resultUpdateList,
+                noteUpdateList, deletableList, resultSaveService, areListeners);
+        // A refused release must travel back to the caller — the only other
+        // trace is a backend log line, which reads as a silent failure on screen.
+        form.setWithheldAccessions(withheldAccessions);
         // }
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, resultItemList,
@@ -491,11 +505,18 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
     }
 
-    private void createUpdateList(List<AnalysisItem> analysisItems, List<Analysis> analysisUpdateList,
+    /**
+     * @return accession numbers whose release was withheld by an open QC failure —
+     *         surfaced on the save response so the frontend can warn.
+     */
+    private List<String> createUpdateList(List<AnalysisItem> analysisItems, List<Analysis> analysisUpdateList,
             List<Result> resultUpdateList, List<Note> noteUpdateList, List<Result> deletableList,
             IResultSaveService resultValidationSave, boolean areListeners) {
 
+        Set<String> blocked = analysisIdsBlockedFromRelease(analysisItems);
+
         List<String> analysisIdList = new ArrayList<>();
+        Set<String> withheldAccessions = new LinkedHashSet<>();
 
         for (AnalysisItem analysisItem : analysisItems) {
             if (!analysisItem.isReadOnly() && analysisItemWillBeUpdated(analysisItem)) {
@@ -505,7 +526,17 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
                 if (!analysisIdList.contains(analysis.getId())) {
 
-                    if (analysisItem.getIsAccepted()) {
+                    boolean releaseBlocked = analysisItem.getIsAccepted() && blocked.contains(analysis.getId());
+                    if (releaseBlocked) {
+                        // Withhold only the status change. Notes the tech typed are still
+                        // saved below, and rejection stays available — for a result whose
+                        // control failed, rejecting is usually the correct action.
+                        withheldAccessions.add(analysisItem.getAccessionNumber());
+                        LogEvent.logWarn(this.getClass().getName(), "createUpdateList",
+                                "Release of analysis " + analysis.getId() + " withheld: open QC failure");
+                    }
+
+                    if (analysisItem.getIsAccepted() && !releaseBlocked) {
                         analysis.setStatusId(
                                 SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized));
                         analysis.setReleasedDate(new java.sql.Timestamp(System.currentTimeMillis()));
@@ -536,6 +567,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 }
             }
         }
+        return new ArrayList<>(withheldAccessions);
     }
 
     private void createNeededNotes(AnalysisItem analysisItem, Analysis analysis, List<Note> noteUpdateList) {
@@ -619,8 +651,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<Result> deletableList = new ArrayList<>();
         List<AnalysisItem> items = new ArrayList<>();
         items.add(item);
-        createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList, resultSaveService,
-                !updaters.isEmpty());
+        if (!createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, !updaters.isEmpty()).isEmpty()) {
+            return errorResponse(409, "qcHold");
+        }
         return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
                 deletableList, resultSaveService, updaters, "released");
     }
@@ -882,8 +916,11 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         ArrayList<Result> resultUpdateList = new ArrayList<>();
         ArrayList<Note> noteUpdateList = new ArrayList<>();
         List<Result> deletableList = new ArrayList<>();
-        createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
-                resultSaveService, !updaters.isEmpty());
+        if (!createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, !updaters.isEmpty()).isEmpty()) {
+            Set<String> updated = analysisUpdateList.stream().map(Analysis::getId).collect(Collectors.toSet());
+            released.removeIf(id -> !updated.contains(id) && skipped.add(skipReason(id, "qcHold")));
+        }
         ArrayList<Sample> sampleUpdateList = new ArrayList<>();
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, serverRows,
@@ -1093,7 +1130,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     /**
      * OGC-1030 (FR-A4) — the accession's auto-validated results: released at result
-     * entry with no validator signature. Read-only, never part of the queue.
+     * entry, never by a validator. Read-only, never part of the queue.
      */
     @GetMapping(value = "AccessionValidation/auto-validated", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -1130,7 +1167,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 rows = resultsValidationUtility.getValidationAnalysisBySample(sample);
             }
         }
-        return userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows, Constants.ROLE_VALIDATION);
+        List<AnalysisItem> visible = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows,
+                Constants.ROLE_VALIDATION);
+        markQcHolds(visible);
+        return visible;
     }
 
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
@@ -1286,6 +1326,31 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             }
         }
         return testResult;
+    }
+
+    /**
+     * Annotate the rows covered by an open QC failure (OGC-1147). One batched query
+     * for the whole list. A failure here must not blank the validation page — the
+     * rows are still correct, they just lose the QC annotation for this load.
+     */
+    private void markQcHolds(List<AnalysisItem> items) {
+        if (items == null || items.isEmpty()) {
+            return;
+        }
+        try {
+            Set<String> held = qcHoldService.heldAnalysisIds(analysisIdsOf(items));
+            for (AnalysisItem item : items) {
+                boolean isHeld = item.getAnalysisId() != null && held.contains(item.getAnalysisId());
+                item.setQcHold(isHeld);
+                if (isHeld) {
+                    item.setQcStatus(org.openelisglobal.resultvalidation.util.ValidationSignals.QC_FAIL);
+                    item.setClear(false);
+                }
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logError(this.getClass().getName(), "markQcHolds",
+                    "Could not resolve QC holds for the validation list: " + e.getMessage());
+        }
     }
 
     private boolean areResults(AnalysisItem item) {

@@ -9,6 +9,7 @@ import {
   Modal,
 } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   useInvalidateServerData,
   useServerData,
@@ -81,7 +82,7 @@ function UomCreate() {
   }
 
   const handleUomCreatePostResponseCallBack = (res) => {
-    if (!res) {
+    if (requestFailed(res)) {
       setNotificationVisible(true);
       addNotification({
         kind: NotificationKinds.error,
@@ -89,7 +90,10 @@ function UomCreate() {
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "server.error.msg",
+          id:
+            res && res.status === 409
+              ? "uom.notification.duplicate"
+              : "server.error.msg",
         }),
       });
       return;

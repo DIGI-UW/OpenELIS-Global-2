@@ -42,8 +42,11 @@ describe("User Management", function () {
       userManagement.enterUserTimeout(usersData[0].userTimeout);
     });
 
+    // A new row is always a specific lab unit; "All Lab Units" is chosen
+    // deliberately and replaces every scoped row (OGC-1231).
     it("Add and Remove Lab Unit Roles", function () {
       userManagement.addNewPermission();
+      userManagement.selectTestSection("All Lab Units");
       userManagement.allPermissions();
       userManagement.removePermission();
     });
@@ -52,6 +55,7 @@ describe("User Management", function () {
       userManagement.analyzerImport();
       userManagement.globalAdministrator();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("All Lab Units");
       userManagement.allPermissions();
     });
 
@@ -79,6 +83,7 @@ describe("User Management", function () {
     it("Apply Roles and Permissions", function () {
       userManagement.globalAdministrator();
       userManagement.addNewPermission();
+      userManagement.selectTestSection("All Lab Units");
       userManagement.allPermissions();
     });
 
@@ -109,11 +114,10 @@ describe("User Management", function () {
       userManagement.checkActive();
     });
 
+    // Scoped units only: the API refuses "All Lab Units" combined with
+    // specific units, and the lab-unit filters below need the scoped rows.
     it("Apply Roles and Permissions", function () {
       userManagement.globalAdministrator();
-      userManagement.addNewPermission();
-      userManagement.selectTestSection("All Lab Units");
-      userManagement.allPermissions();
       userManagement.addNewPermission();
       userManagement.selectTestSection("Biochemistry");
       userManagement.allBioPermissions();

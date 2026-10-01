@@ -765,7 +765,10 @@
 .order-section {
   margin-bottom: 1.5rem;
   min-width: 0;
-  overflow: hidden;
+  // Clip sideways only: hidden on both axes cut open dropdown menus off at
+  // the bottom of the card.
+  overflow-x: clip;
+  overflow-y: visible;
   padding: 1.5rem;
 
   .section-title {
@@ -1753,4 +1756,18 @@
   font-size: 0.75rem;
   color: var(--cds-text-secondary);
   margin: 0.25rem 0 0.5rem;
+}
+
+/* ==========================================================================
+   Saved order: next step
+   ========================================================================== */
+.order-saved-next-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+
+  .cds--inline-notification {
+    margin: 0;
+  }
 }

@@ -4,6 +4,45 @@
  * Common helper functions for QC dashboard components.
  */
 
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerFullResponse,
+} from "../../utils/Utils";
+
+/** Error shown when a violation cannot be acknowledged. */
+export const ACKNOWLEDGE_FAILED_KEY = "qc.violations.error.acknowledgeFailed";
+
+/**
+ * Reads the QC violations endpoint. The backend answers either with a bare
+ * array or with an envelope, so both shapes are unwrapped here; onError runs
+ * when the response is neither, leaving the caller to decide what to show.
+ */
+export const fetchViolations = (
+  { unresolvedOnly = false } = {},
+  onLoad,
+  onError,
+) => {
+  const url = `/rest/qc/violations${unresolvedOnly ? "?unresolved=true" : ""}`;
+  getFromOpenElisServer(url, (response) => {
+    if (Array.isArray(response)) {
+      onLoad(response);
+    } else if (response && response.data) {
+      onLoad(response.data.violations || response.data || []);
+    } else {
+      onError();
+    }
+  });
+};
+
+/** Acknowledges one violation. */
+export const acknowledgeViolation = (violationId, onSuccess, onError) => {
+  postToOpenElisServerFullResponse(
+    `/rest/qc/violations/${violationId}/acknowledge`,
+    JSON.stringify({}),
+    (response) => (response.ok ? onSuccess() : onError()),
+  );
+};
+
 /**
  * Maps a compliance color (GREEN/YELLOW/RED) to a Carbon Tag type.
  */

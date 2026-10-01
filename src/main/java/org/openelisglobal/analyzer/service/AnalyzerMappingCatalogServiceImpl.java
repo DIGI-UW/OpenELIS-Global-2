@@ -16,6 +16,9 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,13 +32,18 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     private final TestResultService testResultService;
     private final TestTerminologyMappingService terminologyService;
     private final DictionaryService dictionaryService;
+    private final TypeOfSampleService sampleTypes;
+    private final TypeOfSampleTestService sampleTypeTests;
 
     public AnalyzerMappingCatalogServiceImpl(TestService testService, TestResultService testResultService,
-            TestTerminologyMappingService terminologyService, DictionaryService dictionaryService) {
+            TestTerminologyMappingService terminologyService, DictionaryService dictionaryService,
+            TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests) {
         this.testService = testService;
         this.testResultService = testResultService;
         this.terminologyService = terminologyService;
         this.dictionaryService = dictionaryService;
+        this.sampleTypes = sampleTypes;
+        this.sampleTypeTests = sampleTypeTests;
     }
 
     @Override
@@ -44,6 +52,13 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
         Map<String, Set<String>> loincByTestId = terminologyService.getActiveBySource(LOINC).stream()
                 .collect(Collectors.groupingBy(TestTerminologyMapping::getTestId, Collectors
                         .mapping(TestTerminologyMapping::getCode, Collectors.toCollection(LinkedHashSet::new))));
+        Map<String, String> specimenNames = sampleTypes.getAllTypeOfSamples().stream()
+                .filter(type -> type.isActive() && !isBlank(type.getDescription()))
+                .collect(Collectors.toMap(TypeOfSample::getId, TypeOfSample::getDescription));
+        Map<String, List<String>> specimensByTest = sampleTypeTests.getAllTypeOfSampleTests().stream()
+                .filter(link -> specimenNames.containsKey(link.getTypeOfSampleId()))
+                .collect(Collectors.groupingBy(link -> link.getTestId(),
+                        Collectors.mapping(link -> specimenNames.get(link.getTypeOfSampleId()), Collectors.toList())));
         String normalizedQuery = normalize(query);
         List<TestOption> choices = new ArrayList<>();
         for (Test test : testService.getAllActiveTests(false)) {
@@ -56,7 +71,7 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
             }
             loincCodes.addAll(loincByTestId.getOrDefault(test.getId(), Set.of()));
             TestOption option = new TestOption(test.getId(), test.getName(), test.getLocalCode(),
-                    List.copyOf(loincCodes));
+                    List.copyOf(loincCodes), specimensByTest.getOrDefault(test.getId(), List.of()));
             if (matches(option, normalizedQuery)) {
                 choices.add(option);
             }

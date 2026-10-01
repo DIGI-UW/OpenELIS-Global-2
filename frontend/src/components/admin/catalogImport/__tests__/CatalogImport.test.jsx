@@ -20,11 +20,14 @@ vi.mock("../../../utils/Utils", () => ({
     postToOpenElisServerJsonResponse(...args),
 }));
 
+const addNotification = vi.fn();
+const setNotificationVisible = vi.fn();
+
 vi.mock("../../../layout/Layout", () => ({
   NotificationContext: React.createContext({
     notificationVisible: false,
-    setNotificationVisible: vi.fn(),
-    addNotification: vi.fn(),
+    setNotificationVisible: (...args) => setNotificationVisible(...args),
+    addNotification: (...args) => addNotification(...args),
   }),
 }));
 
@@ -71,6 +74,42 @@ const renderPage = () =>
 
 const csv = (name) =>
   new File(["testName,testSection\n"], name, { type: "text/csv" });
+
+const PLAN_OK = {
+  importRunId: "run-1",
+  unresolvedCount: 0,
+  files: [
+    {
+      domain: "tests",
+      fileName: "tests-cphl.csv",
+      created: 2,
+      updated: 1,
+      skipped: 0,
+      rows: [],
+      error: null,
+    },
+  ],
+};
+
+/** Previews succeed; the apply answers with whatever the case needs. */
+const applyAnswers = (applyResponse) => {
+  postToOpenElisServerFormDataJsonResponse.mockImplementation(
+    (url, formData, callback) =>
+      callback(url.includes("/import/preview") ? PLAN_OK : applyResponse),
+  );
+};
+
+const previewThenApply = async () => {
+  renderPage();
+  await waitFor(() => expect(getFromOpenElisServer).toHaveBeenCalled());
+  await drop([csv("tests-cphl.csv")]);
+  await userEvent.click(screen.getByRole("button", { name: "Preview" }));
+  await screen.findByRole("heading", { name: "What these files would do" });
+  await userEvent.click(screen.getByRole("button", { name: "Apply" }));
+};
+
+const notificationKinds = () =>
+  addNotification.mock.calls.map(([notification]) => notification.kind);
 
 /** Drops files on the page the way Carbon's drop container reports them. */
 const drop = async (files) => {
@@ -137,6 +176,9 @@ describe("CatalogImport", () => {
 
     const apply = screen.getByRole("button", { name: "Apply" });
     expect(apply).toBeDisabled();
+    expect(screen.getByTestId("catalog-import-apply-hint")).toHaveTextContent(
+      "Preview the files first",
+    );
 
     await userEvent.click(screen.getByRole("button", { name: "Preview" }));
 
@@ -147,6 +189,110 @@ describe("CatalogImport", () => {
       "/import/preview",
     );
     expect(apply).toBeEnabled();
+    expect(
+      screen.queryByTestId("catalog-import-apply-hint"),
+    ).not.toBeInTheDocument();
+  });
+
+  test("a refused apply keeps the preview on screen and says why", async () => {
+    applyAnswers({
+      importRunId: null,
+      unresolvedCount: 0,
+      files: [
+        {
+          domain: null,
+          fileName: null,
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          rows: [],
+          error:
+            "Could not save tests-cphl.csv to /cfg/tests: permission denied",
+        },
+      ],
+      status: 422,
+      statusCode: 422,
+    });
+
+    await previewThenApply();
+
+    const failure = await screen.findByTestId("catalog-import-failure");
+    expect(failure).toHaveTextContent("The catalog files were not applied.");
+    expect(failure).toHaveTextContent(
+      "Could not save tests-cphl.csv to /cfg/tests: permission denied",
+    );
+    expect(
+      screen.queryByRole("heading", { name: "What was loaded" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: "What these files would do" }),
+    ).toBeInTheDocument();
+    expect(notificationKinds()).toEqual(["error"]);
+  });
+
+  test("a server error on apply is not reported as a load", async () => {
+    applyAnswers({
+      timestamp: "2026-09-21T07:00:00Z",
+      status: 500,
+      error: "Internal Server Error",
+      statusCode: 500,
+    });
+
+    await previewThenApply();
+
+    const failure = await screen.findByTestId("catalog-import-failure");
+    expect(failure).toHaveTextContent("Internal Server Error");
+    expect(
+      screen.queryByRole("heading", { name: "What was loaded" }),
+    ).not.toBeInTheDocument();
+    expect(notificationKinds()).not.toContain("success");
+  });
+
+  test("a file the loader did not read is an error in what was loaded", async () => {
+    applyAnswers({
+      importRunId: "run-2",
+      unresolvedCount: 0,
+      files: [
+        {
+          domain: "tests",
+          fileName: "tests-cphl.csv",
+          created: 0,
+          updated: 0,
+          skipped: 0,
+          rows: [],
+          error: "the tests loader did not find tests-cphl.csv in /cfg/tests",
+        },
+      ],
+    });
+
+    await previewThenApply();
+
+    expect(
+      await screen.findByRole("heading", { name: "What was loaded" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "the tests loader did not find tests-cphl.csv in /cfg/tests",
+      ),
+    ).toBeInTheDocument();
+    expect(notificationKinds()).toEqual(["error"]);
+    expect(addNotification.mock.calls[0][0].message).toContain(
+      "Some catalog files were not loaded",
+    );
+  });
+
+  test("an apply that loaded every file is reported as a success", async () => {
+    applyAnswers(PLAN_OK);
+
+    await previewThenApply();
+
+    expect(
+      await screen.findByRole("heading", { name: "What was loaded" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("catalog-import-failure"),
+    ).not.toBeInTheDocument();
+    expect(notificationKinds()).toEqual(["success"]);
   });
 
   test("a file the loader rejected blocks Apply", async () => {

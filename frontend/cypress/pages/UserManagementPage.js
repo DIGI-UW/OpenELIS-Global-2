@@ -160,7 +160,8 @@ class UserManagementPage {
   removePermission() {
     cy.get(this.selectors.removePermission).click();
   }
-  //All Lab Units
+  // Adds a row for the first lab unit not yet selected; "All Lab Units" is
+  // never the default and must be picked with selectTestSection.
   addNewPermission() {
     cy.get(this.selectors.addNewPermission).click();
   }

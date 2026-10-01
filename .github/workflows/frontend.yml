@@ -4,6 +4,8 @@ on:
   pull_request:
   push:
     branches: [develop]
+  release:
+    types: [published]
   workflow_dispatch:
   workflow_call:
 
@@ -13,7 +15,7 @@ env:
 jobs:
   # Gate the frontend image build and static checks behind a path filter.
   # On pull_request, skip both jobs entirely when no frontend-relevant
-  # files changed. On push to develop, workflow_dispatch, and workflow_call
+  # files changed. On push to develop, release, workflow_dispatch, and workflow_call
   # the filter step is skipped and the `|| 'true'` fallback forces a full
   # build.
   changes:

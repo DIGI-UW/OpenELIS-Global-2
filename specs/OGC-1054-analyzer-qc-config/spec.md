@@ -1,10 +1,8 @@
 # OGC-1054 Analyzer Management Specification
 
-**Updated:** 2026-09-02
+**Updated:** 2026-09-30
 
 **Execution:** [authoritative roadmap](../roadmaps/ogc-1054-analyzer-feature-roadmap.md)
-
-**Review aid:** [feature map and remediation report](./feature-map.md)
 
 ## Authority
 
@@ -187,8 +185,9 @@ Operational-QC state never changes or invalidates this verification.
 Analyzer setup reviews this shared binding. Resolve/Edit opens the same Analyzer
 Types editor with a return URL; no per-analyzer mapping editor exists.
 Authorized users resolve both unknown tests and unknown values through this
-catalog-backed workflow. The original held result remains unchanged; the
-confirmed decision applies to the next matching message.
+catalog-backed workflow. When the analyzer adopts the corrected, confirmed
+mapping, its held originals are re-mapped in place, without a resend or a
+duplicate result.
 
 ### Guided Analyzer Setup
 
@@ -244,8 +243,8 @@ correct OE workflow, and normal, held, control, and FILE review shows its source
 analyzer identity and raw source context. Unknown tests or values are durably
 held, visibly flagged, included in Analyzer Type completeness/attention, and
 never clinically posted or dropped. Resolution uses valid active local catalog
-choices, is audited, leaves the held record unchanged, and deterministically
-affects the next matching result.
+choices and is audited. Adopting the corrected mapping recovers the held
+original in place, without a resend or a duplicate result.
 
 Control-result recognition is profile/runtime behavior in Bridge. Operational
 QC is a separate linked OpenELIS workflow and result-release concern.
@@ -253,35 +252,27 @@ Analyzer-scoped QC offers only active Tests mapped for that analyzer when a
 control lot is created. `AnalyzerQcRule` and `QcRun` are not part of the
 target architecture, and operational QC never gates analyzer activation.
 
-## One-Time Upgrade Migration
+## Upgrade of existing analyzers
 
-The old OE connection fields are present in released code, so removal requires a
-versioned cutover rather than data loss or a permanent compatibility path.
+After startup, OpenELIS transfers each existing analyzer's retained settings to
+a Bridge connection through its normal profile, shared-mapping and connection
+services, keeping the original analyzer ID, lab units, results and history. It
+uses an analyzer's pinned profile reference, or an exact match of the old type
+name to one active Bridge profile family; anything ambiguous stays pending for
+an administrator to resolve. Transferred analyzers stay inactive until an
+operator confirms mappings and activates them. Database startup does not depend
+on Bridge. [Existing analyzer upgrade](../../docs/analyzer-upgrade-migration.md)
+describes eligibility, retry and the pending cases.
 
-1. Quiesce analyzer configuration and traffic.
-2. Deploy Bridge connection persistence and its idempotent migration contract.
-3. Apply an additive OE migration that adds the Bridge connection reference.
-4. Run the repository-owned migration tool in `plan`, `apply`, then `verify`
-   mode. It reads old configuration once, requires an explicit profile revision,
-   creates the Bridge connection, and records migrated, needs-correction, or
-   intentionally-excluded for every analyzer. It never guesses from a name,
-   model, protocol, LOINC, or plugin class.
-5. Correct every retained analyzer and verify Bridge restart restoration.
-6. Deploy the final schema/code removal and resume traffic.
-
-There is no dual writer. The migration tool is not loaded by the normal WAR and
-is not part of the post-cutover runtime. G0 requires removal of the old analyzer
-connection columns, local `AnalyzerType`/plugin registry where superseded,
-`defaultConfigId`, copied profile/plugin configuration, complete desired-state
-sync, `AnalyzerQcRule`, old readers/routes, and their tests. A fresh or approved
-demo reset follows the new path directly.
+The old connection columns remain as migration inputs until populated-site
+transfer is verified; removing them is a later, explicit decision.
 
 ## Scope
 
 MVP includes reusable types, local binding and verification, guided setup,
 durable Bridge connections, activation/lifecycle, linked operational QC, known
 and unknown result traffic, three priority profiles, exact-build deployment,
-17-step remote UAT, and inspected MP4 evidence.
+remote UAT, and reviewed video evidence.
 
 Post-MVP OGC-1054 adds broader profile curation/distribution, revision diff and
 bulk adoption, mature alert operations, maintenance/fleet health, and rollout
@@ -292,7 +283,7 @@ changes, and broad vendor-by-vendor validation are separate milestones.
 
 ## Acceptance Rule
 
-The roadmap's `MVP-001` through `MVP-024` and 17 `AN-MVP-*` steps are the
-deterministic acceptance contract. An endpoint, mocked assertion, screenshot,
-or video cannot substitute for the assigned owning-layer proof. G0 is accepted
-only by a named human product reviewer against one unchanged deployed build.
+The roadmap's acceptance and test rules are the acceptance contract. An
+endpoint, mocked assertion, screenshot, or video cannot substitute for the
+assigned owning-layer proof. The MVP is accepted only by a named human product
+reviewer against one unchanged deployed build.

@@ -11,6 +11,7 @@ import {
   TextInput,
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
+import { rangeNotAppliedKey } from "../../common/rangeNotApplied";
 import PolymorphicResultCell, {
   ResultCellRow,
   worklistRowKey,
@@ -36,6 +37,8 @@ import ReferralAction, {
 // @ts-ignore
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { FlagChip, accentClass } from "./flags";
+import { resultFlagFor } from "./resultFlagFor";
+import SampleKindTag from "../SampleKindTag";
 import { AnalysisNote, noteVisibleOnRow } from "./noteScope";
 import { NceDisposition } from "./nceDisposition";
 import { ResultsDomain, formatDomainMessage } from "./domainIntl";
@@ -73,12 +76,15 @@ export interface PanelRow extends ResultCellRow {
   patientInfo?: string;
   sampleType?: string;
   normalRange?: string;
+  rangeNotAppliedReason?: string | null;
   testDate?: string;
   receivedDate?: string;
   technician?: string;
   testMethod?: string;
   analyzerId?: string;
   referredOut?: boolean;
+  /** QC kind of the sample (BLANK, CONTROL, DUPLICATE); a client sample has none. */
+  qcType?: string;
   analysisNotes?: AnalysisNote[];
   /** OGC-1022 (R3): NORMAL | ABNORMAL | CRITICAL | INVALID, computed server-side. */
   resultFlag?: string;
@@ -114,6 +120,8 @@ interface ExpandedPanelProps {
   domain: ResultsDomain;
   editable: boolean;
   editing: boolean;
+  /** the worklist's lab unit — scopes OGC-1025 control capture. */
+  testSectionId?: string;
   /** analyzerId as loaded from the server — drives the provenance tag (FR-B2). */
   loadedAnalyzerId?: string;
   methods: IdValue[];
@@ -142,6 +150,8 @@ interface ExpandedPanelProps {
   referralReasons: IdValue[];
   referralDraft: ReferralDraft | null;
   onReferralDraftChange: (draft: ReferralDraft | null) => void;
+  referenceLabReportDate?: string;
+  onReferenceLabReportDateChange?: (value: string) => void;
   rejectReasons: IdValue[];
   rejectDraft: RejectDraft | null;
   onRejectDraftChange: (draft: RejectDraft | null) => void;
@@ -184,6 +194,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   domain,
   editable,
   editing,
+  testSectionId,
   loadedAnalyzerId,
   methods,
   analyzers,
@@ -203,6 +214,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   referralReasons,
   referralDraft,
   onReferralDraftChange,
+  referenceLabReportDate = "",
+  onReferenceLabReportDateChange = () => {},
   rejectReasons,
   rejectDraft,
   onRejectDraftChange,
@@ -227,11 +240,16 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const reported = computeReportedValue(
     dilutionDraft.measuredValue,
     dilutionDraft.factor,
+    row.significantDigits,
   );
 
   const applyDilution = (draft: DilutionDraft) => {
     onDilutionDraftChange(draft);
-    const computed = computeReportedValue(draft.measuredValue, draft.factor);
+    const computed = computeReportedValue(
+      draft.measuredValue,
+      draft.factor,
+      row.significantDigits,
+    );
     if (computed !== null) {
       onValueChange("resultValue", computed);
     }
@@ -252,6 +270,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const toggleSection = (sectionId: string, open: boolean) =>
     onSectionLayoutChange(rememberSectionChoice(sectionId, open));
 
+  const flag = resultFlagFor(row);
+
   return (
     <div className="unifiedExpandedPanel" data-testid={`panel-${rowKey}`}>
       {/* Context strip (FR-C2) — one compact line, no decorative icon */}
@@ -270,6 +290,13 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
           </>
         )}
         <span>{row.testName}</span>
+        <span
+          className="unifiedContextSampleKind"
+          data-testid={`sample-kind-${rowKey}`}
+        >
+          <FormattedMessage id="column.name.sampleKind" />
+          <SampleKindTag qcType={row.qcType} />
+        </span>
         {row.referredOut && (
           <Tag type="cyan" size="sm">
             <FormattedMessage id="label.results.referredOut" />
@@ -284,17 +311,23 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             <div className="cds--label">
               <FormattedMessage id="label.results.result" />
             </div>
-            <div
-              className={`unifiedWorkZoneValue ${accentClass(row.resultFlag)}`}
-            >
+            <div className={`unifiedWorkZoneValue ${accentClass(flag)}`}>
               <PolymorphicResultCell
                 row={row}
                 editable={editable}
                 onValueChange={onValueChange}
               />
               {row.unitsOfMeasure && <span>{row.unitsOfMeasure}</span>}
-              <FlagChip flag={row.resultFlag} />
+              <FlagChip flag={flag} />
             </div>
+            {rangeNotAppliedKey(row) && (
+              <div
+                className="unifiedWorkZoneRange"
+                data-testid="range-not-applied"
+              >
+                <FormattedMessage id={rangeNotAppliedKey(row) as string} />
+              </div>
+            )}
             {row.normalRange && (
               <div className="unifiedWorkZoneRange">
                 {formatDomainMessage(intl, "label.results.range", domain)}:{" "}
@@ -558,6 +591,27 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
             onCancel={() => onReferralDraftChange(null)}
           />
         )}
+
+        {/* Typing in a result the reference laboratory reported: its own report
+            date belongs to the referral, not to this laboratory's entry date,
+            and the External Referrals report prints it. */}
+        {row.referredOut && (
+          <div data-testid={`referral-report-date-row-${rowKey}`}>
+            <TextInput
+              id={`referral-report-date-${rowKey}`}
+              labelText={intl.formatMessage({
+                id: "label.results.referral.reportDate",
+              })}
+              placeholder={intl.formatMessage({
+                id: "label.results.referral.reportDate.placeholder",
+              })}
+              value={referenceLabReportDate}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                onReferenceLabReportDateChange(e.target.value)
+              }
+            />
+          </div>
+        )}
       </div>
 
       {/* Inline NCE (FR-E1/E2) — the shipped form, embedded, auto-linked to
@@ -641,7 +695,7 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
       )}
 
       {/* Critical banner (FR-C2) — the one full-width banner; ack never gates Save (FR-A4) */}
-      {row.resultFlag === "CRITICAL" && (
+      {flag === "CRITICAL" && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}
@@ -653,6 +707,9 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         testId={row.testId as string | undefined}
         analysisId={row.analysisId as string | undefined}
         editable={editable}
+        resultType={row.resultType}
+        testSectionId={testSectionId}
+        unitOfMeasure={row.unitsOfMeasure}
         fromAnalyzerId={loadedAnalyzerId}
         analyzerName={
           analyzers.find((a) => a.id === loadedAnalyzerId)?.value as

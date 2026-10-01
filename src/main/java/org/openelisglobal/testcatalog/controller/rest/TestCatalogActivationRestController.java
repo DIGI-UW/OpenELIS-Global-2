@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.spring.util.SpringContext;
@@ -93,6 +94,9 @@ public class TestCatalogActivationRestController {
         // goes Active, so a missing or shared LOINC is seen where it starts to
         // matter. Warnings only, the activation itself is not blocked.
         public LoincIntegrityService.LoincIntegrity loincIntegrity;
+        // The test's version after activation, which the Basic Info editor adopts so
+        // its next save is not refused as stale (OGC-1376).
+        public String lastupdated;
     }
 
     /**
@@ -224,10 +228,10 @@ public class TestCatalogActivationRestController {
         // (OGC-1116).
         test.setOrderable(Boolean.TRUE);
         test.setSysUserId(sysUserId);
-        testService.update(test);
+        Test activated = testService.update(test);
 
         refreshTestCaches();
-        return ResponseEntity.ok(toActivationResult(test, report));
+        return ResponseEntity.ok(toActivationResult(activated, report));
     }
 
     /**
@@ -243,6 +247,7 @@ public class TestCatalogActivationRestController {
         result.active = test.isActive();
         result.orderable = Boolean.TRUE.equals(test.getOrderable());
         result.loincIntegrity = SpringContext.getBean(LoincIntegrityService.class).check(test);
+        result.lastupdated = StaleSaveGuard.token(test.getLastupdated());
         return result;
     }
 

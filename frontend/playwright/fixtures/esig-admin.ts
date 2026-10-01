@@ -12,11 +12,15 @@ import { UI_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
  * Each shows one site_information domain: Site Information holds the identity
  * settings (electronic signature), Result Entry Configuration the result ones.
  */
-export type SettingsMenu = "SiteInformationMenu" | "ResultConfigurationMenu";
+export type SettingsMenu =
+  | "SiteInformationMenu"
+  | "ResultConfigurationMenu"
+  | "SampleEntryConfigurationMenu";
 
 const SETTINGS_MENU_HEADING: Record<SettingsMenu, RegExp> = {
   SiteInformationMenu: /site information/i,
   ResultConfigurationMenu: /result entry configuration/i,
+  SampleEntryConfigurationMenu: /order entry configuration/i,
 };
 
 export class SiteInformationPage {
@@ -91,4 +95,37 @@ export class SiteInformationPage {
     const valueCell = cells.nth(3); // select, name, description, value
     return (await valueCell.textContent()) || "";
   }
+}
+
+/**
+ * Which admin menu each boolean setting is edited on: the unified-route flag
+ * lives in the result configuration domain, the e-signature flag in site
+ * identity.
+ */
+const SETTING_MENU: Record<string, SettingsMenu> = {
+  resultsEntryUnifiedRoute: "ResultConfigurationMenu",
+  electronicSignatureEnabled: "SiteInformationMenu",
+  "Patient sex required": "SampleEntryConfigurationMenu",
+  "Patient age required": "SampleEntryConfigurationMenu",
+};
+
+/** Read a boolean site_information setting off its admin menu. */
+export async function isSettingOn(
+  page: Page,
+  setting: string,
+): Promise<boolean> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  return /true/i.test(await menu.getSettingValue(setting));
+}
+
+/** Set a boolean site_information setting through its admin menu. */
+export async function setSetting(
+  page: Page,
+  setting: string,
+  on: boolean,
+): Promise<void> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  await menu.setBooleanSetting(setting, on);
 }

@@ -67,12 +67,16 @@ import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.result.service.ResultInventoryService;
+import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.service.ResultSignatureService;
+import org.openelisglobal.result.valueholder.QcEvaluation;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
+import org.openelisglobal.resultvalidation.util.ResultsValidationUtility;
+import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
@@ -334,7 +338,7 @@ public class ResultUtil {
         for (TestResultItem testResultItem : actionDataSet.getModifiedItems()) {
 
             Analysis analysis = resolveModifiedAnalysis(actionDataSet, testResultItem.getAnalysisId());
-            analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate));
+            analysis.setStatusId(getStatusForTestResult(testResultItem, alwaysValidate, analysis));
             analysis.setSysUserId(ControllerUtills.getSysUserId(request));
             if (!GenericValidator.isBlankOrNull(testResultItem.getTestMethod())) {
                 analysis.setMethod(methodService.get(testResultItem.getTestMethod()));
@@ -385,7 +389,8 @@ public class ResultUtil {
                 testResultItem.setResultValue("");
                 testResultItem.setShadowResultValue("");
                 String rejectedReasonId = testResultItem.getRejectReasonId();
-                for (IdValuePair rejectReason : DisplayListService.getInstance().getList(ListType.REJECTION_REASONS)) {
+                for (IdValuePair rejectReason : SpringContext.getBean(DisplayListService.class)
+                        .getList(ListType.REJECTION_REASONS)) {
                     if (rejectedReasonId.equals(rejectReason.getId())) {
                         actionDataSet.addToNoteList(scopedToComponent(noteService.createSavableNote(analysis,
                                 NoteType.REJECTION_REASON, rejectReason.getValue(), RESULT_SUBJECT,
@@ -617,6 +622,20 @@ public class ResultUtil {
     }
 
     public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate) {
+        return getStatusForTestResult(testResult, alwaysValidate,
+                GenericValidator.isBlankOrNull(testResult.getAnalysisId()) ? null
+                        : analysisService.get(testResult.getAnalysisId()));
+    }
+
+    /**
+     * The analysis status a saved result earns. A result is finalized without a
+     * validator only when it would sit in the Validation queue's Clear lane
+     * (OGC-1226 FR-7, one predicate for the lane and for automation): the lab has
+     * not asked to validate everything, the test's limit does not insist on it, and
+     * {@link ValidationSignals#isClearAtEntry} says clear. Everything else waits
+     * for a validator.
+     */
+    public static String getStatusForTestResult(TestResultItem testResult, boolean alwaysValidate, Analysis analysis) {
         if (testResult.isShadowRejected() && ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.VALIDATE_REJECTED_TESTS, "true")) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalRejected);
@@ -628,19 +647,55 @@ public class ResultUtil {
                 testResult.getResultType())) {
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted);
         } else {
-            if (!GenericValidator.isBlankOrNull(testResult.getResultLimitId())) {
-                ResultLimit resultLimit = resultLimitService.get(testResult.getResultLimitId());
-                if (resultLimit.isAlwaysValidate()) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
-                if (TypeOfTestResultServiceImpl.ResultType.DICTIONARY.matches(testResult.getResultType())
-                        && !testResult.getResultValue().equals(resultLimit.getDictionaryNormalId())) {
-                    return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
-                }
+            ResultLimit resultLimit = GenericValidator.isBlankOrNull(testResult.getResultLimitId()) ? null
+                    : resultLimitService.get(testResult.getResultLimitId());
+            if (resultLimit != null && resultLimit.isAlwaysValidate()) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
             }
-
+            if (rangeNotApplied(testResult, analysis) || !clearAtEntry(testResult, analysis, resultLimit)) {
+                return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.TechnicalAcceptance);
+            }
             return SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Finalized);
         }
+    }
+
+    /**
+     * The patient's missing sex or birth date kept a range that depends on it from
+     * applying. Decided here from the stored patient, not from the page's range, so
+     * such a result always waits for a validator.
+     */
+    private static boolean rangeNotApplied(TestResultItem testResult, Analysis analysis) {
+        if (analysis == null || analysis.getSampleItem() == null || analysis.getSampleItem().getSample() == null) {
+            return false;
+        }
+        Patient patient = SpringContext.getBean(SampleService.class).getPatient(analysis.getSampleItem().getSample());
+        String componentId = GenericValidator.isBlankOrNull(testResult.getTestResultComponentId()) ? null
+                : testResult.getTestResultComponentId();
+        return resultLimitService.selectResultLimitForResult(analysis, null, patient, componentId).isRangeNotApplied();
+    }
+
+    /**
+     * Gathers what the clearance rule needs at entry time: the limit's range
+     * verdict, the quality-control verdict already recorded on the result being
+     * re-saved (a first save has none yet), an open non-conformity on the sample
+     * item, whether this save follows an earlier one (the revision is bumped after
+     * the status is chosen, so a revision of at least 1 here means a modification)
+     * and the item's nonconforming flag.
+     */
+    private static boolean clearAtEntry(TestResultItem testResult, Analysis analysis, ResultLimit resultLimit) {
+        String qcStatus = ValidationSignals.QC_UNKNOWN;
+        if (!GenericValidator.isBlankOrNull(testResult.getResultId())) {
+            Result existing = SpringContext.getBean(ResultService.class).get(testResult.getResultId());
+            if (existing != null && existing.getQcEvaluation() == QcEvaluation.FAIL) {
+                qcStatus = ValidationSignals.QC_FAIL;
+            }
+        }
+        boolean nceOpen = analysis != null
+                && SpringContext.getBean(ResultsValidationUtility.class).hasOpenNonConformity(analysis);
+        boolean modified = analysis != null && !GenericValidator.isBlankOrNull(analysis.getRevision())
+                && !"0".equals(analysis.getRevision().trim());
+        return ValidationSignals.isClearAtEntry(resultLimit, testResult.getResultType(), testResult.getResultValue(),
+                qcStatus, nceOpen, modified, testResult.isNonconforming());
     }
 
     public static boolean noResults(String value, String multiSelectValue, String type) {

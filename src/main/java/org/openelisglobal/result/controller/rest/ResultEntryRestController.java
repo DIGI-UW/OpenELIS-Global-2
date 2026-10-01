@@ -61,6 +61,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -134,6 +135,12 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     /**
      * Lab Units the user may enter results for, each carrying its domain so the
      * page can derive {@code currentDomain} (FR-M1).
+     *
+     * <p>
+     * OGC-189 (M2): a <em>viewer</em> control, so it lists {@code isActive OR
+     * hasContent}. A lab unit deactivated while analyses are still in flight stays
+     * here until they are finished — filtering it out would strand that work on a
+     * worklist nobody can reach.
      */
     @GetMapping(value = "lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -143,7 +150,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (resultsRole == null) {
             return Collections.emptyList();
         }
-        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request), resultsRole.getId());
+        List<IdValuePair> sections = userService.getUserViewerTestSections(getSysUserId(request), resultsRole.getId());
         List<Map<String, String>> labUnits = new ArrayList<>();
         for (IdValuePair pair : sections) {
             Map<String, String> unit = new HashMap<>();
@@ -313,8 +320,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
         Errors errors = dataSet.validateModifiedItems();
         if (errors.hasErrors()) {
-            body.put("error", errors.getAllErrors().stream().map(e -> MessageUtil.getMessage(e.getCode()))
-                    .collect(Collectors.joining("; ")));
+            body.put("error", joinErrorMessages(errors));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
@@ -352,6 +358,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
+                dataSet.getCalculatedResults().forEach(calculated -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
                     } catch (RuntimeException ex) {
                         LogEvent.logError(ex);
                     }
@@ -397,7 +410,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
-                    body.put("rawResultValue", StringUtil.blankIfNull(r.getValue()));
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
                     body.put("resultValue", resultService.getResultValue(r, false));
                 });
         return ResponseEntity.ok(body);
@@ -500,6 +513,25 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         public void setVisibleAnalysisIds(List<String> visibleAnalysisIds) {
             this.visibleAnalysisIds = visibleAnalysisIds;
         }
+    }
+
+    /**
+     * The validation errors as one line for the bench, each resolved with its
+     * arguments so the accession and the refused value are named rather than left
+     * as "{0}" (OGC-1408). The per-accession header ends with a colon and
+     * introduces the errors after it, so those follow it with a space; errors are
+     * otherwise separated with a semicolon.
+     */
+    private static String joinErrorMessages(Errors errors) {
+        StringBuilder joined = new StringBuilder();
+        for (ObjectError error : errors.getAllErrors()) {
+            String text = MessageUtil.getMessage(error.getCode(), error.getArguments()).trim();
+            if (joined.length() > 0) {
+                joined.append(joined.charAt(joined.length() - 1) == ':' ? " " : "; ");
+            }
+            joined.append(text);
+        }
+        return joined.toString();
     }
 
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,

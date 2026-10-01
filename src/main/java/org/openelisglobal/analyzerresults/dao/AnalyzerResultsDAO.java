@@ -37,7 +37,9 @@ public interface AnalyzerResultsDAO extends BaseDAO<AnalyzerResults, String> {
 
     public List<AnalyzerResults> getDuplicateResultByAccessionAndTest(AnalyzerResults result);
 
-    List<AnalyzerResults> findHeldResultValuesByProfile(String profileId, int profileRevision);
+    List<AnalyzerResults> findHeldMappingResultsByAnalyzer(String analyzerId);
+
+    List<AnalyzerResults> findHeldMappingResultsByProfile(String profileId, int profileRevision);
 
     Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds);
 

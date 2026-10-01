@@ -252,7 +252,8 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
         Map<String, String> testNames = new HashMap<>();
         for (TestInstrumentPair pair : pairs) {
             analyzerNames.computeIfAbsent(pair.getInstrumentId(), this::resolveAnalyzerName);
-            testNames.computeIfAbsent(pair.getTestId(), this::resolveTestName);
+            testNames.computeIfAbsent(pair.getTestId(),
+                    id -> testService.getLabelOrDefault(id, Test::getDescription, "Test " + id));
         }
 
         List<RuleConfigSummary> summaries = new ArrayList<>();
@@ -297,7 +298,8 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
             UnconfiguredMapping mapping = new UnconfiguredMapping();
             mapping.setTestId(pair.getTestId());
             mapping.setInstrumentId(pair.getInstrumentId());
-            mapping.setTestName(resolveTestName(pair.getTestId()));
+            mapping.setTestName(
+                    testService.getLabelOrDefault(pair.getTestId(), Test::getDescription, "Test " + pair.getTestId()));
             mapping.setInstrumentName(resolveAnalyzerName(pair.getInstrumentId()));
 
             long activeCount = controlLotDAO.countActiveByTestAndInstrument(pair.getTestId(), pair.getInstrumentId());
@@ -316,20 +318,6 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
             LogEvent.logWarn(this.getClass().getName(), "resolveAnalyzerName",
                     "Could not load analyzer " + instrumentId + ": " + e.getMessage());
             return "Analyzer " + instrumentId;
-        }
-    }
-
-    private String resolveTestName(String testId) {
-        try {
-            Test test = testService.getTestById(String.valueOf(testId));
-            if (test != null && test.getDescription() != null) {
-                return test.getDescription();
-            }
-            return "Test " + testId;
-        } catch (Exception e) {
-            LogEvent.logWarn(this.getClass().getName(), "resolveTestName",
-                    "Could not load test " + testId + ": " + e.getMessage());
-            return "Test " + testId;
         }
     }
 }

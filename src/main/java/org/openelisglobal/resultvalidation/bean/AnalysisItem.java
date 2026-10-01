@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.resultvalidation.bean;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -171,6 +172,10 @@ public class AnalysisItem implements Serializable {
     private List<IdValuePair> methods;
     private List<IdValuePair> referralOrganizations;
     private List<IdValuePair> referralReasons;
+    /**
+     * The test was sent to a reference laboratory; this result came back from it.
+     */
+    private boolean referredOut = false;
 
     private List<IdValuePair> dictionaryResults;
 
@@ -186,6 +191,14 @@ public class AnalysisItem implements Serializable {
     private boolean isChildReflex = false;
 
     private boolean nonconforming = false;
+
+    /**
+     * The QC-fail signal (OGC-1147): a control covering this analysis failed and
+     * the resulting non-conformity is still open. Distinct from
+     * {@link #nonconforming}, which is a sample-level QA event — this one is about
+     * the run's quality control.
+     */
+    private boolean qcHold = false;
 
     private String pastNotes;
 
@@ -222,7 +235,16 @@ public class AnalysisItem implements Serializable {
 
     private String qcStatus;
 
+    /**
+     * The server's verdict on the row's lane (OGC-1226 FR-5): true when every row
+     * of its analysis satisfies {@code ValidationSignals.isClear}. The page reads
+     * it and never derives a lane of its own.
+     */
+    private boolean clear = false;
+
     private String criticalRange;
+    /** Message key saying why no reference range was applied, or null. */
+    private String rangeNotAppliedReason;
 
     private String enteredBy;
 
@@ -674,6 +696,14 @@ public class AnalysisItem implements Serializable {
         this.referralReasons = referralReasons;
     }
 
+    public boolean isReferredOut() {
+        return referredOut;
+    }
+
+    public void setReferredOut(boolean referredOut) {
+        this.referredOut = referredOut;
+    }
+
     public void setAnalysisId(String analysisId) {
         this.analysisId = analysisId;
     }
@@ -794,6 +824,14 @@ public class AnalysisItem implements Serializable {
         this.nonconforming = nonconforming;
     }
 
+    public boolean isQcHold() {
+        return qcHold;
+    }
+
+    public void setQcHold(boolean qcHold) {
+        this.qcHold = qcHold;
+    }
+
     public String getInnoliaResult() {
         return innoliaResult;
     }
@@ -912,6 +950,14 @@ public class AnalysisItem implements Serializable {
 
     public void setQcStatus(String qcStatus) {
         this.qcStatus = qcStatus;
+    }
+
+    public boolean isClear() {
+        return clear;
+    }
+
+    public void setClear(boolean clear) {
+        this.clear = clear;
     }
 
     public String getCriticalRange() {
@@ -1120,5 +1166,18 @@ public class AnalysisItem implements Serializable {
 
     public void setExpandedUncertainty(String expandedUncertainty) {
         this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getRangeNotAppliedReason() {
+        return rangeNotAppliedReason;
+    }
+
+    public void setRangeNotAppliedReason(String rangeNotAppliedReason) {
+        this.rangeNotAppliedReason = rangeNotAppliedReason;
+    }
+
+    @JsonIgnore
+    public boolean isRangeNotApplied() {
+        return rangeNotAppliedReason != null;
     }
 }

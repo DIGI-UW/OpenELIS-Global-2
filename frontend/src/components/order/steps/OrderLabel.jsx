@@ -48,7 +48,6 @@ import {
 import {
   postToOpenElisServerJsonResponse,
   patchToOpenElisServerJsonResponse,
-  putToOpenElisServer,
 } from "../../utils/Utils";
 
 /**
@@ -80,7 +79,9 @@ const OrderLabel = () => {
     setStorageSkipped,
     loadOrder,
     isLoading,
+    setIsSubmitting,
   } = useOrderContext();
+  const labelSaveInFlight = useRef(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
 
@@ -98,14 +99,7 @@ const OrderLabel = () => {
   // null on fresh creation flow before loadOrder has been called)
   const handleStorageSkippedChange = useCallback(
     (checked) => {
-      setStorageSkipped(checked);
-      if (labNumber) {
-        putToOpenElisServer(
-          `/rest/order/storage-skipped?labNumber=${encodeURIComponent(labNumber)}&storageSkipped=${checked}`,
-          null,
-          Function.prototype,
-        );
-      }
+      setStorageSkipped(checked, labNumber);
     },
     [labNumber, setStorageSkipped],
   );
@@ -272,9 +266,12 @@ const OrderLabel = () => {
   ).length;
 
   // Build patient info for order label
-  const patientName = orderData?.patientProperties
-    ? `${orderData.patientProperties.lastName || ""}, ${orderData.patientProperties.firstName || ""}`.trim()
-    : "---";
+  const patientName = [
+    orderData?.patientProperties?.lastName,
+    orderData?.patientProperties?.firstName,
+  ]
+    .filter(Boolean)
+    .join(", ");
 
   // Build label rows - Order label + one row per printable sample.
   //
@@ -306,7 +303,12 @@ const OrderLabel = () => {
       id: "label.type.order",
       defaultMessage: "Order Label",
     }),
-    content: `${labNrPrefix}: ${labNumber || "---"} | ${patientPrefix}: ${patientName}`,
+    content: [
+      `${labNrPrefix}: ${labNumber || "---"}`,
+      patientName ? `${patientPrefix}: ${patientName}` : siteName,
+    ]
+      .filter(Boolean)
+      .join(" | "),
     barcode: labNumber || "---",
   };
 
@@ -685,7 +687,22 @@ const OrderLabel = () => {
     }
   };
 
-  const handleSave = async () => {
+  /** One click, one save: a second click while the first runs does nothing. */
+  const guardLabelSave = (save) => async () => {
+    if (labelSaveInFlight.current) {
+      return;
+    }
+    labelSaveInFlight.current = true;
+    setIsSubmitting(true);
+    try {
+      await save();
+    } finally {
+      labelSaveInFlight.current = false;
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleSave = guardLabelSave(async () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
@@ -708,9 +725,9 @@ const OrderLabel = () => {
       });
       setNotificationVisible(true);
     }
-  };
+  });
 
-  const handleSaveAndNext = async () => {
+  const handleSaveAndNext = guardLabelSave(async () => {
     try {
       await savePendingStorageAssignments();
       await updateStorageNotes();
@@ -733,7 +750,7 @@ const OrderLabel = () => {
       });
       setNotificationVisible(true);
     }
-  };
+  });
 
   // Check if all samples have storage assigned
   const allSamplesHaveStorage =

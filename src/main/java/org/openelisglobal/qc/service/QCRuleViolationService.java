@@ -1,5 +1,6 @@
 package org.openelisglobal.qc.service;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.qc.form.QCViolationForm;
 import org.openelisglobal.qc.service.evaluator.RuleEvaluationResult;
@@ -69,6 +70,16 @@ public interface QCRuleViolationService {
      * @return List of violations with the specified severity
      */
     List<QCRuleViolation> findBySeverity(String severity);
+
+    /**
+     * Get violations across all instruments within a date range (QA Overview
+     * aggregation).
+     *
+     * @param startDate range start (inclusive)
+     * @param endDate   range end (inclusive)
+     * @return List of violations ordered by date descending
+     */
+    List<QCRuleViolation> findByDateRange(Timestamp startDate, Timestamp endDate);
 
     /**
      * Resolve a violation.

@@ -191,6 +191,7 @@ const computeAgePartsFromDob = (dob?: string, dateLocale?: string) => {
     return { years: "", months: "", days: "" };
   }
   const now = new Date();
+  if (birthDate > now) return { years: "", months: "", days: "" };
   const years = differenceInYears(now, birthDate);
   const months = differenceInMonths(now, addYears(birthDate, years));
   const days = differenceInDays(
@@ -211,6 +212,10 @@ function CreatePatientForm(props: CreatePatientFormProps) {
   const intl = useIntl();
   const nationalIdRequired =
     configurationProperties.PATIENT_NATIONAL_ID_REQUIRED !== "false";
+  const patientSexRequired =
+    configurationProperties.PATIENT_SEX_REQUIRED !== "false";
+  const patientAgeRequired =
+    configurationProperties.PATIENT_AGE_REQUIRED !== "false";
   const aliasEnabled = configIsTrue(
     configurationProperties.PATIENT_ALIAS_ENABLED,
   );
@@ -277,6 +282,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
   // on; saving flips it back. The parent keys this component on patientPK,
   // so loading a different patient remounts (no need for a separate reset).
   const [isEditing, setIsEditing] = useState(false);
+  const [staleSave, setStaleSave] = useState<string | null>(null);
   const isExistingPatient = !!props.selectedPatient?.patientPK;
   const isReadOnly = isExistingPatient && !isEditing;
   const [phoneValidation, setPhoneValidation] = useState({
@@ -748,7 +754,17 @@ function CreatePatientForm(props: CreatePatientFormProps) {
           // Reseed Formik so `dirty` clears, then drop edit mode so the
           // form re-locks. Same-URL history.push wouldn't remount the
           // component, so this is the only way the saved state shows.
-          formikBag.resetForm({ values });
+          // The versions the save produced replace the loaded ones, or the
+          // next save from this screen would be refused as stale.
+          formikBag.resetForm({
+            values: {
+              ...values,
+              patientLastUpdated:
+                response?.patientLastUpdated ?? values.patientLastUpdated,
+              personLastUpdated:
+                response?.personLastUpdated ?? values.personLastUpdated,
+            },
+          });
           setIsEditing(false);
           const savedId =
             props.selectedPatient?.patientPK ||
@@ -760,6 +776,16 @@ function CreatePatientForm(props: CreatePatientFormProps) {
           return;
         }
 
+        if (
+          response?.statusCode === 409 &&
+          response?.messageKey === "error.patient.staleSave"
+        ) {
+          setNotificationVisible(false);
+          setStaleSave(
+            resolveApiErrorMessage(intl, response, "error.save.patient"),
+          );
+          return;
+        }
         // Surface the backend's actual error message rather than a generic
         // "save failed" — recognises messageKey/errorKey for i18n, plain
         // message/error strings, and Spring fieldErrors arrays.
@@ -781,9 +807,13 @@ function CreatePatientForm(props: CreatePatientFormProps) {
     props.selectedPatient?.mergedIntoNationalId ||
     props.selectedPatient?.mergedIntoPatientId;
 
+  // An order screen shows the shared notifications itself; a second dialog
+  // here showed every message twice.
+  const embeddedInOrder = Boolean(props.orderFormValues);
+
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true && !embeddedInOrder ? <AlertDialog /> : ""}
       {props.selectedPatient?.isMerged === true && (
         <InlineNotification
           kind="warning"
@@ -915,7 +945,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                         handlePhotoChange(photo, setFieldValue)
                       }
                       required={false}
-                      disabled={!!props.disabled}
+                      disabled={!!props.disabled || isReadOnly}
                     />
                   </Column>
                   <Column lg={8} md={4} sm={4}>
@@ -1129,8 +1159,13 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           valueSelected={values.gender}
                           legendText={
                             <>
-                              {intl.formatMessage({ id: "patient.gender" })}{" "}
-                              <span className="requiredlabel">*</span>
+                              {intl.formatMessage({ id: "patient.gender" })}
+                              {patientSexRequired && (
+                                <>
+                                  {" "}
+                                  <span className="requiredlabel">*</span>
+                                </>
+                              )}
                             </>
                           }
                           name={field.name}
@@ -1170,7 +1205,9 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                               {intl.formatMessage({
                                 id: "patient.dob",
                               })}
-                              <span className="requiredlabel">*</span>
+                              {patientAgeRequired && (
+                                <span className="requiredlabel">*</span>
+                              )}
                             </>
                           }
                           autofillDate={true}
@@ -1185,6 +1222,9 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           invalidText={errors.birthDateForDisplay}
                           name={field.name}
                           disallowFutureDate={true}
+                          futureDateText={intl.formatMessage({
+                            id: "patient.dob.future",
+                          })}
                           updateStateValue={true}
                         />
                       )}
@@ -1947,6 +1987,26 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                   {" "}
                   <br></br>
                 </Column>
+                {props.showActionsButton && !isReadOnly && staleSave && (
+                  <Column lg={16} md={8} sm={4}>
+                    <div data-testid="patient-stale-save">
+                      <InlineNotification
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        title={intl.formatMessage({ id: "error.title" })}
+                        subtitle={staleSave}
+                      />
+                      <Button
+                        kind="secondary"
+                        size="sm"
+                        onClick={() => window.location.reload()}
+                      >
+                        <FormattedMessage id="label.results.refresh" />
+                      </Button>
+                    </div>
+                  </Column>
+                )}
                 {props.showActionsButton && !isReadOnly && (
                   <>
                     <Column lg={4} md={4} sm={4}>
@@ -1955,6 +2015,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                         id="submit"
                         disabled={
                           isSubmitting ||
+                          Boolean(staleSave) ||
                           Object.values(phoneValidation).some(
                             (item) => item.status === false,
                           )
