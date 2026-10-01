@@ -89,6 +89,12 @@
   min-width: 7rem;
 }
 
+.locationsPage .locationsImportActions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
 .locationsPage .lo-highlight {
   background: var(--cds-highlight);
 }

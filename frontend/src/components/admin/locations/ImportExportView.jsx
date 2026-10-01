@@ -26,6 +26,7 @@ import {
   Tile,
   TileGroup,
   UnorderedList,
+  InlineLoading,
 } from "@carbon/react";
 import { Download } from "@carbon/icons-react";
 import { postToOpenElisServerFormDataJsonResponse } from "../../utils/Utils";
@@ -319,7 +320,7 @@ const ImportExportView = () => {
               </RadioTile>
             </TileGroup>
           </Tile>
-          <div>
+          <div className="locationsImportActions">
             <Button
               disabled={!files.length || busy}
               onClick={preview}
@@ -327,6 +328,14 @@ const ImportExportView = () => {
             >
               <FormattedMessage id="button.locations.import.preview" />
             </Button>
+            {busy && (
+              <InlineLoading
+                status="active"
+                description={intl.formatMessage({
+                  id: "label.locations.import.working",
+                })}
+              />
+            )}
           </div>
         </>
       )}
@@ -617,6 +626,14 @@ const ImportExportView = () => {
         onRequestClose={() => setConfirming(false)}
         onRequestSubmit={apply}
       >
+        {busy && (
+          <InlineLoading
+            status="active"
+            description={intl.formatMessage({
+              id: "label.locations.import.working",
+            })}
+          />
+        )}
         <UnorderedList>
           {COUNT_KEYS.filter(
             (key) => key !== "unchanged" && key !== "decision",

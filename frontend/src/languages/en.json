@@ -12170,5 +12170,6 @@
   "label.locations.import.complete": "Import complete",
   "label.locations.import.recent": "Recent imports",
   "message.locations.export.done": "Exported {count} records in the import format.",
+  "label.locations.import.working": "Reading the file and matching every row. Large files take a moment.",
   "message.locations.import.failed": "The import could not be read: {reason}"
 }
