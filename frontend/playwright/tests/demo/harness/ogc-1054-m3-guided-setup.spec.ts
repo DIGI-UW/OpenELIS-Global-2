@@ -121,8 +121,12 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     });
     await expect(analyzerRow).toBeVisible();
     await list.search(analyzerName);
-    await expect(page.getByTestId("stat-total")).toContainText("1");
-    await expect(page.getByTestId("stat-setup")).toContainText("1");
+    await expect(
+      page.getByTestId("stat-total").locator(".stat-value"),
+    ).toHaveText("1");
+    await expect(
+      page.getByTestId("stat-setup").locator(".stat-value"),
+    ).toHaveText("1");
     await expect(analyzerRow).toContainText("Setup");
     await capture(page, testInfo, "m3-in-setup-dashboard");
     await analyzerRow.getByRole("button", { name: "Actions" }).click();

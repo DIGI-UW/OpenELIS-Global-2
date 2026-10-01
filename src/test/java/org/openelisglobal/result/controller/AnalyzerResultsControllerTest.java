@@ -11,9 +11,11 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.security.SeededRoleAuthorities;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
@@ -27,6 +29,9 @@ import org.springframework.web.servlet.config.annotation.EnableWebMvc;
 public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
 
     private AnnotationConfigWebApplicationContext securityContext;
+
+    @Autowired
+    private javax.sql.DataSource dataSource;
 
     @Configuration
     @EnableWebMvc
@@ -77,6 +82,19 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.resultList[1].sourceProfileRevision").value(3))
                 .andExpect(jsonPath("$.resultList[1].rawTestCode").value("QUAL_RESULT"))
                 .andExpect(jsonPath("$.resultList[1].rawResultValue").value("POSITIVE"));
+    }
+
+    @Test
+    public void awaitingSpecimenKeepsItsMappedValueAvailableForReview() throws Exception {
+        new JdbcTemplate(dataSource).update(
+                "UPDATE clinlims.analyzer_results SET import_issue_reason = ?" + " WHERE id = 1001",
+                "awaiting_specimen");
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList[0].importIssueReason").value("awaiting_specimen"))
+                .andExpect(jsonPath("$.resultList[0].readOnly").value(false))
+                .andExpect(jsonPath("$.resultList[0].result").value("5.6"));
     }
 
     @Test

@@ -1738,6 +1738,11 @@ export const patchToOpenElisServerJsonResponse = <
     });
 };
 
+// Drops only a numeric analysis suffix (BASE-N), so IH-2-01 stays whole.
+export const labNumberForSearch = (
+  accessionNumber: string | null | undefined,
+): string => (accessionNumber ?? "").trim().replace(/^([^-]*)-\d+$/, "$1");
+
 export const convertAlphaNumLabNumForDisplay = (
   labNumber: string | null | undefined,
 ): string | null | undefined => {

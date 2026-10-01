@@ -11,6 +11,12 @@ public interface AnalyzerSiteBindingConfirmationService {
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerSiteBindingConfirmationView getStatus(AnalyzerSiteBindingSnapshot candidate, String recognitionFingerprint);
 
+    /**
+     * Checks recorded review of the selected configuration. Current catalog
+     * usability is evaluated separately for each incoming observation.
+     */
+    boolean hasMatchingConfirmation(AnalyzerSiteBindingSnapshot candidate, String recognitionFingerprint);
+
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     AnalyzerSiteBindingVerificationAssessment assessCurrent(AnalyzerSiteBindingSnapshot candidate,
             String recognitionFingerprint);

@@ -323,7 +323,8 @@ recording mechanics:
    stale loading state, scroll position, and readable timing.
 6. Package WebM as H.264/yuv420p/faststart MP4 and record the app SHA,
    deployment ID, checklist revision, and artifact checksums in the evidence
-   manifest or README.
+   manifest or README. The `tools/code-qa/skills/evidence-bundle` skill does
+   this packaging and drafts the PR comment; it never commits the media.
 7. Compare key screenshots with the authoritative product mock/spec. Record
    intentional OpenELIS-shell or Carbon differences; do not treat prototype
    routes, components, or navigation as implementation contracts.

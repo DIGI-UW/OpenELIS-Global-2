@@ -89,9 +89,12 @@ public class PatientManagementRestController extends BaseRestController {
                 // "attempt to create event with null entity").
                 LogEvent.logError(new BindException(bindingResult));
                 org.springframework.validation.FieldError fe = bindingResult.getFieldError();
+                org.springframework.validation.ObjectError globalError = bindingResult.getGlobalError();
                 String message = fe != null
                         ? fe.getField() + ": " + StringUtils.defaultIfBlank(fe.getDefaultMessage(), "invalid value")
-                        : "Validation failed";
+                        : globalError != null && StringUtils.isNotBlank(globalError.getDefaultMessage())
+                                ? globalError.getDefaultMessage()
+                                : "Validation failed";
                 return ResponseEntity.badRequest().body(Map.of("error", message));
             }
             try {

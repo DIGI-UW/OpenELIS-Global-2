@@ -11,6 +11,8 @@ import {
 } from "@carbon/react";
 import PatientInfo from "./PatientInfo";
 import AddSample from "./AddSample";
+import { newSampleKey } from "./sampleTypeUpdate";
+import { samplesMissingTests, samplesWithTests } from "./orderSamples";
 import AddOrder from "./AddOrder";
 import "./add-order.scss";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
@@ -569,6 +571,7 @@ const Index = () => {
 
   const newSampleType = (id, name, index) => {
     return {
+      key: newSampleKey(),
       index: index,
       sampleRejected: true,
       rejectionReason: "",
@@ -753,12 +756,12 @@ const Index = () => {
     let sampleXmlString = "";
     let referralItems = [];
     if (samples.length > 0) {
-      if (samples[0].tests.length > 0) {
+      if (samplesWithTests(samples).length > 0) {
         sampleXmlString = '<?xml version="1.0" encoding="utf-8"?>';
         sampleXmlString += "<samples>";
-        let tests = null;
-        let panels = "";
         samples.map((sampleItem) => {
+          let tests = null;
+          let panels = "";
           if (sampleItem.tests.length > 0) {
             tests = Object.keys(sampleItem.tests)
               .map(function (i) {
@@ -840,6 +843,8 @@ const Index = () => {
       referralItems: referralItems,
     });
   };
+
+  const missingTestSamples = samplesMissingTests(samples);
 
   const navigateForward = () => {
     if (currentStepIndex < visibleSteps.length - 1) {
@@ -1037,6 +1042,21 @@ const Index = () => {
                     saveResponse={saveResponse}
                   />
                 )}
+                {isLastStep &&
+                  !isOnSuccess &&
+                  missingTestSamples.map((sampleNumber) => (
+                    <InlineNotification
+                      key={sampleNumber}
+                      kind="error"
+                      lowContrast
+                      hideCloseButton
+                      title={intl.formatMessage(
+                        { id: "order.sample.missingTests" },
+                        { sampleNumber },
+                      )}
+                      data-testid="order-sample-missing-tests"
+                    />
+                  ))}
                 {isLastStep && !isOnSuccess && (
                   <OrderEntryMissingFieldsNotice errors={errors} />
                 )}
@@ -1070,7 +1090,8 @@ const Index = () => {
                         Object.values(phoneValidation).some(
                           (item) => item.status === false,
                         ) ||
-                        errors?.errors?.length > 0
+                        errors?.errors?.length > 0 ||
+                        missingTestSamples.length > 0
                       }
                       onClick={handleSubmitOrderForm}
                     >

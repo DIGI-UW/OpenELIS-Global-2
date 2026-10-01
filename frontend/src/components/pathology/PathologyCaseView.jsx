@@ -458,7 +458,7 @@ function PathologyCaseView() {
               });
             }}
           >
-            <SelectItem />
+            <SelectItem value="" text="" />
             {technicianUsers.map((user, index) => {
               return (
                 <SelectItem key={index} text={user.value} value={user.id} />
@@ -482,7 +482,7 @@ function PathologyCaseView() {
               });
             }}
           >
-            <SelectItem />
+            <SelectItem value="" text="" />
             {pathologistUsers.map((user, index) => {
               return (
                 <SelectItem key={index} text={user.value} value={user.id} />
@@ -1085,7 +1085,7 @@ function PathologyCaseView() {
                             });
                           }}
                         >
-                          <SelectItem />
+                          <SelectItem value="" text="" />
                           {requestStatuses.map((status, index) => {
                             return (
                               <SelectItem

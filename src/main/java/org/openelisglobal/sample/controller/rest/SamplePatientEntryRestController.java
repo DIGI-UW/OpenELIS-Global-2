@@ -44,6 +44,7 @@ import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -326,6 +327,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
         resolveRetriedOrder(sampleOrder, patientInfo);
+        reuseOrderPatient(sampleOrder, patientInfo);
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -718,6 +720,49 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                 patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
             }
         }
+    }
+
+    /**
+     * A save of an existing order that asks to add its patient again, with no
+     * patient id, keeps the patient the order already has when the two are the same
+     * person: the same national id, or, where neither has one, the same name, date
+     * of birth and sex. A client that lost the id after the first save used to add
+     * one patient per save (OGC-1407). A different person is still added, so an
+     * order can be moved to a patient entered in its place.
+     */
+    void reuseOrderPatient(SampleOrderItem sampleOrder, PatientManagementInfo patientInfo) {
+        if (sampleOrder == null || patientInfo == null || GenericValidator.isBlankOrNull(sampleOrder.getSampleId())
+                || patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.ADD
+                || !GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
+            return;
+        }
+        Sample existing = sampleService.get(sampleOrder.getSampleId());
+        if (existing == null) {
+            return;
+        }
+        Patient patient = sampleHumanService.getPatientForSample(existing);
+        if (patient == null || patient.getId() == null || !isSamePerson(patient, patientInfo)) {
+            return;
+        }
+        patientInfo.setPatientPK(patient.getId());
+        patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+    }
+
+    private static boolean isSamePerson(Patient patient, PatientManagementInfo patientInfo) {
+        String heldNationalId = StringUtils.trimToNull(patient.getNationalId());
+        String sentNationalId = StringUtils.trimToNull(patientInfo.getNationalId());
+        if (heldNationalId != null || sentNationalId != null) {
+            return heldNationalId != null && heldNationalId.equalsIgnoreCase(sentNationalId);
+        }
+        Person person = patient.getPerson();
+        return person != null && sameText(person.getLastName(), patientInfo.getLastName())
+                && sameText(person.getFirstName(), patientInfo.getFirstName())
+                && sameText(patient.getBirthDateForDisplay(), patientInfo.getBirthDateForDisplay())
+                && sameText(patient.getGender(), patientInfo.getGender());
+    }
+
+    private static boolean sameText(String held, String sent) {
+        return StringUtils.trimToEmpty(held).equalsIgnoreCase(StringUtils.trimToEmpty(sent));
     }
 
     private void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,

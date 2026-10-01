@@ -604,4 +604,7 @@
   <!-- Order Entry Configuration switches for optional patient sex and date of birth. -->
   <include relativeToChangelogFile="true" file="110-optional-patient-sex-age-config.xml"/>
 
+  <!-- Order progress status, release and cancellation records on the order; the order cancel reason list. -->
+  <include relativeToChangelogFile="true" file="111-order-progress-status.xml"/>
+
 </databaseChangeLog>

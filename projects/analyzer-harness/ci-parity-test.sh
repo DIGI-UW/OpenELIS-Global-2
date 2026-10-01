@@ -46,7 +46,8 @@ TEST_PASS_INPUT="${TEST_PASS:-}"
 MODE="parity"
 PLAYWRIGHT_PROJECT=""
 PLAYWRIGHT_TEST_FILE=""
-PLAYWRIGHT_SLOWMO_INPUT="${PLAYWRIGHT_SLOWMO:-0}"
+# Empty keeps the video projects' own slowMo default in playwright.config.ts.
+PLAYWRIGHT_SLOWMO_INPUT="${PLAYWRIGHT_SLOWMO:-}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -147,6 +148,7 @@ if [[ -z "$ARTIFACT_DIR" ]]; then
   ARTIFACT_DIR="/tmp/oe-ci-parity-$(date +%Y%m%d_%H%M%S)"
 fi
 mkdir -p "$ARTIFACT_DIR"
+printf '%s\n' "$CI_PARITY_COMPOSE_PROJECT" > "$ARTIFACT_DIR/compose-project.txt"
 PRECHECK_LOG="$ARTIFACT_DIR/preflight.log"
 RUN_LOG="$ARTIFACT_DIR/run.log"
 
@@ -308,7 +310,7 @@ collect_failure_artifacts() {
   docker compose "${CI_COMPOSE_FILES[@]}" ps \
     > "$ARTIFACT_DIR/docker-logs/compose-ps.txt" 2>&1 || true
 
-  for service in oe.openelis.org openelis-analyzer-bridge astm-simulator; do
+  for service in proxy oe.openelis.org openelis-analyzer-bridge astm-simulator; do
     docker logs "$(container_id "$service")" > "$ARTIFACT_DIR/docker-logs/${service}.log" 2>&1 || true
   done
 
@@ -452,6 +454,8 @@ if [[ "$BUILD_SOURCE" == true && "$PRECHECK_FAILED" == false ]]; then
     cd "$REPO_ROOT"
     mvn -q clean install -DskipTests -Dmaven.test.skip=true
     docker compose "${CI_COMPOSE_FILES[@]}" build
+    # `build` skips image-only services such as harness-catalog-init.
+    docker compose "${CI_COMPOSE_FILES[@]}" pull --ignore-buildable --quiet
   ) 2>&1 | tee "$ARTIFACT_DIR/build.log"
 fi
 require_images_for_compose
