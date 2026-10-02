@@ -467,7 +467,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 if (baseline == null) {
                     throw new LIMSRuntimeException("SampleItem does not track a quantity; use mark-used-up instead");
                 }
-                newRemaining = baseline.subtract(amountUsed).max(java.math.BigDecimal.ZERO);
+                sampleItem.decrementRemainingQuantity(amountUsed);
+                newRemaining = sampleItem.getRemainingQuantity();
             }
 
             sampleItem.setRemainingQuantity(newRemaining);
