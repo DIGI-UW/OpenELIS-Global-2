@@ -189,7 +189,11 @@ const ProgramForm = ({ program, onClose }) => {
           ? "eqa.admin.form.editHeading"
           : "eqa.admin.form.addHeading",
       })}
-      modalLabel={intl.formatMessage({ id: "eqa.admin.form.subtitle" })}
+      modalLabel={
+        isEditing
+          ? undefined
+          : intl.formatMessage({ id: "eqa.admin.form.subtitle" })
+      }
       primaryButtonText={intl.formatMessage({
         id: isEditing ? "eqa.program.save" : "eqa.admin.addProgram",
       })}

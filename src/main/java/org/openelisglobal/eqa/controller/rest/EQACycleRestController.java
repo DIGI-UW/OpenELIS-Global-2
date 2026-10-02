@@ -259,7 +259,7 @@ public class EQACycleRestController extends BaseRestController {
     public Map<String, Object> createMyCycle(HttpServletRequest request, @RequestBody Map<String, Object> body) {
         String schemeName = stringField(body, "schemeName");
         if (schemeName == null) {
-            throw new IllegalArgumentException("A cycle needs a programme");
+            throw new IllegalArgumentException("A cycle needs a scheme");
         }
         boolean enrolled = enrollmentService.findActiveEnrollments().stream()
                 .anyMatch(e -> e.getProgramName() != null && e.getProgramName().trim().equalsIgnoreCase(schemeName));
@@ -268,8 +268,8 @@ public class EQACycleRestController extends BaseRestController {
         }
         EQACycle cycle = cycleService.ensureParticipantCycle(schemeName, null, stringField(body, "cycleName"),
                 dateField(body, "distributionDate"), dateField(body, "submissionDeadline"), getSysUserId(request))
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "No programme named '" + schemeName + "' exists on this instance; add it under EQA Programs"));
+                .orElseThrow(() -> new IllegalArgumentException("No scheme named '" + schemeName
+                        + "' exists on this instance; add it under EQA Management, Schemes"));
         return toCycleDto(cycle);
     }
 

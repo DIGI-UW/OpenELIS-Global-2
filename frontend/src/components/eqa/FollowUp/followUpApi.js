@@ -116,9 +116,9 @@ export const notifyParticipant = (followupId, callback) =>
     withBody(callback),
   );
 
-export const requestRepeatPanel = (followupId, overrideNote, callback) =>
+export const requestRepeatPanel = (followupId, fields, callback) =>
   postToOpenElisServerFullResponse(
     `/rest/eqa/provider/followups/${followupId}/repeat`,
-    JSON.stringify({ overrideNote }),
+    JSON.stringify(fields),
     withBody(callback),
   );
