@@ -213,4 +213,60 @@ describe("AnalyserResults", () => {
     const submittedResults = JSON.parse(postResults.mock.calls[0][1]);
     expect(submittedResults.resultList[0].isAccepted).toBe(true);
   });
+
+  it("OGC-1417: a retyped value the server refuses as critical is acknowledged and the batch sent again", async () => {
+    const glucose = {
+      id: "1001",
+      analyzerId: "2001",
+      accessionNumber: "ACC123456",
+      testName: "Glucose",
+      result: "5.6",
+      testResultType: "N",
+      readOnly: false,
+      isControl: false,
+      sampleGroupingNumber: 1,
+    };
+    const refusal = {
+      code: "ACKNOWLEDGEMENT_REQUIRED",
+      customCriticalMessage: "",
+      acknowledgementRequired: [
+        {
+          kind: "CRITICAL",
+          value: "25",
+          testName: "Glucose",
+          accessionNumber: "ACC123456",
+          rowId: "1001",
+        },
+      ],
+    };
+    const answers = [
+      { status: 422, json: () => Promise.resolve(refusal) },
+      { status: 200, text: () => Promise.resolve("") },
+    ];
+    postResults.mockImplementation((url, body, callback) =>
+      callback(answers.shift()),
+    );
+    renderResults([glucose]);
+
+    const resultRow = await screen.findByRole("row", { name: /Glucose/ });
+    fireEvent.change(within(resultRow).getByDisplayValue("5.6"), {
+      target: { value: "25" },
+    });
+    fireEvent.click(within(resultRow).getAllByRole("checkbox")[0]);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByTestId("result-alert-critical-message"),
+    ).toHaveTextContent(
+      messages["label.results.alert.critical.defaultMessage"],
+    );
+    fireEvent.click(
+      screen.getByText("Acknowledge and save", { selector: "button" }),
+    );
+
+    expect(postResults).toHaveBeenCalledTimes(2);
+    const resent = JSON.parse(postResults.mock.calls[1][1]);
+    expect(resent.resultList[0].result).toBe("25");
+    expect(resent.resultList[0].criticalAcknowledged).toBe(true);
+  });
 });

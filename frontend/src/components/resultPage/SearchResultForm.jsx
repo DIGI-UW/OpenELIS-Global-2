@@ -74,6 +74,8 @@ import { FlagChip } from "./unified/flags";
 import "./unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import CriticalCallbackModal from "./CriticalCallbackModal";
+import ResultAlertModal, { acknowledgementRefusal } from "./ResultAlertModal";
+import { requestFailed, serverMessage } from "../utils/requestOutcome";
 import { Warning, Phone } from "@carbon/icons-react";
 import ESignatureButton, {
   SignatureMeaning,
@@ -1092,6 +1094,8 @@ export function SearchResults(props) {
   // banner: seeded from the durable record (/rest/critical-callback/
   // logged-results) when results load, updated in place on a new log.
   const [loggedCallbackRows, setLoggedCallbackRows] = useState({});
+  // OGC-1417: the values a modal is asking about before they are kept or saved
+  const [resultAlert, setResultAlert] = useState(null);
   // Eligible analysts per EQA scheme on this page. Keyed by scheme because one
   // grid can show samples from two schemes with different lists.
   const [eqaAnalysts, setEqaAnalysts] = useState({});
@@ -1917,46 +1921,33 @@ export function SearchResults(props) {
                   inputMode="text"
                   value={row.resultValue}
                   style={{ ...validationState[row.id]?.style, ...holdingStyle }}
-                  onBlur={(e) => {
+                  onBlur={() => {
                     if (
                       validationState[row.id]?.isInvalid &&
-                      configurationProperties.ALERT_FOR_INVALID_RESULTS
+                      configurationProperties?.ALERT_FOR_INVALID_RESULTS ===
+                        "true" &&
+                      !row.invalidResultConfirmed
                     ) {
-                      addNotification({
-                        title: intl.formatMessage({ id: "notification.title" }),
-                        message:
-                          intl.formatMessage({
-                            id: "result.outOfValidRange.msg",
-                          }) +
-                          " " +
-                          row.testName +
-                          " : " +
-                          row.resultValue,
-                        kind: NotificationKinds.error,
+                      setResultAlert({
+                        mode: "entry",
+                        rowId: row.id,
+                        alerts: [
+                          {
+                            kind: "INVALID",
+                            value: row.resultValue,
+                            testName: row.testName,
+                            accessionNumber: row.accessionNumber,
+                            lowValid: row.lowerAbnormalRange,
+                            highValid: row.upperAbnormalRange,
+                          },
+                        ],
                       });
-                      setNotificationVisible(true);
                     }
                   }}
                   onChange={(e) => {
+                    row.invalidResultConfirmed = false;
+                    row.criticalAcknowledged = false;
                     handleChange(e, row.id);
-                    if (
-                      validationState[row.id]?.isInvalid &&
-                      configurationProperties.ALERT_FOR_INVALID_RESULTS
-                    ) {
-                      addNotification({
-                        title: intl.formatMessage({ id: "notification.title" }),
-                        message:
-                          intl.formatMessage({
-                            id: "result.outOfValidRange.msg",
-                          }) +
-                          " " +
-                          row.testName +
-                          " : " +
-                          row.resultValue,
-                        kind: NotificationKinds.error,
-                      });
-                      setNotificationVisible(true);
-                    }
                   }}
                 />
                 {/* Callback is documented against a PERSISTED result: the
@@ -2821,15 +2812,20 @@ export function SearchResults(props) {
     setIsSubmitting(true);
     var searchEndPoint = "/rest/LogbookResults";
     props.results.testResult.forEach((result) => {
-      result.reportable = result.reportable === "N" ? false : true;
+      // a save resubmitted after a refusal has already converted these
+      result.reportable = !(
+        result.reportable === "N" || result.reportable === false
+      );
       delete result.result;
       if (getHoldingStatus(result) === "exceeded") {
         const exceededNote = intl.formatMessage({
           id: "holding.time.exceeded.note",
         });
-        result.note = result.note
-          ? result.note + "\n" + exceededNote
-          : exceededNote;
+        if (!(result.note || "").includes(exceededNote)) {
+          result.note = result.note
+            ? result.note + "\n" + exceededNote
+            : exceededNote;
+        }
       }
       // attachments live in order_attachment now (OGC-811); round-tripping
       // the legacy inline resultFile would clone a result_file row per save
@@ -2845,7 +2841,16 @@ export function SearchResults(props) {
   const setResponse = (resp) => {
     console.debug("setStatus" + JSON.stringify(resp));
     setIsSubmitting(false);
-    if (resp) {
+    const refusal = acknowledgementRefusal(resp);
+    if (refusal) {
+      setResultAlert({
+        mode: "save",
+        alerts: refusal.alerts,
+        customCriticalMessage: refusal.customCriticalMessage,
+      });
+      return;
+    }
+    if (!requestFailed(resp)) {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
         message: createMesssage(resp),
@@ -2857,11 +2862,58 @@ export function SearchResults(props) {
     } else {
       addNotification({
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.msg" }),
+        message:
+          serverMessage(resp) || intl.formatMessage({ id: "error.save.msg" }),
         kind: NotificationKinds.error,
       });
     }
     setNotificationVisible(true);
+  };
+
+  // OGC-1417: the rows the modal asked about carry what their user confirmed
+  // or acknowledged; a refused save is sent again with it.
+  const confirmResultAlert = () => {
+    const pending = resultAlert;
+    setResultAlert(null);
+    if (!pending) {
+      return;
+    }
+    const rows = props.results?.testResult || [];
+    if (pending.mode === "entry") {
+      const row = rows.find((candidate) => candidate.id === pending.rowId);
+      if (row) {
+        row.invalidResultConfirmed = true;
+      }
+      return;
+    }
+    pending.alerts.forEach((alert) => {
+      rows
+        .filter(
+          (row) =>
+            String(row.analysisId) === String(alert.analysisId) &&
+            (!alert.componentId ||
+              String(row.testResultComponentId) === String(alert.componentId)),
+        )
+        .forEach((row) => {
+          if (alert.kind === "CRITICAL") {
+            row.criticalAcknowledged = true;
+          } else {
+            row.invalidResultConfirmed = true;
+          }
+        });
+    });
+    handleSave();
+  };
+
+  const correctResultAlert = () => {
+    const pending = resultAlert;
+    setResultAlert(null);
+    if (pending?.mode === "entry") {
+      window.setTimeout(
+        () => document.getElementById("ResultValue" + pending.rowId)?.focus(),
+        0,
+      );
+    }
   };
 
   const createMesssage = (resp) => {
@@ -2973,6 +3025,14 @@ export function SearchResults(props) {
             }}
           />
         )}
+        <ResultAlertModal
+          open={Boolean(resultAlert)}
+          alerts={resultAlert?.alerts || []}
+          mode={resultAlert?.mode || "save"}
+          customCriticalMessage={resultAlert?.customCriticalMessage}
+          onConfirm={confirmResultAlert}
+          onCorrect={correctResultAlert}
+        />
         <CriticalCallbackModal
           open={callbackModalRow != null}
           resultRow={(props.results?.testResult || []).find(

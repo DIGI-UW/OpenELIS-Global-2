@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import java.sql.Timestamp;
 import java.util.List;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -21,7 +22,10 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.IStatusService;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.test.service.TestSectionService;
@@ -56,6 +60,12 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
 
     private JdbcTemplate jdbc;
     private MockHttpSession session;
+
+    @After
+    public void resetResultConfiguration() {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
+        ConfigurationProperties.getInstance().setPropertyValue(Property.customCriticalMessage, "");
+    }
 
     @Before
     public void setUp() throws Exception {
@@ -382,6 +392,25 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 + " ON CONFLICT (id) DO NOTHING");
     }
 
+    private String acknowledgedSaveBody(String value) {
+        return saveBodyWithExtras("1", "3", "1", value, currentToken("1"),
+                "\"note\":\"\",\"criticalAcknowledged\":true");
+    }
+
+    /** OGC-1417: the same limit with an authored valid range of 0 to 1000. */
+    private void seedNumericResultLimitWithValidRange() {
+        jdbc.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
+                + " low_normal, high_normal, low_valid, high_valid, low_reporting_range, high_reporting_range,"
+                + " low_critical, high_critical, always_validate, lastupdated) VALUES (9401, 1, 4, 0, 'Infinity',"
+                + " 70, 100, 0, 1000, '-Infinity', 'Infinity', 50, 400, false, NOW())"
+                + " ON CONFLICT (id) DO NOTHING");
+    }
+
+    private Integer acknowledgementCount() {
+        return jdbc.queryForObject("SELECT count(*) FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1",
+                Integer.class);
+    }
+
     private org.springframework.test.web.servlet.ResultActions loadWorklistFor12345() throws Exception {
         jdbc.update("UPDATE clinlims.sample SET status_id = 9109 WHERE id = 1");
         jdbc.update("UPDATE clinlims.analysis SET status_id = 9103 WHERE id = 1");
@@ -401,8 +430,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     public void save_criticalValue_flagsRow_andPostsAlert() throws Exception {
         seedNumericResultLimit();
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
-                .content(saveBody("1", "3", "1", "500", currentToken("1"))).session(session))
-                .andExpect(status().isOk());
+                .content(acknowledgedSaveBody("500")).session(session)).andExpect(status().isOk());
 
         Integer alerts = jdbc.queryForObject("SELECT count(*) FROM clinlims.alert WHERE alert_type ="
                 + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1"
@@ -410,8 +438,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals(Integer.valueOf(1), alerts);
 
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
-                .content(saveBody("1", "3", "1", "450", currentToken("1"))).session(session))
-                .andExpect(status().isOk());
+                .content(acknowledgedSaveBody("450")).session(session)).andExpect(status().isOk());
         Integer deduped = jdbc.queryForObject(
                 "SELECT count(*) FROM clinlims.alert WHERE alert_type ="
                         + " 'CRITICAL_RESULT' AND alert_entity_type = 'ANALYSIS' AND alert_entity_id = 1",
@@ -447,6 +474,139 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
+     * OGC-1417 — a critical value is refused until the person entering it has
+     * acknowledged it: nothing is written, and the refusal names what is owed and
+     * the custom message Result Configuration carries.
+     */
+    @Test
+    public void save_criticalValue_withoutAcknowledgement_isRefused422_andWritesNothing() throws Exception {
+        seedNumericResultLimit();
+        ConfigurationProperties.getInstance().setPropertyValue(Property.customCriticalMessage,
+                "Call the clinician now and record who you told");
+        String storedBefore = resultService.get("3").getValue();
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "500", currentToken("1"))).session(session))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.code").value("ACKNOWLEDGEMENT_REQUIRED"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("500"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].analysisId").value("1"))
+                .andExpect(jsonPath("$.customCriticalMessage").value("Call the clinician now and record who you told"));
+
+        assertEquals(storedBefore, resultService.get("3").getValue());
+        assertEquals(Integer.valueOf(0), acknowledgementCount());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT'", Integer.class));
+    }
+
+    /**
+     * OGC-1417 — an acknowledged critical save stores the acknowledgement with the
+     * user, the time and the message shown, and the result history shows it; the
+     * value already stored owes nothing when the row is saved again.
+     */
+    @Test
+    public void save_criticalValue_acknowledged_recordsWhoAndWhat_andShowsInHistory() throws Exception {
+        seedNumericResultLimit();
+        ConfigurationProperties.getInstance().setPropertyValue(Property.customCriticalMessage,
+                "Call the clinician now and record who you told");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(acknowledgedSaveBody("500")).session(session)).andExpect(status().isOk());
+
+        assertEquals(Integer.valueOf(1), acknowledgementCount());
+        java.util.Map<String, Object> row = jdbc
+                .queryForMap("SELECT kind, result_value, message, source, acknowledged_by, result_id, acknowledged_at"
+                        + " FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1");
+        assertEquals("CRITICAL_ACKNOWLEDGED", row.get("kind"));
+        assertEquals("500", row.get("result_value"));
+        assertEquals("Call the clinician now and record who you told", row.get("message"));
+        assertEquals("RESULTS_ENTRY", row.get("source"));
+        assertEquals(1, ((Number) row.get("acknowledged_by")).intValue());
+        assertEquals(3, ((Number) row.get("result_id")).intValue());
+        assertTrue(row.get("acknowledged_at") != null);
+
+        mockMvc.perform(get("/rest/results-entry/analysis/1/history").session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[?(@.type == 'CRITICAL_ACK')].detail", org.hamcrest.CoreMatchers
+                        .hasItem(org.hamcrest.CoreMatchers.containsString("Call the clinician now"))));
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "500", currentToken("1"), "\"note\":\"re-saved\""))
+                .session(session)).andExpect(status().isOk());
+        assertEquals("the stored value was acknowledged when it was saved", Integer.valueOf(1), acknowledgementCount());
+    }
+
+    /**
+     * OGC-1417 — the placeholder message the site ships with is not a message: the
+     * acknowledgement records the translated default instead.
+     */
+    @Test
+    public void save_criticalValue_withPlaceholderMessage_recordsTheDefault() throws Exception {
+        seedNumericResultLimit();
+        ConfigurationProperties.getInstance().setPropertyValue(Property.customCriticalMessage,
+                "Set new critical result message");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "500", currentToken("1"))).session(session))
+                .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.customCriticalMessage").isEmpty());
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(acknowledgedSaveBody("500")).session(session)).andExpect(status().isOk());
+
+        assertEquals(MessageUtil.getMessage("result.critical.defaultMessage"), jdbc.queryForObject(
+                "SELECT message FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
+    }
+
+    /**
+     * OGC-1417 — a value outside the valid range is confirmed only when Result
+     * Configuration asks for it; with the setting off it saves as before.
+     */
+    @Test
+    public void save_outsideValidRange_isConfirmedOnlyWhenTheSettingIsOn() throws Exception {
+        seedNumericResultLimitWithValidRange();
+
+        ConfigurationProperties.getInstance().setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "1500", currentToken("1"))).session(session))
+                .andExpect(status().isOk());
+        assertEquals(Integer.valueOf(0), acknowledgementCount());
+
+        ConfigurationProperties.getInstance().setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "true");
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "2000", currentToken("1"))).session(session))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("INVALID"))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].lowValid").value(0.0))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].highValid").value(1000.0));
+
+        mockMvc.perform(
+                post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                        .content(saveBodyWithExtras("1", "3", "1", "2000", currentToken("1"),
+                                "\"note\":\"\",\"invalidResultConfirmed\":true"))
+                        .session(session))
+                .andExpect(status().isOk());
+        assertEquals("INVALID_CONFIRMED", jdbc.queryForObject(
+                "SELECT kind FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
+        assertEquals("2000", resultService.get("3").getValue().replaceAll("\\.0+$", ""));
+    }
+
+    /**
+     * OGC-1417 — confirming one kind never stands in for the other: a critical
+     * value saved with only the valid-range confirmation is still refused.
+     */
+    @Test
+    public void save_criticalValue_withOnlyTheValidRangeConfirmation_isStillRefused() throws Exception {
+        seedNumericResultLimitWithValidRange();
+        ConfigurationProperties.getInstance().setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "true");
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "500", currentToken("1"),
+                        "\"note\":\"\",\"invalidResultConfirmed\":true"))
+                .session(session)).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"));
+        assertEquals(Integer.valueOf(0), acknowledgementCount());
+    }
+
+    /**
      * OGC-1022 (R3) — acknowledging a critical alert records the session user and
      * the resolution comment; the dashboard sends the comment under "notes".
      */
@@ -454,8 +614,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     public void criticalAlert_acknowledge_recordsSessionUserAndComment() throws Exception {
         seedNumericResultLimit();
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
-                .content(saveBody("1", "3", "1", "500", currentToken("1"))).session(session))
-                .andExpect(status().isOk());
+                .content(acknowledgedSaveBody("500")).session(session)).andExpect(status().isOk());
         Long alertId = jdbc.queryForObject(
                 "SELECT id FROM clinlims.alert WHERE alert_type = 'CRITICAL_RESULT' AND alert_entity_id = 1",
                 Long.class);

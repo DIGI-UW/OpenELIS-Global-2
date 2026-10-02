@@ -41,8 +41,11 @@ import org.openelisglobal.referencetables.service.ReferenceTablesService;
 import org.openelisglobal.reports.service.DocumentTrackService;
 import org.openelisglobal.reports.service.DocumentTypeService;
 import org.openelisglobal.reports.valueholder.DocumentTrack;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultSet;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationPaging;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.controller.BaseResultValidationController;
@@ -65,6 +68,7 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
@@ -86,6 +90,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     @Autowired
     private QcHoldService qcHoldService;
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private SampleService sampleService;
     @Autowired
@@ -703,6 +709,13 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         if (errors.hasErrors()) {
             return errorResponse(400, "invalidResult");
         }
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForValidationItems(List.of(item));
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return org.springframework.http.ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
+        }
 
         analysis.setSysUserId(getSysUserId(request));
         analysis.setRevision(
@@ -717,11 +730,14 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<Result> deletableList = new ArrayList<>();
         ArrayList<Result> resultUpdateList = new ArrayList<>(
                 createResultFromAnalysisItem(item, analysis, analysis, noteUpdateList, deletableList));
+        alerts.forEach(alert -> resultUpdateList.stream().findFirst().ifPresent(alert::setResult));
         List<AnalysisItem> items = new ArrayList<>();
         items.add(item);
+        List<IResultUpdate> updaters = new ArrayList<>(ValidationUpdateRegister.getRegisteredUpdaters());
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_VALIDATION, getSysUserId(request)));
         return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
-                deletableList, new ResultValidationSaveService(), ValidationUpdateRegister.getRegisteredUpdaters(),
-                "modified");
+                deletableList, new ResultValidationSaveService(), updaters, "modified");
     }
 
     private org.springframework.http.ResponseEntity<Map<String, Object>> persistSingleAnalysis(String analysisId,

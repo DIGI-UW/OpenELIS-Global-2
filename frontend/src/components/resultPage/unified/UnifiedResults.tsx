@@ -35,6 +35,11 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 import { requestFailed, serverMessage } from "../../utils/requestOutcome";
+import ResultAlertModal, {
+  acknowledgementRefusal,
+  ResultAlert,
+} from "../ResultAlertModal";
+import { owedResultAlert } from "./resultAlerts";
 import {
   serverPageArrowsProps,
   serverPageSizeOf,
@@ -236,6 +241,20 @@ const UnifiedResults: React.FC = () => {
   };
   const allowResultRejection =
     configurationProperties?.allowResultRejection === "true";
+  const alertInvalidResults =
+    configurationProperties?.ALERT_FOR_INVALID_RESULTS === "true";
+  // OGC-1417: the value a row's modal is asking about, and per row the value
+  // its user already confirmed or acknowledged
+  const [resultAlert, setResultAlert] = useState<{
+    key: string;
+    row: WorklistRow;
+    alerts: ResultAlert[];
+    mode: "entry" | "save";
+    customCriticalMessage?: string;
+  } | null>(null);
+  const [confirmedValues, setConfirmedValues] = useState<
+    Record<string, string>
+  >({});
   const [nceOpenKey, setNceOpenKey] = useState<string | null>(null);
   const [referralOrganizations, setReferralOrganizations] = useState<IdValue[]>(
     [],
@@ -941,11 +960,19 @@ const UnifiedResults: React.FC = () => {
     [addNotification, intl, setNotificationVisible, loadWorklist],
   );
 
-  const handleSave = useCallback(
-    (row: WorklistRow) => {
+  const saveRow = useCallback(
+    (
+      row: WorklistRow,
+      acknowledged: { critical: boolean; invalid: boolean } = {
+        critical: false,
+        invalid: false,
+      },
+    ) => {
       // FR-O1: the payload names and carries exactly this analysis — never
       // the page. Untouched rows cannot be re-submitted or defaulted.
       const item: Record<string, unknown> = { ...row, isModified: true };
+      item.criticalAcknowledged = acknowledged.critical;
+      item.invalidResultConfirmed = acknowledged.invalid;
       // A referral saved against an already-saved result must leave that result
       // exactly as stored. The row carries the value the test reports, which is
       // rounded, so posting it back would quietly rewrite the stored one.
@@ -1022,6 +1049,17 @@ const UnifiedResults: React.FC = () => {
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
         (response: SaveResponse | undefined) => {
+          const refusal = acknowledgementRefusal(response);
+          if (refusal) {
+            setResultAlert({
+              key,
+              row,
+              alerts: refusal.alerts,
+              mode: "save",
+              customCriticalMessage: refusal.customCriticalMessage,
+            });
+            return;
+          }
           handleSaveResponse(row, response);
           if (!requestFailed(response)) {
             setNoteDrafts((current) => {
@@ -1071,6 +1109,89 @@ const UnifiedResults: React.FC = () => {
       rowStates,
     ],
   );
+
+  const owedAlert = useCallback(
+    (row: WorklistRow) =>
+      owedResultAlert(row, {
+        alertInvalidResults,
+        writesValue: writesResultValue(
+          rowStates[worklistRowKey(row)] || "EMPTY",
+        ),
+      }),
+    [alertInvalidResults, rowStates],
+  );
+
+  // OGC-1417: a value outside the valid range is questioned as soon as the
+  // field is left, keeping what was typed so it can be corrected.
+  const handleValueBlur = useCallback(
+    (row: WorklistRow) => {
+      const key = worklistRowKey(row);
+      const alert = owedAlert(row);
+      if (
+        alert &&
+        alert.kind === "INVALID" &&
+        confirmedValues[key] !== alert.value
+      ) {
+        setResultAlert({ key, row, alerts: [alert], mode: "entry" });
+      }
+    },
+    [owedAlert, confirmedValues],
+  );
+
+  // OGC-1417: a critical value is acknowledged, and a value outside the valid
+  // range confirmed, before the save goes through.
+  const handleSave = useCallback(
+    (row: WorklistRow) => {
+      const key = worklistRowKey(row);
+      const alert = owedAlert(row);
+      if (!alert) {
+        saveRow(row);
+        return;
+      }
+      if (confirmedValues[key] === alert.value) {
+        saveRow(row, {
+          critical: alert.kind === "CRITICAL",
+          invalid: alert.kind === "INVALID",
+        });
+        return;
+      }
+      setResultAlert({
+        key,
+        row,
+        alerts: [alert],
+        mode: "save",
+        customCriticalMessage: configurationProperties?.customCriticalMessage,
+      });
+    },
+    [owedAlert, confirmedValues, saveRow, configurationProperties],
+  );
+
+  const confirmResultAlert = () => {
+    if (!resultAlert) {
+      return;
+    }
+    const { key, alerts, mode } = resultAlert;
+    setResultAlert(null);
+    setConfirmedValues((current) => ({ ...current, [key]: alerts[0].value }));
+    if (mode === "save") {
+      const latest =
+        rows.find((candidate) => worklistRowKey(candidate) === key) ||
+        resultAlert.row;
+      saveRow(latest, {
+        critical: alerts.some((alert) => alert.kind === "CRITICAL"),
+        invalid: alerts.some((alert) => alert.kind === "INVALID"),
+      });
+    }
+  };
+
+  const correctResultAlert = () => {
+    if (!resultAlert) {
+      return;
+    }
+    const inputId = `unifiedResultValue-${resultAlert.key}`;
+    setResultAlert(null);
+    window.setTimeout(() => document.getElementById(inputId)?.focus(), 0);
+  };
 
   // Gallery parity: accession leads (mono accent), identity as a sub-line, a
   // patient initials avatar on clinical rows (FR-M2/M3: no patient identity
@@ -1479,6 +1600,7 @@ const UnifiedResults: React.FC = () => {
                               onValueChange={(field, value) =>
                                 handleValueChange(row, field, value)
                               }
+                              onValueBlur={() => handleValueBlur(row)}
                             />
                           </span>
                         </TableCell>
@@ -1720,6 +1842,14 @@ const UnifiedResults: React.FC = () => {
           />
         </Column>
       </Grid>
+      <ResultAlertModal
+        open={Boolean(resultAlert)}
+        alerts={resultAlert?.alerts || []}
+        mode={resultAlert?.mode || "save"}
+        customCriticalMessage={resultAlert?.customCriticalMessage}
+        onConfirm={confirmResultAlert}
+        onCorrect={correctResultAlert}
+      />
     </>
   );
 };

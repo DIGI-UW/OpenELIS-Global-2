@@ -432,6 +432,10 @@ const GenericConfigEdit = ({
                       <Column lg={8} sm={3}>
                         <TextInput
                           id="textInput"
+                          labelText={intl.formatMessage({
+                            id: "admin.page.configuration.formEntryConfigMenu.value",
+                          })}
+                          hideLabel
                           value={textInputValue}
                           onChange={handleInputChange}
                         />
