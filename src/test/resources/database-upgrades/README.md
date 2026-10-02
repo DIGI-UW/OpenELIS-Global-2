@@ -19,9 +19,11 @@ the entire remaining candidate changelog. Successful upgrades must be
 repeatable. An expected failure must preserve the data asserted by its fixture.
 
 The analyzer fixtures cover a pending-registration draft, an intentionally
-inactive record, a migrated active analyzer with a real clinical binding, and
-retained unmigrated configuration. These checks cover schema upgrades; they do
-not claim to create or verify an external Bridge connection. Configured
+inactive record, a migrated active analyzer with a real clinical binding,
+retained unmigrated configuration, and a database whose retained analyzer
+storage removed cutover changesets dropped. The last two check that storage
+against the same expected definitions. These checks cover schema upgrades; they
+do not claim to create or verify an external Bridge connection. Configured
 analyzers require the documented Bridge handoff before destructive cleanup.
 
 Run just these checks with Java 21 and Docker:

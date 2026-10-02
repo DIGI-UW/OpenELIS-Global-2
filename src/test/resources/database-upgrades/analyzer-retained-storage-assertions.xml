@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <!-- Expected definitions of the storage the AnalyzerUpgrade* entities map,
+        as the full changelog creates it, read from information_schema and pg_catalog.
+        Every scenario that includes this file checks the same values, so the storage
+        113-restore-retained-analyzer-storage re-creates equals the storage a fresh
+        database has. A timestamptz default prints in the session time zone, so that
+        one is compared as an instant. -->
+    <changeSet id="assert-analyzer-retained-storage-definitions"
+        author="openelis">
+        <preConditions onFail="HALT" onError="HALT">
+            <sqlCheck expectedResult="39"><![CDATA[
+                SELECT COUNT(*) FROM (VALUES
+                    ('analyzer', 'analyzer_type_id', 'numeric', NULL::int, 10, 0, 'YES', NULL::text),
+                    ('analyzer', 'ip_address', 'character varying', 15, NULL, NULL, 'YES', NULL),
+                    ('analyzer', 'port', 'integer', NULL, 32, 0, 'YES', NULL),
+                    ('analyzer', 'communication_mode', 'character varying', 25, NULL, NULL, 'YES', NULL),
+                    ('analyzer', 'import_directory', 'character varying', 500, NULL, NULL, 'YES', NULL),
+                    ('analyzer', 'file_pattern', 'character varying', 100, NULL, NULL, 'YES', NULL),
+                    ('analyzer', 'column_mappings_json', 'text', NULL, NULL, NULL, 'YES', NULL),
+                    ('analyzer', 'file_format', 'character varying', 30, NULL, NULL, 'YES', NULL),
+                    ('analyzer_plugin_config', 'analyzer_id', 'numeric', NULL, 10, 0, 'NO', NULL),
+                    ('analyzer_plugin_config', 'config', 'jsonb', NULL, NULL, NULL, 'NO', '''{}''::jsonb'),
+                    ('analyzer_plugin_config', 'sys_user_id', 'character varying', 36, NULL, NULL, 'YES', NULL),
+                    ('analyzer_plugin_config', 'last_updated', 'timestamp without time zone', NULL, NULL, NULL, 'NO', 'now()'),
+                    ('analyzer_test_map', 'analyzer_id', 'numeric', NULL, 10, 0, 'NO', NULL),
+                    ('analyzer_test_map', 'analyzer_test_name', 'character varying', 30, NULL, NULL, 'NO', NULL),
+                    ('analyzer_test_map', 'test_id', 'numeric', NULL, 10, 0, 'YES', NULL),
+                    ('analyzer_test_map', 'last_updated', 'timestamp with time zone', NULL, NULL, NULL, 'YES', '2011-12-27 23:41:40.194936+00'),
+                    ('analyzer_test_map', 'component_id', 'character varying', 36, NULL, NULL, 'YES', NULL),
+                    ('analyzer_type', 'id', 'numeric', NULL, 10, 0, 'NO', NULL),
+                    ('analyzer_type', 'name', 'character varying', 100, NULL, NULL, 'NO', NULL),
+                    ('analyzer_type', 'description', 'character varying', 255, NULL, NULL, 'YES', NULL),
+                    ('analyzer_type', 'protocol', 'character varying', 30, NULL, NULL, 'NO', '''ASTM''::character varying'),
+                    ('analyzer_type', 'plugin_class_name', 'character varying', 255, NULL, NULL, 'YES', NULL),
+                    ('analyzer_type', 'identifier_pattern', 'character varying', 500, NULL, NULL, 'YES', NULL),
+                    ('analyzer_type', 'is_generic_plugin', 'boolean', NULL, NULL, NULL, 'NO', 'false'),
+                    ('analyzer_type', 'is_active', 'boolean', NULL, NULL, NULL, 'NO', 'true'),
+                    ('analyzer_type', 'sys_user_id', 'character varying', 36, NULL, NULL, 'YES', NULL),
+                    ('analyzer_type', 'last_updated', 'timestamp without time zone', NULL, NULL, NULL, 'NO', 'now()'),
+                    ('serial_port_configuration', 'id', 'character varying', 36, NULL, NULL, 'NO', NULL),
+                    ('serial_port_configuration', 'analyzer_id', 'numeric', NULL, 10, 0, 'NO', NULL),
+                    ('serial_port_configuration', 'port_name', 'character varying', 50, NULL, NULL, 'NO', NULL),
+                    ('serial_port_configuration', 'baud_rate', 'integer', NULL, 32, 0, 'NO', '9600'),
+                    ('serial_port_configuration', 'data_bits', 'integer', NULL, 32, 0, 'NO', '8'),
+                    ('serial_port_configuration', 'stop_bits', 'character varying', 10, NULL, NULL, 'NO', '''ONE''::character varying'),
+                    ('serial_port_configuration', 'parity', 'character varying', 10, NULL, NULL, 'NO', '''NONE''::character varying'),
+                    ('serial_port_configuration', 'flow_control', 'character varying', 20, NULL, NULL, 'NO', '''NONE''::character varying'),
+                    ('serial_port_configuration', 'active', 'boolean', NULL, NULL, NULL, 'NO', 'true'),
+                    ('serial_port_configuration', 'fhir_uuid', 'uuid', NULL, NULL, NULL, 'NO', NULL),
+                    ('serial_port_configuration', 'sys_user_id', 'character varying', 36, NULL, NULL, 'YES', NULL),
+                    ('serial_port_configuration', 'last_updated', 'timestamp without time zone', NULL, NULL, NULL, 'NO', 'now()')
+                ) AS e(t, c, data_type, length, precision, scale, nullable, column_default)
+                JOIN information_schema.columns ic ON ic.table_schema = 'clinlims'
+                    AND ic.table_name = e.t AND ic.column_name = e.c
+                    AND ic.data_type = e.data_type
+                    AND ic.character_maximum_length IS NOT DISTINCT FROM e.length
+                    AND ic.numeric_precision IS NOT DISTINCT FROM e.precision
+                    AND ic.numeric_scale IS NOT DISTINCT FROM e.scale
+                    AND ic.is_nullable = e.nullable
+                    AND CASE WHEN e.data_type = 'timestamp with time zone' AND e.column_default IS NOT NULL
+                        THEN regexp_replace(ic.column_default, '^''(.*)''::timestamp with time zone$', '\1')::timestamptz
+                            = e.column_default::timestamptz
+                        ELSE ic.column_default IS NOT DISTINCT FROM e.column_default END
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="31"><![CDATA[
+                SELECT COUNT(*) FROM information_schema.columns
+                WHERE table_schema = 'clinlims' AND table_name IN ('analyzer_type',
+                    'analyzer_test_map', 'analyzer_plugin_config', 'serial_port_configuration')
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="13"><![CDATA[
+                SELECT COUNT(*) FROM (VALUES
+                    ('analyzer', 'fk_analyzer_analyzer_type', 'FOREIGN KEY (analyzer_type_id) REFERENCES analyzer_type(id)'),
+                    ('analyzer_type', 'analyzer_type_pkey', 'PRIMARY KEY (id)'),
+                    ('analyzer_type', 'analyzer_type_name_key', 'UNIQUE (name)'),
+                    ('analyzer_test_map', 'analyzer_test_map_pk', 'PRIMARY KEY (analyzer_id, analyzer_test_name)'),
+                    ('analyzer_test_map', 'analyzer_test_map_analyzer_fk', 'FOREIGN KEY (analyzer_id) REFERENCES analyzer(id) ON DELETE CASCADE'),
+                    ('analyzer_test_map', 'analyzer_test_map_test_fk', 'FOREIGN KEY (test_id) REFERENCES test(id)'),
+                    ('analyzer_test_map', 'fk_analyzer_test_map_component', 'FOREIGN KEY (component_id) REFERENCES test_result_component(id) ON DELETE SET NULL'),
+                    ('analyzer_plugin_config', 'analyzer_plugin_config_pkey', 'PRIMARY KEY (analyzer_id)'),
+                    ('analyzer_plugin_config', 'analyzer_plugin_config_analyzer_fk', 'FOREIGN KEY (analyzer_id) REFERENCES analyzer(id) ON DELETE CASCADE'),
+                    ('serial_port_configuration', 'serial_port_configuration_pkey', 'PRIMARY KEY (id)'),
+                    ('serial_port_configuration', 'serial_port_configuration_analyzer_id_key', 'UNIQUE (analyzer_id)'),
+                    ('serial_port_configuration', 'serial_port_configuration_fhir_uuid_key', 'UNIQUE (fhir_uuid)'),
+                    ('serial_port_configuration', 'fk_serial_port_analyzer', 'FOREIGN KEY (analyzer_id) REFERENCES analyzer(id) ON DELETE CASCADE')
+                ) AS e(t, name, definition)
+                JOIN pg_constraint c ON c.conname = e.name
+                JOIN pg_class r ON r.oid = c.conrelid AND r.relname = e.t
+                JOIN pg_namespace n ON n.oid = r.relnamespace AND n.nspname = 'clinlims'
+                WHERE replace(pg_get_constraintdef(c.oid), 'clinlims.', '') = e.definition
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="2"><![CDATA[
+                SELECT COUNT(*) FROM pg_indexes WHERE schemaname = 'clinlims' AND (
+                    (indexname = 'idx_serial_port_config_active' AND indexdef =
+                        'CREATE INDEX idx_serial_port_config_active ON clinlims.serial_port_configuration USING btree (active)')
+                    OR (indexname = 'idx_serial_port_config_analyzer' AND indexdef =
+                        'CREATE INDEX idx_serial_port_config_analyzer ON clinlims.serial_port_configuration USING btree (analyzer_id)'))
+            ]]></sqlCheck>
+        </preConditions>
+        <sql>SELECT 1;</sql>
+    </changeSet>
+</databaseChangeLog>

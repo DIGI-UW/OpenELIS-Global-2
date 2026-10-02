@@ -26,4 +26,6 @@
         </preConditions>
         <sql>SELECT 1;</sql>
     </changeSet>
+    <include relativeToChangelogFile="true"
+        file="analyzer-retained-storage-assertions.xml" />
 </databaseChangeLog>
