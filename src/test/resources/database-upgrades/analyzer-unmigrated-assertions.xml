@@ -23,9 +23,12 @@
                 SELECT COUNT(*) FROM databasechangelog WHERE id =
                 '098-remove-superseded-analyzer-schema'
             </sqlCheck>
+            <!-- The storage exists, so no not-applicable upgrade run is recorded. -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM configuration_import_run WHERE status =
+                'NOT_APPLICABLE'
+            </sqlCheck>
         </preConditions>
         <sql>SELECT 1;</sql>
     </changeSet>
-    <include relativeToChangelogFile="true"
-        file="analyzer-retained-storage-assertions.xml" />
 </databaseChangeLog>

@@ -27,6 +27,7 @@ public class ConfigurationImportRun extends BaseObject<String> {
     public static final String STATUS_RUNNING = "RUNNING";
     public static final String STATUS_COMPLETED = "COMPLETED";
     public static final String STATUS_FAILED = "FAILED";
+    public static final String STATUS_NOT_APPLICABLE = "NOT_APPLICABLE";
 
     @Id
     @Column(name = "id", length = 36)

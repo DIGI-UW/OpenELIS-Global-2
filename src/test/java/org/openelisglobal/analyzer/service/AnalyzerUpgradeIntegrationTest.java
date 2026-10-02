@@ -213,6 +213,29 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
         assertTrue(migration.migrate(Map.of(), "1").isEmpty());
     }
 
+    @Test
+    public void recordedRemovalOfRetainedStorageEndsTheUpgradeWithoutReadingIt() {
+        String id = addAnalyzer("ASTM");
+        assertTrue(preparation.pendingIds().contains(id));
+        AnalyzerUpgradeService migration = migration(localState);
+        jdbc.update("INSERT INTO configuration_import_run (id, source, status, started_at, finished_at, summary)"
+                + " VALUES (gen_random_uuid()::text, 'ANALYZER_UPGRADE', 'NOT_APPLICABLE', NOW(), NOW(), '[]')");
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            // The shape left by the removed changesets
+            // OGC-1054-remove-openelis-analyzer-connection-runtime and
+            // 098-remove-superseded-analyzer-schema.
+            jdbc.execute("DROP TABLE analyzer_plugin_config, analyzer_test_map, analyzer_type,"
+                    + " serial_port_configuration CASCADE");
+            jdbc.execute("ALTER TABLE analyzer DROP COLUMN analyzer_type_id, DROP COLUMN ip_address,"
+                    + " DROP COLUMN port, DROP COLUMN communication_mode, DROP COLUMN import_directory,"
+                    + " DROP COLUMN file_pattern, DROP COLUMN file_format, DROP COLUMN column_mappings_json");
+            assertTrue(migration.migrate(Map.of(), "1").isEmpty());
+            assertTrue(migration.pending().isEmpty());
+            status.setRollbackOnly();
+        });
+    }
+
     private AnalyzerUpgradeService migration(AnalyzerInstanceLocalStateService state) {
         AnalyzerService selected = mock(AnalyzerService.class);
         when(selected.getAllWithBindings())
@@ -294,6 +317,8 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
     private void cleanup() {
         if (jdbc == null)
             return;
+        jdbc.update("DELETE FROM configuration_import_run WHERE source = 'ANALYZER_UPGRADE'"
+                + " AND status = 'NOT_APPLICABLE'");
         jdbc.update("DELETE FROM analyzer_results WHERE analyzer_id BETWEEN 98610 AND 98612");
         jdbc.update("DELETE FROM analyzer_delivery_receipt WHERE analyzer_id BETWEEN 98610 AND 98612");
         jdbc.update("DELETE FROM analyzer_plugin_config WHERE analyzer_id BETWEEN 98610 AND 98612");

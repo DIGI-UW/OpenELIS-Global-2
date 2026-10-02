@@ -603,7 +603,7 @@
   <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
   <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
 
-  <!-- Analyzer storage the read-only upgrade entities map, where removed cutover changesets dropped it. -->
-  <include relativeToChangelogFile="true" file="114-restore-retained-analyzer-storage.xml"/>
+  <!-- Analyzer upgrade: records that this database has no retained analyzer storage where removed cutover changesets dropped it. -->
+  <include relativeToChangelogFile="true" file="114-analyzer-upgrade-not-applicable.xml"/>
 
 </databaseChangeLog>

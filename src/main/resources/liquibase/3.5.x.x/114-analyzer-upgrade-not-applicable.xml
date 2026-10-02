@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- Where the since-removed changesets
+         OGC-1054-remove-openelis-analyzer-connection-runtime (094) and
+         098-remove-superseded-analyzer-schema dropped the retained analyzer
+         storage, nothing can be transferred to Bridge connections. This records
+         that outcome in the upgrade's own history; AnalyzerUpgradeService checks
+         it before reading the retained storage. A database that still has the
+         storage is left alone. -->
+    <changeSet id="114-analyzer-upgrade-not-applicable" author="pmanko">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <or>
+                <not><tableExists tableName="analyzer_type"/></not>
+                <not><tableExists tableName="analyzer_test_map"/></not>
+                <not><tableExists tableName="analyzer_plugin_config"/></not>
+                <not><tableExists tableName="serial_port_configuration"/></not>
+                <not><columnExists tableName="analyzer" columnName="analyzer_type_id"/></not>
+                <not><columnExists tableName="analyzer" columnName="ip_address"/></not>
+                <not><columnExists tableName="analyzer" columnName="port"/></not>
+                <not><columnExists tableName="analyzer" columnName="communication_mode"/></not>
+                <not><columnExists tableName="analyzer" columnName="import_directory"/></not>
+                <not><columnExists tableName="analyzer" columnName="file_pattern"/></not>
+                <not><columnExists tableName="analyzer" columnName="file_format"/></not>
+                <not><columnExists tableName="analyzer" columnName="column_mappings_json"/></not>
+            </or>
+        </preConditions>
+        <insert tableName="configuration_import_run">
+            <column name="id" valueComputed="gen_random_uuid()::text"/>
+            <column name="source" value="ANALYZER_UPGRADE"/>
+            <column name="status" value="NOT_APPLICABLE"/>
+            <column name="started_at" valueComputed="now()"/>
+            <column name="finished_at" valueComputed="now()"/>
+            <column name="summary" value="[]"/>
+        </insert>
+        <rollback>
+            <delete tableName="configuration_import_run">
+                <where>source = 'ANALYZER_UPGRADE' AND status = 'NOT_APPLICABLE'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

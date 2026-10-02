@@ -8,6 +8,7 @@ import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerUpgradePreparationService.ProfileSelection;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.configuration.service.ConfigurationImportRunService;
+import org.openelisglobal.configuration.valueholder.ConfigurationImportRun;
 import org.springframework.stereotype.Service;
 
 /**
@@ -35,6 +36,11 @@ public class AnalyzerUpgradeService {
     }
 
     public synchronized List<Outcome> migrate(Map<String, ProfileSelection> selections, String actor) {
+        if (retainedStorageRemoved()) {
+            LogEvent.logInfo(getClass().getSimpleName(), "migrate",
+                    "This database has no retained analyzer storage; no analyzer upgrade applies");
+            return List.of();
+        }
         var pendingIds = preparation.pendingIds();
         var candidates = analyzers.getAllWithBindings().stream()
                 .filter(analyzer -> pendingIds.contains(analyzer.getId())).toList();
@@ -70,6 +76,8 @@ public class AnalyzerUpgradeService {
     }
 
     public List<Outcome> pending() {
+        if (retainedStorageRemoved())
+            return List.of();
         Map<String, Outcome> last = new java.util.HashMap<>();
         var history = runs.getAllMatchingOrdered("source", RUN_SOURCE, "startedAt", true);
         if (!history.isEmpty() && history.get(0).getSummary() != null) {
@@ -87,5 +95,16 @@ public class AnalyzerUpgradeService {
                 .map(analyzer -> last.getOrDefault(analyzer.getId(),
                         new Outcome(analyzer.getId(), analyzer.getName(), "PENDING", null)))
                 .toList();
+    }
+
+    /**
+     * Recorded by changeset 114-analyzer-upgrade-not-applicable where removed
+     * cleanup changesets had already dropped the retained storage the
+     * AnalyzerUpgrade* entities read.
+     */
+    private boolean retainedStorageRemoved() {
+        return !runs.getAllMatching(
+                Map.<String, Object>of("source", RUN_SOURCE, "status", ConfigurationImportRun.STATUS_NOT_APPLICABLE))
+                .isEmpty();
     }
 }

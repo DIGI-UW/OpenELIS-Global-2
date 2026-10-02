@@ -53,6 +53,12 @@ Each attempt uses the existing configuration-import history with source
 pending reasons. Untransferred records remain listable in Analyzers, with a
 **Retry configuration transfer** action. Completed records are not retried.
 
+A `NOT_APPLICABLE` run in that history means the database has no retained
+storage to read, and the transfer and the pending list return nothing without
+reading it. Changeset `114-analyzer-upgrade-not-applicable` records that run
+where the retained storage is missing: develop builds between 8 and 24 September
+2026 carried cleanup changesets, since removed, that dropped it.
+
 Authenticated users with analyzer-import or administrator access can also use:
 
 - `GET /rest/analyzer/upgrade`: current pending analyzers and latest reasons.
@@ -97,7 +103,8 @@ configuration owners. Bridge owns runtime configuration and analyzer-facing
 behavior; OpenELIS owns clinical bindings and the connection reference.
 
 Remove these readers and retained storage together in a later release, after
-populated-site transfer and delivery are verified. Use new changeset IDs. Do not
+populated-site transfer and delivery are verified. Use new changeset IDs, and
+record a `NOT_APPLICABLE` run so the history says why nothing is pending. Do not
 restore the removed cleanup changesets: their old guards did not prove transfer.
 Data already deleted by an earlier release requires backups; this service cannot
 reconstruct missing settings, mappings or history.

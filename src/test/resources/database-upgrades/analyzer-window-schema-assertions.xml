@@ -3,27 +3,44 @@
     xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
-    <changeSet id="assert-analyzer-window-schema-restored"
+    <changeSet id="assert-analyzer-window-schema-recorded"
         author="openelis">
         <preConditions onFail="HALT" onError="HALT">
-            <sqlCheck expectedResult="6"><![CDATA[
-                SELECT COUNT(*) FROM databasechangelog
-                WHERE id LIKE '114-restore-%' AND exectype = 'EXECUTED'
-            ]]></sqlCheck>
-            <!-- The existing analyzer is kept, and the upgrade's eligibility condition
-                (AnalyzerUpgradeDAO.pendingIds) does not select it. -->
             <sqlCheck expectedResult="1"><![CDATA[
-                SELECT COUNT(*) FROM analyzer a WHERE a.id = 900021 AND a.name = 'Window fixture'
-                AND NOT (a.bridge_connection_id IS NULL AND (a.analyzer_type_id IS NOT NULL
-                    OR a.ip_address IS NOT NULL OR a.import_directory IS NOT NULL
-                    OR EXISTS (SELECT 1 FROM analyzer_plugin_config c WHERE c.analyzer_id = a.id)
-                    OR EXISTS (SELECT 1 FROM analyzer_test_map m WHERE m.analyzer_id = a.id)
-                    OR EXISTS (SELECT 1 FROM serial_port_configuration p
-                        WHERE p.analyzer_id = a.id AND p.active)))
+                SELECT COUNT(*) FROM databasechangelog
+                WHERE id = '114-analyzer-upgrade-not-applicable' AND exectype = 'EXECUTED'
+            ]]></sqlCheck>
+            <!-- The upgrade history records that nothing can be transferred. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run
+                WHERE source = 'ANALYZER_UPGRADE' AND status = 'NOT_APPLICABLE'
+                AND finished_at IS NOT NULL
+            ]]></sqlCheck>
+            <!-- The removed storage stays removed. -->
+            <not>
+                <tableExists tableName="analyzer_type" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_test_map" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_plugin_config" />
+            </not>
+            <not>
+                <tableExists tableName="serial_port_configuration" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="analyzer_type_id" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="ip_address" />
+            </not>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM analyzer WHERE id = 900021 AND name = 'Window fixture'
             ]]></sqlCheck>
         </preConditions>
         <sql>SELECT 1;</sql>
     </changeSet>
-    <include relativeToChangelogFile="true"
-        file="analyzer-retained-storage-assertions.xml" />
 </databaseChangeLog>
