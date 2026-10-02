@@ -15,11 +15,21 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -28,6 +38,9 @@ import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
+import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.resultvalidation.service.ResultValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -84,6 +97,15 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private ResultValidationService resultValidationService;
+
+    @Autowired
+    private LogbookResultsPersistService logbookPersistService;
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -178,9 +200,11 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     private void ensureOrderCatalog() {
         jdbc.update("INSERT INTO clinlims.localization (id, description) SELECT 9901, 'EQA T14'"
                 + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.localization WHERE id = 9901)");
+        // lastupdated is the entity's version: left null, Hibernate takes the row for
+        // an unsaved instance and refuses to save an analysis that points at it.
         jdbc.update("INSERT INTO clinlims.test_section (id, name, description, is_external, sort_order,"
-                + " name_localization_id) SELECT 9901, 'EQA T14', 'EQA T14 section', 'N',"
-                + " 9901, 9901 WHERE NOT EXISTS (SELECT 1 FROM clinlims.test_section WHERE id = 9901)");
+                + " name_localization_id, lastupdated) SELECT 9901, 'EQA T14', 'EQA T14 section', 'N',"
+                + " 9901, 9901, now() WHERE NOT EXISTS (SELECT 1 FROM clinlims.test_section WHERE id = 9901)");
         jdbc.update("INSERT INTO clinlims.type_of_sample (id, description, domain, name_localization_id, lastupdated)"
                 + " SELECT 9901, 'EQA T14 specimen', 'H', 9901, now()"
                 + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.type_of_sample WHERE id = 9901)");
@@ -488,6 +512,38 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         assertEquals(1, participantResults(cycle.getId()).size());
     }
 
+    @Test
+    public void validatingTheLastResult_makesTheCycleReadyToSubmitAtOnce() {
+        EQAProgram scheme = externalScheme(true);
+        EQACycle cycle = readBack(insertCycle(scheme, 35));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        eqaOrder(cycle, roundId);
+        Analysis validated = analysisService.get(String.valueOf(finalizedAnalysis(VL_TEST, VL_ANALYTE, "4.75")));
+
+        resultValidationService.persistdata(new ArrayList<>(), List.of(validated), new ArrayList<>(), new ArrayList<>(),
+                new ArrayList<>(), new ArrayList<>(), null, new ArrayList<>(), USER);
+
+        assertEquals(EQACycleStatus.READY_TO_SUBMIT, readBack(cycle.getId()).getStatus());
+        assertEquals("VALIDATED_PARTIAL", participantResults(cycle.getId()).get(0).get("submission_status"));
+        verify(fhirStub, never()).submitCycleViaFhir(anyLong(), anyLong());
+    }
+
+    @Test
+    public void aResultFinalizedAtEntry_makesTheCycleReadyToSubmitAtOnce() {
+        EQAProgram scheme = externalScheme(true);
+        EQACycle cycle = readBack(insertCycle(scheme, 36));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        eqaOrder(cycle, roundId);
+        ResultsUpdateDataSet entry = new ResultsUpdateDataSet(USER);
+        entry.getModifiedAnalysis()
+                .add(analysisService.get(String.valueOf(finalizedAnalysis(VL_TEST, VL_ANALYTE, "4.75"))));
+
+        logbookPersistService.persistDataSet(entry, new ArrayList<>(), USER);
+
+        assertEquals(EQACycleStatus.READY_TO_SUBMIT, readBack(cycle.getId()).getStatus());
+        verify(fhirStub, never()).submitCycleViaFhir(anyLong(), anyLong());
+    }
+
     // ---- the window, the cap, and the gates ----
 
     @Test
@@ -589,6 +645,43 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         assertTrue(refused.getMessage(), refused.getMessage().contains("ready to submit"));
 
         verify(fhirStub).submitCycleViaFhir(cycle.getId(), ENROLLMENT);
+        assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
+    }
+
+    // First post blocks until a second post arrives or 2s pass, so a second
+    // request past the state check is caught posting.
+    @Test
+    public void reviewSubmit_clickedTwiceAtOnce_postsOnceAndRefusesTheSecond() throws Exception {
+        EQACycle cycle = heldAtTheReviewGate(34);
+        AtomicInteger posts = new AtomicInteger();
+        CountDownLatch firstPosting = new CountDownLatch(1);
+        CountDownLatch secondPosting = new CountDownLatch(1);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenAnswer(call -> {
+            if (posts.incrementAndGet() == 1) {
+                firstPosting.countDown();
+                secondPosting.await(2, TimeUnit.SECONDS);
+            } else {
+                secondPosting.countDown();
+            }
+            return true;
+        });
+
+        ExecutorService clicks = Executors.newFixedThreadPool(2);
+        try {
+            Future<EQACycle> first = clicks.submit(() -> cycleSubmissionService.submitAfterReview(cycle.getId(), USER));
+            assertTrue("the first click never reached the provider", firstPosting.await(10, TimeUnit.SECONDS));
+            Future<EQACycle> second = clicks
+                    .submit(() -> cycleSubmissionService.submitAfterReview(cycle.getId(), USER));
+
+            assertEquals(EQACycleStatus.SUBMITTED, first.get(20, TimeUnit.SECONDS).getStatus());
+            ExecutionException refused = assertThrows(ExecutionException.class, () -> second.get(20, TimeUnit.SECONDS));
+            assertTrue("the second click must be refused as already submitted, not fail: " + refused.getCause(),
+                    refused.getCause() instanceof IllegalStateException);
+        } finally {
+            clicks.shutdownNow();
+        }
+
+        assertEquals("the provider receives the cycle once", 1, posts.get());
         assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
     }
 

@@ -191,6 +191,27 @@ public class AccessionValidationBulkReleaseTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void aClearRowHeldByAFailedControlLeavesTheClearLaneAndIsNotBulkReleased() throws Exception {
+        QcHoldFixture.holdByAFailedControl(jdbcTemplate, CLEAR_ID);
+
+        mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", ACCESSION).param("doRange", "false")
+                .session(session)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + CLEAR_ID + "')].qcHold").value(true))
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + CLEAR_ID + "')].qcStatus").value("FAIL"))
+                .andExpect(jsonPath("$.resultList[?(@.analysisId=='" + CLEAR_ID + "')].clear").value(false));
+        mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(requestBody(rowJson(CLEAR_ID, "", ""))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.released.length()").value(0))
+                .andExpect(jsonPath("$.skipped[0].analysisId").value(CLEAR_ID))
+                .andExpect(jsonPath("$.skipped[0].reason").value("notClear"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance),
+                analysisService.get(CLEAR_ID).getStatusId());
+    }
+
+    @Test
     public void bulkRelease_releasesOnlyTheServerSideClearRowsAndReportsTheRest() throws Exception {
         mockMvc.perform(
                 post("/rest/AccessionValidation/release-clear").session(session).contentType(MediaType.APPLICATION_JSON)

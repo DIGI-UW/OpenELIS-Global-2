@@ -24,6 +24,7 @@ const KNOWN_ERRORS = [
   "stale",
   "retestNoteRequired",
   "rejectionDisabled",
+  "qcHold",
 ];
 
 export const NOTE_CONTEXT_RETEST = "VALIDATION";

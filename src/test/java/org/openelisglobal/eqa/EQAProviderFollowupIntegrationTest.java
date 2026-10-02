@@ -104,8 +104,9 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
     public void triageWalksTheRegisterRowThroughItsLifecycle() {
         Long followupId = registerRow(false);
 
-        assertEquals(EQAFollowupStatus.RESPONSE_RECEIVED, followupService
-                .transitionStatus(followupId, EQAFollowupStatus.RESPONSE_RECEIVED, null, USER).getFollowupStatus());
+        assertEquals(EQAFollowupStatus.RESPONSE_RECEIVED,
+                followupService.transitionStatus(followupId, EQAFollowupStatus.RESPONSE_RECEIVED,
+                        "Pipette out of calibration; replaced and staff retrained", USER).getFollowupStatus());
         assertEquals(EQAFollowupStatus.UNDER_INVESTIGATION, followupService
                 .transitionStatus(followupId, EQAFollowupStatus.UNDER_INVESTIGATION, null, USER).getFollowupStatus());
         assertEquals(EQAFollowupStatus.RESOLVED,
@@ -113,6 +114,22 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
                         .transitionStatus(followupId, EQAFollowupStatus.RESOLVED, "Recalibrated and re-tested", USER)
                         .getFollowupStatus());
         assertEquals("Recalibrated and re-tested", followupService.get(followupId).getResolutionNotes());
+        assertEquals("resolving the row keeps what the laboratory said",
+                "Pipette out of calibration; replaced and staff retrained",
+                followupService.getProviderRegisterRows().get(0).get("responseNotes"));
+    }
+
+    @Test
+    public void aResponseIsRecordedOnlyWithWhatTheLaboratorySaid() {
+        Long followupId = registerRow(false);
+
+        try {
+            followupService.transitionStatus(followupId, EQAFollowupStatus.RESPONSE_RECEIVED, " ", USER);
+            fail("a response with no text records nothing");
+        } catch (IllegalArgumentException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("what the laboratory said"));
+        }
+        assertEquals(EQAFollowupStatus.NOTIFIED, followupService.get(followupId).getFollowupStatus());
     }
 
     @Test
@@ -156,6 +173,29 @@ public class EQAProviderFollowupIntegrationTest extends EQASpineTestBase {
         assertTrue(String.valueOf(outcome.get("message")).contains("unacceptable"));
         assertTrue("the notification is still recorded against the row",
                 followupService.get(followupId).getNotifiedAt() != null);
+    }
+
+    @Test
+    public void notifyingAddressesTheLaboratorysOwnContactEmail() {
+        jdbc.update("UPDATE clinlims.organization SET email = ? WHERE id = ?", "qa@participant.example.org",
+                PARTICIPANT_ORG);
+        Long followupId = registerRow(false);
+
+        Map<String, Object> outcome = followupService.notifyParticipant(followupId, USER);
+
+        assertEquals("qa@participant.example.org", outcome.get("recipient"));
+    }
+
+    @Test
+    public void theNotificationNamesAnAnalyteThatOnlyHasAnId() {
+        EQACycle cycle = readBack(insertCycle(scheme, 1));
+        Long followupId = followupService.enqueueForOrganization(scheme, cycle, PARTICIPANT_ORG,
+                List.of(Map.of("analyteId", ANALYTE, "reported", "400", "target", "100")), false, USER).getId();
+
+        Map<String, Object> outcome = followupService.notifyParticipant(followupId, USER);
+
+        assertTrue(String.valueOf(outcome.get("message")),
+                String.valueOf(outcome.get("message")).contains("- EQA Followup Analyte: reported 400, target 100"));
     }
 
     // ---: persistent failure ----

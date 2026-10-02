@@ -217,6 +217,8 @@
         <class>org.openelisglobal.configuration.valueholder.ConfigurationImportRun</class>
         <class>org.openelisglobal.configuration.valueholder.UnresolvedReference</class>
         <class>org.openelisglobal.configuration.valueholder.ReferenceAlias</class>
+        <class>org.openelisglobal.organization.valueholder.OrganizationIdentifier</class>
+        <class>org.openelisglobal.organization.valueholder.OrganizationChange</class>
         <class>org.openelisglobal.resultvalidation.valueholder.ValidationQcAcknowledgment</class>
 
         <!-- Barcode Label Presets (OGC-285 M2) -->

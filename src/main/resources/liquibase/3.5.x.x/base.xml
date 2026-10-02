@@ -597,7 +597,10 @@
   <!-- Order progress status, release and cancellation records on the order; the order cancel reason list. -->
   <include relativeToChangelogFile="true" file="111-order-progress-status.xml"/>
 
+  <!-- Locations and Organizations: organization profile fields, identifiers, change log, sampling-site link, category and ownership lists. -->
+  <include relativeToChangelogFile="true" file="112-locations-organizations.xml"/>
+
   <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
-  <include relativeToChangelogFile="true" file="112-analyzer-delivery-action.xml"/>
+  <include relativeToChangelogFile="true" file="113-analyzer-delivery-action.xml"/>
 
 </databaseChangeLog>
