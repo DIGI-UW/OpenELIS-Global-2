@@ -24,6 +24,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { formatDateOnly, hasQaPermission } from "../../utils/Utils";
 import { csvCell, downloadCsv, hintStyle } from "../eqaCommon";
+import RepeatShipmentFields from "../RepeatShipmentFields";
 import {
   fetchProviderRegister,
   notifyParticipant,
@@ -132,6 +133,9 @@ const ProviderFollowupRegister = () => {
   const [notice, setNotice] = useState(null);
   const [prompt, setPrompt] = useState(null);
   const [notes, setNotes] = useState("");
+  const [repeatForm, setRepeatForm] = useState({});
+  const patchRepeat = (patch) =>
+    setRepeatForm((prev) => ({ ...prev, ...patch }));
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -215,11 +219,10 @@ const ProviderFollowupRegister = () => {
     });
   };
 
-  const onRepeat = (row, overrideNote) => {
+  const onRepeat = (row, fields) => {
     setBusy(true);
-    requestRepeatPanel(row.id, overrideNote, (response) => {
+    requestRepeatPanel(row.id, fields, (response) => {
       setPrompt(null);
-      setNotes("");
       report(
         response,
         t(
@@ -233,7 +236,7 @@ const ProviderFollowupRegister = () => {
 
   const submitPrompt = () => {
     if (prompt.kind === "repeat") {
-      onRepeat(prompt.row, notes);
+      onRepeat(prompt.row, repeatForm);
       return;
     }
     onTriage(prompt.row, prompt.action, notes);
@@ -470,9 +473,10 @@ const ProviderFollowupRegister = () => {
                                   kind="ghost"
                                   size="sm"
                                   disabled={busy}
-                                  onClick={() =>
-                                    setPrompt({ kind: "repeat", row })
-                                  }
+                                  onClick={() => {
+                                    setRepeatForm({});
+                                    setPrompt({ kind: "repeat", row });
+                                  }}
                                 >
                                   {t(
                                     "eqa.provider.followups.flagRepeat",
@@ -528,22 +532,24 @@ const ProviderFollowupRegister = () => {
                     "What was agreed with the laboratory. Recorded against the register entry for accreditation trace.",
                   )}
           </p>
-          <TextArea
-            id="eqa-provider-followup-notes"
-            labelText={
-              prompt.kind === "repeat"
-                ? t("eqa.receipt.overrideNote", "Override note")
-                : prompt.action.response
+          {prompt.kind === "repeat" ? (
+            <RepeatShipmentFields form={repeatForm} onChange={patchRepeat} />
+          ) : (
+            <TextArea
+              id="eqa-provider-followup-notes"
+              labelText={
+                prompt.action.response
                   ? t(
                       "eqa.provider.followups.responseText",
                       "What the laboratory said",
                     )
                   : t("eqa.queue.notes", "Notes")
-            }
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            rows={3}
-          />
+              }
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          )}
         </Modal>
       )}
     </>

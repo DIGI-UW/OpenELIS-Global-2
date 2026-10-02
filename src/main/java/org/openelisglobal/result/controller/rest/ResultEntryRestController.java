@@ -31,6 +31,7 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.controller.LogbookResultsBaseController;
@@ -38,7 +39,9 @@ import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.form.SingleResultEntryForm;
 import org.openelisglobal.result.service.AnalysisTimelineService;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultEntryPresenceService;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -121,6 +124,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     private TestAlertEvaluationService testAlertEvaluationService;
     @Autowired
     private AnalysisTimelineService analysisTimelineService;
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private TestResultComponentService testResultComponentService;
     @Autowired
@@ -324,11 +329,21 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(Collections.singletonList(item));
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
+        }
+
         ResultUtil.createResultsFromItems(dataSet, supportReferrals, alwaysValidate, useTechnicianName, statusRuleSet,
                 request);
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
 
-        List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
+        List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY, getSysUserId(request)));
         try {
             List<Analysis> reflexAnalyses = logbookPersistService.persistDataSet(dataSet, updaters,
                     getSysUserId(request));

@@ -110,6 +110,8 @@ interface PolymorphicResultCellProps {
     field: "resultValue" | "multiSelectResultValues",
     value: string,
   ) => void;
+  /** OGC-1417: the numeric field was left, so its value can be judged */
+  onValueBlur?: (nextFocus: EventTarget | null) => void;
 }
 
 function readOnlyDisplay(row: ResultCellRow): string {
@@ -140,6 +142,7 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
   row,
   editable,
   onValueChange,
+  onValueBlur,
 }) => {
   const intl = useIntl();
   const rowKey = worklistRowKey(row);
@@ -222,6 +225,9 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
           value={row.resultValue || ""}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onValueChange("resultValue", e.target.value)
+          }
+          onBlur={(e: React.FocusEvent<HTMLInputElement>) =>
+            onValueBlur?.(e.relatedTarget)
           }
         />
       );
