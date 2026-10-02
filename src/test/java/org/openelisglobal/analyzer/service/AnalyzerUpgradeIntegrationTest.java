@@ -213,27 +213,6 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
         assertTrue(migration.migrate(Map.of(), "1").isEmpty());
     }
 
-    @Test
-    public void nothingIsPendingWhenTheRetainedAnalyzerSchemaIsGone() {
-        String id = addAnalyzer("ASTM");
-        assertTrue(preparation.pendingIds().contains(id));
-        AnalyzerUpgradeService migration = migration(localState);
-
-        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            // The shape left by the removed changeset
-            // 098-remove-superseded-analyzer-schema.
-            jdbc.execute("DROP TABLE analyzer_plugin_config, analyzer_test_map, analyzer_type CASCADE");
-            jdbc.execute("ALTER TABLE analyzer DROP COLUMN analyzer_type_id, DROP COLUMN identifier_pattern,"
-                    + " DROP COLUMN scrip_id, DROP COLUMN machine_id, DROP COLUMN analyzer_type,"
-                    + " DROP COLUMN description, DROP COLUMN location, DROP COLUMN has_setup_page");
-            assertTrue(preparation.pendingIds().isEmpty());
-            assertTrue(migration.migrate(Map.of(), "1").isEmpty());
-            assertTrue(migration.pending().isEmpty());
-            status.setRollbackOnly();
-        });
-        assertTrue(preparation.pendingIds().contains(id));
-    }
-
     private AnalyzerUpgradeService migration(AnalyzerInstanceLocalStateService state) {
         AnalyzerService selected = mock(AnalyzerService.class);
         when(selected.getAllWithBindings())

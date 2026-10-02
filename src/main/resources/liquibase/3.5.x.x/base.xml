@@ -600,4 +600,7 @@
   <!-- Locations and Organizations: organization profile fields, identifiers, change log, sampling-site link, category and ownership lists. -->
   <include relativeToChangelogFile="true" file="112-locations-organizations.xml"/>
 
+  <!-- Analyzer storage the read-only upgrade entities map, where removed cutover changesets dropped it. -->
+  <include relativeToChangelogFile="true" file="113-restore-retained-analyzer-storage.xml"/>
+
 </databaseChangeLog>
