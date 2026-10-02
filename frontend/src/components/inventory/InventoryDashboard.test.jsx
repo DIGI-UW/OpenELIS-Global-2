@@ -4,6 +4,12 @@ import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import InventoryDashboard from "./InventoryDashboard";
+import { loadLabClock, resetLabClock } from "../utils/labClock";
+import { getFromOpenElisServer } from "../utils/Utils";
+vi.mock("../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getFromOpenElisServer: vi.fn(),
+}));
 import { NotificationContext } from "../layout/Layout";
 import {
   InventoryItemAPI,
@@ -915,4 +921,28 @@ describe("InventoryDashboard lot order", () => {
       ),
     ).toEqual(["LOT-NEWEST", "LOT-MIDDLE", "LOT-OLDEST"]);
   });
+});
+
+it("a lot expiring today remains expiring soon until the lab day ends", async () => {
+  const clock = vi
+    .spyOn(Date, "now")
+    .mockReturnValue(Date.parse("2031-03-05T20:00:00Z"));
+  getFromOpenElisServer.mockImplementation((url, cb) =>
+    cb({ date: "2031-03-06", time: "23:59", timezone: "Pacific/Kiritimati" }),
+  );
+  try {
+    await loadLabClock();
+    InventoryLotAPI.getAll.mockResolvedValue([
+      { ...lotWithLocation, expirationDate: "2031-03-06T00:00:00Z" },
+      { ...lotWithoutLocation, expirationDate: "2031-03-05T00:00:00Z" },
+    ]);
+    renderDashboard();
+    const current = (await screen.findByText("LOT-100")).closest("tr");
+    expect(within(current).getByText("Expiring (0d)")).toBeInTheDocument();
+    const previous = screen.getByText("LOT-200").closest("tr");
+    expect(within(previous).getByText("Expired")).toBeInTheDocument();
+  } finally {
+    resetLabClock();
+    clock.mockRestore();
+  }
 });

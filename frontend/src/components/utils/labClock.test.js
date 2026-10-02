@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
 import { getFromOpenElisServer, toLocalIsoDate } from "./Utils";
 import {
+  daysFromLabToday,
   labNow,
   labTimeToInstant,
   loadLabClock,
@@ -88,5 +89,63 @@ describe("labClock", () => {
     expect([now.getDate(), now.getHours(), now.getMinutes()]).toEqual([
       5, 16, 30,
     ]);
+  });
+});
+
+describe("optional clock initialization", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+    vi.setSystemTime(INSTANT);
+  });
+  afterEach(() => {
+    vi.useRealTimers();
+    resetLabClock();
+    getFromOpenElisServer.mockReset();
+  });
+
+  test("a stalled request settles with the browser fallback and aborts", async () => {
+    let callback;
+    let signal;
+    getFromOpenElisServer.mockImplementation((url, cb, abortSignal) => {
+      callback = cb;
+      signal = abortSignal;
+    });
+    const completed = vi.fn();
+    const loading = loadLabClock().then(completed);
+    await vi.advanceTimersByTimeAsync(4999);
+    expect(completed).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    await loading;
+    expect(signal.aborted).toBe(true);
+    expect(labNow().getTime()).toBe(Date.now());
+    callback({ timezone: "Pacific/Kiritimati" });
+    expect(labNow().getTime()).toBe(Date.now());
+  });
+
+  test("a successful response clears the fallback timer", async () => {
+    serverIn("Pacific/Kiritimati");
+    await loadLabClock();
+    expect(vi.getTimerCount()).toBe(0);
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(toLocalIsoDate(labNow())).toBe("2031-03-06");
+  });
+
+  test.each(["Pacific/Kiritimati", "Pacific/Pago_Pago"])(
+    "stored dates count calendar days in %s regardless of the browser zone",
+    async (timezone) => {
+      serverIn(timezone);
+      await loadLabClock();
+      const today = toLocalIsoDate(labNow());
+      expect(daysFromLabToday(today)).toBe(0);
+      expect(daysFromLabToday(`${today}T00:00:00Z`)).toBe(0);
+    },
+  );
+
+  test("day counts across daylight saving retain whole calendar days", async () => {
+    vi.setSystemTime(Date.parse("2031-03-10T12:00:00Z"));
+    serverIn("America/New_York");
+    await loadLabClock();
+    expect(daysFromLabToday("2031-03-02")).toBe(-8);
+    expect(daysFromLabToday("2031-03-11T00:00:00Z")).toBe(1);
   });
 });

@@ -12,7 +12,7 @@ const PATTERN = /new Date\(\s*\)/;
 // to its exact line, so a new use in the same file is still caught.
 const INSTANTS = {
   "components/coldStorage/CorrectiveActions.jsx": [
-    "const end = new Date();",
+    "let end = new Date();",
     "const parseDate = (dateValue) => toDate(dateValue) ?? new Date();",
   ],
   "components/coldStorage/DeviceHistoryExpansion.jsx": [

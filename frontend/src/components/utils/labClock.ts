@@ -19,6 +19,7 @@ let labFields: Intl.DateTimeFormat | null = null;
 let skewMs = 0;
 
 const MINUTE_MS = 60 * 1000;
+const CLOCK_TIMEOUT_MS = 5000;
 
 const zoneFields = (timeZone: string): Intl.DateTimeFormat | null => {
   try {
@@ -79,11 +80,27 @@ const serverSkew = (response: ServerTime | undefined): number => {
 
 export const loadLabClock = (): Promise<void> =>
   new Promise((resolve) => {
-    getFromOpenElisServer<ServerTime>("/rest/server-time", (response) => {
+    const controller = new AbortController();
+    let settled = false;
+    const finish = (response?: ServerTime) => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timeout);
       labFields = response?.timezone ? zoneFields(response.timezone) : null;
       skewMs = serverSkew(response);
       resolve();
-    });
+    };
+    // Authentication can proceed with the browser fallback if this optional
+    // request stalls. Ignore a late response rather than changing mounted forms.
+    const timeout = setTimeout(() => {
+      controller.abort();
+      finish();
+    }, CLOCK_TIMEOUT_MS);
+    getFromOpenElisServer<ServerTime>(
+      "/rest/server-time",
+      finish,
+      controller.signal,
+    );
   });
 
 export const resetLabClock = (): void => {
@@ -116,4 +133,22 @@ export const labTimeToInstant = (wallClock: Date | number): Date => {
   let instant = wall - (wallClockAt(wall).getTime() - wall);
   instant = wall - (wallClockAt(instant).getTime() - instant);
   return new Date(instant);
+};
+
+/** Calendar-day distance to a stored ISO date (including dates at UTC midnight).
+ * UTC is only an arithmetic frame here: no browser offset or daylight-saving
+ * transition may shorten a calendar day.
+ */
+export const daysFromLabToday = (value: string): number => {
+  const stored = new Date(value);
+  const today = labNow();
+  return (
+    (Date.UTC(
+      stored.getUTCFullYear(),
+      stored.getUTCMonth(),
+      stored.getUTCDate(),
+    ) -
+      Date.UTC(today.getFullYear(), today.getMonth(), today.getDate())) /
+    (24 * 60 * 60 * 1000)
+  );
 };

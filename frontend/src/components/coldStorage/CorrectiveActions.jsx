@@ -342,11 +342,12 @@ export default function CorrectiveActions() {
   }, [userSessionDetails]);
 
   const getDateRange = useCallback((filter) => {
-    const end = new Date();
+    let end = new Date();
     let start;
 
     if (filter.id === "current_month") {
       const today = labNow();
+      end = labTimeToInstant(today);
       start = labTimeToInstant(
         new Date(today.getFullYear(), today.getMonth(), 1),
       );
