@@ -125,7 +125,11 @@ function Login(props) {
           newUrl = response.loginLogoUrl;
         }
       }
-      writeCachedLoginLogoUrl(newUrl);
+      if (response === undefined) {
+        setBrandingResolved(true);
+        return;
+      }
+      writeCachedLoginLogoUrl(newUrl)
       if (newUrl !== loginLogoUrl) {
         setLoginLogoUrl(newUrl);
         // Only bust the image cache when the logo actually changed
