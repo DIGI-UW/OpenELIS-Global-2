@@ -49,8 +49,21 @@ const readGuardsFromApp = () => {
     // <SecureRoute> and can swallow a following plain <Route path="...">, so
     // the earliest match is the one belonging to this route.
     const firstPath = block.match(
-      /path=(?:"([^"]+)"|\{\[([^\]]+)\]\}|\{(\w+)\})/,
+      /path=(?:"([^"]+)"|\{\[([^\]]+)\]\}|\{`\$\{match\.path\}([^`]*)`\}|\{(\w+)\})/,
     );
+    // A nested router step (path={`${match.path}/enter`}) resolves against the
+    // nearest enclosing <Route path="..."> whose render receives `match`. Those
+    // steps were invisible here, so ROUTE_GUARDS could not list them and the
+    // sidebar offered order entry to every role.
+    const enclosing = () => {
+      const before = source.slice(0, start);
+      const parents = [
+        ...before.matchAll(
+          /<Route\s+path="([^"]+)"[^>]*render=\{\(\{ match \}\)/g,
+        ),
+      ];
+      return parents.length ? parents[parents.length - 1][1] : null;
+    };
     const routePaths = !firstPath
       ? null
       : firstPath[1]
@@ -58,7 +71,11 @@ const readGuardsFromApp = () => {
         : firstPath[2]
           ? // An array literal: every spelling the route answers to.
             [...firstPath[2].matchAll(/"([^"]+)"/g)].map((m) => m[1])
-          : PATH_CONSTANTS[firstPath[3]] || null;
+          : firstPath[3] !== undefined
+            ? enclosing()
+              ? [enclosing() + firstPath[3]]
+              : null
+            : PATH_CONSTANTS[firstPath[4]] || null;
     if (!routePaths) {
       return;
     }

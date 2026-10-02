@@ -1221,15 +1221,30 @@ export const ROUTE_GUARDS = {
     role: [Roles.RECEPTION],
   },
   "/inventory": { role: [Roles.RESULTS, Roles.GLOBAL_ADMIN] },
-  "/order/enter": {
+  // The order workflow steps are guarded in App.jsx inside nested routers
+  // (path={`${match.path}/enter`} under <Route path="/order/clinical">), which
+  // the menu map never mirrored, so the sidebar offered Enter Order, Prepare
+  // Samples and Sample check to every role and the page rendered blank for
+  // all but Reception. Mirrored exactly as App.jsx guards them.
+  "/order/clinical": { role: [Roles.RECEPTION] },
+  "/order/clinical/enter": { role: [Roles.RECEPTION] },
+  "/order/clinical/collect": { role: [Roles.RECEPTION] },
+  "/order/clinical/qa": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
   },
-  "/order/environmental": {
+  "/order/environmental": { role: [Roles.RECEPTION] },
+  "/order/environmental/enter": { role: [Roles.RECEPTION] },
+  "/order/environmental/label": { role: [Roles.RECEPTION] },
+  "/order/environmental/qa": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
   },
-  "/order/vector": {
+  "/order/vector": { role: [Roles.RECEPTION] },
+  "/order/vector/enter": { role: [Roles.RECEPTION] },
+  "/order/vector/label": { role: [Roles.RECEPTION] },
+  "/order/vector/qa": { role: [Roles.RECEPTION] },
+  "/order/vector/complete": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
   },
