@@ -48,7 +48,8 @@ export const VIEWS = {
  * that record expanded, or the Add form for ID=0.
  */
 export const legacyOrganizationEditTarget = (basePath, location) => {
-  const id = new URLSearchParams(location.search).get("ID");
+  const params = new URLSearchParams(location.search);
+  const id = params.get("ID") || params.get("id");
   if (!id || id === "0") {
     return `${basePath}/locations?add=1`;
   }
@@ -81,8 +82,8 @@ const LocationsPage = () => {
   const location = useLocation();
   const history = useHistory();
   const [lists, setLists] = useState(null);
-  const [toast, setToast] = useState(null);
-  const toastTimer = useRef(null);
+  const [toasts, setToasts] = useState([]);
+  const toastTimers = useRef(new Map());
 
   const reloadLists = useCallback(() => {
     getLists()
@@ -96,27 +97,45 @@ const LocationsPage = () => {
 
   useEffect(
     () => () => {
-      if (toastTimer.current) {
-        clearTimeout(toastTimer.current);
-      }
+      toastTimers.current.forEach((timer) => clearTimeout(timer));
     },
     [],
   );
 
-  /**
-   * A message at the top of the page. With `action`, it carries that button
-   * (the Undo after a deactivation) and stays at least ten seconds (FR-L3).
-   */
-  const notify = useCallback((message, kind = "success", action = null) => {
-    if (toastTimer.current) {
-      clearTimeout(toastTimer.current);
-    }
-    setToast({ message, kind, action, key: Date.now() });
-    toastTimer.current = setTimeout(
-      () => setToast(null),
-      action ? UNDO_SECONDS * 1000 : 6000,
-    );
+  const dismiss = useCallback((key) => {
+    clearTimeout(toastTimers.current.get(key));
+    toastTimers.current.delete(key);
+    setToasts((current) => current.filter((toast) => toast.key !== key));
   }, []);
+
+  /**
+   * A message pinned in view, wherever the page is scrolled, newest first, so a
+   * warning is not replaced by the success that follows it (OGC-1420). Success
+   * and info close by themselves; an error or a warning stays until dismissed.
+   * With `action`, it carries that button (the Undo after a deactivation) and
+   * stays at least ten seconds (FR-L3). An error with no wording of its own (no
+   * answer from the server) says so in the user's language.
+   */
+  const notify = useCallback(
+    (message, kind = "success", action = null) => {
+      const key = `${Date.now()}-${Math.random()}`;
+      const text =
+        message ||
+        (kind === "error"
+          ? intl.formatMessage({ id: "error.locations.request.failed" })
+          : "");
+      setToasts((current) =>
+        [{ message: text, kind, action, key }, ...current].slice(0, 4),
+      );
+      if (action || kind === "success" || kind === "info") {
+        toastTimers.current.set(
+          key,
+          setTimeout(() => dismiss(key), action ? UNDO_SECONDS * 1000 : 6000),
+        );
+      }
+    },
+    [dismiss, intl],
+  );
 
   const viewKey = (() => {
     const rest = location.pathname.replace(url, "").replace(/\/+$/, "");
@@ -155,37 +174,40 @@ const LocationsPage = () => {
               </Heading>
             </Section>
             <PageIntro view={viewKey} go={go} />
-            {toast && toast.action ? (
-              <ActionableNotification
-                key={toast.key}
-                kind={toast.kind}
-                lowContrast
-                inline
-                hasFocus={false}
-                role="status"
-                title=""
-                subtitle={toast.message}
-                actionButtonLabel={toast.action.label}
-                onActionButtonClick={() => {
-                  toast.action.run();
-                  setToast(null);
-                }}
-                onClose={() => setToast(null)}
-                className="locationsToast"
-              />
-            ) : null}
-            {toast && !toast.action ? (
-              <InlineNotification
-                key={toast.key}
-                kind={toast.kind}
-                lowContrast
-                role="status"
-                title=""
-                subtitle={toast.message}
-                onClose={() => setToast(null)}
-                className="locationsToast"
-              />
-            ) : null}
+            <div className="locationsToasts" aria-live="polite">
+              {toasts.map((toast) =>
+                toast.action ? (
+                  <ActionableNotification
+                    key={toast.key}
+                    kind={toast.kind}
+                    lowContrast
+                    inline
+                    hasFocus={false}
+                    role="status"
+                    title=""
+                    subtitle={toast.message}
+                    actionButtonLabel={toast.action.label}
+                    onActionButtonClick={() => {
+                      toast.action.run();
+                      dismiss(toast.key);
+                    }}
+                    onClose={() => dismiss(toast.key)}
+                    className="locationsToast"
+                  />
+                ) : (
+                  <InlineNotification
+                    key={toast.key}
+                    kind={toast.kind}
+                    lowContrast
+                    role={toast.kind === "error" ? "alert" : "status"}
+                    title=""
+                    subtitle={toast.message}
+                    onClose={() => dismiss(toast.key)}
+                    className="locationsToast"
+                  />
+                ),
+              )}
+            </div>
           </Column>
         </Grid>
         <Switch>

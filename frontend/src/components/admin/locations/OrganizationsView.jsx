@@ -46,6 +46,7 @@ import RecordForm from "./RecordForm";
 import {
   getOrganization,
   getUsage,
+  listIdentifierCollisions,
   listOrganizations,
   pathText,
   setActive,
@@ -153,8 +154,10 @@ const OrganizationsView = ({ view, lists }) => {
   const [guard, setGuard] = useState(null);
   const [elsewhere, setElsewhere] = useState(null);
   const searchTimer = useRef(null);
+  const formDirty = useRef(false);
+  const [collisions, setCollisions] = useState([]);
+  const [wardMatchClosed, setWardMatchClosed] = useState(null);
   const isSites = view === "sites";
-  const expandedId = filters.id;
   const adding = filters.add;
 
   const update = useCallback(
@@ -211,6 +214,20 @@ const OrganizationsView = ({ view, lists }) => {
   }, [load]);
 
   useEffect(() => {
+    listIdentifierCollisions()
+      .then((found) =>
+        setCollisions(
+          (found || []).filter((collision) =>
+            collision.records.some(
+              (record) => record.kind === (isSites ? "site" : "facility"),
+            ),
+          ),
+        ),
+      )
+      .catch(() => setCollisions([]));
+  }, [isSites, page]);
+
+  useEffect(() => {
     setSearchText(filters.q);
   }, [filters.q]);
 
@@ -223,17 +240,42 @@ const OrganizationsView = ({ view, lists }) => {
     [],
   );
 
+  /** FR-C1: leaving a form with unsaved changes asks first. */
+  const mayLeaveForm = () =>
+    !formDirty.current ||
+    window.confirm(intl.formatMessage({ id: "message.locations.unsaved" }));
+
   const onSearch = (text) => {
     setSearchText(text);
     if (searchTimer.current) {
       clearTimeout(searchTimer.current);
     }
     searchTimer.current = setTimeout(() => {
+      if ((filters.id || adding) && !mayLeaveForm()) {
+        update({ q: text.trim(), page: 1 });
+        return;
+      }
+      formDirty.current = false;
       update({ q: text.trim(), page: 1, id: "", add: false });
     }, 300);
   };
 
   const rows = page ? page.items : [];
+  const wardMatch =
+    !filters.id &&
+    !adding &&
+    filters.q &&
+    wardMatchClosed !== filters.q &&
+    rows.length > 0 &&
+    rows[0].matchNote &&
+    rows[0].matchNote.startsWith("ward:")
+      ? rows[0].id
+      : "";
+  const expandedId = filters.id || wardMatch;
+  const pinnedId =
+    filters.id && !loading && page && !rows.some((row) => row.id === filters.id)
+      ? filters.id
+      : "";
   const typeItems = (lists ? lists.facilityTypes : []).map((type) => ({
     id: type.id,
     text: type.name,
@@ -414,12 +456,63 @@ const OrganizationsView = ({ view, lists }) => {
     reloadLists();
   };
 
-  const closeForm = () => update({ id: "", add: false });
+  const closeForm = () => {
+    formDirty.current = false;
+    if (wardMatch) setWardMatchClosed(filters.q);
+    update({ id: "", add: false });
+  };
+
+  const openOrClose = (rowId, isExpanded) => {
+    if (!mayLeaveForm()) return;
+    formDirty.current = false;
+    if (isExpanded && wardMatch === rowId) {
+      setWardMatchClosed(filters.q);
+    }
+    update({ id: isExpanded ? "" : rowId, add: false });
+  };
+
+  const trackDirty = (dirty) => {
+    formDirty.current = dirty;
+  };
 
   const allSelected = rows.length > 0 && selected.length === rows.length;
 
   return (
     <div data-testid={`locations-${view}`}>
+      {collisions.length > 0 && (
+        <div className="locationsCollisions">
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            title=""
+            subtitle={intl.formatMessage({
+              id: "warning.locations.identifiers.shared",
+            })}
+          />
+          <ul data-testid="locations-identifier-collisions">
+            {collisions.map((collision) => (
+              <li key={`${collision.label}|${collision.value}`}>
+                {collision.label} {collision.value}:{" "}
+                {collision.records.map((record, index) => (
+                  <span key={record.id}>
+                    {index > 0 && ", "}
+                    <Link
+                      href="#"
+                      onClick={(event) => {
+                        event.preventDefault();
+                        openOrClose(record.id, false);
+                      }}
+                    >
+                      {record.name}
+                    </Link>
+                  </span>
+                ))}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
       <TableContainer>
         <TableToolbar
           aria-label={intl.formatMessage({ id: "label.locations.toolbar" })}
@@ -595,7 +688,11 @@ const OrganizationsView = ({ view, lists }) => {
                 size="md"
                 renderIcon={Add}
                 data-testid="locations-add"
-                onClick={() => update({ add: true, id: "" })}
+                onClick={() => {
+                  if (!mayLeaveForm()) return;
+                  formDirty.current = false;
+                  update({ add: true, id: "" });
+                }}
               >
                 <FormattedMessage id="button.locations.add" />
               </Button>
@@ -807,10 +904,28 @@ const OrganizationsView = ({ view, lists }) => {
                     lists={lists}
                     onCancel={closeForm}
                     onSaved={(detail) => onSaved(detail, true)}
+                    onDirtyChange={trackDirty}
                   />
                 </TableCell>
               </TableRow>
             )}
+            {pinnedId ? (
+              <TableRow data-testid="locations-pinned-form">
+                <TableCell colSpan={9} className="locationsFormCell">
+                  <RecordForm
+                    id={pinnedId}
+                    lists={lists}
+                    highlight={filters.q}
+                    statusFilter={filters.status}
+                    onCancel={closeForm}
+                    onSaved={(detail) => onSaved(detail, false)}
+                    onActiveChange={toggleActive}
+                    reload={load}
+                    onDirtyChange={trackDirty}
+                  />
+                </TableCell>
+              </TableRow>
+            ) : null}
             {rows.map((row) => {
               const isExpanded = expandedId === row.id;
               const note = matchNote(row);
@@ -914,9 +1029,7 @@ const OrganizationsView = ({ view, lists }) => {
                         aria-expanded={isExpanded}
                         aria-label={`${intl.formatMessage({ id: isExpanded ? "button.close" : "button.edit" })} ${row.name}`}
                         data-testid={`locations-edit-${row.id}`}
-                        onClick={() =>
-                          update({ id: isExpanded ? "" : row.id, add: false })
-                        }
+                        onClick={() => openOrClose(row.id, isExpanded)}
                       >
                         <FormattedMessage
                           id={isExpanded ? "button.close" : "button.edit"}
@@ -937,6 +1050,7 @@ const OrganizationsView = ({ view, lists }) => {
                           onSaved={(detail) => onSaved(detail, false)}
                           onActiveChange={toggleActive}
                           reload={load}
+                          onDirtyChange={trackDirty}
                         />
                       </TableCell>
                     </TableRow>
