@@ -11,7 +11,13 @@
          and 098-remove-superseded-analyzer-schema dropped it. Definitions match
          a database built from the full changelog. Each changeset is MARK_RAN
          where its object exists. Other objects those changesets dropped are not
-         read by any code and are not re-created. -->
+         read by any code and are not re-created.
+
+         The rollbacks are empty on purpose. Liquibase 4.8 executes a
+         changeset's rollback for MARK_RAN rows too, so dropping these objects
+         on rollback would delete the populated retained storage of every
+         database that already had it. Omitting <rollback> would generate the
+         same drops. -->
 
     <changeSet id="113-restore-analyzer-type" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
