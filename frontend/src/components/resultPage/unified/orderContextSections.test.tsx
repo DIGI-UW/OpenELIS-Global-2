@@ -308,6 +308,28 @@ describe("orderContextSections (FR-C3/C5)", () => {
     expect(document.querySelector('input[type="file"]')).not.toBeNull();
   });
 
+  it("a review-only panel (editable=false) lists attachments but offers no upload", () => {
+    getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
+      if (typeof cb === "function") {
+        cb([
+          { id: 7, fileName: "scan.pdf", fileSizeBytes: 2048, analysisId: "" },
+        ]);
+      }
+    });
+    wrap(
+      <AttachmentsSection
+        open={true}
+        onToggle={() => {}}
+        accessionNumber="DEV1"
+        analysisId="25"
+        editable={false}
+      />,
+    );
+    expect(screen.getByText("scan.pdf")).toBeInTheDocument();
+    expect(screen.queryByText("Add attachment")).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
+  });
+
   it("collapsed empty Attachments section summarizes as none", () => {
     getMock.mockImplementation((url: string, cb: (body: unknown) => void) => {
       if (typeof cb === "function") {
