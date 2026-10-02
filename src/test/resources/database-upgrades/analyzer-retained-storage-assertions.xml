@@ -6,7 +6,7 @@
     <!-- Expected definitions of the storage the AnalyzerUpgrade* entities map,
         as the full changelog creates it, read from information_schema and pg_catalog.
         Every scenario that includes this file checks the same values, so the storage
-        113-restore-retained-analyzer-storage re-creates equals the storage a fresh
+        114-restore-retained-analyzer-storage re-creates equals the storage a fresh
         database has. A timestamptz default prints in the session time zone, so that
         one is compared as an instant. -->
     <changeSet id="assert-analyzer-retained-storage-definitions"

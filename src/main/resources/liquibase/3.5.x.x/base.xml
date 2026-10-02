@@ -604,6 +604,6 @@
   <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
 
   <!-- Analyzer storage the read-only upgrade entities map, where removed cutover changesets dropped it. -->
-  <include relativeToChangelogFile="true" file="113-restore-retained-analyzer-storage.xml"/>
+  <include relativeToChangelogFile="true" file="114-restore-retained-analyzer-storage.xml"/>
 
 </databaseChangeLog>

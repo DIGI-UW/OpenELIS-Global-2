@@ -8,7 +8,7 @@
         <preConditions onFail="HALT" onError="HALT">
             <sqlCheck expectedResult="6"><![CDATA[
                 SELECT COUNT(*) FROM databasechangelog
-                WHERE id LIKE '113-restore-%' AND exectype = 'EXECUTED'
+                WHERE id LIKE '114-restore-%' AND exectype = 'EXECUTED'
             ]]></sqlCheck>
             <!-- The existing analyzer is kept, and the upgrade's eligibility condition
                 (AnalyzerUpgradeDAO.pendingIds) does not select it. -->

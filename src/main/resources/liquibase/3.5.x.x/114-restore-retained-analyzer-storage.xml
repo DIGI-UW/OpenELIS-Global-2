@@ -19,7 +19,7 @@
          database that already had it. Omitting <rollback> would generate the
          same drops. -->
 
-    <changeSet id="113-restore-analyzer-type" author="pmanko">
+    <changeSet id="114-restore-analyzer-type" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
                 <tableExists tableName="analyzer_type"/>
@@ -52,7 +52,7 @@
         <rollback/>
     </changeSet>
 
-    <changeSet id="113-restore-analyzer-type-reference" author="pmanko">
+    <changeSet id="114-restore-analyzer-type-reference" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
                 <columnExists tableName="analyzer" columnName="analyzer_type_id"/>
@@ -67,7 +67,7 @@
         <rollback/>
     </changeSet>
 
-    <changeSet id="113-restore-analyzer-connection-settings" author="pmanko">
+    <changeSet id="114-restore-analyzer-connection-settings" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
                 <columnExists tableName="analyzer" columnName="ip_address"/>
@@ -85,7 +85,7 @@
         <rollback/>
     </changeSet>
 
-    <changeSet id="113-restore-analyzer-test-map" author="pmanko">
+    <changeSet id="114-restore-analyzer-test-map" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
                 <tableExists tableName="analyzer_test_map"/>
@@ -117,7 +117,7 @@
         <rollback/>
     </changeSet>
 
-    <changeSet id="113-restore-analyzer-plugin-config" author="pmanko">
+    <changeSet id="114-restore-analyzer-plugin-config" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
                 <tableExists tableName="analyzer_plugin_config"/>
@@ -141,7 +141,7 @@
         <rollback/>
     </changeSet>
 
-    <changeSet id="113-restore-serial-port-configuration" author="pmanko">
+    <changeSet id="114-restore-serial-port-configuration" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <not>
                 <tableExists tableName="serial_port_configuration"/>
