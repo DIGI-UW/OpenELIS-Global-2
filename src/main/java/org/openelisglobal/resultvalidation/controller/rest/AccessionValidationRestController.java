@@ -5,6 +5,7 @@ import static org.apache.commons.validator.GenericValidator.isBlankOrNull;
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
 import java.util.*;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -650,8 +651,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<Result> deletableList = new ArrayList<>();
         List<AnalysisItem> items = new ArrayList<>();
         items.add(item);
-        createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList, resultSaveService,
-                !updaters.isEmpty());
+        if (!createUpdateList(items, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, !updaters.isEmpty()).isEmpty()) {
+            return errorResponse(409, "qcHold");
+        }
         return persistSingleAnalysis(analysisId, items, analysisUpdateList, resultUpdateList, noteUpdateList,
                 deletableList, resultSaveService, updaters, "released");
     }
@@ -913,8 +916,11 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         ArrayList<Result> resultUpdateList = new ArrayList<>();
         ArrayList<Note> noteUpdateList = new ArrayList<>();
         List<Result> deletableList = new ArrayList<>();
-        createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
-                resultSaveService, !updaters.isEmpty());
+        if (!createUpdateList(serverRows, analysisUpdateList, resultUpdateList, noteUpdateList, deletableList,
+                resultSaveService, !updaters.isEmpty()).isEmpty()) {
+            Set<String> updated = analysisUpdateList.stream().map(Analysis::getId).collect(Collectors.toSet());
+            released.removeIf(id -> !updated.contains(id) && skipped.add(skipReason(id, "qcHold")));
+        }
         ArrayList<Sample> sampleUpdateList = new ArrayList<>();
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, serverRows,
@@ -1161,7 +1167,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 rows = resultsValidationUtility.getValidationAnalysisBySample(sample);
             }
         }
-        return userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows, Constants.ROLE_VALIDATION);
+        List<AnalysisItem> visible = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows,
+                Constants.ROLE_VALIDATION);
+        markQcHolds(visible);
+        return visible;
     }
 
     private void addResultSets(Analysis analysis, Result result, IResultSaveService resultValidationSave) {
@@ -1331,7 +1340,12 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         try {
             Set<String> held = qcHoldService.heldAnalysisIds(analysisIdsOf(items));
             for (AnalysisItem item : items) {
-                item.setQcHold(item.getAnalysisId() != null && held.contains(item.getAnalysisId()));
+                boolean isHeld = item.getAnalysisId() != null && held.contains(item.getAnalysisId());
+                item.setQcHold(isHeld);
+                if (isHeld) {
+                    item.setQcStatus(org.openelisglobal.resultvalidation.util.ValidationSignals.QC_FAIL);
+                    item.setClear(false);
+                }
             }
         } catch (RuntimeException e) {
             LogEvent.logError(this.getClass().getName(), "markQcHolds",

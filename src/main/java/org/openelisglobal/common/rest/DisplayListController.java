@@ -363,6 +363,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR));
         configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
+        configs.put(Property.QC_FAIL_BLOCKS_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION));
         // The case view's stage rail renders a stage the deployment has switched off
         // as not applicable rather than hiding it (FR-2.3).
         configs.put(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED.toString(), ConfigurationProperties.getInstance()

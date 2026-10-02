@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Grid,
   Column,
@@ -172,14 +172,30 @@ const InlineEnrollmentForm = ({
     isEdit &&
     myCycles.some((cycle) => cycle.schemeName === enrollment.programName);
 
+  // Latest pick; a late reply for an earlier scheme is ignored.
+  const pickedScheme = useRef(null);
+
   const pickScheme = (value) => {
     setSchemeChoice(value);
+    pickedScheme.current = value;
     if (value === NOT_LISTED) {
       return;
     }
     const scheme = schemes.find((s) => s.name === value);
     setProgramName(value);
     setProvider(scheme && scheme.provider ? scheme.provider : "");
+    if (!scheme) {
+      return;
+    }
+    getFromOpenElisServer(`/rest/eqa/programs/${scheme.id}/tests`, (data) => {
+      if (pickedScheme.current !== value) {
+        return;
+      }
+      const ids = asList(data)
+        .filter((assignment) => assignment.isActive !== false)
+        .map((assignment) => String(assignment.testId));
+      setSelectedTests(tests.filter((test) => ids.includes(test.id)));
+    });
   };
 
   const isValid = programName.trim() !== "" && provider.trim() !== "";
@@ -292,7 +308,7 @@ const InlineEnrollmentForm = ({
               })}
               items={tests}
               itemToString={(item) => (item ? item.text : "")}
-              initialSelectedItems={selectedTests}
+              selectedItems={selectedTests}
               onChange={(e) => setSelectedTests(e.selectedItems)}
               placeholder={intl.formatMessage({
                 id: "eqa.enrollment.selectTests",

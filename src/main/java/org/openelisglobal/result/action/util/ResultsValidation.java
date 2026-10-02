@@ -98,18 +98,30 @@ public class ResultsValidation {
             Errors itemErrors = validateItem(item);
 
             if (itemErrors.hasErrors()) {
-                StringBuilder augmentedAccession = new StringBuilder(item.getSequenceAccessionNumber());
-                augmentedAccession.append(" : ");
-                augmentedAccession.append(item.getTestName());
-                // ActionError accessionError = new ActionError("errors.followingAccession",
-                // augmentedAccession);
-
-                errors.reject("errors.followingAccession");
+                errors.reject("errors.followingAccession", new String[] { accessionLabel(item) },
+                        "errors.followingAccession");
                 errors.addAllErrors(itemErrors);
             }
         }
 
         return errors;
+    }
+
+    /**
+     * The item as the bench names it, for the header that introduces its errors:
+     * the accession with its sample sequence, then the test, each when the item
+     * carries it. The header's message has a placeholder for it that was left
+     * unfilled, so the bench read "Errors for accession number {0} :" (OGC-1408).
+     */
+    private static String accessionLabel(TestResultItem item) {
+        String accession = GenericValidator.isBlankOrNull(item.getAccessionNumber()) ? "" : item.getAccessionNumber();
+        if (!GenericValidator.isBlankOrNull(item.getSequenceNumber())) {
+            accession = item.getSequenceAccessionNumber();
+        }
+        if (GenericValidator.isBlankOrNull(item.getTestName())) {
+            return accession;
+        }
+        return accession + " : " + item.getTestName();
     }
 
     private void validateTestDate(TestResultItem item, Errors errors) {
@@ -152,7 +164,7 @@ public class ResultsValidation {
                 return;
             }
             if (!StringUtil.isNumeric(StringUtil.getActualNumericValue(resultValue))) {
-                errors.reject("errors.number.format");
+                errors.reject("errors.number.format", new String[] { resultValue }, "errors.number.format");
             }
         }
 

@@ -1,6 +1,8 @@
 package org.openelisglobal.organization.service;
 
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -90,4 +92,38 @@ public interface OrganizationService extends BaseObjectService<Organization, Str
 
     @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_MANAGE')")
     String generateSiteCode();
+
+    /**
+     * Inserts without the duplicate-name refusal; the Locations menu reports a
+     * duplicate name as a warning the admin can accept (OGC-1363 FR-C4).
+     */
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_MANAGE')")
+    String insertUnchecked(Organization organization);
+
+    /** Updates without the duplicate-name refusal (OGC-1363 FR-C4). */
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_MANAGE')")
+    Organization updateUnchecked(Organization organization);
+
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_VIEW')")
+    List<Organization> getAllWithTypes();
+
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_VIEW')")
+    List<Organization> getChildrenWithTypes(String parentId);
+
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_VIEW')")
+    List<Organization> getByTypeIdWithTypes(String typeId);
+
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_VIEW')")
+    Map<String, Long> countActiveChildren(Collection<String> parentIds);
+
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_VIEW')")
+    List<Organization> searchAreas(String text, int limit);
+
+    /**
+     * Deactivates the organizations the given source supplied (the facility
+     * registry sync, before it re-applies the registry's current list), leaving
+     * local records alone (OGC-1363 FR-H4).
+     */
+    @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_MANAGE')")
+    void deactivateOrganizationsFromSource(String source);
 }

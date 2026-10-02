@@ -26,6 +26,12 @@ public interface VectorSamplingSiteService extends BaseObjectService<VectorSampl
     @PreAuthorize("hasAnyAuthority('PRIV_SAMPLE_TYPE_VIEW','PRIV_CATALOGUE_VIEW')")
     List<VectorSamplingSite> search(String searchTerm);
 
+    @PreAuthorize("hasAnyAuthority('PRIV_SAMPLE_TYPE_VIEW','PRIV_CATALOGUE_VIEW')")
+    VectorSamplingSite getByOrganizationId(Integer organizationId);
+
+    @PreAuthorize("hasAnyAuthority('PRIV_SAMPLE_TYPE_VIEW','PRIV_CATALOGUE_VIEW')")
+    List<VectorSamplingSite> getByOrganizationIds(List<Integer> organizationIds);
+
     @PreAuthorize("hasAuthority('PRIV_SAMPLE_TYPE_MANAGE')")
     VectorSamplingSite patchUpdate(Integer id, VectorSamplingSite patch, String sysUserId);
 

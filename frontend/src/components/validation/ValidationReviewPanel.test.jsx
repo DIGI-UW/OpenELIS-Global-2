@@ -21,10 +21,11 @@ vi.mock("../utils/Utils", async (importOriginal) => {
 });
 
 vi.mock("../esignature/ESignatureButton", () => ({
-  default: ({ children, onSign, disabled }) => (
+  default: ({ children, onSign, disabled, ariaDescribedBy }) => (
     <button
       type="button"
       disabled={disabled}
+      aria-describedby={ariaDescribedBy}
       onClick={() => onSign && onSign()}
     >
       {children}
@@ -88,6 +89,7 @@ const renderPanel = (data, props = {}) =>
         qcAck={props.qcAck || { required: false, satisfied: true }}
         onActionDone={props.onActionDone || vi.fn()}
         onStale={props.onStale}
+        onQcHold={props.onQcHold}
       />
     </IntlProvider>,
   );
@@ -308,6 +310,51 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(screen.getByTestId("review-qc-ack-hint")).toHaveTextContent(
       "Acknowledge the failed QC below before releasing.",
     );
+  });
+
+  it("a result a failed control holds cannot be released while the lab blocks on QC", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "true" },
+    });
+    expect(screen.getByText("Validate & release")).toBeDisabled();
+    expect(screen.getByTestId("review-qc-hold-hint")).toHaveTextContent(
+      "Release blocked: a failed QC control holds this result until its non-conformity is closed.",
+    );
+    expect(screen.getByText("Validate & release")).toHaveAttribute(
+      "aria-describedby",
+      screen.getByTestId("review-qc-hold-hint").id,
+    );
+  });
+
+  it("a held result that also waits on a QC acknowledgment names both hints", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "true" },
+      qcAck: { required: true, satisfied: false },
+    });
+    expect(screen.getByText("Validate & release")).toHaveAttribute(
+      "aria-describedby",
+      `${screen.getByTestId("review-qc-ack-hint").id} ${screen.getByTestId("review-qc-hold-hint").id}`,
+    );
+  });
+
+  it("a release the server refuses for a QC hold goes to the page, not to a success", () => {
+    const onActionDone = vi.fn();
+    const onQcHold = vi.fn();
+    renderPanel(row(), { onActionDone, onQcHold });
+
+    fireEvent.click(screen.getByText("Validate & release"));
+    lastPost()[2]({ error: "qcHold", status: 409 });
+
+    expect(onQcHold).toHaveBeenCalledTimes(1);
+    expect(onActionDone).not.toHaveBeenCalled();
+  });
+
+  it("a warn-only lab can still release a held result", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "false" },
+    });
+    expect(screen.getByText("Validate & release")).toBeEnabled();
+    expect(screen.queryByTestId("review-qc-hold-hint")).toBeNull();
   });
 
   it("Modify needs a reason when the lab requires one, then posts the new value as a modification", () => {

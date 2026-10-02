@@ -38,6 +38,11 @@ const ADMIN_DASHBOARD_LINKS = [
     icon: ContainerSoftware,
   },
   {
+    messageId: "sidenav.label.admin.locations",
+    path: "locations",
+    icon: ContainerSoftware,
+  },
+  {
     messageId: "master.lists.page.test.management",
     path: "testManagementConfigMenu",
     icon: ResultNew,

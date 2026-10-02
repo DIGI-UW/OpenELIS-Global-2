@@ -18,8 +18,18 @@ public class VectorSamplingSiteServiceImpl extends AuditableBaseObjectServiceImp
     @Autowired
     protected VectorSamplingSiteDAO baseObjectDAO;
 
+    @Autowired
+    private SamplingSiteOrganizationSync organizationSync;
+
     public VectorSamplingSiteServiceImpl() {
         super(VectorSamplingSite.class);
+    }
+
+    @Override
+    @Transactional
+    public Integer insert(VectorSamplingSite site) {
+        organizationSync.syncFromSite(site, site.getSysUserId());
+        return super.insert(site);
     }
 
     @Override
@@ -52,6 +62,18 @@ public class VectorSamplingSiteServiceImpl extends AuditableBaseObjectServiceImp
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public VectorSamplingSite getByOrganizationId(Integer organizationId) {
+        return getBaseObjectDAO().getByOrganizationId(organizationId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<VectorSamplingSite> getByOrganizationIds(List<Integer> organizationIds) {
+        return getBaseObjectDAO().getByOrganizationIds(organizationIds);
+    }
+
+    @Override
     @Transactional
     public VectorSamplingSite patchUpdate(Integer id, VectorSamplingSite patch, String sysUserId) {
         VectorSamplingSite existing = getBaseObjectDAO().get(id)
@@ -74,6 +96,7 @@ public class VectorSamplingSiteServiceImpl extends AuditableBaseObjectServiceImp
         if (patch.getActive() != null)
             existing.setActive(patch.getActive());
         existing.setSysUserId(sysUserId);
+        organizationSync.syncFromSite(existing, sysUserId);
         return getBaseObjectDAO().update(existing);
     }
 

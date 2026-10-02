@@ -117,6 +117,14 @@ jobs:
           # inheriting-role problem (a Results Validator holding result:enter is
           # refused by hasRole('RESULTS')), tracked with the route-guard debt in
           # routeGuards.test.js.
+          # NOTE: InventoryLotStorageRestController carries develop's
+          # hasAnyRole('RECEPTION','RESULTS','ADMIN') from #4377. It is not
+          # redundant with the PRIV_STORAGE_VIEW/MANAGE gates on
+          # SampleStorageService: develop's
+          # InventoryLotStorageAuthorizationSecurityTest is the authorization
+          # contract for that screen and asserts by ROLE, with mock users that
+          # hold no PRIV_* authorities, so removing the annotation made it 500.
+          # Exempted rather than converted; the service gates still apply.
           # NOTE: every exemption below is a `| grep -v` link in one pipeline.
           # A comment between those lines ends the command and makes bash fail
           # on the next `|`, so explanations belong here, not inline.
@@ -197,7 +205,8 @@ jobs:
                | grep -v "RejectionReportRestController.java" \
                | grep -v "FhirReplayRestController.java" \
                | grep -v "ResultEntryRestController.java" \
-               | grep -v "NotificationTriggerConfigRestController.java" || true)
+               | grep -v "NotificationTriggerConfigRestController.java" \
+               | grep -v "InventoryLotStorageRestController.java" || true)
           if [ -n "$violations" ]; then
             echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"
             echo "$violations"

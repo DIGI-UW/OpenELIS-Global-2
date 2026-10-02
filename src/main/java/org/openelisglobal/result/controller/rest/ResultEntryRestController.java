@@ -62,6 +62,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -324,8 +325,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
         Errors errors = dataSet.validateModifiedItems();
         if (errors.hasErrors()) {
-            body.put("error", errors.getAllErrors().stream().map(e -> MessageUtil.getMessage(e.getCode()))
-                    .collect(Collectors.joining("; ")));
+            body.put("error", joinErrorMessages(errors));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
         }
 
@@ -524,6 +524,25 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         public void setVisibleAnalysisIds(List<String> visibleAnalysisIds) {
             this.visibleAnalysisIds = visibleAnalysisIds;
         }
+    }
+
+    /**
+     * The validation errors as one line for the bench, each resolved with its
+     * arguments so the accession and the refused value are named rather than left
+     * as "{0}" (OGC-1408). The per-accession header ends with a colon and
+     * introduces the errors after it, so those follow it with a space; errors are
+     * otherwise separated with a semicolon.
+     */
+    private static String joinErrorMessages(Errors errors) {
+        StringBuilder joined = new StringBuilder();
+        for (ObjectError error : errors.getAllErrors()) {
+            String text = MessageUtil.getMessage(error.getCode(), error.getArguments()).trim();
+            if (joined.length() > 0) {
+                joined.append(joined.charAt(joined.length() - 1) == ':' ? " " : "; ");
+            }
+            joined.append(text);
+        }
+        return joined.toString();
     }
 
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,

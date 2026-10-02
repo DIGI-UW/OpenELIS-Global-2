@@ -16,6 +16,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -26,10 +27,20 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * InventoryLot assign/move/movements over the occupant-generalized
- * {@link SampleStorageService} (OGC-657).
+ * {@link SampleStorageService} (OGC-657). The role guard matches the /Storage
+ * route in App.jsx.
  */
 @RestController
 @RequestMapping("/rest/storage/inventory-lots")
+// Keeps develop's class-level role gate (#4377). It is NOT redundant with the
+// PRIV_STORAGE_VIEW/MANAGE gates on SampleStorageService:
+// InventoryLotStorageAuthorizationSecurityTest is develop's authorization
+// contract for this screen and asserts by ROLE - VALIDATION refused,
+// RECEPTION/RESULTS/ADMIN admitted - with mock users that carry no PRIV_*
+// authorities at all. Removing it made that test 500. Exempted in S011c with
+// the other develop-origin controller gating rather than converted here; the
+// service gates still apply underneath, so the screen is gated at both layers.
+@PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'ADMIN')")
 public class InventoryLotStorageRestController extends BaseRestController {
 
     private static final Logger logger = LoggerFactory.getLogger(InventoryLotStorageRestController.class);

@@ -34,6 +34,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
 import {
   serverPageArrowsProps,
   serverPageSizeOf,
@@ -826,11 +827,8 @@ const UnifiedResults: React.FC = () => {
 
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
-      if (!response) {
-        return;
-      }
       const key = worklistRowKey(target);
-      if (response.status === 409) {
+      if (response && response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
           ...current,
@@ -847,11 +845,17 @@ const UnifiedResults: React.FC = () => {
         }));
         return;
       }
-      if (response.status && response.status >= 400) {
+      if (!response || requestFailed(response)) {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message:
-            response.error || intl.formatMessage({ id: "error.save.msg" }),
+            serverMessage(response) ||
+            intl.formatMessage({
+              id:
+                !response || response.status === 0
+                  ? "error.results.save.noResponse"
+                  : "error.save.msg",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -1019,7 +1023,7 @@ const UnifiedResults: React.FC = () => {
         JSON.stringify({ testResult: item }),
         (response: SaveResponse | undefined) => {
           handleSaveResponse(row, response);
-          if (response && (!response.status || response.status < 400)) {
+          if (!requestFailed(response)) {
             setNoteDrafts((current) => {
               const next = { ...current };
               delete next[key];
