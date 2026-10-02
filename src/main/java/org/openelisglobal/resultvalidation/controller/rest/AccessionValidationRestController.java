@@ -877,8 +877,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         }
 
         public boolean hasQueueFilter() {
-            return !(isBlankOrNull(labNumberFrom) && isBlankOrNull(fromDate) && isBlankOrNull(toDate)
-                    && isBlankOrNull(patientId));
+            return !(isBlankOrNull(labNumberFrom) && isBlankOrNull(testSectionId) && isBlankOrNull(fromDate)
+                    && isBlankOrNull(toDate) && isBlankOrNull(patientId));
         }
 
         public String getLabNumberFrom() {

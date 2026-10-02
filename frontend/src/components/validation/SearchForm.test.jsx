@@ -113,6 +113,18 @@ describe("Validation one-page search (OGC-1418)", () => {
     );
   });
 
+  it("drops a Lab Unit from the address that the user does not validate, and keeps the rest", () => {
+    renderAt("/validation?testSectionId=99&labNumber=ACC1");
+
+    expect(lastQueueParams()).toMatchObject({
+      testSectionId: "",
+      labNumberFrom: "ACC1",
+      labNumberTo: "ACC1",
+    });
+    expect(window.location.search).toBe("?labNumber=ACC1");
+    expect(screen.getByLabelText("Lab Unit").value).toBe("");
+  });
+
   it("combines Lab Unit and a lab number range, keeps both in the address, and keeps the unit when the box is cleared", () => {
     const { setParams } = renderAt("/validation");
 

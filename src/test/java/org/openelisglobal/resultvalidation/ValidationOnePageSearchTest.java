@@ -82,6 +82,11 @@ public class ValidationOnePageSearchTest extends BaseWebContextSensitiveTest {
                 + " always_validate, lastupdated) VALUES (9811, 1, ?, 0, 'Infinity', 5, 20, 0, 100, 0, 100, false,"
                 + " NOW()), (9812, 2, ?, 0, 'Infinity', 5, 20, 0, 100, 0, 100, false, NOW())"
                 + " ON CONFLICT (id) DO NOTHING", Integer.valueOf(numeric.getId()), Integer.valueOf(numeric.getId()));
+        jdbcTemplate.update("INSERT INTO clinlims.analysis (id, sampitem_id, vector_pool_id, test_id, test_sect_id,"
+                + " revision, status_id, started_date, analysis_type, is_reportable, lastupdated) VALUES (205, NULL,"
+                + " 205, 1, 1, 0, 2, '2025-06-20 11:00:00', 'MANUAL', 'Y', '2025-06-20 12:00:00')");
+        jdbcTemplate.update("INSERT INTO clinlims.result (id, analysis_id, result_type, value, is_reportable,"
+                + " lastupdated) VALUES (205, 205, 'N', '10.5', 'Y', '2025-06-20 12:00:00')");
         authenticateAs("testUser");
         statusService.refreshCache();
         session = buildValidatorSession();
@@ -142,7 +147,7 @@ public class ValidationOnePageSearchTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void aLabUnitAloneServesThatUnitsQueue() throws Exception {
-        assertEquals(Set.of("VAL-OP-001", "VAL-OP-003"), queue("testSectionId", "1"));
+        assertEquals(Set.of("VAL-OP-001", "VAL-OP-003", "VAL-OP-005"), queue("testSectionId", "1"));
     }
 
     @Test
@@ -159,8 +164,15 @@ public class ValidationOnePageSearchTest extends BaseWebContextSensitiveTest {
                 queue("labNumberFrom", "VAL-OP-002", "labNumberTo", "VAL-OP-004"));
         assertEquals(Set.of("VAL-OP-002", "VAL-OP-004"),
                 queue("labNumberFrom", "VAL-OP-002", "labNumberTo", "VAL-OP-004", "testSectionId", "2"));
-        assertEquals("a range with no end is every lab number from its start on", Set.of("VAL-OP-003", "VAL-OP-004"),
-                queue("labNumberFrom", "VAL-OP-003"));
+        assertEquals("a range with no end is every lab number from its start on",
+                Set.of("VAL-OP-003", "VAL-OP-004", "VAL-OP-005"), queue("labNumberFrom", "VAL-OP-003"));
+    }
+
+    @Test
+    public void aLabUnitKeepsTheVectorPoolResultsTheOtherCriteriaFind() throws Exception {
+        assertEquals(Set.of("VAL-OP-005"), queue("fromDate", day("2025-06-20"), "toDate", day("2025-06-20")));
+        assertEquals(Set.of("VAL-OP-005"),
+                queue("testSectionId", "1", "fromDate", day("2025-06-20"), "toDate", day("2025-06-20")));
     }
 
     @Test
@@ -179,13 +191,28 @@ public class ValidationOnePageSearchTest extends BaseWebContextSensitiveTest {
     public void aValidatorNeverSeesALabUnitTheyCannotValidate() throws Exception {
         grantValidation("1");
         assertEquals(Set.of(), queue("testSectionId", "2"));
-        assertEquals(Set.of("VAL-OP-001", "VAL-OP-003"), queue("fromDate", day("2025-06-01")));
+        assertEquals(Set.of("VAL-OP-001", "VAL-OP-003", "VAL-OP-005"), queue("fromDate", day("2025-06-01")));
     }
 
     @Test
     public void theOldSingleKeySearchesStillServeTheirQueues() throws Exception {
         assertEquals(Set.of("VAL-OP-002", "VAL-OP-004"), queue("unitType", "2"));
         assertEquals(Set.of("VAL-OP-002"), queue("accessionNumber", "VAL-OP-002", "doRange", "false"));
+    }
+
+    @Test
+    public void releaseAllClearForALabUnitAloneReleasesItsVectorPoolResults() throws Exception {
+        grantValidation("AllLabUnits");
+        String body = "{\"testSectionId\":\"1\",\"doRange\":true,\"rows\":["
+                + "{\"analysisId\":\"205\",\"accessionNumber\":\"VAL-OP-005\",\"noteContext\":\"VALIDATION\"}]}";
+
+        mockMvc.perform(post("/rest/AccessionValidation/release-clear").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(body)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.released.length()").value(1)).andExpect(jsonPath("$.released[0]").value("205"));
+        entityManager.flush();
+        entityManager.clear();
+
+        assertEquals(statusService.getStatusID(AnalysisStatus.Finalized), analysisService.get("205").getStatusId());
     }
 
     @Test

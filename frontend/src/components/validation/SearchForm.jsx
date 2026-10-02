@@ -201,7 +201,17 @@ const SearchForm = (props) => {
   useEffect(() => {
     getFromOpenElisServer(
       "/rest/user-test-sections/" + Roles.VALIDATION,
-      (sections) => setTestSections(Array.isArray(sections) ? sections : []),
+      (sections) => {
+        setTestSections(Array.isArray(sections) ? sections : []);
+        const unit = searchRef.current.testSectionId;
+        if (
+          Array.isArray(sections) &&
+          unit &&
+          !sections.some((section) => String(section.id) === String(unit))
+        ) {
+          updateSearch({ testSectionId: "" }, true);
+        }
+      },
     );
     const initial = searchRef.current;
     if (initial.patientId) {

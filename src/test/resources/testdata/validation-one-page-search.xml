@@ -150,4 +150,18 @@
         analysis_type="MANUAL" is_reportable="Y" />
     <result id="204" analysis_id="204" result_type="N" value="10.5"
         is_reportable="Y" lastupdated="2025-06-10 12:00:00" />
+    <!-- A vector pool result in the Environmental unit: the analysis hangs
+        off the pool, not a sample item, and is inserted by the test. -->
+    <sample id="205" accession_number="VAL-OP-005" status_id="1"
+        received_date="2025-06-20 00:00:00.0"
+        entered_date="2025-06-20 00:00:00.0"
+        collection_date="2025-06-20 00:00:00.0"
+        lastupdated="2025-06-20 12:00:00" />
+    <sample_item id="205" sort_order="1" status_id="1"
+        samp_id="205" typeosamp_id="1" collection_date="2025-06-20 10:00:00"
+        lastupdated="2025-06-20 12:00:00" />
+    <vector_pool id="205" sample_id="205" active="true"
+        sys_user_id="1" lastupdated="2025-06-20 12:00:00" />
+    <vector_pool_member vector_pool_id="205"
+        sample_item_id="205" lastupdated="2025-06-20 12:00:00" />
 </dataset>

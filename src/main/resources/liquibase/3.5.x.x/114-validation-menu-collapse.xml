@@ -31,6 +31,8 @@
                 'menu_resultvalidation_viralload', 'menu_resultvalidation_genotyping')</where>
         </update>
         <rollback>
+            <!-- The study entries follow the Study Management tab setting, as
+                 2.8.x.x/menu.xml sets them. -->
             <update tableName="menu" schemaName="clinlims">
                 <column name="action_url" value="/ResultValidation?type=&amp;test="/>
                 <where>element_id = 'menu_resultvalidation'</where>
@@ -39,6 +41,13 @@
                 <column name="is_active" valueBoolean="true"/>
                 <where>element_id IN ('menu_resultvalidation_routine', 'menu_accession_validation',
                     'menu_accession_validation_range', 'menu_resultvalidation_date')</where>
+            </update>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueComputed="(SELECT COALESCE((SELECT si.value = 'true' FROM clinlims.site_information si WHERE si.name = 'Study Management tab'), false))"/>
+                <where>element_id IN ('menu_resultvalidation_study', 'menu_resultvalidation_immunology',
+                    'menu_resultvalidation_biochemistry', 'menu_resultvalidation_serology',
+                    'menu_resultvalidation_virology', 'menu_resultvalidation_dnapcr',
+                    'menu_resultvalidation_viralload', 'menu_resultvalidation_genotyping')</where>
             </update>
         </rollback>
     </changeSet>
