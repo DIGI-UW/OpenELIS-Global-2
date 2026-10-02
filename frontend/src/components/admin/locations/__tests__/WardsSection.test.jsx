@@ -54,9 +54,11 @@ describe("WardsSection new wards (OGC-1420 5f)", () => {
     api.createWard
       .mockResolvedValueOnce({ id: "201" })
       .mockRejectedValueOnce(
-        Object.assign(new Error("Code OPD is already used by Eye Clinic"), {
+        Object.assign(new Error("The ward was not saved"), {
           status: 422,
-          fieldErrors: {},
+          fieldErrors: {
+            identifiers: "Code OPD is already used by Eye Clinic",
+          },
         }),
       )
       .mockResolvedValueOnce({ id: "202" });
@@ -82,6 +84,8 @@ describe("WardsSection new wards (OGC-1420 5f)", () => {
       expect(notify).toHaveBeenCalledWith(
         "Outpatients was not saved: Code OPD is already used by Eye Clinic",
         "error",
+        null,
+        "record-4",
       ),
     );
     expect(screen.getAllByTestId("locations-ward-draft")).toHaveLength(1);

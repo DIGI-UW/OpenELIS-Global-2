@@ -263,6 +263,8 @@ describe("RecordForm (OGC-1363)", () => {
     expect(notify).toHaveBeenCalledWith(
       "The record was not saved: Code HSI002 is already used by Other Clinic",
       "error",
+      null,
+      "record-4",
     );
   });
 
@@ -363,6 +365,8 @@ describe("RecordForm (OGC-1363)", () => {
     expect(notify).toHaveBeenCalledWith(
       "Not saved yet. Check: Approval status.",
       "error",
+      null,
+      "record-4",
     );
     expect(document.getElementById("ref-status-4")).toHaveFocus();
     expect(api.updateOrganization).not.toHaveBeenCalled();
@@ -412,6 +416,8 @@ describe("RecordForm (OGC-1363)", () => {
       expect(notify).toHaveBeenCalledWith(
         "1 ward / dept is typed but not saved yet. Save them with Save wards, or remove them, then save the record.",
         "warning",
+        null,
+        "record-4",
       ),
     );
     expect(api.updateOrganization).not.toHaveBeenCalled();

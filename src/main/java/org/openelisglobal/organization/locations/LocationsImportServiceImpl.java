@@ -156,7 +156,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                 plans.add(previewUpload(upload, options));
             }
             if (!areaUploads.isEmpty()) {
-                Set<String> names = areaUploads.stream().map(Upload::fileName).collect(Collectors.toSet());
+                Set<String> names = areaUploads.stream().map(Upload::storedName).collect(Collectors.toSet());
                 storeAll(areaUploads);
                 ConfigurationReloadResult result = initializationService
                         .reload(ConfigurationReloadOptions.forFiles(Set.of(ADDRESS_DOMAIN), names));
@@ -165,12 +165,14 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                         plans.add(errorPlan(outcome.fileName(), outcome.errorMessage()));
                     }
                 }
+                plans.addAll(notProcessed(areaUploads, result));
             }
             List<Upload> organizationUploads = uploads.stream().filter(Upload::organizations)
                     .collect(Collectors.toList());
             if (!organizationUploads.isEmpty()) {
                 storeAll(organizationUploads);
-                Set<String> names = organizationUploads.stream().map(Upload::fileName).collect(Collectors.toSet());
+                organizationsHandler.clearLastPlan();
+                Set<String> names = organizationUploads.stream().map(Upload::storedName).collect(Collectors.toSet());
                 ConfigurationReloadResult result = initializationService.reload(
                         ConfigurationReloadOptions.forFiles(Set.of(OrganizationsConfigurationHandler.DOMAIN), names));
                 for (ConfigurationReloadFileResult outcome : result.files()) {
@@ -180,6 +182,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                         plans.add(errorPlan(outcome.fileName(), "not loaded: " + outcome.skippedReason()));
                     }
                 }
+                plans.addAll(notProcessed(organizationUploads, result));
                 Plan loaded = organizationsHandler.getLastPlan();
                 if (loaded != null) {
                     plans.add(loaded);
@@ -198,7 +201,11 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         return merge(run.getId(), options, plans);
     }
 
-    private record Upload(MultipartFile file, String fileName, String area) {
+    /**
+     * {@code fileName} is the name the user gave the file; {@code storedName} is
+     * the name it is stored and reloaded under, one its loader picks up.
+     */
+    private record Upload(MultipartFile file, String fileName, String area, String storedName) {
         boolean organizations() {
             return LocationsImportApi.AREA_ORGANIZATIONS.equals(area);
         }
@@ -215,12 +222,31 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                     LocationsImportApi.AREA_VALUES).contains(area)) {
                 throw new IllegalArgumentException("'" + area + "' is not an import area");
             }
-            uploads.add(new Upload(file, name, area));
+            uploads.add(new Upload(file, name, area, storedName(name, area)));
         }
         List<String> order = List.of(LocationsImportApi.AREA_LEVELS, LocationsImportApi.AREA_VALUES,
                 LocationsImportApi.AREA_ORGANIZATIONS);
         uploads.sort((a, b) -> Integer.compare(order.indexOf(a.area()), order.indexOf(b.area())));
         return uploads;
+    }
+
+    /**
+     * A name the area's loader picks up: organizations files must match
+     * {@code organizations*.csv} and level files {@code *-levels.csv}, and value
+     * files must not look like level files. The user's own name is kept when it
+     * already fits.
+     */
+    static String storedName(String fileName, String area) {
+        String csv = fileName.toLowerCase(Locale.ROOT).endsWith(".csv") ? fileName : fileName + ".csv";
+        String lower = csv.toLowerCase(Locale.ROOT);
+        String stem = csv.substring(0, csv.length() - ".csv".length());
+        if (LocationsImportApi.AREA_ORGANIZATIONS.equals(area)) {
+            return lower.startsWith("organizations") ? csv : "organizations-" + csv;
+        }
+        if (LocationsImportApi.AREA_LEVELS.equals(area)) {
+            return lower.endsWith("-levels.csv") ? csv : stem + "-levels.csv";
+        }
+        return lower.endsWith("-levels.csv") ? stem + "-values.csv" : csv;
     }
 
     private static String inferArea(String fileName) {
@@ -257,7 +283,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     private void storeAll(List<Upload> uploads) {
         for (Upload upload : uploads) {
             String domain = upload.organizations() ? OrganizationsConfigurationHandler.DOMAIN : ADDRESS_DOMAIN;
-            Path target = directoryFor(domain).resolve(upload.fileName());
+            Path target = directoryFor(domain).resolve(upload.storedName());
             try {
                 Files.createDirectories(target.getParent());
                 Files.copy(upload.file().getInputStream(), target, StandardCopyOption.REPLACE_EXISTING);
@@ -282,6 +308,22 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         } catch (Exception e) {
             return errorPlan(upload.fileName(), CsvLoadSummary.reason(e));
         }
+    }
+
+    /**
+     * A file the reload did not process is reported, so Apply never says "Import
+     * complete" for a file that wrote nothing.
+     */
+    private static List<Plan> notProcessed(List<Upload> uploads, ConfigurationReloadResult result) {
+        Set<String> processed = result.files().stream().map(ConfigurationReloadFileResult::fileName)
+                .collect(Collectors.toSet());
+        List<Plan> missing = new ArrayList<>();
+        for (Upload upload : uploads) {
+            if (!processed.contains(upload.storedName())) {
+                missing.add(errorPlan(upload.fileName(), "was not loaded; nothing was written from this file"));
+            }
+        }
+        return missing;
     }
 
     private static Plan errorPlan(String fileName, String error) {
@@ -498,6 +540,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         final Map<String, Organization> byId = new HashMap<>();
         final Map<String, List<Organization>> byLabelValue = new HashMap<>();
         final Map<String, List<Organization>> byKindName = new HashMap<>();
+        final Map<String, NameWords> nameWords = new HashMap<>();
         final Map<Integer, List<String>> formerNames;
         final Set<String> closed;
 
@@ -940,6 +983,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             return;
         }
         String wanted = norm(row.name);
+        NameWords wantedWords = catalogue.nameWords.computeIfAbsent(wanted, NameWords::of);
         Organization best = null;
         double bestScore = 0;
         for (Organization candidate : catalogue.all) {
@@ -961,7 +1005,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             if (other.equals(wanted)) {
                 continue;
             }
-            double score = renameScore(wanted, other);
+            double score = renameScore(wanted, wantedWords, other,
+                    catalogue.nameWords.computeIfAbsent(other, NameWords::of));
             if (score > bestScore) {
                 best = candidate;
                 bestScore = score;
@@ -986,33 +1031,43 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             "of", "and", "de", "du", "des", "la", "le", "sante", "santé", "poste", "dispensary", "dispensaire",
             "centro", "salud", "hôpital", "hopital", "clinique");
 
+    /** A name's words, split into the distinctive ones and the generic ones. */
+    record NameWords(Set<String> distinctive, Set<String> generic) {
+        static NameWords of(String name) {
+            Set<String> distinctive = new HashSet<>();
+            Set<String> generic = new HashSet<>();
+            for (String word : name.replaceAll("[^\\p{L}\\p{N} ]", " ").split("\\s+")) {
+                if (!word.isEmpty()) {
+                    (GENERIC_NAME_WORDS.contains(word) ? generic : distinctive).add(word);
+                }
+            }
+            return new NameWords(distinctive, generic);
+        }
+    }
+
     /**
      * How likely {@code a} is a renamed {@code b}, from 0 (not at all) to 1: the
      * same distinctive words (what is left once words like "Health Centre" are set
-     * aside), one name's distinctive words all in the other ("Tokarara Clinic",
-     * "Tokarara Urban Clinic"), or nearly the same spelling of the whole name.
-     * Sharing only generic words, as "Gerehu Health Centre" and "Kaugere Health
-     * Centre" do, is not a rename (FR-F12).
+     * aside), one name's distinctive words all in the other's with the same generic
+     * words ("Tokarara Clinic", "Tokarara Urban Clinic"), or nearly the same
+     * spelling of the whole name. Sharing only generic words, as "Gerehu Health
+     * Centre" and "Kaugere Health Centre" do, or only a place name, as "Kila Aid
+     * Post" and "Walk-in Clinic Kila" do, is not a rename (FR-F12).
      */
-    static double renameScore(String a, String b) {
-        Set<String> distinctiveA = distinctiveWords(a);
-        Set<String> distinctiveB = distinctiveWords(b);
-        double spelling = 1 - (double) levenshtein(a, b) / Math.max(1, Math.max(a.length(), b.length()));
-        if (!distinctiveA.isEmpty() && !distinctiveB.isEmpty()
+    static double renameScore(String a, NameWords wordsA, String b, NameWords wordsB) {
+        int longer = Math.max(1, Math.max(a.length(), b.length()));
+        double spelling = (double) Math.abs(a.length() - b.length()) / longer > 0.15 ? 0
+                : 1 - (double) levenshtein(a, b) / longer;
+        Set<String> distinctiveA = wordsA.distinctive();
+        Set<String> distinctiveB = wordsB.distinctive();
+        if (!distinctiveA.isEmpty() && distinctiveA.equals(distinctiveB)) {
+            return Math.max(spelling, 0.9);
+        }
+        if (!distinctiveA.isEmpty() && !distinctiveB.isEmpty() && wordsA.generic().equals(wordsB.generic())
                 && (distinctiveA.containsAll(distinctiveB) || distinctiveB.containsAll(distinctiveA))) {
-            return Math.max(spelling, distinctiveA.equals(distinctiveB) ? 0.9 : 0.86);
+            return Math.max(spelling, 0.86);
         }
         return spelling >= 0.85 ? spelling : 0;
-    }
-
-    private static Set<String> distinctiveWords(String name) {
-        Set<String> words = new HashSet<>();
-        for (String word : name.replaceAll("[^\\p{L}\\p{N} ]", " ").split("\\s+")) {
-            if (!word.isEmpty() && !GENERIC_NAME_WORDS.contains(word)) {
-                words.add(word);
-            }
-        }
-        return words;
     }
 
     private static int levenshtein(String a, String b) {

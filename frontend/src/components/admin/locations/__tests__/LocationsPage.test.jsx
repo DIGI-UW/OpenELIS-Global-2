@@ -28,6 +28,15 @@ vi.mock("../OrganizationsView", () => ({
         </button>
         <button onClick={() => notify("Clinic added.")}>ok</button>
         <button onClick={() => notify("", "error")}>fail</button>
+        <button onClick={() => notify("A refused", "error", null, "record-1")}>
+          failA
+        </button>
+        <button onClick={() => notify("B refused", "error", null, "record-2")}>
+          failB
+        </button>
+        <button onClick={() => notify("A saved.", "success", null, "record-1")}>
+          savedA
+        </button>
       </>
     );
   },
@@ -81,6 +90,20 @@ describe("LocationsPage messages (OGC-1420 4)", () => {
     expect(toasts[0]).toHaveTextContent(
       "The request could not be completed, so nothing was saved.",
     );
+  });
+
+  it("clears a form's earlier errors when the same form saves, and only that form's", () => {
+    renderPage();
+    fireEvent.click(screen.getByText("failA"));
+    fireEvent.click(screen.getByText("failB"));
+    fireEvent.click(screen.getByText("savedA"));
+
+    const texts = [...document.querySelectorAll(".locationsToast")].map(
+      (toast) => toast.textContent,
+    );
+    expect(texts.join("|")).toContain("A saved.");
+    expect(texts.join("|")).toContain("B refused");
+    expect(texts.join("|")).not.toContain("A refused");
   });
 
   it("opens the record of an old link whether it says ID= or id=", () => {

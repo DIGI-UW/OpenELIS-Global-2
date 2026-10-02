@@ -12096,6 +12096,7 @@
   "error.locations.save.conflictKept": "Another admin saved this record first. Your changes are kept, and their changes are filled in where you had not typed ({fields}). Check the form and save again.",
   "warning.locations.wards.unsaved": "{count, plural, one {# ward / dept is} other {# wards / depts are}} typed but not saved yet. Save them with Save wards, or remove them, then save the record.",
   "error.locations.ward.notSaved": "{name} was not saved: {reason}",
+  "message.locations.wards.saved": "{count, plural, one {# ward / dept saved.} other {# wards / depts saved.}}",
   "warning.locations.import.ignoredColumns": "These columns are not imported and were ignored: {columns}",
   "label.locations.import.run.applied": "Applied",
   "label.locations.import.run.preview": "Preview",

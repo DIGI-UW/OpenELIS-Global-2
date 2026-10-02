@@ -156,6 +156,7 @@ const OrganizationsView = ({ view, lists }) => {
   const searchTimer = useRef(null);
   const formDirty = useRef(false);
   const [collisions, setCollisions] = useState([]);
+  const [savedCount, setSavedCount] = useState(0);
   const [wardMatchClosed, setWardMatchClosed] = useState(null);
   const isSites = view === "sites";
   const adding = filters.add;
@@ -225,7 +226,7 @@ const OrganizationsView = ({ view, lists }) => {
         ),
       )
       .catch(() => setCollisions([]));
-  }, [isSites, page]);
+  }, [isSites, savedCount]);
 
   useEffect(() => {
     setSearchText(filters.q);
@@ -450,7 +451,11 @@ const OrganizationsView = ({ view, lists }) => {
         { id: isNew ? "message.locations.added" : "message.locations.saved" },
         { name: detail.row.name },
       ),
+      "success",
+      null,
+      isNew ? "record-new" : `record-${detail.row.id}`,
     );
+    setSavedCount((count) => count + 1);
     update({ id: isNew ? detail.row.id : "", add: false });
     load();
     reloadLists();

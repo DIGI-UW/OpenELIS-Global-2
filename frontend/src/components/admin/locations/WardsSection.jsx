@@ -94,6 +94,15 @@ const WardsSection = ({
   const [targets, setTargets] = useState([]);
   const [errors, setErrors] = useState({});
   const parent = organization.row;
+  const source = `record-${parent.id}`;
+  const refusal = (error) => {
+    const fieldMessage = Object.values(error.fieldErrors || {})[0];
+    return (
+      fieldMessage ||
+      error.message ||
+      intl.formatMessage({ id: "error.locations.request.failed" })
+    );
+  };
   const includeInactive = statusFilter && statusFilter !== "active";
 
   const reload = () =>
@@ -156,12 +165,29 @@ const WardsSection = ({
         setDraft(null);
         reload();
         onChanged && onChanged();
+        notify(
+          intl.formatMessage(
+            { id: "message.locations.saved" },
+            { name: draft.name },
+          ),
+          "success",
+          null,
+          source,
+        );
       })
       .catch((error) => {
         if (error.status === 422) {
           setErrors(error.fieldErrors || {});
         }
-        notify(error.message, "error");
+        notify(
+          intl.formatMessage(
+            { id: "error.locations.ward.notSaved" },
+            { name: draft.name, reason: refusal(error) },
+          ),
+          "error",
+          null,
+          source,
+        );
       });
   };
 
@@ -176,6 +202,7 @@ const WardsSection = ({
       (ward) => ward.name.trim() && ward.serviceType,
     );
     let saved = 0;
+    let failed = false;
     for (const ward of ready) {
       try {
         await createWard(parent.id, toRequest(ward));
@@ -188,21 +215,30 @@ const WardsSection = ({
         notify(
           intl.formatMessage(
             { id: "error.locations.ward.notSaved" },
-            {
-              name: ward.name.trim(),
-              reason:
-                error.message ||
-                intl.formatMessage({ id: "error.locations.request.failed" }),
-            },
+            { name: ward.name.trim(), reason: refusal(error) },
           ),
           "error",
+          null,
+          source,
         );
+        failed = true;
         break;
       }
     }
     if (saved > 0) {
       reload();
       onChanged && onChanged();
+      if (!failed) {
+        notify(
+          intl.formatMessage(
+            { id: "message.locations.wards.saved" },
+            { count: saved },
+          ),
+          "success",
+          null,
+          source,
+        );
+      }
     }
   };
 

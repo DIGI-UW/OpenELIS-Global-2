@@ -400,6 +400,8 @@ const RecordForm = ({
     }
   };
 
+  const source = `record-${id || "new"}`;
+
   const fieldName = (key) =>
     FIELD_LABEL[key]
       ? intl.formatMessage({ id: FIELD_LABEL[key] })
@@ -415,6 +417,8 @@ const RecordForm = ({
           { fields: invalid.map(fieldName).join(", ") },
         ),
         "error",
+        null,
+        source,
       );
       focusField(invalid[0]);
       return;
@@ -426,6 +430,8 @@ const RecordForm = ({
           { count: wardDrafts },
         ),
         "warning",
+        null,
+        source,
       );
       const drafts = container.current
         ? [
@@ -463,7 +469,7 @@ const RecordForm = ({
         setDirty(false);
         onSaved(result.detail);
         (result.warnings || []).forEach((warning) =>
-          notify(warning, "warning"),
+          notify(warning, "warning", null, source),
         );
       })
       .catch((error) => {
@@ -491,11 +497,13 @@ const RecordForm = ({
                 )
               : intl.formatMessage({ id: "error.locations.save.failed" }),
             "error",
+            null,
+            source,
           );
           if (first) focusField(first);
           return;
         }
-        notify(error.message, "error");
+        notify(error.message, "error", null, source);
       });
   };
 

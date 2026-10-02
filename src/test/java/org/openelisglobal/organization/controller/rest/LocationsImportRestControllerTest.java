@@ -310,6 +310,12 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
         assertEquals("a word added to the same place's name is a rename", "rename",
                 widened.get("rows").get(0).get("outcome").asText());
         assertEquals("9121", widened.get("rows").get(0).get("pair").get("id").asText());
+
+        organization(9122, "Walk-in Clinic Kila", null, null, 2);
+        JsonNode sharedPlace = json(preview("organizations-ncd.csv",
+                (HEADER + "referingClinic,,Kila Aid Post,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8), "merge"));
+        assertEquals("sharing only a place name is not a rename", "new",
+                sharedPlace.get("rows").get(0).get("outcome").asText());
     }
 
     /** OGC-1420 (1b): Excel's "CSV UTF-8" and plain "CSV" both import as typed. */
@@ -342,6 +348,21 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
         assertEquals("new", plan.get("rows").get(0).get("outcome").asText());
         assertEquals("rejected", plan.get("rows").get(1).get("outcome").asText());
         assertTrue(plan.get("rows").get(1).get("reason").asText().contains("line 2"));
+    }
+
+    /**
+     * OGC-1420: Excel users name files freely. An organizations file whose name the
+     * loader would not pick up is still written on Apply, and Apply never reports a
+     * preview's plan as done.
+     */
+    @Test
+    public void apply_writesAFileWhateverItIsCalled() throws Exception {
+        mockMvc.perform(multipart("/rest/locations/import/apply")
+                .file(csv("cp1252.csv", HEADER + "referingClinic,,Freely Named Clinic,,,,,Y,,,,,,\n"))
+                .param("areas", "organizations").param("mode", "merge")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.counts.new").value(1)).andExpect(jsonPath("$.errors.length()").value(0));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.organization WHERE name = 'Freely Named Clinic'", Integer.class));
     }
 
     /**

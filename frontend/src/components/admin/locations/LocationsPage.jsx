@@ -114,18 +114,34 @@ const LocationsPage = () => {
    * and info close by themselves; an error or a warning stays until dismissed.
    * With `action`, it carries that button (the Undo after a deactivation) and
    * stays at least ten seconds (FR-L3). An error with no wording of its own (no
-   * answer from the server) says so in the user's language.
+   * answer from the server) says so in the user's language. `source` names the
+   * form a message is about: its success clears that form's earlier errors and
+   * warnings, which no longer apply.
    */
   const notify = useCallback(
-    (message, kind = "success", action = null) => {
+    (message, kind = "success", action = null, source = null) => {
       const key = `${Date.now()}-${Math.random()}`;
+      if (source && (kind === "success" || kind === "info")) {
+        setToasts((current) =>
+          current.filter((toast) => {
+            const stale =
+              toast.source === source &&
+              (toast.kind === "error" || toast.kind === "warning");
+            if (stale) {
+              clearTimeout(toastTimers.current.get(toast.key));
+              toastTimers.current.delete(toast.key);
+            }
+            return !stale;
+          }),
+        );
+      }
       const text =
         message ||
         (kind === "error"
           ? intl.formatMessage({ id: "error.locations.request.failed" })
           : "");
       setToasts((current) =>
-        [{ message: text, kind, action, key }, ...current].slice(0, 4),
+        [{ message: text, kind, action, key, source }, ...current].slice(0, 4),
       );
       if (action || kind === "success" || kind === "info") {
         toastTimers.current.set(
