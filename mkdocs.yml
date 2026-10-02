@@ -36,7 +36,7 @@ nav:
        - Analyzers:
           - Shipped analyzer clinical defaults: analyzers/default-catalog-evidence.md
           - Analyzer setup with partial mappings: analyzers/partial-mapping-setup.md
-          - Existing analyzer upgrade: analyzer-upgrade-migration.md
+          - Pre-Bridge analyzer settings: analyzers/pre-bridge-settings-export.md
     - Interacting with the co-resident FHIR store: directFHIRCommunication.md
     - Troubleshooting: troubleshooting.md
     - Security:

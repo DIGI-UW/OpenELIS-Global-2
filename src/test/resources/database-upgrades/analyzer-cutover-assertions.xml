@@ -30,10 +30,22 @@
                 AND t.source_row_key = 'upgrade-test' AND t.mapping_state = 'BOUND'
                 AND t.test_id = (SELECT MIN(id) FROM test)
             </sqlCheck>
-            <tableExists tableName="analyzer_test_map" />
-            <tableExists tableName="analyzer_plugin_config" />
-            <columnExists tableName="analyzer"
-                columnName="machine_id" />
+            <!-- 900001 has only the superseded type text and 900003 is already on
+                a Bridge connection, so nothing is exported and the storage goes. -->
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM configuration_import_run WHERE source =
+                'ANALYZER_LEGACY'
+            </sqlCheck>
+            <not>
+                <tableExists tableName="analyzer_test_map" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_plugin_config" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="machine_id" />
+            </not>
         </preConditions>
         <sql>SELECT 1;</sql>
     </changeSet>

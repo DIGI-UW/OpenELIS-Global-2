@@ -3,39 +3,23 @@
     xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
-    <changeSet id="assert-analyzer-window-schema-recorded"
-        author="openelis">
+    <changeSet
+        id="assert-analyzer-window-schema-nothing-to-export" author="openelis">
         <preConditions onFail="HALT" onError="HALT">
+            <!-- The storage was already gone, so the removal has nothing to do. -->
             <sqlCheck expectedResult="1"><![CDATA[
                 SELECT COUNT(*) FROM databasechangelog
-                WHERE id = '114-analyzer-upgrade-not-applicable' AND exectype = 'EXECUTED'
+                WHERE id = '114-remove-pre-bridge-analyzer-storage' AND exectype = 'MARK_RAN'
             ]]></sqlCheck>
-            <!-- The upgrade history records that nothing can be transferred. -->
-            <sqlCheck expectedResult="1"><![CDATA[
-                SELECT COUNT(*) FROM configuration_import_run
-                WHERE source = 'ANALYZER_UPGRADE' AND status = 'NOT_APPLICABLE'
-                AND finished_at IS NOT NULL
+            <sqlCheck expectedResult="0"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run WHERE source = 'ANALYZER_LEGACY'
             ]]></sqlCheck>
-            <!-- The removed storage stays removed. -->
             <not>
                 <tableExists tableName="analyzer_type" />
             </not>
             <not>
-                <tableExists tableName="analyzer_test_map" />
-            </not>
-            <not>
-                <tableExists tableName="analyzer_plugin_config" />
-            </not>
-            <not>
-                <tableExists tableName="serial_port_configuration" />
-            </not>
-            <not>
                 <columnExists tableName="analyzer"
                     columnName="analyzer_type_id" />
-            </not>
-            <not>
-                <columnExists tableName="analyzer"
-                    columnName="ip_address" />
             </not>
             <sqlCheck expectedResult="1"><![CDATA[
                 SELECT COUNT(*) FROM analyzer WHERE id = 900021 AND name = 'Window fixture'

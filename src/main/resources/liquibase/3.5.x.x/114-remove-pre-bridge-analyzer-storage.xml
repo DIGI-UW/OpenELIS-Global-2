@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- Removes the analyzer storage that predates Bridge connections: the
+         per-analyzer connection, file-import and plugin settings, analyzer
+         types, test mappings, serial ports, and the superseded runtime tables
+         (activation candidates, error queue, QC rules). The Bridge owns all of
+         it now. Before anything is dropped, every analyzer that still holds
+         such settings and has no Bridge connection is written as one JSON
+         document into a configuration_import_run row (source ANALYZER_LEGACY,
+         status EXPORTED), so the settings can be read back and re-entered
+         through the Bridge-backed setup pages. Export and drops are one
+         transaction. Databases where earlier, since-removed cleanup
+         changesets already dropped this storage have nothing to do. -->
+    <changeSet id="114-remove-pre-bridge-analyzer-storage" author="pmanko">
+        <preConditions onFail="MARK_RAN" onError="HALT">
+            <columnExists tableName="analyzer" columnName="analyzer_type_id"/>
+            <tableExists tableName="analyzer_type"/>
+            <tableExists tableName="analyzer_test_map"/>
+            <tableExists tableName="analyzer_plugin_config"/>
+            <tableExists tableName="serial_port_configuration"/>
+        </preConditions>
+
+        <sql splitStatements="false"><![CDATA[
+            INSERT INTO configuration_import_run (id, source, status, started_at, finished_at, summary)
+            SELECT gen_random_uuid()::text, 'ANALYZER_LEGACY', 'EXPORTED', now(), now(),
+                   jsonb_pretty(jsonb_agg(doc ORDER BY (doc->>'analyzerId')::numeric))
+            FROM (
+                SELECT jsonb_strip_nulls(jsonb_build_object(
+                    'analyzerId', a.id::text,
+                    'name', a.name,
+                    'active', a.is_active,
+                    'status', a.status,
+                    'type', (SELECT jsonb_strip_nulls(jsonb_build_object(
+                                 'name', t.name, 'protocol', t.protocol,
+                                 'pluginClassName', t.plugin_class_name,
+                                 'identifierPattern', t.identifier_pattern))
+                             FROM analyzer_type t WHERE t.id = a.analyzer_type_id),
+                    'host', a.ip_address,
+                    'port', a.port,
+                    'protocolVersion', a.protocol_version,
+                    'communicationMode', a.communication_mode,
+                    'importDirectory', a.import_directory,
+                    'filePattern', a.file_pattern,
+                    'fileFormat', a.file_format,
+                    'delimiter', a.delimiter,
+                    'hasHeader', a.has_header,
+                    'skipRows', a.skip_rows,
+                    'columnMappings', a.column_mappings_json,
+                    'pluginConfig', (SELECT c.config FROM analyzer_plugin_config c WHERE c.analyzer_id = a.id),
+                    'testMappings', (SELECT jsonb_agg(jsonb_strip_nulls(jsonb_build_object(
+                                         'sourceCode', m.analyzer_test_name,
+                                         'testId', m.test_id::text,
+                                         'componentId', m.component_id))
+                                         ORDER BY m.analyzer_test_name)
+                                     FROM analyzer_test_map m WHERE m.analyzer_id = a.id),
+                    'serialPorts', (SELECT jsonb_agg(jsonb_build_object(
+                                        'portName', p.port_name, 'baudRate', p.baud_rate,
+                                        'dataBits', p.data_bits, 'stopBits', p.stop_bits,
+                                        'parity', p.parity, 'flowControl', p.flow_control,
+                                        'active', p.active) ORDER BY p.port_name)
+                                    FROM serial_port_configuration p WHERE p.analyzer_id = a.id)
+                )) AS doc
+                FROM analyzer a
+                WHERE a.bridge_connection_id IS NULL
+                  AND (a.analyzer_type_id IS NOT NULL
+                    OR a.ip_address IS NOT NULL OR a.port IS NOT NULL
+                    OR a.import_directory IS NOT NULL OR a.file_pattern IS NOT NULL
+                    OR a.file_format IS NOT NULL OR a.column_mappings_json IS NOT NULL
+                    OR EXISTS (SELECT 1 FROM analyzer_plugin_config c WHERE c.analyzer_id = a.id)
+                    OR EXISTS (SELECT 1 FROM analyzer_test_map m WHERE m.analyzer_id = a.id)
+                    OR EXISTS (SELECT 1 FROM serial_port_configuration p WHERE p.analyzer_id = a.id AND p.active))
+            ) exported
+            HAVING COUNT(*) > 0;
+
+            DROP TABLE IF EXISTS analyzer_run CASCADE;
+            DROP TABLE IF EXISTS analyzer_file_upload CASCADE;
+            DROP TABLE IF EXISTS analyzer_experiment CASCADE;
+            DROP TABLE IF EXISTS analyzer_pending_code CASCADE;
+            DROP TABLE IF EXISTS analyzer_plugin_config CASCADE;
+            DROP TABLE IF EXISTS qualitative_result_mapping CASCADE;
+            DROP TABLE IF EXISTS unit_mapping CASCADE;
+            DROP TABLE IF EXISTS analyzer_field_mapping CASCADE;
+            DROP TABLE IF EXISTS analyzer_field CASCADE;
+            DROP TABLE IF EXISTS validation_rule_configuration CASCADE;
+            DROP TABLE IF EXISTS custom_field_type CASCADE;
+            DROP TABLE IF EXISTS analyzer_test_map CASCADE;
+            DROP TABLE IF EXISTS analyzer_type CASCADE;
+            DROP TABLE IF EXISTS serial_port_configuration CASCADE;
+            DROP TABLE IF EXISTS file_import_configuration CASCADE;
+            DROP TABLE IF EXISTS analyzer_error CASCADE;
+            DROP TABLE IF EXISTS analyzer_qc_rule CASCADE;
+            DROP TABLE IF EXISTS analyzer_activation_candidate CASCADE;
+            DROP SEQUENCE IF EXISTS analyzer_type_seq CASCADE;
+            DROP SEQUENCE IF EXISTS analyzer_experiment_seq CASCADE;
+            DROP SEQUENCE IF EXISTS analyzer_activation_candidate_seq CASCADE;
+            DELETE FROM reference_tables WHERE LOWER(name) = 'analyzer_activation_candidate';
+            DELETE FROM menu WHERE element_id = 'menu_analyzers_errors';
+
+            ALTER TABLE analyzer
+                DROP COLUMN IF EXISTS analyzer_type_id CASCADE,
+                DROP COLUMN IF EXISTS analyzer_type CASCADE,
+                DROP COLUMN IF EXISTS scrip_id CASCADE,
+                DROP COLUMN IF EXISTS machine_id CASCADE,
+                DROP COLUMN IF EXISTS description CASCADE,
+                DROP COLUMN IF EXISTS location CASCADE,
+                DROP COLUMN IF EXISTS has_setup_page CASCADE,
+                DROP COLUMN IF EXISTS identifier_pattern CASCADE,
+                DROP COLUMN IF EXISTS ip_address CASCADE,
+                DROP COLUMN IF EXISTS port CASCADE,
+                DROP COLUMN IF EXISTS protocol_version CASCADE,
+                DROP COLUMN IF EXISTS communication_mode CASCADE,
+                DROP COLUMN IF EXISTS import_directory CASCADE,
+                DROP COLUMN IF EXISTS file_pattern CASCADE,
+                DROP COLUMN IF EXISTS file_format CASCADE,
+                DROP COLUMN IF EXISTS column_mappings_json CASCADE,
+                DROP COLUMN IF EXISTS delimiter CASCADE,
+                DROP COLUMN IF EXISTS has_header CASCADE,
+                DROP COLUMN IF EXISTS skip_rows CASCADE,
+                DROP COLUMN IF EXISTS discovered_source_id CASCADE,
+                DROP COLUMN IF EXISTS active_candidate_id CASCADE,
+                DROP COLUMN IF EXISTS connection_role CASCADE,
+                DROP COLUMN IF EXISTS transport_mode CASCADE,
+                DROP COLUMN IF EXISTS profile_binding_id CASCADE;
+        ]]></sql>
+
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$
+                BEGIN
+                    RAISE EXCEPTION 'Removing the pre-Bridge analyzer storage is not reversible in place. The exported settings are in configuration_import_run (source ANALYZER_LEGACY); restore the pre-upgrade backup to get the tables back.';
+                END
+                $$;
+            ]]></sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

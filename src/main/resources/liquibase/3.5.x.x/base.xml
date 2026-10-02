@@ -399,8 +399,9 @@
   <include relativeToChangelogFile="true" file="090-patient-search-trigram-indexes.xml"/>
   <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
 
-  <!-- Destructive analyzer cleanup is deferred to a future migration after
-       verified data transfer. See docs/analyzer-upgrade-migration.md. -->
+  <!-- The analyzer cutover changesets below leave the pre-Bridge storage in place;
+       114-remove-pre-bridge-analyzer-storage exports and removes it.
+       See docs/analyzers/pre-bridge-settings-export.md. -->
   <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
   <include relativeToChangelogFile="true" file="089-analyzer-site-binding-confirmation.xml"/>
@@ -603,7 +604,7 @@
   <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
   <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
 
-  <!-- Analyzer upgrade: records that this database has no retained analyzer storage where removed cutover changesets dropped it. -->
-  <include relativeToChangelogFile="true" file="114-analyzer-upgrade-not-applicable.xml"/>
+  <!-- Pre-Bridge analyzer settings: exported to the configuration-import history, then their tables and columns removed. -->
+  <include relativeToChangelogFile="true" file="114-remove-pre-bridge-analyzer-storage.xml"/>
 
 </databaseChangeLog>
