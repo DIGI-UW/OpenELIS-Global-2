@@ -40,6 +40,10 @@ export const submitCycle = (cycleId, callback) => {
     `/rest/eqa/cycles/${cycleId}/review-submit`,
     "{}",
     (response) => {
+      if (!response) {
+        callback({ ok: false });
+        return;
+      }
       response
         .json()
         .catch(() => ({}))

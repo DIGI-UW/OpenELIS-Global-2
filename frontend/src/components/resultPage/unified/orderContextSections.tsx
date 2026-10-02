@@ -556,22 +556,25 @@ export const AttachmentsSection: React.FC<
           <FormattedMessage id="label.results.attachments.empty" />
         </div>
       )}
-      {/* always available — attaching documents the result; the old page
-          never gated upload on the row's edit state */}
-      <div className="unifiedFieldSpacer">
-        <FileUploaderButton
-          labelText={intl.formatMessage({
-            id: "label.results.attachments.add",
-          })}
-          accept={ATTACHMENT_ACCEPT}
-          multiple={false}
-          disabled={uploading}
-          onChange={handleUpload}
-          disableLabelChanges
-          size="sm"
-          data-testid="attachment-upload"
-        />
-      </div>
+      {/* Results entry offers upload whatever the row's edit state, as the old
+          page did; a review-only caller (validation) passes editable={false}
+          and gets the list without the button. */}
+      {editable !== false && (
+        <div className="unifiedFieldSpacer">
+          <FileUploaderButton
+            labelText={intl.formatMessage({
+              id: "label.results.attachments.add",
+            })}
+            accept={ATTACHMENT_ACCEPT}
+            multiple={false}
+            disabled={uploading}
+            onChange={handleUpload}
+            disableLabelChanges
+            size="sm"
+            data-testid="attachment-upload"
+          />
+        </div>
+      )}
       {error && <div className="unifiedSampleStatusError">{error}</div>}
     </ReferenceSection>
   );

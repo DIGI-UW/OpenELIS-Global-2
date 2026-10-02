@@ -47,6 +47,7 @@ import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.security.certs.service.TruststoreService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -415,6 +416,16 @@ public class AppTestConfig implements WebMvcConfigurer {
         return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
     }
 
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsRestController locationsRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsRestController();
+    }
+
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsImportRestController locationsImportRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsImportRestController();
+    }
+
     /**
      * Explicit bean (the testcatalog.controller package is not scanned — a sibling
      * controller's class init breaks the test context) so MockMvc can exercise the
@@ -486,6 +497,18 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public String daemonSysUserId() {
         return "1";
+    }
+
+    /**
+     * The catalog loader is kept out of the component scan because it loads every
+     * domain on context refresh; tests that exercise a reload (the Locations import
+     * apply) still need the real bean, so it is registered here with auto-loading
+     * switched off in common.properties.
+     */
+    @Bean
+    @Profile("test")
+    public ConfigurationInitializationService configurationInitializationService() {
+        return BeanUtils.instantiateClass(ConfigurationInitializationService.class);
     }
 
     @Bean

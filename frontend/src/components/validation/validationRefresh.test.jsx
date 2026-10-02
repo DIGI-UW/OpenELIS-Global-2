@@ -177,6 +177,34 @@ describe("Validation queue refresh", () => {
     },
   );
 
+  it("a release refused for a QC hold is announced on the page and the queue refetches", () => {
+    renderQueue([row(0, { normal: false, clear: false })]);
+    fireEvent.click(screen.getByTestId("review-row-0"));
+
+    queue = {
+      resultList: [row(0, { qcHold: true, qcStatus: "FAIL", clear: false })],
+      qcFailureList: [],
+    };
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ error: "qcHold", status: 409 }),
+    );
+    fireEvent.click(screen.getByText("Validate & release"));
+
+    expect(notify).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message:
+          "Release blocked: a failed QC control holds this result until its non-conformity is closed.",
+      }),
+    );
+    expect(
+      getFromOpenElisServer.mock.calls.filter(([url]) =>
+        url.startsWith("/rest/AccessionValidation?"),
+      ),
+    ).toHaveLength(2);
+    expect(screen.getByText("QC fail (1)")).toBeInTheDocument();
+  });
+
   it("serves the queue the server holds after the bulk release, without a page load", () => {
     renderQueue();
 
