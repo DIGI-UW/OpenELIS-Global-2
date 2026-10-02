@@ -1031,8 +1031,7 @@ export default function App() {
                   path="/qa/eqa/provider/schemes/:schemeId/cycles/new"
                   exact
                   component={() => <CycleWizard />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                  permission="qa.eqa.provider"
                 />
                 {/* Participant performance: the trend the workbench's
                     per-cycle view cannot show. Declared before the bare scheme
@@ -1041,8 +1040,7 @@ export default function App() {
                   path="/qa/eqa/provider/schemes/:schemeId/performance"
                   exact
                   component={() => <ParticipantPerformance />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                  permission="qa.eqa.provider"
                 />
                 {/* Both of these 404'd after the provider lane moved: the specification path is
                     what qa/019 seeded into the menu, and /provider/workbench is the URL
@@ -1061,15 +1059,13 @@ export default function App() {
                   path="/qa/eqa/provider/schemes"
                   exact
                   component={() => <ProviderSchemeList />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                  permission="qa.eqa.provider"
                 />
                 <SecureRoute
                   path="/qa/eqa/provider/cycles/:cycleId/workbench"
                   exact
                   component={() => <ProviderWorkbenchPage />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                  permission="qa.eqa.provider"
                 />
                 {/* Oversight lane: the follow-up queue. qa/019 seeded
                     its menu row at the specification path, so that path redirects here
@@ -1093,8 +1089,7 @@ export default function App() {
                   path="/qa/eqa/provider/follow-ups"
                   exact
                   component={() => <ProviderFollowupRegister />}
-                  role={[Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN]}
-                  permission="qa.view.eqa"
+                  permission="qa.eqa.provider"
                 />
                 {/* Lab Performance: two views of one rollup, as sibling
                     routes rather than in-page tabs — the specification makes these

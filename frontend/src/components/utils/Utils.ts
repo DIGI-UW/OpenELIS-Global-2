@@ -1308,24 +1308,22 @@ export const ROUTE_GUARDS = {
     permission: "qa.manage.eqa",
   },
   "/qa/eqa/provider/cycles/:cycleId/workbench": {
-    permission: "qa.view.eqa",
-    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+    permission: "qa.eqa.provider",
   },
-  "/qa/eqa/provider/follow-ups": {
-    permission: "qa.view.eqa",
-    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
-  },
-  "/qa/eqa/provider/schemes": {
-    permission: "qa.view.eqa",
-    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
-  },
+  "/qa/eqa/provider/follow-ups": { permission: "qa.eqa.provider" },
+  // The provider lane: a lab that RUNS EQA schemes for others (scheme list,
+  // new cycle, workbench, performance, follow-ups). It was guarded by role
+  // plus qa.view.eqa, so Reception and Results, which hold the participant
+  // tier only, were offered provider operations whose every write requires
+  // EQAGuards.PROVIDER. Guarded on qa.eqa.provider, held by QA Officer and
+  // Global Administrator; the participant pages (My Programs, My Cycles,
+  // Lab Performance, Follow-Up, In-House) are untouched.
+  "/qa/eqa/provider/schemes": { permission: "qa.eqa.provider" },
   "/qa/eqa/provider/schemes/:schemeId/cycles/new": {
-    permission: "qa.view.eqa",
-    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+    permission: "qa.eqa.provider",
   },
   "/qa/eqa/provider/schemes/:schemeId/performance": {
-    permission: "qa.view.eqa",
-    role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
+    permission: "qa.eqa.provider",
   },
   "/qa/overview": { role: [Roles.RECEPTION, Roles.RESULTS, Roles.VALIDATION] },
   "/qa/qc/alerts": { role: [Roles.LAB_SUPERVISOR] },
