@@ -18,12 +18,10 @@ NC='\033[0m'
 
 FORCE_RELOAD_CONFIG=false
 LOCAL_MODE=false
-SKIP_PLUGINS=false
 for arg in "$@"; do
   case $arg in
     --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
     --local) LOCAL_MODE=true ;;
-    --skip-plugins) SKIP_PLUGINS=true ;;
   esac
 done
 

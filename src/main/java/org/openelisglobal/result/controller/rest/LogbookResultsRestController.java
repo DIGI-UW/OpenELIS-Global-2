@@ -44,6 +44,7 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.referral.service.ReferralTypeService;
 import org.openelisglobal.referral.valueholder.ReferralType;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsLoadUtility;
@@ -54,7 +55,9 @@ import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.form.LogbookResultsForm.LogbookResults;
 import org.openelisglobal.result.form.StatusResultsForm;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -72,6 +75,7 @@ import org.openelisglobal.userrole.service.UserRoleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -120,6 +124,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             "testResult*.referralItem.referredReportDate", "testResult*.expandedUncertainty",
             "testResult*.coverageFactor" };
 
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private TestSectionService testSectionService;
     @Autowired
@@ -429,7 +435,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
     @PostMapping(value = "LogbookResults", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public Map<String, List<String>> showReactLogbookResultsUpdate(HttpServletRequest request,
+    public ResponseEntity<Map<String, ?>> showReactLogbookResultsUpdate(HttpServletRequest request,
             @Validated(LogbookResultsForm.LogbookResults.class) @RequestBody LogbookResultsForm form,
             BindingResult result) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
@@ -443,7 +449,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
         if ("true".equals(request.getParameter("pageResults"))) {
             getLogbookResults(request, form, null, "", "", null, true, true);
-            return reflexMap;
+            return ResponseEntity.ok(reflexMap);
         }
 
         if (result.hasErrors()) {
@@ -488,6 +494,17 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         rejectEqaRowsMissingAnalyst(tests);
+
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(actionDataSet.getModifiedItems());
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
+        }
+        updaters = new ArrayList<>(updaters);
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY, getSysUserId(request)));
 
         ResultUtil.createResultsFromItems(actionDataSet, supportReferrals, alwaysValidate, useTechnicianName,
                 statusRuleSet, request);
@@ -591,6 +608,10 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
 
             errors.reject(errorMsg, errorMsg);
             saveErrors(errors);
+            Map<String, Object> failure = new HashMap<>();
+            failure.put("error", MessageUtil.getMessage(errorMsg));
+            return ResponseEntity.status(e.getCause() instanceof StaleObjectStateException ? HttpStatus.CONFLICT
+                    : HttpStatus.INTERNAL_SERVER_ERROR).body(failure);
         }
 
         for (IResultUpdate updater : updaters) {
@@ -608,7 +629,7 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             Map<String, String> params = new HashMap<>();
             params.put("type", form.getType());
         }
-        return reflexMap;
+        return ResponseEntity.ok(reflexMap);
     }
 
     private String findLogBookForward(String forward) {

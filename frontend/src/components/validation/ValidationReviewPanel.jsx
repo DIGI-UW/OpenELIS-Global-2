@@ -22,6 +22,9 @@ import {
 import ReferenceSection from "../resultPage/unified/ReferenceSection";
 import HistorySection from "../resultPage/unified/HistorySection";
 import CriticalBanner from "../resultPage/unified/CriticalBanner";
+import ResultAlertModal, {
+  acknowledgementRefusal,
+} from "../resultPage/ResultAlertModal";
 import {
   AttachmentsSection,
   OrderInfoSection,
@@ -163,6 +166,9 @@ const ValidationReviewPanel = ({
   const [newValue, setNewValue] = useState(row.result ?? "");
   const [busy, setBusy] = useState(false);
   const [errorKey, setErrorKey] = useState("");
+  // OGC-1417: a corrected value the server will not store until the validator
+  // acknowledges it as critical, or confirms it outside the valid range
+  const [resultAlert, setResultAlert] = useState(null);
 
   const sectionOpen = (id, autoOpen = false) =>
     isSectionOpen(layout, id, autoOpen);
@@ -177,6 +183,11 @@ const ValidationReviewPanel = ({
       JSON.stringify(payload),
       (response) => {
         setBusy(false);
+        const refusal = acknowledgementRefusal(response);
+        if (refusal) {
+          setResultAlert({ ...refusal, action, payload });
+          return;
+        }
         if (response && response.outcome && !response.error) {
           if (onActionDone) {
             onActionDone(response.outcome, row);
@@ -194,6 +205,23 @@ const ValidationReviewPanel = ({
         setErrorKey(errorMessageKey(response));
       },
     );
+  };
+
+  const confirmResultAlert = () => {
+    const pending = resultAlert;
+    setResultAlert(null);
+    if (!pending) {
+      return;
+    }
+    submit(pending.action, {
+      ...pending.payload,
+      criticalAcknowledged: pending.alerts.some(
+        (alert) => alert.kind === "CRITICAL",
+      ),
+      invalidResultConfirmed: pending.alerts.some(
+        (alert) => alert.kind === "INVALID",
+      ),
+    });
   };
 
   const sendForRetest = () =>
@@ -871,6 +899,14 @@ const ValidationReviewPanel = ({
           editable={false}
         />
       </div>
+      <ResultAlertModal
+        open={Boolean(resultAlert)}
+        alerts={resultAlert?.alerts || []}
+        mode="save"
+        customCriticalMessage={resultAlert?.customCriticalMessage}
+        onConfirm={confirmResultAlert}
+        onCorrect={() => setResultAlert(null)}
+      />
     </div>
   );
 };
