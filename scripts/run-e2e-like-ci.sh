@@ -83,13 +83,18 @@ if [[ -n "${OE_CI_PROJECT_FILE:-}" ]]; then
 fi
 
 COMPOSE=(docker compose -p "$E2E_STACK_PROJECT"
-         -f build.docker-compose.yml
-         -f build.docker-compose.worktree.yml)
+         -f "$PROJECT_ROOT/build.docker-compose.yml"
+         -f "$PROJECT_ROOT/build.docker-compose.worktree.yml")
 if [[ "$CLEANUP" == true ]]; then
   cleanup_stack() {
     local status=$?
     trap - EXIT
-    "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+    if ! "${COMPOSE[@]}" down -v --remove-orphans; then
+      echo "Failed to clean CI-parity stack: $E2E_STACK_PROJECT" >&2
+      if [[ "$status" == 0 ]]; then
+        status=1
+      fi
+    fi
     exit "$status"
   }
   trap cleanup_stack EXIT
