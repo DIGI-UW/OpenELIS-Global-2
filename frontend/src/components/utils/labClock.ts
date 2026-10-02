@@ -57,8 +57,8 @@ const wallClockAt = (instant: number): Date => {
 
 /**
  * The server also reports its own date and minute, which corrects a browser
- * clock that is simply wrong. Differences under a minute are below what the
- * server reports and are ignored.
+ * clock that is simply wrong. Differences under a minute are ignored only
+ * when both clocks name the same calendar day; the server day wins at midnight.
  */
 const serverSkew = (response: ServerTime | undefined): number => {
   const date = /^(\d{4})-(\d{2})-(\d{2})$/.exec(response?.date || "");
@@ -73,9 +73,13 @@ const serverSkew = (response: ServerTime | undefined): number => {
     Number(time[1]),
     Number(time[2]),
   ).getTime();
-  const browserWall = wallClockAt(Date.now()).getTime();
-  const skew = serverWall - browserWall;
-  return Math.abs(skew) < MINUTE_MS ? 0 : skew;
+  const browserWall = wallClockAt(Date.now());
+  const sameDay =
+    Number(date[1]) === browserWall.getFullYear() &&
+    Number(date[2]) === browserWall.getMonth() + 1 &&
+    Number(date[3]) === browserWall.getDate();
+  const skew = serverWall - browserWall.getTime();
+  return Math.abs(skew) < MINUTE_MS && sameDay ? 0 : skew;
 };
 
 export const loadLabClock = (): Promise<void> =>
@@ -139,9 +143,8 @@ export const labTimeToInstant = (wallClock: Date | number): Date => {
  * UTC is only an arithmetic frame here: no browser offset or daylight-saving
  * transition may shorten a calendar day.
  */
-export const daysFromLabToday = (value: string): number => {
+export const daysFromLabToday = (value: string, today = labNow()): number => {
   const stored = new Date(value);
-  const today = labNow();
   return (
     (Date.UTC(
       stored.getUTCFullYear(),

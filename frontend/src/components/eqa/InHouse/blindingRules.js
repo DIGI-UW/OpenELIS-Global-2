@@ -1,4 +1,4 @@
-import { labNow } from "../../utils/labClock";
+import { daysFromLabToday, labNow } from "../../utils/labClock";
 // The prep gate, in the same words the server uses (EQABlindingServiceImpl
 // #requirePrepEvidence). One rule, one vocabulary: the wizard must not let
 // through what seal-and-distribute would refuse, and must not refuse what it
@@ -127,9 +127,7 @@ const withinDays = (isoDate, days, today) => {
   if (!isoDate) {
     return false;
   }
-  const horizon = new Date(today);
-  horizon.setDate(horizon.getDate() + days);
-  return new Date(isoDate) <= horizon;
+  return daysFromLabToday(isoDate, today) <= days;
 };
 
 // The four tiles the mockup puts above the list. Counted from the rows already

@@ -79,6 +79,33 @@ describe("labClock", () => {
     );
   });
 
+  test.each([
+    ["UTC", "2031-03-05T23:59:40Z"],
+    ["Pacific/Kiritimati", "2031-03-05T09:59:40Z"],
+  ])(
+    "a sub-minute correction preserves the server's new day in %s",
+    async (timezone, browserTime) => {
+      vi.setSystemTime(Date.parse(browserTime));
+      getFromOpenElisServer.mockImplementation((url, callback) =>
+        callback({ date: "2031-03-06", time: "00:00", timezone }),
+      );
+      await loadLabClock();
+      expect(toLocalIsoDate(labNow())).toBe("2031-03-06");
+      await vi.advanceTimersByTimeAsync(30000);
+      expect(labNow().getSeconds()).toBe(30);
+    },
+  );
+
+  test("sub-minute rounding on the same calendar day does not change the clock", async () => {
+    const browserTime = Date.parse("2031-03-05T16:30:40Z");
+    vi.setSystemTime(browserTime);
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback({ date: "2031-03-05", time: "16:30", timezone: "UTC" }),
+    );
+    await loadLabClock();
+    expect(labTimeToInstant(labNow()).getTime()).toBe(browserTime);
+  });
+
   test("a browser clock that is wrong is corrected by the server's own time", async () => {
     // The browser believes it is 20:00 UTC; the server's clock reads 16:30.
     getFromOpenElisServer.mockImplementation((url, callback) =>
