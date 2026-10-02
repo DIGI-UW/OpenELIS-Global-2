@@ -606,4 +606,7 @@
   <!-- Validation is one page: the menu item opens it and the per-search entries are retired. -->
   <include relativeToChangelogFile="true" file="114-validation-menu-collapse.xml"/>
 
+  <!-- Organization State / Province holds a province or region name. -->
+  <include relativeToChangelogFile="true" file="115-organization-state-length.xml"/>
+
 </databaseChangeLog>

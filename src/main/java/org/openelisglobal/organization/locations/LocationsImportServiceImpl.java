@@ -5,9 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStream;
-import java.io.InputStreamReader;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
@@ -23,6 +21,7 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
@@ -120,8 +119,6 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     private VectorSamplingSiteService samplingSiteService;
     @Autowired
     private SystemUserService systemUserService;
-    @Autowired
-    private LocationsUsageDAO usageDAO;
 
     // ---------------------------------------------------------------- preview and
     // apply
@@ -289,7 +286,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
 
     private static Plan errorPlan(String fileName, String error) {
         return new Plan(null, null, null, new LinkedHashMap<>(), List.of(), List.of(), 0,
-                List.of((fileName == null || fileName.isEmpty() ? "" : fileName + ": ") + error));
+                List.of((fileName == null || fileName.isEmpty() ? "" : fileName + ": ") + error), List.of());
     }
 
     private static Plan merge(String runId, Options options, List<Plan> plans) {
@@ -302,6 +299,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         List<PlanRow> rows = new ArrayList<>();
         List<Deactivation> deactivations = new ArrayList<>();
         List<String> errors = new ArrayList<>();
+        Set<String> ignoredColumns = new LinkedHashSet<>();
         Scope scope = null;
         int unresolved = 0;
         for (Plan plan : plans) {
@@ -309,13 +307,14 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             rows.addAll(plan.rows());
             deactivations.addAll(plan.deactivations());
             errors.addAll(plan.errors());
+            ignoredColumns.addAll(plan.ignoredColumns());
             unresolved += plan.unresolvedCount();
             if (plan.scope() != null) {
                 scope = plan.scope();
             }
         }
         return new Plan(runId, options == null ? LocationsImportApi.MODE_MERGE : options.mode(), scope, counts, rows,
-                deactivations, unresolved, errors);
+                deactivations, unresolved, errors, new ArrayList<>(ignoredColumns));
     }
 
     private static String summarize(Plan plan, List<Upload> uploads, boolean applied) {
@@ -356,7 +355,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     // area files
 
     private Plan previewLevels(InputStream in, String fileName) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(in);
         String headerLine = reader.readLine();
         if (headerLine == null) {
             return errorPlan(fileName, "the file is empty");
@@ -401,11 +400,11 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             rows.add(new PlanRow(fileName, lineNumber, outcome, "level " + levelText, null, name, null, reason,
                     List.of(), List.of(), null, false, null));
         }
-        return new Plan(null, null, null, counts, rows, List.of(), 0, List.of());
+        return new Plan(null, null, null, counts, rows, List.of(), 0, List.of(), List.of());
     }
 
     private Plan previewValues(InputStream in, String fileName) throws IOException {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(in, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(in);
         String headerLine = reader.readLine();
         if (headerLine == null) {
             return errorPlan(fileName, "the file is empty");
@@ -453,7 +452,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             rows.add(new PlanRow(fileName, lineNumber, outcome, "area", deepestCode, deepest, null,
                     deepest == null ? "the row has no area" : null, List.of(), List.of(), null, false, null));
         }
-        return new Plan(null, null, null, counts, rows, List.of(), 0, List.of());
+        return new Plan(null, null, null, counts, rows, List.of(), 0, List.of(), List.of());
     }
 
     private static String pathKey(Organization area) {
@@ -585,6 +584,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         for (CsvRow row : rows) {
             parsed.add(parse(row, catalogue));
         }
+        rejectRepeatedIdentifiers(parsed);
         parsed.sort((a, b) -> Boolean.compare(LocationsApi.KIND_WARD.equals(a.kind),
                 LocationsApi.KIND_WARD.equals(b.kind)));
         Map<String, ParsedRow> pendingByCode = new HashMap<>();
@@ -613,8 +613,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             if (LocationsApi.KIND_WARD.equals(row.kind) && row.parent != null) {
                 wardParents.add(row.parent.getId());
             }
-            row.types.forEach(type -> typeNames.add(type.getName()));
         }
+        typeNames.addAll(scopeTypes(parsed));
         for (ParsedRow row : parsed) {
             if (row.reject == null && LocationsImportApi.OUTCOME_NEW.equals(row.outcome)) {
                 checkRename(row, catalogue, options, matchedIds);
@@ -670,7 +670,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         }
         counts.put("deactivated", deactivations.size());
         return new Plan(ImportRunContext.getRunId(), options.mode(), scope(options, typeNames, wardParents, catalogue),
-                counts, planRows, deactivations, 0, List.of());
+                counts, planRows, deactivations, 0, List.of(), ignoredColumns(rows));
     }
 
     private static String actorUser() {
@@ -898,8 +898,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
 
     private Candidate candidate(Organization organization) {
         Organization parent = realParent(organization);
-        Usage usage = usageDAO.orderCountsForOrganizations(List.of(organization.getId()), Set.of())
-                .getOrDefault(organization.getId(), new Usage(0, 0));
+        Usage usage = locationsService.usageFor(List.of(organization)).getOrDefault(organization.getId(),
+                new Usage(0, 0));
         return new Candidate(organization.getId(), organization.getOrganizationName(), organization.getCode(),
                 parent == null ? null : parent.getOrganizationName(), "Y".equals(organization.getIsActive()),
                 usage.total());
@@ -934,8 +934,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             return;
         }
         String wanted = norm(row.name);
-        Set<String> wantedWords = new HashSet<>(Arrays.asList(wanted.split(" ")));
         Organization best = null;
+        double bestScore = 0;
         for (Organization candidate : catalogue.all) {
             if (!row.kind.equals(LocationsServiceImpl.kindOf(candidate)) || matchedIds.contains(candidate.getId())
                     || !"Y".equals(candidate.getIsActive())) {
@@ -955,14 +955,10 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             if (other.equals(wanted)) {
                 continue;
             }
-            boolean contains = other.contains(wanted) || wanted.contains(other);
-            Set<String> otherWords = new HashSet<>(Arrays.asList(other.split(" ")));
-            long shared = wantedWords.stream().filter(otherWords::contains).count();
-            boolean similar = contains
-                    || shared * 100 / Math.max(1, Math.max(wantedWords.size(), otherWords.size())) >= 60;
-            if (similar) {
+            double score = renameScore(wanted, other);
+            if (score > bestScore) {
                 best = candidate;
-                break;
+                bestScore = score;
             }
         }
         if (best == null) {
@@ -976,6 +972,125 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         row.outcome = LocationsImportApi.OUTCOME_RENAME;
         row.pair = candidate(best);
         row.pairOrganization = best;
+    }
+
+    /** Words that name what a place is rather than which place it is. */
+    private static final Set<String> GENERIC_NAME_WORDS = Set.of("health", "centre", "center", "clinic", "hospital",
+            "laboratory", "lab", "hc", "aid", "post", "sub", "district", "provincial", "general", "medical", "the",
+            "of", "and", "de", "du", "des", "la", "le", "sante", "santé", "poste", "dispensary", "dispensaire",
+            "centro", "salud", "hôpital", "hopital", "clinique");
+
+    /**
+     * How likely {@code a} is a renamed {@code b}, from 0 (not at all) to 1: the
+     * same distinctive words (what is left once words like "Health Centre" are set
+     * aside), or nearly the same spelling of the whole name. Sharing only generic
+     * words, as "Gerehu Health Centre" and "Kaugere Health Centre" do, is not a
+     * rename (FR-F12).
+     */
+    static double renameScore(String a, String b) {
+        Set<String> distinctiveA = distinctiveWords(a);
+        Set<String> distinctiveB = distinctiveWords(b);
+        double spelling = 1 - (double) levenshtein(a, b) / Math.max(1, Math.max(a.length(), b.length()));
+        if (!distinctiveA.isEmpty() && distinctiveA.equals(distinctiveB)) {
+            return Math.max(spelling, 0.9);
+        }
+        return spelling >= 0.85 ? spelling : 0;
+    }
+
+    private static Set<String> distinctiveWords(String name) {
+        Set<String> words = new HashSet<>();
+        for (String word : name.replaceAll("[^\\p{L}\\p{N} ]", " ").split("\\s+")) {
+            if (!word.isEmpty() && !GENERIC_NAME_WORDS.contains(word)) {
+                words.add(word);
+            }
+        }
+        return words;
+    }
+
+    private static int levenshtein(String a, String b) {
+        int[] previous = new int[b.length() + 1];
+        int[] current = new int[b.length() + 1];
+        for (int j = 0; j <= b.length(); j++) {
+            previous[j] = j;
+        }
+        for (int i = 1; i <= a.length(); i++) {
+            current[0] = i;
+            for (int j = 1; j <= b.length(); j++) {
+                int cost = a.charAt(i - 1) == b.charAt(j - 1) ? 0 : 1;
+                current[j] = Math.min(Math.min(current[j - 1] + 1, previous[j] + 1), previous[j - 1] + cost);
+            }
+            int[] swap = previous;
+            previous = current;
+            current = swap;
+        }
+        return previous[b.length()];
+    }
+
+    /**
+     * FR-F7, FR-I3: an identifier names one record, so a label and value already
+     * given on an earlier row of the same kind rejects the later row.
+     */
+    private static void rejectRepeatedIdentifiers(List<ParsedRow> parsed) {
+        Map<String, Integer> firstLine = new HashMap<>();
+        for (ParsedRow row : parsed) {
+            if (row.reject != null || row.kind == null) {
+                continue;
+            }
+            for (Map.Entry<String, String> identifier : row.identifiers.entrySet()) {
+                String key = row.kind + "|" + norm(identifier.getKey()) + "|" + norm(identifier.getValue());
+                Integer earlier = firstLine.putIfAbsent(key, row.csv.lineNumber());
+                if (earlier != null) {
+                    row.reject = identifier.getKey() + " " + identifier.getValue() + " is also on line " + earlier;
+                    break;
+                }
+            }
+        }
+    }
+
+    /**
+     * The types a Replace file is about: the fewest types that cover every
+     * organization and sampling-site row, most common first. A referral-lab export
+     * whose labs are also referring clinics is about referral labs, so the other
+     * referring clinics stay out of its scope (AC12). A ward file is about its
+     * wards' organizations, which {@code wardParents} carries.
+     */
+    private static Set<String> scopeTypes(List<ParsedRow> parsed) {
+        Set<String> scope = new LinkedHashSet<>();
+        List<Set<String>> uncovered = new ArrayList<>();
+        for (ParsedRow row : parsed) {
+            if (row.reject != null || row.kind == null) {
+                continue;
+            }
+            Set<String> names = row.types.stream().map(OrganizationType::getName)
+                    .collect(Collectors.toCollection(LinkedHashSet::new));
+            if (LocationsApi.KIND_WARD.equals(row.kind)) {
+                scope.addAll(names);
+            } else if (!names.isEmpty()) {
+                uncovered.add(names);
+            }
+        }
+        while (!uncovered.isEmpty()) {
+            Map<String, Integer> frequency = new TreeMap<>();
+            uncovered.forEach(names -> names.forEach(name -> frequency.merge(name, 1, Integer::sum)));
+            String chosen = frequency.entrySet().stream().max(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
+                    .orElseThrow();
+            scope.add(chosen);
+            uncovered.removeIf(names -> names.contains(chosen));
+        }
+        return scope;
+    }
+
+    /** FR-M: the columns of the file the importer does not know, as typed. */
+    private static List<String> ignoredColumns(List<CsvRow> rows) {
+        if (rows.isEmpty()) {
+            return List.of();
+        }
+        Set<String> known = Arrays.stream(BASE_COLUMNS).map(column -> column.toLowerCase(Locale.ROOT))
+                .collect(Collectors.toSet());
+        CsvRow first = rows.get(0);
+        return first.columns().entrySet().stream().sorted(Map.Entry.comparingByValue()).map(Map.Entry::getKey)
+                .filter(column -> !known.contains(column) && !column.startsWith(IDENTIFIER_PREFIX)).map(first::header)
+                .collect(Collectors.toList());
     }
 
     private List<Deactivation> replaceDeactivations(List<ParsedRow> parsed, Catalogue catalogue, Set<String> matchedIds,
@@ -1009,8 +1124,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         if (targets.isEmpty()) {
             return List.of();
         }
-        Map<String, Usage> usage = usageDAO.orderCountsForOrganizations(
-                targets.stream().map(Organization::getId).collect(Collectors.toList()), Set.of());
+        Map<String, Usage> usage = locationsService.usageFor(targets);
         List<Deactivation> out = new ArrayList<>();
         for (Organization organization : targets) {
             Organization parent = realParent(organization);
@@ -1305,6 +1419,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             String summary = run.getSummary();
             String mode = null;
             String counts = null;
+            List<String> files = new ArrayList<>();
+            boolean applied = false;
             if (summary != null && summary.startsWith("{")) {
                 try {
                     JsonNode node = JSON.readTree(summary);
@@ -1313,6 +1429,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                     }
                     mode = node.path("mode").asText(null);
                     counts = node.path("counts").toString();
+                    applied = node.path("applied").asBoolean(false);
+                    node.path("files").forEach(file -> files.add(file.asText()));
                 } catch (Exception e) {
                     continue;
                 }
@@ -1321,7 +1439,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             }
             runs.add(new RecentRun(run.getId(), String.valueOf(run.getStartedAt()),
                     run.getFinishedAt() == null ? null : String.valueOf(run.getFinishedAt()),
-                    userName(run.getSystemUserId()), mode, counts, run.getStatus()));
+                    userName(run.getSystemUserId()), mode, counts, run.getStatus(), files, applied));
         }
         return runs;
     }

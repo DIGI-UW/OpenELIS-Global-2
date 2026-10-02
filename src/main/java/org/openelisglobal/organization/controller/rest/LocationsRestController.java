@@ -14,6 +14,7 @@ import org.openelisglobal.organization.locations.LocationsApi.AreaLevel;
 import org.openelisglobal.organization.locations.LocationsApi.AreaRequest;
 import org.openelisglobal.organization.locations.LocationsApi.Detail;
 import org.openelisglobal.organization.locations.LocationsApi.HistoryEntry;
+import org.openelisglobal.organization.locations.LocationsApi.IdentifierCollision;
 import org.openelisglobal.organization.locations.LocationsApi.Lists;
 import org.openelisglobal.organization.locations.LocationsApi.Page;
 import org.openelisglobal.organization.locations.LocationsApi.Query;
@@ -135,6 +136,11 @@ public class LocationsRestController extends BaseRestController {
     @GetMapping(value = "/organizations/{id}/history", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<HistoryEntry> history(@PathVariable String id) {
         return locationsService.history(id);
+    }
+
+    @GetMapping(value = "/identifier-collisions", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<IdentifierCollision> identifierCollisions() {
+        return locationsService.identifierCollisions();
     }
 
     @GetMapping(value = "/lists", produces = MediaType.APPLICATION_JSON_VALUE)
