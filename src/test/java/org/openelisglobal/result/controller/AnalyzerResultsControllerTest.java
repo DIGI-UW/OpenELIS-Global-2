@@ -28,6 +28,7 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.support.AnnotationConfigWebApplicationContext;
@@ -98,8 +99,7 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 "UPDATE clinlims.analyzer_results SET import_issue_reason = ?" + " WHERE id = 1001",
                 "awaiting_specimen");
 
-        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
-                .andExpect(status().isOk())
+        mockMvc.perform(get("/rest/AnalyzerResults").with(adminUser()).param("id", "2001")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.resultList[0].importIssueReason").value("awaiting_specimen"))
                 .andExpect(jsonPath("$.resultList[0].readOnly").value(false))
                 .andExpect(jsonPath("$.resultList[0].result").value("5.6"));
@@ -128,11 +128,11 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
     public void acceptingARetypedCriticalValue_isRefusedUntilAcknowledged() throws Exception {
         seedGlucoseCriticalLimit();
         MockHttpSession session = new MockHttpSession();
-        String loaded = mockMvc.perform(
-                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
+        String loaded = mockMvc
+                .perform(get("/rest/AnalyzerResults").with(adminUser()).param("id", "2001").session(session))
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
-        mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
+        mockMvc.perform(post("/rest/AnalyzerResults").with(adminUser()).with(csrf()).session(session)
                 .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", "35")))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
@@ -188,4 +188,22 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
         }
         return mapper.writeValueAsString(form);
     }
+
+    /**
+     * A real Global Administrator, not {@code user("admin").roles("ADMIN")}.
+     *
+     * <p>
+     * Under privilege-based RBAC a ROLE_* authority satisfies no service gate, and
+     * this endpoint's only authorization is the PRIV_ANALYZER_IMPORT gate on
+     * {@code analyzerService.get} - the controller-level role check is gone and
+     * AnalyzerResultsController deliberately rethrows that denial. So the old
+     * fixture described a user who can reach nothing and every 200-expectation here
+     * answered 403. {@link SeededRoleAuthorities#admin()} carries every privilege,
+     * exactly as production's "*" sentinel does.
+     */
+    private static RequestPostProcessor adminUser() {
+        return user(
+                new org.springframework.security.core.userdetails.User("admin", "N/A", SeededRoleAuthorities.admin()));
+    }
+
 }
