@@ -4,9 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 
 import org.junit.Test;
-import org.openelisglobal.BaseWebContextSensitiveTest;
 
-public class NonConformityRecordNumberValidationProviderTest extends BaseWebContextSensitiveTest {
+
+public class NonConformityRecordNumberValidationProviderTest {
 
     @Test
     public void provider_shouldBeInstantiated() {
