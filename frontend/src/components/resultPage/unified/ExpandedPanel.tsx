@@ -727,7 +727,8 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         fromAnalyzerId={loadedAnalyzerId}
         analyzerName={
           analyzers.find((a) => a.id === loadedAnalyzerId)?.value as
-            string | undefined
+            | string
+            | undefined
         }
         open={isSectionOpen(sectionLayout, "combo", true)}
         onToggle={(open) => toggleSection("combo", open)}
