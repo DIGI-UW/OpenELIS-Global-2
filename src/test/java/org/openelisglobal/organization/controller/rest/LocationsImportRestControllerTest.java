@@ -302,6 +302,14 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
                 "merge"));
         assertEquals("rename", respelled.get("rows").get(0).get("outcome").asText());
         assertEquals("9120", respelled.get("rows").get(0).get("pair").get("id").asText());
+
+        organization(9121, "Tokarara Clinic", null, null, 2);
+        JsonNode widened = json(preview("organizations-ncd.csv",
+                (HEADER + "referingClinic,,Tokarara Urban Clinic,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        assertEquals("a word added to the same place's name is a rename", "rename",
+                widened.get("rows").get(0).get("outcome").asText());
+        assertEquals("9121", widened.get("rows").get(0).get("pair").get("id").asText());
     }
 
     /** OGC-1420 (1b): Excel's "CSV UTF-8" and plain "CSV" both import as typed. */
@@ -334,6 +342,25 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
         assertEquals("new", plan.get("rows").get(0).get("outcome").asText());
         assertEquals("rejected", plan.get("rows").get(1).get("outcome").asText());
         assertTrue(plan.get("rows").get(1).get("reason").asText().contains("line 2"));
+    }
+
+    /**
+     * OGC-1420 (1c): two rows that name the same record by its identifier both
+     * match it.
+     */
+    @Test
+    public void rowsNamingTheSameRecordByItsIdentifier_bothMatchIt() throws Exception {
+        jdbc.update("INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting,"
+                + " lastupdated) VALUES (nextval('clinlims.organization_identifier_seq'), 4, 'DHIS2 ID',"
+                + " 'Qw8LmZa21Ks', false, now())");
+        JsonNode plan = json(
+                preview("organizations-same-id.csv",
+                        ("type,name,identifier:DHIS2 ID\nHealthcare,Health Services Inc,Qw8LmZa21Ks\n"
+                                + "Healthcare,Some Other Name,Qw8LmZa21Ks\n").getBytes(StandardCharsets.UTF_8),
+                        "merge"));
+        assertEquals("4", plan.get("rows").get(0).get("targetId").asText());
+        assertEquals("the identifier wins over a different name", "4",
+                plan.get("rows").get(1).get("targetId").asText());
     }
 
     /** OGC-1420 (1d): a column the importer does not know is listed as ignored. */
@@ -426,8 +453,8 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
         JsonNode runs = json(
                 mockMvc.perform(get("/rest/locations/import/recent")).andExpect(status().isOk()).andReturn());
         assertEquals("organizations-applied.csv", runs.get(0).get("files").get(0).asText());
-        assertTrue(runs.get(0).get("applied").asBoolean());
+        assertEquals("apply", runs.get(0).get("action").asText());
         assertEquals("organizations-preview-only.csv", runs.get(1).get("files").get(0).asText());
-        assertEquals(false, runs.get(1).get("applied").asBoolean());
+        assertEquals("preview", runs.get(1).get("action").asText());
     }
 }

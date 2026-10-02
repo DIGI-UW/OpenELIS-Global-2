@@ -84,9 +84,9 @@ public final class LocationsImportApi {
     }
 
     /**
-     * {@code files} names the run's files; {@code applied} is false for a preview.
+     * {@code files} names the run's files; {@code action} is "preview" or "apply".
      */
     public record RecentRun(String id, String startedAt, String finishedAt, String user, String mode, String summary,
-            String status, List<String> files, boolean applied) {
+            String status, List<String> files, String action) {
     }
 }

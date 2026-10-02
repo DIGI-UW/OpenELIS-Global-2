@@ -207,11 +207,16 @@ public class LocationsRestController extends BaseRestController {
         return ResponseEntity.status(HttpStatus.NOT_FOUND).body(body);
     }
 
+    /**
+     * An unexpected failure is logged for the administrator; the user is not shown
+     * the exception's text (a parser or database message), only that the request
+     * could not be completed, in their language.
+     */
     @ExceptionHandler(RuntimeException.class)
     public ResponseEntity<Map<String, Object>> failed(RuntimeException e) {
         LogEvent.logError(e);
         Map<String, Object> body = new HashMap<>();
-        body.put("error", e.getMessage() == null ? "The request failed" : e.getMessage());
+        body.put("error", "");
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(body);
     }
 }

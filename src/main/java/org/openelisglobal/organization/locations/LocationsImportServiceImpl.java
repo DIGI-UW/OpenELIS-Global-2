@@ -584,7 +584,6 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         for (CsvRow row : rows) {
             parsed.add(parse(row, catalogue));
         }
-        rejectRepeatedIdentifiers(parsed);
         parsed.sort((a, b) -> Boolean.compare(LocationsApi.KIND_WARD.equals(a.kind),
                 LocationsApi.KIND_WARD.equals(b.kind)));
         Map<String, ParsedRow> pendingByCode = new HashMap<>();
@@ -592,6 +591,7 @@ public class LocationsImportServiceImpl implements LocationsImportService {
         Set<String> matchedIds = new HashSet<>();
         Set<String> wardParents = new LinkedHashSet<>();
         Set<String> typeNames = new LinkedHashSet<>();
+        Map<String, ParsedRow> identifiersSeen = new HashMap<>();
 
         for (ParsedRow row : parsed) {
             if (row.reject != null) {
@@ -602,6 +602,12 @@ public class LocationsImportServiceImpl implements LocationsImportService {
                 continue;
             }
             match(row, catalogue, options, matchedIds);
+            String repeated = repeatedIdentifier(row, identifiersSeen);
+            if (repeated != null) {
+                row.reject = repeated;
+                row.matched = null;
+                continue;
+            }
             if (row.matched != null) {
                 matchedIds.add(row.matched.getId());
             } else if (LocationsImportApi.OUTCOME_NEW.equals(row.outcome)) {
@@ -983,16 +989,18 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     /**
      * How likely {@code a} is a renamed {@code b}, from 0 (not at all) to 1: the
      * same distinctive words (what is left once words like "Health Centre" are set
-     * aside), or nearly the same spelling of the whole name. Sharing only generic
-     * words, as "Gerehu Health Centre" and "Kaugere Health Centre" do, is not a
-     * rename (FR-F12).
+     * aside), one name's distinctive words all in the other ("Tokarara Clinic",
+     * "Tokarara Urban Clinic"), or nearly the same spelling of the whole name.
+     * Sharing only generic words, as "Gerehu Health Centre" and "Kaugere Health
+     * Centre" do, is not a rename (FR-F12).
      */
     static double renameScore(String a, String b) {
         Set<String> distinctiveA = distinctiveWords(a);
         Set<String> distinctiveB = distinctiveWords(b);
         double spelling = 1 - (double) levenshtein(a, b) / Math.max(1, Math.max(a.length(), b.length()));
-        if (!distinctiveA.isEmpty() && distinctiveA.equals(distinctiveB)) {
-            return Math.max(spelling, 0.9);
+        if (!distinctiveA.isEmpty() && !distinctiveB.isEmpty()
+                && (distinctiveA.containsAll(distinctiveB) || distinctiveB.containsAll(distinctiveA))) {
+            return Math.max(spelling, distinctiveA.equals(distinctiveB) ? 0.9 : 0.86);
         }
         return spelling >= 0.85 ? spelling : 0;
     }
@@ -1027,24 +1035,29 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     }
 
     /**
-     * FR-F7, FR-I3: an identifier names one record, so a label and value already
-     * given on an earlier row of the same kind rejects the later row.
+     * FR-F7, FR-I3: an identifier names one record, so a label and value an earlier
+     * row of the same kind gave rejects this row unless both rows name the same
+     * existing record (two rows updating it). Returns the reason, or null.
      */
-    private static void rejectRepeatedIdentifiers(List<ParsedRow> parsed) {
-        Map<String, Integer> firstLine = new HashMap<>();
-        for (ParsedRow row : parsed) {
-            if (row.reject != null || row.kind == null) {
-                continue;
-            }
-            for (Map.Entry<String, String> identifier : row.identifiers.entrySet()) {
-                String key = row.kind + "|" + norm(identifier.getKey()) + "|" + norm(identifier.getValue());
-                Integer earlier = firstLine.putIfAbsent(key, row.csv.lineNumber());
-                if (earlier != null) {
-                    row.reject = identifier.getKey() + " " + identifier.getValue() + " is also on line " + earlier;
-                    break;
-                }
+    private static String repeatedIdentifier(ParsedRow row, Map<String, ParsedRow> seen) {
+        String reason = null;
+        for (Map.Entry<String, String> identifier : row.identifiers.entrySet()) {
+            String key = row.kind + "|" + norm(identifier.getKey()) + "|" + norm(identifier.getValue());
+            ParsedRow earlier = seen.get(key);
+            boolean sameRecord = earlier != null && earlier.matched != null && row.matched != null
+                    && earlier.matched.getId().equals(row.matched.getId());
+            if (earlier != null && !sameRecord) {
+                reason = identifier.getKey() + " " + identifier.getValue() + " is also on line "
+                        + earlier.csv.lineNumber();
+                break;
             }
         }
+        if (reason == null) {
+            for (Map.Entry<String, String> identifier : row.identifiers.entrySet()) {
+                seen.putIfAbsent(row.kind + "|" + norm(identifier.getKey()) + "|" + norm(identifier.getValue()), row);
+            }
+        }
+        return reason;
     }
 
     /**
@@ -1439,7 +1452,8 @@ public class LocationsImportServiceImpl implements LocationsImportService {
             }
             runs.add(new RecentRun(run.getId(), String.valueOf(run.getStartedAt()),
                     run.getFinishedAt() == null ? null : String.valueOf(run.getFinishedAt()),
-                    userName(run.getSystemUserId()), mode, counts, run.getStatus(), files, applied));
+                    userName(run.getSystemUserId()), mode, counts, run.getStatus(), files,
+                    applied ? "apply" : "preview"));
         }
         return runs;
     }
