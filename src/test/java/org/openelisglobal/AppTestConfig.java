@@ -47,6 +47,7 @@ import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.security.certs.service.TruststoreService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -101,7 +102,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
         "org.openelisglobal.testalertrule", "org.openelisglobal.testcatalog.service",
         "org.openelisglobal.testcatalog.dao", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
-        "org.openelisglobal.plugin", "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
+        "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
         "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
         "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.image",
         "org.openelisglobal.testresult", "org.openelisglobal.barcode", "org.openelisglobal.referral",
@@ -119,12 +120,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.labelpreset", "org.openelisglobal.accreditation.service",
         "org.openelisglobal.accreditation.daoimpl", "org.openelisglobal.alert", "org.openelisglobal.notification",
         "org.openelisglobal.shipment", "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
-        "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin",
-        "org.openelisglobal.fhir.providers", "org.openelisglobal.fhir.service", "org.openelisglobal.common.dao",
-        "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
-        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.qachecklist", "org.openelisglobal.esig", "org.openelisglobal.compliance",
-        "org.openelisglobal.vector", "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
+        "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.fhir.providers",
+        "org.openelisglobal.fhir.service", "org.openelisglobal.common.dao", "org.openelisglobal.report",
+        "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
+        "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.qachecklist",
+        "org.openelisglobal.esig", "org.openelisglobal.compliance", "org.openelisglobal.vector",
+        "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
         "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
         "org.openelisglobal.questionnaire", "org.openelisglobal.qa", "org.openelisglobal.microbiology",
         "org.openelisglobal.batchworkplan" }, excludeFilters = {
@@ -415,6 +416,16 @@ public class AppTestConfig implements WebMvcConfigurer {
         return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
     }
 
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsRestController locationsRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsRestController();
+    }
+
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsImportRestController locationsImportRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsImportRestController();
+    }
+
     /**
      * Explicit bean (the testcatalog.controller package is not scanned — a sibling
      * controller's class init breaks the test context) so MockMvc can exercise the
@@ -486,6 +497,18 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public String daemonSysUserId() {
         return "1";
+    }
+
+    /**
+     * The catalog loader is kept out of the component scan because it loads every
+     * domain on context refresh; tests that exercise a reload (the Locations import
+     * apply) still need the real bean, so it is registered here with auto-loading
+     * switched off in common.properties.
+     */
+    @Bean
+    @Profile("test")
+    public ConfigurationInitializationService configurationInitializationService() {
+        return BeanUtils.instantiateClass(ConfigurationInitializationService.class);
     }
 
     @Bean

@@ -106,10 +106,15 @@ const ProviderWorkbenchPage = () => {
             cycleId={cycleId}
             status={prep?.cycleStatus}
             distributionMethod={prep?.distributionMethod}
-            hint={t(
-              "eqa.provider.workbench.stateHint",
-              "Prep must clear the inventory and QC gate before any panel can be dispatched.",
-            )}
+            hint={
+              ["PLANNED", "PREP_IN_PROGRESS"].includes(prep?.cycleStatus) &&
+              !prep?.readyToShipAllowed
+                ? t(
+                    "eqa.provider.workbench.stateHint",
+                    "Prep must clear the inventory and QC gate before any panel can be dispatched.",
+                  )
+                : null
+            }
           />
           {/* Deliberate divergence from the specification's "no in-page Tabs — use
               sidebar children" (decided with the user, 2026-08-28): the four
@@ -156,6 +161,7 @@ const ProviderWorkbenchPage = () => {
                 <ReceiptMonitor
                   cycleId={cycleId}
                   cycleStatus={prep?.cycleStatus}
+                  distributionMethod={prep?.distributionMethod}
                   onChanged={reload}
                   onNotice={setNotice}
                 />

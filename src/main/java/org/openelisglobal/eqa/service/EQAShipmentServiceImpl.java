@@ -282,10 +282,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     @Transactional(readOnly = true)
     public List<Map<String, Object>> getShipmentRows(Long cycleId) {
         EQACycle cycle = cycle(cycleId);
-        Map<String, ShippingBox> boxes = boxesByCode(cycleId);
+        Map<Long, ShippingBox> latest = latestBoxes(cycleId);
         List<Map<String, Object>> rows = new ArrayList<>();
         for (Long organizationId : eqaCycleService.participantOrganizationIds(cycle)) {
-            ShippingBox box = boxes.get(boxCode(cycleId, organizationId));
+            ShippingBox box = latest.get(organizationId);
             rows.add(toShipmentRow(organizationId, box, box == null ? null : box.getShipment()));
         }
         return rows;
@@ -526,8 +526,13 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
     // ---- reprovisioning ----
 
     @Override
-    public Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String sysUserId) {
+    public Map<String, Object> sendRepeat(Long cycleId, Long organizationId, String overrideNote, String courier,
+            String trackingNumber, Date estimatedDeliveryDate, String sysUserId) {
         EQACycle cycle = cycle(cycleId);
+        if (cycle.getStatus() == EQACycleStatus.CLOSED) {
+            throw new IllegalStateException(
+                    "Cycle " + displayName(cycle) + " is closed, so no repeat can be sent for it");
+        }
         requireParticipant(eqaCycleService.participantOrganizationIds(cycle), organizationId);
         Map<Long, ShippingBox> latest = latestBoxes(cycleId);
         ShippingBox original = latest.get(organizationId);
@@ -574,7 +579,10 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         Shipment shipment = new Shipment();
         shipment.setShippingBox(repeat);
         shipment.setStatus(ShipmentStatus.PENDING);
-        shipment.setCourier(previous.getCourier());
+        shipment.setCourier(GenericValidator.isBlankOrNull(courier) ? previous.getCourier() : courier);
+        shipment.setTrackingNumber(trackingNumber);
+        shipment.setEstimatedDeliveryDate(
+                estimatedDeliveryDate == null ? null : new Timestamp(estimatedDeliveryDate.getTime()));
         shipment.setRepeatOfShipmentId(previous.getId());
         shipment.setSysUserId(sysUserId);
         shipment.setSystemUserId(userId(sysUserId));
@@ -584,7 +592,7 @@ public class EQAShipmentServiceImpl implements EQAShipmentService {
         shipment = shipmentService.createShipment(shipment);
 
         // A repeat is dispatched by the act of sending it: there is no second decision
-        // to make, and the courier details come from the shipment it replaces.
+        // to make.
         repeat = shippingBoxService.markReadyToSend(repeat.getId(), userId(sysUserId));
         repeat = shippingBoxService.changeBoxState(repeat.getId(), BoxState.SENT, userId(sysUserId));
         shipment = shipmentService.updateShipmentStatus(shipment.getId(), ShipmentStatus.IN_TRANSIT);

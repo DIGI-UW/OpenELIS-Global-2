@@ -34,6 +34,12 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
+import ResultAlertModal, {
+  acknowledgementRefusal,
+  ResultAlert,
+} from "../ResultAlertModal";
+import { owedResultAlerts } from "./resultAlerts";
 import {
   serverPageArrowsProps,
   serverPageSizeOf,
@@ -235,6 +241,24 @@ const UnifiedResults: React.FC = () => {
   };
   const allowResultRejection =
     configurationProperties?.allowResultRejection === "true";
+  const alertInvalidResults =
+    configurationProperties?.ALERT_FOR_INVALID_RESULTS === "true";
+  // OGC-1417: the value a row's modal is asking about, and per row the value
+  // its user already confirmed or acknowledged
+  const [resultAlert, setResultAlert] = useState<{
+    key: string;
+    row: WorklistRow;
+    alerts: ResultAlert[];
+    phase: "entry" | "beforeSign" | "refusal";
+    customCriticalMessage?: string;
+  } | null>(null);
+  const confirmedRef = useRef<
+    Record<string, { value: string; kinds: string[] }>
+  >({});
+  const decisionRef = useRef<{
+    resolve: () => void;
+    reject: (reason: Error) => void;
+  } | null>(null);
   const [nceOpenKey, setNceOpenKey] = useState<string | null>(null);
   const [referralOrganizations, setReferralOrganizations] = useState<IdValue[]>(
     [],
@@ -826,11 +850,8 @@ const UnifiedResults: React.FC = () => {
 
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
-      if (!response) {
-        return;
-      }
       const key = worklistRowKey(target);
-      if (response.status === 409) {
+      if (response && response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
           ...current,
@@ -847,11 +868,17 @@ const UnifiedResults: React.FC = () => {
         }));
         return;
       }
-      if (response.status && response.status >= 400) {
+      if (!response || requestFailed(response)) {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message:
-            response.error || intl.formatMessage({ id: "error.save.msg" }),
+            serverMessage(response) ||
+            intl.formatMessage({
+              id:
+                !response || response.status === 0
+                  ? "error.results.save.noResponse"
+                  : "error.save.msg",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -937,11 +964,19 @@ const UnifiedResults: React.FC = () => {
     [addNotification, intl, setNotificationVisible, loadWorklist],
   );
 
-  const handleSave = useCallback(
-    (row: WorklistRow) => {
+  const saveRow = useCallback(
+    (
+      row: WorklistRow,
+      acknowledged: { critical: boolean; invalid: boolean } = {
+        critical: false,
+        invalid: false,
+      },
+    ) => {
       // FR-O1: the payload names and carries exactly this analysis — never
       // the page. Untouched rows cannot be re-submitted or defaulted.
       const item: Record<string, unknown> = { ...row, isModified: true };
+      item.criticalAcknowledged = acknowledged.critical;
+      item.invalidResultConfirmed = acknowledged.invalid;
       // A referral saved against an already-saved result must leave that result
       // exactly as stored. The row carries the value the test reports, which is
       // rounded, so posting it back would quietly rewrite the stored one.
@@ -1018,8 +1053,19 @@ const UnifiedResults: React.FC = () => {
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
         (response: SaveResponse | undefined) => {
+          const refusal = acknowledgementRefusal(response);
+          if (refusal) {
+            setResultAlert({
+              key,
+              row,
+              alerts: refusal.alerts,
+              phase: "refusal",
+              customCriticalMessage: refusal.customCriticalMessage,
+            });
+            return;
+          }
           handleSaveResponse(row, response);
-          if (response && (!response.status || response.status < 400)) {
+          if (!requestFailed(response)) {
             setNoteDrafts((current) => {
               const next = { ...current };
               delete next[key];
@@ -1067,6 +1113,133 @@ const UnifiedResults: React.FC = () => {
       rowStates,
     ],
   );
+
+  const owedAlerts = useCallback(
+    (row: WorklistRow) =>
+      owedResultAlerts(row, {
+        alertInvalidResults,
+        writesValue: writesResultValue(
+          rowStates[worklistRowKey(row)] || "EMPTY",
+        ),
+      }),
+    [alertInvalidResults, rowStates],
+  );
+
+  const isConfirmed = (key: string, alert: ResultAlert) => {
+    const confirmed = confirmedRef.current[key];
+    return Boolean(
+      confirmed &&
+      confirmed.value === alert.value &&
+      confirmed.kinds.includes(alert.kind),
+    );
+  };
+
+  const markConfirmed = (key: string, alerts: ResultAlert[]) => {
+    if (!alerts.length) {
+      return;
+    }
+    const previous = confirmedRef.current[key];
+    const kinds =
+      previous && previous.value === alerts[0].value ? previous.kinds : [];
+    confirmedRef.current = {
+      ...confirmedRef.current,
+      [key]: {
+        value: alerts[0].value,
+        kinds: [...kinds, ...alerts.map((alert) => alert.kind)],
+      },
+    };
+  };
+
+  // OGC-1417: a value outside the valid range is questioned as soon as the
+  // field is left, keeping what was typed so it can be corrected. Leaving it
+  // for a button (Save) is not leaving it: Save asks before signing.
+  const handleValueBlur = useCallback(
+    (row: WorklistRow, nextFocus?: EventTarget | null) => {
+      if (nextFocus instanceof HTMLElement && nextFocus.closest("button")) {
+        return;
+      }
+      const key = worklistRowKey(row);
+      const alerts = owedAlerts(row).filter(
+        (alert) => alert.kind === "INVALID" && !isConfirmed(key, alert),
+      );
+      if (alerts.length) {
+        setResultAlert({ key, row, alerts, phase: "entry" });
+      }
+    },
+    [owedAlerts],
+  );
+
+  // OGC-1417: a critical value is acknowledged, and a value outside the valid
+  // range confirmed, before the save is signed: the pop-up comes first and the
+  // signature only once the user has answered it.
+  const beforeSign = useCallback(
+    (row: WorklistRow) =>
+      new Promise<void>((resolve, reject) => {
+        const key = worklistRowKey(row);
+        const alerts = owedAlerts(row).filter(
+          (alert) => !isConfirmed(key, alert),
+        );
+        if (!alerts.length) {
+          resolve();
+          return;
+        }
+        decisionRef.current = { resolve, reject };
+        setResultAlert({
+          key,
+          row,
+          alerts,
+          phase: "beforeSign",
+          customCriticalMessage: configurationProperties?.customCriticalMessage,
+        });
+      }),
+    [owedAlerts, configurationProperties],
+  );
+
+  const handleSave = useCallback(
+    (row: WorklistRow) => {
+      const key = worklistRowKey(row);
+      const confirmed = owedAlerts(row).filter((alert) =>
+        isConfirmed(key, alert),
+      );
+      saveRow(row, {
+        critical: confirmed.some((alert) => alert.kind === "CRITICAL"),
+        invalid: confirmed.some((alert) => alert.kind === "INVALID"),
+      });
+    },
+    [owedAlerts, saveRow],
+  );
+
+  const confirmResultAlert = () => {
+    if (!resultAlert) {
+      return;
+    }
+    const { key, alerts, phase } = resultAlert;
+    setResultAlert(null);
+    markConfirmed(key, alerts);
+    if (phase === "beforeSign") {
+      decisionRef.current?.resolve();
+      decisionRef.current = null;
+    } else if (phase === "refusal") {
+      const latest =
+        rows.find((candidate) => worklistRowKey(candidate) === key) ||
+        resultAlert.row;
+      saveRow(latest, {
+        critical: alerts.some((alert) => alert.kind === "CRITICAL"),
+        invalid: alerts.some((alert) => alert.kind === "INVALID"),
+      });
+    }
+  };
+
+  const correctResultAlert = () => {
+    if (!resultAlert) {
+      return;
+    }
+    const inputId = `unifiedResultValue-${resultAlert.key}`;
+    setResultAlert(null);
+    decisionRef.current?.reject(new Error("corrected"));
+    decisionRef.current = null;
+    window.setTimeout(() => document.getElementById(inputId)?.focus(), 0);
+  };
 
   // Gallery parity: accession leads (mono accent), identity as a sub-line, a
   // patient initials avatar on clinical rows (FR-M2/M3: no patient identity
@@ -1475,6 +1648,9 @@ const UnifiedResults: React.FC = () => {
                               onValueChange={(field, value) =>
                                 handleValueChange(row, field, value)
                               }
+                              onValueBlur={(nextFocus) =>
+                                handleValueBlur(row, nextFocus)
+                              }
                             />
                           </span>
                         </TableCell>
@@ -1515,6 +1691,7 @@ const UnifiedResults: React.FC = () => {
                               })} ${row.accessionNumber} - ${row.testName}`}
                               recordType="RESULT"
                               recordId={row.analysisId}
+                              onBeforeSign={() => beforeSign(row)}
                               onSign={() => handleSave(row)}
                               disabled={
                                 writesResultValue(state) &&
@@ -1640,6 +1817,7 @@ const UnifiedResults: React.FC = () => {
                                       })} ${row.accessionNumber} - ${row.testName}`}
                                       recordType="RESULT"
                                       recordId={row.analysisId}
+                                      onBeforeSign={() => beforeSign(row)}
                                       onSign={() => handleSave(row)}
                                       disabled={
                                         writesResultValue(state) &&
@@ -1716,6 +1894,14 @@ const UnifiedResults: React.FC = () => {
           />
         </Column>
       </Grid>
+      <ResultAlertModal
+        open={Boolean(resultAlert)}
+        alerts={resultAlert?.alerts || []}
+        mode={resultAlert?.phase === "entry" ? "entry" : "save"}
+        customCriticalMessage={resultAlert?.customCriticalMessage}
+        onConfirm={confirmResultAlert}
+        onCorrect={correctResultAlert}
+      />
     </>
   );
 };

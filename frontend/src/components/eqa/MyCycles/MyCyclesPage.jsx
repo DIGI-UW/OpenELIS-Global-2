@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Grid,
   Column,
@@ -254,8 +254,15 @@ const MyCyclesPage = () => {
   const schemeTypeLabel = (type) =>
     t(`eqa.schemeType.${type}`, type.replace(/_/g, " "));
 
+  // A second click while the first is still posting is dropped here; the
+  // server refuses it too, but its refusal would replace the success notice.
+  const submitting = useRef(new Set());
+
   const handleSubmit = (cycle) => {
+    if (submitting.current.has(cycle.id)) return;
+    submitting.current.add(cycle.id);
     submitCycle(cycle.id, (result) => {
+      submitting.current.delete(cycle.id);
       if (result.ok) {
         // The response carries the cycle's new state and nothing else, so the
         // row keeps its own progress and samples.
@@ -339,7 +346,7 @@ const MyCyclesPage = () => {
     if (typeFilter !== "all" && c.schemeType !== typeFilter) return false;
     if (
       search &&
-      !`${c.schemeName} ${c.provider} ${c.cycleNumber}`
+      !`${c.schemeName} ${c.provider} ${c.cycleName} ${c.cycleNumber}`
         .toLowerCase()
         .includes(search.toLowerCase())
     ) {
@@ -397,6 +404,8 @@ const MyCyclesPage = () => {
           lowContrast
           hideCloseButton
           inline
+          // Carbon's alertdialog default steals focus from the manual-submission dialog.
+          role="status"
           title={t(
             "eqa.cycle.retriesSpent.title",
             "Automatic submission has stopped for this cycle.",
@@ -441,6 +450,7 @@ const MyCyclesPage = () => {
           lowContrast
           hideCloseButton
           inline
+          role="status"
           title={t(
             "eqa.cycle.review.title",
             "Optional cycle-level review enabled for this scheme.",
@@ -862,7 +872,7 @@ const MyCyclesPage = () => {
                         {schemeTypeLabel(c.schemeType)}
                       </Tag>
                     </TableCell>
-                    <TableCell>{c.cycleNumber}</TableCell>
+                    <TableCell>{c.cycleName || `#${c.cycleNumber}`}</TableCell>
                     <TableCell>
                       <CycleStatusTag status={c.status} />
                     </TableCell>
@@ -988,13 +998,13 @@ const MyCyclesPage = () => {
             id="new-cycle-scheme"
             labelText={t(
               "eqa.cycle.new.scheme",
-              "Programme (from My Programs)",
+              "Scheme (from My EQA Schemes)",
             )}
             helperText={
               myPrograms.length === 0
                 ? t(
                     "eqa.cycle.new.noPrograms",
-                    "Enroll in a programme under My Programs first.",
+                    "Enroll in a scheme under My EQA Schemes first.",
                   )
                 : undefined
             }

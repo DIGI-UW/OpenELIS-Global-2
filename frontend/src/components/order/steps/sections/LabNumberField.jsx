@@ -43,7 +43,7 @@ const LabNumberField = ({
         }
         setIsGenerating(false);
         if (response?.body) {
-          onLabNumberChange(response.body);
+          onLabNumberChange(response.body, { generated: true });
         }
       },
     );

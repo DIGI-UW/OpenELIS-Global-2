@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Full harness gate: login-ready OpenELIS, healthy bridge, healthy ASTM simulator.
-# Single source of truth for CI and local parity (see e2e-playwright-analyzer-harness-reusable.yml).
+# Single source of truth for CI and local parity (called by e2e-playwright-reusable.yml).
 #
 # Env: TEST_USER, TEST_PASS, BASE_URL, TIMEOUT_SECONDS (login; default 240)
 #      BRIDGE_TIMEOUT_SECONDS (default 120), SIMULATOR_TIMEOUT_SECONDS (default 120)

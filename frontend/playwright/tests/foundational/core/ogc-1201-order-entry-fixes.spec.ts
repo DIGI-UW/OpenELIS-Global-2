@@ -203,8 +203,12 @@ test.describe("OGC-1201 order entry", () => {
     await openEntry(page, CLINICAL_ENTER);
     // A generated lab number, no patient and no sample type: the message must
     // not ask for a lab number, and must ask for the two that are missing.
-    const draft = page.getByRole("button", { name: /Save Draft/i });
-    await expect(draft).toBeDisabled();
+    const save = page.getByRole("button", { name: "Save and exit" });
+    await expect(save).toBeDisabled();
+    const toContinue = page.getByTestId("to-continue-checklist");
+    await expect(toContinue).toContainText("Select or create the patient");
+    await expect(toContinue).toContainText("Add at least one sample type");
+    await expect(toContinue).not.toContainText("Add a lab number");
   });
 
   // D — collect-only copy reached the collect-less lanes verbatim.

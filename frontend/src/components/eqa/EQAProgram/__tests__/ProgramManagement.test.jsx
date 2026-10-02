@@ -137,15 +137,15 @@ describe("ProgramManagement", () => {
     expect(screen.getByText("Total Participants")).toBeTruthy();
   });
 
-  test("renders tabs", () => {
+  test("renders the scheme list without a tab strip", () => {
     renderWithIntl(<ProgramManagement />);
-    expect(screen.getAllByText("EQA Schemes").length).toBeGreaterThanOrEqual(1);
-    // The participants tab was removed: enrollment administration lives on
-    // the standalone /qa/eqa/participants page.
+    expect(screen.getByText("EQA Schemes")).toBeTruthy();
+    // Enrollment administration lives on the standalone /qa/eqa/participants
+    // page. The System Settings tab was retired because nothing read its
+    // values and its Save overwrote the lab-wide alert configuration.
     expect(screen.queryByText("Participants")).toBeNull();
-    expect(
-      screen.getAllByText("System Settings").length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("System Settings")).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
   });
 
   test("shows empty state when no programs", () => {
@@ -154,7 +154,7 @@ describe("ProgramManagement", () => {
     });
 
     renderWithIntl(<ProgramManagement />);
-    expect(screen.getByText("No EQA programs found")).toBeTruthy();
+    expect(screen.getByText("No EQA schemes found")).toBeTruthy();
   });
 
   test("opens create form when button clicked", () => {
@@ -277,7 +277,7 @@ describe("ProgramForm", () => {
   test("shows validation error when name is empty", () => {
     renderWithIntl(<ProgramForm program={null} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText("Add Scheme"));
-    expect(screen.getByText("Program name is required")).toBeTruthy();
+    expect(screen.getByText("Scheme name is required")).toBeTruthy();
   });
 
   test("renders provider field", () => {
@@ -375,7 +375,7 @@ describe("ProgramForm test assignments", () => {
       expect(container.querySelector("#program-tests")).toBeTruthy(),
     );
 
-    fireEvent.click(screen.getByText("Save Program"));
+    fireEvent.click(screen.getByText("Save scheme"));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const urls = putToOpenElisServerFullResponse.mock.calls.map((c) => c[0]);

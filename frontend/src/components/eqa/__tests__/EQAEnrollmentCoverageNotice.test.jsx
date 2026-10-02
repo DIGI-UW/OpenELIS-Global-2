@@ -84,7 +84,7 @@ describe("EQAEnrollmentCoverageNotice", () => {
     ).toBeTruthy();
     expect(
       screen.getByText(
-        "The enrolment for this programme does not cover: Basic Metabolic Panel, Creatinine. You can still save the order.",
+        "The enrolment for this scheme does not cover: Basic Metabolic Panel, Creatinine. You can still save the order.",
       ),
     ).toBeTruthy();
   });

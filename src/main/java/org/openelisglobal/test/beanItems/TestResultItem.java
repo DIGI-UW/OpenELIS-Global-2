@@ -205,6 +205,11 @@ public class TestResultItem implements ResultItem, Serializable {
     private ResultDisplayType resultDisplayType = ResultDisplayType.TEXT;
     private boolean isModified = false;
 
+    // OGC-1417: the person entering the value has acknowledged it as critical,
+    // or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
 
@@ -505,6 +510,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public boolean isRejected() {
         return rejected;
+    }
+
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
     }
 
     public void setRejected(boolean rejected) {

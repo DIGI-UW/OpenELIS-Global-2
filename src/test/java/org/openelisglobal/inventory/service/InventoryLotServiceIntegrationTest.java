@@ -226,6 +226,27 @@ public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveT
     }
 
     @Test
+    public void getAvailableLotsByItemFEFO_shouldOrderByTheEffectiveExpiryNotThePrintedOne() {
+        InventoryLot opened = newLot("LOT-2025-FEFO-OPENED", null);
+        opened.setQcStatus(QCStatus.PASSED);
+        opened.setExpirationDate(Timestamp.valueOf("2099-12-31 00:00:00"));
+        opened.setCalculatedExpiryAfterOpening(Timestamp.valueOf("2026-01-15 00:00:00"));
+        inventoryLotService.insert(opened);
+
+        InventoryLot sealed = newLot("LOT-2025-FEFO-SEALED", null);
+        sealed.setQcStatus(QCStatus.PASSED);
+        sealed.setExpirationDate(Timestamp.valueOf("2026-06-30 00:00:00"));
+        inventoryLotService.insert(sealed);
+
+        List<String> order = inventoryLotService.getAvailableLotsByItemFEFO(1000L).stream()
+                .map(InventoryLot::getLotNumber).filter(number -> number.startsWith("LOT-2025-FEFO-"))
+                .collect(java.util.stream.Collectors.toList());
+
+        assertEquals("the opened vial goes off first, whatever its label says",
+                List.of("LOT-2025-FEFO-OPENED", "LOT-2025-FEFO-SEALED"), order);
+    }
+
+    @Test
     public void updateQCStatus_shouldUpdateLotQCStatus() {
         InventoryLot lot = inventoryLotService.get(1000L);
         assertEquals(QCStatus.PASSED, lot.getQcStatus());

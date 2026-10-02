@@ -107,6 +107,24 @@
             column="gps_capture_timestamp" type="java.sql.Timestamp" />
         <property name="storageSkipped" column="storage_skipped"
             type="java.lang.Boolean" />
+        <property name="orderProgressStatus"
+            column="order_progress_status" type="java.lang.String" length="30" />
+        <property name="orderEnteredAt" column="order_entered_at"
+            type="java.sql.Timestamp" />
+        <property name="orderPreparedAt" column="order_prepared_at"
+            type="java.sql.Timestamp" />
+        <property name="orderReadyAt" column="order_ready_at"
+            type="java.sql.Timestamp" />
+        <property name="orderReleaseNote" column="order_release_note"
+            type="java.lang.String" length="255" />
+        <property name="orderCancelledAt" column="order_cancelled_at"
+            type="java.sql.Timestamp" />
+        <property name="orderCancelledBy"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="order_cancelled_by" precision="10" scale="0" />
+        </property>
+        <property name="orderCancelReason"
+            column="order_cancel_reason" type="java.lang.String" length="255" />
         <property name="consentGiven" column="consent_provided"
             type="java.lang.Boolean" />
         <property name="consentFormReference"
