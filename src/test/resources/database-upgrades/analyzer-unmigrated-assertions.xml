@@ -21,12 +21,20 @@
             ]]></sqlCheck>
             <sqlCheck expectedResult="1"><![CDATA[
                 SELECT COUNT(*) FROM configuration_import_run r,
-                    jsonb_array_elements(r.summary::jsonb) d
+                    jsonb_array_elements(r.summary::jsonb->'analyzers') d
                 WHERE r.source = 'ANALYZER_LEGACY'
-                AND d->>'analyzerId' = '900011' AND d->>'name' = 'Unmigrated fixture'
-                AND d->>'host' = '192.0.2.11' AND (d->>'port')::int = 5000
-                AND d->>'importDirectory' = '/upgrade/incoming'
-                AND d->'pluginConfig'->>'instrumentSetting' = 'preserve-me'
+                AND (d->>'id')::numeric = 900011 AND d->>'name' = 'Unmigrated fixture'
+                AND d->>'ip_address' = '192.0.2.11' AND (d->>'port')::int = 5000
+                AND d->>'import_directory' = '/upgrade/incoming'
+                AND d->>'bridge_connection_id' IS NULL
+            ]]></sqlCheck>
+            <!-- Every removed table's rows are in the export, keyed by table name. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_plugin_config') c
+                WHERE r.source = 'ANALYZER_LEGACY'
+                AND (c->>'analyzer_id')::numeric = 900011
+                AND c->'config'->>'instrumentSetting' = 'preserve-me'
             ]]></sqlCheck>
             <!-- The pre-Bridge storage is gone. -->
             <not>
