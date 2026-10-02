@@ -19,7 +19,7 @@ PR-facing E2E validation across trusted and fork-originated contributions.
 
 - Build workflow:
   [`../../.github/workflows/e2e-playwright.yml`](../../.github/workflows/e2e-playwright.yml)
-  - Builds artifacts and Docker images.
+  - Builds artifacts, plugins, and Docker images.
   - Publishes GHCR images directly for non-fork runs.
   - Exports a prebuilt image handoff payload for fork runs.
 - Wrapper workflow:
@@ -53,6 +53,8 @@ See the operator runbook for troubleshooting and expectations:
   - GHCR image references for downstream execution.
 - `e2e-image-handoff`
   - Fork-only prebuilt image archive and source image lists.
+- `e2e-plugin-jars`
+  - Runtime plugin payload consumed by downstream tests.
 
 ### 3.2 Transfer modes
 
@@ -112,8 +114,8 @@ not the Actions list label by itself.
 Parity failures can still happen even with the correct CI topology:
 
 - Non-deterministic E2E tests.
-- Runtime timing sensitivity across containers, DB readiness and browser
-  startup.
+- Runtime timing sensitivity across containers, DB readiness, plugins, and
+  browser startup.
 - Comparing the wrong audit surface when diagnosing runs.
 
 The main remaining parity risk is test/runtime instability, not `workflow_run`
