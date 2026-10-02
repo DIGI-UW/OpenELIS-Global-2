@@ -1513,7 +1513,7 @@ export function SearchResults(props) {
           {renderCell(row, index, column, id)}
         </div>
       ),
-      width: "14rem",
+      minWidth: "14rem",
     },
     {
       id: "uncertainty",
@@ -1529,7 +1529,7 @@ export function SearchResults(props) {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "10rem",
+      minWidth: "15rem",
     },
     {
       id: "notes",
@@ -1871,6 +1871,10 @@ export function SearchResults(props) {
                   noLabel={true}
                   onChange={(e) => validateResults(e, row.id)}
                   value={row.resultValue}
+                  title={
+                    row.dictionaryResults.find((r) => r.id == row.resultValue)
+                      ?.value || ""
+                  }
                 >
                   {/* {...updateShadowResult(e, this, param.rowId)} */}
                   <SelectItem text="" value="" />
@@ -2114,16 +2118,16 @@ export function SearchResults(props) {
               </div>
             );
           }
-          case "D":
+          case "D": {
+            const currentResultText = row.dictionaryResults.find(
+              (result) => result.id == row.shadowResultValue,
+            )?.value;
             return (
-              <>
-                {
-                  row.dictionaryResults.find(
-                    (result) => result.id == row.shadowResultValue,
-                  )?.value
-                }
-              </>
+              <span className="resultCellText" title={currentResultText}>
+                {currentResultText}
+              </span>
             );
+          }
 
           default:
             return row.shadowResultValue;

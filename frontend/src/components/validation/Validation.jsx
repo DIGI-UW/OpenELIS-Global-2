@@ -231,7 +231,7 @@ const Validation = (props) => {
       cell: (row, index, column, id) => {
         return renderCell(row, index, column, id);
       },
-      width: "8rem",
+      minWidth: "15rem",
     },
     {
       id: "uncertainty",
@@ -720,16 +720,18 @@ const Validation = (props) => {
               </div>
             );
           }
-          case "D":
+          case "D": {
+            const resultText = row.dictionaryResults.find(
+              (result) => result.id == row.result,
+            )?.value;
             return (
               <div style={{ padding: "2px", ...holdingStyle }}>
-                {
-                  row.dictionaryResults.find(
-                    (result) => result.id == row.result,
-                  )?.value
-                }
+                <span className="resultCellText" title={resultText}>
+                  {resultText}
+                </span>
               </div>
             );
+          }
           default: {
             // OGC-1121: the row itself says whether the value is abnormal or
             // critical, not just the expanded review panel.
