@@ -8,6 +8,7 @@
 import React from "react";
 import { vi } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { MemoryRouter } from "react-router-dom";
@@ -24,12 +25,25 @@ vi.mock("../utils/Utils", async (importOriginal) => {
   };
 });
 
+const { signed } = vi.hoisted(() => ({ signed: vi.fn() }));
+
+/** Runs onBeforeSign first and signs only when it resolves, as the real button does. */
 vi.mock("../esignature/ESignatureButton", () => ({
-  default: ({ children, onSign, disabled }) => (
+  default: ({ children, onSign, onBeforeSign, disabled }) => (
     <button
       type="button"
       disabled={disabled}
-      onClick={() => onSign && onSign()}
+      onClick={async () => {
+        try {
+          if (onBeforeSign) {
+            await onBeforeSign();
+          }
+        } catch {
+          return;
+        }
+        signed();
+        onSign && onSign();
+      }}
     >
       {children}
     </button>
@@ -42,7 +56,8 @@ import {
   postToOpenElisServerJsonResponse,
 } from "../utils/Utils";
 
-const uricAcid = () => ({
+const uricAcid = (overrides = {}) => ({
+  ...overrides,
   id: "0",
   analysisId: "992",
   accessionNumber: "DEV01260000000001303",
@@ -57,6 +72,8 @@ const uricAcid = () => ({
   upperAbnormalRange: 100,
   lowerCritical: 10,
   higherCritical: 90,
+  resultLimitId: "77",
+  ...overrides,
 });
 
 let notify;
@@ -99,6 +116,7 @@ const savedRows = (index) =>
 describe("OGC-1417 — legacy Results form", () => {
   beforeEach(() => {
     notify = vi.fn();
+    signed.mockReset();
     Object.defineProperty(window, "location", {
       configurable: true,
       value: { ...window.location, pathname: "/LogbookResults", search: "" },
@@ -136,10 +154,23 @@ describe("OGC-1417 — legacy Results form", () => {
     fireEvent.click(modalButton("Keep this value"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
+    // 150 is past the critical bound too, so Save still asks that before signing
+    fireEvent.click(
+      await screen.findByText("Acknowledge and save", { selector: "button" }),
+    );
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
     expect(savedRows(0)[0].invalidResultConfirmed).toBe(true);
+    expect(savedRows(0)[0].criticalAcknowledged).toBe(true);
   });
 
   it("answers a refused critical value with the custom message and saves it acknowledged, unchanged otherwise", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url.startsWith("/rest/LogbookResults"))
+        return callback({ testResult: [uricAcid({ resultLimitId: "" })] });
+      return callback([]);
+    });
     renderScreen("false");
     await screen.findByText(/DEV01260000000001303/);
     const answers = [
@@ -166,12 +197,14 @@ describe("OGC-1417 — legacy Results form", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
     expect(
-      screen.getByTestId("result-alert-critical-message"),
+      await screen.findByTestId("result-alert-critical-message"),
     ).toHaveTextContent("Call the clinician now");
     expect(notify).not.toHaveBeenCalled();
     fireEvent.click(modalButton("Acknowledge and save"));
 
-    expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2);
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(2),
+    );
     expect(savedRows(1)[0].criticalAcknowledged).toBe(true);
     expect(savedRows(1)[0].reportable).toBe(false);
     expect(notify).toHaveBeenCalledWith(
@@ -189,8 +222,38 @@ describe("OGC-1417 — legacy Results form", () => {
     typeAndLeave("50");
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
 
+    await waitFor(() => expect(notify).toHaveBeenCalled());
     expect(notify).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "error", message: "Update failed" }),
     );
+  });
+
+  it("asks for a critical value's acknowledgement before the save is signed, and Correct signs nothing", async () => {
+    renderScreen("false");
+    await screen.findByText(/DEV01260000000001303/);
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback({ reflex: [], calculated: [] }),
+    );
+
+    typeAndLeave("95");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByTestId("result-alert-modal");
+    expect(signed).not.toHaveBeenCalled();
+    fireEvent.click(modalButton("Correct the value"));
+    await waitFor(() =>
+      expect(screen.queryByTestId("result-alert-modal")).toBeNull(),
+    );
+    expect(signed).not.toHaveBeenCalled();
+    expect(postToOpenElisServerJsonResponse).not.toHaveBeenCalled();
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(
+      await screen.findByText("Acknowledge and save", { selector: "button" }),
+    );
+    await waitFor(() =>
+      expect(postToOpenElisServerJsonResponse).toHaveBeenCalledTimes(1),
+    );
+    expect(signed).toHaveBeenCalledTimes(1);
+    expect(savedRows(0)[0].criticalAcknowledged).toBe(true);
   });
 });

@@ -292,12 +292,12 @@ public class AccessionValidationRestController extends BaseResultValidationContr
 
     @PostMapping(value = "AccessionValidation", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public ResultValidationForm showAccessionValidationRangeSave(HttpServletRequest request,
+    public org.springframework.http.ResponseEntity<Object> showAccessionValidationRangeSave(HttpServletRequest request,
             @Validated(ResultValidationForm.ResultValidation.class) @RequestBody ResultValidationForm form,
             BindingResult result) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
         if ("true".equals(request.getParameter("pageResults"))) {
-            return getResultValidation(request, form, false);
+            return org.springframework.http.ResponseEntity.ok(getResultValidation(request, form, false));
         }
         form.setSearchFinished(false);
         // Response-only field; Jackson binding bypasses the @InitBinder allowlist,
@@ -318,7 +318,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<Result> checkResults = (List<Result>) checkPagedResults.get(0);
         if (checkResults.size() == 0) {
             LogEvent.logDebug(this.getClass().getSimpleName(), "ResultValidation()", "Attempted save of stale page.");
-            return form;
+            return org.springframework.http.ResponseEntity.ok(form);
         }
 
         ResultValidationPaging paging = new ResultValidationPaging();
@@ -335,7 +335,15 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         if (errors.hasErrors()) {
             saveErrors(errors);
             // return findForward(FWD_VALIDATION_ERROR, form);
-            return form;
+            return org.springframework.http.ResponseEntity.ok(form);
+        }
+
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForValidationItems(resultItemList);
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return org.springframework.http.ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
         }
 
         createSystemUser();
@@ -359,6 +367,17 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         // trace is a backend log line, which reads as a silent failure on screen.
         form.setWithheldAccessions(withheldAccessions);
         // }
+        for (ResultEntryAlert alert : alerts) {
+            resultUpdateList.stream()
+                    .filter(saved -> saved.getAnalysis() != null
+                            && alert.getAnalysisId().equals(saved.getAnalysis().getId())
+                            && (alert.getComponentId() == null || (saved.getTestResult() != null
+                                    && alert.getComponentId().equals(saved.getTestResult().getComponentId()))))
+                    .findFirst().ifPresent(alert::setResult);
+        }
+        updaters = new ArrayList<>(updaters);
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_VALIDATION, getSysUserId(request)));
         try {
             resultValidationService.persistdata(deletableList, analysisUpdateList, resultUpdateList, resultItemList,
                     sampleUpdateList, noteUpdateList, resultSaveService, updaters, getSysUserId(request));
@@ -385,7 +404,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         // redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
         if (isBlankOrNull(testSectionName)) {
             // return findForward(forward, form);
-            return form;
+            return org.springframework.http.ResponseEntity.ok(form);
         } else {
             Map<String, String> params = new HashMap<>();
             params.put("type", testSectionName);
@@ -393,7 +412,7 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             // return getForwardWithParameters(findForward(forward, form), params);
         }
 
-        return (form);
+        return org.springframework.http.ResponseEntity.ok(form);
     }
 
     /**

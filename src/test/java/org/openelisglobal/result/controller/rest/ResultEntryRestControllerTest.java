@@ -397,6 +397,18 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 "\"note\":\"\",\"criticalAcknowledged\":true");
     }
 
+    /**
+     * OGC-1417: the same reference range with an authored valid range of 0 to 1000
+     * and no critical bounds, so a value outside the valid range is only that.
+     */
+    private void seedNumericResultLimitWithValidRangeOnly() {
+        jdbc.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
+                + " low_normal, high_normal, low_valid, high_valid, low_reporting_range, high_reporting_range,"
+                + " low_critical, high_critical, always_validate, lastupdated) VALUES (9401, 1, 4, 0, 'Infinity',"
+                + " 70, 100, 0, 1000, '-Infinity', 'Infinity', '-Infinity', 'Infinity', false, NOW())"
+                + " ON CONFLICT (id) DO NOTHING");
+    }
+
     /** OGC-1417: the same limit with an authored valid range of 0 to 1000. */
     private void seedNumericResultLimitWithValidRange() {
         jdbc.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
@@ -562,7 +574,7 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
      */
     @Test
     public void save_outsideValidRange_isConfirmedOnlyWhenTheSettingIsOn() throws Exception {
-        seedNumericResultLimitWithValidRange();
+        seedNumericResultLimitWithValidRangeOnly();
 
         ConfigurationProperties.getInstance().setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
         mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
@@ -587,6 +599,53 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
         assertEquals("INVALID_CONFIRMED", jdbc.queryForObject(
                 "SELECT kind FROM clinlims.result_entry_acknowledgement WHERE analysis_id = 1", String.class));
         assertEquals("2000", resultService.get("3").getValue().replaceAll("\\.0+$", ""));
+    }
+
+    /**
+     * OGC-1417 — a value past the valid range and past a critical bound owes its
+     * critical acknowledgement whatever the valid-range setting says, and both when
+     * the setting asks for the confirmation too.
+     */
+    @Test
+    public void save_beyondTheValidRangeAndACriticalBound_owesTheCriticalAcknowledgementAlways() throws Exception {
+        seedNumericResultLimitWithValidRange();
+
+        ConfigurationProperties.getInstance().setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "1500", currentToken("1"))).session(session))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired.length()").value(1))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"));
+
+        ConfigurationProperties.getInstance().setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "true");
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "1500", currentToken("1"),
+                        "\"note\":\"\",\"criticalAcknowledged\":true"))
+                .session(session)).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired.length()").value(1))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("INVALID"));
+
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBodyWithExtras("1", "3", "1", "1500", currentToken("1"),
+                        "\"note\":\"\",\"criticalAcknowledged\":true,\"invalidResultConfirmed\":true"))
+                .session(session)).andExpect(status().isOk());
+        assertEquals(Integer.valueOf(2), acknowledgementCount());
+    }
+
+    /**
+     * OGC-1417 — a value written with a comparator is judged by the number it
+     * carries, as the screens judge it, so its acknowledgement is asked and kept.
+     */
+    @Test
+    public void save_aValueWithAComparator_isJudgedByItsNumber() throws Exception {
+        seedNumericResultLimit();
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(saveBody("1", "3", "1", "<5", currentToken("1"))).session(session))
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
+                .andExpect(status().isUnprocessableEntity());
+        mockMvc.perform(post("/rest/results-entry/analysis/1/result").contentType(MediaType.APPLICATION_JSON)
+                .content(acknowledgedSaveBody("<5")).session(session)).andExpect(status().isOk());
+        assertEquals(Integer.valueOf(1), acknowledgementCount());
     }
 
     /**

@@ -39,7 +39,7 @@ import ResultAlertModal, {
   acknowledgementRefusal,
   ResultAlert,
 } from "../ResultAlertModal";
-import { owedResultAlert } from "./resultAlerts";
+import { owedResultAlerts } from "./resultAlerts";
 import {
   serverPageArrowsProps,
   serverPageSizeOf,
@@ -249,12 +249,16 @@ const UnifiedResults: React.FC = () => {
     key: string;
     row: WorklistRow;
     alerts: ResultAlert[];
-    mode: "entry" | "save";
+    phase: "entry" | "beforeSign" | "refusal";
     customCriticalMessage?: string;
   } | null>(null);
-  const [confirmedValues, setConfirmedValues] = useState<
-    Record<string, string>
+  const confirmedRef = useRef<
+    Record<string, { value: string; kinds: string[] }>
   >({});
+  const decisionRef = useRef<{
+    resolve: () => void;
+    reject: (reason: Error) => void;
+  } | null>(null);
   const [nceOpenKey, setNceOpenKey] = useState<string | null>(null);
   const [referralOrganizations, setReferralOrganizations] = useState<IdValue[]>(
     [],
@@ -1055,7 +1059,7 @@ const UnifiedResults: React.FC = () => {
               key,
               row,
               alerts: refusal.alerts,
-              mode: "save",
+              phase: "refusal",
               customCriticalMessage: refusal.customCriticalMessage,
             });
             return;
@@ -1110,9 +1114,9 @@ const UnifiedResults: React.FC = () => {
     ],
   );
 
-  const owedAlert = useCallback(
+  const owedAlerts = useCallback(
     (row: WorklistRow) =>
-      owedResultAlert(row, {
+      owedResultAlerts(row, {
         alertInvalidResults,
         writesValue: writesResultValue(
           rowStates[worklistRowKey(row)] || "EMPTY",
@@ -1121,59 +1125,101 @@ const UnifiedResults: React.FC = () => {
     [alertInvalidResults, rowStates],
   );
 
+  const isConfirmed = (key: string, alert: ResultAlert) => {
+    const confirmed = confirmedRef.current[key];
+    return Boolean(
+      confirmed &&
+      confirmed.value === alert.value &&
+      confirmed.kinds.includes(alert.kind),
+    );
+  };
+
+  const markConfirmed = (key: string, alerts: ResultAlert[]) => {
+    if (!alerts.length) {
+      return;
+    }
+    const previous = confirmedRef.current[key];
+    const kinds =
+      previous && previous.value === alerts[0].value ? previous.kinds : [];
+    confirmedRef.current = {
+      ...confirmedRef.current,
+      [key]: {
+        value: alerts[0].value,
+        kinds: [...kinds, ...alerts.map((alert) => alert.kind)],
+      },
+    };
+  };
+
   // OGC-1417: a value outside the valid range is questioned as soon as the
-  // field is left, keeping what was typed so it can be corrected.
+  // field is left, keeping what was typed so it can be corrected. Leaving it
+  // for a button (Save) is not leaving it: Save asks before signing.
   const handleValueBlur = useCallback(
-    (row: WorklistRow) => {
+    (row: WorklistRow, nextFocus?: EventTarget | null) => {
+      if (nextFocus instanceof HTMLElement && nextFocus.closest("button")) {
+        return;
+      }
       const key = worklistRowKey(row);
-      const alert = owedAlert(row);
-      if (
-        alert &&
-        alert.kind === "INVALID" &&
-        confirmedValues[key] !== alert.value
-      ) {
-        setResultAlert({ key, row, alerts: [alert], mode: "entry" });
+      const alerts = owedAlerts(row).filter(
+        (alert) => alert.kind === "INVALID" && !isConfirmed(key, alert),
+      );
+      if (alerts.length) {
+        setResultAlert({ key, row, alerts, phase: "entry" });
       }
     },
-    [owedAlert, confirmedValues],
+    [owedAlerts],
   );
 
   // OGC-1417: a critical value is acknowledged, and a value outside the valid
-  // range confirmed, before the save goes through.
+  // range confirmed, before the save is signed: the pop-up comes first and the
+  // signature only once the user has answered it.
+  const beforeSign = useCallback(
+    (row: WorklistRow) =>
+      new Promise<void>((resolve, reject) => {
+        const key = worklistRowKey(row);
+        const alerts = owedAlerts(row).filter(
+          (alert) => !isConfirmed(key, alert),
+        );
+        if (!alerts.length) {
+          resolve();
+          return;
+        }
+        decisionRef.current = { resolve, reject };
+        setResultAlert({
+          key,
+          row,
+          alerts,
+          phase: "beforeSign",
+          customCriticalMessage: configurationProperties?.customCriticalMessage,
+        });
+      }),
+    [owedAlerts, configurationProperties],
+  );
+
   const handleSave = useCallback(
     (row: WorklistRow) => {
       const key = worklistRowKey(row);
-      const alert = owedAlert(row);
-      if (!alert) {
-        saveRow(row);
-        return;
-      }
-      if (confirmedValues[key] === alert.value) {
-        saveRow(row, {
-          critical: alert.kind === "CRITICAL",
-          invalid: alert.kind === "INVALID",
-        });
-        return;
-      }
-      setResultAlert({
-        key,
-        row,
-        alerts: [alert],
-        mode: "save",
-        customCriticalMessage: configurationProperties?.customCriticalMessage,
+      const confirmed = owedAlerts(row).filter((alert) =>
+        isConfirmed(key, alert),
+      );
+      saveRow(row, {
+        critical: confirmed.some((alert) => alert.kind === "CRITICAL"),
+        invalid: confirmed.some((alert) => alert.kind === "INVALID"),
       });
     },
-    [owedAlert, confirmedValues, saveRow, configurationProperties],
+    [owedAlerts, saveRow],
   );
 
   const confirmResultAlert = () => {
     if (!resultAlert) {
       return;
     }
-    const { key, alerts, mode } = resultAlert;
+    const { key, alerts, phase } = resultAlert;
     setResultAlert(null);
-    setConfirmedValues((current) => ({ ...current, [key]: alerts[0].value }));
-    if (mode === "save") {
+    markConfirmed(key, alerts);
+    if (phase === "beforeSign") {
+      decisionRef.current?.resolve();
+      decisionRef.current = null;
+    } else if (phase === "refusal") {
       const latest =
         rows.find((candidate) => worklistRowKey(candidate) === key) ||
         resultAlert.row;
@@ -1190,6 +1236,8 @@ const UnifiedResults: React.FC = () => {
     }
     const inputId = `unifiedResultValue-${resultAlert.key}`;
     setResultAlert(null);
+    decisionRef.current?.reject(new Error("corrected"));
+    decisionRef.current = null;
     window.setTimeout(() => document.getElementById(inputId)?.focus(), 0);
   };
 
@@ -1600,7 +1648,9 @@ const UnifiedResults: React.FC = () => {
                               onValueChange={(field, value) =>
                                 handleValueChange(row, field, value)
                               }
-                              onValueBlur={() => handleValueBlur(row)}
+                              onValueBlur={(nextFocus) =>
+                                handleValueBlur(row, nextFocus)
+                              }
                             />
                           </span>
                         </TableCell>
@@ -1641,6 +1691,7 @@ const UnifiedResults: React.FC = () => {
                               })} ${row.accessionNumber} - ${row.testName}`}
                               recordType="RESULT"
                               recordId={row.analysisId}
+                              onBeforeSign={() => beforeSign(row)}
                               onSign={() => handleSave(row)}
                               disabled={
                                 writesResultValue(state) &&
@@ -1766,6 +1817,7 @@ const UnifiedResults: React.FC = () => {
                                       })} ${row.accessionNumber} - ${row.testName}`}
                                       recordType="RESULT"
                                       recordId={row.analysisId}
+                                      onBeforeSign={() => beforeSign(row)}
                                       onSign={() => handleSave(row)}
                                       disabled={
                                         writesResultValue(state) &&
@@ -1845,7 +1897,7 @@ const UnifiedResults: React.FC = () => {
       <ResultAlertModal
         open={Boolean(resultAlert)}
         alerts={resultAlert?.alerts || []}
-        mode={resultAlert?.mode || "save"}
+        mode={resultAlert?.phase === "entry" ? "entry" : "save"}
         customCriticalMessage={resultAlert?.customCriticalMessage}
         onConfirm={confirmResultAlert}
         onCorrect={correctResultAlert}

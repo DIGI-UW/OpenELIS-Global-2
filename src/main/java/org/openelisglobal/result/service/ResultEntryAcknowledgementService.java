@@ -26,10 +26,12 @@ public interface ResultEntryAcknowledgementService extends BaseObjectService<Res
 
     /**
      * What the value owes, judged by the same flag Results Entry and Validation
-     * show: null when it owes nothing, including when it is the value already
-     * stored ({@code previousValue}), which was acknowledged when it was saved.
+     * show: nothing when it is the value already stored ({@code previousValue}),
+     * which was acknowledged when it was saved. A value beyond a critical bound
+     * owes its acknowledgement even when it also lies outside the valid range; a
+     * comparator ({@code <5}) is read past, as the screens read it.
      */
-    ResultEntryAlert alertFor(ResultLimit limit, String resultType, String value, String previousValue);
+    List<ResultEntryAlert> alertsFor(ResultLimit limit, String resultType, String value, String previousValue);
 
     /**
      * Whether the admin has asked for values outside the valid range to be

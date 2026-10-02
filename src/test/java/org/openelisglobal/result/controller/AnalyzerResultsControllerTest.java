@@ -8,10 +8,14 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import java.util.List;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
@@ -125,31 +129,39 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
 
         mockMvc.perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
-                .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", "25")))
+                .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", "35")))
                 .andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"))
                 .andExpect(jsonPath("$.acknowledgementRequired[0].rowId").value("1001"))
-                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("25"));
+                .andExpect(jsonPath("$.acknowledgementRequired[0].value").value("35"));
     }
 
     /**
      * OGC-1417 — a value the instrument sent and the reviewer left alone was not
-     * entered by a person and owes nothing, even when it is critical.
+     * entered by a person and owes nothing, even when it is critical; the same row
+     * retyped to another critical value owes the acknowledgement.
      */
     @Test
-    public void acceptingAnUneditedCriticalInstrumentValue_owesNothing() throws Exception {
+    public void anUneditedCriticalInstrumentValue_owesNothing_butTheSameRowRetypedDoes() {
         seedGlucoseCriticalLimit();
         new JdbcTemplate(dataSource).update("UPDATE clinlims.analyzer_results SET result = '25' WHERE id = 1001");
-        MockHttpSession session = new MockHttpSession();
-        String loaded = mockMvc.perform(
-                get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001").session(session))
-                .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
+        ResultEntryAcknowledgementService acknowledgementService = securityContext.getParent()
+                .getBean(ResultEntryAcknowledgementService.class);
 
-        int status = mockMvc
-                .perform(post("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).with(csrf()).session(session)
-                        .contentType(MediaType.APPLICATION_JSON).content(acceptRow(loaded, "1001", "25")))
-                .andReturn().getResponse().getStatus();
-        org.junit.Assert.assertNotEquals(422, status);
+        AnalyzerResultItem unedited = new AnalyzerResultItem();
+        unedited.setId("1001");
+        unedited.setResult("25");
+        unedited.setIsAccepted(true);
+        org.junit.Assert.assertEquals(List.of(), acknowledgementService.alertsForAnalyzerItems(List.of(unedited)));
+
+        AnalyzerResultItem retyped = new AnalyzerResultItem();
+        retyped.setId("1001");
+        retyped.setResult("30");
+        retyped.setIsAccepted(true);
+        List<ResultEntryAlert> owed = acknowledgementService.alertsForAnalyzerItems(List.of(retyped));
+        org.junit.Assert.assertEquals(1, owed.size());
+        org.junit.Assert.assertEquals(ResultEntryAlert.KIND_CRITICAL, owed.get(0).getKind());
+        new JdbcTemplate(dataSource).update("UPDATE clinlims.analyzer_results SET result = '5.6' WHERE id = 1001");
     }
 
     private void seedGlucoseCriticalLimit() {

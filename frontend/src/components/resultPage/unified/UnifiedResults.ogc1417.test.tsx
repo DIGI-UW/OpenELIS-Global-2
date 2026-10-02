@@ -1,5 +1,6 @@
 import React from "react";
 import { cleanup, fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
@@ -44,14 +45,27 @@ vi.mock("../../common/CustomNotification", () => ({
   NotificationKinds: { success: "success", error: "error", warning: "warning" },
 }));
 
+const { signed } = vi.hoisted(() => ({ signed: vi.fn() }));
+
+/** Runs onBeforeSign first and signs only when it resolves, as the real button does. */
 vi.mock("../../esignature/ESignatureButton", () => ({
   __esModule: true,
-  default: ({ children, onSign, disabled }: any) => (
+  default: ({ children, onSign, onBeforeSign, disabled }: any) => (
     <button
       type="button"
       data-testid="save-button"
       disabled={disabled}
-      onClick={() => onSign({})}
+      onClick={async () => {
+        try {
+          if (onBeforeSign) {
+            await onBeforeSign();
+          }
+        } catch {
+          return;
+        }
+        signed();
+        onSign({});
+      }}
     >
       {children}
     </button>
@@ -157,6 +171,7 @@ describe("OGC-1417 — critical and invalid results on the unified page", () => 
     utilsMock.getFromOpenElisServer.mockReset();
     utilsMock.postToOpenElisServerJsonResponse.mockReset();
     notify.addNotification.mockReset();
+    signed.mockReset();
     window.localStorage.clear();
     config.configurationProperties.ALERT_FOR_INVALID_RESULTS = "false";
     config.configurationProperties.customCriticalMessage = "";
@@ -181,7 +196,8 @@ describe("OGC-1417 — critical and invalid results on the unified page", () => 
 
     fireEvent.click(modalButton("Acknowledge and save"));
 
-    expect(saveRequests()).toHaveLength(1);
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
+    expect(signed).toHaveBeenCalledTimes(1);
     expect(savedItem(0).criticalAcknowledged).toBe(true);
     expect(savedItem(0).invalidResultConfirmed).toBe(false);
   });
@@ -203,8 +219,15 @@ describe("OGC-1417 — critical and invalid results on the unified page", () => 
     fireEvent.change(resultField(), { target: { value: "95" } });
     fireEvent.click(saveButton());
 
+    await screen.findByTestId("result-alert-modal");
     fireEvent.click(modalButton("Correct the value"));
 
+    await waitFor(() =>
+      expect(
+        screen.queryByTestId("result-alert-modal"),
+      ).not.toBeInTheDocument(),
+    );
+    expect(signed).not.toHaveBeenCalled();
     expect(saveRequests()).toHaveLength(0);
     expect(screen.queryByTestId("result-alert-modal")).not.toBeInTheDocument();
     expect(resultField().value).toBe("95");
@@ -218,8 +241,8 @@ describe("OGC-1417 — critical and invalid results on the unified page", () => 
     leaveField();
     fireEvent.click(saveButton());
 
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
     expect(screen.queryByTestId("result-alert-modal")).not.toBeInTheDocument();
-    expect(saveRequests()).toHaveLength(1);
     expect(savedItem(0).criticalAcknowledged).toBe(false);
   });
 
@@ -241,20 +264,27 @@ describe("OGC-1417 — critical and invalid results on the unified page", () => 
     expect(resultField().value).toBe("150");
     fireEvent.click(saveButton());
 
-    expect(screen.queryByTestId("result-alert-modal")).not.toBeInTheDocument();
-    expect(saveRequests()).toHaveLength(1);
+    // 150 is past the critical bound too: kept as a value, it still owes its
+    // critical acknowledgement, and only that is asked at Save
+    expect(await screen.findAllByTestId("result-alert-item")).toHaveLength(1);
+    fireEvent.click(modalButton("Acknowledge and save"));
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
     expect(savedItem(0).invalidResultConfirmed).toBe(true);
+    expect(savedItem(0).criticalAcknowledged).toBe(true);
   });
 
-  it("leaves a value outside the valid range alone when the setting is off", async () => {
+  it("does not question the valid range on leaving the field when the setting is off", async () => {
     await renderPage();
     answerSavesWith(SAVED);
-    fireEvent.change(resultField(), { target: { value: "150" } });
+    fireEvent.change(resultField(), { target: { value: "110" } });
     leaveField();
 
     expect(screen.queryByTestId("result-alert-modal")).not.toBeInTheDocument();
     fireEvent.click(saveButton());
-    expect(saveRequests()).toHaveLength(1);
+    // only the critical bound it is past is asked about
+    expect(await screen.findAllByTestId("result-alert-item")).toHaveLength(1);
+    fireEvent.click(modalButton("Acknowledge and save"));
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
     expect(savedItem(0).invalidResultConfirmed).toBe(false);
   });
 
@@ -280,17 +310,63 @@ describe("OGC-1417 — critical and invalid results on the unified page", () => 
       },
       SAVED,
     );
-    fireEvent.change(resultField(), { target: { value: "150" } });
+    fireEvent.change(resultField(), { target: { value: "88" } });
     fireEvent.click(saveButton());
 
-    expect(saveRequests()).toHaveLength(1);
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
     expect(notify.addNotification).not.toHaveBeenCalled();
-    fireEvent.click(modalButton("Confirm and save"));
+    fireEvent.click(
+      await screen.findByText("Confirm and save", { selector: "button" }),
+    );
 
-    expect(saveRequests()).toHaveLength(2);
+    await waitFor(() => expect(saveRequests()).toHaveLength(2));
     expect(savedItem(1).invalidResultConfirmed).toBe(true);
     expect(notify.addNotification).toHaveBeenCalledWith(
       expect.objectContaining({ kind: "success" }),
     );
+  });
+
+  it("asks for the critical acknowledgement of a value beyond the valid range too, even with the invalid alert off", async () => {
+    await renderPage();
+    answerSavesWith(SAVED);
+    fireEvent.change(resultField(), { target: { value: "150" } });
+    fireEvent.click(saveButton());
+
+    const items = await screen.findAllByTestId("result-alert-item");
+    expect(items).toHaveLength(1);
+    expect(screen.getByTestId("result-alert-critical-message")).toBeVisible();
+    fireEvent.click(modalButton("Acknowledge and save"));
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
+    expect(savedItem(0).criticalAcknowledged).toBe(true);
+    expect(savedItem(0).invalidResultConfirmed).toBe(false);
+  });
+
+  it("reads a value written with a comparator as the number it carries", async () => {
+    await renderPage();
+    answerSavesWith(SAVED);
+    fireEvent.change(resultField(), { target: { value: "<5" } });
+    fireEvent.click(saveButton());
+
+    await screen.findByTestId("result-alert-critical-message");
+    fireEvent.click(modalButton("Acknowledge and save"));
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
+    expect(savedItem(0).criticalAcknowledged).toBe(true);
+  });
+
+  it("does not swallow Save when the field is left for the Save button", async () => {
+    config.configurationProperties.ALERT_FOR_INVALID_RESULTS = "true";
+    await renderPage();
+    answerSavesWith(SAVED);
+    fireEvent.change(resultField(), { target: { value: "105" } });
+    fireEvent.focusOut(resultField(), { relatedTarget: saveButton() });
+
+    expect(screen.queryByTestId("result-alert-modal")).not.toBeInTheDocument();
+    fireEvent.click(saveButton());
+    // 105 is past the valid range and past the critical bound: one pop-up asks both
+    expect(await screen.findAllByTestId("result-alert-item")).toHaveLength(2);
+    fireEvent.click(modalButton("Acknowledge and save"));
+    await waitFor(() => expect(saveRequests()).toHaveLength(1));
+    expect(savedItem(0).invalidResultConfirmed).toBe(true);
+    expect(savedItem(0).criticalAcknowledged).toBe(true);
   });
 });

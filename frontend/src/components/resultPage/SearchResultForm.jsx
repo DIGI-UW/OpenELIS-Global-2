@@ -75,6 +75,7 @@ import "./unified/unified-results.scss";
 import InlineNceForm from "../nonconform/common/InlineNceForm";
 import CriticalCallbackModal from "./CriticalCallbackModal";
 import ResultAlertModal, { acknowledgementRefusal } from "./ResultAlertModal";
+import { owedResultAlerts } from "./unified/resultAlerts";
 import { requestFailed, serverMessage } from "../utils/requestOutcome";
 import { Warning, Phone } from "@carbon/icons-react";
 import ESignatureButton, {
@@ -1094,8 +1095,10 @@ export function SearchResults(props) {
   // banner: seeded from the durable record (/rest/critical-callback/
   // logged-results) when results load, updated in place on a new log.
   const [loggedCallbackRows, setLoggedCallbackRows] = useState({});
-  // OGC-1417: the values a modal is asking about before they are kept or saved
+  // OGC-1417: the values a modal is asking about before they are kept or saved,
+  // and the signature waiting on the answer
   const [resultAlert, setResultAlert] = useState(null);
+  const decisionRef = useRef(null);
   // Eligible analysts per EQA scheme on this page. Keyed by scheme because one
   // grid can show samples from two schemes with different lists.
   const [eqaAnalysts, setEqaAnalysts] = useState({});
@@ -1921,7 +1924,13 @@ export function SearchResults(props) {
                   inputMode="text"
                   value={row.resultValue}
                   style={{ ...validationState[row.id]?.style, ...holdingStyle }}
-                  onBlur={() => {
+                  onBlur={(e) => {
+                    if (
+                      e.relatedTarget instanceof HTMLElement &&
+                      e.relatedTarget.closest("button")
+                    ) {
+                      return;
+                    }
                     if (
                       validationState[row.id]?.isInvalid &&
                       configurationProperties?.ALERT_FOR_INVALID_RESULTS ===
@@ -2872,10 +2881,67 @@ export function SearchResults(props) {
 
   // OGC-1417: the rows the modal asked about carry what their user confirmed
   // or acknowledged; a refused save is sent again with it.
+  // OGC-1417: the edited rows' critical values are acknowledged, and their
+  // values outside the valid range confirmed, before the save is signed.
+  const beforeSign = () =>
+    new Promise((resolve, reject) => {
+      const alertInvalidResults =
+        configurationProperties?.ALERT_FOR_INVALID_RESULTS === "true";
+      const alerts = (props.results?.testResult || [])
+        .filter((row) => row.isModified === "true")
+        .flatMap((row) =>
+          owedResultAlerts(row, { alertInvalidResults, writesValue: true })
+            .filter((alert) =>
+              alert.kind === "CRITICAL"
+                ? !row.criticalAcknowledged
+                : !row.invalidResultConfirmed,
+            )
+            .map((alert) => ({ ...alert, rowId: row.id })),
+        );
+      if (alerts.length === 0) {
+        resolve();
+        return;
+      }
+      decisionRef.current = { resolve, reject };
+      setResultAlert({
+        mode: "beforeSign",
+        alerts,
+        customCriticalMessage: configurationProperties?.customCriticalMessage,
+      });
+    });
+
+  const markAcknowledged = (alerts) => {
+    const rows = props.results?.testResult || [];
+    alerts.forEach((alert) => {
+      rows
+        .filter((row) =>
+          alert.rowId !== undefined && alert.rowId !== null
+            ? row.id === alert.rowId
+            : String(row.analysisId) === String(alert.analysisId) &&
+              (!alert.componentId ||
+                String(row.testResultComponentId) ===
+                  String(alert.componentId)),
+        )
+        .forEach((row) => {
+          if (alert.kind === "CRITICAL") {
+            row.criticalAcknowledged = true;
+          } else {
+            row.invalidResultConfirmed = true;
+          }
+        });
+    });
+  };
+
   const confirmResultAlert = () => {
     const pending = resultAlert;
     setResultAlert(null);
     if (!pending) {
+      return;
+    }
+    if (pending.mode === "beforeSign") {
+      markAcknowledged(pending.alerts);
+      decisionRef.current?.resolve();
+      decisionRef.current = null;
       return;
     }
     const rows = props.results?.testResult || [];
@@ -2886,28 +2952,15 @@ export function SearchResults(props) {
       }
       return;
     }
-    pending.alerts.forEach((alert) => {
-      rows
-        .filter(
-          (row) =>
-            String(row.analysisId) === String(alert.analysisId) &&
-            (!alert.componentId ||
-              String(row.testResultComponentId) === String(alert.componentId)),
-        )
-        .forEach((row) => {
-          if (alert.kind === "CRITICAL") {
-            row.criticalAcknowledged = true;
-          } else {
-            row.invalidResultConfirmed = true;
-          }
-        });
-    });
+    markAcknowledged(pending.alerts);
     handleSave();
   };
 
   const correctResultAlert = () => {
     const pending = resultAlert;
     setResultAlert(null);
+    decisionRef.current?.reject(new Error("corrected"));
+    decisionRef.current = null;
     if (pending?.mode === "entry") {
       window.setTimeout(
         () => document.getElementById("ResultValue" + pending.rowId)?.focus(),
@@ -3028,7 +3081,7 @@ export function SearchResults(props) {
         <ResultAlertModal
           open={Boolean(resultAlert)}
           alerts={resultAlert?.alerts || []}
-          mode={resultAlert?.mode || "save"}
+          mode={resultAlert?.mode === "entry" ? "entry" : "save"}
           customCriticalMessage={resultAlert?.customCriticalMessage}
           onConfirm={confirmResultAlert}
           onCorrect={correctResultAlert}
@@ -3087,6 +3140,7 @@ export function SearchResults(props) {
                 context={buildSignContext()}
                 recordType="RESULT_BATCH"
                 recordId={getFirstAnalysisId()}
+                onBeforeSign={beforeSign}
                 onSign={handleSave}
                 disabled={isSubmitting}
                 style={{ marginTop: "16px" }}

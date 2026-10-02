@@ -95,23 +95,44 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
     }
 
     @Override
-    public ResultEntryAlert alertFor(ResultLimit limit, String resultType, String value, String previousValue) {
-        String flag = ValidationSignals.resultFlag(limit, resultType, value);
-        String kind;
-        if (ValidationSignals.FLAG_CRITICAL.equals(flag)) {
-            kind = ResultEntryAlert.KIND_CRITICAL;
-        } else if (ValidationSignals.FLAG_INVALID.equals(flag) && isInvalidAlertEnabled()) {
-            kind = ResultEntryAlert.KIND_INVALID;
-        } else {
-            return null;
+    public List<ResultEntryAlert> alertsFor(ResultLimit limit, String resultType, String value, String previousValue) {
+        List<ResultEntryAlert> alerts = new ArrayList<>();
+        if (GenericValidator.isBlankOrNull(value)) {
+            return alerts;
         }
-        if (sameNumber(value, previousValue)) {
-            return null;
+        String numeric = value.trim().replaceAll("[<>]", "").trim();
+        String flag = ValidationSignals.resultFlag(limit, resultType, numeric);
+        if (flag == null || sameNumber(numeric, previousValue)) {
+            return alerts;
         }
+        if (ValidationSignals.FLAG_INVALID.equals(flag) && isInvalidAlertEnabled()) {
+            alerts.add(newAlert(ResultEntryAlert.KIND_INVALID, value, limit));
+        }
+        if (ValidationSignals.FLAG_CRITICAL.equals(flag)
+                || (ValidationSignals.FLAG_INVALID.equals(flag) && criticalNumber(limit, numeric))) {
+            alerts.add(newAlert(ResultEntryAlert.KIND_CRITICAL, value, limit));
+        }
+        return alerts;
+    }
+
+    private static ResultEntryAlert newAlert(String kind, String value, ResultLimit limit) {
         ResultEntryAlert alert = new ResultEntryAlert(kind, value.trim());
         alert.setValidRange(ValidationSignals.authoredBound(limit.getLowValid()),
                 ValidationSignals.authoredBound(limit.getHighValid()));
         return alert;
+    }
+
+    /**
+     * A value beyond a critical bound is critical even when it is also outside the
+     * valid range.
+     */
+    private static boolean criticalNumber(ResultLimit limit, String numeric) {
+        try {
+            return ValidationSignals.isCritical(limit,
+                    Double.parseDouble(StringUtil.normalizeScientificNotation(numeric)));
+        } catch (NumberFormatException e) {
+            return false;
+        }
     }
 
     @Override
@@ -172,9 +193,8 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
             if (item.isRejected() || item.isShadowRejected()) {
                 continue;
             }
-            ResultEntryAlert alert = alertForEntry(item.getAnalysisId(), item.getResultId(),
-                    item.getTestResultComponentId(), item.getResultType(), item.getResultValue());
-            if (alert != null) {
+            for (ResultEntryAlert alert : alertsForEntry(item.getAnalysisId(), item.getResultId(),
+                    item.getTestResultComponentId(), item.getResultType(), item.getResultValue())) {
                 alert.setTestName(item.getTestName());
                 alert.setAccessionNumber(item.getAccessionNumber());
                 alert.setAcknowledged(
@@ -191,9 +211,8 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
     public List<ResultEntryAlert> alertsForValidationItems(List<AnalysisItem> items) {
         List<ResultEntryAlert> alerts = new ArrayList<>();
         for (AnalysisItem item : items) {
-            ResultEntryAlert alert = alertForEntry(item.getAnalysisId(), item.getResultId(),
-                    item.getTestResultComponentId(), item.getResultType(), item.getResult());
-            if (alert != null) {
+            for (ResultEntryAlert alert : alertsForEntry(item.getAnalysisId(), item.getResultId(),
+                    item.getTestResultComponentId(), item.getResultType(), item.getResult())) {
                 alert.setTestName(item.getTestName());
                 alert.setAccessionNumber(item.getAccessionNumber());
                 alert.setAcknowledged(
@@ -227,18 +246,17 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
                             item.getTypeOfSampleId())
                     : resultLimitService.getResultLimitForComponentAndPatient(componentId, patient,
                             item.getTypeOfSampleId());
-            ResultEntryAlert alert = alertFor(limit, "N", item.getResult(), staged.getResult());
-            if (alert == null) {
-                continue;
+            for (ResultEntryAlert alert : alertsFor(limit, "N", item.getResult(), staged.getResult())) {
+                alert.setRowId(staged.getId());
+                alert.setTestId(staged.getTestId());
+                alert.setComponentId(componentId);
+                alert.setTestName(staged.getTestName());
+                alert.setAccessionNumber(staged.getAccessionNumber());
+                alert.setAcknowledged(
+                        ResultEntryAlert.KIND_CRITICAL.equals(alert.getKind()) ? item.isCriticalAcknowledged()
+                                : item.isInvalidResultConfirmed());
+                alerts.add(alert);
             }
-            alert.setRowId(staged.getId());
-            alert.setTestId(staged.getTestId());
-            alert.setComponentId(componentId);
-            alert.setTestName(staged.getTestName());
-            alert.setAccessionNumber(staged.getAccessionNumber());
-            alert.setAcknowledged(ResultEntryAlert.KIND_CRITICAL.equals(alert.getKind()) ? item.isCriticalAcknowledged()
-                    : item.isInvalidResultConfirmed());
-            alerts.add(alert);
         }
         return alerts;
     }
@@ -247,26 +265,26 @@ public class ResultEntryAcknowledgementServiceImpl extends BaseObjectServiceImpl
         return testResultComponentService.getActiveComponentsByTestId(testId).size() >= 2;
     }
 
-    private ResultEntryAlert alertForEntry(String analysisId, String resultId, String componentId, String resultType,
-            String value) {
+    private List<ResultEntryAlert> alertsForEntry(String analysisId, String resultId, String componentId,
+            String resultType, String value) {
         if (!"N".equals(resultType) || GenericValidator.isBlankOrNull(value)
                 || GenericValidator.isBlankOrNull(analysisId)) {
-            return null;
+            return new ArrayList<>();
         }
         Analysis analysis = analysisService.get(analysisId);
         if (analysis == null || analysis.getTest() == null) {
-            return null;
+            return new ArrayList<>();
         }
         Result stored = GenericValidator.isBlankOrNull(resultId) ? null : resultService.get(resultId);
         String scope = componentScope(analysis, componentId);
         ResultLimit limit = resultLimitService.selectResultLimitForResult(analysis, stored, patientOf(analysis), scope)
                 .getResultLimit();
-        ResultEntryAlert alert = alertFor(limit, resultType, value, stored == null ? null : stored.getValue());
-        if (alert != null) {
+        List<ResultEntryAlert> alerts = alertsFor(limit, resultType, value, stored == null ? null : stored.getValue());
+        for (ResultEntryAlert alert : alerts) {
             alert.setAnalysisId(analysis.getId());
             alert.setComponentId(scope);
         }
-        return alert;
+        return alerts;
     }
 
     @Override

@@ -4004,7 +4004,7 @@
   "label.results.nce.disposition.retested": "Retest ordered.",
   "label.results.critical.range": "Critical",
   "label.results.critical.banner.title": "Critical value — physician notification required",
-  "label.results.critical.banner.body": "The responsible clinician must be notified. Record that on the Alerts dashboard and log the call below.",
+  "label.results.critical.banner.notify": "The responsible clinician must be notified. Record that on the Alerts dashboard and log the call below.",
   "label.results.critical.acknowledge": "I Acknowledge",
   "label.results.critical.acknowledged": "Acknowledged",
   "label.results.critical.comment": "Acknowledgment comment",

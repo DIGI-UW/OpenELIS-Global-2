@@ -111,7 +111,7 @@ interface PolymorphicResultCellProps {
     value: string,
   ) => void;
   /** OGC-1417: the numeric field was left, so its value can be judged */
-  onValueBlur?: () => void;
+  onValueBlur?: (nextFocus: EventTarget | null) => void;
 }
 
 function readOnlyDisplay(row: ResultCellRow): string {
@@ -226,7 +226,9 @@ const PolymorphicResultCell: React.FC<PolymorphicResultCellProps> = ({
           onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
             onValueChange("resultValue", e.target.value)
           }
-          onBlur={() => onValueBlur?.()}
+          onBlur={(e: React.FocusEvent<HTMLInputElement>) =>
+            onValueBlur?.(e.relatedTarget)
+          }
         />
       );
     }
