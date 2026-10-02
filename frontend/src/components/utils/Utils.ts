@@ -1098,13 +1098,15 @@ export const ROUTE_GUARDS = {
     role: [Roles.RESULTS],
   },
   "/Report": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
-  // The screen that CREATES a non-conforming event: its first call,
-  // /rest/nce/generate-number, is gated on PRIV_NCE_CREATE, which only
-  // Reception holds. Guarded by role plus the qa.view.eqa permission it let
-  // Results and Validation (nce:view / nce:edit only) open a page that 403s
-  // on load. Guarded on the privilege the page needs; the view, dashboard and
-  // corrective-action screens keep their wider guards.
-  "/ReportNonConformingEvent": { privilege: Privileges.NCE_CREATE },
+  // Declared as develop declares it (nonConformityRoutePermissions.test.js):
+  // the EQA lane deep-links these pages and the QA Officer holds neither role,
+  // so the permission is what admits them. The screen's first call needs
+  // nce:create; 012-004y grants it to every role this declaration admits, so
+  // route and service agree.
+  "/ReportNonConformingEvent": {
+    permission: "qa.view.eqa",
+    role: [Roles.RECEPTION, Roles.VALIDATION],
+  },
   "/ResultValidation": {
     privilege: Privileges.RESULT_VALIDATE,
     role: [Roles.VALIDATION],

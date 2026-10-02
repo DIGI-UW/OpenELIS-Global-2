@@ -1389,4 +1389,42 @@
         </rollback>
     </changeSet>
 
+    <!--
+      Reporting a non-conforming event is the QMS entry point. develop routes
+      /ReportNonConformingEvent to Reception and Validation by role and to the
+      QA Officer through qa.view.eqa (which Results also holds), but its first
+      call, /rest/nce/generate-number, is gated on nce:create, held by Reception
+      alone, so the QA Officer who owns the QMS, the validator who finds the
+      problem and the bench tech who sees it each reached a page that 403'd on
+      load. Grant nce:create to those three; the QA Officer also gets nce:edit
+      and nce:view so it can work the events it raises.
+    -->
+    <changeSet author="openelis" id="012-004y-grant-nce-create-to-reporting-roles">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant nce:create to QA Officer, Results and Validation, and nce:edit/nce:view to QA Officer (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) IN ('QA Officer', 'Results', 'Validation') AND p.name = 'nce:create'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'QA Officer' AND p.name IN ('nce:edit', 'nce:view')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND ((trim(r.name) IN ('QA Officer', 'Results', 'Validation') AND p.name = 'nce:create')
+                    OR (trim(r.name) = 'QA Officer' AND p.name IN ('nce:edit', 'nce:view')));
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

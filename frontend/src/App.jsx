@@ -891,7 +891,8 @@ export default function App() {
                   render={() => (
                     <NonConformIndex form="ReportNonConformingEvent" />
                   )}
-                  privilege={Privileges.NCE_CREATE}
+                  role={[Roles.RECEPTION, Roles.VALIDATION]}
+                  permission="qa.view.eqa"
                 />
                 <SecureRoute
                   path="/ViewNonConformingEvent"
