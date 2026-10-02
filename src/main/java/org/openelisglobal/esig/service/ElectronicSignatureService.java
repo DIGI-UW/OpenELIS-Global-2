@@ -158,17 +158,26 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * Revoke a user's certification (admin action). User will need to re-certify
      * before signing.
      *
+     * <p>
+     * Gated on user administration, NOT on PRIV_ESIG_USE: esig:use is held by every
+     * role that signs (Results, Validation, Pathologist, Cytopathologist), so
+     * gating the revoke on it would let any signer strip another signer's
+     * certification. PRIV_SYSTEM_USER_MANAGE is granted to no role, which leaves it
+     * to admin - the same reach as the user administration screens it belongs with.
+     *
      * @param username username whose certification to revoke
      */
-    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
     void revokeCertification(String username);
 
     /**
-     * Get all certifications (for admin view).
+     * Get all certifications (for admin view). Administration of who may sign, so
+     * it sits with {@link #revokeCertification(String)} on user administration
+     * rather than on the signing privilege itself.
      *
      * @return list of all certifications
      */
-    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
     List<EsigFirstUseCertification> getAllCertifications();
 
     // ========================

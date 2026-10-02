@@ -66,6 +66,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ResolvableType;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.stereotype.Controller;
@@ -334,8 +335,7 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX));
         configs.put(Property.ALERT_FOR_INVALID_RESULTS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALERT_FOR_INVALID_RESULTS));
-        configs.put(Property.customCriticalMessage.toString(),
-                StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage()));
+        configs.put(Property.customCriticalMessage.toString(), customCriticalMessageOrBlank());
         configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.UseExternalPatientInfo.toString(),
@@ -403,6 +403,33 @@ public class DisplayListController extends BaseRestController {
     // these are fetched before login
     @GetMapping(value = "open-configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
+    /**
+     * The custom critical message, or blank when this user may not read it.
+     *
+     * <p>
+     * The message belongs to result entry: it is the text the critical-value
+     * acknowledgement modal shows, so
+     * {@link org.openelisglobal.result.service.ResultEntryAcknowledgementService}
+     * gates it on the three authorities that save a result value. But this
+     * bootstrap endpoint is fetched by every authenticated user on page load, so
+     * letting the denial out answered 403 for the WHOLE configuration map and left
+     * the SPA with no config context at all - Reports, for one, could not render
+     * the patient report form. The field is read by one screen (ResultAlertModal,
+     * via SearchResultForm) and that screen's users hold the privilege, so for
+     * everyone else it is dropped rather than widened. Same reasoning as
+     * rangeNotAppliedTests in SamplePatientEntryRestController; see
+     * PostCommitReadsDoNotFailTheSaveTest.
+     */
+    private String customCriticalMessageOrBlank() {
+        try {
+            return StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage());
+        } catch (AccessDeniedException denied) {
+            System.out.println("DIAG auth="
+                    + org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication());
+            return "";
+        }
+    }
+
     private Map<String, Object> getOpenConfigurationProperties() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(Property.restrictFreeTextProviderEntry.toString(),

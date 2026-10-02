@@ -103,16 +103,16 @@ public class InheritedCrudGateCoverageTest {
             "PathologySampleService", "PatientIdDocumentService", "PatientPhotoService", "PatientService",
             "ProviderService", "QCControlLotService", "QCResultService", "QCStatisticsService", "ReferenceAliasService",
             "ReferenceTablesService", "ReferralService", "RenameMethodService", "RenameTestSectionService",
-            "ReportDefinitionService", "ReportService", "RequesterTypeService", "ResultCalculationService",
-            "ResultLimitService", "RoleService", "SampleAcceptanceRecordService", "SampleComplianceStandardService",
-            "SampleHumanService", "SampleItemService", "SampleOrderOverrideService", "SampleQaChecklistService",
-            "SampleTypeRequestService", "SampleTypeTerminologyMappingService", "ScriptletService",
-            "SiteBrandingService", "SiteInformationService", "StorageBoxService", "StorageDeviceService",
-            "StorageRackService", "StorageRoomService", "StorageShelfService", "SystemModuleService",
-            "SystemUserSectionService", "SystemUserService", "TestAlertRuleService", "TestCodeTypeService",
-            "TestNotificationConfigService", "TestQcTargetService", "TestReflexService", "UnresolvedReferenceService",
-            "UserRoleService", "VectorMolecularRecordService", "VectorPoolService", "VectorSpeciesService",
-            "VectorSpecimenIdentificationService", "VectorTrapTypeService", "WestgardRuleConfigService"));
+            "ReportDefinitionService", "ReportService", "RequesterTypeService", "ResultLimitService", "RoleService",
+            "SampleAcceptanceRecordService", "SampleComplianceStandardService", "SampleHumanService",
+            "SampleItemService", "SampleOrderOverrideService", "SampleQaChecklistService", "SampleTypeRequestService",
+            "SampleTypeTerminologyMappingService", "ScriptletService", "SiteBrandingService", "SiteInformationService",
+            "StorageBoxService", "StorageDeviceService", "StorageRackService", "StorageRoomService",
+            "StorageShelfService", "SystemModuleService", "SystemUserSectionService", "SystemUserService",
+            "TestAlertRuleService", "TestCodeTypeService", "TestNotificationConfigService", "TestQcTargetService",
+            "TestReflexService", "UnresolvedReferenceService", "UserRoleService", "VectorMolecularRecordService",
+            "VectorPoolService", "VectorSpeciesService", "VectorSpecimenIdentificationService", "VectorTrapTypeService",
+            "WestgardRuleConfigService"));
 
     record Scan(List<String> uncovered, List<String> deadGates, List<String> badPrivileges) {
     }

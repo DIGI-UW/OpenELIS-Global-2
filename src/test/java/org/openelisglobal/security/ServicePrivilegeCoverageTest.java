@@ -300,7 +300,8 @@ public class ServicePrivilegeCoverageTest {
 
             // Per-method check
             for (MethodEntry m : methods) {
-                if (!m.hasPreAuthorize && !isSelfIdentityRead(simpleClassName, m.name)) {
+                if (!m.hasPreAuthorize && !isSelfIdentityRead(simpleClassName, m.name)
+                        && !isBootstrapConfigRead(simpleClassName, m.name)) {
                     collectedViolations.add(String.format("%s#%s - missing @PreAuthorize(\"hasAuthority('PRIV_*')\")",
                             simpleClassName, m.name));
                 }
@@ -348,6 +349,37 @@ public class ServicePrivilegeCoverageTest {
 
         private static boolean isSelfIdentityRead(String simpleName, String methodName) {
             return SELF_IDENTITY_READS.contains(simpleName + "#" + methodName);
+        }
+
+        /**
+         * Reads published in the SPA's bootstrap map, which every authenticated role
+         * fetches before it can draw anything.
+         *
+         * <p>
+         * {@code DisplayListController#getConfigurationProperties} assembles one map of
+         * site-wide switches and strings for the whole front end. A privilege on any
+         * single value in it does not hide that value - it fails the entire request, so
+         * a role missing that one privilege loads no configuration at all and its
+         * screens cannot render. {@code customCriticalMessage} is the text an
+         * administrator types into Result Configuration for the critical-value alert: a
+         * static string, no patient or result data. Gating it broke the Reports role's
+         * report forms outright and failed five cases of
+         * {@code DisplayListControllerStageFlagsTest}.
+         *
+         * <p>
+         * So it carries {@code isAuthenticated()} rather than a PRIV_*, which the scan
+         * does not count as coverage, and is listed here instead. Narrow by method on
+         * purpose: the acknowledgement operations around it in the same interface -
+         * recordAcknowledgements, alertsFor, refusalBody - stay gated on the
+         * result-saving privileges. {@code BootstrapConfigSurvivesOptionalDenialsTest}
+         * asserts the other half, that this read stays open and that the handler
+         * tolerates a denial if it is ever re-gated.
+         */
+        private static final Set<String> BOOTSTRAP_CONFIG_READS = Set
+                .of("ResultEntryAcknowledgementService#getCustomCriticalMessage");
+
+        private static boolean isBootstrapConfigRead(String simpleName, String methodName) {
+            return BOOTSTRAP_CONFIG_READS.contains(simpleName + "#" + methodName);
         }
 
         private static boolean hasAuthorityExpression(String expression) {

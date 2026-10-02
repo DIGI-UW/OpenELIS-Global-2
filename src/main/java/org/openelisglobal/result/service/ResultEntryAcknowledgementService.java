@@ -54,8 +54,18 @@ public interface ResultEntryAcknowledgementService extends BaseObjectService<Res
      * The custom critical message from Result Configuration, or null when it is
      * blank or still the shipped placeholder, so the screen shows its own
      * translated default.
+     *
+     * <p>
+     * Deliberately UNGATED, unlike the rest of this interface. It is a static
+     * string an administrator types into Result Configuration - no patient or
+     * result data - and it is published from
+     * {@code DisplayListController#getConfigurationProperties}, the SPA's bootstrap
+     * map that every authenticated role fetches on page load. Gating it meant that
+     * whole map answered 403 for any role without a result-saving privilege, so
+     * Reports could not render a report form at all. The acknowledgement operations
+     * either side of it stay gated; the message they display does not need to be.
      */
-    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_ENTER','PRIV_RESULT_VALIDATE','PRIV_ANALYZER_IMPORT')")
+    @PreAuthorize("isAuthenticated()")
     String getCustomCriticalMessage();
 
     /** The body of the refusal for a save that still owes acknowledgements. */

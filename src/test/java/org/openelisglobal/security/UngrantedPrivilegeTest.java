@@ -67,14 +67,13 @@ public class UngrantedPrivilegeTest {
      * walkthrough finds a role that DOES need one, grant it and remove it here; the
      * list may shrink but must never grow.
      */
-    private static final Set<String> BASELINE = new TreeSet<>(List.of("alert:manage", "barcode:manage", "barcode:view",
-            "branding:manage", "calendar:manage", "calendar:view", "coldstorage:manage", "dictionary:manage",
-            "dictionary:view", "extconnection:manage", "extconnection:view", "inventory:manage", "localization:manage",
-            "localization:view", "method:view", "notebook:manage", "notebook:view", "notification:manage",
-            "notification:view", "organization:manage", "panel:manage", "panel:view", "program:manage", "program:view",
-            "provider:manage", "referral:manage", "report:configure", "sample_type:manage", "shipment:edit",
-            "storage:manage", "system:configure", "system_user:manage", "test:configure", "testcalc:view",
-            "user_role:manage"));
+    private static final Set<String> BASELINE = new TreeSet<>(List.of("alert:manage", "branding:manage",
+            "calendar:manage", "calendar:view", "coldstorage:manage", "dictionary:manage", "dictionary:view",
+            "extconnection:manage", "extconnection:view", "inventory:manage", "localization:manage",
+            "localization:view", "method:view", "notification:manage", "notification:view", "organization:manage",
+            "panel:manage", "panel:view", "program:manage", "program:view", "provider:manage", "referral:manage",
+            "report:configure", "sample_type:manage", "shipment:edit", "storage:manage", "system:configure",
+            "system_user:manage", "test:configure", "testcalc:view", "user_role:manage"));
 
     /**
      * BASELINE is an exemption list, so an entry that later gets granted goes stale

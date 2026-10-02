@@ -69,11 +69,18 @@ public class AuditLogAccessTest extends BaseWebContextSensitiveTest {
 
     /**
      * Inversion on scope: reading the audit log does not make the role an
-     * administrator. Reception holds none of the audit grants and must stay out.
+     * administrator. Reports holds none of the audit grants and must stay out.
+     *
+     * <p>
+     * This was Reception until 012-004u granted it system_user:view, which its NCE
+     * dashboard needs to resolve the "performed by" picker. That is a real grant,
+     * not a regression, so the inversion moved to a role that still holds no
+     * system-user read. Keep this role free of system_user:view, or move the test
+     * again rather than deleting it.
      */
     @Test(expected = AccessDeniedException.class)
-    public void receptionCannotResolveSystemUsers() {
-        authenticateWithSeededRole("Reception");
+    public void aRoleWithoutTheUserReadCannotResolveSystemUsers() {
+        authenticateWithSeededRole("Reports");
         systemUserService.getUserById("1");
     }
 }

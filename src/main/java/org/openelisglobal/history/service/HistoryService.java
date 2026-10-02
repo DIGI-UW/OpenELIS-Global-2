@@ -30,7 +30,19 @@ public interface HistoryService extends BaseObjectService<History, String> {
     @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
     Map<String, String> getSystemAuditReferenceTableIds();
 
-    @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
+    /**
+     * The history rows for one record, used both for audit browsing and - via
+     * {@code ResultsValidationUtility#recordedByFromHistory} - to answer "who
+     * recorded this result" for one column of the validation list.
+     *
+     * <p>
+     * So it admits the result-reviewing authorities alongside PRIV_AUDIT_VIEW.
+     * Gating it on audit alone, which only the Audit Trail role holds, made GET
+     * /rest/AccessionValidation answer 403 for the Validation role: its own main
+     * screen could not list anything to validate. The broader audit browsing
+     * methods below stay on PRIV_AUDIT_VIEW.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_AUDIT_VIEW','PRIV_RESULT_VALIDATE','PRIV_RESULT_VIEW')")
     List<History> getHistoryByRefIdAndRefTableId(String Id, String Table) throws LIMSRuntimeException;
 
     @PreAuthorize("hasAuthority('PRIV_AUDIT_VIEW')")
