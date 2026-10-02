@@ -1,9 +1,11 @@
-import { test, expect, type Page } from "../../../helpers/test-base";
+import { test as base, expect, type Page } from "../../../helpers/test-base";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
   UI_TIMEOUT,
 } from "../../../helpers/timeouts";
+import { apiPost } from "../../../helpers/admin-ui";
+import { csrfToken } from "../../../helpers/api-session";
 import {
   letters,
   seedPatient,
@@ -19,7 +21,46 @@ import {
 
 const API = "/api/OpenELIS-Global/rest";
 const SERUM_ID = "2";
-const SITE = "279 - CAMES MAN";
+
+// Test-scoped ownership keeps teardown running even when a browser assertion
+// times out. The fixture depends on page so the authenticated context remains
+// alive until every catalog entry and clinic it created has been deactivated.
+const test = base.extend<{
+  ownedRecords: { testIds: string[]; organizationIds: string[] };
+}>({
+  ownedRecords: async ({ page }, use) => {
+    const records = {
+      testIds: [] as string[],
+      organizationIds: [] as string[],
+    };
+    try {
+      await use(records);
+    } finally {
+      const headers = { "X-CSRF-Token": await csrfToken(page) };
+      await Promise.all([
+        ...records.testIds.map(async (id) => {
+          const response = await page.request.put(
+            `${API}/test-catalog/tests/${id}/basic-info`,
+            {
+              headers,
+              data: { active: false },
+            },
+          );
+          expect(response.ok(), await response.text()).toBeTruthy();
+        }),
+        ...(records.organizationIds.length
+          ? [
+              apiPost(page, "/rest/locations/organizations/active", {
+                ids: records.organizationIds,
+                active: false,
+                includeChildren: false,
+              }),
+            ]
+          : []),
+      ]);
+    }
+  },
+});
 
 async function openSetup(page: Page) {
   await page.goto("/SampleBatchEntrySetup", { waitUntil: "domcontentloaded" });
@@ -116,7 +157,11 @@ async function expectSavedOrder(
   const currentTests = page.getByRole("table", { name: "Current Tests" });
   await expect(currentTests).toBeVisible({ timeout: UI_TIMEOUT });
   await expect(
-    main(page).getByText(`of ${testNames.length} items`),
+    page
+      .locator(".cds--data-table-container")
+      .filter({ has: currentTests })
+      .locator("..")
+      .getByText(`of ${testNames.length} items`),
   ).toBeVisible();
   const specimenRow = currentTests
     .getByRole("row")
@@ -198,6 +243,7 @@ test.describe("Batch order entry", () => {
 
   test("On Demand saves a new patient's order per generated barcode", async ({
     page,
+    ownedRecords,
   }) => {
     test.setTimeout(120_000);
     const panels = ["Bilan Biochimique", "Serologie VIH"];
@@ -209,7 +255,20 @@ test.describe("Batch order entry", () => {
       firstName: letters(8),
     };
     let labNumber = "";
-
+    const siteName = `Batch Clinic ${letters(12)}`;
+    const listsResponse = await page.request.get(`${API}/locations/lists`);
+    expect(listsResponse.ok()).toBeTruthy();
+    const lists = await listsResponse.json();
+    const clinicType = lists.facilityTypes.find(
+      (type: { name: string }) => type.name === "referring clinic",
+    );
+    expect(clinicType).toBeTruthy();
+    const { detail } = (await apiPost(page, "/rest/locations/organizations", {
+      kind: "facility",
+      name: siteName,
+      typeIds: [clinicType.id],
+    })) as { detail: { row: { id: string } } };
+    ownedRecords.organizationIds.push(detail.row.id);
     await test.step("set up a routine serum batch with site and patient", async () => {
       await openSetup(page);
       await chooseRoutineSerum(page, panels, tests);
@@ -218,18 +277,19 @@ test.describe("Batch order entry", () => {
         .selectOption({ label: "On Demand" });
       await tick(page, "Facility");
       await tick(page, "Patient Info");
-      await page.getByRole("textbox", { name: "Site Name" }).fill("CAMES MAN");
+      await page.getByRole("textbox", { name: "Site Name" }).fill(siteName);
       const suggestion = page
         .locator('[data-cy="auto-suggestion"]')
-        .filter({ hasText: new RegExp(`^${SITE}$`) });
+        .filter({ hasText: siteName });
       await expect(suggestion).toBeVisible({ timeout: UI_TIMEOUT });
+      const siteLabel = (await suggestion.innerText()).trim();
       await suggestion.click();
       await expect(
         page.getByRole("textbox", { name: "Site Name" }),
-      ).toHaveValue(SITE);
+      ).toHaveValue(siteLabel);
       await toEntryPage(page);
       await expect(main(page)).toContainText(/Sample Type\s*Serum/);
-      await expect(main(page)).toContainText(new RegExp(`Facility\\s*${SITE}`));
+      await expect(main(page)).toContainText(siteName);
       for (const name of testNames) {
         await expect(main(page)).toContainText(name);
       }
@@ -423,10 +483,56 @@ test.describe("Batch order entry", () => {
 
   test("EID saves an order with the specimen and DNA PCR test that were ticked", async ({
     page,
+    ownedRecords,
   }) => {
     test.setTimeout(120_000);
     const patient: SeededPatient = await seedPatient(page);
     let labNumber = "";
+    const stamp = Date.now().toString();
+    const unitsResponse = await page.request.get(
+      `${API}/test-catalog/lab-units`,
+    );
+    expect(unitsResponse.ok()).toBeTruthy();
+    const units = await unitsResponse.json();
+    // The baseline catalog has no DNA PCR / Dry Tube link. Own this test's
+    // catalog entry so the save exercises a configured, compatible specimen.
+    const { testId } = (await apiPost(page, "/rest/test-catalog/tests", {
+      name: "DNA PCR",
+      reportingName: "DNA PCR",
+      description: `EID batch ${stamp}`,
+      code: `EID${stamp}`,
+      labUnitId: units[0].id,
+      sampleTypeIds: ["24"],
+      domain: "CLINICAL",
+      orderable: true,
+    })) as { testId: string };
+    ownedRecords.testIds.push(testId);
+    const headers = { "X-CSRF-Token": await csrfToken(page) };
+    const configured = await page.request.put(
+      `${API}/test-catalog/tests/${testId}/sample-results`,
+      {
+        headers,
+        data: {
+          testId,
+          components: [
+            {
+              code: "PRIMARY",
+              label: "DNA PCR",
+              displayOrder: 0,
+              resultType: "N",
+              isPrimary: true,
+              showOnReport: true,
+              interpretations: [],
+              options: [],
+            },
+          ],
+        },
+      },
+    );
+    expect(configured.ok(), await configured.text()).toBeTruthy();
+    await apiPost(page, `/rest/test-catalog/tests/${testId}/activate`, {
+      gapsAcknowledged: "EID batch browser test does not enter numeric results",
+    });
 
     await test.step("set up a pre-printed EID batch with a dry tube and DNA PCR", async () => {
       await openSetup(page);
@@ -459,6 +565,7 @@ test.describe("Batch order entry", () => {
       const order = await response.json();
       expect(order.samples).toHaveLength(1);
       expect(order.samples[0].tests).toHaveLength(1);
+      expect(order.samples[0].tests[0].id).toBe(testId);
       await expectSavedOrder(page, labNumber, patient, ["DNA PCR"], "Dry Tube");
     });
   });

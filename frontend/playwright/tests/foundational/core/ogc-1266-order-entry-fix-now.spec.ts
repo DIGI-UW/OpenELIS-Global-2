@@ -227,6 +227,15 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     await expect(storage).toContainText(`${labNumber}-1`);
     await expect(storage).not.toContainText(`${labNumber}-2`);
 
+    // The defaults would complete the step (the collector is optional,
+    // OGC-1419), so the collection time is cleared to save it incomplete and
+    // have Continue reopen Prepare Samples.
+    await page.locator("#collectionTime-0").fill("");
+    await page.locator("#collectionTime-0").press("Tab");
+    await expect(page.getByTestId("to-continue-checklist")).toContainText(
+      `Collection date and time for ${labNumber}-1`,
+    );
+
     const saved = page.waitForResponse(
       (response) =>
         response.url().includes("/rest/SamplePatientEntry") &&

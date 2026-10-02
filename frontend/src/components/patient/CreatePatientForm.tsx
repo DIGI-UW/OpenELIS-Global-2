@@ -422,7 +422,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
         if (componentMounted.current) {
           setAddressHierarchyValues({ 0: values });
           // Also populate healthRegions for backward compatibility
-          setHealthRegions(values);
+          setHealthRegions(Array.isArray(values) ? values : []);
 
           // Check if any level has defaults configured
           const hasDefaults = levels.some((lvl) => lvl.defaultId);
@@ -546,7 +546,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
   };
 
   function fetchHealthDistrictsCallback(res) {
-    setHealthDistricts(res);
+    setHealthDistricts(Array.isArray(res) ? res : []);
   }
 
   // Edit-flow side effects: fetch health-districts cascade for the patient's
@@ -672,7 +672,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
 
   const fetchHeathRegions = (regions) => {
     if (componentMounted.current) {
-      setHealthRegions(regions);
+      setHealthRegions(Array.isArray(regions) ? regions : []);
     }
   };
 
@@ -718,18 +718,18 @@ function CreatePatientForm(props: CreatePatientFormProps) {
 
   const fetchMaritalStatuses = (statuses) => {
     if (componentMounted.current) {
-      setMaritalStatuses(statuses);
+      setMaritalStatuses(Array.isArray(statuses) ? statuses : []);
     }
   };
 
   const fetchEducationList = (eductationList) => {
     if (componentMounted.current) {
-      setEducationList(eductationList);
+      setEducationList(Array.isArray(eductationList) ? eductationList : []);
     }
   };
 
   const fetchHeathDistricts = (districts) => {
-    setHealthDistricts(districts);
+    setHealthDistricts(Array.isArray(districts) ? districts : []);
   };
 
   const handleSubmit = (values, formikBag) => {

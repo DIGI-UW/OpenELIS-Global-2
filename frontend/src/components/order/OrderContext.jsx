@@ -574,7 +574,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           const collectionTime =
             sampleItem.collectionTime || sampleXMLData.collectionTime || "";
           const collector =
-            sampleItem.collectorId || sampleXMLData.collector || "";
+            sampleItem.collectorId ?? sampleXMLData.collector ?? "";
           const collectionConditions =
             sampleItem.collectionConditions ||
             sampleXMLData.collectionConditions ||
