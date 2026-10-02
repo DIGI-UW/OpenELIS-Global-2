@@ -28,6 +28,7 @@ import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
 import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
+import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -174,10 +175,9 @@ const OrderCollect = () => {
 
   // Two levels of required (FR-A7, FR-D7). Save and exit needs the save
   // level: a sample with a sample type and no collection date before the
-  // admission date. Save and next needs the complete level as well: collection
-  // date and collector for every sample, and consent where the laboratory
-  // requires it. Informed consent stays advisory by default (FRS FR-5-001/
-  // FR-5-002); a site whose regulator requires it turns
+  // admission date. Save and next needs the complete level as well (see
+  // prepareSamplesToContinue). Informed consent stays advisory by default (FRS
+  // FR-5-001/FR-5-002); a site whose regulator requires it turns
   // consentRequiredForCollection on. Environmental and vector samples have no
   // human subject, so consent never applies to them.
   const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
@@ -188,65 +188,17 @@ const OrderCollect = () => {
   const consentRequired =
     configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
   const consentSatisfied = !consentRequired || consentData.consentGiven;
-  const liveSamples = samples
-    .map((sample, index) => ({ sample, index }))
-    .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected);
-  const sampleName = ({ sample, index }) =>
-    `${labNumber || ""}-${index + 1} ${sample.sampleTypeName || ""}`.trim();
   const canSave =
     samples?.length > 0 &&
     samples.some((s) => s.sampleTypeId) &&
     !hasCollectionDateConflict;
-  const toContinue = [];
-  if (!samples.some((s) => s.sampleTypeId)) {
-    toContinue.push({
-      id: "order.continue.item.sampleType",
-      label: intl.formatMessage({ id: "order.continue.item.sampleType" }),
-      targetId: "sampleType-0",
-    });
-  }
-  liveSamples.forEach((entry) => {
-    const { sample, index } = entry;
-    if (
-      isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate)
-    ) {
-      toContinue.push({
-        id: `collectionConflict-${index}`,
-        label: intl.formatMessage(
-          { id: "order.continue.item.collectionConflict" },
-          { sample: sampleName(entry) },
-        ),
-        targetId: `collectionDate-${index}`,
-      });
-    }
-    if (!sample.collectionDate || !sample.collectionTime) {
-      toContinue.push({
-        id: `collectionTime-${index}`,
-        label: intl.formatMessage(
-          { id: "order.continue.item.collectionTime" },
-          { sample: sampleName(entry) },
-        ),
-        targetId: `collectionDate-${index}`,
-      });
-    }
-    if (!sample.collectorId && !sample.labPerformedSampling) {
-      toContinue.push({
-        id: `collector-${index}`,
-        label: intl.formatMessage(
-          { id: "order.continue.item.collector" },
-          { sample: sampleName(entry) },
-        ),
-        targetId: `collector-${index}`,
-      });
-    }
+  const toContinue = prepareSamplesToContinue({
+    samples,
+    labNumber,
+    admissionDate,
+    consentSatisfied,
+    intl,
   });
-  if (!consentSatisfied) {
-    toContinue.push({
-      id: "order.continue.item.consent",
-      label: intl.formatMessage({ id: "order.continue.item.consent" }),
-      targetId: "consent-section",
-    });
-  }
   const canProceed = canSave && toContinue.length === 0;
 
   // Check if we have any tests ordered
