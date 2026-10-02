@@ -217,7 +217,9 @@ public class UserServiceImpl implements UserService {
         // roles rather than trusting the caller: an admin (or ALL_LAB_UNITS)
         // sees every one, anyone else only their assigned units.
         String adminRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId());
-        boolean isAdmin = userRoleService.getRoleIdsForUser(systemUserId).contains(adminRoleId);
+        // Same Integer-vs-String trap as in doGetUserTestSections: compare as strings.
+        boolean isAdmin = userRoleService.getRoleIdsForUser(systemUserId).stream().map(String::valueOf)
+                .anyMatch(adminRoleId::equals);
         List<String> userLabUnits = new ArrayList<>();
         UserLabUnitRoles userLabRoles = getUserLabUnitRoles(systemUserId);
         if (userLabRoles != null) {
@@ -289,7 +291,12 @@ public class UserServiceImpl implements UserService {
                         .getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN).equals("true");
                 UserSessionData usd = (UserSessionData) session.getAttribute("userSessionData");
                 String adminRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId());
-                Boolean isadmin = userRoleService.getRoleIdsForUser(systemUserId).contains(adminRoleId);
+                // Role ids are Integer on this branch while adminRoleId is built as a
+                // String; List.contains compared the two types and was always false,
+                // so an admin fell through to lab units it does not have and got no
+                // sections (ReportingAccess then refused every export).
+                Boolean isadmin = userRoleService.getRoleIdsForUser(systemUserId).stream().map(String::valueOf)
+                        .anyMatch(adminRoleId::equals);
                 TestSection logintestSection = null;
                 if (requireLabUnitAtLogin && !isadmin) {
                     if (usd.getLoginLabUnit() != 0) {

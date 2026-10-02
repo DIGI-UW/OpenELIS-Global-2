@@ -346,7 +346,7 @@ const MyCyclesPage = () => {
     if (typeFilter !== "all" && c.schemeType !== typeFilter) return false;
     if (
       search &&
-      !`${c.schemeName} ${c.provider} ${c.cycleNumber}`
+      !`${c.schemeName} ${c.provider} ${c.cycleName} ${c.cycleNumber}`
         .toLowerCase()
         .includes(search.toLowerCase())
     ) {
@@ -872,7 +872,7 @@ const MyCyclesPage = () => {
                         {schemeTypeLabel(c.schemeType)}
                       </Tag>
                     </TableCell>
-                    <TableCell>{c.cycleNumber}</TableCell>
+                    <TableCell>{c.cycleName || `#${c.cycleNumber}`}</TableCell>
                     <TableCell>
                       <CycleStatusTag status={c.status} />
                     </TableCell>
@@ -998,13 +998,13 @@ const MyCyclesPage = () => {
             id="new-cycle-scheme"
             labelText={t(
               "eqa.cycle.new.scheme",
-              "Programme (from My Programs)",
+              "Scheme (from My EQA Schemes)",
             )}
             helperText={
               myPrograms.length === 0
                 ? t(
                     "eqa.cycle.new.noPrograms",
-                    "Enroll in a programme under My Programs first.",
+                    "Enroll in a scheme under My EQA Schemes first.",
                   )
                 : undefined
             }

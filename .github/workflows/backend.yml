@@ -36,7 +36,6 @@ jobs:
               - 'src/**'
               - 'pom.xml'
               - 'dataexport/**'
-              - 'plugins/**'
               - 'fhir/**'
               - 'Dockerfile'
               - 'build.docker-compose.yml'
@@ -237,7 +236,7 @@ jobs:
           mvn clean install
           cd ..
 
-      - name: Build main project (produces classes JAR and test-jar for plugins)
+      - name: Build main project
         run: mvn clean install -Dspotless.check.skip=true
 
       - name: Preserve backend and existing-data upgrade diagnostics

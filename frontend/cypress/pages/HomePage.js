@@ -43,9 +43,6 @@ class HomePage {
       resultsRange: "#menu_results_range_nav",
       resultsStatus: "#menu_results_status_nav",
       validationMenu: "#menu_resultvalidation",
-      routineValidation: "#menu_resultvalidation_routine",
-      rangeOrderValidation: "#menu_accession_validation_range",
-      accessionValidation: "#menu_accession_validation",
       reportsMenu: "#menu_reports",
       reportsRoutine: "#menu_reports_routine",
       reportsStudy: "[data-cy='sidenav-button-menu_reports_study']",
@@ -240,26 +237,25 @@ class HomePage {
     return new Result();
   }
 
-  // Validation related functions
-  goToValidationByRoutine() {
+  // Validation related functions. OGC-1418: Validation is one page with one
+  // search, reached from the Validation menu item; the per-search entries are
+  // retired, so every way in opens the same page.
+  goToValidation() {
     this.openNavigationMenu();
     cy.get(this.selectors.validationMenu).click();
-    cy.get(this.selectors.routineValidation).click();
     return new Validation();
+  }
+
+  goToValidationByRoutine() {
+    return this.goToValidation();
   }
 
   goToValidationByOrder() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.validationMenu).click();
-    cy.get(this.selectors.accessionValidation).click();
-    return new Validation();
+    return this.goToValidation();
   }
 
   goToValidationByRangeOrder() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.validationMenu).click();
-    cy.get(this.selectors.rangeOrderValidation).click();
-    return new Validation();
+    return this.goToValidation();
   }
 
   // Reports related functions

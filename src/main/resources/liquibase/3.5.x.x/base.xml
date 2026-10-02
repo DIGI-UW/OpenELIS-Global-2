@@ -610,4 +610,10 @@
   <!-- Locations and Organizations: organization profile fields, identifiers, change log, sampling-site link, category and ownership lists. -->
   <include relativeToChangelogFile="true" file="112-locations-organizations.xml"/>
 
+  <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
+  <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
+
+  <!-- Validation is one page: the menu item opens it and the per-search entries are retired. -->
+  <include relativeToChangelogFile="true" file="114-validation-menu-collapse.xml"/>
+
 </databaseChangeLog>

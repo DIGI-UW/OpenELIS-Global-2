@@ -7,7 +7,7 @@ class Validation {
   }
 
   selectTestUnit(unitType) {
-    cy.get("#unitType").select(unitType);
+    cy.get("#validationLabUnit").select(unitType);
   }
 
   validateTestUnit(unitType) {
@@ -15,8 +15,8 @@ class Validation {
   }
 
   enterLabNumberAndSearch(labNo) {
-    cy.get("#accessionNumber").type(labNo);
-    cy.get("[data-testid='Search-btn']").click();
+    cy.get("#validationSearch").type(labNo);
+    cy.get("[data-testid='validation-load']").click();
   }
 
   saveResults() {

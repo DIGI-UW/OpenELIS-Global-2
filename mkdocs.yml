@@ -33,6 +33,10 @@ nav:
        - Adding a Requester to the Consolidated server: add_dr.md
        - Database Profiles Mass facility and test catalog updates: dbprofiles.md
        - Entity Relation Diagram: entity relation diagram.md
+       - Analyzers:
+          - Shipped analyzer clinical defaults: analyzers/default-catalog-evidence.md
+          - Analyzer setup with partial mappings: analyzers/partial-mapping-setup.md
+          - Existing analyzer upgrade: analyzer-upgrade-migration.md
     - Interacting with the co-resident FHIR store: directFHIRCommunication.md
     - Troubleshooting: troubleshooting.md
     - Security:

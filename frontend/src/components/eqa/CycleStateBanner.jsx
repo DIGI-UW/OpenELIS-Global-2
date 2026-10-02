@@ -111,8 +111,11 @@ const CycleStateBanner = ({ cycleId, status, hint, distributionMethod }) => {
                     </TableCell>
                     <TableCell>
                       {row.triggerType === "MANUAL"
-                        ? t("eqa.cycle.history.manual", "Manual override")
-                        : row.triggerEvent || row.triggerType}
+                        ? t("eqa.cycle.history.manual", "Manual")
+                        : t(
+                            `eqa.cycle.trigger.${(row.triggerEvent || "").toLowerCase()}`,
+                            row.triggerEvent || row.triggerType,
+                          )}
                     </TableCell>
                     <TableCell>
                       {/* timestamp + actor. AUTO rows carry no

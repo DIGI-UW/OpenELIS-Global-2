@@ -143,7 +143,7 @@ Important: Call out any "special" hotspots (examples):
 
 - Lockfiles (`package-lock.json`, `yarn.lock`, `pnpm-lock.yaml`)
 - Localization JSON (`frontend/src/languages/*.json`)
-- Submodule pointer changes (e.g., `plugins` as a submodule)
+- Submodule pointer changes (e.g., `dataexport` as a submodule)
 
 #### 3b) Report base-only improvements (CRITICAL — easy to lose)
 

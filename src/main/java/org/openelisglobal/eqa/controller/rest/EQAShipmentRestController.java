@@ -130,15 +130,17 @@ public class EQAShipmentRestController extends BaseRestController {
     }
 
     /**
-     * Reprovision: {"overrideNote": "..."} — required only when the reserve is
-     * short.
+     * Reprovision. estimatedDeliveryDate is yyyy-MM-dd; the note is required only
+     * when the reserve is short.
      */
     @PostMapping(value = "/cycles/{cycleId}/receipts/{organizationId}/repeat", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize(EQAGuards.PROVIDER)
     public Map<String, Object> sendRepeat(HttpServletRequest request, @PathVariable Long cycleId,
             @PathVariable Long organizationId, @RequestBody(required = false) Map<String, Object> body) {
-        return shipmentService.sendRepeat(cycleId, organizationId,
-                body == null ? null : stringField(body, "overrideNote"), getSysUserId(request));
+        Map<String, Object> fields = body == null ? Map.of() : body;
+        return shipmentService.sendRepeat(cycleId, organizationId, stringField(fields, "overrideNote"),
+                stringField(fields, "courier"), stringField(fields, "trackingNumber"),
+                dateField(fields, "estimatedDeliveryDate"), getSysUserId(request));
     }
 
     @GetMapping(value = "/cycles/{cycleId}/scores", produces = MediaType.APPLICATION_JSON_VALUE)

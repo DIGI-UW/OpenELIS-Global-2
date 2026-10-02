@@ -87,7 +87,7 @@ test.each([false, true])(
     );
     expect(
       screen.getByRole("link", { name: "Results Validation", exact: true }),
-    ).toHaveAttribute("href", "/ResultValidation?type=&test=");
+    ).toHaveAttribute("href", "/validation");
     expect(
       screen.getByRole("link", { name: "My Report Queue", exact: true }),
     ).toHaveAttribute("aria-current", "page");

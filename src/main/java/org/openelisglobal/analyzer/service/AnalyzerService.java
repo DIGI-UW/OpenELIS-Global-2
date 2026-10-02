@@ -8,21 +8,6 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
 
-    /**
-     * Compile-only compatibility for generic artifacts consumed by shared CI.
-     * Bridge owns analyzer identification, so this method never matches an
-     * analyzer.
-     */
-    @Deprecated(forRemoval = true)
-    default Optional<Analyzer> findByIdentifierPatternMatch(String identifier) {
-        return Optional.empty();
-    }
-
-    @Deprecated(forRemoval = true)
-    default Optional<Analyzer> findByIdentifierPatternMatch(List<String> identifiers) {
-        return Optional.empty();
-    }
-
     @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<Analyzer> getAllWithBindings();
 

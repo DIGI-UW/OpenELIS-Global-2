@@ -31,6 +31,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.LabelValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -43,6 +44,7 @@ import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.reports.action.implementation.ExportTrendsByDate;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -90,6 +92,9 @@ public class DisplayListController extends BaseRestController {
 
     @Autowired
     private ProviderService providerService;
+
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
 
     @Autowired
     private PersonService personService;
@@ -329,6 +334,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX));
         configs.put(Property.ALERT_FOR_INVALID_RESULTS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALERT_FOR_INVALID_RESULTS));
+        configs.put(Property.customCriticalMessage.toString(),
+                StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage()));
         configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.UseExternalPatientInfo.toString(),

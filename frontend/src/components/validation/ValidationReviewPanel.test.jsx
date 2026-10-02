@@ -52,7 +52,10 @@ vi.mock("../nonconform/common/InlineNceForm", () => ({
   ),
 }));
 
-import { postToOpenElisServerJsonResponse } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 
 const row = (overrides = {}) => ({
   id: 0,
@@ -387,6 +390,53 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(payload.noteVisibility).toBe("I");
   });
 
+  it("OGC-1417: a correction the server refuses as critical is acknowledged in the modal and sent again", () => {
+    const onActionDone = vi.fn();
+    const answers = [
+      {
+        status: 422,
+        code: "ACKNOWLEDGEMENT_REQUIRED",
+        customCriticalMessage: "Call the clinician now",
+        acknowledgementRequired: [
+          {
+            kind: "CRITICAL",
+            value: "75",
+            testName: "Lead(Serum)",
+            analysisId: "100",
+          },
+        ],
+      },
+      { analysisId: "100", outcome: "modified" },
+    ];
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback(answers.shift()),
+    );
+    renderPanel(row(), {
+      configurationProperties: { notesRequiredForModifyResults: "false" },
+      onActionDone,
+    });
+
+    fireEvent.click(screen.getByTestId("review-modify"));
+    fireEvent.change(screen.getByLabelText("New result"), {
+      target: { value: "75" },
+    });
+    fireEvent.click(screen.getByTestId("review-save-modification"));
+
+    expect(
+      screen.getByTestId("result-alert-critical-message"),
+    ).toHaveTextContent("Call the clinician now");
+    expect(onActionDone).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByText("Acknowledge and save", { selector: "button" }),
+    );
+
+    const [url, body] = lastPost();
+    expect(url).toBe("/rest/AccessionValidation/analysis/100/modify");
+    expect(JSON.parse(body).criticalAcknowledged).toBe(true);
+    expect(JSON.parse(body).result).toBe("75");
+    expect(onActionDone).toHaveBeenCalledWith("modified", expect.anything());
+  });
+
   it("multi-select results are not edited here — the panel points to Results Entry", () => {
     renderPanel(row({ resultType: "M", multiSelectResultValues: "{}" }));
     fireEvent.click(screen.getByTestId("review-modify"));
@@ -488,5 +538,28 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(list).toHaveTextContent("Result Note (Validation)");
     expect(list).toHaveTextContent("Internal");
     expect(list).toHaveTextContent("Val One");
+  });
+});
+
+describe("ValidationReviewPanel attachments (review only)", () => {
+  it("attachments stay read-only on validation: the section lists files but offers no upload", () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (typeof url === "string" && url.endsWith("/attachments") && cb) {
+        cb([
+          {
+            id: 9,
+            fileName: "worksheet.pdf",
+            fileSizeBytes: 4096,
+            analysisId: "",
+          },
+        ]);
+      }
+    });
+    renderPanel(row());
+    fireEvent.click(screen.getByRole("button", { name: /Attachments/ }));
+    expect(screen.getByText("worksheet.pdf")).toBeInTheDocument();
+    expect(screen.queryByTestId("attachment-upload")).toBeNull();
+    expect(screen.queryByText("Add attachment")).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 });
