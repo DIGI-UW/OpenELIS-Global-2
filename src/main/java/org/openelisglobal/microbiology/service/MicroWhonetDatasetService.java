@@ -9,6 +9,9 @@ public interface MicroWhonetDatasetService {
     @PreAuthorize("hasAuthority('PRIV_MICRO_VIEW')")
     MicroWhonetDataset compile(MicroWhonetExportQueryForm query);
 
-    @PreAuthorize("hasAuthority('PRIV_MICRO_VIEW')")
+    // Also PRIV_REPORT_RUN: the WHONET export page is routed to Reports, which
+    // does not hold micro:view; this is the one dataset read its filter step
+    // needs.
+    @PreAuthorize("hasAnyAuthority('PRIV_MICRO_VIEW','PRIV_REPORT_RUN')")
     MicroWhonetFilterOptionsForm getFilterOptions(MicroWhonetExportQueryForm query);
 }

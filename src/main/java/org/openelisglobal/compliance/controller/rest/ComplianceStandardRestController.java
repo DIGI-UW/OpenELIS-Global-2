@@ -41,7 +41,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/compliance/standards")
-@PreAuthorize("hasAnyRole('GLOBAL_ADMIN', 'RECEPTION', 'RESULTS')")
+// REPORTS added: /LaporanHasil, the environmental results report, is routed to
+// Reports on report:run and reads these two controllers on load. The service
+// gates beneath still apply.
+@PreAuthorize("hasAnyRole('GLOBAL_ADMIN', 'RECEPTION', 'RESULTS', 'REPORTS')")
 public class ComplianceStandardRestController extends BaseRestController {
 
     @Autowired

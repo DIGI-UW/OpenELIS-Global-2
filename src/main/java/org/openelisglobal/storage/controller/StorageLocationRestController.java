@@ -34,6 +34,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.*;
 
 /**
@@ -156,6 +157,12 @@ public class StorageLocationRestController extends BaseRestController {
                 response = storageLocationService.getRoomsForAPI();
             }
             return ResponseEntity.ok(response);
+        } catch (AccessDeniedException denied) {
+            // The service gate's denial is a 403, not a server fault: let
+            // ControllerSetup answer it rather than the broad catch below
+            // relabelling it as a 500. The freezer pages poll this, and the
+            // relabel hid a plain missing storage:view behind 2,700 500s.
+            throw denied;
         } catch (Exception e) {
             logger.error("Error getting rooms", e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

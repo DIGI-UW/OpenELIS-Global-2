@@ -16,6 +16,9 @@ public interface ImageService extends BaseObjectService<Image, String> {
     @PreAuthorize("hasAuthority('PRIV_SITE_INFO_VIEW')")
     Image getImageByDescription(String imageDescription);
 
-    @PreAuthorize("hasAuthority('PRIV_SITE_INFO_VIEW')")
+    // Also PRIV_REPORT_RUN: every printed report embeds the lab logo through this
+    // read (Report.createReportParameters), and site_info:view is held by no
+    // seeded role, so every /ReportPrint for a non-admin 403'd on its header.
+    @PreAuthorize("hasAnyAuthority('PRIV_SITE_INFO_VIEW','PRIV_REPORT_RUN')")
     Optional<Image> getImageBySiteInfoName(String imageName);
 }

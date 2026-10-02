@@ -1359,4 +1359,34 @@
         </rollback>
     </changeSet>
 
+    <!--
+      The cold-storage pages (/FreezerMonitoring, routed to Reports on
+      coldstorage:view) also read the storage rooms the freezers sit in,
+      /rest/storage/rooms, gated on storage:view, which Reports did not hold.
+      Every freezer tab rendered blank and polled the denied read in a loop.
+      storage:view is the read side of the storage structure; storage:manage
+      stays with nobody.
+    -->
+    <changeSet author="openelis" id="012-004x-grant-storage-view-to-reports">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant storage:view to Reports for the cold-storage pages (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Reports' AND p.name = 'storage:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Reports' AND p.name = 'storage:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
