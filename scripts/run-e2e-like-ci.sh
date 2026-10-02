@@ -67,7 +67,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 case "$SUITE" in
-  core|cypress-core|cypress-admin|cypress-independent) ;;
+  core|cypress-core|cypress-independent) ;;
   *) echo "Unsupported suite: $SUITE" >&2; exit 2 ;;
 esac
 
