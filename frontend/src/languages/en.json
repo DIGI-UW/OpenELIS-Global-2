@@ -5108,7 +5108,6 @@
   "order.continue.item.labNumber": "Add a lab number",
   "order.continue.item.sampleType": "Add at least one sample type",
   "order.continue.item.provider": "Add the requesting provider",
-  "order.continue.item.collector": "Collector for {sample}",
   "order.continue.item.collectionTime": "Collection date and time for {sample}",
   "order.continue.item.consent": "Record consent",
   "order.continue.item.collectionConflict": "Collection date for {sample} is before the admission date",
