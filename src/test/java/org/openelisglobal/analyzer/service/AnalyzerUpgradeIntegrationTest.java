@@ -73,8 +73,6 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
     @Autowired
     private ConfigurationImportRunService runs;
     @Autowired
-    private FhirContext fhirContext;
-    @Autowired
     private HistoryService history;
     @Autowired
     private ReferenceTablesService referenceTables;
@@ -111,7 +109,6 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
         ReflectionTestUtils.setField(audit, "historyService", history);
         ReflectionTestUtils.setField(audit, "referenceTablesService", referenceTables);
         replace(confirmations, "auditTrailService", audit);
-        when(fhirContext.newJsonParser()).thenAnswer(call -> FhirContext.forR4Cached().newJsonParser());
         bridge = mock(BridgeAnalyzerConnectionClient.class);
         when(bridge.createConnection(any())).thenAnswer(call -> {
             ObjectNode request = call.getArgument(0);
@@ -214,6 +211,27 @@ public class AnalyzerUpgradeIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(requests.get(0).path("profileRef"), requests.get(1).path("profileRef"));
         assertEquals(requests.get(0).path("values"), requests.get(1).path("values"));
         assertTrue(migration.migrate(Map.of(), "1").isEmpty());
+    }
+
+    @Test
+    public void nothingIsPendingWhenTheRetainedAnalyzerSchemaIsGone() {
+        String id = addAnalyzer("ASTM");
+        assertTrue(preparation.pendingIds().contains(id));
+        AnalyzerUpgradeService migration = migration(localState);
+
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            // The shape left by the removed changeset
+            // 098-remove-superseded-analyzer-schema.
+            jdbc.execute("DROP TABLE analyzer_plugin_config, analyzer_test_map, analyzer_type CASCADE");
+            jdbc.execute("ALTER TABLE analyzer DROP COLUMN analyzer_type_id, DROP COLUMN identifier_pattern,"
+                    + " DROP COLUMN scrip_id, DROP COLUMN machine_id, DROP COLUMN analyzer_type,"
+                    + " DROP COLUMN description, DROP COLUMN location, DROP COLUMN has_setup_page");
+            assertTrue(preparation.pendingIds().isEmpty());
+            assertTrue(migration.migrate(Map.of(), "1").isEmpty());
+            assertTrue(migration.pending().isEmpty());
+            status.setRollbackOnly();
+        });
+        assertTrue(preparation.pendingIds().contains(id));
     }
 
     private AnalyzerUpgradeService migration(AnalyzerInstanceLocalStateService state) {

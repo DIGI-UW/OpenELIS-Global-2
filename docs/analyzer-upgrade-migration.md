@@ -13,7 +13,13 @@ A record is eligible when it has **no Bridge connection reference** and still
 has retained configuration: an old analyzer type/profile reference, host or file
 directory, plugin settings, test mappings, or active serial settings. Creation
 dates are not used. Normal new setup leaves that old storage empty; an already
-transferred analyzer is skipped because its Bridge reference exists.
+transferred analyzer is skipped because its Bridge reference exists. A database
+without that old storage has nothing to transfer: the check first confirms the
+retained columns and tables exist, reports no pending records when they do not,
+and logs that once at INFO. Develop databases migrated between 8 and 24
+September 2026 are in that state, because a since-removed cutover changeset
+dropped `analyzer_type_id` and the `analyzer_type`, `analyzer_test_map` and
+`analyzer_plugin_config` tables.
 
 1. Use its existing pinned profile reference where present. Otherwise match the
    old type name exactly to a unique active Bridge profile family (display name
