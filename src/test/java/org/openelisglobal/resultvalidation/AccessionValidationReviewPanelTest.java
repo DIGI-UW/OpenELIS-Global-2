@@ -57,6 +57,7 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
 
     private MockHttpSession session;
     private String notesRequiredBefore;
+    private String qcBlocksBefore;
 
     @Before
     public void setUp() throws Exception {
@@ -66,12 +67,15 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         session = buildValidatorSession();
         notesRequiredBefore = ConfigurationProperties.getInstance()
                 .getPropertyValue(Property.notesRequiredForModifyResults);
+        qcBlocksBefore = ConfigurationProperties.getInstance().getPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION);
     }
 
     @After
     public void restoreConfiguration() {
         ConfigurationProperties.getInstance().setPropertyValue(Property.notesRequiredForModifyResults,
                 notesRequiredBefore == null ? "false" : notesRequiredBefore);
+        ConfigurationProperties.getInstance().setPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION,
+                qcBlocksBefore == null ? "false" : qcBlocksBefore);
     }
 
     private MockHttpSession buildValidatorSession() {
@@ -121,6 +125,22 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("notAwaitingValidation"));
         entityManager.flush();
         entityManager.clear();
+    }
+
+    @Test
+    public void release_ofAResultAFailedControlHolds_isRefusedAndLeavesItAwaitingValidation() throws Exception {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION, "true");
+        QcHoldFixture.holdByAFailedControl(jdbcTemplate, ANALYSIS_ID);
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/release").session(session)
+                .contentType(MediaType.APPLICATION_JSON).content(rowBody("10.5", "", "", "VALIDATION")))
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("qcHold"));
+        entityManager.flush();
+        entityManager.clear();
+
+        Analysis held = analysisService.get(ANALYSIS_ID);
+        assertEquals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance), held.getStatusId());
+        assertNull(held.getReleasedDate());
     }
 
     @Test

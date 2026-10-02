@@ -55,8 +55,6 @@ commits, checklist revisions, or other short-lived metadata.
   [m-14-mycobacteriology-tb.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-14-mycobacteriology-tb.md)
 - M-NFR:
   [m-nfr-non-functional-requirements.md](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-nfr-non-functional-requirements.md)
-- Local engineering crosswalk:
-  `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
 
 ## Interpretation Rules for Planning
 

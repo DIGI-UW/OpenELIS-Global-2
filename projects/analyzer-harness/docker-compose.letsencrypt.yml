@@ -1,8 +1,7 @@
 # Let's Encrypt override for analyzer harness. Uses the repo's volume/letsencrypt
 # so valid certs (from docs/LETSENCRYPT_SETUP.md) are shared. LETSENCRYPT_DOMAIN
 # and LETSENCRYPT_EMAIL must be set in .env (no silent default — wrong hostname
-# silently mis-serves HTTPS). /restart-analyzer-harness runs
-# generate-letsencrypt-certs.sh automatically when both are set.
+# silently mis-serves HTTPS).
 
 services:
   proxy:
