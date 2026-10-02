@@ -265,7 +265,15 @@ test.describe("OGC-1417 — critical and invalid results on the unified page", (
     );
     await modal.getByRole("button", { name: "Keep this value" }).click();
     await row.getByRole("button", { name: /^save$/i }).click();
-    await expect(page.getByTestId("result-alert-modal")).toHaveCount(0);
+    // 150 is past the critical bound too: kept as a value, it still owes its
+    // critical acknowledgement, and only that is asked at Save
+    await expect(page.getByTestId("result-alert-item")).toHaveCount(1, {
+      timeout: UI_TIMEOUT,
+    });
+    await expect(page.getByTestId("result-alert-critical-message")).toHaveText(
+      CUSTOM_MESSAGE,
+    );
+    await modal.getByRole("button", { name: /Acknowledge and save/ }).click();
     await expect(row.getByRole("button", { name: /^edit$/i })).toBeVisible({
       timeout: UI_TIMEOUT,
     });
