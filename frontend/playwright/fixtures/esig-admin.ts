@@ -86,6 +86,27 @@ export class SiteInformationPage {
     ).toBeVisible({ timeout: NAV_TIMEOUT });
   }
 
+  /**
+   * Set a text site_information setting via the admin UI: select its row,
+   * Modify, replace the value, Save.
+   */
+  async setTextSetting(settingName: string, value: string) {
+    const row = this.page.locator("tr", { hasText: settingName });
+    await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
+    await row.locator("label").first().click();
+    await this.page
+      .getByRole("button", { name: "Modify", exact: true })
+      .click();
+    const field = this.page.getByRole("textbox", { name: "Value" });
+    await expect(field).toBeVisible({ timeout: UI_TIMEOUT });
+    await field.fill(value);
+    await this.page.getByRole("button", { name: "Save", exact: true }).click();
+    await this.page.waitForLoadState("domcontentloaded");
+    await expect(
+      this.page.getByRole("button", { name: "Modify", exact: true }),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
+  }
+
   /** Read the current value of a setting from the table. */
   async getSettingValue(settingName: string): Promise<string> {
     const row = this.page.locator("tr", { hasText: settingName });

@@ -184,7 +184,11 @@ test.describe("OGC-1121 critical results look critical", () => {
       "orders must exist",
     ).toBeTruthy();
 
-    const enterAndSave = async (accession: string, value: string) => {
+    const enterAndSave = async (
+      accession: string,
+      value: string,
+      isCritical: boolean,
+    ) => {
       await page.goto(
         `/result?type=order&accessionNumber=${encodeURIComponent(accession)}`,
         { waitUntil: "domcontentloaded" },
@@ -202,14 +206,22 @@ test.describe("OGC-1121 critical results look critical", () => {
         .getByRole("button", { name: /^save$/i })
         .first()
         .click();
+      // OGC-1417: a critical value is acknowledged before it is saved; an
+      // abnormal one goes straight through.
+      if (isCritical) {
+        await page
+          .locator(".cds--modal.is-visible")
+          .getByRole("button", { name: /Acknowledge and save/ })
+          .click();
+      }
       await expect(page.getByText(/saved/i).first()).toBeAttached({
         timeout: UI_TIMEOUT,
       });
     };
 
     await test.step("Enter 200 (critical) and 120 (abnormal) on the legacy screen", async () => {
-      await enterAndSave(criticalAccession, "200");
-      await enterAndSave(abnormalAccession, "120");
+      await enterAndSave(criticalAccession, "200", true);
+      await enterAndSave(abnormalAccession, "120", false);
     });
 
     await test.step("Entry: the critical row carries a Critical tag and a red tint, the abnormal row stays yellow", async () => {

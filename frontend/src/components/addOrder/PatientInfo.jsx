@@ -76,19 +76,13 @@ const PatientInfo = (props) => {
   }, []);
 
   // When EQA mode toggles on, switch to the form tab and populate selectedPatient
-  // from the patient properties (which may be an existing or new N_A patient).
+  // from the patient properties.
   useEffect(() => {
     if (isEQASample) {
       handleNewPatientTab();
       setSelectedPatient({
         id: orderFormValues.patientProperties.patientPK || "",
         healthRegion: [],
-        firstName: orderFormValues.patientProperties.firstName || "NULL",
-        lastName: orderFormValues.patientProperties.lastName || "NULL",
-        nationalId: orderFormValues.patientProperties.nationalId || "NULL",
-        gender: orderFormValues.patientProperties.gender || "M",
-        birthDateForDisplay:
-          orderFormValues.patientProperties.birthDateForDisplay || "01/01/1900",
       });
     }
   }, [isEQASample, orderFormValues.patientProperties.patientPK]);

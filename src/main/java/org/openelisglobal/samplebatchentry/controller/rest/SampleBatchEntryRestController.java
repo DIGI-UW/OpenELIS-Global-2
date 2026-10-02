@@ -17,29 +17,16 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.validator.BaseErrors;
-import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
-import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
-import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
-import org.openelisglobal.patient.action.IPatientUpdate;
-import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
-import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
-import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
-import org.openelisglobal.sample.service.PatientManagementUpdate;
-import org.openelisglobal.sample.service.SamplePatientEntryService;
-import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.samplebatchentry.form.SampleBatchEntryForm;
 import org.openelisglobal.samplebatchentry.form.SampleBatchEntrySaveForm;
-import org.openelisglobal.samplebatchentry.util.EidBatchSampleXml;
+import org.openelisglobal.samplebatchentry.service.SampleBatchEntryService;
 import org.openelisglobal.samplebatchentry.validator.SampleBatchEntryFormValidator;
-import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -89,12 +76,7 @@ public class SampleBatchEntryRestController extends BaseController {
     OrganizationService organizationService;
 
     @Autowired
-    SamplePatientEntryFormValidator entryFormValidator;
-
-    @Autowired
-    private SamplePatientEntryService samplePatientEntryService;
-
-    protected FhirTransformService fhirTransformService = SpringContext.getBean(FhirTransformService.class);
+    private SampleBatchEntryService sampleBatchEntryService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -170,58 +152,10 @@ public class SampleBatchEntryRestController extends BaseController {
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        if (StringUtil.isNullorNill(form.getSampleXML()) && form.getEidSelection() != null) {
-            form.setSampleXML(new EidBatchSampleXml(testService, typeOfSampleService).build(form.getEidSelection(),
-                    form.getCurrentDate()));
-        }
-
-        entryFormValidator.validate(form, result);
-        if (result.hasErrors()) {
-            saveErrors(result);
-            return ResponseEntity.badRequest().body(buildErrorBody(result));
-        }
-        SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
-
-        PatientManagementInfo patientInfo = form.getPatientProperties();
-        SampleOrderItem sampleOrder = form.getSampleOrderItems();
-
-        boolean trackPayments = ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
-
-        String receivedDateForDisplay = sampleOrder.getReceivedDateForDisplay();
-        if (org.apache.commons.validator.GenericValidator.isBlankOrNull(receivedDateForDisplay)) {
-            receivedDateForDisplay = DateUtil.getCurrentDateAsText();
-        }
-
-        if (!org.apache.commons.validator.GenericValidator.isBlankOrNull(sampleOrder.getReceivedTime())) {
-            receivedDateForDisplay += " " + sampleOrder.getReceivedTime();
-        } else {
-            receivedDateForDisplay += " 00:00";
-        }
-
-        updateData.setCollectionDateFromRecieveDateIfNeeded(receivedDateForDisplay);
-        updateData.initializeRequester(sampleOrder);
-
-        PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
-        patientUpdate.setSysUserIdFromRequest(request);
-        testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
-
-        updateData.setAccessionNumber(sampleOrder.getLabNo());
-        updateData.initProvider(sampleOrder);
-        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
-        updateData.validateSample(result);
-
-        if (result.hasErrors()) {
-            saveErrors(result);
-            return ResponseEntity.badRequest().body(buildErrorBody(result));
-        }
-
         try {
-            samplePatientEntryService.persistData(updateData, patientUpdate, patientInfo, form, request);
-            try {
-                fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo, false, null);
-            } catch (FhirTransformationException | FhirPersistanceException e) {
-                LogEvent.logError(e);
+            if (!sampleBatchEntryService.save(form, result, request, getSysUserId(request))) {
+                saveErrors(result);
+                return ResponseEntity.badRequest().body(buildErrorBody(result));
             }
         } catch (LIMSRuntimeException e) {
             if (e.getCause() instanceof StaleObjectStateException) {
@@ -251,20 +185,6 @@ public class SampleBatchEntryRestController extends BaseController {
             message = result.getGlobalErrors().get(0).getDefaultMessage();
         }
         return Map.of("error", message, "fieldErrors", fieldErrors);
-    }
-
-    private void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,
-            IPatientUpdate patientUpdate, SamplePatientUpdateData updateData)
-            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
-        patientUpdate.setPatientUpdateStatus(patientInfo);
-        updateData.setSavePatient(patientUpdate.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION);
-
-        if (updateData.isSavePatient()) {
-            updateData.setPatientErrors(patientUpdate.preparePatientData(request, patientInfo));
-        } else {
-            updateData.setPatientErrors(new BaseErrors());
-        }
     }
 
     @Override

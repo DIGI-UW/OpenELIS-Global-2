@@ -1,28 +1,21 @@
 # Analyzer harness lane identifiers
 
-Canonical accession strings for the ten analyzer lanes. All use valid
-SiteYearNum format: `DEV0126{LANE}{SEQ:011d}` (prefix `DEV01`, year `26`,
-2-digit lane code, 11-digit sequence). Total: exactly 20 characters.
+Canonical accession strings for the four analyzers `seed-analyzers.sh` creates.
+All use valid SiteYearNum format: `DEV0126{LANE}{SEQ:011d}` (prefix `DEV01`,
+year `26`, 2-digit lane code, 11-digit sequence). Total: exactly 20 characters.
 
 Captured analyzer files contain the example accessions below. The FluoroCycler
-workflow creates fresh patient orders through the ordinary OpenELIS API and
-requests replacement of only the captured XLSX sample IDs. This requires mock PR
-#49 to be released and pinned; the current overlay still pins mock 0.1.1. Other
-fixture-based workflows must create matching orders before sending a fixed file
-or use a mock that supports ID substitution. These records are not SQL fixtures.
+workflow creates fresh patient orders through the ordinary OpenELIS API and asks
+the mock to replace only the captured XLSX sample IDs. Other fixture-based
+workflows must create matching orders before sending a fixed file. These records
+are not SQL fixtures.
 
 | Lane                | Analyzer (seed name)          | Lane Code | Example Accession    | Notes                                                |
 | ------------------- | ----------------------------- | --------- | -------------------- | ---------------------------------------------------- |
 | **ASTM GeneXpert**  | Cepheid GeneXpert (ASTM Mode) | 10        | DEV01261000000000001 | Bridge-profile-backed `genexpert_astm` mock template |
 | **QuantStudio 7**   | QuantStudio 7                 | 20        | DEV01262000000000001 | FILE/EXCEL; `quantstudio-e2e-results.xlsx`           |
 | **QuantStudio 5**   | QuantStudio 5                 | 21        | DEV01262100000000001 | FILE/EXCEL; `quantstudio-e2e-results-qs5.xls`        |
-| **FluoroCycler XT** | FluoroCycler XT               | 30        | DEV01263000000000001 | FILE/XLSX; substitution requires mock PR #49 release |
-| **Mindray BC-5380** | Mindray BC-5380               | 40        | DEV01264000000000001 | HL7/MLLP; mock template `mindray_bc5380.json`        |
-| **Mindray BS-200**  | Mindray BS-200                | 41        | DEV01264100000000001 | HL7/MLLP; mock template `mindray_bs200.json`         |
-| **Mindray BS-300**  | Mindray BS-300                | 42        | DEV01264200000000001 | HL7/MLLP; mock template `mindray_bs300.json`         |
-| **Wondfo Finecare** | Wondfo Finecare FS-205        | 50        | DEV01265000000000001 | FILE/CSV; `wondfo-finecare-e2e-results.csv`          |
-| **Tecan F50**       | Tecan Infinite F50            | 51        | DEV01265100000000001 | FILE/CSV; `tecan-f50-e2e-results.csv`                |
-| **Multiskan FC**    | Thermo Multiskan FC           | 52        | DEV01265200000000001 | FILE/CSV; `multiskan-fc-e2e-results.csv`             |
+| **FluoroCycler XT** | FluoroCycler XT               | 30        | DEV01263000000000001 | FILE/XLSX; the mock substitutes sample IDs           |
 
 **Do not** reuse storage E2E accessions (`E2E001`, ...) for harness analyzer
 demos; they are owned by `storage-e2e.xml` and overlap caused CI/local drift.

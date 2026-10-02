@@ -38,7 +38,6 @@ src/main/resources/adminPassword.txt
 /docs_back
 /bin/
 /.apt_generated/
-*/plugins/*.jar
 Patient/*
 volume/database/data
 volume/letsencrypt/
@@ -111,7 +110,6 @@ specs/*/research/AnalyzerDocs/
 
 # 012 analyzer docs (PDFs, large - keep local, not in repo)
 docs/analyzers/012/
-specs/012-generic-astm-plugin-profiles/docs/
 
 # CI artifact downloads (gh run download)
 core-blob-report-*/

@@ -810,9 +810,15 @@ function CreatePatientForm(props: CreatePatientFormProps) {
     props.selectedPatient?.mergedIntoNationalId ||
     props.selectedPatient?.mergedIntoPatientId;
 
+  // An order screen shows the shared notifications itself; a second dialog
+  // here showed every message twice.
+  const embeddedInOrder = Boolean(props.orderFormValues);
+
   return (
     <>
-      {notificationVisible === true && props.renderNotifications !== false ? (
+      {notificationVisible === true &&
+      !embeddedInOrder &&
+      props.renderNotifications !== false ? (
         <AlertDialog />
       ) : (
         ""

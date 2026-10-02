@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { act, render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -89,6 +90,7 @@ const ROWS = [
     boxId: 5,
     boxCode: "EQA-C7-100",
     boxState: "READY_TO_SEND",
+    temperatureRequirement: "REFRIGERATED_2_8C",
     courier: "DHL",
     trackingNumber: "TRK-A",
     estimatedDeliveryDate: "2026-09-01 00:00:00",
@@ -191,12 +193,16 @@ describe("ProviderWorkbenchPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.queryByText("Open the Shipments tab")).toBeNull();
+    expect(
+      screen.getByText(/Prep must clear the inventory/),
+    ).toBeInTheDocument();
   });
 
   test("a cycle past prep says which state it is in and offers the next step", () => {
     renderWorkbench({ ...PREP_CLEAR, cycleStatus: "SHIPPED" });
 
     expect(readyToShipButton()).toBeDisabled();
+    expect(screen.queryByText(/Prep must clear the inventory/)).toBeNull();
     expect(
       screen.getByText(
         "Cycle state: Shipped. Clearing to ship is only offered while the cycle is in prep.",
@@ -226,6 +232,15 @@ describe("ProviderWorkbenchPage", () => {
   test("ready-to-ship is offered as soon as the server allows it", () => {
     renderWorkbench({ ...PREP_CLEAR, readyToShipAllowed: true });
     expect(readyToShipButton()).toBeEnabled();
+  });
+
+  test("the prep hint goes once the gate is met", () => {
+    renderWorkbench({
+      ...PREP_CLEAR,
+      cycleStatus: "PREP_IN_PROGRESS",
+      readyToShipAllowed: true,
+    });
+    expect(screen.queryByText(/Prep must clear the inventory/)).toBeNull();
   });
 
   test("a refused ready-to-ship shows the server's own reason", async () => {
@@ -292,6 +307,39 @@ describe("ProviderWorkbenchPage", () => {
     await userEvent.type(field, "10/09/2026");
 
     expect(field).toHaveValue("");
+  });
+
+  test("a saved expected delivery stays in the field once the rows reload", async () => {
+    renderWorkbench();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/prep")) cb(PREP_SHORT);
+      else if (url.endsWith("/shipments"))
+        cb([
+          ROWS[0],
+          { ...ROWS[1], estimatedDeliveryDate: "2026-09-01 00:00:00.0" },
+        ]);
+      else cb([]);
+    });
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb({ ok: true, status: 200, json: () => Promise.resolve({}) }),
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
+
+    const field = screen.getByLabelText("Expected delivery for District Lab B");
+    act(() => field._flatpickr.setDate("01/09/2026", true));
+    expect(field).toHaveValue("01/09/2026");
+
+    fireEvent.click(screen.getAllByRole("button", { name: "Save" })[1]);
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/eqa/cycles/7/shipments",
+        expect.stringContaining('"estimatedDeliveryDate":"2026-09-01"'),
+        expect.any(Function),
+      ),
+    );
+    await screen.findByText("Shipment details saved.");
+    expect(field).toHaveValue("01/09/2026");
   });
 
   test("a pack list is refused rather than produced empty when samples cannot be read", async () => {
@@ -361,6 +409,61 @@ describe("ProviderWorkbenchPage", () => {
     expect(manifest.samples[0].accessionNumber).toBe("BLIND-1");
     expect(manifest.samples[1].accessionNumber).toBe("SC-2");
     expect(JSON.stringify(manifest)).not.toContain("targetValue");
+    expect(manifest.state).toBe("Ready to Send");
+    expect(manifest.temperature).toBe("Refrigerated, 2–8°C");
+  });
+
+  test("a box with no storage temperature prints as room temperature", async () => {
+    renderWorkbench(
+      PREP_SHORT,
+      [{ ...ROWS[0], temperatureRequirement: null }, ...ROWS.slice(1)],
+      {
+        "/rest/eqa/panels/11/samples": [
+          { id: 1, blindCode: "BLIND-1", analyteName: "HIV-1 RNA" },
+        ],
+      },
+    );
+    fireEvent.click(screen.getByRole("tab", { name: "Shipments" }));
+
+    fireEvent.click(screen.getAllByText("Pack list")[0].closest("button"));
+
+    await vi.waitFor(() =>
+      expect(generateManifestPDF).toHaveBeenCalledTimes(1),
+    );
+    expect(generateManifestPDF.mock.calls[0][0].temperature).toBe(
+      "Room temperature",
+    );
+  });
+
+  test("cycle history names each trigger rather than printing its code", async () => {
+    renderWorkbench(PREP_CLEAR, ROWS, {
+      "/rest/eqa/cycles/7/transitions": [
+        {
+          id: 1,
+          occurredAt: "2026-09-01 08:00:00",
+          newState: "PREP_IN_PROGRESS",
+          triggerType: "MANUAL",
+          triggerEvent: "MANUAL_OVERRIDE",
+          triggeredByName: "Open ELIS",
+          reason: "Cycle created by the provider cycle wizard",
+        },
+        {
+          id: 2,
+          occurredAt: "2026-09-02 08:00:00",
+          newState: "SHIPPED",
+          triggerType: "AUTO",
+          triggerEvent: "FIRST_SHIPMENT_SENT",
+          reason: "First participant shipment dispatched",
+        },
+      ],
+    });
+
+    fireEvent.click(screen.getByText("Cycle history"));
+
+    expect(await screen.findByText("First shipment sent")).toBeInTheDocument();
+    expect(screen.getByText("Manual")).toBeInTheDocument();
+    expect(screen.queryByText("FIRST_SHIPMENT_SENT")).toBeNull();
+    expect(screen.queryByText("Manual override")).toBeNull();
   });
 
   test("dispatch posts the selected participants and reports the count", async () => {

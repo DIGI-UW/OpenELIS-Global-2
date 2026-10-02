@@ -44,10 +44,11 @@ traces and service logs. Video-only pacing is presentation, never readiness.
 
 ## Startup Catalog
 
-The harness mounts its molecular test and result-choice CSVs from
-`projects/analyzer-harness/config-templates/` and loads them through OE's
-ordinary startup configuration service. The harness files are test data, not
-application-wide clinical defaults.
+Before OE starts, the harness copies missing molecular test and result-choice
+CSVs from `projects/analyzer-harness/config-templates/` into the writable
+`configuration-data` volume. OE loads them through its ordinary startup
+configuration service. The harness files are test data, not application-wide
+clinical defaults. Existing uploaded files are not overwritten on restart.
 
 - CI and local parity load the same harness catalog through the normal loader.
 - Local development keeps optional Catalog Import uploads in its worktree-scoped
@@ -71,13 +72,6 @@ Use `scripts/dev-stack up --skip-build --no-scenarios` to apply changed
 configuration without rebuilding the application. Refresh
 `scripts/dev-stack env` after recreation because published local ports can
 change.
-
-When adopting this storage configuration on an existing harness, stop Bridge and
-copy its old `/data/openelis-analyzer-bridge` volume and both SQLite databases
-(including any WAL files) from `/tmp/openelis-analyzer-bridge` into
-`bridge-data` before recreating it. Preserve the originals until readback
-confirms the transfer. A clean disposable stack requires no transfer. Do not
-treat this harness procedure as a production upgrade migration.
 
 ## Local Compose Layers
 
@@ -179,10 +173,5 @@ This harness uses a local `./volume/` directory for:
 
 ## Notes
 
-- HL7 analyzers are treated as **push-based** in OpenELIS; “Test Connection”
-  will instruct you to validate by pushing an HL7 message to OpenELIS instead of
-  attempting an outbound socket connection.
-- ASTM TCP analyzers should target `openelis-analyzer-bridge:12001` (fixtures
-  updated accordingly).
-- RS232 analyzers use virtual ports under `/dev/serial/ttyVUSB0-4` (created by
-  `virtual-serial` service).
+- ASTM TCP analyzers target the Bridge's shared listener,
+  `openelis-analyzer-bridge:12001`.

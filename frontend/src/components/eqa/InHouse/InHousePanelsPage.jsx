@@ -21,6 +21,7 @@ import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasQaPermission } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
 import {
   downloadLabelSheet,
   fetchInHouseSchemes,
@@ -88,20 +89,22 @@ const InHousePanelsPage = () => {
       setPanels([]);
       return;
     }
-    reload(schemeId);
+    // A late reply for the scheme just left must not replace this one's
+    // panels, or its Unblind now buttons act on another scheme.
+    let current = true;
+    fetchPanelsForScheme(schemeId, (rows) => current && setPanels(rows));
+    return () => {
+      current = false;
+    };
   }, [schemeId]);
 
   const unblind = (panelId) => {
     unblindPanel(panelId, (response) => {
-      if (
-        !response ||
-        response.error ||
-        (response.status && response.status >= 400)
-      ) {
+      if (requestFailed(response) || response.error) {
         setNotification({
           kind: "error",
           message:
-            response?.error ||
+            serverMessage(response) ||
             intl.formatMessage({ id: "eqa.inhouse.unblind.error" }),
         });
         return;

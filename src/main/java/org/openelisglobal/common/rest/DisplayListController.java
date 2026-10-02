@@ -31,6 +31,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.LabelValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -43,6 +44,7 @@ import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.reports.action.implementation.ExportTrendsByDate;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -90,6 +92,9 @@ public class DisplayListController extends BaseRestController {
 
     @Autowired
     private ProviderService providerService;
+
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
 
     @Autowired
     private PersonService personService;
@@ -329,6 +334,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX));
         configs.put(Property.ALERT_FOR_INVALID_RESULTS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALERT_FOR_INVALID_RESULTS));
+        configs.put(Property.customCriticalMessage.toString(),
+                StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage()));
         configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.UseExternalPatientInfo.toString(),
@@ -363,6 +370,8 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALLOW_BULK_RELEASE_CLEAR));
         configs.put(Property.RETEST_NOTE_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.RETEST_NOTE_REQUIRED));
+        configs.put(Property.QC_FAIL_BLOCKS_VALIDATION.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.QC_FAIL_BLOCKS_VALIDATION));
         // The case view's stage rail renders a stage the deployment has switched off
         // as not applicable rather than hiding it (FR-2.3).
         configs.put(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED.toString(), ConfigurationProperties.getInstance()

@@ -24,9 +24,13 @@ export type AnalyzerClinicalOrder = {
   expectedLoinc: string;
   specimenName: string;
   expectedMappedValue?: string;
+  additionalTests?: StockBindingExpectation[];
 };
 
-export type StockBindingExpectation = Omit<AnalyzerClinicalOrder, "accession">;
+export type StockBindingExpectation = Omit<
+  AnalyzerClinicalOrder,
+  "accession" | "additionalTests"
+>;
 
 async function jsonGet<T>(page: Page, path: string): Promise<T> {
   const response = await page.request.get(`${API}${path}`);
@@ -99,21 +103,6 @@ export async function stockClinicalBinding(
   return expectedTestId;
 }
 
-function nextDateInServerFormat(currentDate: string, isoDate: string): string {
-  const parts = currentDate.split(/[/-]/);
-  const separator = currentDate.includes("/") ? "/" : "-";
-  const [year, month, day] = isoDate.split("-");
-  const tomorrow = new Date(`${isoDate}T12:00:00Z`);
-  tomorrow.setUTCDate(tomorrow.getUTCDate() + 1);
-  const nextYear = String(tomorrow.getUTCFullYear());
-  const nextMonth = String(tomorrow.getUTCMonth() + 1).padStart(2, "0");
-  const nextDay = String(tomorrow.getUTCDate()).padStart(2, "0");
-  if (parts[0] === year) return [nextYear, nextMonth, nextDay].join(separator);
-  if (parts[0] === month && month !== day)
-    return [nextMonth, nextDay, nextYear].join(separator);
-  return [nextDay, nextMonth, nextYear].join(separator);
-}
-
 /** Create a synthetic patient, specimen and order via the same validated API as entry. */
 export async function createAnalyzerClinicalOrder(
   page: Page,
@@ -124,35 +113,58 @@ export async function createAnalyzerClinicalOrder(
   testId: string;
   specimenId: string;
   primaryComponentId: string | null;
+  orderedTests: Array<{ testId: string; primaryComponentId: string | null }>;
 }> {
-  const testId = await stockClinicalBinding(page, scenario);
-  const definition = await jsonGet<{
-    components: Array<{ id: string; isPrimary: boolean }>;
-  }>(page, `/test-catalog/tests/${encodeURIComponent(testId)}/sample-results`);
-  const primary = definition.components.filter(
-    (component) => component.isPrimary,
-  );
-  expect(
-    primary,
-    "One primary component when the test defines components",
-  ).toHaveLength(definition.components.length ? 1 : 0);
-  const primaryComponentId = primary[0]?.id ?? null;
+  const scenarios = [scenario, ...(scenario.additionalTests ?? [])];
+  const orderedTests: Array<{
+    testId: string;
+    primaryComponentId: string | null;
+  }> = [];
+  for (const testScenario of scenarios) {
+    expect(testScenario.specimenName).toBe(scenario.specimenName);
+    const testId = await stockClinicalBinding(page, testScenario);
+    const definition = await jsonGet<{
+      components: Array<{ id: string; isPrimary: boolean }>;
+    }>(
+      page,
+      `/test-catalog/tests/${encodeURIComponent(testId)}/sample-results`,
+    );
+    const primary = definition.components.filter(
+      (component) => component.isPrimary,
+    );
+    expect(
+      primary,
+      "One primary component when the test defines components",
+    ).toHaveLength(definition.components.length ? 1 : 0);
+    orderedTests.push({ testId, primaryComponentId: primary[0]?.id ?? null });
+  }
+  const testIds = orderedTests.map((test) => test.testId);
   const compatibility = await jsonGet<{
     tests: Array<{
       testId: string;
       compatibleSampleTypes: Array<{ id: string; name: string }>;
     }>;
-  }>(page, `/test-sample-types?testIds=${encodeURIComponent(testId)}`);
-  expect(compatibility.tests).toHaveLength(1);
-  expect(compatibility.tests[0].testId).toBe(testId);
-  const specimens = compatibility.tests[0].compatibleSampleTypes.filter(
-    (type) => type.name === scenario.specimenName,
+  }>(
+    page,
+    `/test-sample-types?testIds=${encodeURIComponent(testIds.join(","))}`,
   );
-  expect(
-    specimens,
-    `${scenario.expectedTestName} accepts ${scenario.specimenName}`,
-  ).toHaveLength(1);
-  const specimenId = specimens[0].id;
+  expect(compatibility.tests).toHaveLength(testIds.length);
+  const specimenIds = testIds.map((testId) => {
+    const compatible = compatibility.tests.find(
+      (test) => test.testId === testId,
+    );
+    expect(compatible, `Compatibility for test ${testId}`).toBeDefined();
+    const specimens = compatible!.compatibleSampleTypes.filter(
+      (type) => type.name === scenario.specimenName,
+    );
+    expect(
+      specimens,
+      `${testId} accepts ${scenario.specimenName}`,
+    ).toHaveLength(1);
+    return specimens[0].id;
+  });
+  expect(new Set(specimenIds).size).toBe(1);
+  const specimenId = specimenIds[0];
 
   let accession = scenario.accession;
   if (!accession) {
@@ -179,7 +191,6 @@ export async function createAnalyzerClinicalOrder(
     page,
     "/SamplePatientEntry",
   );
-  const serverTime = await jsonGet<{ date: string }>(page, "/server-time");
   const suffix = randomUUID().replaceAll("-", "").slice(0, 12).toUpperCase();
   const nameSuffix = Array.from(suffix, (digit) =>
     String.fromCharCode(65 + Number.parseInt(digit, 16)),
@@ -195,7 +206,7 @@ export async function createAnalyzerClinicalOrder(
     sampleXML:
       `<?xml version="1.0" encoding="utf-8"?><samples>` +
       `<sample sampleID='${specimenId}' date='' time='' collector='' quantity='' uom='' ` +
-      `tests='${testId}' testSectionMap='' testSampleTypeMap='' panels='' rejected='false' ` +
+      `tests='${testIds.join(",")}' testSectionMap='' testSampleTypeMap='' panels='' rejected='false' ` +
       `rejectReasonId='' initialConditionIds='' storageLocationId='' storageLocationType='' ` +
       `storagePositionCoordinate='' gpsLatitude='' gpsLongitude='' gpsAccuracy='' ` +
       `gpsCaptureMethod='' numOrderLabels='1' numSpecimenLabels='1'/></samples>`,
@@ -214,7 +225,6 @@ export async function createAnalyzerClinicalOrder(
       requestDate: entry.currentDate,
       receivedDateForDisplay: entry.currentDate,
       receivedTime: "09:00",
-      nextVisitDate: nextDateInServerFormat(entry.currentDate, serverTime.date),
       priority: "ROUTINE",
       newRequesterName: "Analyzer workflow test",
       referringSiteId: "",
@@ -245,12 +255,15 @@ export async function createAnalyzerClinicalOrder(
   expect(order.patientProperties?.lastName).toBe(patientLastName);
   expect(order.samples).toHaveLength(1);
   expect(order.samples[0].sampleTypeId).toBe(specimenId);
-  expect(order.samples[0].tests.map((test) => test.id)).toContain(testId);
+  expect(order.samples[0].tests.map((test) => test.id)).toEqual(
+    expect.arrayContaining(testIds),
+  );
   return {
     accession: accession!,
     patientLastName,
-    testId,
+    testId: testIds[0],
     specimenId,
-    primaryComponentId,
+    primaryComponentId: orderedTests[0].primaryComponentId,
+    orderedTests,
   };
 }

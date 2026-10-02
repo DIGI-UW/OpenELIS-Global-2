@@ -352,7 +352,10 @@ describe("ReagentsQcSection (R5/R6)", () => {
       target: { value: "kit A" },
     });
     fireEvent.click(screen.getByTestId("qc-record"));
-    expect(screen.getByText("Failed to fetch")).toBeInTheDocument();
+    expect(
+      screen.getByText(messages["label.results.control.capture.failed"]),
+    ).toBeInTheDocument();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
     expect(screen.queryByText(/Control result recorded/)).toBeNull();
   });
 
@@ -449,5 +452,42 @@ describe("ReagentsQcSection (R5/R6)", () => {
     );
     fireEvent.click(screen.getByTestId("record-use-1"));
     expect(screen.getByText("Insufficient stock")).toBeInTheDocument();
+  });
+
+  /**
+   * OGC-1408 — a Record use whose request got no answer (status 0) was
+   * reported as recorded, the way the control capture above once was.
+   */
+  it("a Record use that got no answer is never reported as recorded", () => {
+    respondWith({
+      "/rest/results-entry/test/6/reagents": LINKS,
+      "/rest/inventory/lots/item/1/available": LOTS,
+    });
+    postMock.mockImplementation(
+      (_url: string, _body: string, cb: (r: unknown) => void) => {
+        if (typeof cb === "function") {
+          cb({
+            error: "Failed to fetch",
+            message: "Failed to fetch",
+            status: 0,
+          });
+        }
+      },
+    );
+    wrap(
+      <ReagentsQcSection
+        testId="6"
+        analysisId="28"
+        editable
+        open
+        onToggle={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("record-use-1"));
+    expect(
+      screen.getByText(messages["label.results.reagents.recordFailed"]),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Recorded 1 mL/)).toBeNull();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
 });

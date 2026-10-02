@@ -20,12 +20,12 @@ running containers.
 ## Server configuration
 
 The job builds `deploy-bundle.tgz` (both compose files, `volume/`, the analyzer
-seed script and the Bridge profiles at the submodule pin). Clinical defaults are
-packaged in the application image. On the VM, `deploy-published-testing.py`
-unpacks it into `<site>/releases/<sha>/` and runs Compose as project
-`openelis-testing`, so named volumes persist across releases. The site directory
-(`TESTING_SITE_PATH`, default `/home/ubuntu/openelis-testing`) holds what
-belongs to the host:
+seed script and the Bridge profiles at the submodule pin). The analyzer
+harness's molecular clinical CSVs are test configuration and are not packaged in
+the application image. On the VM, `deploy-published-testing.py` unpacks it into
+`<site>/releases/<sha>/` and runs Compose as project `openelis-testing`, so
+named volumes persist across releases. The site directory (`TESTING_SITE_PATH`,
+default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
 
 - `.env` (required): passed as the Compose env file.
 - `docker-compose.site.yml` (optional): applied after the release's files, for
@@ -33,10 +33,11 @@ belongs to the host:
   resolves its relative paths against the release, so use absolute paths.
 - `lucene/`: the search index, linked into every release.
 - `configuration/backend/`: writable catalog files, linked into every release.
-  New sites leave this directory empty and load the application image’s bundled
-  defaults. Subsequent deploys preserve uploaded and edited files; existing
-  overrides are not removed automatically. The webapp entrypoint grants its
-  Tomcat group write access.
+  New sites leave this directory empty and load the application's ordinary
+  bundled catalog. Clinical tests needed by a site must be supplied through its
+  supported catalog configuration. Subsequent deploys preserve uploaded and
+  edited files; existing overrides are not removed automatically. The webapp
+  entrypoint grants its Tomcat group write access.
 - `.openelis-ci/`: the image override and `target.json`.
 
 After the application reports ready, the deploy creates missing default
@@ -52,10 +53,11 @@ retry deployment. Confirmation alone does not activate it:
 Deployment does not guess whether a connection was intentionally disabled.
 
 The deploy then sends one GeneXpert result through the mock with an accession
-derived from the run ID. The deployment is ready only when that result appears
-in OpenELIS. The smoke message uses the shared ASTM listener at port 12001 and
-the seeded instrument system name `OE2-TEST-GENEXPERT`. When upgrading an
-existing test connection, set that instrument system name in its connection
+derived from the run ID. The deployment smoke passes when that result appears in
+OpenELIS staging; it does not prove clinical mapping, acceptance, or saved
+patient result readback. The smoke message uses the shared ASTM listener at port
+12001 and the seeded instrument system name `OE2-TEST-GENEXPERT`. When upgrading
+an existing test connection, set that instrument system name in its connection
 screen before retrying deployment. If testers have disabled the connection or
 changed that sender identity, the check fails and leaves their settings intact;
 restore that connection in OpenELIS when it is ready to receive the deployment
@@ -101,12 +103,11 @@ operations are mocked; the tests do not deploy to the testing VM.
 `test_analyzer_overlay.py` needs network access to list the Bridge and mock
 release tags.
 
-### Upgrading a site that used the former harness catalog
+### Reviewing a site that used the former harness catalog
 
-Before switching to bundled defaults, inspect `configuration/backend/` on the
-host. A filesystem CSV overrides classpath defaults for its entire domain, so
-leaving old harness exports there can retain obsolete mappings. Older releases
-shipped these files:
+Before an upgrade, inspect `configuration/backend/` on the host. A filesystem
+CSV overrides classpath defaults for its entire domain, so changing those files
+can change a site's clinical catalog. Older releases shipped these files:
 
 - `dictionaries/analyzer-result-options.csv`
 - `sample-types/harness-samples.csv` and
@@ -116,12 +117,13 @@ shipped these files:
   `test-sections/molecular-sections.csv`
 - `tests/harness-tests.csv` and `tests/molecular-tests.csv`
 
-Compare their contents with the prior deployed release before acting. Archive
-only confirmed obsolete harness copies outside `configuration/backend/`; retain
-intentional site edits and other uploaded catalogs. If any CSV remains in a
-domain, that domain still uses filesystem configuration rather than bundled
-defaults. Reload the affected configuration through the supported application
-configuration workflow, or restart the application to run initialization.
+Compare their contents with the prior deployed release and the site's approved
+catalog. Retain intentional site edits and uploaded catalogs. Do not remove a
+file merely because a harness once used its name: this deployment does not ship
+the harness molecular CSVs as a replacement. If any CSV remains in a domain,
+that domain still uses filesystem configuration rather than bundled defaults.
+Apply deliberate corrections through the supported catalog workflow and verify
+the resulting test identities and analyzer bindings.
 
 Removing a CSV does not delete existing database records or reconcile duplicate
 COVID tests. Inspect the resulting catalog and analyzer bindings; resolve any

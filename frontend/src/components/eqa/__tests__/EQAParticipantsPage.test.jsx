@@ -105,7 +105,7 @@ describe("EQAParticipantsPage", () => {
     renderPage();
     expect(screen.getByText("Participants")).toBeTruthy();
     expect(
-      screen.getByText("Manage organization enrollment in EQA programs"),
+      screen.getByText("Manage organization enrollment in EQA schemes"),
     ).toBeTruthy();
   });
 
@@ -117,7 +117,7 @@ describe("EQAParticipantsPage", () => {
   test("shows prompt when no program is selected", () => {
     renderPage();
     expect(
-      screen.getByText("Select a program to view enrollments"),
+      screen.getByText("Select a scheme to view enrollments"),
     ).toBeTruthy();
   });
 

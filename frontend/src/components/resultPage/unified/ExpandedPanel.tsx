@@ -24,6 +24,7 @@ import {
   useOrderContext,
 } from "./orderContextSections";
 import CriticalBanner from "./CriticalBanner";
+import CriticalCallbackAction from "./CriticalCallbackAction";
 import HistorySection from "./HistorySection";
 import InterpretationSection from "./InterpretationSection";
 import ReagentsQcSection from "./ReagentsQcSection";
@@ -241,11 +242,16 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
   const reported = computeReportedValue(
     dilutionDraft.measuredValue,
     dilutionDraft.factor,
+    row.significantDigits,
   );
 
   const applyDilution = (draft: DilutionDraft) => {
     onDilutionDraftChange(draft);
-    const computed = computeReportedValue(draft.measuredValue, draft.factor);
+    const computed = computeReportedValue(
+      draft.measuredValue,
+      draft.factor,
+      row.significantDigits,
+    );
     if (computed !== null) {
       onValueChange("resultValue", computed);
     }
@@ -690,11 +696,24 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         </div>
       )}
 
-      {/* Critical banner (FR-C2) — the one full-width banner; ack never gates Save (FR-A4) */}
+      {/* Critical banner (FR-C2) — the one full-width banner. The person
+          entering the value acknowledges it at Save (OGC-1417); the banner's
+          dashboard acknowledgement is the follow-up. */}
       {flag === "CRITICAL" && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}
+        />
+      )}
+      {flag === "CRITICAL" && !editable && (
+        <CriticalCallbackAction
+          row={{
+            resultId: row.resultId as string | undefined,
+            testName: row.testName as string | undefined,
+            resultValue: row.resultValue as string | undefined,
+            unitsOfMeasure: row.unitsOfMeasure as string | undefined,
+            accessionNumber: row.accessionNumber as string | undefined,
+          }}
         />
       )}
 

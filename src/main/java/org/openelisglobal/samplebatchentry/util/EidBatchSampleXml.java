@@ -12,6 +12,7 @@ import org.openelisglobal.samplebatchentry.form.SampleBatchEntrySaveForm.EidSele
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 /**
@@ -28,10 +29,13 @@ public class EidBatchSampleXml {
     private static final String CLINICAL_DOMAIN = "CLINICAL";
 
     private final TestService testService;
+    private final TypeOfSampleTestService typeOfSampleTestService;
     private final TypeOfSampleService typeOfSampleService;
 
-    public EidBatchSampleXml(TestService testService, TypeOfSampleService typeOfSampleService) {
+    public EidBatchSampleXml(TestService testService, TypeOfSampleService typeOfSampleService,
+            TypeOfSampleTestService typeOfSampleTestService) {
         this.testService = testService;
+        this.typeOfSampleTestService = typeOfSampleTestService;
         this.typeOfSampleService = typeOfSampleService;
     }
 
@@ -39,8 +43,7 @@ public class EidBatchSampleXml {
         if (selection == null || !selection.isDnaPCR()) {
             return "";
         }
-        Optional<Test> dnaPcr = testService.getActiveTestByName(DNA_PCR).stream()
-                .min(Comparator.comparingInt(test -> Integer.parseInt(test.getId())));
+        List<Test> dnaPcrTests = testService.getActiveTestByName(DNA_PCR);
         List<String> specimenNames = new ArrayList<>();
         if (selection.isDryTubeTaken()) {
             specimenNames.add(DRY_TUBE);
@@ -53,7 +56,14 @@ public class EidBatchSampleXml {
         Element samples = document.addElement("samples");
         for (String specimenName : specimenNames) {
             TypeOfSample specimen = findSpecimen(specimenName);
-            if (specimen == null || dnaPcr.isEmpty()) {
+            if (specimen == null) {
+                return "";
+            }
+            Optional<Test> dnaPcr = dnaPcrTests.stream()
+                    .filter(test -> typeOfSampleTestService.getTypeOfSampleTestsForTest(test.getId()).stream()
+                            .anyMatch(link -> specimen.getId().equals(link.getTypeOfSampleId())))
+                    .min(Comparator.comparingInt(test -> Integer.parseInt(test.getId())));
+            if (dnaPcr.isEmpty()) {
                 return "";
             }
             samples.addElement("sample").addAttribute("sampleID", specimen.getId())

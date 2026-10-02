@@ -594,4 +594,13 @@
   <!-- Order Entry Configuration switches for optional patient sex and date of birth. -->
   <include relativeToChangelogFile="true" file="110-optional-patient-sex-age-config.xml"/>
 
+  <!-- Order progress status, release and cancellation records on the order; the order cancel reason list. -->
+  <include relativeToChangelogFile="true" file="111-order-progress-status.xml"/>
+
+  <!-- Locations and Organizations: organization profile fields, identifiers, change log, sampling-site link, category and ownership lists. -->
+  <include relativeToChangelogFile="true" file="112-locations-organizations.xml"/>
+
+  <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
+  <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
+
 </databaseChangeLog>

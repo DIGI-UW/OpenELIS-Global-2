@@ -56,6 +56,16 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
   const intl = useIntl();
   const t = (id, defaultMessage, values) =>
     intl.formatMessage({ id, defaultMessage }, values);
+  const boxStateLabel = (state) =>
+    state &&
+    t(
+      `shipment.state.${state.toLowerCase().replace(/_(\w)/g, (_, c) => c.toUpperCase())}`,
+      state,
+    );
+  const storageLabel = (temp) => {
+    const code = temp || "AMBIENT";
+    return t(`eqa.panel.storage.${code.toLowerCase()}`, code);
+  };
 
   const [drafts, setDrafts] = useState({});
   const [selected, setSelected] = useState([]);
@@ -85,7 +95,6 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
       ({ ok, body }) => {
         setBusy(null);
         if (ok) {
-          setDrafts((prev) => ({ ...prev, [row.organizationId]: undefined }));
           onChanged();
           onNotice({
             kind: "success",
@@ -140,7 +149,7 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
       {
         boxId: row.boxCode,
         destinationFacility: row.organizationName,
-        temperature: row.temperatureRequirement,
+        temperature: storageLabel(row.temperatureRequirement),
         sampleCount: (prep?.panels || []).reduce(
           (sum, panel) => sum + panel.sampleCount,
           0,
@@ -201,8 +210,8 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
         {
           boxId: row.boxCode,
           destinationFacility: row.organizationName,
-          state: row.boxState,
-          temperature: row.temperatureRequirement,
+          state: boxStateLabel(row.boxState),
+          temperature: storageLabel(row.temperatureRequirement),
           // The three header facts the shipment module reads off the box on the
           // server; this document is built here, so they travel with the row.
           serviceLocation: row.serviceLocation,
@@ -325,7 +334,7 @@ const ShipmentWorkbench = ({ cycleId, prep, rows, onChanged, onNotice }) => {
                           type={BOX_STATE_TAG[row.boxState] || "gray"}
                           size="sm"
                         >
-                          {row.boxState.replace(/_/g, " ")}
+                          {boxStateLabel(row.boxState)}
                         </Tag>
                       )}
                     </TableCell>

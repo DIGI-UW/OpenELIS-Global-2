@@ -61,7 +61,7 @@ import org.springframework.web.servlet.view.InternalResourceViewResolver;
 @PropertySource(value = "classpath:SystemConfiguration.properties", ignoreResourceNotFound = true)
 @PropertySource(value = "file:/var/lib/openelis-global/properties/TotalSystemConfiguration.properties", ignoreResourceNotFound = true)
 @PropertySource(value = "file:/var/lib/openelis-global/properties/SystemConfiguration.properties", ignoreResourceNotFound = true)
-@ComponentScan(basePackages = { "spring", "org.openelisglobal", "org.itech", "org.ozeki.sms", "oe.plugin" })
+@ComponentScan(basePackages = { "spring", "org.openelisglobal", "org.itech", "org.ozeki.sms" })
 public class AppConfig implements WebMvcConfigurer {
 
     @Autowired

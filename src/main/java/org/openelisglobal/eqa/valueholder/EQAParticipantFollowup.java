@@ -73,6 +73,12 @@ public class EQAParticipantFollowup extends BaseObject<Long> {
     @Column(name = "resolution_notes", columnDefinition = "TEXT")
     private String resolutionNotes;
 
+    /**
+     * What the laboratory said: kept apart so resolving the row cannot erase it.
+     */
+    @Column(name = "response_notes", columnDefinition = "TEXT")
+    private String responseNotes;
+
     @Column(name = "persistent_failure_flag", nullable = false)
     private Boolean persistentFailureFlag = false;
 

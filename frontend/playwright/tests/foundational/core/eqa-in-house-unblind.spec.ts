@@ -20,10 +20,9 @@ import {
  * the database: targets pass through an encrypting converter on the way in,
  * and a value written straight to the column cannot be read back at all.
  *
- * Two things stay uncovered on purpose. The four-step wizard that seals a
- * panel has its own gate tests, and driving it needs an analyst roster plus
- * tests carrying analyte mappings — fixture data not guaranteed outside this
- * stack. And unblinding itself is marked as a known failure below.
+ * The four-step wizard that seals a panel stays uncovered on purpose: it has
+ * its own gate tests, and driving it needs an analyst roster plus tests
+ * carrying analyte mappings — fixture data not guaranteed outside this stack.
  */
 
 const RUN = Date.now().toString(36);
@@ -111,9 +110,7 @@ test.describe.serial("EQA in-house panels", () => {
 
     await test.step("the list shows it sealed and in testing", async () => {
       await page.goto("/qa/eqa/in-house", { timeout: NAV_TIMEOUT });
-      // Wait for the picker to settle before switching: selecting while the
-      // page is still initialising issues the panel read too early, and the
-      // page has no guard for a reply that is not an array.
+      // Wait for the picker's schemes to load before choosing one.
       const schemePicker = page.locator("select#inhouse-scheme-filter");
       await expect(schemePicker).not.toHaveValue("", { timeout: UI_TIMEOUT });
       await schemePicker.selectOption({ label: seed.schemeName });
@@ -148,13 +145,28 @@ test.describe.serial("EQA in-house panels", () => {
     });
   });
 
-  // Marked as a known failure rather than asserted: unblinding answers HTTP
-  // 500 because the service reads the panel's cycle after the row-locking
-  // call that fetched the panel has returned, by which point the entity is
-  // detached and the association cannot be initialised. The steps are written
-  // out so that fixing the service is all that is needed to turn coverage
-  // back on; asserting the error instead would pin the defect in place.
-  test.fixme("unblinding reveals the target and scores the panel", async ({
+  test.describe("as a laboratory user without the unblind privilege", () => {
+    test.use({ storageState: "playwright/.auth/participant.json" });
+
+    test("the sealed target is withheld", async ({ page }) => {
+      test.setTimeout(120_000);
+      await page.goto("/qa/eqa/in-house", { timeout: NAV_TIMEOUT });
+      const samples = await api(page, `/eqa/panels/${panelId}/samples`);
+      expect(samples.status).toBe(200);
+      const rows = samples.json as SampleRow[];
+      expect(rows).toHaveLength(1);
+      // The blind code is what the bench works from, so it is readable.
+      expect(rows[0].blindCode).toBe(`BLIND${RUN}`);
+      // The answer is not. This is the whole point of sealing a panel, and
+      // the previous test proves the same call does return it to a reader who
+      // holds the privilege — so this is withholding, not an empty fixture.
+      expect(rows[0].targetValue ?? null).toBeNull();
+    });
+  });
+
+  // Last in the serial block: once unblinded, the target is no longer
+  // withheld from anyone, so the withholding test above must run first.
+  test("unblinding reveals the target and scores the panel", async ({
     page,
   }) => {
     test.setTimeout(180_000);
@@ -174,24 +186,5 @@ test.describe.serial("EQA in-house panels", () => {
     await expect(
       panelRow.getByRole("button", { name: "Unblind now" }),
     ).toHaveCount(0);
-  });
-
-  test.describe("as a laboratory user without the unblind privilege", () => {
-    test.use({ storageState: "playwright/.auth/participant.json" });
-
-    test("the sealed target is withheld", async ({ page }) => {
-      test.setTimeout(120_000);
-      await page.goto("/qa/eqa/in-house", { timeout: NAV_TIMEOUT });
-      const samples = await api(page, `/eqa/panels/${panelId}/samples`);
-      expect(samples.status).toBe(200);
-      const rows = samples.json as SampleRow[];
-      expect(rows).toHaveLength(1);
-      // The blind code is what the bench works from, so it is readable.
-      expect(rows[0].blindCode).toBe(`BLIND${RUN}`);
-      // The answer is not. This is the whole point of sealing a panel, and
-      // the previous test proves the same call does return it to a reader who
-      // holds the privilege — so this is withholding, not an empty fixture.
-      expect(rows[0].targetValue ?? null).toBeNull();
-    });
   });
 });

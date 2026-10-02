@@ -28,16 +28,10 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.fhir.springserialization.QuestionnaireResponseDeserializer;
 import org.openelisglobal.login.valueholder.UserSessionData;
-import org.openelisglobal.organization.service.OrganizationService;
-import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplebatchentry.form.SampleBatchEntrySaveForm;
-import org.openelisglobal.samplebatchentry.validator.SampleBatchEntryFormValidator;
 import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.test.service.TestService;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
@@ -67,6 +61,9 @@ public class SampleBatchEntryRestControllerEidSaveTest extends BaseWebContextSen
     private static final ObjectMapper CLIENT_JSON = new ObjectMapper().registerModule(
             new SimpleModule().addDeserializer(QuestionnaireResponse.class, new QuestionnaireResponseDeserializer()));
 
+    @Autowired
+    private org.openelisglobal.samplebatchentry.service.SampleBatchEntryService batchService;
+    private Object originalFhirTransform;
     private SampleBatchEntryRestController controller;
     private MockHttpServletRequest request;
 
@@ -89,26 +86,22 @@ public class SampleBatchEntryRestControllerEidSaveTest extends BaseWebContextSen
         when(validator.getInvalidMessage(any())).thenReturn("invalid lab number");
         when(accessionNumberValidatorFactory.getValidator(AccessionFormat.GENERAL)).thenReturn(validator);
 
+        Object serviceTarget = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(batchService);
+        originalFhirTransform = ReflectionTestUtils.getField(serviceTarget, "fhirTransformService");
+        ReflectionTestUtils.setField(serviceTarget, "fhirTransformService", mock(FhirTransformService.class));
         controller = new SampleBatchEntryRestController();
         ReflectionTestUtils.setField(controller, "request", request);
-        SamplePatientEntryFormValidator entryFormValidator = new SamplePatientEntryFormValidator();
-        ReflectionTestUtils.setField(entryFormValidator, "organizationService",
-                webApplicationContext.getBean(OrganizationService.class));
-        ReflectionTestUtils.setField(controller, "formValidator", new SampleBatchEntryFormValidator());
-        ReflectionTestUtils.setField(controller, "entryFormValidator", entryFormValidator);
-        ReflectionTestUtils.setField(controller, "testService", webApplicationContext.getBean(TestService.class));
-        ReflectionTestUtils.setField(controller, "typeOfSampleService",
-                webApplicationContext.getBean(TypeOfSampleService.class));
-        ReflectionTestUtils.setField(controller, "organizationService",
-                webApplicationContext.getBean(OrganizationService.class));
-        ReflectionTestUtils.setField(controller, "samplePatientEntryService",
-                webApplicationContext.getBean(SamplePatientEntryService.class));
-        ReflectionTestUtils.setField(controller, "fhirTransformService", mock(FhirTransformService.class));
+        ReflectionTestUtils.setField(controller, "sampleBatchEntryService", webApplicationContext
+                .getBean(org.openelisglobal.samplebatchentry.service.SampleBatchEntryService.class));
     }
 
     @After
     public void resetAccessionFactory() {
         reset(accessionNumberValidatorFactory);
+        if (originalFhirTransform != null) {
+            Object serviceTarget = org.springframework.test.util.AopTestUtils.getUltimateTargetObject(batchService);
+            ReflectionTestUtils.setField(serviceTarget, "fhirTransformService", originalFhirTransform);
+        }
     }
 
     /** The JSON the batch screen posts, with the EID form's flags. */
@@ -171,6 +164,18 @@ public class SampleBatchEntryRestControllerEidSaveTest extends BaseWebContextSen
         ResponseEntity<?> response = save(eidForm(labNo, "true", "\"\"", "false"));
 
         assertEquals(400, response.getStatusCode().value());
+        assertNull(sampleService.getSampleByAccessionNumber(labNo));
+    }
+
+    @Test
+    public void aSpecimenWhoseDnaPcrMappingWasRemovedIsRefusedAndNothingIsSaved() throws Exception {
+        org.openelisglobal.typeofsample.service.TypeOfSampleTestService links = webApplicationContext
+                .getBean(org.openelisglobal.typeofsample.service.TypeOfSampleTestService.class);
+        for (var link : links.getTypeOfSampleTestsForSampleType("24")) {
+            links.delete(link);
+        }
+        String labNo = "DEV01260000000000174";
+        assertEquals(400, save(eidForm(labNo, "true", "true", "true")).getStatusCode().value());
         assertNull(sampleService.getSampleByAccessionNumber(labNo));
     }
 

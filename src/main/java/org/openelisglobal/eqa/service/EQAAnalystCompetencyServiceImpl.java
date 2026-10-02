@@ -3,7 +3,9 @@ package org.openelisglobal.eqa.service;
 import java.sql.Date;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -58,6 +60,10 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
     private static final String REPEATED_FAILURE = "REPEATED_FAILURE";
     private static final String INSUFFICIENT_EVIDENCE = "INSUFFICIENT_EVIDENCE";
     private static final String OPEN_ESCALATION = "OPEN_ESCALATION";
+
+    /** What an evidence row that does not decide its sample was folded into. */
+    private static final String FOLDED_INTO_TRIAGE = "TRIAGE";
+    private static final String FOLDED_INTO_SCORE = "SCORE";
 
     /**
      * Statuses that close a non-conformity, as the Lab Performance rollup reads
@@ -403,14 +409,8 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
      * specification names the winner -- "the event is the canonical row".
      */
     private List<EQACompetencyRow> facts(List<EQACompetencyRow> rows) {
-        Map<String, List<EQACompetencyRow>> byFact = new LinkedHashMap<>();
-        int index = 0;
-        for (EQACompetencyRow row : rows) {
-            byFact.computeIfAbsent(row.factKey(index++), key -> new ArrayList<>()).add(row);
-        }
-
         List<EQACompetencyRow> facts = new ArrayList<>();
-        for (List<EQACompetencyRow> group : byFact.values()) {
+        for (List<EQACompetencyRow> group : byFact(rows)) {
             EQACompetencyRow fact = collapse(group);
             // A sample excused by a non-counting dismissal leaves both totals.
             if (fact.counted || fact.failure) {
@@ -418,6 +418,31 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
             }
         }
         return facts;
+    }
+
+    /**
+     * The rows about each sample, grouped the way {@link #facts} collapses them.
+     */
+    private static Collection<List<EQACompetencyRow>> byFact(List<EQACompetencyRow> rows) {
+        Map<String, List<EQACompetencyRow>> byFact = new LinkedHashMap<>();
+        int index = 0;
+        for (EQACompetencyRow row : rows) {
+            byFact.computeIfAbsent(row.factKey(index++), key -> new ArrayList<>()).add(row);
+        }
+        return byFact.values();
+    }
+
+    /**
+     * The row whose verdict the collapsed fact carries: the latest triage verdict
+     * when there is one, otherwise the score (an escalation beside a score fails
+     * the same sample, so the score row is the one to mark).
+     */
+    private static EQACompetencyRow decidingRow(List<EQACompetencyRow> group) {
+        EQACompetencyRow verdict = latestTriageVerdict(group);
+        if (verdict != null) {
+            return verdict;
+        }
+        return group.stream().filter(row -> !row.escalation).findFirst().orElse(group.get(0));
     }
 
     /**
@@ -516,9 +541,30 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
         return order.indexOf(right) > order.indexOf(left) ? right : left;
     }
 
+    /**
+     * Every event in the window, each marked the way the counts read it: the row
+     * that decides a sample carries that sample's verdict, and the other rows about
+     * it say which statement they were folded into. The rows marked as failures
+     * then add up to the failure count instead of counting a sample once per event.
+     */
     private List<Map<String, Object>> history(List<EQACompetencyRow> rows) {
+        Map<EQACompetencyRow, EQACompetencyRow> factDecidedBy = new HashMap<>();
+        Map<EQACompetencyRow, String> foldedInto = new HashMap<>();
+        for (List<EQACompetencyRow> group : byFact(rows)) {
+            EQACompetencyRow deciding = decidingRow(group);
+            String folded = latestTriageVerdict(group) != null ? FOLDED_INTO_TRIAGE : FOLDED_INTO_SCORE;
+            for (EQACompetencyRow row : group) {
+                if (row == deciding) {
+                    factDecidedBy.put(row, collapse(group));
+                } else {
+                    foldedInto.put(row, folded);
+                }
+            }
+        }
+
         List<Map<String, Object>> out = new ArrayList<>();
         for (EQACompetencyRow row : rows) {
+            EQACompetencyRow fact = factDecidedBy.get(row);
             Map<String, Object> dto = new LinkedHashMap<>();
             dto.put("date", row.date.toString());
             dto.put("schemeName", row.schemeName);
@@ -527,8 +573,10 @@ public class EQAAnalystCompetencyServiceImpl implements EQAAnalystCompetencyServ
             dto.put("cycleId", row.cycleId);
             dto.put("eventType", row.eventType == null ? null : row.eventType.name());
             dto.put("outcome", row.outcome);
-            dto.put("counted", row.counted);
-            dto.put("failure", row.failure);
+            dto.put("participantResultId", row.participantResultId);
+            dto.put("counted", fact != null && fact.counted);
+            dto.put("failure", fact != null && fact.failure);
+            dto.put("foldedInto", foldedInto.get(row));
             dto.put("nceId", row.nceId);
             out.add(dto);
         }

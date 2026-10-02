@@ -32,7 +32,7 @@ import {
   resolveApiErrorMessage,
 } from "../utils/Utils";
 import { NotificationContext } from "../layout/Layout";
-import { NotificationKinds } from "../common/CustomNotification";
+import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
 import InlineEnrollmentForm from "./InlineEnrollmentForm";
 import EnrollmentStatusModal from "./EnrollmentStatusModal";
 
@@ -256,6 +256,8 @@ const MyProgramsPage = () => {
 
   return (
     <div className="pageContent">
+      {/* The page's notifications appear only where a page renders this. */}
+      <AlertDialog />
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
 
       <Grid fullWidth={true}>

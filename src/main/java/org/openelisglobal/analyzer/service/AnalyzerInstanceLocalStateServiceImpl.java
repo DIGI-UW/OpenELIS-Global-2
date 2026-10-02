@@ -21,16 +21,19 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
     private final AnalyzerService analyzerService;
     private final AnalyzerProfileBindingService profileBindingService;
     private final AnalyzerSiteBindingService siteBindingService;
+    private final AnalyzerTypeMappingService typeMappingService;
     private final AnalyzerResultsService analyzerResultsService;
     private final AnalyzerNormalizedResultImportService importService;
 
     @Autowired
     public AnalyzerInstanceLocalStateServiceImpl(AnalyzerService analyzerService,
             AnalyzerProfileBindingService profileBindingService, AnalyzerSiteBindingService siteBindingService,
-            AnalyzerResultsService analyzerResultsService, AnalyzerNormalizedResultImportService importService) {
+            AnalyzerTypeMappingService typeMappingService, AnalyzerResultsService analyzerResultsService,
+            AnalyzerNormalizedResultImportService importService) {
         this.analyzerService = analyzerService;
         this.profileBindingService = profileBindingService;
         this.siteBindingService = siteBindingService;
+        this.typeMappingService = typeMappingService;
         this.analyzerResultsService = analyzerResultsService;
         this.importService = importService;
     }
@@ -132,6 +135,14 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
                 || !Objects.equals(requireText(bindingFingerprint, "Binding fingerprint"),
                         current.revision().getBindingFingerprint())) {
             throw new IllegalArgumentException("Analyzer Type mappings changed after Verify was loaded");
+        }
+        AnalyzerTypeMappingView mapping = typeMappingService.getMapping(profile.getProfileId(),
+                profile.getProfileRevision());
+        if (mapping.confirmation().state() != AnalyzerSiteBindingConfirmationView.State.CURRENT
+                || !Objects.equals(mapping.siteBindingId(), current.binding().getId())
+                || mapping.siteBindingRevision() != revision
+                || !Objects.equals(mapping.bindingFingerprint(), current.revision().getBindingFingerprint())) {
+            throw new IllegalArgumentException("Confirm the current Analyzer Type mappings before applying them");
         }
         if (analyzer.getSiteBindingRevision() != null
                 && Objects.equals(analyzer.getSiteBindingRevision().getId(), current.revision().getId())) {

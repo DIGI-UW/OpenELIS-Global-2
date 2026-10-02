@@ -88,7 +88,7 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     private static final long SAMPLE_ITEM_ID = 9816L;
     private static final long ANALYSIS_ID = 9817L;
 
-    private static final String PROGRAMME_SUMMARY = "Programme summary";
+    private static final String PROGRAMME_SUMMARY = "Overall summary";
     private static final String SECTION_SUMMARY = "Section summary";
     private static final String SCORING_DETAIL = "Scoring detail";
     private static final String SIGN_OFF = "Review and sign-off";
