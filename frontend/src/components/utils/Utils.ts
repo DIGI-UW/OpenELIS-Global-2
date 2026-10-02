@@ -1065,10 +1065,11 @@ export const ROUTE_GUARDS = {
     privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
   },
   "/PathologyDashboard": { privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF },
-  "/PatientHistory": {
-    privilege: Privileges.ORDER_CREATE,
-    role: [Roles.RECEPTION],
-  },
+  // Patient History's only action is to open /PatientResults/:patientId, the
+  // results viewer, whose read needs result:view; no legacy module ever gave
+  // Reception patient results. Routed on the same privilege as the page it
+  // leads to, so Reception is not offered a search whose every hit 403s.
+  "/PatientHistory": { privilege: Privileges.RESULT_VIEW },
   "/PatientManagement/:patientId?": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
@@ -1081,10 +1082,13 @@ export const ROUTE_GUARDS = {
     privilege: Privileges.RESULT_ENTER,
     role: [Roles.RESULTS],
   },
-  "/PatientResults/:patientId": {
-    privilege: Privileges.ORDER_CREATE,
-    role: [Roles.RECEPTION],
-  },
+  // A patient's RESULTS viewer. Its read (/rest/result-tree,
+  // PatientResultTreeService.getResultTree) is gated on result:view, and the
+  // legacy PatientResults module belongs to Results, so routing it to
+  // Reception on order:create sent Reception to a page that 403s on load from
+  // the header search and Patient History. Guarded on the privilege the page
+  // actually needs.
+  "/PatientResults/:patientId": { privilege: Privileges.RESULT_VIEW },
   "/PrintBarcode": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],

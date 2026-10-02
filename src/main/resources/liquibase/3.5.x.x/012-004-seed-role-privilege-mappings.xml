@@ -1286,4 +1286,47 @@
         </rollback>
     </changeSet>
 
+    <!--
+      barcode:view and barcode:manage were defined in 012-003 but granted to no
+      role at all, so every label print by a non-admin denied. The denial sits
+      on a servlet, not a /rest path, so SecurityConfig's accessDeniedHandler
+      answers it with a redirect to /Home?access=denied, which the SPA renders
+      as "You do not have access to this module". That is what Reception saw
+      from the clinical, environmental and vector collect steps AND from the
+      legacy Add Order's post-save print (OrderSuccessMessage), all of which
+      open /LabelMakerServlet.
+
+      Printing a label is a read of the label's recorded info
+      (BarcodeLabelInfoService.getDataByCode, barcode:view) followed by the
+      bookkeeping of the print itself (BarcodeInfoService.recordPrintedCounts,
+      barcode:manage), so a role that may print needs both. Granted to
+      Reception alone: it is the only role holding the PrintBarcode module,
+      and /PrintBarcode and the order collect steps are routed to it. Nothing
+      here lets Reception change barcode CONFIGURATION, which stays behind the
+      BarcodeConfig module and system:configure.
+    -->
+    <changeSet author="openelis" id="012-004v-grant-barcode-print-to-reception">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant the two barcode privileges label printing requires to Reception (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Reception'
+              AND p.name IN ('barcode:view', 'barcode:manage')
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Reception'
+                  AND p.name IN ('barcode:view', 'barcode:manage');
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>

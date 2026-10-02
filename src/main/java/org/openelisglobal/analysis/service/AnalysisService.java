@@ -115,7 +115,14 @@ public interface AnalysisService extends BaseObjectService<Analysis, String> {
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<Analysis> getMaxRevisionParentTestAnalysesBySample(SampleItem sampleItem);
 
-    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
+    /**
+     * The analyses on a sample item minus the given statuses: which tests are still
+     * ordered on it. Edit Order (SampleEditRestController .addCurrentTestsToList)
+     * reads each one's test id, display name and status id to list the order's
+     * current tests - never a result value - so it also accepts PRIV_ORDER_VIEW; on
+     * PRIV_RESULT_VIEW alone Edit Order 403'd for Reception.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
     List<Analysis> getAnalysesBySampleItemsExcludingByStatusIds(SampleItem sampleItem, Set<String> statusIds);
 
     @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")

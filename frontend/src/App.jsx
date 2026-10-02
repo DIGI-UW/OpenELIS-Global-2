@@ -1548,8 +1548,7 @@ export default function App() {
                   path="/PatientHistory"
                   exact
                   render={() => <PatientHistory />}
-                  role={Roles.RECEPTION}
-                  privilege={Privileges.ORDER_CREATE}
+                  privilege={Privileges.RESULT_VIEW}
                 />
                 <SecureRoute
                   path="/PatientMerge"
@@ -1587,8 +1586,7 @@ export default function App() {
                       </Suspense>
                     </RouteErrorBoundary>
                   )}
-                  role={Roles.RECEPTION}
-                  privilege={Privileges.ORDER_CREATE}
+                  privilege={Privileges.RESULT_VIEW}
                 />
 
                 <SecureRoute
