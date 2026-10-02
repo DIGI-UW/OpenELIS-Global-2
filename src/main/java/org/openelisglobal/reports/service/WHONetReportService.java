@@ -31,7 +31,11 @@ public interface WHONetReportService {
     @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
     MicroWhonetPreviewForm previewMicrobiologyExport(MicroWhonetExportQueryForm query);
 
-    @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")
+    // Also PRIV_MICRO_VIEW: the WHONET export page is routed to Results, and
+    // every other read on it is a microbiology read on micro:view; only this
+    // filter-option lookup sat on report:run, so Results reached a page that
+    // 403'd its filters.
+    @PreAuthorize("hasAnyAuthority('PRIV_REPORT_RUN','PRIV_MICRO_VIEW')")
     MicroWhonetFilterOptionsForm getMicrobiologyExportFilterOptions(MicroWhonetExportQueryForm query);
 
     @PreAuthorize("hasAuthority('PRIV_REPORT_RUN')")

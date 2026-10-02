@@ -1684,7 +1684,10 @@ export const menuEntryVisible = (actionURL, userSessionDetails) => {
     // calls. That is why Reception was still shown /CytologyDashboard,
     // /ResultValidationRetroC, /WorkPlanByTest* and /ReportPrint after the
     // guard-based filter landed.
-    return moduleEntryVisible(path, userSessionDetails);
+    const typeParam = new URLSearchParams(actionURL.split("?")[1] || "").get(
+      "type",
+    );
+    return moduleEntryVisible(path, userSessionDetails, typeParam || undefined);
   }
   return computeRouteAccess(userSessionDetails, guard);
 };
@@ -1702,10 +1705,27 @@ export const menuEntryVisible = (actionURL, userSessionDetails) => {
  * <p>Global Administrator bypasses the interceptor via isUserAdmin(), so it is
  * admitted here too.
  */
-export const moduleEntryVisible = (path, userSessionDetails) => {
-  const required = MODULE_GUARDED_PATHS[path];
+export const moduleEntryVisible = (path, userSessionDetails, typeParam?) => {
+  let required = MODULE_GUARDED_PATHS[path];
   if (!required) {
     return true;
+  }
+  // A menu row such as /ResultValidationRetroC?type=Immunology is served by
+  // the module named for its type (ResultValidation:Immunology), not by any
+  // module in the family: ModuleAuthenticationInterceptor checks the specific
+  // one. Holding only ResultValidation:EID showed Results the whole validation
+  // subtree, every row of which then redirected to /Home?access=denied. When
+  // the row names a type and the family has typed modules, require the bare
+  // module or the one for that type.
+  if (typeParam) {
+    const wanted = typeParam.toLowerCase();
+    const narrowed = required.filter((name) => {
+      const colon = name.indexOf(":");
+      return colon === -1 || name.slice(colon + 1).toLowerCase() === wanted;
+    });
+    if (narrowed.length > 0 && narrowed.length < required.length) {
+      required = narrowed;
+    }
   }
   if (userSessionDetails?.roles?.includes(Roles.GLOBAL_ADMIN)) {
     return true;

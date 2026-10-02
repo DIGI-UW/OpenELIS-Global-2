@@ -1,5 +1,10 @@
 import { useContext } from "react";
-import { toLocalIsoDate, hasPrivilege, Privileges } from "../../utils/Utils";
+import {
+  toLocalIsoDate,
+  hasPrivilege,
+  hasQaPermission,
+  Privileges,
+} from "../../utils/Utils";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { useServerData } from "../../utils/useServerData";
 import { tatDelta } from "../../reports/tat/tatUtils";
@@ -28,7 +33,16 @@ export const useOverviewSummary = () => {
 // Accreditation portfolio summary (OGC-686): counts per status plus
 // worstStatus, which is null when no non-inactive body exists.
 export const useAccreditationSummary = () => {
-  const query = useServerData("/rest/accreditation/summary");
+  // /rest/accreditation/summary sits behind qa.view.qms, which Results does
+  // not hold while it does reach this overview; null stops the request.
+  const { userSessionDetails: accreditationSession } = useContext(
+    UserSessionDetailsContext,
+  );
+  const query = useServerData(
+    hasQaPermission(accreditationSession, "qa.view.qms")
+      ? "/rest/accreditation/summary"
+      : null,
+  );
   return {
     loading: query.isLoading,
     accreditation:

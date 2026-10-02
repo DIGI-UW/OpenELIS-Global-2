@@ -1,4 +1,5 @@
 {
+  "sample.label.generic": "Generic Sample",
   "reporting.title": "Custom Data Export",
   "reporting.description": "Choose your report, reporting period and columns, then download a spreadsheet-ready CSV.",
   "reporting.builder": "Back to report builder",

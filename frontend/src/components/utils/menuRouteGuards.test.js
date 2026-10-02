@@ -183,6 +183,35 @@ describe("ROUTE_GUARDS stays in step with App.jsx", () => {
     expect(menuEntryVisible("/qa/qms/audit-trail", reception)).toBe(false);
   });
 
+  it("requires the module named for a row's type, not any module in the family", () => {
+    // Results holds the EID and VL validation modules; the study validation rows
+    // name Immunology, Biochemistry and virology. The interceptor checks the
+    // specific module, so Results was offered six rows that each redirected to
+    // /Home?access=denied.
+    const results = {
+      roles: ["Results"],
+      privileges: ["result:enter"],
+      modules: ["ResultValidation:EID", "ResultValidation:VL"],
+    };
+    const validation = {
+      roles: ["Validation"],
+      privileges: ["result:validate"],
+      modules: ["ResultValidation:Immunology", "ResultValidation:virology"],
+    };
+    const row = "/ResultValidationRetroC?type=Immunology&test=";
+    expect(menuEntryVisible(row, results)).toBe(false);
+    expect(menuEntryVisible(row, validation)).toBe(true);
+    // Case-insensitive on the type, as the module names are not consistent.
+    expect(
+      menuEntryVisible(
+        "/ResultValidationRetroC?type=virology&test=DNA PCR",
+        validation,
+      ),
+    ).toBe(true);
+    // A row with no type keeps the family-wide check.
+    expect(menuEntryVisible("/ResultValidationRetroC", results)).toBe(true);
+  });
+
   it("includes the role-guarded routes, not just the privilege-guarded ones", () => {
     // /inventory is guarded by role={[Roles.RESULTS, Roles.GLOBAL_ADMIN]}. An
     // earlier version of the map read only `privilege=`, so this route was
