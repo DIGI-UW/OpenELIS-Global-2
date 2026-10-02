@@ -30,20 +30,21 @@ not inherit a previous revision's confirmation.
 
 ## Correct and recover held results
 
-1. Open **Analyzer Results → Import issues** and follow the mapping link for an
-   unresolved result. Original test codes, values and source context are
-   retained.
+1. Open the analyzer's results in **Analyzer Results**. A held row shows its
+   original code and value; follow its **Review Analyzer Type mapping** link.
+   Original test codes, values and source context are retained.
 2. In **Analyzer Types**, select the correct local test and answer choices.
    Unrecognized codes and values observed in held traffic also appear in the
    editor. If no choices exist for a selected test, check the test selection and
    its catalog configuration.
 3. Save and confirm the mapping. Remaining unresolved rows may stay unresolved;
    their incoming results will remain held.
-4. From a held result's mapping link, choose **Apply mappings and retry held
-   results** to adopt the current revision for that analyzer and retry its held
-   rows in place. The setup **Verify → Continue to Connect** action does the
-   same for an analyzer being configured. Saving or confirming a shared mapping
-   alone does not change a running analyzer's selected revision.
+4. From the held row's **Review Analyzer Type mapping** link, choose **Apply
+   mappings and retry held results** to adopt the current revision for that
+   analyzer and retry its held rows in place. The setup **Verify → Continue to
+   Connect** action does the same for an analyzer being configured. Saving or
+   confirming a shared mapping alone does not change a running analyzer's
+   selected revision.
 5. Check Analyzer Results again. Resolved rows become available for the usual
    review. Unresolved rows remain held. Adoption does not accept results into a
    patient's clinical record.
@@ -56,15 +57,12 @@ type every one of them can use, or they all stay staged. When their tests have
 no specimen type in common in the test catalog, there is nothing to choose; they
 stay staged until the catalog gives those tests a common specimen type.
 
-Use **Undelivered results → Retry** for messages still queued in Bridge. That is
-separate from mapping recovery: a message already accepted by OE has a delivery
-receipt, and resending it intentionally does not create new work or duplicates.
+Use **Undelivered analyzer results → Retry** for messages still queued in
+Bridge. That is separate from mapping recovery: a message already accepted by OE
+has a delivery receipt, and resending it intentionally does not create new work
+or duplicates.
 
-**Exclude** means intentionally omit that code/value from clinical staging. It
-is not a substitute for leaving an uncertain mapping unresolved. Previously held
-rows are retained if the new mapping excludes them; this change does not delete
-historical observations.
-
-This hotfix does not change the Bridge profile/FHIR contract or complete the
-separate work to make incoming clinical concepts fully independent of analyzer
-codes.
+**Do not receive** means intentionally omit that code/value from clinical
+staging. It is not a substitute for leaving an uncertain mapping unresolved.
+Previously held rows are retained if the new mapping excludes them; historical
+observations are not deleted.

@@ -255,6 +255,8 @@
         <class>org.openelisglobal.vector.valueholder.VectorPool</class>
         <class>org.openelisglobal.vector.valueholder.VectorPoolMember</class>
         <class>org.openelisglobal.vector.valueholder.VectorSamplingSite</class>
+        <class>org.openelisglobal.organization.valueholder.OrganizationIdentifier</class>
+        <class>org.openelisglobal.organization.valueholder.OrganizationChange</class>
         <!-- V-03 Vector Testing & Identification entities -->
         <class>org.openelisglobal.vector.identification.valueholder.VectorSpecimenIdentification</class>
         <class>org.openelisglobal.vector.identification.valueholder.VectorMolecularRecord</class>

@@ -31,8 +31,9 @@ import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import CatalogImport from "./catalogImport/CatalogImport";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
-import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
-import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
+import LocationsPage, {
+  legacyOrganizationEditTarget,
+} from "./locations/LocationsPage";
 import UserManagement from "./userManagement/UserManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod";
@@ -138,13 +139,22 @@ function Admin() {
         from={`${path}/barcodeConfiguration`}
         to={`${path}/labelPresets`}
       />
-      <Route
-        path={`${path}/organizationManagement`}
-        component={OrganizationManagement}
+      {/* OGC-1363: Locations & Organizations replaces Organization Management
+          and absorbs the vector Sampling Sites page; the old routes redirect. */}
+      <Route path={`${path}/locations`} component={LocationsPage} />
+      <Redirect
+        from={`${path}/organizationManagement`}
+        to={`${path}/locations`}
       />
       <Route
         path={`${path}/organizationEdit`}
-        component={OrganizationAddModify}
+        render={({ location }) => (
+          <Redirect to={legacyOrganizationEditTarget(path, location)} />
+        )}
+      />
+      <Redirect
+        from={`${path}/vectorSurveillanceSetup/sampling-sites`}
+        to={`${path}/locations/sites`}
       />
       <Route
         path={`${path}/resultReportingConfiguration`}

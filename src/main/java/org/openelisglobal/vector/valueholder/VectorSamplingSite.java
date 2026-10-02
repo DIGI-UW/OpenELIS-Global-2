@@ -66,9 +66,20 @@ public class VectorSamplingSite extends BaseObject<Integer> {
     @Column(name = "active")
     private Boolean active;
 
+    @Column(name = "organization_id")
+    private Integer organizationId;
+
     @Override
     public Integer getId() {
         return id;
+    }
+
+    public Integer getOrganizationId() {
+        return organizationId;
+    }
+
+    public void setOrganizationId(Integer organizationId) {
+        this.organizationId = organizationId;
     }
 
     @Override
