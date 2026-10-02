@@ -100,7 +100,31 @@ describe("ProviderFollowupRegister", () => {
     expect(screen.getByText("3.2")).toBeInTheDocument();
   });
 
-  it("moves the row through triage without asking for notes on the early steps", async () => {
+  it("moves the row to investigation without asking for notes", async () => {
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb(
+        jsonResponse(true, {
+          followupId: 12,
+          followupStatus: "UNDER_INVESTIGATION",
+        }),
+      ),
+    );
+    renderPage();
+
+    await screen.findByText("Mbeya Regional Lab");
+    expand();
+    fireEvent.click(screen.getByRole("button", { name: "Investigate" }));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/eqa/provider/followups/12/status",
+        JSON.stringify({ target: "UNDER_INVESTIGATION", notes: null }),
+        expect.any(Function),
+      ),
+    );
+  });
+
+  it("records a response only with what the laboratory said", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(
         jsonResponse(true, {
@@ -114,11 +138,21 @@ describe("ProviderFollowupRegister", () => {
     await screen.findByText("Mbeya Regional Lab");
     expand();
     fireEvent.click(screen.getByRole("button", { name: "Record response" }));
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    expect(confirm).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("What the laboratory said"), {
+      target: { value: "Pipette recalibrated" },
+    });
+    fireEvent.click(confirm);
 
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
         "/rest/eqa/provider/followups/12/status",
-        JSON.stringify({ target: "RESPONSE_RECEIVED", notes: null }),
+        JSON.stringify({
+          target: "RESPONSE_RECEIVED",
+          notes: "Pipette recalibrated",
+        }),
         expect.any(Function),
       ),
     );

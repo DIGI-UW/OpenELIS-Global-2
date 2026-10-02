@@ -57,7 +57,7 @@ services:
     image: openelis-analyzer-bridge.ci
     container_name: openelis-analyzer-bridge
     ports:
-      - "8442:8443"
+      - "127.0.0.1:8442:8443"
       - "12000:12001"
       - "2575:2575" # MLLP HL7 listener (OGC-325)
     volumes:

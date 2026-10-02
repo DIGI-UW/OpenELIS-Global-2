@@ -138,12 +138,18 @@ test.describe("EQA follow-up registers", () => {
       await expect(triage).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(triage.getByText("210.0")).toBeVisible();
 
-      // Record response is a direct transition, no note required.
       await triage.getByRole("button", { name: "Record response" }).click();
+      await page
+        .getByLabel("What the laboratory said")
+        .fill(`E2E ${RUN}: pipette out of calibration, replaced`);
+      await page.getByRole("button", { name: "Confirm" }).click();
       await expect(
         page.getByText("Follow-up moved to Response received.").first(),
       ).toBeVisible({ timeout: UI_TIMEOUT });
       await expect(foreignRow().getByText("Response received")).toBeVisible();
+      await expect(
+        triage.getByText(`E2E ${RUN}: pipette out of calibration, replaced`),
+      ).toBeVisible();
 
       // Resolving needs notes, and closes the row for further triage.
       await triage.getByRole("button", { name: "Resolve" }).click();
@@ -160,6 +166,12 @@ test.describe("EQA follow-up registers", () => {
       await expect(
         page.getByTestId(/^register-triage-/).getByRole("button"),
       ).toHaveCount(0);
+      // Resolving writes its own notes and leaves the response alone.
+      await expect(
+        page
+          .getByTestId(/^register-triage-/)
+          .getByText(`E2E ${RUN}: pipette out of calibration, replaced`),
+      ).toBeVisible();
     });
   });
 });

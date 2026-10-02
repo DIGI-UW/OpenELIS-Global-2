@@ -8,7 +8,20 @@ import java.util.Map;
  * (case-insensitive) rather than position. A missing or blank cell reads as the
  * empty string.
  */
-public record CsvRow(Map<String, Integer> columns, String[] values, int lineNumber) {
+public record CsvRow(Map<String, Integer> columns, String[] values, int lineNumber, Map<String, String> headers) {
+
+    public CsvRow(Map<String, Integer> columns, String[] values, int lineNumber) {
+        this(columns, values, lineNumber, Map.of());
+    }
+
+    /**
+     * The column's header as written in the file, for columns whose name carries
+     * meaning of its own (an identifier label); the lower-cased key otherwise.
+     */
+    public String header(String column) {
+        String key = column.toLowerCase(Locale.ROOT);
+        return headers.getOrDefault(key, key);
+    }
 
     public String get(String column) {
         Integer index = columns.get(column.toLowerCase(Locale.ROOT));

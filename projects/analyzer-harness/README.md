@@ -73,13 +73,6 @@ configuration without rebuilding the application. Refresh
 `scripts/dev-stack env` after recreation because published local ports can
 change.
 
-When adopting this storage configuration on an existing harness, stop Bridge and
-copy its old `/data/openelis-analyzer-bridge` volume and both SQLite databases
-(including any WAL files) from `/tmp/openelis-analyzer-bridge` into
-`bridge-data` before recreating it. Preserve the originals until readback
-confirms the transfer. A clean disposable stack requires no transfer. Do not
-treat this harness procedure as a production upgrade migration.
-
 ## Local Compose Layers
 
 Local harness startup now uses the same canonical service identities as CI, with
@@ -180,10 +173,5 @@ This harness uses a local `./volume/` directory for:
 
 ## Notes
 
-- HL7 analyzers are treated as **push-based** in OpenELIS; “Test Connection”
-  will instruct you to validate by pushing an HL7 message to OpenELIS instead of
-  attempting an outbound socket connection.
-- ASTM TCP analyzers should target `openelis-analyzer-bridge:12001` (fixtures
-  updated accordingly).
-- RS232 analyzers use virtual ports under `/dev/serial/ttyVUSB0-4` (created by
-  `virtual-serial` service).
+- ASTM TCP analyzers target the Bridge's shared listener,
+  `openelis-analyzer-bridge:12001`.

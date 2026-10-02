@@ -17,6 +17,8 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Pattern;
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -99,6 +101,22 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
 
     private Set<OrganizationType> organizationTypes;
     private UUID fhirUuid;
+
+    private BigDecimal gpsLatitude;
+    private BigDecimal gpsLongitude;
+    private String contactName;
+    private String description;
+    private String categoryId;
+    private String ownershipId;
+    private String serviceType;
+    private String source;
+    private String approvalStatus;
+    private String accreditationBody;
+    private String accreditationNumber;
+    private LocalDate accreditationExpiry;
+    private LocalDate lastReviewDate;
+    private LocalDate nextReviewDue;
+    private String reviewNotes;
 
     public Organization() {
         super();
@@ -330,5 +348,125 @@ public class Organization extends EnumValueItemImpl implements SimpleBaseEntity<
     @JsonIgnore
     public String getFhirUuidAsString() {
         return fhirUuid == null ? "" : fhirUuid.toString();
+    }
+
+    public BigDecimal getGpsLatitude() {
+        return gpsLatitude;
+    }
+
+    public void setGpsLatitude(BigDecimal gpsLatitude) {
+        this.gpsLatitude = gpsLatitude;
+    }
+
+    public BigDecimal getGpsLongitude() {
+        return gpsLongitude;
+    }
+
+    public void setGpsLongitude(BigDecimal gpsLongitude) {
+        this.gpsLongitude = gpsLongitude;
+    }
+
+    public String getContactName() {
+        return contactName;
+    }
+
+    public void setContactName(String contactName) {
+        this.contactName = contactName;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public String getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(String categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getOwnershipId() {
+        return ownershipId;
+    }
+
+    public void setOwnershipId(String ownershipId) {
+        this.ownershipId = ownershipId;
+    }
+
+    public String getServiceType() {
+        return serviceType;
+    }
+
+    public void setServiceType(String serviceType) {
+        this.serviceType = serviceType;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(String source) {
+        this.source = source;
+    }
+
+    public String getApprovalStatus() {
+        return approvalStatus;
+    }
+
+    public void setApprovalStatus(String approvalStatus) {
+        this.approvalStatus = approvalStatus;
+    }
+
+    public String getAccreditationBody() {
+        return accreditationBody;
+    }
+
+    public void setAccreditationBody(String accreditationBody) {
+        this.accreditationBody = accreditationBody;
+    }
+
+    public String getAccreditationNumber() {
+        return accreditationNumber;
+    }
+
+    public void setAccreditationNumber(String accreditationNumber) {
+        this.accreditationNumber = accreditationNumber;
+    }
+
+    public LocalDate getAccreditationExpiry() {
+        return accreditationExpiry;
+    }
+
+    public void setAccreditationExpiry(LocalDate accreditationExpiry) {
+        this.accreditationExpiry = accreditationExpiry;
+    }
+
+    public LocalDate getLastReviewDate() {
+        return lastReviewDate;
+    }
+
+    public void setLastReviewDate(LocalDate lastReviewDate) {
+        this.lastReviewDate = lastReviewDate;
+    }
+
+    public LocalDate getNextReviewDue() {
+        return nextReviewDue;
+    }
+
+    public void setNextReviewDue(LocalDate nextReviewDue) {
+        this.nextReviewDue = nextReviewDue;
+    }
+
+    public String getReviewNotes() {
+        return reviewNotes;
+    }
+
+    public void setReviewNotes(String reviewNotes) {
+        this.reviewNotes = reviewNotes;
     }
 }

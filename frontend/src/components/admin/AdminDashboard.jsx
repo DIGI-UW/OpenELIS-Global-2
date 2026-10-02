@@ -27,8 +27,8 @@ const ADMIN_DASHBOARD_LINKS = [
     icon: User,
   },
   {
-    messageId: "organization.main.title",
-    path: "organizationManagement",
+    messageId: "sidenav.label.admin.locations",
+    path: "locations",
     icon: ContainerSoftware,
   },
   {
