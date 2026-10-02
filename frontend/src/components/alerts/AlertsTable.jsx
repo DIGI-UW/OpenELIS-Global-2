@@ -26,13 +26,18 @@ const STATUS_TAG_MAP = {
   RESOLVED: "green",
 };
 
+const ACTION_LABELS = {
+  OPEN: "alerts.acknowledge.button",
+  ACKNOWLEDGED: "alerts.resolve.button",
+};
+
 const AlertsTable = ({
   alerts,
   totalCount,
   page,
   pageSize,
   onPageChange,
-  onAcknowledge,
+  onAction,
 }) => {
   const intl = useIntl();
 
@@ -78,22 +83,13 @@ const AlertsTable = ({
     return intl.formatMessage({ id: key, defaultMessage: type });
   };
 
-  const formatDate = (dateStr) => {
-    if (!dateStr) return "";
-    try {
-      return new Date(dateStr).toLocaleString();
-    } catch {
-      return dateStr;
-    }
-  };
-
   const rows = (alerts || []).map((alert) => ({
     id: String(alert.id),
     alertType: formatAlertType(alert.alertType),
     severity: alert.severity,
     message: alert.message,
     status: alert.status,
-    startTime: formatDate(alert.startTime),
+    startTime: alert.startTimeForDisplay,
     actions: alert.status === "OPEN" ? "acknowledge" : "",
     _original: alert,
   }));
@@ -160,14 +156,14 @@ const AlertsTable = ({
                       if (cell.info.header === "actions") {
                         return (
                           <TableCell key={cell.id}>
-                            {original && original.status === "OPEN" && (
+                            {original && ACTION_LABELS[original.status] && (
                               <Button
                                 kind="ghost"
                                 size="sm"
-                                onClick={() => onAcknowledge(original)}
+                                onClick={() => onAction(original)}
                               >
                                 {intl.formatMessage({
-                                  id: "alerts.acknowledge.button",
+                                  id: ACTION_LABELS[original.status],
                                 })}
                               </Button>
                             )}

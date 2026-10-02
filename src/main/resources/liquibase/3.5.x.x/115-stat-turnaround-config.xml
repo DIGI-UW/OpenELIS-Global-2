@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="oe" id="OGC-1372-stat-turnaround-minutes">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT count(*) FROM clinlims.site_information WHERE name = 'statTurnaroundMinutes'
+            </sqlCheck>
+        </preConditions>
+        <comment>Turnaround target that raises an Overdue STAT alert</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="statTurnaroundMinutes" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Minutes after receipt a STAT order may go without a result before an Overdue STAT alert is raised" />
+            <column name="value" value="60" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'sampleEntryConfig')" />
+            <column name="value_type" value="text" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'statTurnaroundMinutes'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

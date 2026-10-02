@@ -12141,5 +12141,11 @@
   "label.locations.import.recent": "Recent imports",
   "message.locations.export.done": "Exported {count} records in the import format.",
   "label.locations.import.working": "Reading the file and matching every row. Large files take a moment.",
-  "message.locations.import.failed": "The import could not be read: {reason}"
+  "message.locations.import.failed": "The import could not be read: {reason}",
+  "alerts.acknowledge.note": "Acknowledgment Comment",
+  "alerts.acknowledge.note.required": "A comment is required to acknowledge a critical alert",
+  "alerts.resolve.button": "Resolve",
+  "alerts.resolve.title": "Resolve Alert",
+  "alerts.resolve.comment.required": "A resolution comment is required",
+  "alerts.resolve.error": "Failed to resolve alert"
 }

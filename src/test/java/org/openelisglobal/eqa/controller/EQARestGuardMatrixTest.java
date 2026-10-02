@@ -67,6 +67,7 @@ public class EQARestGuardMatrixTest {
     static {
         // Lab-wide alert acknowledgement rides the exception above.
         WRITE_GUARDS.put("EQAAlertRestController#acknowledgeAlert", EQAGuards.LAB_WIDE_ALERTS);
+        WRITE_GUARDS.put("EQAAlertRestController#resolveAlert", EQAGuards.LAB_WIDE_ALERTS);
         // Cycle lifecycle
         WRITE_GUARDS.put("EQACycleRestController#createCycle", EQAGuards.MANAGE);
         WRITE_GUARDS.put("EQACycleRestController#createMyCycle", EQAGuards.PARTICIPANT);
