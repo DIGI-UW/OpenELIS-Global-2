@@ -1098,10 +1098,13 @@ export const ROUTE_GUARDS = {
     role: [Roles.RESULTS],
   },
   "/Report": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
-  "/ReportNonConformingEvent": {
-    permission: "qa.view.eqa",
-    role: [Roles.RECEPTION, Roles.VALIDATION],
-  },
+  // The screen that CREATES a non-conforming event: its first call,
+  // /rest/nce/generate-number, is gated on PRIV_NCE_CREATE, which only
+  // Reception holds. Guarded by role plus the qa.view.eqa permission it let
+  // Results and Validation (nce:view / nce:edit only) open a page that 403s
+  // on load. Guarded on the privilege the page needs; the view, dashboard and
+  // corrective-action screens keep their wider guards.
+  "/ReportNonConformingEvent": { privilege: Privileges.NCE_CREATE },
   "/ResultValidation": {
     privilege: Privileges.RESULT_VALIDATE,
     role: [Roles.VALIDATION],

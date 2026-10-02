@@ -1329,4 +1329,34 @@
         </rollback>
     </changeSet>
 
+    <!--
+      /SampleShipment is routed to Results (develop lists Roles.RESULTS on the
+      route and on the Referred Out results page under it), but every read on
+      the shipment dashboard is gated on shipment:view, held by Reception alone,
+      so the page loaded and then 403'd on its boxes and statistics for
+      Results. shipment:view gates 34 read methods across the shipment services
+      and no write; shipment:edit / shipment:manage stay with nobody.
+    -->
+    <changeSet author="openelis" id="012-004w-grant-shipment-view-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant shipment:view to Results, the second role routed to the shipment dashboard (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Results' AND p.name = 'shipment:view'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Results' AND p.name = 'shipment:view';
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
