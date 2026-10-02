@@ -403,6 +403,30 @@ describe("MyCyclesPage", () => {
     ).toBeTruthy();
   });
 
+  test("a second Review & submit click while the first is posting sends nothing", () => {
+    // Never answers, so the first request stays in flight.
+    postToOpenElisServerFullResponse.mockImplementation(() => {});
+    renderPage();
+    fireEvent.click(screen.getByTestId("cycle-row-2"));
+    fireEvent.click(screen.getByText("Review & submit"));
+    fireEvent.click(screen.getByText("Review & submit"));
+
+    expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1);
+  });
+
+  test("the provider's reference field keeps focus beside the Review & submit banner", () => {
+    renderPage();
+    fireEvent.click(screen.getByTestId("cycle-row-2"));
+    fireEvent.click(screen.getByRole("button", { name: "Submit by hand" }));
+
+    const reference = screen.getByLabelText("Provider's reference");
+    reference.focus();
+    fireEvent.change(reference, { target: { value: "N" } });
+
+    expect(document.activeElement).toBe(reference);
+    expect(reference).toHaveValue("N");
+  });
+
   // A cycle that could not be sent must not read as sent, and the reason the
   // server gives is more use than a generic failure.
   test("a cycle that could not be sent keeps its row and shows why", async () => {

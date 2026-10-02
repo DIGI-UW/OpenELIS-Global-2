@@ -27,7 +27,7 @@
             <column name="ORG_MLT_ORG_MLT_ID" length="10" />
         </property>
         <property name="organizationName" type="java.lang.String">
-            <column name="NAME" length="40" not-null="true" />
+            <column name="NAME" length="200" not-null="true" />
         </property>
         <property name="city" type="java.lang.String">
             <column name="CITY" length="30" />
@@ -83,6 +83,40 @@
             length="20" />
         <property name="fhirUuid" column="fhir_uuid"
             type="java.util.UUID" />
+        <property name="gpsLatitude" column="gps_latitude"
+            type="java.math.BigDecimal" precision="10" scale="7" />
+        <property name="gpsLongitude" column="gps_longitude"
+            type="java.math.BigDecimal" precision="10" scale="7" />
+        <property name="contactName" column="contact_name"
+            type="java.lang.String" length="100" />
+        <property name="description" column="description"
+            type="java.lang.String" length="1000" />
+        <property name="categoryId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="category_id" precision="10" scale="0" />
+        </property>
+        <property name="ownershipId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
+            <column name="ownership_id" precision="10" scale="0" />
+        </property>
+        <property name="serviceType" column="service_type"
+            type="java.lang.String" length="30" />
+        <property name="source" column="source"
+            type="java.lang.String" length="20" />
+        <property name="approvalStatus" column="approval_status"
+            type="java.lang.String" length="30" />
+        <property name="accreditationBody"
+            column="accreditation_body" type="java.lang.String" length="100" />
+        <property name="accreditationNumber"
+            column="accreditation_number" type="java.lang.String" length="50" />
+        <property name="accreditationExpiry"
+            column="accreditation_expiry" type="java.time.LocalDate" />
+        <property name="lastReviewDate" column="last_review_date"
+            type="java.time.LocalDate" />
+        <property name="nextReviewDue" column="next_review_due"
+            type="java.time.LocalDate" />
+        <property name="reviewNotes" column="review_notes"
+            type="java.lang.String" length="1000" />
 
         <set name="organizationTypes"
             table="organization_organization_type" cascade="all" lazy="true"

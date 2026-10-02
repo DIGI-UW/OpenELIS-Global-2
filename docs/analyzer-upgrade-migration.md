@@ -1,16 +1,11 @@
 # Existing analyzer upgrade
 
-## Scope agreed for PR #4433
-
-Transfer retained settings to Bridge after application startup, using the
-existing profile, shared mapping and connection services. The expected case is
-one analyzer per old profile, or several with identical saved test mappings.
-Keep original analyzer IDs, lab units, results, history and source settings. Do
-not add a migration framework or manufacture verification or activation.
-
-This complements #4431: that change retained the old configuration and removed
-premature cleanup from the startup changelog. It did not transfer configuration.
-No additional Liquibase changes are needed for this transfer.
+After application startup, OpenELIS transfers the retained settings of existing
+analyzers to Bridge connections, using the existing profile, shared mapping and
+connection services. The expected case is one analyzer per old profile, or
+several with identical saved test mappings. Original analyzer IDs, lab units,
+results, history and source settings are kept. The transfer does not confirm
+mappings or activate analyzers.
 
 ## Eligibility and transfer
 
@@ -73,13 +68,13 @@ Authenticated users with analyzer-import or administrator access can also use:
 The selection does not move an analyzer whose profile is already pinned.
 Unresolved profile identity, invalid configuration, conflicting shared mappings,
 component-specific mappings, active serial settings, or file parsing overrides
-that differ from the profile remain pending. This scoped release does not guess
-how to convert those configurations. Retain them for explicit review. Bridge
+that differ from the profile remain pending. The transfer does not guess how to
+convert those configurations; they are retained for explicit review. Bridge
 validates the submitted connection values through its existing API.
 
-## Focused acceptance
+## Test coverage
 
-Per the agreed release scope, automated testing concentrates on:
+Automated tests cover:
 
 - A populated ASTM/HL7/FILE upgrade using real PostgreSQL and OE2 services:
   original IDs and lab units, retained settings/test mappings, saved Bridge
@@ -94,13 +89,6 @@ Only the remote Bridge API boundary is substituted in the new integration
 fixture. A larger failure matrix, deployed browser/instrument acceptance and
 actual network/filesystem permissions are separate release checks. These tests
 do not claim physical-instrument qualification.
-
-Local validation for this addition: 22 backend tests (including the two
-populated upgrade/recovery scenarios) and 29 analyzer-list UI tests passed.
-Spotless, changed-file Prettier and whitespace checks passed. Repository-wide
-TypeScript checking remains failing; comparison against the prior PR head found
-the same 1,983 diagnostics and no new diagnostics. GitHub CI and deployed
-acceptance are not covered by those local results.
 
 ## Later cleanup
 

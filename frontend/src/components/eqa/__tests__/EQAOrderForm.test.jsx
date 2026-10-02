@@ -25,11 +25,13 @@ describe("EQAOrderForm deep link from My Cycles", () => {
     {
       id: 12,
       cycleName: "Round 1",
+      status: "PLANNED",
       schemeName: "CPHL National HIV Viral Load EQA",
     },
     {
       id: 13,
       cycleName: "Round 2",
+      status: "PLANNED",
       schemeName: "CPHL National HIV Serology EQA",
     },
   ];
@@ -82,12 +84,124 @@ describe("EQAOrderForm deep link from My Cycles", () => {
   });
 });
 
+describe("EQAOrderForm cycle picker", () => {
+  const CYCLES = [
+    {
+      id: 21,
+      cycleName: "Awaiting panel",
+      status: "PLANNED",
+      schemeType: "INTERNATIONAL_PT",
+      plannedEndDate: "2026-10-15",
+    },
+    {
+      id: 22,
+      cycleName: "Testing",
+      status: "TESTING",
+      schemeType: "REGIONAL_PT",
+      plannedEndDate: "2026-11-02",
+    },
+    {
+      id: 23,
+      cycleName: "Submitted",
+      status: "SUBMITTED",
+      schemeType: "INTERNATIONAL_PT",
+    },
+    {
+      id: 24,
+      cycleName: "Closed",
+      status: "CLOSED",
+      schemeType: "INTERNATIONAL_PT",
+    },
+    {
+      id: 25,
+      cycleName: "Bench blind",
+      status: "PLANNED",
+      schemeType: "IN_HOUSE",
+    },
+    {
+      id: 26,
+      cycleName: "Provider round",
+      status: "SUBMISSIONS_OPEN",
+      schemeType: "REGIONAL_PT",
+    },
+  ];
+
+  let latestOrder = null;
+  const Harness = ({ initial = {} }) => {
+    const [orderFormValues, setOrderFormValues] = useState({
+      sampleOrderItems: initial,
+    });
+    latestOrder = orderFormValues.sampleOrderItems;
+    return (
+      <EQAOrderForm
+        orderFormValues={orderFormValues}
+        setOrderFormValues={setOrderFormValues}
+      />
+    );
+  };
+
+  const renderForm = (search = "?isEQA=true", initial) => {
+    window.history.pushState({}, "", `/SamplePatientEntry${search}`);
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.startsWith("/rest/eqa/my-programs")) cb([]);
+      else if (url.startsWith("/rest/eqa/cycles/mine")) cb(CYCLES);
+    });
+    return render(
+      <IntlProvider locale="en" messages={messages}>
+        <Harness initial={initial} />
+      </IntlProvider>,
+    );
+  };
+
+  const cycleOptions = async () => {
+    const select = await screen.findByLabelText(messages["eqa.order.cycle"]);
+    return Array.from(select.querySelectorAll("option")).map(
+      (o) => o.textContent,
+    );
+  };
+
+  test("lists only external cycles still open for results", async () => {
+    renderForm();
+    await screen.findByRole("option", { name: "Testing" });
+    expect(await cycleOptions()).toEqual(["", "Awaiting panel", "Testing"]);
+  });
+
+  test("picking a cycle fills the result deadline from that cycle", async () => {
+    renderForm();
+    const select = await screen.findByLabelText(messages["eqa.order.cycle"]);
+    await screen.findByRole("option", { name: "Testing" });
+
+    fireEvent.change(select, { target: { value: "22" } });
+    expect(latestOrder.eqaDeadline).toBe("11/02/2026");
+
+    fireEvent.change(select, { target: { value: "21" } });
+    expect(latestOrder.eqaDeadline).toBe("10/15/2026");
+  });
+
+  test("the My Cycles deep link fills the deadline too", async () => {
+    renderForm("?isEQA=true&cycleId=21");
+    expect(
+      await screen.findByLabelText(messages["eqa.order.cycle"]),
+    ).toHaveValue("21");
+    expect(latestOrder.eqaDeadline).toBe("10/15/2026");
+  });
+
+  test("a deadline already on the order survives the deep link", async () => {
+    renderForm("?isEQA=true&cycleId=21", { eqaDeadline: "10/01/2026" });
+    expect(
+      await screen.findByLabelText(messages["eqa.order.cycle"]),
+    ).toHaveValue("21");
+    expect(latestOrder.eqaDeadline).toBe("10/01/2026");
+  });
+});
+
 describe("EQAOrderForm inbound consignment", () => {
   const PROGRAMS = [{ id: 7, programName: "CPHL National HIV Viral Load EQA" }];
   const CYCLES = [
     {
       id: 12,
       cycleName: "Round 1",
+      status: "PLANNED",
       schemeName: "CPHL National HIV Viral Load EQA",
     },
   ];
@@ -192,6 +306,7 @@ describe("EQAOrderForm panel integrity", () => {
     {
       id: 12,
       cycleName: "Round 1",
+      status: "PLANNED",
       schemeName: "CPHL National HIV Viral Load EQA",
     },
   ];

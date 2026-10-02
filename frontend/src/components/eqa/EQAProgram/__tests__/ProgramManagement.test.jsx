@@ -137,15 +137,15 @@ describe("ProgramManagement", () => {
     expect(screen.getByText("Total Participants")).toBeTruthy();
   });
 
-  test("renders tabs", () => {
+  test("renders the scheme list without a tab strip", () => {
     renderWithIntl(<ProgramManagement />);
-    expect(screen.getAllByText("EQA Schemes").length).toBeGreaterThanOrEqual(1);
-    // The participants tab was removed: enrollment administration lives on
-    // the standalone /qa/eqa/participants page.
+    expect(screen.getByText("EQA Schemes")).toBeTruthy();
+    // Enrollment administration lives on the standalone /qa/eqa/participants
+    // page. The System Settings tab was retired because nothing read its
+    // values and its Save overwrote the lab-wide alert configuration.
     expect(screen.queryByText("Participants")).toBeNull();
-    expect(
-      screen.getAllByText("System Settings").length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.queryByText("System Settings")).toBeNull();
+    expect(screen.queryByRole("tablist")).toBeNull();
   });
 
   test("shows empty state when no programs", () => {

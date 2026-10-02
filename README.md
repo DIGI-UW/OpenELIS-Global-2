@@ -297,7 +297,7 @@ For E2E testing, integration testing, and manual testing, load test fixtures:
 # Basic usage (loads and verifies automatically)
 ./src/test/resources/load-test-fixtures.sh --profile=core
 
-# Harness fixture lane (includes HARN-* lane data)
+# Harness profile: core fixtures; analyzer orders are created through the API
 ./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)

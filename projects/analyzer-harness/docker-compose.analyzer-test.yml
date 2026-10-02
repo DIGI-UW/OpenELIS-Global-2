@@ -55,8 +55,6 @@ services:
 
   # ASTM-HTTP Bridge — always running, handles all analyzers.
   # Inbound: ASTM 12001, MLLP 2575 (HL7); forwards to OE via HTTP.
-  # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
-  #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
     container_name: openelis-analyzer-bridge
     # Run as root in CI/test harness to avoid bind-mount permission mismatches
@@ -68,7 +66,7 @@ services:
       dockerfile: Dockerfile
     image: openelis-analyzer-bridge.harness
     ports:
-      - "8442:8443" # HTTPS API port
+      - "127.0.0.1:8442:8443" # HTTPS API port, for host-side tests only
       - "12000:12001" # ASTM listen port (inbound from analyzers)
       - "2575:2575" # MLLP HL7 listener (OGC-325)
     volumes:
