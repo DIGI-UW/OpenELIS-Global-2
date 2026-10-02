@@ -1,5 +1,5 @@
 import React from "react";
-import { Tile } from "@carbon/react";
+import { Heading, Section, Tile } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./caseView.scss";
 
@@ -15,33 +15,55 @@ import "./caseView.scss";
  * rather than a list is what keeps this panel from becoming a second place a
  * count could be wrong.
  *
+ * A row may carry a title naming what a counted value counted; it is shown on
+ * hover and repeated in visually hidden text, since a title alone never
+ * reaches assistive technology.
+ *
  * A row with nothing to show renders an em dash and says so, rather than a
  * zero or a blank: an unknown value and a value of zero are different facts,
- * and only the caller can tell them apart.
+ * and only the caller can tell them apart. A boolean is likewise a recorded
+ * fact with two values, so it is rendered as Yes or No. React would otherwise
+ * render nothing at all for either value, leaving the row's label beside an
+ * empty space that reads as neither an answer nor an absence.
  */
 const CaseSummaryPanel = ({ rows = [] }) => {
   const intl = useIntl();
 
   return (
     <Tile className="case-view__summary">
-      <h2>
-        <FormattedMessage id="caseView.label.caseSummary" />
-      </h2>
-      {rows.map(({ id, labelKey, value }) => {
+      {/* Level follows the adopting screen's Section nesting. */}
+      <Section>
+        <Heading className="case-view__summary-title">
+          <FormattedMessage id="caseView.label.caseSummary" />
+        </Heading>
+      </Section>
+      {rows.map(({ id, labelKey, value, title }) => {
         const isEmpty = value === null || value === undefined || value === "";
 
+        let content = value;
+        if (isEmpty) {
+          content = (
+            <span className="case-view__summary-label">
+              <FormattedMessage id="caseView.label.notRecorded" />
+            </span>
+          );
+        } else if (typeof value === "boolean") {
+          content = intl.formatMessage({
+            id: value ? "label.yes" : "label.no",
+          });
+        }
+
         return (
-          <div className="case-view__summary-row" key={id ?? labelKey}>
+          <div
+            className="case-view__summary-row"
+            key={id ?? labelKey}
+            title={title}
+          >
             <span className="case-view__summary-label">
               {intl.formatMessage({ id: labelKey })}
             </span>
-            {isEmpty ? (
-              <span className="case-view__summary-label">
-                <FormattedMessage id="caseView.label.notRecorded" />
-              </span>
-            ) : (
-              value
-            )}
+            {content}
+            {title && <span className="cds--visually-hidden">{title}</span>}
           </div>
         );
       })}

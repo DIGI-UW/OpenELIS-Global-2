@@ -154,6 +154,31 @@ describe("ProgressRail", () => {
     expect(pendingStep.getAttribute("title")).toBe(PENDING);
   });
 
+  // A screen with more pending than fits the step's own box sends a shortened
+  // label for the eye and the whole of it for the hover, so the step's box is
+  // never what decides how much a reader can find out.
+  it("shows the shortened pending text and puts the whole of it on the hover", () => {
+    const FULL = PENDING + ", and two more cassettes besides";
+
+    renderRail({
+      items: [
+        {
+          id: "blocks",
+          labelKey: "pathology.label.blocks",
+          pendingLabel: PENDING,
+          pendingTitle: FULL,
+        },
+      ],
+      currentIndex: 0,
+    });
+
+    const pendingStep = step(BLOCKS);
+
+    expect(pendingStep).toHaveTextContent(PENDING);
+    expect(pendingStep).not.toHaveTextContent(FULL);
+    expect(pendingStep.getAttribute("title")).toBe(FULL);
+  });
+
   it("leaves a step with nothing pending unnamed by the pending text", () => {
     // Inversion test. The two steps differ only in that the first was given a
     // pendingLabel; if the naming text reached the accessible name from

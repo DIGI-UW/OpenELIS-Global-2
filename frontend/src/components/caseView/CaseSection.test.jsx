@@ -86,6 +86,20 @@ describe("CaseSection", () => {
     expect(header).toHaveAttribute("aria-expanded", "true");
   });
 
+  // The stage selector can move a case backwards, which disables a section
+  // the user had open; its body is then hidden, so it must not go on
+  // announcing itself as expanded.
+  it("stops reporting an open section as expanded once it is disabled", () => {
+    const { rerender } = renderSection({ state: SECTION_STATE.OPEN });
+
+    const header = screen.getByRole("button", { name: /gross exam/i });
+    expect(header).toHaveAttribute("aria-expanded", "true");
+
+    rerender(buildTree({ state: SECTION_STATE.DISABLED }));
+
+    expect(header).toHaveAttribute("aria-expanded", "false");
+  });
+
   it("lets keyboard tab reach an enabled section's header", async () => {
     const user = userEvent.setup();
     renderSection({ state: SECTION_STATE.OPEN });

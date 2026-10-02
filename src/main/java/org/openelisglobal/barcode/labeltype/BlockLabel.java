@@ -49,7 +49,7 @@ public class BlockLabel extends Label {
 
         if (useBlockId)
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.blockNumber"),
-                    String.valueOf(block.getBlockNumber()), 4));
+                    block.displayIdentifier(), 4));
         if (useSpecimenType) {
             aboveFields.add(new LabelField(MessageUtil.getMessage("barcode.label.info.specimenType"),
                     StringUtils.defaultString(specimenType), 4));

@@ -24,6 +24,7 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.PathologySampleService;
 import org.openelisglobal.program.valueholder.pathology.PathologyBlock;
 import org.openelisglobal.program.valueholder.pathology.PathologySample;
+import org.openelisglobal.program.valueholder.pathology.PathologySlide;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -209,6 +210,116 @@ public class BarcodeLabelMakerTest {
         labelMaker.generateLabels("ACC-1", "totallyUnknownType", "1", "false");
 
         assertEquals(0, getQueuedLabels(labelMaker).size());
+    }
+
+    @Test
+    public void blockOrder_skipsARetiredBlock() {
+        PathologySample pathologySample = pathologySampleService.getAllMatching("sample.id", "S-1").get(0);
+        PathologyBlock retiredBlock = new PathologyBlock();
+        retiredBlock.setId(11);
+        retiredBlock.setBlockNumber(2);
+        retiredBlock.setActive(false);
+        pathologySample.getBlocks().add(retiredBlock);
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "blockOrder", "1", "false");
+
+        assertEquals(1, getQueuedLabels(labelMaker).size());
+    }
+
+    @Test
+    public void slideOrder_namesTheSlidesOwnBlock() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+                return "true";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        // the fixture's own block, number 1, is the fallback this test must NOT see
+        PathologySample pathologySample = pathologySampleService.getAllMatching("sample.id", "S-1").get(0);
+        PathologyBlock secondBlock = new PathologyBlock();
+        secondBlock.setId(20);
+        secondBlock.setBlockNumber(5);
+        pathologySample.getBlocks().add(secondBlock);
+
+        PathologySlide slide = new PathologySlide();
+        slide.setId(30);
+        slide.setSlideNumber(1);
+        slide.setBlockId(20);
+        pathologySample.setSlides(java.util.Collections.singletonList(slide));
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "slideOrder", "1", "false");
+
+        Label label = getQueuedLabels(labelMaker).get(0);
+        List<LabelField> fields = collectFields(label.getAboveFields());
+        assertTrue("the slide's own block names the context", fields.stream().anyMatch(field -> "5".equals(field.getValue())));
+        assertTrue("the first-block fallback must not win when the slide records its own block",
+                fields.stream().noneMatch(field -> "1".equals(field.getValue())));
+    }
+
+    @Test
+    public void slideOrder_withNoBlockRecorded_namesTheFirstBlockInUse() {
+        when(configurationProperties.getPropertyValue(any(Property.class))).thenAnswer(invocation -> {
+            Property property = invocation.getArgument(0);
+            switch (property) {
+            case SLIDE_LABEL_BARCODE_WIDTH:
+            case SLIDE_LABEL_BARCODE_HEIGHT:
+                return "2";
+            case SLIDE_LABEL_FIELD_BLOCK_ID:
+                return "true";
+            case SLIDE_LABEL_FIELD_PATIENT_ID:
+            case SLIDE_LABEL_FIELD_SLIDE_ID:
+            case SLIDE_LABEL_FIELD_STAIN_TYPE:
+            case SLIDE_LABEL_FIELD_CASE_NUMBER:
+                return "false";
+            case MAX_SLIDE_LABEL_PRINTED:
+                return "10";
+            default:
+                return "";
+            }
+        });
+
+        // a block retired before the slide was printed cannot be what its label points
+        // at, so it is passed over for the next one in use
+        PathologySample pathologySample = pathologySampleService.getAllMatching("sample.id", "S-1").get(0);
+        pathologySample.getBlocks().get(0).setActive(false);
+        PathologyBlock blockInUse = new PathologyBlock();
+        blockInUse.setId(20);
+        blockInUse.setBlockNumber(5);
+        pathologySample.getBlocks().add(blockInUse);
+
+        PathologySlide slide = new PathologySlide();
+        slide.setId(30);
+        slide.setSlideNumber(1);
+        pathologySample.setSlides(java.util.Collections.singletonList(slide));
+
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+
+        labelMaker.generateLabels("ACC-1", "slideOrder", "1", "false");
+
+        Label label = getQueuedLabels(labelMaker).get(0);
+        List<LabelField> fields = collectFields(label.getAboveFields());
+        assertTrue("a slide that recorded no block is labelled with the case's first block in use, named as"
+                + " the bench names it", fields.stream().anyMatch(field -> "5".equals(field.getValue())));
+        assertTrue("never with a row id, which is printed on nothing and resolves for nobody",
+                fields.stream().noneMatch(field -> "20".equals(field.getValue())));
     }
 
     @Test
