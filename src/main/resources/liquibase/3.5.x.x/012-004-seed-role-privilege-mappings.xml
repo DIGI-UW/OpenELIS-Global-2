@@ -1427,4 +1427,35 @@
         </rollback>
     </changeSet>
 
+    <!--
+      With electronicSignatureEnabled on, every results save prompts for a
+      signature with meaning "Authored", and signing is gated on esig:use. The
+      seed granted esig:use to Validation, Pathologist and Cytopathologist but
+      not to Results, the role that authors results, so a Results user who
+      entered a result could reach the signature dialog and then be refused at
+      Sign. Granted to Results; the two self-checks the save makes first
+      (isEsigEnabled, isUserCertified) were widened in code alongside this.
+    -->
+    <changeSet author="openelis" id="012-004z-grant-esig-use-to-results">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Grant esig:use to Results so authored results can be signed (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Results' AND p.name = 'esig:use'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Results' AND p.name = 'esig:use';
+            </sql>
+        </rollback>
+    </changeSet>
+
 </databaseChangeLog>
