@@ -400,7 +400,7 @@
   <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
 
   <!-- The analyzer cutover changesets below leave the pre-Bridge storage in place;
-       115-remove-pre-bridge-analyzer-storage exports and removes it.
+       116-remove-pre-bridge-analyzer-storage exports and removes it.
        See docs/analyzers/pre-bridge-settings-export.md. -->
   <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
@@ -607,7 +607,10 @@
   <!-- Validation is one page: the menu item opens it and the per-search entries are retired. -->
   <include relativeToChangelogFile="true" file="114-validation-menu-collapse.xml"/>
 
+  <!-- Organization State / Province holds a province or region name. -->
+  <include relativeToChangelogFile="true" file="115-organization-state-length.xml"/>
+
   <!-- Pre-Bridge analyzer settings: exported to the configuration-import history, then their tables and columns removed. -->
-  <include relativeToChangelogFile="true" file="115-remove-pre-bridge-analyzer-storage.xml"/>
+  <include relativeToChangelogFile="true" file="116-remove-pre-bridge-analyzer-storage.xml"/>
 
 </databaseChangeLog>

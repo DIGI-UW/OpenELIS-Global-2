@@ -9,7 +9,7 @@
             <!-- The storage was already gone, so the removal runs and writes nothing. -->
             <sqlCheck expectedResult="1"><![CDATA[
                 SELECT COUNT(*) FROM databasechangelog
-                WHERE id = '115-remove-pre-bridge-analyzer-storage' AND exectype = 'EXECUTED'
+                WHERE id = '116-remove-pre-bridge-analyzer-storage' AND exectype = 'EXECUTED'
             ]]></sqlCheck>
             <sqlCheck expectedResult="0"><![CDATA[
                 SELECT COUNT(*) FROM configuration_import_run WHERE source = 'ANALYZER_LEGACY'

@@ -23,7 +23,7 @@
          databases never create some of them; databases that ran since-removed
          cleanup changesets have none), so the body only reads and drops what
          exists. Where nothing is left it writes nothing. -->
-    <changeSet id="115-remove-pre-bridge-analyzer-storage" author="pmanko">
+    <changeSet id="116-remove-pre-bridge-analyzer-storage" author="pmanko">
         <sql splitStatements="false"><![CDATA[
             DO $$
             DECLARE

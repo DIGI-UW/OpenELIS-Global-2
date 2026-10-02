@@ -6,7 +6,7 @@ directory with file pattern and format, column mappings, plugin configuration,
 per-analyzer test mappings and serial port settings. The Bridge owns all of that
 now, through the connection and profile an analyzer is set up with.
 
-Changeset `115-remove-pre-bridge-analyzer-storage` removes that storage. Before
+Changeset `116-remove-pre-bridge-analyzer-storage` removes that storage. Before
 dropping anything it exports, in the same transaction, everything it is about to
 drop: every analyzer's legacy values and every row of every removed table. The
 analyzers themselves, their results and their activation history are untouched.

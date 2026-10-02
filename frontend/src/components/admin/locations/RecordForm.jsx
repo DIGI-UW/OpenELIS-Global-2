@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from "react";
+import React, { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   Button,
@@ -18,6 +18,7 @@ import {
   TableHead,
   TableHeader,
   TableRow,
+  Tag,
   TextInput,
 } from "@carbon/react";
 import { Add, RecentlyViewed } from "@carbon/icons-react";
@@ -135,7 +136,11 @@ const toRequest = (form, kind) => ({
   fax: form.fax,
   email: form.email,
   internetAddress: form.internetAddress,
-  identifiers: form.identifiers.filter((i) => i.label || i.value),
+  identifiers: form.identifiers.filter(
+    (i) =>
+      (i.value || "").trim() ||
+      ((i.label || "").trim() && i.label.trim() !== "Code"),
+  ),
   referral: form.referral,
   site: form.site,
   lastupdated: form.lastupdated,
@@ -151,6 +156,84 @@ const badLongitude = (value) =>
 const isReferralType = (type) =>
   type && /^referral\s*lab$/i.test((type.name || "").trim());
 
+const sameValue = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+
+/** The form field, by its error key, that a message about it points at. */
+const FIELD_ELEMENT = {
+  name: "name",
+  shortName: "shortName",
+  types: "types",
+  description: "description",
+  identifiers: "identifier-value",
+  parent: "location",
+  streetAddress: "street",
+  city: "city",
+  state: "state",
+  zipCode: "zip",
+  gpsLatitude: "lat",
+  gpsLongitude: "lng",
+  contactName: "contact",
+  phone: "phone",
+  email: "email",
+  internetAddress: "web",
+  referral: "ref-status",
+  "referral.approvalStatus": "ref-status",
+  "referral.accreditationBody": "ref-body",
+  "referral.accreditationNumber": "ref-number",
+  "referral.accreditationExpiry": "ref-expiry",
+  "referral.lastReviewDate": "ref-last",
+  "referral.nextReviewDue": "ref-next",
+  "referral.reviewNotes": "ref-notes",
+};
+
+/** The label a message uses for a field, by its form or error key. */
+const FIELD_LABEL = {
+  name: "label.locations.column.name",
+  shortName: "label.locations.field.shortName",
+  types: "label.locations.field.types",
+  typeIds: "label.locations.field.types",
+  categoryId: "label.locations.field.category",
+  ownershipId: "label.locations.field.ownership",
+  description: "label.locations.field.description",
+  identifiers: "label.locations.section.identifiers",
+  location: "label.locations.field.location",
+  parent: "label.locations.field.location",
+  streetAddress: "label.locations.field.streetAddress",
+  city: "label.locations.field.city",
+  state: "label.locations.field.state",
+  zipCode: "label.locations.field.zipCode",
+  gpsLatitude: "label.locations.field.gpsLatitude",
+  gpsLongitude: "label.locations.field.gpsLongitude",
+  contactName: "label.locations.field.contactName",
+  phone: "label.locations.field.phone",
+  fax: "label.locations.field.phone",
+  email: "label.locations.field.email",
+  internetAddress: "label.locations.field.website",
+  referral: "label.locations.referral.approval",
+  site: "label.locations.section.site",
+  registry: "label.locations.section.identity",
+};
+
+/**
+ * FR-C5: after another admin saved first, the fields this user changed keep
+ * their values and the rest take the other admin's; returns the merged form
+ * and the fields the other admin changed.
+ */
+const mergeAfterConflict = (form, original, theirs) => {
+  const merged = { ...form, lastupdated: theirs.lastupdated };
+  const changedByThem = [];
+  Object.keys(theirs).forEach((key) => {
+    if (key === "lastupdated" || key === "kind") return;
+    if (!sameValue(original[key], theirs[key])) {
+      changedByThem.push(key);
+      if (sameValue(form[key], original[key])) {
+        merged[key] = theirs[key];
+      }
+    }
+  });
+  return { merged, changedByThem };
+};
+
 /**
  * FR-C1 to FR-C5: the inline record form, built from the sampling-site form,
  * with the sections the kind needs: Identity, Identifiers, Location, Contact,
@@ -160,7 +243,7 @@ const isReferralType = (type) =>
 const RecordForm = ({
   id,
   isNew,
-  kind,
+  kind: kindProp,
   lists,
   highlight,
   statusFilter,
@@ -168,17 +251,25 @@ const RecordForm = ({
   onSaved,
   onActiveChange,
   reload,
+  onDirtyChange,
 }) => {
   const intl = useIntl();
   const { notify } = useContext(LocationsContext);
   const [detail, setDetail] = useState(null);
-  const [form, setForm] = useState(isNew ? emptyForm(kind) : null);
+  const [form, setForm] = useState(isNew ? emptyForm(kindProp) : null);
   const [tried, setTried] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
   const [conflict, setConflict] = useState(null);
   const [saving, setSaving] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const [wardDrafts, setWardDrafts] = useState(0);
+  const container = useRef(null);
+  const kind = kindProp || (form && form.kind) || "facility";
+
+  useEffect(() => {
+    if (onDirtyChange) onDirtyChange(dirty);
+  }, [dirty]);
 
   useEffect(() => {
     if (isNew) {
@@ -297,9 +388,72 @@ const RecordForm = ({
     form.referral.nextReviewDue &&
     form.referral.nextReviewDue < toLocalIsoDate(new Date());
 
+  const focusField = (key) => {
+    const prefix = FIELD_ELEMENT[key] || key;
+    const suffix = prefix === "identifier-value" ? "-0" : "";
+    const element =
+      document.getElementById(`${prefix}-${id || "new"}${suffix}`) ||
+      document.getElementById(`${prefix}-${id || "new"}-input`);
+    if (element) {
+      element.scrollIntoView({ block: "center" });
+      element.focus();
+    }
+  };
+
+  const source = `record-${id || "new"}`;
+
+  const fieldName = (key) =>
+    FIELD_LABEL[key]
+      ? intl.formatMessage({ id: FIELD_LABEL[key] })
+      : intl.formatMessage({ id: "label.locations.section.identity" });
+
   const save = () => {
     setTried(true);
-    if (Object.values(localErrors).some(Boolean)) {
+    const invalid = Object.keys(localErrors).filter((key) => localErrors[key]);
+    if (invalid.length > 0) {
+      notify(
+        intl.formatMessage(
+          { id: "error.locations.save.check" },
+          { fields: invalid.map(fieldName).join(", ") },
+        ),
+        "error",
+        null,
+        source,
+      );
+      focusField(invalid[0]);
+      return;
+    }
+    if (wardDrafts > 0) {
+      notify(
+        intl.formatMessage(
+          { id: "warning.locations.wards.unsaved" },
+          { count: wardDrafts },
+        ),
+        "warning",
+        null,
+        source,
+      );
+      const drafts = container.current
+        ? [
+            ...container.current.querySelectorAll(
+              '[data-testid="locations-ward-draft"] input, [data-testid="locations-ward-draft"] select',
+            ),
+          ]
+        : [];
+      const wardsSave =
+        container.current &&
+        container.current.querySelector('[data-testid="locations-save-wards"]');
+      const target =
+        wardsSave && !wardsSave.disabled
+          ? wardsSave
+          : drafts.find(
+              (field) =>
+                /^new-ward-(name|service)-/.test(field.id) && !field.value,
+            ) || drafts[0];
+      if (target) {
+        target.scrollIntoView({ block: "center" });
+        target.focus();
+      }
       return;
     }
     setSaving(true);
@@ -313,28 +467,43 @@ const RecordForm = ({
       .then((result) => {
         setSaving(false);
         setDirty(false);
-        (result.warnings || []).forEach((warning) =>
-          notify(warning, "warning"),
-        );
         onSaved(result.detail);
+        (result.warnings || []).forEach((warning) =>
+          notify(warning, "warning", null, source),
+        );
       })
       .catch((error) => {
         setSaving(false);
         if (error.status === 409 && error.current) {
+          const { merged, changedByThem } = mergeAfterConflict(
+            form,
+            fromDetail(detail),
+            fromDetail(error.current),
+          );
           setDetail(error.current);
-          setForm(fromDetail(error.current));
-          setConflict(true);
+          setForm(merged);
+          setConflict(changedByThem);
           return;
         }
         if (error.status === 422) {
-          setFieldErrors(error.fieldErrors || {});
+          const errors = error.fieldErrors || {};
+          setFieldErrors(errors);
+          const first = Object.keys(errors)[0];
           notify(
-            intl.formatMessage({ id: "error.locations.save.failed" }),
+            first
+              ? intl.formatMessage(
+                  { id: "error.locations.save.failedBecause" },
+                  { reason: errors[first] },
+                )
+              : intl.formatMessage({ id: "error.locations.save.failed" }),
             "error",
+            null,
+            source,
           );
+          if (first) focusField(first);
           return;
         }
-        notify(error.message, "error");
+        notify(error.message, "error", null, source);
       });
   };
 
@@ -368,6 +537,7 @@ const RecordForm = ({
     <div
       className="locationsForm"
       data-testid={`locations-form-${id || "new"}`}
+      ref={container}
     >
       {form.registry && (
         <InlineNotification
@@ -385,7 +555,15 @@ const RecordForm = ({
           kind="warning"
           lowContrast
           title=""
-          subtitle={intl.formatMessage({ id: "error.locations.save.conflict" })}
+          subtitle={intl.formatMessage(
+            { id: "error.locations.save.conflictKept" },
+            {
+              fields:
+                conflict.length > 0
+                  ? conflict.map(fieldName).join(", ")
+                  : intl.formatMessage({ id: "label.locations.none" }),
+            },
+          )}
           onClose={() => setConflict(null)}
         />
       )}
@@ -432,6 +610,8 @@ const RecordForm = ({
               })}
               value={form.shortName}
               maxLength={15}
+              invalid={!!errorFor("shortName")}
+              invalidText={errorFor("shortName")}
               onChange={set("shortName")}
             />
           </Column>
@@ -448,6 +628,21 @@ const RecordForm = ({
                   )}
                   invalid={!!errorFor("types")}
                   invalidText={errorFor("types")}
+                  helperText={
+                    form.typeIds.length > 0 ? (
+                      <span
+                        data-testid={`locations-types-chosen-${id || "new"}`}
+                      >
+                        {typeItems
+                          .filter((item) => form.typeIds.includes(item.id))
+                          .map((item) => (
+                            <Tag key={item.id} type="blue" size="sm">
+                              {item.text}
+                            </Tag>
+                          ))}
+                      </span>
+                    ) : undefined
+                  }
                   onChange={({ selectedItems }) => {
                     setForm((current) => ({
                       ...current,
@@ -510,6 +705,9 @@ const RecordForm = ({
                 id: "label.locations.field.description",
               })}
               value={form.description}
+              maxLength={1000}
+              invalid={!!errorFor("description")}
+              invalidText={errorFor("description")}
               onChange={set("description")}
               placeholder={
                 kind === "site"
@@ -585,6 +783,7 @@ const RecordForm = ({
                     hideLabel
                     aria-label={`${identifier.label} ${intl.formatMessage({ id: "label.locations.identifier.value" })}`}
                     value={identifier.value}
+                    maxLength={100}
                     onChange={(e) =>
                       setIdentifier(index, "value", e.target.value)
                     }
@@ -684,6 +883,8 @@ const RecordForm = ({
               labelText={`${intl.formatMessage({ id: "label.locations.field.streetAddress" })}${fromRegistry}`}
               value={form.streetAddress}
               maxLength={30}
+              invalid={!!errorFor("streetAddress")}
+              invalidText={errorFor("streetAddress")}
               onChange={set("streetAddress")}
             />
           </Column>
@@ -695,6 +896,8 @@ const RecordForm = ({
               })}
               value={form.city}
               maxLength={30}
+              invalid={!!errorFor("city")}
+              invalidText={errorFor("city")}
               onChange={set("city")}
             />
           </Column>
@@ -705,7 +908,9 @@ const RecordForm = ({
                 id: "label.locations.field.state",
               })}
               value={form.state}
-              maxLength={2}
+              maxLength={100}
+              invalid={!!errorFor("state")}
+              invalidText={errorFor("state")}
               onChange={set("state")}
             />
           </Column>
@@ -717,6 +922,8 @@ const RecordForm = ({
               })}
               value={form.zipCode}
               maxLength={10}
+              invalid={!!errorFor("zipCode")}
+              invalidText={errorFor("zipCode")}
               onChange={set("zipCode")}
             />
           </Column>
@@ -766,6 +973,9 @@ const RecordForm = ({
                 id: "label.locations.field.contactName",
               })}
               value={form.contactName}
+              maxLength={100}
+              invalid={!!errorFor("contactName")}
+              invalidText={errorFor("contactName")}
               onChange={set("contactName")}
             />
           </Column>
@@ -777,6 +987,8 @@ const RecordForm = ({
               })}
               value={form.phone}
               maxLength={20}
+              invalid={!!errorFor("phone")}
+              invalidText={errorFor("phone")}
               onChange={set("phone")}
             />
           </Column>
@@ -802,6 +1014,8 @@ const RecordForm = ({
               })}
               value={form.internetAddress}
               maxLength={40}
+              invalid={!!errorFor("internetAddress")}
+              invalidText={errorFor("internetAddress")}
               onChange={set("internetAddress")}
             />
           </Column>
@@ -860,6 +1074,9 @@ const RecordForm = ({
                   id: "label.locations.referral.accreditationBody",
                 })}
                 value={form.referral.accreditationBody || ""}
+                maxLength={100}
+                invalid={!!errorFor("referral.accreditationBody")}
+                invalidText={errorFor("referral.accreditationBody")}
                 onChange={setReferral("accreditationBody")}
               />
             </Column>
@@ -870,6 +1087,9 @@ const RecordForm = ({
                   id: "label.locations.referral.accreditationNumber",
                 })}
                 value={form.referral.accreditationNumber || ""}
+                maxLength={50}
+                invalid={!!errorFor("referral.accreditationNumber")}
+                invalidText={errorFor("referral.accreditationNumber")}
                 onChange={setReferral("accreditationNumber")}
               />
             </Column>
@@ -923,6 +1143,9 @@ const RecordForm = ({
                   id: "label.locations.referral.notes",
                 })}
                 value={form.referral.reviewNotes || ""}
+                maxLength={1000}
+                invalid={!!errorFor("referral.reviewNotes")}
+                invalidText={errorFor("referral.reviewNotes")}
                 onChange={setReferral("reviewNotes")}
               />
             </Column>
@@ -1005,6 +1228,7 @@ const RecordForm = ({
           sectionId={sectionId("wards")}
           onActiveChange={onActiveChange}
           onChanged={reload}
+          onDraftsChange={setWardDrafts}
         />
       )}
 

@@ -13,12 +13,15 @@ import { requestFailed, serverMessage } from "../../utils/requestOutcome";
  */
 const BASE = "/rest/locations";
 
+/**
+ * The message is the server's own wording only. A request that got no usable
+ * answer (no connection, an HTML error page, an empty body) carries none, so
+ * the page shows its translated "could not be completed" text instead of a
+ * parser or browser error (OGC-1420).
+ */
 export class LocationsError extends Error {
   constructor(response) {
-    super(
-      (response && (serverMessage(response) || response.error)) ||
-        "The request failed",
-    );
+    super((response && serverMessage(response)) || "");
     this.status =
       response && typeof response.status === "number" ? response.status : 0;
     this.fieldErrors = (response && response.fieldErrors) || {};
@@ -119,6 +122,9 @@ export const getHistory = (id) =>
   getJson(`${BASE}/organizations/${encodeURIComponent(id)}/history`);
 
 export const getLists = () => getJson(`${BASE}/lists`);
+
+export const listIdentifierCollisions = () =>
+  getJson(`${BASE}/identifier-collisions`);
 
 export const getAreaLevels = () => getJson(`${BASE}/areas/levels`);
 
