@@ -129,7 +129,14 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param username username
      * @return true if certified
      */
-    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
+    /**
+     * Whether the named user holds an e-signature certificate. Every results and
+     * validation save asks this about the CALLER before deciding whether to prompt
+     * for a signature, so it is gated like a results read, not like signing: on
+     * esig:use alone the Results role's save aborted on a 403 before it was ever
+     * sent.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_ESIG_USE','PRIV_RESULT_ENTER','PRIV_RESULT_VALIDATE')")
     boolean isUserCertified(String username);
 
     /**
@@ -203,6 +210,11 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      *
      * @return true if e-signatures are enabled
      */
-    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
+    /**
+     * Whether the e-signature feature is switched on, a configuration flag every
+     * results and validation save reads first. Gated like a results read; on
+     * esig:use alone the Results role could not save a result at all.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_ESIG_USE','PRIV_RESULT_ENTER','PRIV_RESULT_VALIDATE')")
     boolean isEsigEnabled();
 }
