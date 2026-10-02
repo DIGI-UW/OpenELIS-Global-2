@@ -1,5 +1,5 @@
 # Cypress E2E — DEPRECATED (will be removed after full Playwright migration).
-# Called by e2e-playwright.yml as a reusable workflow under the E2E umbrella.
+# Called by e2e-authoritative-reusable.yml under the E2E umbrella.
 # Images come from the shared-build job via e2e-image-map artifact.
 name: E2E / Cypress (Deprecated)
 
@@ -46,19 +46,19 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Balance measured test time, not file count. The five files restored
+          # by PR #4479 have no recent timings and are spread across both groups.
           - shard: core
             shard_name: Core
             specs: >-
               cypress/e2e/login.cy.js,
-              cypress/e2e/home.cy.js
-          - shard: admin
-            shard_name: Admin
-            specs: >-
-              cypress/e2e/AdminE2E/userManagement.cy.js,
+              cypress/e2e/home.cy.js,
               cypress/e2e/siteBranding.cy.js,
-              cypress/e2e/labNumberManagement.cy.js,
               cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
-              cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js
+              cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,
+              cypress/e2e/AdminE2E/notifyUser.cy.js,
+              cypress/e2e/AdminE2E/resultReportingConfig.cy.js,
+              cypress/e2e/barcode-workflow.cy.js
           - shard: independent
             shard_name: Independent
             specs: ""
