@@ -39,7 +39,11 @@ import { AlertDialog } from "../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
-import { inProgressStageIds, stageLabel } from "./pathologyStages";
+import {
+  inProgressStageIds,
+  notCompletedStageIds,
+  stageLabel,
+} from "./pathologyStages";
 
 function PathologyDashboard() {
   const componentMounted = useRef(false);
@@ -83,12 +87,12 @@ function PathologyDashboard() {
       // Set all statuses
       setStatuses(statusList);
 
-      // Mirrors the backend dashboard tile grouping (everything except
-      // awaiting-review and complete counts as in progress) so the filter
-      // and the tiles never disagree about which cases are in progress.
-      const filteredStatuses = inProgressStageIds(
-        statusList.map((status) => status.id),
-      );
+      const servedStageIds = statusList.map((status) => status.id);
+
+      // The "In Progress" option mirrors the backend dashboard tile grouping
+      // (everything except awaiting-review and complete) so the option and
+      // the tile never disagree about which cases are in progress.
+      const filteredStatuses = inProgressStageIds(servedStageIds);
 
       setInProgressStatuses(filteredStatuses);
 
@@ -97,10 +101,14 @@ function PathologyDashboard() {
         filteredStatuses.map((statusId) => ({ id: statusId })),
       );
 
-      // Set filters using the updated state
+      // The landing worklist is wider than that grouping: every stage but
+      // COMPLETED, so a case waiting for a pathologist is listed, not only
+      // counted.
       setFilters((prev) => ({
         ...prev,
-        statuses: filteredStatuses.map((statusId) => ({ id: statusId })),
+        statuses: notCompletedStageIds(servedStageIds).map((statusId) => ({
+          id: statusId,
+        })),
       }));
     }
   };

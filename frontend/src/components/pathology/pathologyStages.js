@@ -2,8 +2,8 @@
  * The eleven bench stages a pathology case moves through, in the order the
  * bench actually works them. Kept as a pure module (no React, no I/O) so the
  * dashboard, the case view and any later pathology screen read the same
- * order and the same "in progress" grouping the backend dashboard tiles use,
- * rather than each screen re-deriving its own list and drifting apart.
+ * order and the same groupings the backend dashboard tiles use, rather than
+ * each screen re-deriving its own list and drifting apart.
  */
 
 export const PATHOLOGY_STAGES = Object.freeze([
@@ -58,4 +58,10 @@ export function inProgressStageIds(servedIds) {
   return servedIds.filter(
     (stage) => stage !== "READY_PATHOLOGIST" && stage !== "COMPLETED",
   );
+}
+
+// The landing worklist: every stage but COMPLETED, so a case waiting for a
+// pathologist is listed rather than only counted on its tile.
+export function notCompletedStageIds(servedIds) {
+  return servedIds.filter((stage) => stage !== "COMPLETED");
 }

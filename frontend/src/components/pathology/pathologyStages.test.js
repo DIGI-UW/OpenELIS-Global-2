@@ -5,6 +5,7 @@ import {
   stageDisplayKey,
   stageLabel,
   inProgressStageIds,
+  notCompletedStageIds,
 } from "./pathologyStages";
 
 const intl = createIntl({ locale: "en", messages });
@@ -86,6 +87,31 @@ describe("inProgressStageIds", () => {
     expect(inProgressStageIds(PATHOLOGY_STAGES)).toContain("UNDER_REVIEW");
     expect(inProgressStageIds(PATHOLOGY_STAGES)).not.toContain(
       "READY_PATHOLOGIST",
+    );
+  });
+});
+
+describe("notCompletedStageIds", () => {
+  it("drops only COMPLETED, keeping the served order", () => {
+    expect(
+      notCompletedStageIds([
+        "ACCESSIONED",
+        "READY_PATHOLOGIST",
+        "COMPLETED",
+        "UNDER_REVIEW",
+      ]),
+    ).toEqual(["ACCESSIONED", "READY_PATHOLOGIST", "UNDER_REVIEW"]);
+  });
+
+  it("is wider than the in-progress grouping by exactly the awaiting-review stage", () => {
+    // The landing worklist lists the cases waiting for a pathologist; the
+    // "In Progress" option does not, because that stage has its own tile.
+    const landing = notCompletedStageIds(PATHOLOGY_STAGES);
+
+    expect(landing).toHaveLength(10);
+    expect(landing).toContain("READY_PATHOLOGIST");
+    expect(landing.filter((stage) => stage !== "READY_PATHOLOGIST")).toEqual(
+      inProgressStageIds(PATHOLOGY_STAGES),
     );
   });
 });
