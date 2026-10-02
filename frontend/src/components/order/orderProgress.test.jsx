@@ -33,7 +33,16 @@ const savedResponse = () => ({
  * Stages a sample with storage notes and the skip-storage decision, then
  * saves the Prepare Samples step as complete, the way Save and next does.
  */
-const PrepareAndSave = ({ onContext }) => {
+const DEFAULT_SAMPLES = [
+  {
+    sampleTypeId: "3",
+    tests: [{ id: "1" }],
+    storageNotes: "Keep cold & <dry> 'now'",
+    collectorId: "Nurse O'Brien",
+  },
+];
+
+const PrepareAndSave = ({ onContext, samples = DEFAULT_SAMPLES }) => {
   const context = useOrderContext();
   const latest = useRef();
   latest.current = context;
@@ -44,14 +53,7 @@ const PrepareAndSave = ({ onContext }) => {
       ...prev,
       sampleOrderItems: { ...prev.sampleOrderItems, labNo: LAB_NO },
     }));
-    context.setSamples([
-      {
-        sampleTypeId: "3",
-        tests: [{ id: "1" }],
-        storageNotes: "Keep cold & <dry> 'now'",
-        collectorId: "Nurse O'Brien",
-      },
-    ]);
+    context.setSamples(samples);
     context.stageStorageSkipped(true);
   }, []);
   useEffect(() => {
@@ -122,6 +124,38 @@ describe("saving the Prepare Samples step", () => {
     expect(context.progress.preparedAt).toBe("30/09/2026 11:02");
     expect(context.sampleCheckEnabled).toBe(false);
     expect(context.acceptanceMode).toBe("OFF");
+  });
+
+  it("sends an emptied collector as empty, not the collector the sample was loaded with (OGC-1419)", async () => {
+    postToOpenElisServerFullResponse.mockImplementation((url, payload, cb) =>
+      cb(savedResponse()),
+    );
+    getFromOpenElisServer.mockImplementation(() => {});
+
+    render(
+      <OrderProvider workflowType="clinical">
+        <PrepareAndSave
+          onContext={() => {}}
+          samples={[
+            {
+              sampleTypeId: "3",
+              tests: [{ id: "1" }],
+              collectorId: "",
+              sampleXML: { collector: "Nurse Ama" },
+            },
+          ]}
+        />
+      </OrderProvider>,
+    );
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledTimes(1),
+    );
+    const payload = JSON.parse(
+      postToOpenElisServerFullResponse.mock.calls[0][1],
+    );
+    expect(payload.sampleXML).toContain("collector=''");
+    expect(payload.sampleXML).not.toContain("Nurse Ama");
   });
 
   it("keeps the step out of the save when the step is not complete", async () => {
