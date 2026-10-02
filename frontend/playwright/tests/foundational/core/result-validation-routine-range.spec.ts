@@ -56,11 +56,12 @@ test.describe("Result validation by routine and by range", () => {
     const biochemistryOrder = await orderWithResult(page, SERUM, AMYLASE_TEST);
     const unit = page
       .getByRole("main")
-      .getByRole("combobox", { name: "Select Test Unit" });
+      .getByRole("combobox", { name: "Lab Unit" });
 
     const openUnit = async (unitId: string, accession: string) => {
-      const loaded = queueLoad(page, (url) =>
-        url.includes(`unitType=${unitId}&`),
+      const loaded = queueLoad(
+        page,
+        (url) => new URL(url).searchParams.get("testSectionId") === unitId,
       );
       await unit.selectOption(unitId);
       await openServerPageHolding(page, await loaded, accession);
@@ -94,16 +95,15 @@ test.describe("Result validation by routine and by range", () => {
     const first = await orderWithResult(page, WHOLE_BLOOD, RBC_TEST);
     const second = await orderWithResult(page, WHOLE_BLOOD, RBC_TEST);
     const main = page.getByRole("main");
-    const from = main.getByRole("textbox", {
-      name: "Load Next 99 Records Starting at Lab Number",
-    });
+    const from = main.locator("#validationSearch");
 
     const searchFrom = async (accession: string) => {
-      await from.fill(accession);
-      const loaded = queueLoad(page, (url) =>
-        url.includes(`accessionNumber=${accession}&`),
+      await from.fill(`${accession}..`);
+      const loaded = queueLoad(
+        page,
+        (url) => new URL(url).searchParams.get("labNumberFrom") === accession,
       );
-      await main.getByRole("button", { name: "Search", exact: true }).click();
+      await main.getByTestId("validation-load").click();
       await openServerPageHolding(page, await loaded, accession);
     };
 

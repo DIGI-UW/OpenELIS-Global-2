@@ -300,58 +300,7 @@
     },
     {
       "elementId": "menu_resultvalidation",
-      "childMenus": [
-        {
-          "elementId": "menu_resultvalidation_routine",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_resultvalidation_study",
-          "childMenus": [
-            {
-              "elementId": "menu_resultvalidation_immunology",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_resultvalidation_biochemistry",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_resultvalidation_serology",
-              "childMenus": []
-            },
-            {
-              "elementId": "menu_resultvalidation_virology",
-              "childMenus": [
-                {
-                  "elementId": "menu_resultvalidation_dnapcr",
-                  "childMenus": []
-                },
-                {
-                  "elementId": "menu_resultvalidation_viralload",
-                  "childMenus": []
-                },
-                {
-                  "elementId": "menu_resultvalidation_genotyping",
-                  "childMenus": []
-                }
-              ]
-            }
-          ]
-        },
-        {
-          "elementId": "menu_accession_validation",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_accession_validation_range",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_resultvalidation_date",
-          "childMenus": []
-        }
-      ]
+      "childMenus": []
     },
     {
       "elementId": "menu_reports",
