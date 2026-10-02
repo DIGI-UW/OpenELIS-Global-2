@@ -7,6 +7,16 @@
 // accordion heading and sets cursor: not-allowed on it, so none of that is
 // repeated.
 
+// The surface the case view's grid sits on: the page's own background colour
+// (white in this application's theme), which is what separates a light-grey
+// field or tile from the light-grey content area around the card. The same
+// idea as the body card every other form screen here uses, in tokens.
+.case-view__layout {
+  background-color: var(--cds-background);
+  border-radius: spacing.$spacing-02;
+  padding-block: spacing.$spacing-06;
+}
+
 .case-view__section-title {
   align-items: center;
   display: flex;
@@ -21,11 +31,38 @@
   color: var(--cds-text-secondary);
 }
 
+// Carbon draws a step's secondary label inside the step's own button, and a
+// vertical step's height is fixed, so a label of more than two lines is drawn
+// over the step below it. The whole of the text stays on the step's title,
+// which the screen supplies in full.
+.case-view__rail .cds--progress-optional {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
 .case-view__summary {
   background-color: var(--cds-layer);
   padding: spacing.$spacing-05;
   position: sticky;
   inset-block-start: spacing.$spacing-05;
+}
+
+// The rail's tile mirrors the summary's, so the grid's two side columns read
+// alike; the clamp rule above scopes to the same class.
+.case-view__rail {
+  background-color: var(--cds-layer);
+  padding: spacing.$spacing-05;
+}
+
+// Both side panels sit in narrow columns, where a browser-default heading
+// size wraps two words onto two lines.
+.case-view__rail-title,
+.case-view__summary-title {
+  @include type.type-style("heading-03");
+
+  margin-block-end: spacing.$spacing-05;
 }
 
 .case-view__summary-row {
