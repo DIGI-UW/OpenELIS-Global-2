@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
@@ -57,7 +57,9 @@ describe("Login", () => {
       vi.fn(() => new Promise(() => {})),
     );
     sessionStorage.clear();
-    vi.mocked(getBranding).mockImplementation((callback) => callback(null));
+    vi.mocked(getBranding).mockImplementation((callback) =>
+      callback(null),
+    );
   });
 
   afterEach(() => {
@@ -83,7 +85,6 @@ describe("Login", () => {
   });
 
   test("does not render the default logo while branding is still loading", () => {
-    // Branding fetch never resolves — the flash window the bug lives in
     vi.mocked(getBranding).mockImplementation(() => {});
 
     renderLogin();
@@ -111,7 +112,9 @@ describe("Login", () => {
   });
 
   test("renders the default logo when no custom logo is configured", async () => {
-    vi.mocked(getBranding).mockImplementation((callback) => callback(null));
+    vi.mocked(getBranding).mockImplementation((callback) =>
+      callback(null),
+    );
 
     renderLogin();
 
@@ -126,9 +129,11 @@ describe("Login", () => {
   test("seeds the logo from sessionStorage cache on first paint", () => {
     sessionStorage.setItem(
       "openelis.loginLogoUrl",
-      "/images/branding/cached-logo.png",
+      JSON.stringify({
+        url: "/images/branding/cached-logo.png",
+        version: 7,
+      }),
     );
-    // Branding fetch never resolves — cache must carry the first paint
     vi.mocked(getBranding).mockImplementation(() => {});
 
     renderLogin();
@@ -137,58 +142,70 @@ describe("Login", () => {
     logos.forEach((logo) =>
       expect(logo).toHaveAttribute(
         "src",
-        expect.stringContaining("/images/branding/cached-logo.png"),
+        expect.stringContaining("/images/branding/cached-logo.png?v=7"),
       ),
     );
   });
 
-  test("does not bump the cache-busting version when the logo URL is unchanged", async () => {
-    const branding = { loginLogoUrl: "/images/branding/custom-logo.png" };
-    vi.mocked(getBranding).mockImplementation((callback) => callback(branding));
+  test("does not bump the cache-busting version when branding is unchanged", async () => {
+    const branding = {
+      loginLogoUrl: "/images/branding/custom-logo.png",
+      logoRevision: 1,
+    };
+    let brandingCallback;
+    vi.mocked(getBranding).mockImplementation((callback) => {
+      brandingCallback = callback;
+      callback(branding);
+    });
 
-    const { rerender } = renderLogin();
+    renderLogin();
+
     await waitFor(() => {
       expect(screen.getAllByAltText(LOGO_ALT)[0]).toHaveAttribute(
         "src",
-        expect.stringContaining("?v="),
+        expect.stringContaining("?v=1"),
       );
     });
     const initialSrc = screen.getAllByAltText(LOGO_ALT)[0].getAttribute("src");
 
-    // Re-render (e.g. the 10s session poll) with the same branding response
-    rerender(
-      <IntlProvider locale="en" messages={messages}>
-        <UserSessionDetailsContext.Provider
-          value={{
-            userSessionDetails: { authenticated: false },
-            refresh: vi.fn(),
-          }}
-        >
-          <ConfigurationContext.Provider
-            value={{
-              configurationProperties: {
-                useFormLogin: "true",
-                useOauth: "false",
-                useSaml: "false",
-              },
-            }}
-          >
-            <NotificationContext.Provider
-              value={{
-                addNotification: vi.fn(),
-                notificationVisible: false,
-                setNotificationVisible: vi.fn(),
-              }}
-            >
-              <Login />
-            </NotificationContext.Provider>
-          </ConfigurationContext.Provider>
-        </UserSessionDetailsContext.Provider>
-      </IntlProvider>,
-    );
+    await act(async () => {
+      brandingCallback(branding);
+    });
 
     expect(screen.getAllByAltText(LOGO_ALT)[0].getAttribute("src")).toBe(
       initialSrc,
+    );
+  });
+
+  test("bumps the cache-busting version when the logo revision changes", async () => {
+    let brandingCallback;
+    vi.mocked(getBranding).mockImplementation((callback) => {
+      brandingCallback = callback;
+      callback({
+        loginLogoUrl: "/images/branding/custom-logo.png",
+        logoRevision: 1,
+      });
+    });
+
+    renderLogin();
+
+    await waitFor(() => {
+      expect(screen.getAllByAltText(LOGO_ALT)[0]).toHaveAttribute(
+        "src",
+        expect.stringContaining("?v=1"),
+      );
+    });
+
+    await act(async () => {
+      brandingCallback({
+        loginLogoUrl: "/images/branding/custom-logo.png",
+        logoRevision: 2,
+      });
+    });
+
+    expect(screen.getAllByAltText(LOGO_ALT)[0]).toHaveAttribute(
+      "src",
+      expect.stringContaining("?v=2"),
     );
   });
 });
