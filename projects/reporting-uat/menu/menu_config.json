@@ -57,7 +57,7 @@
         {
           "elementId": "menu_resultvalidation_routine",
           "displayKey": "sidenav.workflow.resultsValidation",
-          "actionURL": "/ResultValidation?type=&test=",
+          "actionURL": "/validation",
           "isActive": true,
           "openInNewWindow": false,
           "hideInOldUI": false,
@@ -365,7 +365,7 @@
             {
               "elementId": "menu_resultvalidation",
               "displayKey": "banner.menu.resultvalidation",
-              "actionURL": "/ResultValidation?type=&test=",
+              "actionURL": "/validation",
               "isActive": true,
               "openInNewWindow": false,
               "hideInOldUI": false,

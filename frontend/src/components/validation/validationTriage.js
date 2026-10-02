@@ -1,3 +1,4 @@
+import { releaseScope } from "./validationSearch";
 /**
  * OGC-1027 (Validation v4 slice V1) — pure triage rules for the validation
  * queue: which "Check before release" chips a row carries, which lane it sits
@@ -198,23 +199,22 @@ export function clearRows(triaged) {
 }
 
 /**
- * OGC-1029 — the bulk request: the page's own search key (so the server reloads
- * the same queue and re-derives the lane itself) plus the candidate rows with
- * the validator's note. `params` is the page's query string, e.g.
- * "?type=order&accessionNumber=…"; only an accession ("order") search is unranged.
+ * OGC-1029 / OGC-1418 — the bulk request: the page's whole search (so the
+ * server reloads the same queue and re-derives the lane itself) plus the
+ * candidate rows with the validator's note. `params` is the page's query
+ * string; an old ?type= address is read as the search it stands for.
  */
 export function bulkReleaseRequest(results, params, rows) {
-  const search = new URLSearchParams((params || "").replace(/^\?/, ""));
-  const type = search.get("type") || "";
+  const scope = releaseScope(params);
+  const single =
+    Boolean(scope.labNumberFrom) && scope.labNumberFrom === scope.labNumberTo;
   return {
-    accessionNumber:
-      (results && results.accessionNumber) ||
-      search.get("accessionNumber") ||
-      "",
-    testSectionId:
-      (results && results.testSectionId) || search.get("testSectionId") || "",
-    testDate: (results && results.testDate) || search.get("date") || "",
-    doRange: type !== "order",
+    ...scope,
+    accessionNumber: single
+      ? (results && results.accessionNumber) || scope.labNumberFrom
+      : "",
+    testDate: "",
+    doRange: !single,
     rows: (rows || []).map((row) => ({
       analysisId: row.analysisId,
       accessionNumber: row.accessionNumber,

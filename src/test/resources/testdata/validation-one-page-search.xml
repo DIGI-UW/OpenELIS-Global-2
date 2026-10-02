@@ -1,0 +1,153 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- OGC-1418: the one-page Validation search. Four orders awaiting validation
+        (Technical Acceptance), chosen so every combination of criteria has an answer
+        no single criterion gives: VAL-OP-001 Environmental (1) started 2025-06-01
+        patient 901 (Ida Walker) VAL-OP-002 Chemistry (2) started 2025-06-02 patient
+        901 VAL-OP-003 Environmental (1) started 2025-06-10 patient 902 (Grace Okello)
+        VAL-OP-004 Chemistry (2) started 2025-06-10 no patient -->
+
+    <!-- Required validation permissions belong to this rollback-owned fixture. -->
+    <system_role id="9400" name="Validation"
+        description="Validate results" display_key="role.validator"
+        active="true" editable="false" />
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="12" description="Test Entered"
+        code="12" status_type="ORDER" name="Test Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="13"
+        description="Testing Started" code="13" status_type="ORDER"
+        name="Testing Started" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="14"
+        description="Testing finished" code="14" status_type="ORDER"
+        name="Testing finished" lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" name="Finalized"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Lead (Pb)" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Water Sample"
+        domain="E" name_localization_id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <!-- is_active="Y": the lab-unit filter only admits tests of ACTIVE sections. -->
+    <test_section id="1" name="Environmental"
+        description="Environmental Testing" is_external="N" is_active="Y"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="env" domain="ENVIRONMENTAL" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <test_section id="2" name="Chemistry"
+        description="Chemistry" is_external="N" is_active="Y"
+        lastupdated="2025-01-01 12:00:00" sort_order="2"
+        name_localization_id="1" display_key="chem" domain="CLINICAL" />
+
+    <test id="1" description="Lead (Pb)" loinc="10368-9" is_active="Y"
+        is_reportable="Y" orderable="true" lastupdated="2025-01-01 12:00:00"
+        test_section_id="1" test_format_id="1" sort_order="1" name="Lead"
+        guid="test-lead-001" name_localization_id="1" />
+    <test id="2" description="Lead (Pb) chem" loinc="10368-8"
+        is_active="Y" is_reportable="Y" orderable="true"
+        lastupdated="2025-01-01 12:00:00" test_section_id="2"
+        test_format_id="1" sort_order="2" name="LeadChem" guid="test-lead-002"
+        name_localization_id="1" />
+
+    <test_result id="1" test_id="1" result_group="1"
+        tst_rslt_type="N" significant_digits="2"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+
+    <!-- Default (no gender, all ages) reference range 5.0 - 20.0 for the test.
+        DBUnit cannot write the double literal Infinity, so max_age is seeded as
+        a placeholder here and set to 'Infinity' by SQL in the test's setUp — the
+        "all ages" sentinel ResultLimit.ageLimitsAreDefault() expects. The test_result_type_id
+        placeholder is likewise re-pointed in setUp at the database's own Numeric
+        type row, which the range formatter keys on. -->
+    <person id="901" last_name="Walker" first_name="Ida"
+        lastupdated="2025-01-01 12:00:00" />
+    <person id="902" last_name="Okello" first_name="Grace"
+        lastupdated="2025-01-01 12:00:00" />
+    <patient id="901" person_id="901" gender="F"
+        birth_date="1988-03-05 00:00:00" lastupdated="2025-01-01 12:00:00"
+        fhir_uuid="0e6b5b0e-1418-4a00-9000-000000000901" />
+    <patient id="902" person_id="902" gender="F"
+        birth_date="1990-01-01 00:00:00" lastupdated="2025-01-01 12:00:00"
+        fhir_uuid="0e6b5b0e-1418-4a00-9000-000000000902" />
+    <sample id="201" accession_number="VAL-OP-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample_item id="201" sort_order="1" status_id="1"
+        samp_id="201" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+    <analysis id="201" sampitem_id="201" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+    <result id="201" analysis_id="201" result_type="N" value="10.5"
+        is_reportable="Y" lastupdated="2025-06-01 12:00:00" />
+    <sample_human id="201" samp_id="201" patient_id="901"
+        lastupdated="2025-06-01 12:00:00" />
+    <sample id="202" accession_number="VAL-OP-002" status_id="1"
+        received_date="2025-06-02 00:00:00.0"
+        entered_date="2025-06-02 00:00:00.0"
+        collection_date="2025-06-02 00:00:00.0"
+        lastupdated="2025-06-02 12:00:00" />
+    <sample_item id="202" sort_order="1" status_id="1"
+        samp_id="202" typeosamp_id="1" collection_date="2025-06-02 10:00:00"
+        lastupdated="2025-06-02 12:00:00" />
+    <analysis id="202" sampitem_id="202" test_id="2"
+        test_sect_id="2" revision="0" status_id="2"
+        started_date="2025-06-02 11:00:00" lastupdated="2025-06-02 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+    <result id="202" analysis_id="202" result_type="N" value="10.5"
+        is_reportable="Y" lastupdated="2025-06-02 12:00:00" />
+    <sample_human id="202" samp_id="202" patient_id="901"
+        lastupdated="2025-06-02 12:00:00" />
+    <sample id="203" accession_number="VAL-OP-003" status_id="1"
+        received_date="2025-06-10 00:00:00.0"
+        entered_date="2025-06-10 00:00:00.0"
+        collection_date="2025-06-10 00:00:00.0"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="203" sort_order="1" status_id="1"
+        samp_id="203" typeosamp_id="1" collection_date="2025-06-10 10:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <analysis id="203" sampitem_id="203" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-10 11:00:00" lastupdated="2025-06-10 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+    <result id="203" analysis_id="203" result_type="N" value="10.5"
+        is_reportable="Y" lastupdated="2025-06-10 12:00:00" />
+    <sample_human id="203" samp_id="203" patient_id="902"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample id="204" accession_number="VAL-OP-004" status_id="1"
+        received_date="2025-06-10 00:00:00.0"
+        entered_date="2025-06-10 00:00:00.0"
+        collection_date="2025-06-10 00:00:00.0"
+        lastupdated="2025-06-10 12:00:00" />
+    <sample_item id="204" sort_order="1" status_id="1"
+        samp_id="204" typeosamp_id="1" collection_date="2025-06-10 10:00:00"
+        lastupdated="2025-06-10 12:00:00" />
+    <analysis id="204" sampitem_id="204" test_id="2"
+        test_sect_id="2" revision="0" status_id="2"
+        started_date="2025-06-10 11:00:00" lastupdated="2025-06-10 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+    <result id="204" analysis_id="204" result_type="N" value="10.5"
+        is_reportable="Y" lastupdated="2025-06-10 12:00:00" />
+</dataset>
