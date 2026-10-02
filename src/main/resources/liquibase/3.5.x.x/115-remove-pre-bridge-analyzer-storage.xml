@@ -16,7 +16,7 @@
          through the Bridge-backed setup pages. Export and drops are one
          transaction. Databases where earlier, since-removed cleanup
          changesets already dropped this storage have nothing to do. -->
-    <changeSet id="114-remove-pre-bridge-analyzer-storage" author="pmanko">
+    <changeSet id="115-remove-pre-bridge-analyzer-storage" author="pmanko">
         <preConditions onFail="MARK_RAN" onError="HALT">
             <columnExists tableName="analyzer" columnName="analyzer_type_id"/>
             <tableExists tableName="analyzer_type"/>

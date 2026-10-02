@@ -400,7 +400,7 @@
   <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
 
   <!-- The analyzer cutover changesets below leave the pre-Bridge storage in place;
-       114-remove-pre-bridge-analyzer-storage exports and removes it.
+       115-remove-pre-bridge-analyzer-storage exports and removes it.
        See docs/analyzers/pre-bridge-settings-export.md. -->
   <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
@@ -604,7 +604,10 @@
   <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
   <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
 
+  <!-- Validation is one page: the menu item opens it and the per-search entries are retired. -->
+  <include relativeToChangelogFile="true" file="114-validation-menu-collapse.xml"/>
+
   <!-- Pre-Bridge analyzer settings: exported to the configuration-import history, then their tables and columns removed. -->
-  <include relativeToChangelogFile="true" file="114-remove-pre-bridge-analyzer-storage.xml"/>
+  <include relativeToChangelogFile="true" file="115-remove-pre-bridge-analyzer-storage.xml"/>
 
 </databaseChangeLog>

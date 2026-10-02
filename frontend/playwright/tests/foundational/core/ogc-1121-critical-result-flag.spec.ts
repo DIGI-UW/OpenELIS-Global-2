@@ -279,10 +279,10 @@ test.describe("OGC-1121 critical results look critical", () => {
           waitUntil: "domcontentloaded",
         });
         const main = page.getByRole("main");
-        const searchInput = main.getByPlaceholder(/accession|lab no/i);
+        const searchInput = main.locator("#validationSearch");
         await expect(searchInput).toBeVisible({ timeout: NAV_TIMEOUT });
         await searchInput.fill(accession);
-        await main.getByRole("button", { name: /search/i }).click();
+        await main.getByTestId("validation-load").click();
 
         const cell = main
           .locator('[data-testid^="validation-result-"]')

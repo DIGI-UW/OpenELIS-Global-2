@@ -77,7 +77,30 @@ describe("bulkReleaseRequest", () => {
     ).toMatchObject({ testSectionId: "7", doRange: true, rows: [] });
     expect(
       bulkReleaseRequest(undefined, "?type=testDate&date=01/09/2026", []),
-    ).toMatchObject({ testDate: "01/09/2026", doRange: true });
+    ).toMatchObject({
+      fromDate: "01/09/2026",
+      toDate: "01/09/2026",
+      doRange: true,
+    });
+  });
+
+  it("OGC-1418: carries the whole combined search, so the release covers only the rows it shows", () => {
+    expect(
+      bulkReleaseRequest(
+        undefined,
+        "?labNumber=ACC1..ACC9&testSectionId=7&fromDate=01/09/2026&toDate=30/09/2026&patientId=42",
+        [],
+      ),
+    ).toMatchObject({
+      labNumberFrom: "ACC1",
+      labNumberTo: "ACC9",
+      testSectionId: "7",
+      fromDate: "01/09/2026",
+      toDate: "30/09/2026",
+      patientId: "42",
+      accessionNumber: "",
+      doRange: true,
+    });
   });
 });
 

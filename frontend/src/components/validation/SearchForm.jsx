@@ -1,78 +1,99 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   Button,
   Column,
-  Form,
-  Stack,
-  SelectItem,
-  Select,
-  Loading,
+  DatePicker,
+  DatePickerInput,
   Grid,
+  InlineNotification,
+  Loading,
+  Search,
+  Select,
+  SelectItem,
+  Tag,
 } from "@carbon/react";
-import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Formik, Field } from "formik";
-import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
-import {
-  getFromOpenElisServer,
-  labNumberForSearch,
-  Roles,
-} from "../utils/Utils";
-import { NotificationContext } from "../layout/Layout";
+import { getFromOpenElisServer, Roles } from "../utils/Utils";
+import { format, isValid, parse } from "date-fns";
+import SearchPatientForm from "../patient/SearchPatientForm";
+import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { NotificationKinds } from "../common/CustomNotification";
-import CustomDatePicker from "../common/CustomDatePicker";
+import {
+  isEmptySearch,
+  searchFromLocation,
+  searchQueryString,
+  validationEndpoint,
+} from "./validationSearch";
+import "../resultPage/unified/unified-results.scss";
+import "./validation-search.scss";
 
+const patientDisplayName = (patient) =>
+  [patient?.firstName, patient?.lastName].filter(Boolean).join(" ") +
+  (patient?.subjectNumber ? ` (${patient.subjectNumber})` : "");
+
+const replaceValidationUrl = (search) => {
+  window.history.replaceState(
+    window.history.state,
+    "",
+    `/validation${searchQueryString(search)}`,
+  );
+};
+
+/**
+ * OGC-1418 — Validation's one search, laid out like Results Entry: a search
+ * box for a lab number or a lab number range, a Lab Unit (only units the user
+ * validates), a date range and a patient, all combined, and kept in the
+ * address so a refresh or a bookmark reopens the same queue. The old menu
+ * entries' addresses open this page with the equivalent filter.
+ */
 const SearchForm = (props) => {
+  const intl = useIntl();
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
+  const { configurationProperties } = useContext(ConfigurationContext) || {};
+  // The server reads dates in the site's format, as the old By Date search
+  // sent them. The calendar keeps the handlers it was created with, which can
+  // be before the site's format has loaded, so it is remounted when it loads.
+  const dayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
+  const displayFormat = dayFirst ? "dd/MM/yyyy" : "MM/dd/yyyy";
+  const parseDisplayDate = (text) => {
+    const parsed = parse(text, displayFormat, new Date());
+    return isValid(parsed) ? parsed : undefined;
+  };
+  const formatDate = (date) => (date ? format(date, displayFormat) : "");
 
-  const intl = useIntl();
-
-  const [searchResults, setSearchResults] = useState();
-  const [searchBy, setSearchBy] = useState();
-  const [doRange, setDoRagnge] = useState(true);
-  const [testSections, setTestSections] = useState([]);
-  const [defaultTestSectionId, setDefaultTestSectionId] = useState("");
-  const [defaultTestSectionLabel, setDefaultTestSectionLabel] = useState("");
-  const [searchFormValues, setSearchFormValues] = useState(
-    ValidationSearchFormValues,
+  const [search, setSearch] = useState(() =>
+    searchFromLocation(window.location.pathname, window.location.search),
   );
-  const [testDate, setTestDate] = useState("");
+  const [testSections, setTestSections] = useState([]);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [showPatientSearch, setShowPatientSearch] = useState(false);
+  const [searchResults, setSearchResults] = useState();
   const [isLoading, setIsLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [url, setUrl] = useState("");
+  const searchRef = useRef(search);
 
   const validationResults = (data, announceEmpty = true) => {
-    if (data) {
-      setSearchResults(data);
-      setIsLoading(false);
-      if (data?.resultList?.length > 0) {
-        const newResultsList = data.resultList.map((data, id) => {
-          let tempData = { ...data };
-          tempData.id = id;
-          return tempData;
-        });
-        setSearchResults((prevState) => ({
-          ...prevState,
-          resultList: newResultsList,
-          searched: true,
-        }));
-      } else {
-        setIsLoading(false);
-        setSearchResults((prevState) => ({
-          ...prevState,
-          resultList: [],
-          searched: true,
-        }));
-
-        if (announceEmpty) {
-          addNotification({
-            kind: NotificationKinds.warning,
-            title: intl.formatMessage({ id: "notification.title" }),
-            message: intl.formatMessage({ id: "validation.search.noresult" }),
-          });
-          setNotificationVisible(true);
-        }
-      }
+    setIsLoading(false);
+    if (!data || (typeof data.status === "number" && data.status >= 400)) {
+      setLoadError(true);
+      setSearchResults({ resultList: [], searched: true });
+      return;
+    }
+    setLoadError(false);
+    const resultList = (data.resultList || []).map((row, id) => ({
+      ...row,
+      id,
+    }));
+    setSearchResults({ ...data, resultList, searched: true });
+    if (announceEmpty && resultList.length === 0) {
+      addNotification({
+        kind: NotificationKinds.warning,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "validation.search.noresult" }),
+      });
+      setNotificationVisible(true);
     }
   };
 
@@ -87,7 +108,9 @@ const SearchForm = (props) => {
         if (row && row.note === undefined) row.note = "";
       }
     }
-    props.setResults(searchResults);
+    if (searchResults) {
+      props.setResults(searchResults);
+    }
   }, [searchResults]);
 
   /**
@@ -102,45 +125,29 @@ const SearchForm = (props) => {
     props.registerPageLoader?.(url ? loadResultsPage : null);
   }, [url, props.registerRefresh, props.registerPageLoader]);
 
-  const handleSubmit = (values) => {
-    setIsLoading(true);
-    var accessionNumber = labNumberForSearch(values.accessionNumber);
-    var unitType = values.unitType ? values.unitType : "";
-    var defaultDate = values.defaultDate ? values.defaultDate : "";
-    var date = testDate ? testDate : defaultDate;
-    let searchEndPoint =
-      "/rest/AccessionValidation?" +
-      "accessionNumber=" +
-      accessionNumber +
-      "&unitType=" +
-      unitType +
-      "&date=" +
-      date +
-      "&doRange=" +
-      doRange;
-    setUrl(searchEndPoint);
-    switch (searchBy) {
-      case "routine":
-        props.setParams("?type=" + searchBy + "&testSectionId=" + unitType);
-        break;
-      case "order":
-        props.setParams(
-          "?type=" + searchBy + "&accessionNumber=" + accessionNumber,
-        );
-        break;
-      case "testDate":
-        props.setParams("?type=" + searchBy + "&date=" + date);
-        break;
-      case "range":
-        props.setParams(
-          "?type=" + searchBy + "&accessionNumber=" + accessionNumber,
-        );
-        break;
+  const loadQueue = (next = searchRef.current) => {
+    replaceValidationUrl(next);
+    props.setParams(searchQueryString(next));
+    if (isEmptySearch(next)) {
+      setUrl("");
+      setLoadError(false);
+      setSearchResults({ resultList: [], searched: false });
+      return;
     }
-    getFromOpenElisServer(searchEndPoint, validationResults);
+    const endpoint = validationEndpoint(next);
+    setUrl(endpoint);
+    setIsLoading(true);
+    getFromOpenElisServer(endpoint, validationResults);
   };
 
-  const handleChange = () => {};
+  const updateSearch = (changes, load = false) => {
+    const next = { ...searchRef.current, ...changes };
+    searchRef.current = next;
+    setSearch(next);
+    if (load) {
+      loadQueue(next);
+    }
+  };
 
   /** One server page, the same request for the arrows and for Carbon. */
   const loadResultsPage = (pageNumber) => {
@@ -165,215 +172,269 @@ const SearchForm = (props) => {
       }
     });
   };
-  const fetchTestSections = (response) => {
-    setTestSections(response);
+
+  /** The patient form auto-selects any ?patientId= it finds, so it goes first. */
+  const openPatientSearch = () => {
+    const urlState = new URLSearchParams(window.location.search);
+    urlState.delete("patientId");
+    const query = urlState.toString();
+    window.history.replaceState(
+      window.history.state,
+      "",
+      query ? `/validation?${query}` : "/validation",
+    );
+    setShowPatientSearch(true);
   };
 
-  const submitOnSelect = (e) => {
-    var values = { unitType: e.target.value };
-    handleSubmit(values);
+  const selectPatient = (patient) => {
+    setSelectedPatient(patient);
+    setShowPatientSearch(false);
+    updateSearch({ patientId: patient?.patientPK || "" }, true);
   };
 
-  function handleDatePickerChange(date) {
-    setTestDate(date);
-  }
+  const clearPatient = () => {
+    setSelectedPatient(null);
+    setShowPatientSearch(false);
+    updateSearch({ patientId: "" }, true);
+  };
 
   useEffect(() => {
-    var param = "";
-    if (window.location.pathname == "/validation") {
-      param = new URLSearchParams(window.location.search).get("type");
-    } else if (window.location.pathname == "/ResultValidation") {
-      param = "routine";
-    } else if (window.location.pathname == "/AccessionValidation") {
-      param = "order";
-    } else if (window.location.pathname == "/AccessionValidationRange") {
-      param = "range";
-    } else if (window.location.pathname == "/ResultValidationByTestDate") {
-      param = "testDate";
-    }
-    setSearchBy(param);
-    if (param === "order") {
-      setDoRagnge(false);
-    }
-    switch (searchBy) {
-      case "routine": {
-        let testSectionId = new URLSearchParams(window.location.search).get(
-          "testSectionId",
-        );
-        testSectionId = testSectionId ? testSectionId : "";
-        getFromOpenElisServer(
-          "/rest/user-test-sections/" + Roles.VALIDATION,
-          (fetchedTestSections) => {
-            let testSection = fetchedTestSections.find(
-              (testSection) => testSection.id === testSectionId,
-            );
-            let testSectionLabel = testSection ? testSection.value : "";
-            setDefaultTestSectionId(testSectionId);
-            setDefaultTestSectionLabel(testSectionLabel);
-            fetchTestSections(fetchedTestSections);
-          },
-        );
-        if (testSectionId) {
-          let values = { unitType: testSectionId };
-          handleSubmit(values);
+    getFromOpenElisServer(
+      "/rest/user-test-sections/" + Roles.VALIDATION,
+      (sections) => {
+        setTestSections(Array.isArray(sections) ? sections : []);
+        const unit = searchRef.current.testSectionId;
+        if (
+          Array.isArray(sections) &&
+          unit &&
+          !sections.some((section) => String(section.id) === String(unit))
+        ) {
+          updateSearch({ testSectionId: "" }, true);
         }
-        break;
-      }
+      },
+    );
+    const initial = searchRef.current;
+    if (initial.patientId) {
+      getFromOpenElisServer(
+        "/rest/patient-details?patientID=" +
+          encodeURIComponent(initial.patientId),
+        (details) => {
+          if (details?.patientPK) {
+            setSelectedPatient(details);
+          }
+        },
+      );
+    }
+    if (isEmptySearch(initial)) {
+      replaceValidationUrl(initial);
+    } else {
+      loadQueue(initial);
+    }
+  }, []);
 
-      case "order":
-      case "range": {
-        let accessionNumber = new URLSearchParams(window.location.search).get(
-          "accessionNumber",
-        );
-        if (accessionNumber) {
-          let searchValues = {
-            ...searchFormValues,
-            accessionNumber: accessionNumber,
-          };
-          handleSubmit(searchValues);
-          setSearchFormValues(searchValues);
-        }
-        break;
-      }
-      case "testDate": {
-        let date = new URLSearchParams(window.location.search).get("date");
-        if (date) {
-          setTestDate(date);
-          handleSubmit({ defaultDate: date });
-        }
-        break;
-      }
-    }
-  }, [searchBy, doRange]);
   return (
     <>
-      {isLoading && <Loading></Loading>}
-      <Formik
-        initialValues={searchFormValues}
-        enableReinitialize={true}
-        //validationSchema={}
-        onSubmit={handleSubmit}
-        onChange
-      >
-        {({
-          values,
-          errors,
-          touched,
-          setFieldValue,
-          handleChange,
-          //handleBlur,
-          handleSubmit,
-        }) => (
-          <Form
-            onSubmit={handleSubmit}
-            onChange={handleChange}
-            //onBlur={handleBlur}
-          >
-            <Stack gap={2}>
-              <Grid>
-                <Column lg={16}>
-                  <h4>
-                    <FormattedMessage id="label.button.search" />
-                  </h4>
-                </Column>
-
-                {(searchBy === "order" || searchBy === "range") && (
-                  <>
-                    <Column lg={6} md={8} sm={4}>
-                      <Field name="accessionNumber">
-                        {({ field }) => (
-                          <CustomLabNumberInput
-                            placeholder={"Enter Lab No"}
-                            name={field.name}
-                            id={field.name}
-                            value={values[field.name]}
-                            onChange={(e, rawValue) => {
-                              setFieldValue(field.name, rawValue);
-                            }}
-                            labelText={
-                              searchBy == "order" ? (
-                                <FormattedMessage id="search.label.accession" />
-                              ) : (
-                                <FormattedMessage id="search.label.loadnext" />
-                              )
-                            }
-                          />
-                        )}
-                      </Field>
-                    </Column>
-                    <Column lg={10} />
-                  </>
-                )}
-
-                {searchBy === "testDate" && (
-                  <>
-                    <Column lg={6} md={8} sm={4}>
-                      <Field name="date">
-                        {({ field }) => (
-                          <CustomDatePicker
-                            id="validationTestDate"
-                            labelText={intl.formatMessage({
-                              id: "search.label.testdate",
-                            })}
-                            value={testDate}
-                            onChange={(date) => handleDatePickerChange(date)}
-                            name={field.name}
-                          />
-                        )}
-                      </Field>
-                    </Column>
-                    <Column lg={10} />
-                  </>
-                )}
-                {searchBy !== "routine" && (
-                  <Column lg={16} md={8} sm={4}>
-                    <Button
-                      type="submit"
-                      id="submit"
-                      style={{ marginTop: "16px" }}
-                      data-testid="Search-btn"
-                    >
-                      <FormattedMessage id="label.button.search" />
-                    </Button>
-                  </Column>
-                )}
-              </Grid>
-            </Stack>
-          </Form>
-        )}
-      </Formik>
-
-      {searchBy === "routine" && (
-        <>
-          <Grid>
-            <Column lg={6} md={8} sm={4}>
-              <Select
-                labelText={intl.formatMessage({ id: "search.label.testunit" })}
-                name="unitType"
-                id="unitType"
-                onChange={submitOnSelect}
-              >
-                <SelectItem
-                  text={defaultTestSectionLabel}
-                  value={defaultTestSectionId}
-                />
-                {testSections
-                  .filter((item) => item.id !== defaultTestSectionId)
-                  .map((test, index) => {
-                    return (
-                      <SelectItem
-                        key={index}
-                        text={test.value}
-                        value={test.id}
-                      />
-                    );
-                  })}
-              </Select>
-            </Column>
-            <Column lg={10} />
-          </Grid>
-        </>
+      {isLoading && (
+        <Loading
+          description={intl.formatMessage({ id: "label.results.loading" })}
+        />
       )}
+      <Grid
+        fullWidth
+        className="unifiedResultsPage validationSearchArea"
+        data-testid="validation-search-area"
+      >
+        <Column
+          max={3}
+          xlg={3}
+          lg={4}
+          md={4}
+          sm={4}
+          className="unifiedResultsToolbarColumn"
+        >
+          <div className="cds--label">
+            <FormattedMessage id="label.button.search" />
+          </div>
+          <Search
+            id="validationSearch"
+            labelText={intl.formatMessage({
+              id: "label.validation.search.box",
+            })}
+            placeholder={intl.formatMessage({
+              id: "label.validation.search.box",
+            })}
+            value={search.labNumber}
+            onChange={(e) => updateSearch({ labNumber: e.target.value })}
+            onClear={() => updateSearch({ labNumber: "" }, true)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                loadQueue();
+              }
+            }}
+          />
+          <div className="cds--form__helper-text">
+            <FormattedMessage id="label.validation.search.rangeHint" />
+          </div>
+        </Column>
+        <Column
+          max={3}
+          xlg={3}
+          lg={4}
+          md={4}
+          sm={4}
+          className="unifiedResultsToolbarColumn"
+        >
+          <Select
+            id="validationLabUnit"
+            labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+            value={search.testSectionId}
+            onChange={(e) =>
+              updateSearch({ testSectionId: e.target.value }, true)
+            }
+          >
+            <SelectItem text="" value="" />
+            {testSections.map((unit) => (
+              <SelectItem text={unit.value} value={unit.id} key={unit.id} />
+            ))}
+          </Select>
+        </Column>
+        <Column
+          max={4}
+          xlg={4}
+          lg={8}
+          md={8}
+          sm={4}
+          className="unifiedResultsToolbarColumn"
+        >
+          <DatePicker
+            key={dayFirst ? "day-first" : "month-first"}
+            datePickerType="range"
+            dateFormat={dayFirst ? "d/m/Y" : "m/d/Y"}
+            parseDate={parseDisplayDate}
+            value={[
+              parseDisplayDate(search.fromDate),
+              parseDisplayDate(search.toDate),
+            ].filter(Boolean)}
+            onChange={(dates) =>
+              updateSearch({
+                fromDate: formatDate(dates?.[0]),
+                toDate: formatDate(dates?.[1]),
+              })
+            }
+          >
+            <DatePickerInput
+              id="validationFromDate"
+              labelText={intl.formatMessage({
+                id: "label.validation.search.fromDate",
+              })}
+              placeholder={dayFirst ? "dd/mm/yyyy" : "mm/dd/yyyy"}
+            />
+            <DatePickerInput
+              id="validationToDate"
+              labelText={intl.formatMessage({
+                id: "label.validation.search.toDate",
+              })}
+              placeholder={dayFirst ? "dd/mm/yyyy" : "mm/dd/yyyy"}
+            />
+          </DatePicker>
+        </Column>
+        <Column
+          max={3}
+          xlg={3}
+          lg={4}
+          md={4}
+          sm={4}
+          className="unifiedResultsToolbarColumn unifiedResultsPatientColumn"
+        >
+          <div className="cds--label">&nbsp;</div>
+          <Button
+            kind="tertiary"
+            size="md"
+            data-testid="validation-search-by-patient"
+            onClick={() =>
+              showPatientSearch
+                ? setShowPatientSearch(false)
+                : openPatientSearch()
+            }
+            disabled={isLoading}
+          >
+            <FormattedMessage id="label.results.searchByPatient" />
+          </Button>
+        </Column>
+        <Column
+          max={3}
+          xlg={3}
+          lg={4}
+          md={4}
+          sm={4}
+          className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
+        >
+          <div className="cds--label">&nbsp;</div>
+          <Button
+            size="md"
+            data-testid="validation-load"
+            onClick={() => loadQueue()}
+            disabled={isLoading}
+          >
+            <FormattedMessage id="label.results.load" />
+          </Button>
+        </Column>
+
+        {(showPatientSearch || selectedPatient || search.patientId) && (
+          <Column lg={16} md={8} sm={4}>
+            <div
+              className="bordered-section-panel unifiedResultsPatientPanel"
+              data-testid="validation-patient-panel"
+            >
+              <div className="unifiedResultsPatientPanelHeader">
+                <Tag
+                  type={search.patientId ? "blue" : "gray"}
+                  data-testid="validation-selected-patient"
+                >
+                  <FormattedMessage id="label.results.selectedPatient" />:{" "}
+                  {search.patientId
+                    ? patientDisplayName(selectedPatient) || search.patientId
+                    : intl.formatMessage({
+                        id: "label.results.selectedPatient.none",
+                      })}
+                </Tag>
+                {search.patientId && (
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    data-testid="validation-clear-patient"
+                    onClick={clearPatient}
+                  >
+                    <FormattedMessage id="label.button.clear" />
+                  </Button>
+                )}
+              </div>
+              {showPatientSearch && (
+                <div className="unifiedResultsPatientSearch">
+                  <SearchPatientForm getSelectedPatient={selectPatient} />
+                </div>
+              )}
+            </div>
+          </Column>
+        )}
+
+        {loadError && (
+          <Column lg={16} md={8} sm={4}>
+            <InlineNotification
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "notification.title" })}
+              subtitle={intl.formatMessage({
+                id: "label.validation.search.loadError",
+              })}
+            />
+            <Button kind="ghost" size="sm" onClick={() => loadQueue()}>
+              <FormattedMessage id="label.results.refresh" />
+            </Button>
+          </Column>
+        )}
+      </Grid>
     </>
   );
 };
