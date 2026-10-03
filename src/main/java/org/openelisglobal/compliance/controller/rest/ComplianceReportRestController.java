@@ -1,16 +1,7 @@
 package org.openelisglobal.compliance.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.servlet.http.HttpServletResponse;
+import java.awt.Color;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
@@ -34,6 +25,15 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -292,7 +292,7 @@ public class ComplianceReportRestController {
     private byte[] buildOriginalPdfBytes(ComplianceReportOrderDTO dto) throws DocumentException, IOException {
         Font titleFont = CertificateFonts.bold(14);
         Font sectionFont = CertificateFonts.bold(11);
-        Font headerFont = CertificateFonts.bold(9, BaseColor.WHITE);
+        Font headerFont = CertificateFonts.bold(9, Color.WHITE);
         Font cellFont = CertificateFonts.regular(9);
         Font labelFont = CertificateFonts.bold(9);
 
@@ -422,7 +422,7 @@ public class ComplianceReportRestController {
             throws DocumentException, IOException {
         Font titleFont = CertificateFonts.bold(14);
         Font sectionFont = CertificateFonts.bold(11);
-        Font headerFont = CertificateFonts.bold(9, BaseColor.WHITE);
+        Font headerFont = CertificateFonts.bold(9, Color.WHITE);
         Font cellFont = CertificateFonts.regular(9);
         Font labelFont = CertificateFonts.bold(9);
 
@@ -594,7 +594,7 @@ public class ComplianceReportRestController {
         compTable.setWidths(new float[] { 3f, 2f, 2.5f, 1.5f });
         for (String h : new String[] { "Parameter", "Result", "Threshold", "Status" }) {
             PdfPCell hCell = new PdfPCell(new Phrase(h, headerFont));
-            hCell.setBackgroundColor(new BaseColor(33, 82, 149));
+            hCell.setBackgroundColor(new Color(33, 82, 149));
             hCell.setHorizontalAlignment(Element.ALIGN_CENTER);
             hCell.setPadding(4);
             compTable.addCell(hCell);

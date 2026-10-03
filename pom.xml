@@ -165,9 +165,17 @@
             <version>5.4.0</version>
         </dependency>
         <dependency>
-            <groupId>com.itextpdf</groupId>
-            <artifactId>itextpdf</artifactId>
-            <version>5.5.13.4</version>
+            <groupId>com.github.librepdf</groupId>
+            <artifactId>openpdf</artifactId>
+            <version>3.0.5</version>
+            <exclusions>
+                <!-- Only the BrotliDecode filter uses it, to read PDFs compressed with
+                    Brotli; it brings a native library per platform. -->
+                <exclusion>
+                    <groupId>com.aayushatharva.brotli4j</groupId>
+                    <artifactId>brotli4j</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!-- APACHE COMMONS DEPENDENCIES -->
         <dependency>
@@ -546,6 +554,14 @@
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-test</artifactId>
             <version>${springsecurity.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Reads generated PDFs in tests, independent of the library that wrote
+            them. -->
+        <dependency>
+            <groupId>org.apache.pdfbox</groupId>
+            <artifactId>pdfbox</artifactId>
+            <version>3.0.8</version>
             <scope>test</scope>
         </dependency>
         <dependency>

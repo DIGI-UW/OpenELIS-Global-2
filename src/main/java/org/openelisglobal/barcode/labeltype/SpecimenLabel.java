@@ -1,7 +1,5 @@
 package org.openelisglobal.barcode.labeltype;
 
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Font.FontFamily;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +26,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
+import org.openpdf.text.Font;
 
 /**
  * Stores values and formatting for Specimen Labels
@@ -130,8 +129,8 @@ public class SpecimenLabel extends Label {
 
         setCode(labNumber);
 
-        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
-        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
+        setValueFont(new Font(Font.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(Font.HELVETICA, 7, Font.BOLD));
     }
 
     /**
@@ -263,8 +262,8 @@ public class SpecimenLabel extends Label {
         String sampleCode = sampleItem.getSortOrder();
         setCode(labNo + "." + sampleCode);
 
-        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
-        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
+        setValueFont(new Font(Font.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(Font.HELVETICA, 7, Font.BOLD));
     }
 
     /**
@@ -371,8 +370,8 @@ public class SpecimenLabel extends Label {
         }
         setCode(sampleCode);
 
-        setValueFont(new Font(FontFamily.HELVETICA, 7, Font.NORMAL));
-        setNameFont(new Font(FontFamily.HELVETICA, 7, Font.BOLD));
+        setValueFont(new Font(Font.HELVETICA, 7, Font.NORMAL));
+        setNameFont(new Font(Font.HELVETICA, 7, Font.BOLD));
     }
 
     /**

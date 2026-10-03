@@ -1,16 +1,6 @@
 package org.openelisglobal.common.util;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.ColumnText;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfPageEventHelper;
-import com.itextpdf.text.pdf.PdfWriter;
+import java.awt.Color;
 import java.io.OutputStream;
 import java.sql.Timestamp;
 import java.time.LocalDate;
@@ -18,6 +8,16 @@ import java.time.LocalTime;
 import java.time.format.DateTimeParseException;
 import java.time.temporal.ChronoUnit;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.ColumnText;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfPageEventHelper;
+import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * Pieces every compliance export shares: the row cap, the validated date
@@ -35,7 +35,7 @@ public final class PdfExportSupport {
     public static final int MAX_EXPORT_ROWS = 10000;
 
     private static final long MAX_EXPORT_DATE_RANGE_DAYS = 366;
-    private static final BaseColor HEADER_BACKGROUND = new BaseColor(51, 102, 179);
+    private static final Color HEADER_BACKGROUND = new Color(51, 102, 179);
 
     private PdfExportSupport() {
     }
@@ -111,7 +111,7 @@ public final class PdfExportSupport {
 
     /** Footer with page number on every page of a PDF export (CAP layout). */
     private static class PageNumberFooter extends PdfPageEventHelper {
-        private static final Font FOOTER_FONT = new Font(Font.FontFamily.HELVETICA, 8);
+        private static final Font FOOTER_FONT = new Font(Font.HELVETICA, 8);
 
         private final String pageMessageKey;
 

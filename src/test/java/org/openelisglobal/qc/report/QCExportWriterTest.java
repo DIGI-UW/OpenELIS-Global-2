@@ -3,8 +3,6 @@ package org.openelisglobal.qc.report;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.io.ByteArrayOutputStream;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -22,6 +20,7 @@ import org.openelisglobal.qc.valueholder.QCControlLot;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.openelisglobal.qc.valueholder.QCStatistics;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.context.support.ReloadableResourceBundleMessageSource;
 
 /**
@@ -107,9 +106,7 @@ public class QCExportWriterTest {
         byte[] pdf = out.toByteArray();
 
         assertEquals("body should start with the PDF magic bytes", "%PDF-", new String(pdf, 0, 5));
-        PdfReader reader = new PdfReader(pdf);
-        String text = PdfTextExtractor.getTextFromPage(reader, 1);
-        reader.close();
+        String text = PdfText.ofPage(pdf, 1);
 
         assertTrue("report title present", text.contains("Quality Control Inspector Report"));
         assertTrue("lab name present", text.contains("Kisumu Reference Lab"));
