@@ -1,4 +1,5 @@
 import { getWhonetDateRange } from "./WhonetRoutes";
+import { labNow } from "../utils/labClock";
 
 export const MICROBIOLOGY_WORKLIST_PATH = "/Microbiology/worklist";
 export const MICROBIOLOGY_CASE_PATH = "/Microbiology/cases";
@@ -76,7 +77,7 @@ const positiveInteger = (value, fallback) => {
   return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
 };
 
-const normalizeWorklistState = (state = {}, now = new Date()) => {
+const normalizeWorklistState = (state = {}, now = labNow()) => {
   const grain = state.grain === "ast" ? "ast" : DEFAULT_WORKLIST_STATE.grain;
   const status = WORKLIST_STATUSES[grain].includes(textValue(state.status))
     ? textValue(state.status)
@@ -188,7 +189,7 @@ const toSearch = (state, caseState = {}) => {
 
 export const parseMicrobiologyWorklistSearch = (
   search = "",
-  now = new Date(),
+  now = labNow(),
 ) => {
   const params = new URLSearchParams(search);
   return normalizeWorklistState(
@@ -248,14 +249,10 @@ export const parseMicrobiologyCaseSearch = (search = "") => {
   };
 };
 
-export const getMicrobiologyWorklistUrl = (state = {}, now = new Date()) =>
+export const getMicrobiologyWorklistUrl = (state = {}, now = labNow()) =>
   `${MICROBIOLOGY_WORKLIST_PATH}${toSearch(normalizeWorklistState(state, now))}`;
 
-export const getMicrobiologyCaseUrl = (
-  caseId,
-  state = {},
-  now = new Date(),
-) => {
+export const getMicrobiologyCaseUrl = (caseId, state = {}, now = labNow()) => {
   const normalized = normalizeWorklistState(state, now);
   return `${MICROBIOLOGY_CASE_PATH}/${encodeURIComponent(caseId)}${toSearch(
     normalized,

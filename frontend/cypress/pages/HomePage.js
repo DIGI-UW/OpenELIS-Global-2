@@ -1,19 +1,5 @@
 import LoginPage from "./LoginPage";
-import PatientEntryPage from "./PatientEntryPage";
-import PatientMergePage from "./PatientMergePage";
-import OrderEntityPage from "./OrderEntityPage";
-import ModifyOrderPage from "./ModifyOrderPage";
-import WorkPlan from "./WorkPlan";
-import NonConform from "./NonConformPage";
-import Result from "./ResultsPage";
-import Validation from "./Validation";
-import BarcodeConfigPage from "./BarcodeConfigPage";
-import BatchOrderEntry from "./BatchOrderEntryPage";
-import RoutineReportPage from "./RoutineReportPage";
-import StudyReportPage from "./StudyReportPage";
-import DashBoardPage from "./DashBoard";
 import AdminPage from "./AdminPage";
-import HelpPage from "./HelpPage";
 
 class HomePage {
   constructor() {
@@ -98,205 +84,20 @@ class HomePage {
   }
 
   // Order Entry related functions
-  goToOrderPage() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.sampleMenu).should("be.visible").click();
-    cy.get(this.selectors.sampleAddNav).should("be.visible").click();
-    return new OrderEntityPage();
-  }
-
-  goToBatchOrderEntry() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.sampleMenu).click();
-    cy.get(this.selectors.batchEntry).click();
-    return new BatchOrderEntry();
-  }
-
-  goToBarcode() {
-    this.openNavigationMenu();
-    cy.get("#menu_sample").click();
-    cy.get("[data-cy='menu_sample_print_barcode']").click();
-    return new BarcodeConfigPage();
-  }
-
   // Patient Entry related functions
-  goToPatientEntry() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.patientMenu).click();
-    cy.get(this.selectors.patientAddEdit).click();
-    return new PatientEntryPage();
-  }
-
   // Patient Merge (Admin function)
-  goToPatientMerge() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.patientMenu).click();
-    cy.get(this.selectors.patientMerge).should("be.visible").click();
-    return new PatientMergePage();
-  }
-
   // Modify Order related functions
-  goToModifyOrderPage() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.sampleMenu).should("be.visible").click();
-    cy.get(this.selectors.sampleEditNav).should("be.visible").click();
-    return new ModifyOrderPage();
-  }
-
   // Work Plan related functions
-  goToWorkPlanPlanByTest() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.workplanMenu).should("be.visible").click();
-    cy.get(this.selectors.workplanTestNav).should("be.visible").click();
-    return new WorkPlan();
-  }
-
-  goToWorkPlanPlanByPanel() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.workplanMenu).click();
-    cy.get(this.selectors.workplanPanelNav).click();
-    return new WorkPlan();
-  }
-
-  goToWorkPlanPlanByUnit() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.workplanMenu).click();
-    cy.get(this.selectors.workplanBenchNav).should("be.visible").click();
-    return new WorkPlan();
-  }
-
-  goToWorkPlanPlanByPriority() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.workplanMenu).click();
-    cy.get(this.selectors.workplanPriorityNav).should("be.visible").click();
-    return new WorkPlan();
-  }
-
   // Non-Conforming related functions
-  goToReportNCE() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingReport).should("be.visible").click();
-    return new NonConform();
-  }
-
-  goToViewNCE() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingView).should("be.visible").click();
-    return new NonConform();
-  }
-
-  goToCorrectiveActions() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.nonConformityDropdown).click();
-    cy.get(this.selectors.nonConformingActions).should("be.visible").click();
-    return new NonConform();
-  }
-
   // Results related functions
-  goToResultsByUnit() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsLogbook).should("be.visible").click();
-    return new Result();
-  }
-
-  goToResultsByOrder() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsAccession).click();
-    return new Result();
-  }
-
-  goToResultsByPatient() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsPatient).click();
-    return new Result();
-  }
-
-  goToResultsForRefferedOut() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsReferred).click();
-    return new Result();
-  }
-
-  goToResultsByRangeOrder() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsRange).click();
-    return new Result();
-  }
-
-  goToResultsByTestAndStatus() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.resultsMenu).click();
-    cy.get(this.selectors.resultsStatus).click();
-    return new Result();
-  }
-
-  // Validation related functions. OGC-1418: Validation is one page with one
-  // search, reached from the Validation menu item; the per-search entries are
-  // retired, so every way in opens the same page.
-  goToValidation() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.validationMenu).click();
-    return new Validation();
-  }
-
-  goToValidationByRoutine() {
-    return this.goToValidation();
-  }
-
-  goToValidationByOrder() {
-    return this.goToValidation();
-  }
-
-  goToValidationByRangeOrder() {
-    return this.goToValidation();
-  }
-
+  // Validation related functions
   // Reports related functions
-  goToRoutineReports() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsRoutine).should("be.visible").click();
-    return new RoutineReportPage();
-  }
-
-  goToStudyReports() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.reportsMenu).click();
-    cy.get(this.selectors.reportsStudy).should("be.visible").click();
-    return new StudyReportPage();
-  }
-
   goToReports() {
     this.openNavigationMenu();
     cy.get(this.selectors.reportsMenu).click();
   }
 
   // Dashboard related functions
-  goToPathologyDashboard() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.pathologyNav).should("be.visible").click();
-    return new DashBoardPage();
-  }
-
-  goToImmunoChemistryDashboard() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.immunochemMenu).click();
-    return new DashBoardPage();
-  }
-
-  goToCytologyDashboard() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.cytologyMenu).click();
-    return new DashBoardPage();
-  }
-
   // Admin related functions
   goToAdminPageProgram() {
     return this.goToAdminPage();
@@ -309,12 +110,6 @@ class HomePage {
     cy.location("pathname").should("eq", "/MasterListsPage");
     this.closeNavigationMenu();
     return new AdminPage();
-  }
-
-  goToHelp() {
-    this.openNavigationMenu();
-    cy.get(this.selectors.helpMenu).click();
-    return new HelpPage();
   }
 
   // UI interaction functions
@@ -348,10 +143,6 @@ class HomePage {
     cy.get(this.selectors.maximizeIcon).click();
   }
 
-  selectReadyforValidation() {
-    cy.contains(this.selectors.link, "Ready For Validation").click();
-  }
-
   selectOrdersCompletedToday() {
     cy.contains(this.selectors.link, "Orders Completed Today").click();
   }
@@ -382,6 +173,10 @@ class HomePage {
 
   selectDelayedTurnAround() {
     cy.contains(this.selectors.link, "Delayed Turn Around").click();
+  }
+
+  selectReadyforValidation() {
+    cy.contains(this.selectors.link, "Ready For Validation").click();
   }
 }
 

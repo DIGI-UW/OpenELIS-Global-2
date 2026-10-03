@@ -1,3 +1,4 @@
+import { labNow } from "../utils/labClock";
 import React, { useState, useEffect, useRef, useContext } from "react";
 import {
   Button,
@@ -57,7 +58,7 @@ const SearchForm = (props) => {
   const dayFirst = configurationProperties?.DEFAULT_DATE_LOCALE === "fr-FR";
   const displayFormat = dayFirst ? "dd/MM/yyyy" : "MM/dd/yyyy";
   const parseDisplayDate = (text) => {
-    const parsed = parse(text, displayFormat, new Date());
+    const parsed = parse(text, displayFormat, labNow());
     return isValid(parsed) ? parsed : undefined;
   };
   const formatDate = (date) => (date ? format(date, displayFormat) : "");

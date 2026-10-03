@@ -22,4 +22,12 @@ public interface NceTypeService extends BaseObjectService<NceType, Integer> {
 
     @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     List<IdValuePair> getActiveTypesAsIdValuePairs();
+
+    /**
+     * All catalog labels for historical views, including inactive rows. Same
+     * catalogue read as {@link #getActiveTypesAsIdValuePairs()}, differing only in
+     * whether inactive rows are included, so it takes the same privilege.
+     */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
+    List<IdValuePair> getAllTypesAsIdValuePairs();
 }

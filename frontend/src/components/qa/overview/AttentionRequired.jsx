@@ -17,6 +17,7 @@ import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { useServerData } from "../../utils/useServerData";
 import { isoDaysFromToday } from "../common/qaDates";
 import { deriveStatus } from "../common/capa";
+import { labNow } from "../../utils/labClock";
 
 // Live action-queue row: count badge + label, linked to the drill-through.
 // count === undefined -> loading, null -> fetch yielded no data.
@@ -56,7 +57,7 @@ const AttentionRequired = () => {
   const { loading: summaryLoading, summary } = useOverviewSummary();
   const { loading: callbacksLoading, callbacks } = useCallbackSummary(
     isoDaysFromToday(-1),
-    toLocalIsoDate(new Date()),
+    toLocalIsoDate(labNow()),
   );
   // /rest/nce/capa-register sits behind qa.view.qms; Results reaches this
   // overview without it, so the fetch is skipped rather than 403ing.
@@ -87,7 +88,7 @@ const AttentionRequired = () => {
   const unconfirmed = callbacks
     ? callbacks.criticalCount - callbacks.confirmedCount
     : 0;
-  const today = toLocalIsoDate(new Date());
+  const today = toLocalIsoDate(labNow());
   const overdueCapas = counter(
     capaQuery.isLoading,
     Array.isArray(capaQuery.data) ? capaQuery.data : null,

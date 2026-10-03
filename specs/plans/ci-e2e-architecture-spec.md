@@ -74,6 +74,20 @@ See the operator runbook for troubleshooting and expectations:
   - `E2E / Tests` publishes those exact images to GHCR and then runs the
     executor.
 
+### 3.4 Shard allocation
+
+- Playwright core uses four shards; analyzer harness uses two. Each shard has
+  one worker and its own application/database stack.
+- Deprecated Cypress uses two shards: an explicit Core list and Independent,
+  which discovers every remaining spec. New Cypress specs therefore stay covered.
+- The current Cypress split contains eight files in each group. In run
+  `37032755474`, files with measured durations sum to 3m08s in Core and 3m24s
+  in Independent. Five files restored by the spec-path fix have no recent
+  timings; three run in Core and two in Independent. Recheck the balance after
+  the first complete run, using test-step time separately from stack startup.
+- Shard topology changes take effect after merging to the default branch,
+  because the `workflow_run` executor uses that branch's workflow definitions.
+
 ## 4. Trust Boundary Model
 
 - `pull_request` build stage is untrusted execution.

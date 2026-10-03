@@ -9,6 +9,7 @@ import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { useServerData } from "../../utils/useServerData";
 import { tatDelta } from "../../reports/tat/tatUtils";
 import { isoDaysFromToday, weekStart } from "../common/qaDates";
+import { labNow } from "../../utils/labClock";
 
 /**
  * Shared data hooks for the QA Overview aggregators (OGC-694).
@@ -166,7 +167,7 @@ export const useTatRollup = () => {
   const permitted = hasPrivilege(userSessionDetails, Privileges.REPORT_RUN);
   const current = useServerData(
     permitted
-      ? tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(new Date()))
+      ? tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(labNow()))
       : null,
   );
   const prior = useServerData(

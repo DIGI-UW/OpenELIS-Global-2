@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { getFromOpenElisServer } from "../utils/Utils";
+import { loadLabClock, resetLabClock } from "../utils/labClock";
 import {
   currentLocalTime,
   formatHoldingMinutes,
@@ -10,6 +12,32 @@ import {
   normalizeDateForState,
   todayLocalIso,
 } from "./dateUtils";
+
+vi.mock("../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getFromOpenElisServer: vi.fn(),
+}));
+
+describe("order stamps", () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    resetLabClock();
+  });
+
+  // OGC-1266: samples were stamped from the browser's clock, three hours ahead
+  // of the lab's.
+  it("stamp the lab's date and time, not the browser's", async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(Date.parse("2026-09-27T11:56:00Z"));
+    getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback({ date: "2026-09-27", time: "08:56", timezone: "UTC" }),
+    );
+    await loadLabClock();
+
+    expect(todayLocalIso()).toBe("2026-09-27");
+    expect(currentLocalTime()).toBe("08:56");
+  });
+});
 
 describe("order date utilities", () => {
   it("serializes ISO dates using the configured deployment locale", () => {

@@ -1,6 +1,7 @@
 package org.openelisglobal.organization.locations;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.ActiveResult;
 import org.openelisglobal.organization.locations.LocationsApi.Area;
@@ -8,14 +9,17 @@ import org.openelisglobal.organization.locations.LocationsApi.AreaLevel;
 import org.openelisglobal.organization.locations.LocationsApi.AreaRequest;
 import org.openelisglobal.organization.locations.LocationsApi.Detail;
 import org.openelisglobal.organization.locations.LocationsApi.HistoryEntry;
+import org.openelisglobal.organization.locations.LocationsApi.IdentifierCollision;
 import org.openelisglobal.organization.locations.LocationsApi.Lists;
 import org.openelisglobal.organization.locations.LocationsApi.Page;
 import org.openelisglobal.organization.locations.LocationsApi.Query;
 import org.openelisglobal.organization.locations.LocationsApi.SaveRequest;
 import org.openelisglobal.organization.locations.LocationsApi.SaveResult;
+import org.openelisglobal.organization.locations.LocationsApi.Usage;
 import org.openelisglobal.organization.locations.LocationsApi.UsageDetail;
 import org.openelisglobal.organization.locations.LocationsApi.Ward;
 import org.openelisglobal.organization.locations.LocationsApi.WardRequest;
+import org.openelisglobal.organization.valueholder.Organization;
 import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
@@ -83,4 +87,17 @@ public interface LocationsService {
 
     @PreAuthorize("hasAuthority('PRIV_ORGANIZATION_MANAGE')")
     Area setAreaActive(String id, boolean active, String sysUserId);
+
+    /**
+     * The open and total orders of each record, by id: orders it requested or
+     * received and, for a sampling site, orders collected there.
+     */
+    Map<String, Usage> usageFor(List<Organization> organizations);
+
+    /**
+     * Identifier values two or more records of one kind share, such as the codes
+     * the upgrade copied from organizations that already shared one, for an admin
+     * to resolve.
+     */
+    List<IdentifierCollision> identifierCollisions();
 }

@@ -31,7 +31,7 @@ if [[ "$PLAN_ONLY" == true ]]; then
   printf '%s\n' \
     'Backend: formatting, deployment contract, DataExport, full Maven build and tests' \
     'Frontend: clean install, formatting, lint, Playwright guard, full Vitest, image build, i18n' \
-    'E2E: shared build, both core Playwright shards, both analyzer projects, all three Cypress shards (fresh database per suite)'
+    'E2E: shared build, all four core Playwright shards, both analyzer projects, both Cypress shards (fresh database per suite)'
   exit 0
 fi
 
@@ -170,12 +170,12 @@ run_e2e() {
   run_e2e_step shared-build run_shared_build || failed=1
   run_e2e_step e2e-frontend-deps bash -c "cd frontend && npm ci --legacy-peer-deps" || failed=1
   export OE_CI_PROJECT_FILE="$ARTIFACT_DIR/core-compose-project.txt"
-  for shard in 1 2; do
-    run_e2e_step "core-playwright-$shard" scripts/run-e2e-like-ci.sh --cleanup -- --shard="$shard/2" || failed=1
+  for shard in 1 2 3 4; do
+    run_e2e_step "core-playwright-$shard" scripts/run-e2e-like-ci.sh --cleanup -- --shard="$shard/4" || failed=1
   done
   run_e2e_step analyzer-foundational projects/analyzer-harness/ci-parity-test.sh --build --project harness-foundational --artifact-dir "$ARTIFACT_DIR/analyzer-foundational" || failed=1
   run_e2e_step analyzer-demo projects/analyzer-harness/ci-parity-test.sh --project harness-demo --artifact-dir "$ARTIFACT_DIR/analyzer-demo" || failed=1
-  for shard in core admin independent; do
+  for shard in core independent; do
     run_e2e_step "cypress-$shard" scripts/run-e2e-like-ci.sh --suite "cypress-$shard" --cleanup || failed=1
   done
   return "$failed"
@@ -230,7 +230,7 @@ set -e
 
 failed=0
 printf '\nLocal CI result for %s\n' "$HEAD_SHA"
-for lane in backend frontend e2e-scope shared-build e2e-frontend-deps core-playwright-1 core-playwright-2 analyzer-foundational analyzer-demo cypress-core cypress-admin cypress-independent; do
+for lane in backend frontend e2e-scope shared-build e2e-frontend-deps core-playwright-1 core-playwright-2 core-playwright-3 core-playwright-4 analyzer-foundational analyzer-demo cypress-core cypress-independent; do
   if [[ -f "$ARTIFACT_DIR/$lane.status" ]]; then
     result="$(cat "$ARTIFACT_DIR/$lane.status")"
   elif [[ -f "$ARTIFACT_DIR/$lane.exit" ]]; then

@@ -20,9 +20,6 @@ import "./commands";
 // Controlled by FAIL_FAST_ENABLED env variable (set via E2E_FAIL_FAST=true)
 import "cypress-fail-fast";
 
-// Patient Merge test support (008-patient-merge feature)
-import "./patient-merge-setup";
-
 // Capture browser console logs and forward to terminal
 // This is especially important for Electron browser
 // Note: Electron console logs are automatically shown when ELECTRON_ENABLE_LOGGING=1

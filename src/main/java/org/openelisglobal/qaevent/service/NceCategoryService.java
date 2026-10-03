@@ -13,4 +13,12 @@ public interface NceCategoryService extends BaseObjectService<NceCategory, Integ
 
     @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
     List<IdValuePair> getActiveCategoriesAsIdValuePairs();
+
+    /**
+     * All catalog labels for historical views, including inactive rows. Same
+     * catalogue read as {@link #getActiveCategoriesAsIdValuePairs()}, differing
+     * only in whether inactive rows are included, so it takes the same privilege.
+     */
+    @PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
+    List<IdValuePair> getAllCategoriesAsIdValuePairs();
 }

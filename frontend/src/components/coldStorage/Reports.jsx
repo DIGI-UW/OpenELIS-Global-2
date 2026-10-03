@@ -43,6 +43,7 @@ import { toDate, formatDuration } from "./shared/timeUtils";
 import { FormattedMessage, useIntl } from "react-intl";
 import { endOfDay, startOfDay } from "date-fns";
 import { toLocalIsoDate } from "../utils/Utils";
+import { labNow, labTimeToInstant } from "../utils/labClock";
 
 const REPORT_TYPES = ["Daily Log", "Weekly Log", "Monthly Log"];
 
@@ -198,8 +199,8 @@ const mapAlertToExcursion = (alert) => {
 };
 
 const defaultDateRange = () => {
-  const end = new Date();
-  const start = new Date();
+  const end = labNow();
+  const start = labNow();
   start.setDate(start.getDate() - 7);
   return [start, end];
 };
@@ -399,8 +400,12 @@ function Reports({ devices = [] }) {
       return null;
     }
     const [start, end] = dateRange;
-    const startIso = toIsoString(start && startOfDay(new Date(start)));
-    const endIso = toIsoString(end && endOfDay(new Date(end)));
+    const startIso = toIsoString(
+      start && labTimeToInstant(startOfDay(new Date(start))),
+    );
+    const endIso = toIsoString(
+      end && labTimeToInstant(endOfDay(new Date(end))),
+    );
     if (!startIso || !endIso) {
       return null;
     }
@@ -587,7 +592,7 @@ function Reports({ devices = [] }) {
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = url;
-      const dateStr = toLocalIsoDate(new Date());
+      const dateStr = toLocalIsoDate(labNow());
       const reportSlug = reportType.toLowerCase().replace(/ /g, "_");
       link.download = `freezer_report_${reportSlug}_${dateStr}.${formatParam.toLowerCase()}`;
       document.body.appendChild(link);

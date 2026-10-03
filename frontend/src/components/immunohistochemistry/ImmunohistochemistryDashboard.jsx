@@ -41,6 +41,8 @@ import "./../pathology/PathologyDashboard.css";
 import { useHistory } from "react-router-dom";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import { programStatusLabel } from "../common/programStatusLabel";
+import { labNow } from "../utils/labClock";
 
 function ImmunohistochemistryDashboard() {
   const componentMounted = useRef(false);
@@ -95,7 +97,7 @@ function ImmunohistochemistryDashboard() {
 
   const getPastWeek = () => {
     // Get the current date
-    var currentDate = new Date();
+    var currentDate = labNow();
 
     // Calculate the date of the past week
     var pastWeekDate = new Date(currentDate);
@@ -192,9 +194,20 @@ function ImmunohistochemistryDashboard() {
           </Button>
         </TableCell>
       );
-    } else {
-      return <TableCell key={cell.id}>{cell.value}</TableCell>;
     }
+    if (cell.info.header === "status") {
+      return (
+        <TableCell key={cell.id}>
+          {programStatusLabel(
+            intl,
+            "immunohistochemistry.status.",
+            cell.value,
+            statuses.find((s) => s.id === cell.value)?.value,
+          )}
+        </TableCell>
+      );
+    }
+    return <TableCell key={cell.id}>{cell.value}</TableCell>;
   };
 
   /** One server page of cases and the page announcement it came with. */
@@ -415,7 +428,12 @@ function ImmunohistochemistryDashboard() {
                     return (
                       <SelectItem
                         key={index}
-                        text={status.value}
+                        text={programStatusLabel(
+                          intl,
+                          "immunohistochemistry.status.",
+                          status.id,
+                          status.value,
+                        )}
                         value={status.id}
                       />
                     );

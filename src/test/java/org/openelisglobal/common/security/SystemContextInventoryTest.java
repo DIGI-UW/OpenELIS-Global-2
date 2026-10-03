@@ -84,9 +84,24 @@ public class SystemContextInventoryTest {
             // referral:view, nce:view and micro:view, none of them catalogue.
             "org/openelisglobal/sample/controller/rest/OrderSearchRestController.java", 1,
             // Landing-page workload counts, from result:view-gated analysis counts.
-            "org/openelisglobal/common/rest/provider/PatientDashBoardProvider.java", 1);
+            "org/openelisglobal/common/rest/provider/PatientDashBoardProvider.java", 1,
+            // System action, not a catalogue read: saving a vector sampling site
+            // mirrors it into an Organization, which calls insertUnchecked,
+            // updateUnchecked and linkOrganizationAndType. Those require
+            // organization:manage, granted to NO role, so without this nobody
+            // could create a sampling site - Reception creates one from the
+            // order-entry form. Widening organization:manage is not the fix:
+            // every other caller of those methods is a genuine admin screen
+            // (Locations, Organization admin). The caller's own access is
+            // checked at the gated entry point, VectorSamplingSiteService
+            // #resolveOrCreateForOrder (sample_type:manage or order:create), so
+            // this only stops the internal write denying a permitted caller
+            // halfway through. Pinned by
+            // SamplingSiteSyncDoesNotNeedOrganizationAdminTest, which also
+            // asserts that entry point keeps its gate.
+            "org/openelisglobal/vector/service/SamplingSiteOrganizationSync.java", 1);
 
-    private static final int EXPECTED_TOTAL = 13;
+    private static final int EXPECTED_TOTAL = 14;
 
     /**
      * Direct {@code SystemInitFlag.enter()} users, with the number of sites in
