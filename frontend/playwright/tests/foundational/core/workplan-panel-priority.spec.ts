@@ -1,3 +1,4 @@
+import { readFile } from "node:fs/promises";
 import { test, expect, Page } from "../../../helpers/test-base";
 import {
   AMYLASE_TEST,
@@ -16,9 +17,9 @@ import {
 
 /**
  * A work plan lists the tests still to be run for the panel or the order
- * priority chosen, and offers Print Workplan once it has rows; printing opens
- * the plan as a PDF. Each case orders its own accessions and looks for them by
- * lab number.
+ * priority chosen, and offers Print Workplan once it has rows; printing
+ * produces the plan as a PDF. Each case orders its own accessions and looks
+ * for them by lab number.
  */
 
 const planned = (page: Page, accession: string) =>
@@ -76,26 +77,21 @@ async function expectPrintOffered(page: Page) {
   await expect(print.last()).toBeVisible();
 }
 
-/** Print Workplan renders the plan as a PDF and opens it in a new tab. */
-async function expectPrintOpensPdf(page: Page) {
-  const printed = page.waitForResponse(
-    (response) =>
-      response.request().method() === "POST" &&
-      response.url().includes("/rest/PrintWorkplanReport"),
-    { timeout: LONG_TIMEOUT },
-  );
-  const opened = page.waitForEvent("popup");
+/**
+ * Print Workplan renders the plan as a PDF. The headless browser saves the PDF
+ * as a download instead of displaying it in the new tab.
+ */
+async function expectPrintDownloadsPdf(page: Page) {
+  const received = page.waitForEvent("download", { timeout: LONG_TIMEOUT });
   await page
     .getByRole("main")
     .getByRole("button", { name: "Print Workplan" })
     .first()
     .click();
-  const response = await printed;
-  expect(response.headers()["content-type"]).toContain("application/pdf");
-  expect((await response.body()).subarray(0, 5).toString()).toBe("%PDF-");
-  const tab = await opened;
-  await tab.waitForURL(/^blob:/);
-  await tab.close();
+  const file = await received;
+  expect(await file.failure()).toBeNull();
+  const pdf = await readFile(await file.path());
+  expect(pdf.subarray(0, 5).toString()).toBe("%PDF-");
 }
 
 async function panelOf(page: Page, testId: string) {
@@ -132,7 +128,7 @@ test.describe("Workplan by panel and by priority", () => {
       );
       await expect(planned(page, outOfPanel)).toHaveCount(0);
       await expectPrintOffered(page);
-      await expectPrintOpensPdf(page);
+      await expectPrintDownloadsPdf(page);
     });
 
     await test.step(`${otherPanel.panelName} lists the Amylase order only`, async () => {
