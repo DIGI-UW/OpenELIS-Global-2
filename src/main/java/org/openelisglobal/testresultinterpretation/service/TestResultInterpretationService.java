@@ -5,11 +5,26 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testresultinterpretation.valueholder.TestResultInterpretation;
 import org.springframework.security.access.prepost.PreAuthorize;
 
+/**
+ * The interpretation text shown beside a result value.
+ *
+ * <p>
+ * Configuring interpretations is administrative and keeps PRIV_TEST_CONFIGURE.
+ * Reading them is not: the result-entry screen calls
+ * {@code ResultEntryRestController#getTestInterpretations} - itself gated
+ * hasRole('RESULTS') - to show the technician what each value means. While this
+ * interface required PRIV_TEST_CONFIGURE for every method, that endpoint
+ * answered 403 for the Results role on its own screen, so
+ * {@link #getActiveByComponentId(String)} admits PRIV_CATALOGUE_VIEW too,
+ * matching {@code TestResultComponentService#getActiveComponentsByTestId} which
+ * the same handler calls one line earlier.
+ */
 @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
 public interface TestResultInterpretationService extends BaseObjectService<TestResultInterpretation, String> {
 
     List<TestResultInterpretation> getByComponentId(String componentId);
 
+    @PreAuthorize("hasAnyAuthority('PRIV_TEST_CONFIGURE','PRIV_CATALOGUE_VIEW')")
     List<TestResultInterpretation> getActiveByComponentId(String componentId);
 
     /**
