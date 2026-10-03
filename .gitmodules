@@ -20,10 +20,6 @@
 [submodule "tools/analyzer-mock-server"]
 	path = tools/analyzer-mock-server
 	url = https://github.com/DIGI-UW/analyzer-mock-server.git
-[submodule "projects/catalyst"]
-	path = projects/catalyst
-	url = https://github.com/DIGI-UW/openelis-catalyst.git
-	branch = main
 [submodule "tools/code-qa"]
 	path = tools/code-qa
 	url = https://github.com/DIGI-UW/code-qa
