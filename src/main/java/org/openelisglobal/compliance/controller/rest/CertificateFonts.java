@@ -1,11 +1,11 @@
 package org.openelisglobal.compliance.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.pdf.BaseFont;
+import java.awt.Color;
 import java.io.IOException;
 import java.io.InputStream;
 import org.openelisglobal.common.log.LogEvent;
+import org.openpdf.text.Font;
+import org.openpdf.text.pdf.BaseFont;
 
 /**
  * Fonts for the compliance certificate. iText's built-in Helvetica only encodes
@@ -33,7 +33,7 @@ final class CertificateFonts {
         return bold(size, null);
     }
 
-    static Font bold(float size, BaseColor color) {
+    static Font bold(float size, Color color) {
         return font(BOLD_FONT, size, Font.BOLD, color);
     }
 
@@ -42,10 +42,10 @@ final class CertificateFonts {
         return REGULAR_FONT != null && BOLD_FONT != null;
     }
 
-    private static Font font(BaseFont base, float size, int helveticaStyle, BaseColor color) {
+    private static Font font(BaseFont base, float size, int helveticaStyle, Color color) {
         if (base == null) {
-            return color == null ? new Font(Font.FontFamily.HELVETICA, size, helveticaStyle)
-                    : new Font(Font.FontFamily.HELVETICA, size, helveticaStyle, color);
+            return color == null ? new Font(Font.HELVETICA, size, helveticaStyle)
+                    : new Font(Font.HELVETICA, size, helveticaStyle, color);
         }
         return color == null ? new Font(base, size) : new Font(base, size, Font.NORMAL, color);
     }
@@ -58,7 +58,7 @@ final class CertificateFonts {
                 return null;
             }
             return BaseFont.createFont(resource, BaseFont.IDENTITY_H, BaseFont.EMBEDDED, true, in.readAllBytes(), null);
-        } catch (IOException | com.itextpdf.text.DocumentException e) {
+        } catch (IOException | org.openpdf.text.DocumentException e) {
             LogEvent.logError(CertificateFonts.class.getSimpleName(), "load",
                     "Font " + resource + " could not be read; certificates fall back to Helvetica: " + e);
             return null;

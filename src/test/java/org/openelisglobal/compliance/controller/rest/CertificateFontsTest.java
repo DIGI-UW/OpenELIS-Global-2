@@ -2,12 +2,12 @@ package org.openelisglobal.compliance.controller.rest;
 
 import static org.junit.Assert.assertTrue;
 
-import com.itextpdf.text.Document;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfWriter;
 import java.io.ByteArrayOutputStream;
 import org.junit.Test;
 import org.openelisglobal.testsupport.PdfText;
+import org.openpdf.text.Document;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * OGC-1266: the compliance certificate printed "Lead (Pb) 0.050 mg/L 0.03 mg/L"

@@ -1,15 +1,6 @@
 package org.openelisglobal.inventory.report;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
+import java.awt.Color;
 import java.io.IOException;
 import java.io.OutputStream;
 import java.io.PrintWriter;
@@ -19,6 +10,15 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * Renders a {@link ReportTable} as CSV, PDF or XLSX — one writer per format,
@@ -47,9 +47,9 @@ public final class InventoryReportWriter {
             PdfWriter.getInstance(document, out);
             document.open();
 
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 9, Font.BOLD, BaseColor.WHITE);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 8);
+            Font titleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+            Font headerFont = new Font(Font.HELVETICA, 9, Font.BOLD, Color.WHITE);
+            Font cellFont = new Font(Font.HELVETICA, 8);
 
             document.add(new Phrase(table.getTitle() + "\n\n", titleFont));
 
@@ -59,7 +59,7 @@ public final class InventoryReportWriter {
 
             for (String header : table.getHeaders()) {
                 PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
-                cell.setBackgroundColor(new BaseColor(51, 102, 179));
+                cell.setBackgroundColor(new Color(51, 102, 179));
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 cell.setPadding(4);
                 pdfTable.addCell(cell);
