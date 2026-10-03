@@ -571,18 +571,29 @@ production.
 
 **How:**
 
-- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
-  `3.3.x.x/`)
-- Changesets with unique IDs: `{sequence}-{description}` (e.g.,
-  `023-storage-device-connectivity`)
-- All changesets MUST be placed inside versioned folders - NO module-specific
-  folders outside version directories
+- New schema migrations in `src/main/resources/liquibase/{version}/changes/`
+  (e.g., `3.5.x.x/changes/`)
+- Name files by UTC timestamp and ticket: `YYYYMMDDTHHMM-<ticket>-<slug>.xml`
+  (e.g., `20261002T2230-OGC-1416-remove-pre-bridge-analyzer-storage.xml`)
+- Set `logicalFilePath` on `<databaseChangeLog>` equal to the file stem (e.g.,
+  `20261002T2230-OGC-1416-remove-pre-bridge-analyzer-storage`) to keep changeset
+  tracking stable across moves or renames
+- Changeset `id` MUST equal the file stem (for multi-changeset files, each `id`
+  must start with the file stem)
+- Changeset `author` MUST be your GitHub handle
+- Do NOT edit `base.xml` for new changesets; Liquibase automatically includes
+  and executes files in `changes/` in alphabetical order
+- Previously applied changelogs are immutable (do NOT edit or delete merged
+  changesets)
 - Use Liquibase XML format (NOT raw SQL unless necessary)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
 
-**Prohibited:** NO `ALTER TABLE` or `CREATE TABLE` via psql/pgAdmin in deployed
-environments
+**Prohibited:**
+
+- NO `ALTER TABLE` or `CREATE TABLE` via psql/pgAdmin in deployed environments
+- NO appending to `base.xml` for new work (causes concurrent PR conflicts; CI
+  guards this)
 
 ### VII. Internationalization First
 

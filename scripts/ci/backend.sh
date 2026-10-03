@@ -16,6 +16,7 @@ case "$1" in
     printf 'code\n' > "$OE_CI_PHASE_FILE"
     "$OE_CI_NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs
     python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+    python3 .github/scripts/check-liquibase-changelogs.py
     ;;
   agent-assets)
     printf 'code\n' > "$OE_CI_PHASE_FILE"
