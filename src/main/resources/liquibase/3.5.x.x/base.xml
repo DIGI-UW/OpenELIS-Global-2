@@ -628,4 +628,8 @@
   <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
   <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
 
+  <!-- Future changelogs are placed in changes/ and named by UTC timestamp.
+       Liquibase executes them in alphabetical order, avoiding base.xml merge conflicts. -->
+  <includeAll path="changes/" relativeToChangelogFile="true" errorIfMissingOrEmpty="false"/>
+
 </databaseChangeLog>
