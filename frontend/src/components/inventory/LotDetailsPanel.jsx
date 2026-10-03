@@ -16,14 +16,20 @@ import {
 } from "@carbon/react";
 import { Close } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { TransactionAPI, UsageAPI } from "./InventoryService";
+import {
+  InventoryLotStorageAPI,
+  TransactionAPI,
+  UsageAPI,
+} from "./InventoryService";
 import "./LotDetailsPanel.css";
+import { formatLocation } from "../storage/formatLocation";
 
 const LotDetailsPanel = ({ open, onClose, lot }) => {
   const intl = useIntl();
   const [loading, setLoading] = useState(false);
   const [transactions, setTransactions] = useState([]);
   const [usage, setUsage] = useState([]);
+  const [movements, setMovements] = useState([]);
 
   useEffect(() => {
     if (open && lot) {
@@ -39,6 +45,9 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
 
       const usageData = await UsageAPI.getByLot(lot.id);
       setUsage(usageData || []);
+
+      const movementRows = await InventoryLotStorageAPI.getMovements(lot.id);
+      setMovements(Array.isArray(movementRows) ? movementRows : []);
     } catch (err) {
       console.error("Error fetching lot details:", err);
     } finally {
@@ -54,14 +63,18 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
   };
 
   const getQCStatusTag = (status) => {
-    const statusMap = {
-      PASSED: { type: "green", label: "Passed" },
-      FAILED: { type: "red", label: "Failed" },
-      PENDING: { type: "gray", label: "Pending" },
-      NOT_REQUIRED: { type: "outline", label: "Not Required" },
+    const tagKind = {
+      PASSED: "green",
+      FAILED: "red",
+      PENDING: "gray",
+      QUARANTINED: "magenta",
     };
-    const config = statusMap[status] || statusMap.PENDING;
-    return <Tag type={config.type}>{config.label}</Tag>;
+    const known = tagKind[status] ? status : "PENDING";
+    return (
+      <Tag type={tagKind[known]}>
+        {intl.formatMessage({ id: `lot.qcStatus.${known}` })}
+      </Tag>
+    );
   };
 
   return (
@@ -111,6 +124,16 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                         </StructuredListCell>
                         <StructuredListCell>
                           <strong>{lot.lotNumber}</strong>
+                        </StructuredListCell>
+                      </StructuredListRow>
+                      <StructuredListRow>
+                        <StructuredListCell>
+                          <FormattedMessage id="lot.barcode" />
+                        </StructuredListCell>
+                        <StructuredListCell>
+                          <code className="lot-details-barcode">
+                            {lot.barcode || "-"}
+                          </code>
                         </StructuredListCell>
                       </StructuredListRow>
                       <StructuredListRow>
@@ -205,14 +228,90 @@ const LotDetailsPanel = ({ open, onClose, lot }) => {
                   </StructuredListWrapper>
                 </div>
 
-                {lot.storageLocation && (
-                  <div className="panel-section">
-                    <h4>
-                      <FormattedMessage id="lot.details.section.storage" />
-                    </h4>
-                    <p>{lot.storageLocation.name || lot.storageLocation}</p>
-                  </div>
-                )}
+                <div className="panel-section">
+                  <h4>
+                    <FormattedMessage id="lot.details.section.storage" />
+                  </h4>
+                  <Tag type={lot.location?.hierarchicalPath ? "blue" : "gray"}>
+                    {lot.location?.hierarchicalPath || (
+                      <FormattedMessage
+                        id="storage.location.notAssigned"
+                        defaultMessage="Not assigned"
+                      />
+                    )}
+                  </Tag>
+                </div>
+
+                <div className="panel-section">
+                  <h4>
+                    <FormattedMessage
+                      id="lot.details.section.movements"
+                      defaultMessage="Movement History"
+                    />
+                  </h4>
+                  {movements.length === 0 ? (
+                    <p className="empty-state">
+                      <FormattedMessage
+                        id="lot.details.no.movements"
+                        defaultMessage="No movements recorded for this lot"
+                      />
+                    </p>
+                  ) : (
+                    <StructuredListWrapper>
+                      <StructuredListHead>
+                        <StructuredListRow head>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.movementDate" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.from" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.to" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.movedBy" />
+                          </StructuredListCell>
+                          <StructuredListCell head>
+                            <FormattedMessage id="storage.audit.reason" />
+                          </StructuredListCell>
+                        </StructuredListRow>
+                      </StructuredListHead>
+                      <StructuredListBody>
+                        {movements.map((m) => (
+                          <StructuredListRow key={m.id}>
+                            <StructuredListCell>
+                              {formatDate(m.movementDate)}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {formatLocation(
+                                m.previousLocationType,
+                                m.previousLocationId,
+                                m.previousPositionCoordinate,
+                              )}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {formatLocation(
+                                m.newLocationType,
+                                m.newLocationId,
+                                m.newPositionCoordinate,
+                              )}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {m.movedByUserName ||
+                                (m.movedByUserId != null
+                                  ? String(m.movedByUserId)
+                                  : "-")}
+                            </StructuredListCell>
+                            <StructuredListCell>
+                              {m.reason || "-"}
+                            </StructuredListCell>
+                          </StructuredListRow>
+                        ))}
+                      </StructuredListBody>
+                    </StructuredListWrapper>
+                  )}
+                </div>
               </TabPanel>
 
               <TabPanel>

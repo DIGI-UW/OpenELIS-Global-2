@@ -13,6 +13,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.jdbc.datasource.DriverManagerDataSource;
 import org.springframework.orm.jpa.JpaTransactionManager;
 import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
+import org.springframework.orm.jpa.vendor.HibernateJpaVendorAdapter;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -23,9 +24,6 @@ import org.testcontainers.utility.MountableFile;
 public class BaseTestConfig {
     @Autowired
     private DataSource dataSource;
-
-    static LocalContainerEntityManagerFactoryBean emf;
-    static JpaTransactionManager transactionManager;
 
     private static final String PASSWORD = "clinlims";
 
@@ -50,14 +48,15 @@ public class BaseTestConfig {
     @Profile("test")
     public DataSource testDataSource() throws IOException {
         DriverManagerDataSource dataSource = new DriverManagerDataSource();
-        startPostgreSql();
+        PostgreSQLContainer<?> container = databaseContainer();
+        startPostgreSql(container);
         dataSource.setDriverClassName("org.postgresql.Driver");
-        dataSource.setUrl(postgreSqlContainer.getJdbcUrl());
-        dataSource.setUsername(postgreSqlContainer.getUsername());
-        dataSource.setPassword(postgreSqlContainer.getPassword());
-        System.setProperty("db.url", postgreSqlContainer.getJdbcUrl());
-        System.setProperty("db.user", postgreSqlContainer.getUsername());
-        System.setProperty("db.pass", postgreSqlContainer.getPassword());
+        dataSource.setUrl(container.getJdbcUrl());
+        dataSource.setUsername(container.getUsername());
+        dataSource.setPassword(container.getPassword());
+        System.setProperty("db.url", container.getJdbcUrl());
+        System.setProperty("db.user", container.getUsername());
+        System.setProperty("db.pass", container.getPassword());
         return dataSource;
     }
 
@@ -65,10 +64,11 @@ public class BaseTestConfig {
     @DependsOn("liquibase")
     @Profile("test")
     public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
-        if (emf == null) {
-            emf = new LocalContainerEntityManagerFactoryBean();
-            emf.setPersistenceXmlLocation("classpath:persistence/test-persistence.xml");
-        }
+        LocalContainerEntityManagerFactoryBean emf = new LocalContainerEntityManagerFactoryBean();
+        // JDBC fixture operations and Hibernate must join the same test transaction.
+        emf.setDataSource(dataSource);
+        emf.setJpaVendorAdapter(new HibernateJpaVendorAdapter());
+        emf.setPersistenceXmlLocation("classpath:persistence/test-persistence.xml");
         return emf;
     }
 
@@ -76,23 +76,23 @@ public class BaseTestConfig {
     @Primary
     @Profile("test")
     public PlatformTransactionManager getTransactionManager(EntityManagerFactory entityManagerFactory) {
-        if (transactionManager == null) {
-            transactionManager = new JpaTransactionManager();
-            transactionManager.setEntityManagerFactory(entityManagerFactory);
-        }
-        return transactionManager;
+        return new JpaTransactionManager(entityManagerFactory);
     }
 
-    private void startPostgreSql() {
-        if (postgreSqlContainer != null && postgreSqlContainer.isRunning()) {
+    protected PostgreSQLContainer<?> databaseContainer() {
+        return postgreSqlContainer;
+    }
+
+    private void startPostgreSql(PostgreSQLContainer<?> container) {
+        if (container != null && container.isRunning()) {
             return;
         }
-        postgreSqlContainer.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
+        container.withCopyFileToContainer(MountableFile.forClasspathResource("postgre-db-init"),
                 "/docker-entrypoint-initdb.d");
-        postgreSqlContainer.withEnv("POSTGRES_INITDB_ARGS", "--auth-host=md5");
-        postgreSqlContainer.withDatabaseName(DB_NAME);
-        postgreSqlContainer.withUsername(USER);
-        postgreSqlContainer.withPassword(PASSWORD);
-        postgreSqlContainer.start();
+        container.withEnv("POSTGRES_INITDB_ARGS", "--auth-host=md5");
+        container.withDatabaseName(DB_NAME);
+        container.withUsername(USER);
+        container.withPassword(PASSWORD);
+        container.start();
     }
 }

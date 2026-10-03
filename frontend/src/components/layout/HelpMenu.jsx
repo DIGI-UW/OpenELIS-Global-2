@@ -4,7 +4,7 @@ import { HeaderGlobalAction, HeaderPanel } from "@carbon/react";
 import { Close, Help } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../utils/Utils";
 
-const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
+const HelpMenu = ({ helpOpen, handlePanelToggle, enabled = true }) => {
   const intl = useIntl();
   const [helpUrls, setHelpUrls] = useState({
     manual: "",
@@ -17,6 +17,10 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
 
   // Fetch help URLs on mount
   useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
     let isMounted = true;
 
     getFromOpenElisServer("/rest/properties", (properties) => {
@@ -42,7 +46,7 @@ const HelpMenu = ({ helpOpen, handlePanelToggle }) => {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [enabled]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {

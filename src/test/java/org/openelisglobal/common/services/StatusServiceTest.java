@@ -15,11 +15,14 @@ import org.openelisglobal.common.services.StatusService.RecordStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
+import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class StatusServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -28,12 +31,12 @@ public class StatusServiceTest extends BaseWebContextSensitiveTest {
     @Autowired
     private ObservationHistoryService observationHistoryService;
 
+    @Autowired
+    private ObservationHistoryTypeService observationHistoryTypeService;
+
     @Before
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/status_service.xml");
-        // Required because StatusService initializes caches at @PostConstruct
-        // which happens before DBUnit loads our dataset.
-        statusService.refreshCache();
     }
 
     @Test
@@ -120,7 +123,7 @@ public class StatusServiceTest extends BaseWebContextSensitiveTest {
         patient.setId("5000");
 
         statusService.persistRecordStatusForSample(sample, RecordStatus.InitialRegistration, patient,
-                RecordStatus.ValidationRegistration, "sys123");
+                RecordStatus.ValidationRegistration, TEST_SYS_USER_ID);
 
         List<ObservationHistory> obsList = observationHistoryService.getAll(patient, sample);
         Assert.assertEquals(2, obsList.size());
@@ -128,11 +131,16 @@ public class StatusServiceTest extends BaseWebContextSensitiveTest {
         boolean foundSampleRec = false;
         boolean foundPatientRec = false;
 
+        // Resolve the type ids the same way the service does, by name: this schema
+        // seeds these types too, so their ids are not the fixture's.
+        String sampleRecordStatusId = observationHistoryTypeService.getByName("SampleRecordStatus").getId();
+        String patientRecordStatusId = observationHistoryTypeService.getByName("PatientRecordStatus").getId();
+
         for (ObservationHistory obs : obsList) {
-            if ("1".equals(obs.getObservationHistoryTypeId())) { // SampleRecordStatus
+            if (sampleRecordStatusId.equals(obs.getObservationHistoryTypeId())) {
                 Assert.assertEquals("2", obs.getValue()); // Init Ent dict ID
                 foundSampleRec = true;
-            } else if ("2".equals(obs.getObservationHistoryTypeId())) { // PatientRecordStatus
+            } else if (patientRecordStatusId.equals(obs.getObservationHistoryTypeId())) {
                 Assert.assertEquals("3", obs.getValue()); // Valid Ent dict ID
                 foundPatientRec = true;
             }
@@ -151,12 +159,12 @@ public class StatusServiceTest extends BaseWebContextSensitiveTest {
         patient.setId("5000");
 
         statusService.persistRecordStatusForSample(sample, RecordStatus.InitialRegistration, patient,
-                RecordStatus.ValidationRegistration, "sys123");
+                RecordStatus.ValidationRegistration, TEST_SYS_USER_ID);
 
         List<ObservationHistory> beforeDelete = observationHistoryService.getAll(patient, sample);
         Assert.assertEquals(2, beforeDelete.size());
 
-        statusService.deleteRecordStatus(sample, patient, "sys123");
+        statusService.deleteRecordStatus(sample, patient, TEST_SYS_USER_ID);
 
         List<ObservationHistory> afterDelete = observationHistoryService.getAll(patient, sample);
         Assert.assertEquals(0, afterDelete.size());

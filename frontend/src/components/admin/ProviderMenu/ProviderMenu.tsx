@@ -1,4 +1,11 @@
-import React, { useContext, useState, useEffect, useRef } from "react";
+import React, { useContext, useState, useEffect } from "react";
+import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import type { ChangeEvent, ReactNode, SyntheticEvent } from "react";
 import {
   Heading,
@@ -17,7 +24,10 @@ import {
   TableContainer,
   Pagination,
   Search,
+  InlineNotification,
   Modal,
+  Select,
+  SelectItem,
   TextInput,
   Dropdown,
 } from "@carbon/react";
@@ -25,6 +35,10 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import {
+  useInvalidateServerData,
+  useServerData,
+} from "../../utils/useServerData";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -33,9 +47,11 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import ActionPaginationButtonType from "../../common/ActionPaginationButtonType";
+import { looksLikeATitle } from "../../provider/providerDisplayName";
 import { getPhoneFormatHint } from "../../patient/phoneFormatHint";
 
 interface ProviderPerson {
+  titleCode?: string;
   lastName: string;
   firstName: string;
   workPhone?: string;
@@ -60,6 +76,7 @@ interface ProviderMenuResponse {
 interface ProviderTableRow {
   id: string;
   fhirUuid: string;
+  titleCode?: string;
   lastName: string;
   firstName: string;
   active: boolean;
@@ -121,29 +138,32 @@ function ProviderMenu() {
 
   const intl = useIntl();
 
-  const componentMounted = useRef(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [modifyButton, setModifyButton] = useState(true);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
-  const [providerMenuList, setProviderMenuList] =
-    useState<ProviderMenuResponse>({});
   const [providerMenuListShow, setProviderMenuListShow] = useState<
     ProviderTableRow[]
   >([]);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState(false);
   const [currentProvider, setCurrentProvider] =
     useState<ProviderTableRow | null>(null);
+  const [titleCode, setTitleCode] = useState("");
+  const [titleFilter, setTitleFilter] = useState("");
+  const [providerTitles, setProviderTitles] = useState<
+    { code: string; label: string }[]
+  >([]);
   const [lastName, setLastName] = useState("");
   const [firstName, setFirstName] = useState("");
   const [telephone, setTelephone] = useState<string | undefined>("");
@@ -169,46 +189,38 @@ function ProviderMenu() {
     { id: "no", value: "No" },
   ];
 
-  const handleMenuItems = (res?: ProviderMenuResponse) => {
-    if (!res) {
-      setLoading(true);
-    } else {
-      setProviderMenuList(res);
-    }
-  };
+  // Browsing and searching are the same list from two endpoints, so which one
+  // is read follows the search box rather than both being read at once.
+  // The title is a filter, never a search term: typing "Dr" in the search box
+  // must not return every doctor (OGC-1223, FR-9).
+  const titleParam = titleFilter
+    ? `&titleCode=${encodeURIComponent(titleFilter)}`
+    : "";
+  const { data: providerMenuList } = useServerData<ProviderMenuResponse>(
+    panelSearchTerm
+      ? `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}${titleParam}`
+      : `/rest/ProviderMenu?startingRecNo=${startingRecNo}${titleParam}`,
+  );
+  const invalidateServerData = useInvalidateServerData();
 
-  useEffect(() => {
-    componentMounted.current = true;
-    setLoading(true);
-    getFromOpenElisServer(
-      `/rest/ProviderMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
-      handleMenuItems,
-    );
-    return () => {
-      componentMounted.current = false;
-      setLoading(false);
-    };
-  }, [paging, startingRecNo]);
-
-  const handleSearchedProviderMenuList = (res?: ProviderMenuResponse) => {
-    if (res) {
-      setProviderMenuList(res);
-    }
-  };
-
+  // The titles a provider may be given. An inactive one already on a record
+  // is still shown, so the dropdown adds it when editing (OGC-1223).
   useEffect(() => {
     getFromOpenElisServer(
-      `/rest/SearchProviderMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`,
-      handleSearchedProviderMenuList,
+      "/rest/dictionary/categories/providerTitle/entries",
+      (response: { code: string; label: string }[] | undefined) => {
+        setProviderTitles(Array.isArray(response) ? response : []);
+      },
     );
-  }, [panelSearchTerm]);
+  }, []);
 
   useEffect(() => {
-    if (providerMenuList.providers) {
+    if (providerMenuList?.providers) {
       const newProviderMenuList = providerMenuList.providers.map((item) => {
         return {
           id: item.id,
           fhirUuid: item.fhirUuid,
+          titleCode: item.person.titleCode,
           lastName: item.person.lastName,
           firstName: item.person.firstName,
           active: item.active,
@@ -220,6 +232,14 @@ function ProviderMenu() {
       setFromRecordCount(providerMenuList.fromRecordCount!);
       setToRecordCount(providerMenuList.toRecordCount!);
       setTotalRecordCount(providerMenuList.totalRecordCount!);
+      setServerPageSize((previous) =>
+        serverPageSizeFrom(
+          providerMenuList.fromRecordCount,
+          providerMenuList.toRecordCount,
+          providerMenuList.totalRecordCount,
+          previous,
+        ),
+      );
       setProviderMenuListShow(newProviderMenuList);
     }
   }, [providerMenuList]);
@@ -240,8 +260,7 @@ function ProviderMenu() {
   useEffect(() => {
     if (isSearching && panelSearchTerm === "") {
       setIsSearching(false);
-      setPaging(1);
-      setStartingRecNo(1);
+      setPage(1);
     }
   }, [isSearching, panelSearchTerm]);
 
@@ -253,6 +272,10 @@ function ProviderMenu() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
+      invalidateServerData();
+      // The row a success just acted on may no longer be in the next read
+      // (a deactivation), so Modify/Deactivate must stop pointing at it.
+      setSelectedRowIds([]);
     } else {
       addNotification({
         kind: NotificationKinds.error,
@@ -269,47 +292,37 @@ function ProviderMenu() {
     postToOpenElisServerFullResponse(
       `/rest/DeleteProvider?ID=${selectedRowIds.join(",")}&${startingRecNo}=1`,
       providerMenuListShow,
-      setLoading(false),
-      setTimeout(() => {
-        window.location.reload();
-      }, 1),
+      displayStatus,
     );
   }
 
-  const handlePageChange = ({
-    page,
-    pageSize,
-  }: {
-    page: number;
-    pageSize: number;
-  }) => {
-    setPage(page);
-    setPageSize(pageSize);
-    setSelectedRowIds([]);
+  const handlePageChange = ({ page: newPage }: { page: number }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
+    }
   };
-
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount as unknown as number, 1));
-    setSelectedRowIds([]);
-  };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   const handlePanelSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setIsSearching(true);
-    setPaging(1);
-    setStartingRecNo(1);
+    setPage(1);
     const query = event.target.value.toLowerCase();
     setPanelSearchTerm(query);
     setSelectedRowIds([]);
   };
 
   const openAddModal = () => {
+    setTitleCode("");
     setLastName("");
     setFirstName("");
     setTelephone("");
@@ -326,6 +339,7 @@ function ProviderMenu() {
   const openUpdateModal = (providerId: string) => {
     const provider = providerMenuListShow.find((p) => p.id === providerId)!;
     setCurrentProvider(provider);
+    setTitleCode(provider.titleCode || "");
     setLastName(provider.lastName);
     setFirstName(provider.firstName);
     setTelephone(provider.telephone);
@@ -344,6 +358,7 @@ function ProviderMenu() {
   const handleAddProvider = () => {
     const newProvider = {
       person: {
+        titleCode,
         lastName,
         firstName,
         workPhone: telephone,
@@ -359,13 +374,13 @@ function ProviderMenu() {
     );
 
     closeAddModal();
-    window.location.reload();
   };
 
   const handleUpdateProvider = () => {
     const updatedProvider = {
       fhirUuid: currentProvider!.fhirUuid,
       person: {
+        titleCode,
         lastName,
         firstName,
         workPhone: telephone,
@@ -381,7 +396,6 @@ function ProviderMenu() {
     );
 
     closeUpdateModal();
-    window.location.reload();
   };
 
   const handleLastNameChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -483,6 +497,30 @@ function ProviderMenu() {
           </Column>
         </Grid>
         <br />
+        {providerTitles.length > 0 && (
+          <Grid fullWidth={true}>
+            <Column lg={5} md={4} sm={4}>
+              <Select
+                id="providerTitleFilter"
+                labelText={intl.formatMessage({ id: "provider.title.filter" })}
+                value={titleFilter}
+                onChange={(e) => setTitleFilter(e.target.value)}
+              >
+                <SelectItem
+                  value=""
+                  text={intl.formatMessage({ id: "provider.title.filter.all" })}
+                />
+                {providerTitles.map((option) => (
+                  <SelectItem
+                    key={option.code}
+                    value={option.code}
+                    text={option.label}
+                  />
+                ))}
+              </Select>
+            </Column>
+          </Grid>
+        )}
         <ActionPaginationButtonType
           selectedRowIds={selectedRowIds}
           modifyButton={modifyButton}
@@ -490,8 +528,6 @@ function ProviderMenu() {
           deleteDeactivate={deleteDeactivateProvider}
           openUpdateModal={openUpdateModal}
           openAddModal={openAddModal}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
           fromRecordCount={fromRecordCount}
           toRecordCount={toRecordCount}
           totalRecordCount={totalRecordCount}
@@ -510,6 +546,32 @@ function ProviderMenu() {
           onRequestSubmit={handleAddProvider}
           onRequestClose={closeAddModal}
         >
+          <Select
+            id="providerTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
           <TextInput
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
@@ -582,6 +644,32 @@ function ProviderMenu() {
           onRequestSubmit={handleUpdateProvider}
           onRequestClose={closeUpdateModal}
         >
+          <Select
+            id="updateProviderTitle"
+            labelText={intl.formatMessage({ id: "provider.title.field" })}
+            value={titleCode}
+            onChange={(e) => setTitleCode(e.target.value)}
+          >
+            <SelectItem
+              value=""
+              text={intl.formatMessage({ id: "provider.title.placeholder" })}
+            />
+            {providerTitles.map((option) => (
+              <SelectItem
+                key={option.code}
+                value={option.code}
+                text={option.label}
+              />
+            ))}
+          </Select>
+          {(looksLikeATitle(firstName) || looksLikeATitle(lastName)) && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({ id: "provider.title.inName" })}
+            />
+          )}
           <TextInput
             id="lastName"
             labelText={intl.formatMessage({ id: "provider.providerLastName" })}
@@ -666,16 +754,20 @@ function ProviderMenu() {
           <>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
                 <DataTable
-                  rows={providerMenuListShow.slice(
-                    (page - 1) * pageSize,
-                    page * pageSize,
-                  )}
+                  rows={providerMenuListShow}
                   headers={[
                     {
                       key: "select",
                       header: intl.formatMessage({
                         id: "provider.select",
+                      }),
+                    },
+                    {
+                      key: "titleCode",
+                      header: intl.formatMessage({
+                        id: "provider.title.field",
                       }),
                     },
                     {
@@ -760,9 +852,10 @@ function ProviderMenu() {
                 <Pagination
                   onChange={handlePageChange}
                   page={page}
-                  pageSize={pageSize}
-                  pageSizes={[10, 20]}
-                  totalItems={providerMenuListShow.length}
+                  pageSize={serverPageSize}
+                  pageSizes={[serverPageSize]}
+                  pageSizeInputDisabled
+                  totalItems={Number(totalRecordCount) || 0}
                   forwardText={intl.formatMessage({
                     id: "pagination.forward",
                   })}

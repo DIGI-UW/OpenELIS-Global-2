@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.log.LogEvent;
@@ -47,8 +48,8 @@ public class SampleTypeManagementRestController extends BaseRestController {
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
 
     // Kept in sync with the frontend `SOURCES` array in TerminologySection.jsx.
-    private static final Set<String> TERM_SOURCES = new HashSet<>(
-            Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL", "WHONET"));
+    private static final Set<String> TERM_SOURCES = new HashSet<>(Arrays.asList("LOINC", "SNOMED", "CIEL", "OCL"));
+    private static final String LEGACY_WHONET_SOURCE = "WHONET";
     private static final Set<String> TERM_RELATIONSHIPS = new HashSet<>(
             Arrays.asList("SAME_AS", "BROADER_THAN", "NARROWER_THAN"));
 
@@ -189,11 +190,23 @@ public class SampleTypeManagementRestController extends BaseRestController {
         private boolean success;
         private String message;
         private T data;
+        private String field;
 
         public ApiResponse(boolean success, String message, T data) {
             this.success = success;
             this.message = message;
             this.data = data;
+        }
+
+        /** A refusal that names the form field it is about (OGC-1234). */
+        public static <T> ApiResponse<T> refusedOn(String field, String message) {
+            ApiResponse<T> response = new ApiResponse<>(false, message, null);
+            response.field = field;
+            return response;
+        }
+
+        public String getField() {
+            return field;
         }
 
         // Getters
@@ -297,6 +310,12 @@ public class SampleTypeManagementRestController extends BaseRestController {
                 return ResponseEntity.notFound().build();
             }
 
+            ResponseEntity<ApiResponse<SampleTypeManagementDTO>> refusal = refuseUpdate(existingTypeOfSample,
+                    sampleTypeDTO);
+            if (refusal != null) {
+                return refusal;
+            }
+
             String userId = getSysUserId(request);
 
             if (sampleTypeDTO.getDescription() != null && !sampleTypeDTO.getDescription().trim().isEmpty()) {
@@ -312,19 +331,14 @@ public class SampleTypeManagementRestController extends BaseRestController {
                 existingTypeOfSample.setDomain(Domain.normalize(sampleTypeDTO.getDomain()));
             }
 
-            if (sampleTypeDTO.getAbbreviation() != null) {
-                String abbreviation = sampleTypeDTO.getAbbreviation().trim();
-                if (abbreviation.length() <= 10) {
-                    existingTypeOfSample.setLocalAbbreviation(abbreviation);
-                }
+            if (sampleTypeDTO.getAbbreviation() != null && !sampleTypeDTO.getAbbreviation().trim().isEmpty()) {
+                existingTypeOfSample.setLocalAbbreviation(sampleTypeDTO.getAbbreviation().trim());
             }
 
             // WHONET code — empty string clears it; the column caps at 5 chars.
             if (sampleTypeDTO.getWhonetCode() != null) {
                 String whonetCode = sampleTypeDTO.getWhonetCode().trim();
-                if (whonetCode.length() <= 5) {
-                    existingTypeOfSample.setWhonetCode(whonetCode.isEmpty() ? null : whonetCode);
-                }
+                existingTypeOfSample.setWhonetCode(whonetCode.isEmpty() ? null : whonetCode);
             }
 
             // Disposal instructions (OGC-296 v2.1) — free-text reference;
@@ -382,6 +396,52 @@ public class SampleTypeManagementRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                     .body(new ApiResponse<>(false, "Error updating sample type: " + e.getMessage(), null));
         }
+    }
+
+    /**
+     * OGC-1234: every rule a Basic Info save can break, checked on a detached copy
+     * of the requested values before the loaded entity is touched: a refused save
+     * must write nothing, and a read-only transaction here can still flush a dirty
+     * entity. An abbreviation or WHONET code over its column width used to be
+     * dropped silently while the save reported success; a name or abbreviation
+     * another sample type of the domain already uses used to fail with a generic
+     * conflict message. A blank abbreviation keeps the stored one: it is a lookup
+     * key (analyzer import, test variants) and the editor has no field for it, so a
+     * blank used to wipe it on every Basic Info save.
+     */
+    private ResponseEntity<ApiResponse<SampleTypeManagementDTO>> refuseUpdate(TypeOfSample existing,
+            SampleTypeManagementDTO requested) {
+        String abbreviation = requested.getAbbreviation() == null || requested.getAbbreviation().trim().isEmpty()
+                ? existing.getLocalAbbreviation()
+                : requested.getAbbreviation().trim();
+        if (abbreviation != null && abbreviation.length() > 10) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.refusedOn("abbreviation", "The abbreviation has at most 10 characters."));
+        }
+        if (requested.getWhonetCode() != null && requested.getWhonetCode().trim().length() > 5) {
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.refusedOn("whonetCode", "The WHONET code has at most 5 characters."));
+        }
+        TypeOfSample probe = new TypeOfSample();
+        probe.setId(existing.getId());
+        probe.setDescription(requested.getDescription() == null || requested.getDescription().trim().isEmpty()
+                ? existing.getDescription()
+                : requested.getDescription().trim());
+        probe.setDomain(requested.getDomain() != null
+                && !requested.getDomain().equals(mapBackendDomainToFrontend(existing.getDomain()))
+                        ? Domain.normalize(requested.getDomain())
+                        : existing.getDomain());
+        probe.setLocalAbbreviation(abbreviation);
+        String conflict = typeOfSampleService.conflictingField(probe);
+        if ("name".equals(conflict)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.refusedOn("description",
+                    "Another sample type in this domain already has this description."));
+        }
+        if ("abbreviation".equals(conflict)) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(ApiResponse.refusedOn("abbreviation",
+                    "Another sample type in this domain already uses this abbreviation."));
+        }
+        return null;
     }
 
     /** One terminology mapping for a sample type. */
@@ -462,13 +522,15 @@ public class SampleTypeManagementRestController extends BaseRestController {
         }
         // (source, code) unique within the request — the DB enforces it per sample
         // type, but reject early + cleanly rather than surfacing a raw 500.
+        List<SampleTypeTerminologyMapping> activeMappings = terminologyService.getActiveBySampleTypeId(sampleTypeId);
         Set<String> seen = new HashSet<>();
         List<SampleTypeTerminologyMapping> desired = new ArrayList<>();
         for (TerminologyMappingDto m : body.mappings) {
-            if (isBlank(m.source) || !TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+            if (isBlank(m.source) || isBlank(m.code)) {
                 return ResponseEntity.unprocessableEntity().build();
             }
-            if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
+            boolean unchangedLegacyWhonet = isUnchangedLegacyWhonetMapping(m, activeMappings);
+            if ((!TERM_SOURCES.contains(m.source) || !isValidRelationship(m.relationship)) && !unchangedLegacyWhonet) {
                 return ResponseEntity.unprocessableEntity().build();
             }
             if (!seen.add(m.source + " " + m.code)) {
@@ -491,6 +553,29 @@ public class SampleTypeManagementRestController extends BaseRestController {
             resp.mappings.add(new TerminologyMappingDto(m));
         }
         return resp;
+    }
+
+    private static boolean isValidRelationship(String relationship) {
+        return isBlank(relationship) || TERM_RELATIONSHIPS.contains(relationship);
+    }
+
+    private static boolean isUnchangedLegacyWhonetMapping(TerminologyMappingDto requested,
+            List<SampleTypeTerminologyMapping> activeMappings) {
+        if (!LEGACY_WHONET_SOURCE.equals(requested.source) || activeMappings == null) {
+            return false;
+        }
+        for (SampleTypeTerminologyMapping existing : activeMappings) {
+            if (LEGACY_WHONET_SOURCE.equals(existing.getSource()) && Objects.equals(requested.code, existing.getCode())
+                    && Objects.equals(normalizeRelationship(requested.relationship),
+                            normalizeRelationship(existing.getRelationship()))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static String normalizeRelationship(String relationship) {
+        return isBlank(relationship) ? null : relationship;
     }
 
     private static boolean isBlank(String s) {

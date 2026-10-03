@@ -17,9 +17,18 @@ import {
   TableCell,
   Tag,
   Link,
+  Checkbox,
 } from "@carbon/react";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../../utils/Utils";
+import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
+import { priorities } from "../../../data/orderOptions";
+import {
+  forgetRequester,
+  readRememberedRequester,
+  rememberRequester,
+} from "../../rememberedRequester";
+import { labNow } from "../../../utils/labClock";
 
 /**
  * RequesterSection - Site/Requesting-Organization, Requestor contact, and
@@ -39,6 +48,8 @@ const RequesterSection = ({
   setOrderData,
   isReadOnly,
   workflowType,
+  siteRequired = false,
+  providerRequired = false,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
@@ -63,6 +74,10 @@ const RequesterSection = ({
   const [siteResults, setSiteResults] = useState([]);
   const [isSearchingSites, setIsSearchingSites] = useState(false);
   const [selectedSite, setSelectedSite] = useState(null);
+  const [departmentResponse, setDepartmentResponse] = useState({
+    siteId: "",
+    options: [],
+  });
   // Edit-lock. A record pulled in from search/backend load
   // (an existing registry entry) starts locked/read-only; "Edit details"
   // unlocks it in place. A brand-new record (via "+ Add new X") starts
@@ -86,14 +101,97 @@ const RequesterSection = ({
   const [isSearchingProviders, setIsSearchingProviders] = useState(false);
   const [selectedProvider, setSelectedProvider] = useState(null);
   const [isProviderLocked, setIsProviderLocked] = useState(false);
+  const sampleOrderItems = orderData?.sampleOrderItems || {};
+  const rememberChecked = Boolean(orderData?.rememberSiteAndRequester);
+  const restoredRef = useRef(false);
 
-  // Priority options - must match backend OrderPriority enum
-  const priorityOptions = [
-    { id: "ROUTINE", value: "Routine" },
-    { id: "STAT", value: "STAT (Urgent)" },
-    { id: "ASAP", value: "ASAP" },
-    { id: "TIMED", value: "Timed" },
-  ];
+  // Pre-fill a brand-new order from the last remembered site and requester.
+  useEffect(() => {
+    if (restoredRef.current || isReadOnly) {
+      return;
+    }
+    restoredRef.current = true;
+    if (orderData?.sampleOrderItems?.referringSiteId) {
+      return;
+    }
+    const remembered = readRememberedRequester();
+    if (!remembered) {
+      return;
+    }
+    setOrderData((prev) => ({
+      ...prev,
+      rememberSiteAndRequester: true,
+      sampleOrderItems: { ...prev.sampleOrderItems, ...remembered },
+    }));
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Keep the stored copy in step with what is on the order right now, so the
+  // next order starts from what the user last actually used.
+  useEffect(() => {
+    if (rememberChecked) {
+      rememberRequester(orderData?.sampleOrderItems);
+    }
+  }, [rememberChecked, orderData?.sampleOrderItems]);
+
+  const handleRememberChange = (_event, { checked }) => {
+    if (!checked) {
+      forgetRequester();
+    }
+    setOrderData((prev) => ({ ...prev, rememberSiteAndRequester: checked }));
+  };
+
+  // V-7: the fax and email inputs existed with no validation at all, so a
+  // mistyped address was accepted and only failed later at report delivery.
+  const providerFax = sampleOrderItems.providerFax || "";
+  const providerEmail = sampleOrderItems.providerEmail || "";
+  const providerEmailInvalid =
+    providerEmail.length > 0 &&
+    !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(providerEmail);
+  const providerFaxInvalid =
+    providerFax.length > 0 && !/^\+?[0-9().\-\s]{6,}$/.test(providerFax);
+
+  const referringSiteId = sampleOrderItems.referringSiteId || "";
+  const effectiveSelectedSite =
+    selectedSite?.isNew ||
+    (selectedSite &&
+      (!referringSiteId || String(selectedSite.id) === String(referringSiteId)))
+      ? selectedSite
+      : null;
+  const departmentOptions =
+    departmentResponse.siteId === String(referringSiteId)
+      ? departmentResponse.options
+      : [];
+  const isLoadingDepartments =
+    Boolean(referringSiteId) &&
+    departmentResponse.siteId !== String(referringSiteId);
+  const providerPersonId =
+    sampleOrderItems.providerPersonId || sampleOrderItems.providerId || "";
+  const savedProvider =
+    providerPersonId ||
+    sampleOrderItems.providerFirstName ||
+    sampleOrderItems.providerLastName
+      ? {
+          id: providerPersonId,
+          firstName: sampleOrderItems.providerFirstName || "",
+          lastName: sampleOrderItems.providerLastName || "",
+          titleCode: sampleOrderItems.providerTitleCode || "",
+          titleAbbreviation: sampleOrderItems.providerTitleAbbreviation || "",
+          phone: sampleOrderItems.providerWorkPhone || "",
+          fax: sampleOrderItems.providerFax || "",
+          email: sampleOrderItems.providerEmail || "",
+        }
+      : null;
+  const effectiveSelectedProvider =
+    selectedProvider?.isNew ||
+    (selectedProvider &&
+      (!providerPersonId ||
+        String(selectedProvider.id) === String(providerPersonId)))
+      ? selectedProvider
+      : savedProvider;
+
+  const priorityOptions = ["ROUTINE", "STAT", "ASAP", "TIMED"].map((code) =>
+    priorities.find((priority) => priority.value === code),
+  );
 
   // Component mounted tracking
   useEffect(() => {
@@ -105,19 +203,50 @@ const RequesterSection = ({
 
   // Initialize from orderData when referringSiteId changes (e.g., from barcode scan)
   useEffect(() => {
-    if (orderData?.sampleOrderItems?.referringSiteId && !selectedSite) {
-      // Fetch site details
-      getFromOpenElisServer(
-        `/rest/organization/${orderData.sampleOrderItems.referringSiteId}`,
-        (response) => {
-          if (componentMounted.current && response) {
-            setSelectedSite(response);
-            setIsSiteLocked(true);
-          }
-        },
-      );
+    if (!referringSiteId) {
+      return undefined;
     }
-  }, [orderData?.sampleOrderItems?.referringSiteId]);
+    if (effectiveSelectedSite) {
+      return undefined;
+    }
+
+    let active = true;
+    getFromOpenElisServer(
+      `/rest/organization/${referringSiteId}`,
+      (response) => {
+        if (active && componentMounted.current && response) {
+          setSelectedSite(response);
+          setIsSiteLocked(true);
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [effectiveSelectedSite, referringSiteId, selectedSite?.isNew]);
+
+  useEffect(() => {
+    if (!referringSiteId) {
+      setDepartmentResponse({ siteId: "", options: [] });
+      return undefined;
+    }
+
+    let active = true;
+    getFromOpenElisServer(
+      `/rest/departments-for-site?refferingSiteId=${encodeURIComponent(referringSiteId)}`,
+      (response) => {
+        if (active && componentMounted.current) {
+          setDepartmentResponse({
+            siteId: String(referringSiteId),
+            options: Array.isArray(response) ? response : [],
+          });
+        }
+      },
+    );
+    return () => {
+      active = false;
+    };
+  }, [referringSiteId]);
 
   // Initialize provider from orderData when a providerPersonId arrives
   // (e.g., from barcode scan, or loading an existing order for edit). Gated
@@ -126,20 +255,25 @@ const RequesterSection = ({
   // reacting to them here would lock the fields as "selected" after the
   // very first keystroke (same bug as the earlier Requestor fix).
   useEffect(() => {
-    const providerPersonId = orderData?.sampleOrderItems?.providerPersonId;
-
-    if (providerPersonId && !selectedProvider) {
+    if (
+      providerPersonId &&
+      (!selectedProvider ||
+        String(selectedProvider.id) !== String(providerPersonId))
+    ) {
       setSelectedProvider({
         id: providerPersonId,
         firstName: orderData?.sampleOrderItems?.providerFirstName || "",
         lastName: orderData?.sampleOrderItems?.providerLastName || "",
+        titleCode: orderData?.sampleOrderItems?.providerTitleCode || "",
+        titleAbbreviation:
+          orderData?.sampleOrderItems?.providerTitleAbbreviation || "",
         phone: orderData?.sampleOrderItems?.providerWorkPhone || "",
         fax: orderData?.sampleOrderItems?.providerFax || "",
         email: orderData?.sampleOrderItems?.providerEmail || "",
       });
       setIsProviderLocked(true);
     }
-  }, [orderData?.sampleOrderItems?.providerPersonId]);
+  }, [providerPersonId, selectedProvider]);
 
   // Initialize Requestor from orderData when a requestorPersonId arrives
   // (e.g., from barcode scan, or loading an existing order for edit). Gated
@@ -191,7 +325,7 @@ const RequesterSection = ({
 
   // Autocomplete effect for site search - debounced
   useEffect(() => {
-    if (selectedSite || isReadOnly) return; // Don't search if already selected
+    if (effectiveSelectedSite || isReadOnly) return;
 
     const debounceTimer = setTimeout(() => {
       if (siteSearchTerm.trim().length >= 2) {
@@ -202,13 +336,14 @@ const RequesterSection = ({
     }, 300); // 300ms debounce
 
     return () => clearTimeout(debounceTimer);
-  }, [siteSearchTerm, selectedSite, isReadOnly]);
+  }, [siteSearchTerm, effectiveSelectedSite, isReadOnly]);
 
   // Site selection
   const handleSelectSite = (site) => {
     setSelectedSite(site);
     setIsSiteLocked(true);
     setSiteResults([]);
+    setSiteSearchTerm(site.organizationName || "");
 
     setOrderData((prev) => ({
       ...prev,
@@ -220,6 +355,8 @@ const RequesterSection = ({
         referringSitePhone: site.phone || "",
         referringSiteFax: site.fax || "",
         referringSiteEmail: site.email || "",
+        referringSiteDepartmentId: "",
+        referringSiteDepartmentName: "",
       },
     }));
   };
@@ -240,6 +377,8 @@ const RequesterSection = ({
         referringSitePhone: "",
         referringSiteFax: "",
         referringSiteEmail: "",
+        referringSiteDepartmentId: "",
+        referringSiteDepartmentName: "",
         newRequesterName: "",
       },
     }));
@@ -255,6 +394,7 @@ const RequesterSection = ({
     }
     setSelectedSite({ organizationName: trimmedName, isNew: true });
     setSiteResults([]);
+    setSiteSearchTerm(trimmedName);
 
     setOrderData((prev) => ({
       ...prev,
@@ -262,6 +402,8 @@ const RequesterSection = ({
         ...prev.sampleOrderItems,
         referringSiteId: "",
         referringSiteName: "",
+        referringSiteDepartmentId: "",
+        referringSiteDepartmentName: "",
         newRequesterName: trimmedName,
       },
     }));
@@ -281,6 +423,21 @@ const RequesterSection = ({
       sampleOrderItems: {
         ...prev.sampleOrderItems,
         [field]: value,
+      },
+    }));
+  };
+
+  const handleDepartmentChange = (event) => {
+    const departmentId = event.target.value;
+    const department = departmentOptions.find(
+      (option) => String(option.id) === String(departmentId),
+    );
+    setOrderData((prev) => ({
+      ...prev,
+      sampleOrderItems: {
+        ...prev.sampleOrderItems,
+        referringSiteDepartmentId: departmentId,
+        referringSiteDepartmentName: department?.value || "",
       },
     }));
   };
@@ -330,6 +487,9 @@ const RequesterSection = ({
     setSelectedRequestor(requestor);
     setIsRequestorLocked(true);
     setRequestorResults([]);
+    setRequestorSearchTerm(
+      [requestor.lastName, requestor.firstName].filter(Boolean).join(", "),
+    );
 
     setOrderData((prev) => ({
       ...prev,
@@ -488,7 +648,7 @@ const RequesterSection = ({
 
   // Autocomplete effect for provider search - debounced
   useEffect(() => {
-    if (selectedProvider || isReadOnly) return; // Don't search if already selected
+    if (effectiveSelectedProvider || isReadOnly) return;
 
     const { name } = providerSearch;
     const searchTerm = name || "";
@@ -502,13 +662,19 @@ const RequesterSection = ({
     }, 300); // 300ms debounce
 
     return () => clearTimeout(debounceTimer);
-  }, [providerSearch.name, selectedProvider, isReadOnly]);
+  }, [providerSearch.name, effectiveSelectedProvider, isReadOnly]);
 
   // Provider selection - use personId from search results if available, otherwise fetch from practitioner endpoint
   const handleSelectProvider = (provider) => {
     setSelectedProvider(provider);
     setIsProviderLocked(true);
     setProviderResults([]);
+    setProviderSearch((prev) => ({
+      ...prev,
+      name:
+        provider.name ||
+        [provider.lastName, provider.firstName].filter(Boolean).join(", "),
+    }));
 
     // If personId is already in the search results (after backend rebuild), use it directly
     if (provider.personId) {
@@ -520,6 +686,8 @@ const RequesterSection = ({
           providerPersonId: provider.personId,
           providerFirstName: provider.firstName,
           providerLastName: provider.lastName,
+          providerTitleCode: provider.titleCode || "",
+          providerTitleAbbreviation: provider.titleAbbreviation || "",
           providerWorkPhone: provider.phone,
           providerFax: provider.fax || "",
           providerEmail: provider.email || "",
@@ -577,6 +745,8 @@ const RequesterSection = ({
         providerPersonId: "",
         providerFirstName: "",
         providerLastName: "",
+        providerTitleCode: "",
+        providerTitleAbbreviation: "",
         providerWorkPhone: "",
         providerFax: "",
         providerEmail: "",
@@ -769,7 +939,7 @@ const RequesterSection = ({
               id="requiredBy"
               type="date"
               className="env-manifest-datetime"
-              min={new Date().toISOString().split("T")[0]}
+              min={toLocalIsoDate(labNow())}
               value={orderData?.sampleOrderItems?.requiredBy || ""}
               onChange={(e) => {
                 setOrderData((prev) => ({
@@ -807,7 +977,12 @@ const RequesterSection = ({
             <TextInput
               id="siteName"
               labelText={
-                <FormattedMessage id="site.name" defaultMessage="Site Name" />
+                <span>
+                  <FormattedMessage id="site.name" defaultMessage="Site Name" />
+                  {siteRequired && (
+                    <span className="required-indicator"> *</span>
+                  )}
+                </span>
               }
               placeholder={intl.formatMessage({
                 id: "site.name.placeholder",
@@ -820,7 +995,7 @@ const RequesterSection = ({
               })}
               value={siteSearchTerm}
               onChange={(e) => setSiteSearchTerm(e.target.value)}
-              disabled={isReadOnly || selectedSite}
+              disabled={isReadOnly || Boolean(effectiveSelectedSite)}
             />
           </Column>
           <Column lg={5} md={4} sm={4}>
@@ -840,7 +1015,11 @@ const RequesterSection = ({
               disabled={isReadOnly}
             >
               {priorityOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.value} />
+                <SelectItem
+                  key={opt.value}
+                  value={opt.value}
+                  text={intl.formatMessage({ id: opt.labelId })}
+                />
               ))}
             </Select>
           </Column>
@@ -852,7 +1031,11 @@ const RequesterSection = ({
                 kind="primary"
                 size="md"
                 onClick={handleSiteSearch}
-                disabled={isSearchingSites || isReadOnly || selectedSite}
+                disabled={
+                  isSearchingSites ||
+                  isReadOnly ||
+                  Boolean(effectiveSelectedSite)
+                }
               >
                 <FormattedMessage
                   id="label.button.search"
@@ -863,7 +1046,7 @@ const RequesterSection = ({
                 kind="ghost"
                 size="md"
                 onClick={handleClearSiteSearch}
-                disabled={selectedSite}
+                disabled={Boolean(effectiveSelectedSite)}
               >
                 <FormattedMessage
                   id="label.button.clear"
@@ -875,7 +1058,7 @@ const RequesterSection = ({
         </Grid>
 
         {/* Site Results */}
-        {siteResults.length > 0 && !selectedSite && (
+        {siteResults.length > 0 && !effectiveSelectedSite && (
           <div className="search-results">
             <p className="results-count">
               {siteResults.length}{" "}
@@ -948,7 +1131,7 @@ const RequesterSection = ({
             restrictFreeTextRefSiteEntry admin config — when restricted, the
             button stays visible but disabled with an explanatory message
             rather than being silently hidden. */}
-        {!selectedSite &&
+        {!effectiveSelectedSite &&
           siteSearchTerm.trim().length >= 2 &&
           siteResults.length === 0 &&
           !isSearchingSites && (
@@ -983,11 +1166,11 @@ const RequesterSection = ({
           )}
 
         {/* Selected Site Card */}
-        {selectedSite && (
+        {effectiveSelectedSite && (
           <div className="selected-entity-card">
             <div className="selected-card-header">
               <Tag type="green" size="sm">
-                {selectedSite.isNew ? (
+                {effectiveSelectedSite.isNew ? (
                   <FormattedMessage
                     id="requester.organization.new.tag"
                     defaultMessage="New"
@@ -996,7 +1179,7 @@ const RequesterSection = ({
                   <FormattedMessage id="selected" defaultMessage="Selected" />
                 )}
               </Tag>
-              {!selectedSite.isNew && isSiteLocked && (
+              {!effectiveSelectedSite.isNew && isSiteLocked && (
                 <Link onClick={handleUnlockSite}>
                   <FormattedMessage
                     id="label.button.edit.details"
@@ -1012,12 +1195,13 @@ const RequesterSection = ({
               </Link>
             </div>
             <div className="selected-card-content">
-              <h5>{selectedSite.organizationName}</h5>
+              <h5>{effectiveSelectedSite.organizationName}</h5>
               <p>
-                {selectedSite.city && `Location: ${selectedSite.city}`}
-                {selectedSite.organizationType &&
-                  ` · Type: ${selectedSite.organizationType}`}
-                {selectedSite.isNew && (
+                {effectiveSelectedSite.city &&
+                  `Location: ${effectiveSelectedSite.city}`}
+                {effectiveSelectedSite.organizationType &&
+                  ` · Type: ${effectiveSelectedSite.organizationType}`}
+                {effectiveSelectedSite.isNew && (
                   <FormattedMessage
                     id="requester.organization.new.helper"
                     defaultMessage="Will be created as a new organization when this order is saved."
@@ -1027,6 +1211,57 @@ const RequesterSection = ({
             </div>
           </div>
         )}
+
+        <Grid>
+          <Column lg={10} md={8} sm={4}>
+            <Select
+              id="referringSiteDepartment"
+              labelText={intl.formatMessage({ id: "site.department" })}
+              value={sampleOrderItems.referringSiteDepartmentId || ""}
+              onChange={handleDepartmentChange}
+              disabled={
+                isReadOnly ||
+                !referringSiteId ||
+                isLoadingDepartments ||
+                departmentOptions.length === 0
+              }
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: !referringSiteId
+                    ? "site.department.selectFirst"
+                    : departmentOptions.length > 0
+                      ? "site.department.choose"
+                      : "site.department.none",
+                })}
+              />
+              {departmentOptions.map((department) => (
+                <SelectItem
+                  key={department.id}
+                  value={department.id}
+                  text={department.value}
+                />
+              ))}
+            </Select>
+          </Column>
+          <Column lg={6} md={8} sm={4}>
+            {/* V-5: a clinic entering a day's work from one referring site
+                re-typed it on every order. Kept per browser; it is a
+                data-entry convenience, not a property of the order. */}
+            <Checkbox
+              id="rememberSiteAndRequester"
+              labelText={intl.formatMessage({
+                id: "order.rememberSiteAndRequester",
+                defaultMessage:
+                  "Remember this site and requester for my next order",
+              })}
+              checked={rememberChecked}
+              onChange={handleRememberChange}
+              disabled={isReadOnly}
+            />
+          </Column>
+        </Grid>
 
         {/* Requesting Organization contact info — its own phone/fax/email,
             independent of any Requestor contact person below.
@@ -1039,7 +1274,8 @@ const RequesterSection = ({
             brand-new org (isNew) is never locked, since it has no prior
             saved state to protect. */}
         {(() => {
-          const isCreatingNewOrg = !selectedSite || selectedSite.isNew;
+          const isCreatingNewOrg =
+            !effectiveSelectedSite || effectiveSelectedSite.isNew;
           const isOrgContactEntryRestricted =
             isCreatingNewOrg && isOrganizationAddNewRestricted;
           const isOrgContactEntryLocked = !isCreatingNewOrg && isSiteLocked;
@@ -1163,7 +1399,9 @@ const RequesterSection = ({
                   size="md"
                   onClick={() => handleRequestorSearch()}
                   disabled={
-                    isSearchingRequestors || isReadOnly || selectedRequestor
+                    isSearchingRequestors ||
+                    isReadOnly ||
+                    Boolean(selectedRequestor)
                   }
                 >
                   <FormattedMessage
@@ -1175,7 +1413,7 @@ const RequesterSection = ({
                   kind="ghost"
                   size="md"
                   onClick={handleClearRequestorSearch}
-                  disabled={selectedRequestor}
+                  disabled={Boolean(selectedRequestor)}
                 >
                   <FormattedMessage
                     id="label.button.clear"
@@ -1515,10 +1753,17 @@ const RequesterSection = ({
             <Column lg={6} md={4} sm={4}>
               <TextInput
                 id="providerName"
-                labelText={intl.formatMessage({
-                  id: "provider.name",
-                  defaultMessage: "Provider Name",
-                })}
+                labelText={
+                  <span>
+                    <FormattedMessage
+                      id="provider.name"
+                      defaultMessage="Provider Name"
+                    />
+                    {providerRequired && (
+                      <span className="required-indicator"> *</span>
+                    )}
+                  </span>
+                }
                 placeholder={intl.formatMessage({
                   id: "provider.name.placeholder",
                   defaultMessage: "Enter provider name",
@@ -1527,7 +1772,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("name", e.target.value)
                 }
-                disabled={isReadOnly || selectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
             <Column lg={6} md={4} sm={4}>
@@ -1542,7 +1787,7 @@ const RequesterSection = ({
                 onChange={(e) =>
                   handleProviderFieldChange("phone", e.target.value)
                 }
-                disabled={isReadOnly || selectedProvider}
+                disabled={isReadOnly || Boolean(effectiveSelectedProvider)}
               />
             </Column>
 
@@ -1554,7 +1799,9 @@ const RequesterSection = ({
                   size="md"
                   onClick={() => handleProviderSearch()}
                   disabled={
-                    isSearchingProviders || isReadOnly || selectedProvider
+                    isSearchingProviders ||
+                    isReadOnly ||
+                    Boolean(effectiveSelectedProvider)
                   }
                 >
                   <FormattedMessage
@@ -1566,7 +1813,7 @@ const RequesterSection = ({
                   kind="ghost"
                   size="md"
                   onClick={handleClearProviderSearch}
-                  disabled={selectedProvider}
+                  disabled={Boolean(effectiveSelectedProvider)}
                 >
                   <FormattedMessage
                     id="label.button.clear"
@@ -1589,7 +1836,7 @@ const RequesterSection = ({
               "Edit details" is clicked. */}
           {(() => {
             const isCreatingNewProvider =
-              !selectedProvider || selectedProvider.isNew;
+              !effectiveSelectedProvider || effectiveSelectedProvider.isNew;
             const isProviderContactEntryRestricted =
               isCreatingNewProvider && isProviderAddNewRestricted;
             const isProviderContactEntryLocked =
@@ -1674,6 +1921,12 @@ const RequesterSection = ({
                           e.target.value,
                         )
                       }
+                      invalid={providerFaxInvalid}
+                      invalidText={intl.formatMessage({
+                        id: "provider.fax.invalid",
+                        defaultMessage:
+                          "Enter a valid fax number, digits and + ( ) - only.",
+                      })}
                       disabled={isProviderFieldDisabled}
                     />
                   </Column>
@@ -1691,6 +1944,12 @@ const RequesterSection = ({
                           e.target.value,
                         )
                       }
+                      invalid={providerEmailInvalid}
+                      invalidText={intl.formatMessage({
+                        id: "provider.email.invalid",
+                        defaultMessage:
+                          "Enter a valid email address, for example lab@example.org.",
+                      })}
                       disabled={isProviderFieldDisabled}
                     />
                   </Column>
@@ -1708,7 +1967,7 @@ const RequesterSection = ({
           })()}
 
           {/* Provider Results */}
-          {providerResults.length > 0 && !selectedProvider && (
+          {providerResults.length > 0 && !effectiveSelectedProvider && (
             <div className="search-results">
               <p className="results-count">
                 {providerResults.length}{" "}
@@ -1787,7 +2046,7 @@ const RequesterSection = ({
               restrictFreeTextProviderEntry admin config — when restricted,
               the button stays visible but disabled with an explanatory
               message rather than being silently hidden. */}
-          {!selectedProvider &&
+          {!effectiveSelectedProvider &&
             providerSearch.name.trim().length >= 2 &&
             providerResults.length === 0 &&
             !isSearchingProviders && (
@@ -1822,11 +2081,11 @@ const RequesterSection = ({
             )}
 
           {/* Selected Provider Card */}
-          {selectedProvider && (
+          {effectiveSelectedProvider && (
             <div className="selected-entity-card">
               <div className="selected-card-header">
                 <Tag type="green" size="sm">
-                  {selectedProvider.isNew ? (
+                  {effectiveSelectedProvider.isNew ? (
                     <FormattedMessage
                       id="provider.new.tag"
                       defaultMessage="New"
@@ -1835,7 +2094,7 @@ const RequesterSection = ({
                     <FormattedMessage id="selected" defaultMessage="Selected" />
                   )}
                 </Tag>
-                {!selectedProvider.isNew && isProviderLocked && (
+                {!effectiveSelectedProvider.isNew && isProviderLocked && (
                   <Link onClick={handleUnlockProvider}>
                     <FormattedMessage
                       id="label.button.edit.details"
@@ -1851,17 +2110,17 @@ const RequesterSection = ({
                 </Link>
               </div>
               <div className="selected-card-content">
-                <h5>
-                  {selectedProvider.firstName} {selectedProvider.lastName}
-                </h5>
+                <h5>{providerDisplayName(effectiveSelectedProvider)}</h5>
                 <p>
-                  {selectedProvider.phone && `Phone: ${selectedProvider.phone}`}
-                  {selectedProvider.fax && ` · Fax: ${selectedProvider.fax}`}
-                  {selectedProvider.email &&
-                    ` · Email: ${selectedProvider.email}`}
-                  {selectedProvider.source &&
-                    ` · Source: ${selectedProvider.source}`}
-                  {selectedProvider.isNew && (
+                  {effectiveSelectedProvider.phone &&
+                    `Phone: ${effectiveSelectedProvider.phone}`}
+                  {effectiveSelectedProvider.fax &&
+                    ` · Fax: ${effectiveSelectedProvider.fax}`}
+                  {effectiveSelectedProvider.email &&
+                    ` · Email: ${effectiveSelectedProvider.email}`}
+                  {effectiveSelectedProvider.source &&
+                    ` · Source: ${effectiveSelectedProvider.source}`}
+                  {effectiveSelectedProvider.isNew && (
                     <FormattedMessage
                       id="provider.new.helper"
                       defaultMessage="Will be created as a new provider when this order is saved."

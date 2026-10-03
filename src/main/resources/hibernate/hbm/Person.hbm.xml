@@ -61,6 +61,9 @@
         <property name="department" type="java.lang.String">
             <column name="department" />
         </property>
+        <property name="titleCode" type="java.lang.String">
+            <column name="title_code" length="20" />
+        </property>
         <property name="gpsLatitude" type="java.math.BigDecimal">
             <column name="gps_latitude" />
         </property>

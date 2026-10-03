@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.constraints.Pattern;
 import java.lang.reflect.InvocationTargetException;
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -42,12 +43,16 @@ import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.controller.BaseSampleEntryController;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
+import org.openelisglobal.sample.override.service.SampleOrderOverrideService;
+import org.openelisglobal.sample.override.valueholder.OverrideReasonCode;
+import org.openelisglobal.sample.override.valueholder.OverrideType;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.service.SampleService;
@@ -56,6 +61,7 @@ import org.openelisglobal.sample.valueholder.OrderPriority;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField;
 import org.openelisglobal.sample.valueholder.SampleAdditionalField.AdditionalFieldName;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
@@ -187,6 +193,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     private SystemUserService systemUserService;
     @Autowired
     private SampleService sampleService;
+    @Autowired
+    private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private SampleOrderOverrideService sampleOrderOverrideService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -285,9 +296,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // OGC-356: For environmental workflow, only check for non-patient validation
         // errors
         // Environmental samples don't require patient data (gender, nationalId, etc.)
+        // OGC-1201 AL/W: an order that declares it has no patient is in the same
+        // position as an environmental or vector order — there is no patient to
+        // validate. Declaring it is what replaces the sentinel patient the EQA
+        // path used to fabricate to get past this gate.
+        boolean ordersWithoutPatient = sampleOrder != null
+                && (sampleOrder.isNoPatientOverride() || sampleOrder.getIsEQASample());
         if (result.hasErrors()) {
             boolean hasNonPatientErrors = true;
-            if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
+            if (ordersWithoutPatient || "environmental".equals(workflowType) || "vector".equals(workflowType)) {
                 // OGC-744 follow-up: the new @NotNull on patientProperties (added in this
                 // PR) produces a FieldError whose field name is exactly "patientProperties"
                 // — the previous startsWith("patientProperties.") filter required a dot
@@ -307,6 +324,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
 
         PatientManagementInfo patientInfo = form.getPatientProperties();
+        resolveRetriedOrder(sampleOrder, patientInfo);
+        reuseOrderPatient(sampleOrder, patientInfo);
 
         boolean trackPayments = ConfigurationProperties.getInstance()
                 .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
@@ -325,18 +344,15 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         patientUpdate.setSysUserIdFromRequest(request);
 
-        if (sampleOrder.getIsEQASample()) {
-            Patient existingEqaPatient = patientService.getPatientByNationalId("NULL");
-            if (existingEqaPatient != null) {
-                patientInfo.setPatientPK(existingEqaPatient.getId());
-                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
-            }
-        }
-
         testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
 
-        // OGC-356: For environmental/vector workflow, don't save patient data
-        if ("environmental".equals(workflowType) || "vector".equals(workflowType)) {
+        // OGC-356: For environmental/vector workflow, don't save patient data.
+        // OGC-1201: and likewise for an order that has declared it has no
+        // patient. EQA used to reach this point holding a shared sentinel
+        // patient — "NULL NULL", male, born 1900 — purely to satisfy the gate,
+        // which meant every EQA result was evaluated against a 126-year-old
+        // man's reference range. A declared no-patient order attaches nobody.
+        if (ordersWithoutPatient || "environmental".equals(workflowType) || "vector".equals(workflowType)) {
             updateData.setSavePatient(false);
             updateData.setPatientErrors(new BaseErrors());
         }
@@ -369,6 +385,11 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             updateData.setEqaProviderSampleId(sampleOrder.getEqaProviderSampleId());
             updateData.setEqaDeadline(sampleOrder.getEqaDeadline());
             updateData.setEqaPriority(sampleOrder.getEqaPriority());
+            updateData.setEqaCycleId(sampleOrder.getEqaCycleId());
+            updateData.setEqaReceivedTempC(sampleOrder.getEqaReceivedTempC());
+            updateData.setEqaIntegrityOk(sampleOrder.getEqaIntegrityOk());
+            updateData.setEqaIntegrityNotes(sampleOrder.getEqaIntegrityNotes());
+            updateData.setEqaShippingBoxId(sampleOrder.getEqaShippingBoxId());
         }
         if (Boolean.valueOf(ConfigurationProperties.getInstance().getPropertyValue(Property.CONTACT_TRACING))) {
             setContactTracingInfo(updateData, sampleOrder);
@@ -383,7 +404,8 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         // OGC-356: For environmental/vector workflow, ignore patient-related validation
         // errors
         boolean hasNonPatientErrors = result.hasErrors();
-        if (hasNonPatientErrors && ("environmental".equals(workflowType) || "vector".equals(workflowType))) {
+        if (hasNonPatientErrors
+                && (ordersWithoutPatient || "environmental".equals(workflowType) || "vector".equals(workflowType))) {
             // Check if all errors are patient-related
             List<org.springframework.validation.FieldError> nonPatientErrors = result.getFieldErrors().stream()
                     .filter(error -> !isPatientFieldError(error)).collect(Collectors.toList());
@@ -480,7 +502,7 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             persistFailed = true;
         }
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
-        if (form.getRememberSiteAndRequester()) {
+        if (Boolean.TRUE.equals(form.getRememberSiteAndRequester())) {
             redirectAttributes.addFlashAttribute("sampleOrderItems.providerId",
                     form.getSampleOrderItems().getProviderId());
             redirectAttributes.addFlashAttribute("sampleOrderItems.providerPersonId",
@@ -524,6 +546,16 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             return ResponseEntity.status(status).body(buildErrorBody(result, "Failed to save order", workflowType));
         }
 
+        // OGC-1201 AL/AB: record the decision alongside the order it belongs
+        // to, in the same request that created it. Downstream consumers —
+        // results entry, validation, the report — read this to tell a
+        // deliberate patient-less order from one whose patient was forgotten,
+        // and an EQA proficiency sample from a clinical order that went
+        // without.
+        if (ordersWithoutPatient) {
+            recordNoPatientOverride(sampleOrder, request);
+        }
+
         // Belt-and-suspenders: verify the row actually made it to the DB. Guards
         // against any future silent-failure path that forgets to set
         // persistFailed. @Transactional on persistData guarantees all-or-nothing,
@@ -537,7 +569,26 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
                     .body(Map.of("error", "Order save did not persist (verification check failed). See server logs."));
         }
 
+        if (!ordersWithoutPatient) {
+            form.setRangeNotAppliedTests(rangeNotAppliedTests(persistedSample));
+        }
+
         return ResponseEntity.ok(form);
+    }
+
+    /**
+     * The saved order's tests whose reference range will not be applied because the
+     * patient's sex or birth date is missing, for the non-blocking warning shown
+     * after the save. A failure here is logged and never fails a save that already
+     * succeeded.
+     */
+    private List<String> rangeNotAppliedTests(Sample sample) {
+        try {
+            return samplePatientService.getTestNamesWithRangeNotApplied(sample);
+        } catch (RuntimeException e) {
+            logger.error("Could not list tests without an applicable range for sample {}", sample.getId(), e);
+            return new ArrayList<>();
+        }
     }
 
     /**
@@ -637,6 +688,81 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
         }
     }
 
+    /**
+     * A new-order save whose reply was lost is retried with the same order key.
+     * When the lab number is already held by the order that key created, the retry
+     * is applied to that order as an update, instead of failing with "accession
+     * number already in use", and the patient the first attempt added or updated is
+     * reused as saved: adding it again would duplicate it, and updating it again
+     * with the retry's now-stale timestamps would fail as a concurrent edit.
+     */
+    void resolveRetriedOrder(SampleOrderItem sampleOrder, PatientManagementInfo patientInfo) {
+        if (sampleOrder == null || !GenericValidator.isBlankOrNull(sampleOrder.getSampleId())
+                || GenericValidator.isBlankOrNull(sampleOrder.getLabNo())) {
+            return;
+        }
+        UUID orderKey = SamplePatientUpdateData.orderKeyAsUuid(sampleOrder.getOrderKey());
+        if (orderKey == null) {
+            return;
+        }
+        Sample existing = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+        if (existing == null || existing.getId() == null || !orderKey.equals(existing.getFhirUuid())) {
+            return;
+        }
+        sampleOrder.setSampleId(existing.getId());
+        if (patientInfo != null && (patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.ADD
+                || patientInfo.getPatientUpdateStatus() == PatientUpdateStatus.UPDATE)) {
+            Patient patient = sampleHumanService.getPatientForSample(existing);
+            if (patient != null && patient.getId() != null) {
+                patientInfo.setPatientPK(patient.getId());
+                patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+            }
+        }
+    }
+
+    /**
+     * A save of an existing order that asks to add its patient again, with no
+     * patient id, keeps the patient the order already has when the two are the same
+     * person: the same national id, or, where neither has one, the same name, date
+     * of birth and sex. A client that lost the id after the first save used to add
+     * one patient per save (OGC-1407). A different person is still added, so an
+     * order can be moved to a patient entered in its place.
+     */
+    void reuseOrderPatient(SampleOrderItem sampleOrder, PatientManagementInfo patientInfo) {
+        if (sampleOrder == null || patientInfo == null || GenericValidator.isBlankOrNull(sampleOrder.getSampleId())
+                || patientInfo.getPatientUpdateStatus() != PatientUpdateStatus.ADD
+                || !GenericValidator.isBlankOrNull(patientInfo.getPatientPK())) {
+            return;
+        }
+        Sample existing = sampleService.get(sampleOrder.getSampleId());
+        if (existing == null) {
+            return;
+        }
+        Patient patient = sampleHumanService.getPatientForSample(existing);
+        if (patient == null || patient.getId() == null || !isSamePerson(patient, patientInfo)) {
+            return;
+        }
+        patientInfo.setPatientPK(patient.getId());
+        patientInfo.setPatientUpdateStatus(PatientUpdateStatus.NO_ACTION);
+    }
+
+    private static boolean isSamePerson(Patient patient, PatientManagementInfo patientInfo) {
+        String heldNationalId = StringUtils.trimToNull(patient.getNationalId());
+        String sentNationalId = StringUtils.trimToNull(patientInfo.getNationalId());
+        if (heldNationalId != null || sentNationalId != null) {
+            return heldNationalId != null && heldNationalId.equalsIgnoreCase(sentNationalId);
+        }
+        Person person = patient.getPerson();
+        return person != null && sameText(person.getLastName(), patientInfo.getLastName())
+                && sameText(person.getFirstName(), patientInfo.getFirstName())
+                && sameText(patient.getBirthDateForDisplay(), patientInfo.getBirthDateForDisplay())
+                && sameText(patient.getGender(), patientInfo.getGender());
+    }
+
+    private static boolean sameText(String held, String sent) {
+        return StringUtils.trimToEmpty(held).equalsIgnoreCase(StringUtils.trimToEmpty(sent));
+    }
+
     private void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,
             IPatientUpdate patientUpdate, SamplePatientUpdateData updateData)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
@@ -698,6 +824,30 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
     // top-level error or any "patientProperties.*" field). Environmental/vector
     // orders carry no patient, so these are filtered from both the pass/fail
     // decision and the error body surfaced to the client.
+    private void recordNoPatientOverride(SampleOrderItem sampleOrder, HttpServletRequest request) {
+        try {
+            Sample saved = sampleService.getSampleByAccessionNumber(sampleOrder.getLabNo());
+            if (saved == null || saved.getId() == null) {
+                return;
+            }
+            OverrideReasonCode reasonCode = sampleOrder.getIsEQASample() ? OverrideReasonCode.EQA
+                    : OverrideReasonCode.MANUAL;
+            String reason = StringUtils.isNotBlank(sampleOrder.getNoPatientReason()) ? sampleOrder.getNoPatientReason()
+                    : reasonCode.name();
+            Long userId = null;
+            String sysUserId = getSysUserId(request);
+            if (StringUtils.isNotBlank(sysUserId)) {
+                userId = Long.valueOf(sysUserId);
+            }
+            sampleOrderOverrideService.record(Long.valueOf(saved.getId()), OverrideType.NO_PATIENT, reasonCode, reason,
+                    userId);
+        } catch (RuntimeException e) {
+            // The order itself is saved; failing to annotate it must not undo
+            // that, but it must be visible.
+            LogEvent.logError(this.getClass().getName(), "recordNoPatientOverride", e.toString());
+        }
+    }
+
     private static boolean isPatientFieldError(org.springframework.validation.FieldError fe) {
         return "patientProperties".equals(fe.getField()) || fe.getField().startsWith("patientProperties.");
     }

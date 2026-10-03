@@ -60,8 +60,6 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
     @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
-    @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleTestService typeOfSampleTestService;
@@ -84,8 +82,7 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
         jdbc = new JdbcTemplate(dataSource);
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         seedSampleType(SERUM_LIKE, "OvSerum 1145");
         seedSampleType(CSF_LIKE, "OvCsf 1145");
@@ -231,6 +228,25 @@ public class SpecimenOverrideIntegrationTest extends BaseWebContextSensitiveTest
 
         ResultLimit noContext = resultLimitService.getResultLimitForTestAndPatient(testId, patient);
         assertEquals("no specimen context evaluates the shared set", 10d, noContext.getLowNormal(), 0.0001);
+    }
+
+    // OGC-1266: pH authored for Drinking Water and Surface Water only showed the
+    // Drinking Water range on a plain Water sample.
+    @org.junit.Test
+    public void resultLimitResolution_aSpecimenWithoutARangeBorrowsNone() {
+        String testId = String.valueOf(TEST_ID);
+        RangesResponse body = new RangesResponse();
+        body.ranges.add(range(String.valueOf(CSF_LIKE), 1d, 5d));
+        assertEquals(200, controller.saveRanges(testId, body, authedRequest()).getStatusCode().value());
+
+        Patient patient = new Patient();
+
+        assertEquals(
+                "CSF keeps its own range", 1d, resultLimitService
+                        .getResultLimitForTestAndPatient(testId, patient, String.valueOf(CSF_LIKE)).getLowNormal(),
+                0.0001);
+        assertNull("serum has no range of its own and no shared one",
+                resultLimitService.getResultLimitForTestAndPatient(testId, patient, String.valueOf(SERUM_LIKE)));
     }
 
     @org.junit.Test

@@ -104,12 +104,15 @@ Do not put these in demo specs or demo-facing helpers:
 
 - `page.on("console")` or `page.on("pageerror")`
 - `captureDebugContext`
-- `waitForResponse()` or `expect.poll()` as proof
-- `page.request.get()`, `page.request.put()`, or `page.request.delete()`
+- `waitForResponse()` or `expect.poll()` as proof or synchronization
+- Playwright request APIs or browser `fetch()`
+- network interception or stubbing
 - filesystem or server-state polling to decide pass/fail
 
+These restrictions apply transitively to runtime local imports from demo specs.
 If a test needs backend persistence checks, bridge/simulator proof, seeded-data
-validation, or file-processing contracts, move that test to `harness`.
+validation, or file-processing contracts, move that test to the appropriate
+foundational harness project.
 
 ---
 
@@ -274,8 +277,10 @@ page.getByRole("button", { name: "Save" });
 // Carbon Form Inputs
 page.getByLabel("Patient Name");
 
-// Carbon Dropdowns
-page.getByRole("combobox", { name: "Select Status" });
+// Carbon Dropdowns: locate by role; choose through helpers/carbon-select.ts,
+// which returns only once the control shows the choice
+const status = page.getByRole("combobox", { name: "Select Status" });
+await chooseCarbonOption(status, "Completed");
 
 // Carbon Tabs
 page.getByRole("tab", { name: "Details" });
@@ -503,16 +508,17 @@ python .ai/skills/playwright/scripts/validate-playwright-project.py playwright/t
 These patterns MUST NOT appear in Playwright tests. Apply as DO/DO NOT rules
 during code review.
 
-| DO NOT                                        | WHY                                                                         | DO INSTEAD                                                       |
-| --------------------------------------------- | --------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state | `waitForResponse` for sync only, then `expect(ui).toBeVisible()` |
-| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability    | Click the `<label>`: `page.locator('label[for="id"]').click()`   |
-| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors       | Call `isVisible()` directly                                      |
-| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                     | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry      |
-| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                          | Click the `<label>` element                                      |
-| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                | `(await el.count()) > 0 && (await el.isChecked())`               |
-| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                    | Wait for suggestion, click it; Tab only as fallback              |
-| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                           | At least one `expect()` per test                                 |
+| DO NOT                                        | WHY                                                                          | DO INSTEAD                                                                   |
+| --------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `response.ok()` as pass/fail                  | Backend 500 throws before UI renders error; CI screenshots show stale state  | `waitForResponse` for sync only, then `expect(ui).toBeVisible()`             |
+| `{ force: true }` on Carbon inputs            | Carbon uses `visually-hidden` on `<input>`; force bypasses actionability     | Click the `<label>`: `page.locator('label[for="id"]').click()`               |
+| `.catch(() => false)` on `isVisible()`        | `isVisible()` returns boolean — catch is dead code hiding real errors        | Call `isVisible()` directly                                                  |
+| `isVisible({ timeout: N })`                   | Timeout param is deprecated and ignored                                      | Use `expect(el).toBeVisible({ timeout: N })` for auto-retry                  |
+| `page.getByLabel("text").check()` on Carbon   | Targets the hidden `<input>` — fails actionability                           | Click the `<label>` element                                                  |
+| `isChecked()` on optional elements (no guard) | Throws if element not in DOM                                                 | `(await el.count()) > 0 && (await el.isChecked())`                           |
+| Type + Tab to replace autocomplete selection  | `onSelect` sets server-side IDs that `onChange` does not                     | Wait for suggestion, click it; Tab only as fallback                          |
+| Tests with zero `expect()` calls              | Pure navigation provides no regression protection                            | At least one `expect()` per test                                             |
+| Click a Carbon select `option`, move on       | downshift calls `onChange` after the click returns; next step sees old state | `chooseCarbonOption` / `tickCarbonMultiSelectOption` (helpers/carbon-select) |
 
 ### Structural Anti-Patterns
 
@@ -612,7 +618,7 @@ assertions with descriptive messages:
 await expect
   .soft(
     page.getByRole("alert"),
-    "Success notification should appear after save"
+    "Success notification should appear after save",
   )
   .toBeVisible({ timeout: 10_000 });
 ```

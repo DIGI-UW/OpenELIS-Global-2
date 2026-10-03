@@ -1,6 +1,7 @@
 package org.openelisglobal.alert.service;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
 import org.junit.Assert;
@@ -16,10 +17,14 @@ import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.notification.service.sender.ClientNotificationSender;
+import org.openelisglobal.notification.valueholder.EmailNotification;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Integration tests for {@link AlertNotificationService} and
@@ -43,6 +48,9 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private SiteInformationService siteInformationService;
+
+    @SuppressWarnings("rawtypes")
+    private List<ClientNotificationSender> originalSenders;
 
     @Before
     public void init() throws Exception {
@@ -77,6 +85,11 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
     public void tearDown() {
         // Reset the global configuration to avoid affecting other tests in CI
         ConfigurationProperties.getInstance().setPropertyValue(Property.PATIENT_RESULTS_SMTP_ENABLED, "false");
+        if (originalSenders != null) {
+            Object target = AopTestUtils.getUltimateTargetObject(alertNotificationService);
+            ReflectionTestUtils.setField(target, "notificationSenders", originalSenders);
+            originalSenders = null;
+        }
     }
 
     @Test
@@ -167,8 +180,66 @@ public class AlertNotificationServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void handleAlertCreated_buildsAndDispatchesAMessage_forAFreezerOfflineAlert() {
+        RecordingEmailSender recorder = installRecordingSender();
+
+        // The fixture seeds an active EMAIL config for both alert natures, so a
+        // dispatch alone would not say which one governs offline alerts. Silencing
+        // the temperature nature leaves EQUIPMENT_ALERT as the only route that can
+        // produce a message, which is the contract the Alert Settings screen shows.
+        jdbcTemplate.update("UPDATE clinlims.notification_config_option SET active = false"
+                + " WHERE notification_nature = 'FREEZER_TEMPERATURE_ALERT'");
+
+        Alert offlineAlert = new Alert();
+        offlineAlert.setAlertType(AlertType.FREEZER_OFFLINE);
+        offlineAlert.setAlertEntityType("Freezer");
+        offlineAlert.setAlertEntityId(7L);
+        offlineAlert.setSeverity(AlertSeverity.CRITICAL);
+        offlineAlert.setStatus(AlertStatus.OPEN);
+        offlineAlert.setMessage("Freezer is not responding to monitoring polls: timeout");
+        offlineAlert.setStartTime(OffsetDateTime.now());
+
+        alertNotificationService.handleAlertCreated(new AlertCreatedEvent(this, offlineAlert));
+
+        Assert.assertEquals("An offline alert should notify through the equipment nature, not the temperature one", 1,
+                recorder.sent.size());
+        Assert.assertTrue("Subject should name the alert type",
+                recorder.sent.get(0).getSubject().contains("FREEZER_OFFLINE"));
+        Assert.assertTrue("Message should carry the offline reason",
+                recorder.sent.get(0).getMessage().contains("not responding to monitoring polls"));
+    }
+
+    @SuppressWarnings("unchecked")
+    private RecordingEmailSender installRecordingSender() {
+        Object target = AopTestUtils.getUltimateTargetObject(alertNotificationService);
+        originalSenders = (List<ClientNotificationSender>) ReflectionTestUtils.getField(target, "notificationSenders");
+        RecordingEmailSender recorder = new RecordingEmailSender();
+        ReflectionTestUtils.setField(target, "notificationSenders", List.of(recorder));
+        return recorder;
+    }
+
+    /**
+     * Stands in for the real senders, whose transports need an SMTP_SERVER
+     * external_connection row this test has no reason to configure.
+     */
+    private static final class RecordingEmailSender implements ClientNotificationSender<EmailNotification> {
+
+        private final List<EmailNotification> sent = new ArrayList<>();
+
+        @Override
+        public Class<EmailNotification> forClass() {
+            return EmailNotification.class;
+        }
+
+        @Override
+        public void send(EmailNotification notification) {
+            sent.add(notification);
+        }
+    }
+
+    @Test
     public void getUnacknowledgedAlertsOlderThan_shouldReturnCorrectAlerts_whenCutoffProvided() {
-        OffsetDateTime cutoff = OffsetDateTime.parse("2025-05-10T12:00:00Z");
+        OffsetDateTime cutoff = alertService.get(100L).getStartTime().plusHours(2);
         List<Alert> alerts = alertService.getUnacknowledgedAlertsOlderThan("Freezer", AlertStatus.OPEN,
                 AlertSeverity.CRITICAL, cutoff);
 

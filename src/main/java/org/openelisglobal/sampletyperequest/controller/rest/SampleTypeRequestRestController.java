@@ -1,33 +1,26 @@
 package org.openelisglobal.sampletyperequest.controller.rest;
 
-import jakarta.servlet.http.HttpServletRequest;
-import java.sql.Timestamp;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
-import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO;
 import org.openelisglobal.sampletyperequest.service.SampleTypeRequestService;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
+import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
-import org.openelisglobal.typeofsample.service.TypeOfSampleService;
-import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
-import org.openelisglobal.unitofmeasure.service.UnitOfMeasureService;
-import org.openelisglobal.unitofmeasure.valueholder.UnitOfMeasure;
+import org.openelisglobal.testmethod.service.TestMethodService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,16 +37,10 @@ public class SampleTypeRequestRestController {
     private SampleTypeRequestService sampleTypeRequestService;
 
     @Autowired
-    private SampleService sampleService;
-
-    @Autowired
-    private TypeOfSampleService typeOfSampleService;
-
-    @Autowired
-    private UnitOfMeasureService unitOfMeasureService;
-
-    @Autowired
     private TestService testService;
+
+    @Autowired
+    private TestMethodService testMethodService;
 
     @Autowired
     private PanelService panelService;
@@ -76,67 +63,6 @@ public class SampleTypeRequestRestController {
         List<SampleTypeRequest> requests = sampleTypeRequestService.getPendingRequestsBySampleId(sampleId);
         List<SampleTypeRequestDTO> dtos = requests.stream().map(this::convertToDTO).collect(Collectors.toList());
         return ResponseEntity.ok(dtos);
-    }
-
-    /**
-     * Create a new sample type request (Step 1: Enter Order).
-     */
-    @PostMapping
-    public ResponseEntity<?> createRequest(@RequestBody SampleTypeRequestDTO dto, HttpServletRequest request) {
-        try {
-            // Validate required fields
-            if (GenericValidator.isBlankOrNull(dto.getSampleId())) {
-                return ResponseEntity.badRequest().body("sampleId is required");
-            }
-            if (GenericValidator.isBlankOrNull(dto.getTypeOfSampleId())) {
-                return ResponseEntity.badRequest().body("typeOfSampleId is required");
-            }
-
-            // Load sample
-            Sample sample = sampleService.get(dto.getSampleId());
-            if (sample == null) {
-                return ResponseEntity.badRequest().body("Sample not found: " + dto.getSampleId());
-            }
-
-            // Load type of sample
-            TypeOfSample typeOfSample = typeOfSampleService.get(dto.getTypeOfSampleId());
-            if (typeOfSample == null) {
-                return ResponseEntity.badRequest().body("TypeOfSample not found: " + dto.getTypeOfSampleId());
-            }
-
-            // Create request
-            SampleTypeRequest sampleTypeRequest = new SampleTypeRequest();
-            sampleTypeRequest.setSample(sample);
-            sampleTypeRequest.setTypeOfSample(typeOfSample);
-            sampleTypeRequest.setSortOrder(dto.getSortOrder() != null ? dto.getSortOrder() : 0);
-            sampleTypeRequest.setRequestedQuantity(dto.getRequestedQuantity());
-            sampleTypeRequest.setRequestedTests(dto.getRequestedTests());
-            sampleTypeRequest.setRequestedPanels(dto.getRequestedPanels());
-            sampleTypeRequest.setStatus(SampleTypeRequest.Status.REQUESTED);
-            sampleTypeRequest.setCreatedDate(new Timestamp(System.currentTimeMillis()));
-            sampleTypeRequest.setSysUserId(ControllerUtills.getSysUserId(request));
-
-            // Load unit of measure if provided
-            if (!GenericValidator.isBlankOrNull(dto.getUnitOfMeasureId())) {
-                UnitOfMeasure uom = unitOfMeasureService.get(dto.getUnitOfMeasureId());
-                if (uom != null) {
-                    sampleTypeRequest.setUnitOfMeasure(uom);
-                }
-            }
-
-            Integer requestId = sampleTypeRequestService.insert(sampleTypeRequest);
-            sampleTypeRequest.setId(requestId);
-
-            LogEvent.logInfo(this.getClass().getSimpleName(), "createRequest",
-                    "Created sample type request: " + requestId + " for sample: " + dto.getSampleId());
-
-            return ResponseEntity.status(HttpStatus.CREATED).body(convertToDTO(sampleTypeRequest));
-
-        } catch (Exception e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "createRequest", e.getMessage());
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                    .body("Error creating request: " + e.getMessage());
-        }
     }
 
     /**
@@ -199,23 +125,30 @@ public class SampleTypeRequestRestController {
         if (!GenericValidator.isBlankOrNull(entity.getRequestedTests())) {
             String[] testIds = entity.getRequestedTests().split(",");
             StringBuilder testNames = new StringBuilder();
+            List<TestSelectionDTO> testDetails = new ArrayList<>();
+            boolean allTestsResolved = true;
             for (int i = 0; i < testIds.length; i++) {
                 String testId = testIds[i].trim();
                 if (!testId.isEmpty()) {
                     Test test = testService.getTestById(testId);
+                    if (testNames.length() > 0) {
+                        testNames.append(",");
+                    }
                     if (test != null) {
-                        if (testNames.length() > 0) {
-                            testNames.append(",");
-                        }
                         String name = test.getLocalizedName();
                         if (name == null || name.isEmpty()) {
                             name = test.getDescription();
                         }
                         testNames.append(name != null ? name : testId);
+                        testDetails.add(new TestSelectionDTO(test, testMethodService.getLinkedMethodDtos(testId)));
+                    } else {
+                        testNames.append(testId);
+                        allTestsResolved = false;
                     }
                 }
             }
             dto.setRequestedTestNames(testNames.toString());
+            dto.setRequestedTestDetails(allTestsResolved ? testDetails : Collections.emptyList());
         }
 
         // Resolve panel names

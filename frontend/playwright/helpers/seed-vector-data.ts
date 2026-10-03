@@ -113,7 +113,8 @@ export async function seedVectorPositivity(
 
   // 1. Order a Mosquito collection with both pathogen tests (creates analyses).
   await page.goto("/order/vector/enter");
-  await page.locator(".generate-link").click();
+  // New orders generate their number automatically. Do not request a second
+  // number while capturing the accession that the saved order will use.
   await expect(page.locator("#labNumber")).not.toHaveValue("", {
     timeout: 15_000,
   });
@@ -449,6 +450,7 @@ async function enterResult(
   const isNeg = (v: string) =>
     /^(not detected|negative)$/i.test((v || "").trim());
   for (const item of body.testResult ?? []) {
+    item.reportable = item.reportable === "N" ? false : true;
     const dict = (item.dictionaryResults ?? []) as Array<{
       id: string;
       value: string;
@@ -457,7 +459,6 @@ async function enterResult(
       ? dict.find((d) => isPos(d.value))
       : dict.find((d) => isNeg(d.value));
     if (!opt) continue;
-    item.reportable = item.reportable === "N" ? false : true;
     item.resultValue = opt.id;
     item.shadowResultValue = opt.id;
     item.isModified = true;

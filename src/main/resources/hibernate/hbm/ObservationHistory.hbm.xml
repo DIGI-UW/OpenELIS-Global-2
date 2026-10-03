@@ -32,7 +32,7 @@
         <property name="patientId"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">
             <column name="patient_id" precision="10" scale="0"
-                not-null="true" />
+                not-null="false" />
         </property>
         <property name="sampleId"
             type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType">

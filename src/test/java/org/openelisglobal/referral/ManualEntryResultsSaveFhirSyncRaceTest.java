@@ -32,6 +32,8 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationExceptio
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceServiceImpl.FhirOperations;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
+import org.openelisglobal.fhir.service.ServiceRequestTransformService;
+import org.openelisglobal.fhir.service.TaskTransformService;
 import org.openelisglobal.referral.fhir.service.FhirReferralServiceImpl;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
@@ -84,6 +86,12 @@ public class ManualEntryResultsSaveFhirSyncRaceTest extends BaseWebContextSensit
     private FhirTransformService fhirTransformService;
 
     @Autowired
+    private ServiceRequestTransformService serviceRequestTransformService;
+
+    @Autowired
+    private TaskTransformService taskTransformService;
+
+    @Autowired
     private IStatusService statusService;
 
     @Autowired
@@ -103,6 +111,8 @@ public class ManualEntryResultsSaveFhirSyncRaceTest extends BaseWebContextSensit
     private FhirPersistanceService capturingFhirStore;
     private Map<String, Resource> simulatedFhirStore;
     private Object originalFhirPersistanceServiceOnTransform;
+    private Object originalFhirPersistanceServiceOnServiceRequestTransform;
+    private Object originalFhirPersistanceServiceOnTaskTransform;
     private Object originalFhirReferralServiceOnReferralService;
 
     @Before
@@ -163,6 +173,12 @@ public class ManualEntryResultsSaveFhirSyncRaceTest extends BaseWebContextSensit
         originalFhirPersistanceServiceOnTransform = ReflectionTestUtils.getField(fhirTransformService,
                 "fhirPersistanceService");
         ReflectionTestUtils.setField(fhirTransformService, "fhirPersistanceService", capturingFhirStore);
+        originalFhirPersistanceServiceOnServiceRequestTransform = ReflectionTestUtils
+                .getField(serviceRequestTransformService, "fhirPersistanceService");
+        ReflectionTestUtils.setField(serviceRequestTransformService, "fhirPersistanceService", capturingFhirStore);
+        originalFhirPersistanceServiceOnTaskTransform = ReflectionTestUtils.getField(taskTransformService,
+                "fhirPersistanceService");
+        ReflectionTestUtils.setField(taskTransformService, "fhirPersistanceService", capturingFhirStore);
 
         // Build a real FhirReferralServiceImpl with Spring-managed collaborators, then
         // override its FhirPersistanceService with our capturing mock.
@@ -183,6 +199,10 @@ public class ManualEntryResultsSaveFhirSyncRaceTest extends BaseWebContextSensit
     public void tearDown() {
         ReflectionTestUtils.setField(fhirTransformService, "fhirPersistanceService",
                 originalFhirPersistanceServiceOnTransform);
+        ReflectionTestUtils.setField(serviceRequestTransformService, "fhirPersistanceService",
+                originalFhirPersistanceServiceOnServiceRequestTransform);
+        ReflectionTestUtils.setField(taskTransformService, "fhirPersistanceService",
+                originalFhirPersistanceServiceOnTaskTransform);
         ReflectionTestUtils.setField(referralService, "fhirReferralService",
                 originalFhirReferralServiceOnReferralService);
     }

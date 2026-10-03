@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+  xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+  <!-- Whether informed consent gates the clinical collect step (OGC-1201 Q).
+       Defaults to false, which is the behaviour FRS FR-5-001/FR-5-002
+       describes and what every deployment has today: consent is captured and
+       advisory. A site whose regulator requires consent before collection can
+       turn it on without a code change. -->
+  <changeSet author="oe" id="099-order-consent-required-1">
+    <preConditions onFail="MARK_RAN">
+      <sqlCheck expectedResult="0">
+        SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'consentRequiredForCollection'
+      </sqlCheck>
+    </preConditions>
+    <insert schemaName="clinlims" tableName="site_information">
+      <column name="id" valueSequenceNext="site_information_seq" />
+      <column name="name" value="consentRequiredForCollection" />
+      <column name="description" value="Require informed consent before a clinical sample collection can proceed." />
+      <column name="value" value="false" />
+      <column name="value_type" value="boolean" />
+      <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'siteIdentity')" />
+      <column name="lastupdated" valueDate="now()" />
+    </insert>
+    <rollback>
+      <delete schemaName="clinlims" tableName="site_information">
+        <where>name = 'consentRequiredForCollection'</where>
+      </delete>
+    </rollback>
+  </changeSet>
+
+</databaseChangeLog>

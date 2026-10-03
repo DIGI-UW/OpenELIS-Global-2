@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <!-- Device interoperability represents OpenELIS-owned analyzer identity
+        and its pinned Bridge profile revision. -->
+    <analyzer_profile_binding id="1"
+        profile_id="fixture.cobas-6800" profile_revision="1"
+        profile_fingerprint="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        last_updated="2023-01-01 10:00:00" />
+    <analyzer_profile_binding id="2"
+        profile_id="fixture.abl800" profile_revision="1"
+        profile_fingerprint="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        last_updated="2023-01-01 10:01:00" />
+    <analyzer_profile_binding id="3"
+        profile_id="fixture.sysmex-xn1000" profile_revision="1"
+        profile_fingerprint="sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+        last_updated="2023-01-01 10:02:00" />
+    <analyzer_site_binding id="1"
+        profile_binding_id="1" created_by="1"
+        last_updated="2023-01-01 10:10:00" />
+    <analyzer_site_binding id="2"
+        profile_binding_id="2" created_by="1"
+        last_updated="2023-01-01 10:11:00" />
+    <analyzer_site_binding id="3"
+        profile_binding_id="3" created_by="1"
+        last_updated="2023-01-01 10:12:00" />
+    <analyzer_site_binding_revision id="1"
+        site_binding_id="1" revision_number="1"
+        binding_fingerprint="sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+        created_by="1" last_updated="2023-01-01 10:20:00" />
+    <analyzer_site_binding_revision id="2"
+        site_binding_id="2" revision_number="1"
+        binding_fingerprint="sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+        created_by="1" last_updated="2023-01-01 10:21:00" />
+    <analyzer_site_binding_revision id="3"
+        site_binding_id="3" revision_number="1"
+        binding_fingerprint="sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff"
+        created_by="1" last_updated="2023-01-01 10:22:00" />
+    <analyzer id="1" name="Cobas 6800"
+        bridge_connection_id="bridge-cobas-6800" is_active="true"
+        status="ACTIVE" fhir_uuid="2d335c87-1def-42e9-a610-2748b9872a1c"
+        site_binding_revision_id="1" last_updated="2023-01-01 12:00:00" />
+    <analyzer id="2" name="ABL800 FLEX"
+        bridge_connection_id="bridge-abl800" is_active="true" status="ACTIVE"
+        fhir_uuid="2d335c87-1def-42e9-a610-2748b9872a2c"
+        site_binding_revision_id="2" last_updated="2023-01-01 12:30:00" />
+    <analyzer id="3" name="Sysmex XN-1000"
+        bridge_connection_id="bridge-sysmex-xn1000" is_active="false"
+        status="INACTIVE" fhir_uuid="2d335c87-1def-42e9-a610-2748b9872a3c"
+        site_binding_revision_id="3" last_updated="2023-01-01 13:00:00" />
+
+</dataset>

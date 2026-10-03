@@ -531,6 +531,12 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize) {
+        return getBaseObjectDAO().getSamplesNewestFirst(startingRecNo, pageSize);
+    }
+
+    @Override
     public String generateAccessionNumberAndInsert(Sample sample) {
         sample.setAccessionNumber(getBaseObjectDAO().getNextAccessionNumber());
         return insert(sample);

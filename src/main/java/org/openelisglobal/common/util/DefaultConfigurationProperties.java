@@ -319,6 +319,8 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.PATIENT_ID_REQUIRED, "true");
         properties.setPropertyValue(Property.PATIENT_SUBJECT_NUMBER_REQUIRED, "true");
         properties.setPropertyValue(Property.PATIENT_NATIONAL_ID_REQUIRED, "true");
+        properties.setPropertyValue(Property.PATIENT_SEX_REQUIRED, "true");
+        properties.setPropertyValue(Property.PATIENT_AGE_REQUIRED, "true");
 
         properties.setPropertyValue(Property.QA_SAMPLE_ID_REQUIRED, "false");
         properties.setPropertyValue(Property.MAX_ORDER_LABEL_PRINTED, "10");
@@ -390,6 +392,17 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.GPS_ACCURACY_METERS, "100");
         properties.setPropertyValue(Property.GPS_TIMEOUT_SECONDS, "10");
         properties.setPropertyValue(Property.USE_NEW_ADDRESS_HIERARCHY, "true"); // Default to new address hierarchy
+
+        // A deployment whose site_information row is missing or deleted still visits
+        // every optional pathology bench stage, so a stage can never be switched off
+        // by the absence of its row (FR-2.3).
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_DECALCIFICATION_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_PROCESSING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_EMBEDDING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_MICROTOMY_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_STAINING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED, "true");
+        properties.setPropertyValue(Property.PATHOLOGY_STAGE_UNDER_REVIEW_ENABLED, "true");
         return properties;
     }
 

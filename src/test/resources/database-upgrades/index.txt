@@ -1,0 +1,4 @@
+# Each entry loads <name>.properties. All scenarios run in the backend CI gate.
+analyzer-cutover
+analyzer-unmigrated
+analyzer-window-schema

@@ -87,7 +87,7 @@ public class FreezerAuditTrailReport extends Report implements IReportCreator {
                 }
             } else {
                 // All freezers audit trail
-                List<Freezer> allFreezers = freezerService.getAllFreezers("");
+                List<Freezer> allFreezers = freezerService.getAllFreezersForReporting();
                 for (Freezer freezer : allFreezers) {
                     processAuditEvents(freezer);
                 }

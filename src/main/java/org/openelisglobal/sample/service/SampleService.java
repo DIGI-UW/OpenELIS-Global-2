@@ -60,6 +60,8 @@ public interface SampleService extends BaseObjectService<Sample, String> {
 
     List<Sample> getPageOfSamples(int startingRecNo);
 
+    List<Sample> getSamplesNewestFirst(int startingRecNo, int pageSize);
+
     List<Sample> getSamplesForPatient(String patientID);
 
     String generateAccessionNumberAndInsert(Sample sample);

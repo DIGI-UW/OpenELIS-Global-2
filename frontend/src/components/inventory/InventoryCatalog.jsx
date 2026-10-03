@@ -1,4 +1,10 @@
-import React, { useState, useEffect, useContext, useCallback } from "react";
+import React, {
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+  useRef,
+} from "react";
 import {
   DataTable,
   TableContainer,
@@ -45,6 +51,14 @@ const InventoryCatalog = () => {
   );
 
   const [items, setItems] = useState([]);
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const [loading, setLoading] = useState(true);
   const [itemTypes, setItemTypes] = useState([
     { id: "ALL", text: intl.formatMessage({ id: "inventory.filter.all" }) },
@@ -69,6 +83,13 @@ const InventoryCatalog = () => {
   ];
 
   const headers = [
+    {
+      key: "code",
+      header: intl.formatMessage({
+        id: "catalog.item.code",
+        defaultMessage: "Code",
+      }),
+    },
     {
       key: "name",
       header: intl.formatMessage({ id: "catalog.item.name" }),
@@ -99,6 +120,7 @@ const InventoryCatalog = () => {
     const loadItemTypes = async () => {
       try {
         const types = await InventoryItemAPI.getItemTypes();
+        if (!isMountedRef.current) return;
         const formattedTypes = [
           {
             id: "ALL",
@@ -136,6 +158,7 @@ const InventoryCatalog = () => {
     setLoading(true);
     try {
       const response = await InventoryItemAPI.getAll();
+      if (!isMountedRef.current) return;
       const processedItems = (response || []).map((item) => ({
         ...item,
         isActive: item.isActive === "Y" || item.isActive === true,
@@ -150,7 +173,7 @@ const InventoryCatalog = () => {
         subtitle: "Error loading catalog items",
       });
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
   };
 
@@ -159,8 +182,10 @@ const InventoryCatalog = () => {
 
     if (searchTerm) {
       const searchLower = searchTerm.toLowerCase();
-      filtered = filtered.filter((item) =>
-        item.name?.toLowerCase().includes(searchLower),
+      filtered = filtered.filter(
+        (item) =>
+          item.name?.toLowerCase().includes(searchLower) ||
+          item.code?.toLowerCase().includes(searchLower),
       );
     }
 
@@ -188,12 +213,19 @@ const InventoryCatalog = () => {
 
   const rows = paginatedItems.map((item) => ({
     id: String(item.id),
+    code: item.code,
     name: item.name,
     itemType: item.itemType,
     units: item.units,
-    lowStockThreshold: item.lowStockThreshold || "-",
+    lowStockThreshold: item.lowStockThreshold ?? "-",
     status: item.isActive ? "Active" : "Inactive",
   }));
+
+  // Carbon reorders the rendered rows when a column is sorted, so the row
+  // body has to resolve its item by id rather than by position.
+  const itemsById = new Map(
+    paginatedItems.map((item) => [String(item.id), item]),
+  );
 
   const handleItemSaved = () => {
     setItemModalOpen(false);
@@ -284,35 +316,42 @@ const InventoryCatalog = () => {
                   placeholder={intl.formatMessage({
                     id: "catalog.search.placeholder",
                   })}
-                  onChange={(e) => setSearchTerm(e.target.value)}
+                  onChange={(e) => {
+                    setSearchTerm(e.target.value);
+                    setPage(1);
+                  }}
                   value={searchTerm}
                 />
 
                 <Dropdown
-                  id="type-filter"
+                  id="inventory-catalog-type-filter"
                   titleText=""
                   label={intl.formatMessage({ id: "inventory.filter.type" })}
                   items={itemTypes}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={itemTypes.find((t) => t.id === typeFilter)}
-                  onChange={({ selectedItem }) =>
-                    setTypeFilter(selectedItem.id)
+                  selectedItem={
+                    itemTypes.find((t) => t.id === typeFilter) ?? null
                   }
+                  onChange={({ selectedItem }) => {
+                    setTypeFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 
                 <Dropdown
-                  id="status-filter"
+                  id="inventory-catalog-status-filter"
                   titleText=""
                   label={intl.formatMessage({ id: "inventory.filter.status" })}
                   items={statusOptions}
                   itemToString={(item) => (item ? item.text : "")}
-                  selectedItem={statusOptions.find(
-                    (s) => s.id === statusFilter,
-                  )}
-                  onChange={({ selectedItem }) =>
-                    setStatusFilter(selectedItem.id)
+                  selectedItem={
+                    statusOptions.find((s) => s.id === statusFilter) ?? null
                   }
+                  onChange={({ selectedItem }) => {
+                    setStatusFilter(selectedItem.id);
+                    setPage(1);
+                  }}
                   size="md"
                 />
 
@@ -353,8 +392,11 @@ const InventoryCatalog = () => {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  rows.map((row, rowIndex) => {
-                    const item = paginatedItems[rowIndex];
+                  rows.map((row) => {
+                    const item = itemsById.get(row.id);
+                    // DataTable syncs `rows` into its state in an effect, so
+                    // for one render it can still list a just-filtered row.
+                    if (!item) return null;
                     return (
                       <TableRow key={row.id} {...getRowProps({ row })}>
                         {row.cells.map((cell) => {

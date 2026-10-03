@@ -30,6 +30,7 @@ import {
   AlertDialog,
   NotificationKinds,
 } from "../../common/CustomNotification";
+import { useHistory } from "react-router-dom";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { Settings } from "@carbon/icons-react";
@@ -50,6 +51,7 @@ function TestNotificationConfigMenu() {
   const intl = useIntl();
 
   const componentMounted = useRef(false);
+  const history = useHistory();
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [loading, setLoading] = useState(true);
@@ -157,9 +159,18 @@ function TestNotificationConfigMenu() {
   }, [testNamesList]);
 
   const handleEditButtonClick = (id) => {
-    window.location.assign(
-      `/MasterListsPage/testNotificationConfig?testId=${id}`,
-    );
+    history.push(`/MasterListsPage/testNotificationConfig?testId=${id}`);
+  };
+
+  /**
+   * Exit discards any unsaved checkbox toggles by rereading the menu, the
+   * same request the mount effect makes. The page never leaves this route,
+   * so there is nothing for history.push to do here.
+   */
+  const discardPendingChanges = () => {
+    setSaveButton(true);
+    setLoading(true);
+    getFromOpenElisServer(`/rest/TestNotificationConfigMenu`, handleMenuItems);
   };
 
   function testNotificationConfigMenuSavePostCall() {
@@ -318,11 +329,7 @@ function TestNotificationConfigMenu() {
                   <FormattedMessage id="label.button.save" />
                 </Button>{" "}
                 <Button
-                  onClick={() =>
-                    window.location.assign(
-                      "/MasterListsPage/testNotificationConfigMenu",
-                    )
-                  }
+                  onClick={discardPendingChanges}
                   kind="tertiary"
                   type="button"
                 >
@@ -555,11 +562,7 @@ function TestNotificationConfigMenu() {
                 <FormattedMessage id="label.button.save" />
               </Button>{" "}
               <Button
-                onClick={() =>
-                  window.location.assign(
-                    "/MasterListsPage/testNotificationConfigMenu",
-                  )
-                }
+                onClick={discardPendingChanges}
                 kind="tertiary"
                 type="button"
               >

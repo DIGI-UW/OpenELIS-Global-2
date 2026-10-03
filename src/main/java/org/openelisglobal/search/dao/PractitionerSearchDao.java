@@ -361,4 +361,22 @@ public class PractitionerSearchDao extends BaseFhirDao {
         return normalized.isEmpty() ? null : normalized;
     }
 
+    /** Providers by primary key, for the ServiceRequest requester include. */
+    public List<Provider> findByIds(List<String> providerIds) {
+
+        List<String> ids = providerIds == null ? List.of()
+                : providerIds.stream().filter(java.util.Objects::nonNull).map(String::trim).filter(id -> !id.isEmpty())
+                        .distinct().toList();
+        if (ids.isEmpty()) {
+            return List.of();
+        }
+
+        FhirCriteriaContext<Provider, Provider> context = createCriteriaContext(Provider.class);
+
+        context.addPredicate(context.getRoot().get("id").in(ids));
+
+        context.distinct(true);
+
+        return list(context);
+    }
 }

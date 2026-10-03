@@ -1,9 +1,11 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   Stack,
   TextInput,
   TextArea,
+  Select,
+  SelectItem,
   RadioButtonGroup,
   RadioButton,
   Toggle,
@@ -21,6 +23,7 @@ import {
   postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
   putToOpenElisServerJsonResponse,
+  resolveApiErrorMessage,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import useDomains from "../../../common/useDomains";
@@ -70,6 +73,12 @@ const sampleTypeMatchesDomain = (type, domain) => {
   return normalized === null || normalized === domain;
 };
 
+const CULTURE_WORKFLOW_TYPES = [
+  "BACTERIOLOGY",
+  "MYCOBACTERIOLOGY_TB",
+  "MYCOLOGY",
+];
+
 const BasicInfoSection = ({ testId }) => {
   const domains = useDomains();
   const intl = useIntl();
@@ -85,6 +94,7 @@ const BasicInfoSection = ({ testId }) => {
   const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [staleSave, setStaleSave] = useState(null);
   const [form, setForm] = useState(null);
   const [pendingDomain, setPendingDomain] = useState(null);
   const [domainRadioKey, setDomainRadioKey] = useState(0);
@@ -96,6 +106,9 @@ const BasicInfoSection = ({ testId }) => {
   // FR-58 — the same gaps, fetched proactively on load, shown as a persistent
   // checklist beside the status toggle for an inactive test.
   const [completenessGaps, setCompletenessGaps] = useState([]);
+  // FR-18 (OGC-1119) — the LOINC integrity warnings activation re-surfaces:
+  // shown beside the toggle right after the test goes Active, never a block.
+  const [activationWarnings, setActivationWarnings] = useState(null);
 
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
@@ -164,6 +177,40 @@ const BasicInfoSection = ({ testId }) => {
   const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
   const updateCreate = (patch) =>
     setCreateForm((prev) => ({ ...prev, ...patch }));
+
+  // OGC-189 (M2) — the Lab Unit picker is a *chooser*, so it offers only active
+  // units. The grandfathered-select rule: a test already assigned to a
+  // deactivated unit keeps showing that unit, marked inactive, so the control
+  // never renders blank and never writes that blank back on save. Losing the
+  // assignment this way is the OGC-1191 data-loss class.
+  const labUnitOptionsFor = useCallback(
+    (currentId) => {
+      const active = labUnits.filter((unit) => unit.isActive !== false);
+      const current = labUnits.find((unit) => unit.id === currentId);
+      if (current && current.isActive === false) {
+        return [current, ...active];
+      }
+      return active;
+    },
+    [labUnits],
+  );
+
+  // The grandfathered value is labelled so the inactive state is visible rather
+  // than implied by its absence from the rest of the list.
+  const labUnitItemToString = useCallback(
+    (item) => {
+      if (!item) {
+        return "";
+      }
+      return item.isActive === false
+        ? intl.formatMessage(
+            { id: "label.testCatalog.basicInfo.labUnit.inactive" },
+            { name: item.name },
+          )
+        : item.name;
+    },
+    [intl],
+  );
 
   // OGC-1145 FR-1/2/3 — shared sample-types multi-select with removable chips.
   // Only domain-compatible types are offered; already-selected incompatible ones
@@ -328,6 +375,7 @@ const BasicInfoSection = ({ testId }) => {
         // A successful save echoes the BasicInfo body, which has no status
         // field; the helper folds an error response's status into the JSON.
         if (res && res.testId && !res.status) {
+          setForm((prev) => ({ ...prev, lastupdated: res.lastupdated }));
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -337,6 +385,9 @@ const BasicInfoSection = ({ testId }) => {
               id: "label.testCatalog.basicInfo.saved",
             }),
           });
+        } else if (res && res.status === 409 && res.conflict === "stale") {
+          setNotificationVisible(false);
+          setStaleSave(resolveApiErrorMessage(intl, res, "server.error.msg"));
         } else if (
           res &&
           res.status === 409 &&
@@ -385,7 +436,16 @@ const BasicInfoSection = ({ testId }) => {
             ...(res.orderable !== undefined
               ? { orderable: res.orderable }
               : {}),
+            ...(res.lastupdated ? { lastupdated: res.lastupdated } : {}),
           });
+          const integrity = res.loincIntegrity;
+          setActivationWarnings(
+            integrity &&
+              (integrity.noLoinc ||
+                (integrity.duplicates && integrity.duplicates.length > 0))
+              ? integrity
+              : null,
+          );
           setNotificationVisible(true);
           addNotification({
             kind: "success",
@@ -453,8 +513,8 @@ const BasicInfoSection = ({ testId }) => {
           titleText={intl.formatMessage({
             id: "label.testCatalog.basicInfo.labUnit",
           })}
-          items={labUnits}
-          itemToString={(item) => (item ? item.name : "")}
+          items={labUnitOptionsFor(createForm.labUnitId)}
+          itemToString={labUnitItemToString}
           selectedItem={labUnits.find((u) => u.id === createForm.labUnitId)}
           onChange={({ selectedItem }) =>
             updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" })
@@ -607,8 +667,8 @@ const BasicInfoSection = ({ testId }) => {
         titleText={intl.formatMessage({
           id: "label.testCatalog.basicInfo.labUnit",
         })}
-        items={labUnits}
-        itemToString={(item) => (item ? item.name : "")}
+        items={labUnitOptionsFor(form.labUnitId)}
+        itemToString={labUnitItemToString}
         selectedItem={labUnits.find((u) => u.id === form.labUnitId) || null}
         onChange={({ selectedItem }) =>
           update({ labUnitId: selectedItem ? selectedItem.id : "" })
@@ -679,6 +739,32 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
+      <Select
+        id="basic-info-culture-workflow-type"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.cultureWorkflowType",
+        })}
+        value={form.cultureWorkflowType || ""}
+        onChange={(event) =>
+          update({ cultureWorkflowType: event.target.value || "" })
+        }
+      >
+        <SelectItem
+          value=""
+          text={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.cultureWorkflowType.none",
+          })}
+        />
+        {CULTURE_WORKFLOW_TYPES.map((workflowType) => (
+          <SelectItem
+            key={workflowType}
+            value={workflowType}
+            text={intl.formatMessage({
+              id: `label.testCatalog.basicInfo.cultureWorkflowType.${workflowType}`,
+            })}
+          />
+        ))}
+      </Select>
       <Toggle
         id="basic-info-active"
         labelText={intl.formatMessage({
@@ -693,9 +779,38 @@ const BasicInfoSection = ({ testId }) => {
           } else {
             // Activation sets orderable, so deactivation clears it again.
             update({ active: checked, orderable: false });
+            setActivationWarnings(null);
           }
         }}
       />
+      {activationWarnings && activationWarnings.noLoinc && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          data-testid="activation-no-loinc-warning"
+          title={intl.formatMessage({ id: "warning.testCatalog.noLoinc" })}
+        />
+      )}
+      {activationWarnings &&
+        activationWarnings.duplicates &&
+        activationWarnings.duplicates.length > 0 && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="activation-duplicate-loinc-warning"
+            title={intl.formatMessage(
+              { id: "warning.testCatalog.duplicateLoinc" },
+              {
+                code: activationWarnings.loinc,
+                testName: activationWarnings.duplicates
+                  .map((d) => d.name)
+                  .join(", "),
+              },
+            )}
+          />
+        )}
       {!form.active && completenessGaps.length > 0 && (
         <InlineNotification
           kind="info"
@@ -719,11 +834,33 @@ const BasicInfoSection = ({ testId }) => {
         onToggle={(checked) => update({ orderable: checked })}
       />
 
+      {staleSave && (
+        <div data-testid="basic-info-stale-save">
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "error.title" })}
+            subtitle={staleSave}
+          />
+          <Button
+            kind="secondary"
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            <FormattedMessage id="label.results.refresh" />
+          </Button>
+        </div>
+      )}
+
       <div>
         <Button
           kind="primary"
           disabled={
-            saving || editSampleTypesMissing || editIncompatibleTypes.length > 0
+            saving ||
+            Boolean(staleSave) ||
+            editSampleTypesMissing ||
+            editIncompatibleTypes.length > 0
           }
           onClick={handleSave}
         >

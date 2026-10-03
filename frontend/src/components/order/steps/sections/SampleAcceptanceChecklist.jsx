@@ -6,6 +6,7 @@ import {
   RadioButtonGroup,
   RadioButton,
   TextArea,
+  TextInput,
   InlineNotification,
   InlineLoading,
 } from "@carbon/react";
@@ -14,7 +15,7 @@ import { useIntl, FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
-import { Roles } from "../../../utils/Utils";
+import { Roles, postToOpenElisServerJsonResponse } from "../../../utils/Utils";
 import {
   ANSWER,
   getSampleItemEvaluation,
@@ -168,6 +169,38 @@ const SampleAcceptanceChecklist = ({
   const canResample = (userSessionDetails?.roles || []).some((r) =>
     [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN].includes(r),
   );
+
+  // AB: under ADVISORY enforcement a user could simply carry on past a failed
+  // check and nothing was kept — no reason, no user, no timestamp. Continuing
+  // is still allowed, but it is now a decision the order remembers. This is
+  // also what a role without resample/reject rights does with a failed
+  // sample: rejecting voids a specimen and creates a replacement, so that
+  // stays authorised, while recording a decision to proceed does not.
+  const [showContinueWithTesting, setShowContinueWithTesting] = useState(false);
+  const [continueReason, setContinueReason] = useState("");
+  const [continueSaving, setContinueSaving] = useState(false);
+  const canContinueWithTesting =
+    enforcement !== "MANDATORY" && status === STATUS.REVIEW;
+
+  const handleContinueWithTesting = () => {
+    if (!labNumber || !continueReason.trim()) {
+      return;
+    }
+    setContinueSaving(true);
+    postToOpenElisServerJsonResponse(
+      `/rest/order-override/${encodeURIComponent(labNumber)}`,
+      JSON.stringify({
+        overrideType: "CONTINUE_WITH_TESTING",
+        reasonCode: "MANUAL",
+        reason: continueReason.trim(),
+      }),
+      () => {
+        setContinueSaving(false);
+        setShowContinueWithTesting(false);
+        setContinueReason("");
+      },
+    );
+  };
 
   // ---- handlers ------------------------------------------------------------
 
@@ -586,6 +619,43 @@ const SampleAcceptanceChecklist = ({
               />
             </Button>
           )}
+          {canContinueWithTesting && (
+            <Button
+              kind="tertiary"
+              onClick={() => setShowContinueWithTesting((v) => !v)}
+            >
+              <FormattedMessage
+                id="sampleAcceptance.qa.button.continueWithTesting"
+                defaultMessage="Continue with testing"
+              />
+            </Button>
+          )}
+        </div>
+      )}
+
+      {showContinueWithTesting && (
+        <div className="sac-continue-with-testing">
+          <TextInput
+            id="continueWithTestingReason"
+            labelText={intl.formatMessage({
+              id: "sampleAcceptance.qa.continueWithTesting.reason",
+              defaultMessage:
+                "Why is this sample being tested despite the failed check?",
+            })}
+            value={continueReason}
+            onChange={(e) => setContinueReason(e.target.value)}
+          />
+          <Button
+            kind="primary"
+            size="sm"
+            disabled={!continueReason.trim() || continueSaving}
+            onClick={handleContinueWithTesting}
+          >
+            <FormattedMessage
+              id="sampleAcceptance.qa.continueWithTesting.record"
+              defaultMessage="Record and continue"
+            />
+          </Button>
         </div>
       )}
 

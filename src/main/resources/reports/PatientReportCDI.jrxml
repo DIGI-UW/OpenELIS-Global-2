@@ -959,7 +959,7 @@
 				<textElement verticalAlignment="Middle">
 					<font size="8"/>
 				</textElement>
-				<textFieldExpression><![CDATA["B = " + $R{report.belowNormal} + "  E = " + $R{report.aboveNormal} + "  * = " + $R{report.abnormal}]]></textFieldExpression>
+				<textFieldExpression><![CDATA["B = " + $R{report.belowNormal} + "  E = " + $R{report.aboveNormal} + "  * = " + $R{report.abnormal} + "  BB = " + $R{report.criticalBelowNormal} + "  EE = " + $R{report.criticalAboveNormal}]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="63" y="16" width="489" height="14" uuid="2d694272-e2d1-457d-afc4-0b7f401b4aa7"/>

@@ -35,9 +35,64 @@ jobs:
       artifact_source_mode: ${{ steps.context.outputs.artifact_source_mode }}
       transfer_mode: ${{ steps.context.outputs.transfer_mode }}
       artifact_map_kind: ${{ steps.context.outputs.artifact_map_kind }}
-      include_plugin_jars: ${{ steps.context.outputs.include_plugin_jars }}
       checkpoint_context: ${{ steps.context.outputs.checkpoint_context }}
+      skip: ${{ steps.scope.outputs.skip }}
     steps:
+      # workflow_run always runs from the default branch, so this is the
+      # default branch's copy of the scope rules, not the pull request's.
+      - name: Checkout scope script
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
+
+      - name: Download triggering pull request
+        id: download_scope
+        if: github.event.workflow_run.event == 'pull_request'
+        uses: actions/download-artifact@v6
+        with:
+          name: e2e-scope-context
+          path: /tmp/e2e-scope-context
+          run-id: ${{ github.event.workflow_run.id }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
+
+      - name: Decide E2E scope
+        id: scope
+        uses: actions/github-script@v8
+        env:
+          RUN_EVENT: ${{ github.event.workflow_run.event }}
+          HEAD_OWNER: ${{ github.event.workflow_run.head_repository.owner.login }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        with:
+          retries: 3
+          script: |
+            const fs = require('fs');
+            const scope = require('./.github/scripts/e2e-scope.cjs');
+            let skip = false;
+            if (process.env.RUN_EVENT === 'pull_request') {
+              const owner = context.repo.owner;
+              const repo = context.repo.repo;
+              let claimedNumber;
+              try {
+                claimedNumber = fs.readFileSync('/tmp/e2e-scope-context/pr_number', 'utf8');
+              } catch (error) {
+                claimedNumber = undefined;
+              }
+              const pull = await scope.resolvePullRequest({ github, owner, repo, claimedNumber,
+                headOwner: process.env.HEAD_OWNER, headBranch: process.env.HEAD_BRANCH,
+                headSha: process.env.HEAD_SHA });
+              if (pull) {
+                const files = await scope.listPullRequestFiles({ github, owner, repo, pullNumber: pull.number });
+                skip = !scope.requiresE2E(files);
+                core.info(`PR #${pull.number}: ${files.length} changed file(s); E2E ${skip ? 'skipped: documentation only' : 'required'}`);
+              } else {
+                core.info('Triggering pull request not confirmed at this head, or shared with another open pull request; running E2E.');
+              }
+            }
+            core.setOutput('skip', skip ? 'true' : 'false');
+
       - name: Download early build context artifact
         id: download_context
         uses: actions/download-artifact@v6
@@ -61,6 +116,20 @@ jobs:
       - name: Parse build context
         id: context
         run: |
+          if [ "${{ steps.scope.outputs.skip }}" = "true" ]; then
+            echo "Documentation-only pull request; E2E suites are skipped."
+            echo "is_fork=false" >> "$GITHUB_OUTPUT"
+            echo "pr_number=" >> "$GITHUB_OUTPUT"
+            echo "checkout_ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "status_sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "build_run_id=${{ github.event.workflow_run.id }}" >> "$GITHUB_OUTPUT"
+            echo "artifact_source_mode=skipped" >> "$GITHUB_OUTPUT"
+            echo "transfer_mode=none" >> "$GITHUB_OUTPUT"
+            echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
+            echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
           if [ "${{ steps.download_context.outcome }}" != "success" ] || [ ! -d /tmp/e2e-build-context ]; then
             echo "No build context artifact — build likely failed."
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
@@ -71,7 +140,6 @@ jobs:
             echo "artifact_source_mode=none" >> "$GITHUB_OUTPUT"
             echo "transfer_mode=none" >> "$GITHUB_OUTPUT"
             echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
-            echo "include_plugin_jars=true" >> "$GITHUB_OUTPUT"
             echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -115,7 +183,6 @@ jobs:
           echo "artifact_source_mode=$ARTIFACT_SOURCE_MODE" >> "$GITHUB_OUTPUT"
           echo "transfer_mode=$IMAGE_TRANSFER" >> "$GITHUB_OUTPUT"
           echo "artifact_map_kind=base" >> "$GITHUB_OUTPUT"
-          echo "include_plugin_jars=true" >> "$GITHUB_OUTPUT"
           echo "checkpoint_context=03 Checkpoint - E2E" >> "$GITHUB_OUTPUT"
 
           echo "Build context: is_fork=$IS_FORK transfer_mode=$IMAGE_TRANSFER artifact_source_mode=$ARTIFACT_SOURCE_MODE pr=#$PR_NUMBER checkout_ref=$CHECKOUT_REF"
@@ -131,12 +198,14 @@ jobs:
       - name: Post checkpoint status
         uses: actions/github-script@v8
         with:
+          retries: 3
           script: |
             const sha = '${{ needs.setup.outputs.status_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const contexts = ['03 Checkpoint - E2E',
+              '03 Checkpoint - E2E / build-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}'];
             const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
 
-            await github.rest.repos.createCommitStatus({
+            const outcomes = await Promise.allSettled(contexts.map(contextName => github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha,
@@ -144,7 +213,9 @@ jobs:
               context: contextName,
               description: 'Playwright, Cypress, and analyzer-harness suites are running...',
               target_url: runUrl
-            });
+            })));
+            const failures = outcomes.filter(outcome => outcome.status === 'rejected');
+            if (failures.length) throw new AggregateError(failures.map(outcome => outcome.reason), 'Could not post all E2E statuses');
 
   # ─── Fork Image Publish (No Rebuild) ───────────────────────────────────────
   # Fork PR builds hand off prebuilt Docker images as an artifact. This job
@@ -167,14 +238,6 @@ jobs:
           run-id: ${{ needs.setup.outputs.build_run_id }}
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Download plugin jars from build workflow
-        uses: actions/download-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars
-          run-id: ${{ needs.setup.outputs.build_run_id }}
-          github-token: ${{ secrets.GITHUB_TOKEN }}
-
       - name: Login to GHCR
         uses: docker/login-action@v4
         with:
@@ -192,7 +255,7 @@ jobs:
 
       - name: Publish handed-off compose images to GHCR
         run: |
-          TAG="sha-${{ needs.setup.outputs.status_sha }}"
+          TAG="sha-${{ needs.setup.outputs.status_sha }}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
           OWNER_LOWER="$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')"
           export TAG OWNER_LOWER
 
@@ -224,7 +287,12 @@ jobs:
             attempt=1
             while [ $attempt -le 3 ]; do
               if push_err=$(docker push "$ghcr_image" 2>&1); then
-                printf "%s|%s\n" "$image" "$ghcr_image"
+                digest="$(printf "%s\n" "$push_err" | sed -nE "s/.*digest: (sha256:[a-f0-9]{64}).*/\\1/p" | tail -1)"
+                if [ -z "$digest" ]; then
+                  echo "PUSH did not report an immutable digest for $image" >&2
+                  exit 1
+                fi
+                printf "%s|%s@%s\n" "$image" "${ghcr_image%:*}" "$digest"
                 exit 0
               fi
               echo "PUSH attempt $attempt failed ($image): $push_err" >&2
@@ -253,14 +321,6 @@ jobs:
           fi
           echo "Pushed image mappings:"
           cat /tmp/e2e-image-map.txt
-
-      - name: Upload plugin jars artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: /tmp/e2e-plugin-jars/*.jar
-          if-no-files-found: error
-          retention-days: 1
 
       - name: Upload Docker image map artifact
         uses: actions/upload-artifact@v6
@@ -313,7 +373,6 @@ jobs:
       build_run_id: ${{ needs.setup.outputs.build_run_id }}
       artifact_source_mode: ${{ needs.setup.outputs.artifact_source_mode }}
       artifact_map_kind: ${{ needs.setup.outputs.artifact_map_kind }}
-      include_plugin_jars: ${{ needs.setup.outputs.include_plugin_jars }}
       is_fork: ${{ needs.setup.outputs.is_fork }}
       pr_number: ${{ needs.setup.outputs.pr_number }}
       checkpoint_context: ${{ needs.setup.outputs.checkpoint_context }}
@@ -324,7 +383,7 @@ jobs:
   missing-image-transfer:
     name: Missing Image Transfer
     needs: setup
-    if: needs.setup.result == 'success' && needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
+    if: needs.setup.result == 'success' && needs.setup.outputs.skip != 'true' && needs.setup.outputs.is_fork != 'true' && needs.setup.outputs.artifact_source_mode != 'cross_run'
     runs-on: ubuntu-latest
     steps:
       - name: Report missing transfer
@@ -351,6 +410,11 @@ jobs:
         run: |
           IS_FORK="${{ needs.setup.outputs.is_fork }}"
           ARTIFACT_MODE="${{ needs.setup.outputs.artifact_source_mode }}"
+
+          if [[ "${{ needs.setup.result }}" == "success" && "${{ needs.setup.outputs.skip }}" == "true" ]]; then
+            echo "E2E gate passed: documentation-only pull request, suites skipped."
+            exit 0
+          fi
 
           if [[ "$IS_FORK" == "true" ]]; then
             # Fork path: when same_run publication is required, fork image publish
@@ -390,9 +454,11 @@ jobs:
       - name: Update checkpoint status
         uses: actions/github-script@v8
         with:
+          retries: 3
           script: |
             const sha = '${{ needs.setup.outputs.status_sha }}';
-            const contextName = '03 Checkpoint - E2E';
+            const contexts = ['03 Checkpoint - E2E',
+              '03 Checkpoint - E2E / build-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}'];
             const gateResult = '${{ needs.e2e-gate.result }}';
             const artifactSourceMode = '${{ needs.setup.outputs.artifact_source_mode }}';
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
@@ -401,6 +467,9 @@ jobs:
             if (gateResult === 'cancelled') {
               state = 'error';
               description = 'E2E run was cancelled';
+            } else if (artifactSourceMode === 'skipped' && gateResult === 'success') {
+              state = 'success';
+              description = 'Documentation-only change; E2E suites skipped';
             } else if (artifactSourceMode === 'none' && !isFork) {
               state = 'failure';
               description = 'E2E build failed - no Docker images were produced';
@@ -411,7 +480,7 @@ jobs:
               state = 'failure';
               description = 'One or more E2E suites failed';
             }
-            await github.rest.repos.createCommitStatus({
+            const outcomes = await Promise.allSettled(contexts.map(contextName => github.rest.repos.createCommitStatus({
               owner: context.repo.owner,
               repo: context.repo.repo,
               sha,
@@ -419,4 +488,6 @@ jobs:
               context: contextName,
               description,
               target_url: runUrl
-            });
+            })));
+            const failures = outcomes.filter(outcome => outcome.status === 'rejected');
+            if (failures.length) throw new AggregateError(failures.map(outcome => outcome.reason), 'Could not post all E2E statuses');

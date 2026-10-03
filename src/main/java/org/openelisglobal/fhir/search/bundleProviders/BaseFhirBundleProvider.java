@@ -1,6 +1,5 @@
 package org.openelisglobal.fhir.search.bundleProviders;
 
-import ca.uhn.fhir.rest.api.server.IBundleProvider;
 import ca.uhn.fhir.rest.api.server.RequestDetails;
 import java.util.Collections;
 import java.util.Date;
@@ -18,7 +17,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
  * @param <E> OpenELIS persistence entity type
  * @param <R> FHIR resource type
  */
-public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> implements IBundleProvider {
+public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> implements PagedBundleProvider {
 
     private static final int DEFAULT_PAGE_SIZE = resolveDefaultPageSize();
 
@@ -43,6 +42,17 @@ public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> impleme
      * Preferred page size returned to HAPI FHIR.
      */
     private int preferredPageSize = DEFAULT_PAGE_SIZE;
+
+    /**
+     * Offset requested with {@code _offset}, or null when the client did not ask
+     * for one.
+     */
+    private Integer currentPageOffset;
+
+    /**
+     * Page size that goes with {@link #currentPageOffset}.
+     */
+    private Integer currentPageSize;
 
     /**
      * Loads entities from the database for the requested range.
@@ -72,19 +82,28 @@ public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> impleme
      * Loads and transforms only the range requested by HAPI FHIR.
      *
      * HAPI treats {@code fromIndex} as inclusive and {@code toIndex} as exclusive.
+     *
+     * <p>
+     * Once {@code _offset} is in play HAPI stops asking for a range at all: it
+     * calls this with the whole of {@code 0..MAX_VALUE} and returns whatever comes
+     * back, because in that mode the provider owns the paging. The requested range
+     * is therefore ignored in favour of the offset the client asked for - reading
+     * it literally is what made every page after the first return the entire result
+     * set.
      */
     @Override
     public List<IBaseResource> getResources(int fromIndex, int toIndex) {
 
         validateRange(fromIndex, toIndex);
 
-        int pageSize = toIndex - fromIndex;
+        int from = effectiveOffset(fromIndex);
+        int pageSize = effectivePageSize(fromIndex, toIndex);
 
         if (pageSize == 0) {
             return Collections.emptyList();
         }
 
-        List<E> entities = loadEntities(fromIndex, pageSize);
+        List<E> entities = loadEntities(from, pageSize);
 
         if (entities == null || entities.isEmpty()) {
 
@@ -133,6 +152,64 @@ public abstract class BaseFhirBundleProvider<E, R extends IBaseResource> impleme
     @Override
     public Integer preferredPageSize() {
         return preferredPageSize;
+    }
+
+    /**
+     * Declares which page of results this provider is serving.
+     *
+     * <p>
+     * HAPI builds the {@code next} and {@code previous} links from these, so a
+     * provider that does not report them hands the client links it will not honour.
+     * Passing a null offset leaves the provider in its unpaged mode.
+     *
+     * @param offset zero-based offset requested with {@code _offset}
+     * @param count  page size requested with {@code _count}
+     */
+    @Override
+    public void setCurrentPage(Integer offset, Integer count) {
+        if (offset == null) {
+            currentPageOffset = null;
+            currentPageSize = null;
+            return;
+        }
+        if (offset < 0) {
+            throw new IllegalArgumentException("_offset must be zero or greater");
+        }
+        int size = count == null || count <= 0 ? preferredPageSize : count;
+        currentPageOffset = offset;
+        currentPageSize = size;
+    }
+
+    @Override
+    public Integer getCurrentPageOffset() {
+        return currentPageOffset;
+    }
+
+    @Override
+    public Integer getCurrentPageSize() {
+        return currentPageSize;
+    }
+
+    /**
+     * First row a subclass should load for the range HAPI asked for.
+     *
+     * <p>
+     * Subclasses override {@code getResources} to attach includes, and must resolve
+     * the range through this and {@link #effectivePageSize(int, int)} rather than
+     * subtracting the arguments: in offset mode HAPI asks for everything and
+     * expects the provider to have applied {@code _offset} and {@code _count}.
+     */
+    protected int effectiveOffset(int fromIndex) {
+        return currentPageOffset == null ? fromIndex : currentPageOffset;
+    }
+
+    /**
+     * Number of rows a subclass should load for the range HAPI asked for.
+     *
+     * @see #effectiveOffset(int)
+     */
+    protected int effectivePageSize(int fromIndex, int toIndex) {
+        return currentPageOffset == null ? toIndex - fromIndex : currentPageSize;
     }
 
     /**

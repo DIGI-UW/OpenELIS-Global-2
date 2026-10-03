@@ -13,10 +13,18 @@
         sort_order="2147483646" name="Glucose" orderable="true" guid="glu-001"
         antimicrobial_resistance="false" />
 
-    <analyzer id="1" name="Mindray BC-5380"
-        machine_id="MINDRAY-5380-001" analyzer_type="HEMATOLOGY"
-        description="Hematology analyzer" location="Main Lab" is_active="true"
-        has_setup_page="false" last_updated="2025-01-01 12:00:00" />
+    <analyzer_profile_binding id="1"
+        profile_id="fixture.fhir-device" profile_revision="1"
+        profile_fingerprint="sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" />
+    <analyzer_site_binding id="1"
+        profile_binding_id="1" created_by="1" />
+    <analyzer_site_binding_revision id="1"
+        site_binding_id="1" revision_number="1"
+        binding_fingerprint="sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+        created_by="1" />
+    <analyzer id="1" name="Mindray BC-5380" is_active="true"
+        status="ACTIVE" bridge_connection_id="bridge-1"
+        site_binding_revision_id="1" last_updated="2025-01-01 12:00:00" />
 
     <sample id="9001" accession_number="FHIR-DEV-001"
         status_id="8001" entered_date="2025-06-01 10:00:00"

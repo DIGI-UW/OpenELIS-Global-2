@@ -15,6 +15,7 @@ import {
   Button,
   Loading,
   InlineNotification,
+  Modal,
   Table,
   TableHead,
   TableRow,
@@ -30,6 +31,37 @@ import {
   putToOpenElisServer,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
+
+/**
+ * OGC-1234: the source test's components as unsaved rows of this test. Copy
+ * replaces, it never merges: the save inserts what the source has and
+ * soft-deletes every current component, option and interpretation it does
+ * not. A source option whose value this test's component (same code) already
+ * offers keeps that option's id, so the save updates the row in place instead
+ * of leaving an inactive twin that result lookups by value can still match.
+ */
+const stageCopiedComponents = (sourceComponents, currentComponents) =>
+  sourceComponents.map(({ id: _id, ...component }) => {
+    const current = (currentComponents || []).find(
+      (c) => c.code === component.code,
+    );
+    const currentOptionIds = new Map(
+      ((current && current.options) || [])
+        .filter((o) => o.id)
+        .map((o) => [o.value, o.id]),
+    );
+    return {
+      ...component,
+      options: (component.options || []).map(({ id: _id, ...option }) =>
+        currentOptionIds.has(option.value)
+          ? { ...option, id: currentOptionIds.get(option.value) }
+          : option,
+      ),
+      interpretations: (component.interpretations || []).map(
+        ({ id: _id, ...interpretation }) => interpretation,
+      ),
+    };
+  });
 
 /**
  * OGC-949 M5 / OGC-749 — Sample & Results section.
@@ -148,6 +180,14 @@ const SampleResultsSection = ({ testId }) => {
   const [components, setComponents] = useState([]);
   const [otherTests, setOtherTests] = useState([]);
   const [copyFromId, setCopyFromId] = useState("");
+  // Remounts the picker after a copy is staged: Carbon's ComboBox keeps its
+  // own selection when selectedItem returns to null, so picking the same test
+  // again would not fire onChange.
+  const [copyPickerKey, setCopyPickerKey] = useState(0);
+  const [copyConfirmOpen, setCopyConfirmOpen] = useState(false);
+  // Name of the test whose configuration is staged in the editor and not yet
+  // saved; null when the editor shows this test's own saved configuration.
+  const [copiedFrom, setCopiedFrom] = useState(null);
   const [uoms, setUoms] = useState([]);
   // Dictionary typeahead results + a reset counter (per component) so the ComboBox
   // clears its input after an option is added.
@@ -174,6 +214,7 @@ const SampleResultsSection = ({ testId }) => {
           return;
         }
         setComponents(res.components);
+        setCopiedFrom(null);
       },
     );
   };
@@ -524,6 +565,21 @@ const SampleResultsSection = ({ testId }) => {
   const toInt = (v) =>
     v === "" || v === null || v === undefined ? null : Number(v);
 
+  // FR-C2 (OGC-1148): both limits >= 0 and LOD <= LOQ when both are set.
+  const detectionLimitProblem = (c) => {
+    const lod = toInt(c.lod);
+    const loq = toInt(c.loq);
+    if ((lod !== null && lod < 0) || (loq !== null && loq < 0)) {
+      return "error.testCatalog.sampleResults.detectionLimitNegative";
+    }
+    if (lod !== null && loq !== null && lod > loq) {
+      return "error.testCatalog.sampleResults.lodGtLoq";
+    }
+    return null;
+  };
+  const detectionLimitsInvalid = (c) =>
+    detectionLimitProblem(c) === "error.testCatalog.sampleResults.lodGtLoq";
+
   const handleSave = () => {
     // Every component needs a label (FR-29); the code isn't a separate user field,
     // so default it to the label when left blank. Guide the user with a clear
@@ -563,6 +619,19 @@ const SampleResultsSection = ({ testId }) => {
       });
       return;
     }
+    // FR-C2 (OGC-1148) — detection limits must be coherent before they persist.
+    const badLimits = normalized.map(detectionLimitProblem).find(Boolean);
+    if (badLimits) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage({ id: badLimits }),
+      });
+      return;
+    }
     setSaving(true);
     const payload = {
       testId,
@@ -570,6 +639,8 @@ const SampleResultsSection = ({ testId }) => {
         ...c,
         displayOrder: toInt(c.displayOrder),
         significantDigits: toInt(c.significantDigits),
+        lod: toInt(c.lod),
+        loq: toInt(c.loq),
         options: (c.options || []).map((o) => ({
           ...o,
           sortOrder: toInt(o.sortOrder),
@@ -608,28 +679,54 @@ const SampleResultsSection = ({ testId }) => {
     );
   };
 
-  const handleCopyFrom = () => {
-    if (!copyFromId) {
-      return;
-    }
-    postToOpenElisServerJsonResponse(
-      `/rest/test-catalog/tests/${testId}/sample-results/copy-from/${copyFromId}`,
-      JSON.stringify({}),
+  const copySource = otherTests.find((t) => t.id === copyFromId) || null;
+  const copySourceName = copySource ? copySource.value : "";
+
+  const notifyCopy = (kind, messageId, source) => {
+    setNotificationVisible(true);
+    addNotification({
+      kind,
+      title: intl.formatMessage({
+        id: "label.testCatalog.section.sample-results",
+      }),
+      message: intl.formatMessage({ id: messageId }, { source }),
+    });
+  };
+
+  // OGC-1234: Copy replaces this test's configuration with the source's.
+  // Confirming only stages it in the editor; Save commits it.
+  const confirmCopyFrom = () => {
+    setCopyConfirmOpen(false);
+    const sourceId = copyFromId;
+    const sourceName = copySourceName;
+    getFromOpenElisServer(
+      `/rest/test-catalog/tests/${sourceId}/sample-results`,
       (res) => {
-        if (res) {
-          setCopyFromId("");
-          load();
-          setNotificationVisible(true);
-          addNotification({
-            kind: "success",
-            title: intl.formatMessage({
-              id: "label.testCatalog.section.sample-results",
-            }),
-            message: intl.formatMessage({
-              id: "label.testCatalog.sampleResults.copied",
-            }),
-          });
+        if (!res || !Array.isArray(res.components)) {
+          notifyCopy(
+            "error",
+            "label.testCatalog.sampleResults.copyLoadError",
+            sourceName,
+          );
+          return;
         }
+        if (res.components.length === 0) {
+          notifyCopy(
+            "info",
+            "label.testCatalog.sampleResults.copyEmpty",
+            sourceName,
+          );
+          return;
+        }
+        setComponents((current) =>
+          stageCopiedComponents(res.components, current),
+        );
+        setAdvancedTypesOpen({});
+        setOptionSearch({});
+        setUnitForm(null);
+        setCopiedFrom(sourceName);
+        setCopyFromId("");
+        setCopyPickerKey((k) => k + 1);
       },
     );
   };
@@ -881,6 +978,60 @@ const SampleResultsSection = ({ testId }) => {
                         })
                       }
                     />
+                    {/* Detection limits (OGC-1148 FR-C1/C2): optional, LOD <= LOQ. */}
+                    <div
+                      style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}
+                      data-testid={`detection-limits-${ci}`}
+                    >
+                      <NumberInput
+                        id={`comp-lod-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.lod.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.lod === null || c.lod === undefined ? "" : c.lod
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            lod: value === "" ? null : value,
+                          })
+                        }
+                      />
+                      <NumberInput
+                        id={`comp-loq-${ci}`}
+                        label={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.label",
+                        })}
+                        helperText={intl.formatMessage({
+                          id: "admin.testCatalog.sampleResults.loq.helper",
+                        })}
+                        min={0}
+                        allowEmpty
+                        hideSteppers
+                        invalid={detectionLimitsInvalid(c)}
+                        invalidText={intl.formatMessage({
+                          id: "error.testCatalog.sampleResults.lodGtLoq",
+                        })}
+                        value={
+                          c.loq === null || c.loq === undefined ? "" : c.loq
+                        }
+                        onChange={(_e, { value }) =>
+                          patchComponent(ci, {
+                            loq: value === "" ? null : value,
+                          })
+                        }
+                      />
+                    </div>
                   </>
                 )}
                 <TextInput
@@ -1225,6 +1376,7 @@ const SampleResultsSection = ({ testId }) => {
 
       <div style={{ display: "flex", gap: "0.5rem", alignItems: "flex-end" }}>
         <ComboBox
+          key={`copy-from-test-${copyPickerKey}`}
           id="copy-from-test"
           titleText={intl.formatMessage({
             id: "label.testCatalog.sampleResults.copyFrom",
@@ -1234,7 +1386,11 @@ const SampleResultsSection = ({ testId }) => {
           })}
           items={otherTests}
           itemToString={(t) => (t ? t.value : "")}
-          selectedItem={otherTests.find((t) => t.id === copyFromId) || null}
+          shouldFilterItem={({ item, inputValue }) =>
+            !inputValue ||
+            (item?.value || "").toLowerCase().includes(inputValue.toLowerCase())
+          }
+          selectedItem={copySource}
           onChange={({ selectedItem }) =>
             setCopyFromId(selectedItem ? selectedItem.id : "")
           }
@@ -1242,11 +1398,55 @@ const SampleResultsSection = ({ testId }) => {
         <Button
           kind="secondary"
           disabled={!copyFromId}
-          onClick={handleCopyFrom}
+          onClick={() => setCopyConfirmOpen(true)}
         >
           <FormattedMessage id="label.testCatalog.sampleResults.copyFromButton" />
         </Button>
       </div>
+
+      {copiedFrom && (
+        <div>
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="copy-staged-warning"
+            title={intl.formatMessage(
+              { id: "label.testCatalog.sampleResults.copyStaged" },
+              { source: copiedFrom },
+            )}
+            subtitle={intl.formatMessage({
+              id: "label.testCatalog.sampleResults.copyStaged.helper",
+            })}
+          />
+          <Button kind="ghost" size="sm" onClick={load}>
+            <FormattedMessage id="label.testCatalog.sampleResults.copyDiscard" />
+          </Button>
+        </div>
+      )}
+
+      <Modal
+        open={copyConfirmOpen}
+        danger
+        size="sm"
+        modalHeading={intl.formatMessage({
+          id: "label.testCatalog.sampleResults.copyConfirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.testCatalog.sampleResults.copyConfirm.confirm",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestSubmit={confirmCopyFrom}
+        onRequestClose={() => setCopyConfirmOpen(false)}
+        onSecondarySubmit={() => setCopyConfirmOpen(false)}
+      >
+        <p>
+          {intl.formatMessage(
+            { id: "label.testCatalog.sampleResults.copyConfirm.body" },
+            { source: copySourceName },
+          )}
+        </p>
+      </Modal>
 
       <div style={{ display: "flex", gap: "0.5rem" }}>
         <Button

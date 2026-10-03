@@ -112,7 +112,8 @@ public class TestLabelConfigServiceImplTest extends BaseWebContextSensitiveTest 
         preset.setIsSystem(false);
         preset.setIsActive(true);
         Integer id = labelPresetDAO.insert(preset);
-        assertNotNull(id);
+        assertNotNull("inserted preset must get an id", id);
+        assertTrue("inserted preset must get a positive id", id > 0);
         return preset;
     }
 
@@ -122,10 +123,8 @@ public class TestLabelConfigServiceImplTest extends BaseWebContextSensitiveTest 
 
     @Test
     public void assertPerSamplePreset_perSamplePreset_doesNotThrow() {
-        // Should not throw for a preset with prints_per_sample=true
         testLabelPresetLinkService.assertPerSamplePreset(perSamplePreset.getId());
-        // If we reach here, the method did not throw — assertion passes by absence
-        assertTrue("assertPerSamplePreset should pass for per-sample preset", true);
+        // Reaching this line means no exception was thrown — the test passes.
     }
 
     @Test

@@ -181,24 +181,7 @@ function toggleSelectAll( element ) {
 
 }
 
-function onLISSuccess(xhr) {
-	if (xhr.status == '200') {
-		alert("action ran successfully")
-	}
-}
-
 </script>
-
-<select id="lisAction" onChange="document.getElementById('lisRunButton').disabled = false;">
-	<option disabled selected value=""><spring:message code="analyzer.runlisaction.default" text="--- supported actions ---"/></option>
-<c:forEach items="${form.supportedLISActions}" var="action" varStatus="action_iter">
-	<option value="${action.actionName}">${action.actionName}</option>
-</c:forEach>
-</select>
-<button id="lisRunButton" type="button" disabled onClick="runLIStoAnalyzerAction('Aquios', jQuery('#lisAction').val(), onLISSuccess)">
-<spring:message code="analyzer.runlisaction.button" text="Run Action"/>
-</button>
-
 
 <form:hidden path="type"/>
 <c:if test="${form.displayNotFoundMsg}">

@@ -8,6 +8,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * OGC-748 Basic Info — round-trip against a real DB: load a test's basic-info,
@@ -38,6 +40,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private TestService testService;
+
+    @Autowired
+    private StaleSaveGuard staleSaveGuard;
 
     @Autowired
     private TestResultComponentService componentService;
@@ -62,9 +67,6 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
 
     @Autowired
     private org.openelisglobal.analyzer.service.AnalyzerService analyzerService;
-
-    @Autowired
-    private org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService analyzerTestMappingService;
 
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
@@ -95,8 +97,7 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         // dependency is a compile error here, not a runtime NPE.
         controller = new TestCatalogEditorRestController(testService, componentService, interpretationService,
                 testResultService, resultLimitService, coverageService, handlingService, analyzerService,
-                analyzerTestMappingService, typeOfSampleService, typeOfSampleTestService, terminologyService,
-                panelService, panelItemService);
+                typeOfSampleService, typeOfSampleTestService, terminologyService, panelService, panelItemService);
         cleanup();
         jdbc.update(
                 "INSERT INTO clinlims.test (id, name, description, is_active, guid, domain, antimicrobial_resistance,"
@@ -147,6 +148,44 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertTrue(!Boolean.TRUE.equals(reloaded.getOrderable()));
     }
 
+    /**
+     * OGC-1376: an editor opened before someone else saved the test used to save
+     * everything it showed, silently undoing that change.
+     */
+    @org.junit.Test
+    public void basicInfo_aSaveFromAStaleEditorIsRefusedAndChangesNothing() {
+        ReflectionTestUtils.setField(controller, "staleSaveGuard", staleSaveGuard);
+        String loaded = controller.getBasicInfo(String.valueOf(TEST_ID)).getBody().lastupdated;
+        BasicInfo stale = new BasicInfo();
+        stale.orderable = false;
+        stale.lastupdated = String.valueOf(Long.parseLong(loaded) - 60_000);
+
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), stale, authedRequest());
+
+        assertEquals(409, resp.getStatusCode().value());
+        assertEquals("stale", resp.getBody().conflict);
+        assertEquals("error.testCatalog.staleSave", resp.getBody().messageKey);
+        assertEquals(loaded, resp.getBody().lastupdated);
+        assertTrue(Boolean.TRUE.equals(testService.getTestById(String.valueOf(TEST_ID)).getOrderable()));
+    }
+
+    @org.junit.Test
+    public void basicInfo_consecutiveSavesWithTheReturnedVersionAreAccepted() {
+        ReflectionTestUtils.setField(controller, "staleSaveGuard", staleSaveGuard);
+        BasicInfo first = new BasicInfo();
+        first.orderable = false;
+        first.lastupdated = controller.getBasicInfo(String.valueOf(TEST_ID)).getBody().lastupdated;
+        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(String.valueOf(TEST_ID), first, authedRequest());
+        assertEquals(200, saved.getStatusCode().value());
+
+        BasicInfo second = new BasicInfo();
+        second.orderable = true;
+        second.lastupdated = saved.getBody().lastupdated;
+        assertEquals(200,
+                controller.saveBasicInfo(String.valueOf(TEST_ID), second, authedRequest()).getStatusCode().value());
+        assertTrue(Boolean.TRUE.equals(testService.getTestById(String.valueOf(TEST_ID)).getOrderable()));
+    }
+
     @org.junit.Test
     public void basicInfo_rejectsInvalidDomain() {
         BasicInfo bad = new BasicInfo();
@@ -180,8 +219,8 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertEquals(String.valueOf(TEST_ID), env.testId);
         assertEquals("CLINICAL", env.domain);
         // The full v1 section set, in order, is the whole point of the envelope (M2).
-        assertEquals(java.util.List.of("basic-info", "sample-results", "methods", "ranges", "storage", "panels",
-                "terminology", "analyzers", "display-order"), env.applicableSections);
+        assertEquals(java.util.List.of("basic-info", "sample-results", "methods", "ranges", "qc-targets", "storage",
+                "panels", "terminology", "analyzers", "display-order"), env.applicableSections);
     }
 
     @org.junit.Test

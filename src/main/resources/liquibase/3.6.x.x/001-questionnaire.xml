@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="questionnaire-001-create-questionnaire" author="elijah">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="questionnaire"/>
+            </not>
+        </preConditions>
+
+        <createSequence sequenceName="questionnaire_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="questionnaire">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="code" type="VARCHAR(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="has_item" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_questionnaire_id" type="INTEGER"/>
+            <column name="status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="VARCHAR(255)"/>
+            <column name="questionnaire_name" type="VARCHAR(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="approval_date" type="DATE"/>
+            <column name="effective_date" type="DATE"/>
+            <column name="last_reviewed" type="DATE"/>
+            <column name="status_id" type="VARCHAR(10)"/>
+            <column name="purpose" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="questionnaire" indexName="idx_questionnaire_fhir_uuid">
+            <column name="fhir_uuid"/>
+        </createIndex>
+
+        <createIndex tableName="questionnaire" indexName="idx_questionnaire_parent">
+            <column name="parent_questionnaire_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint constraintName="fk_questionnaire_parent"
+                                 baseTableName="questionnaire"
+                                 baseColumnNames="parent_questionnaire_id"
+                                 referencedTableName="questionnaire"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="questionnaire" constraintName="fk_questionnaire_parent"/>
+            <dropTable tableName="questionnaire"/>
+            <dropSequence sequenceName="questionnaire_seq"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="questionnaire-002-create-questionnaire-item" author="elijah">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="questionnaire_item"/>
+            </not>
+        </preConditions>
+
+        <createSequence sequenceName="questionnaire_item_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="questionnaire_item">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="questionnaire_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="link_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="text" type="TEXT"/>
+            <column name="item_type" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="required" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="repeats" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="item_order" type="INT"/>
+            <column name="parent_item_id" type="INTEGER"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="questionnaire_item" indexName="idx_q_item_q">
+            <column name="questionnaire_id"/>
+        </createIndex>
+
+        <createIndex tableName="questionnaire_item" indexName="idx_q_item_link">
+            <column name="link_id"/>
+        </createIndex>
+
+        <createIndex tableName="questionnaire_item" indexName="idx_q_item_parent">
+            <column name="parent_item_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint constraintName="fk_q_item_questionnaire"
+                                 baseTableName="questionnaire_item"
+                                 baseColumnNames="questionnaire_id"
+                                 referencedTableName="questionnaire"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint constraintName="fk_q_item_parent"
+                                 baseTableName="questionnaire_item"
+                                 baseColumnNames="parent_item_id"
+                                 referencedTableName="questionnaire_item"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="questionnaire_item" constraintName="fk_q_item_questionnaire"/>
+            <dropForeignKeyConstraint baseTableName="questionnaire_item" constraintName="fk_q_item_parent"/>
+            <dropTable tableName="questionnaire_item"/>
+            <dropSequence sequenceName="questionnaire_item_seq"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="questionnaire-003-create-answer-option" author="elijah">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="questionnaire_answer_option"/>
+            </not>
+        </preConditions>
+
+        <createSequence sequenceName="questionnaire_answer_option_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="questionnaire_answer_option">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="questionnaire_item_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value_code" type="VARCHAR(100)"/>
+            <column name="display_name" type="VARCHAR(255)"/>
+            <column name="initial_selected" type="BOOLEAN" defaultValueBoolean="false">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="questionnaire_answer_option" indexName="idx_ao_item">
+            <column name="questionnaire_item_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint constraintName="fk_ao_q_item"
+                                 baseTableName="questionnaire_answer_option"
+                                 baseColumnNames="questionnaire_item_id"
+                                 referencedTableName="questionnaire_item"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="questionnaire_answer_option" constraintName="fk_ao_q_item"/>
+            <dropTable tableName="questionnaire_answer_option"/>
+            <dropSequence sequenceName="questionnaire_answer_option_seq"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="questionnaire-004-create-item-initial" author="elijah">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="questionnaire_item_initial"/>
+            </not>
+        </preConditions>
+
+        <createSequence sequenceName="questionnaire_item_initial_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="questionnaire_item_initial">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="questionnaire_item_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value_string" type="VARCHAR(1000)"/>
+            <column name="value_boolean" type="BOOLEAN"/>
+            <column name="value_integer" type="INT"/>
+            <column name="value_decimal" type="DECIMAL(18,2)"/>
+            <column name="value_date" type="DATE"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="questionnaire_item_initial" indexName="idx_q_init_item">
+            <column name="questionnaire_item_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint constraintName="fk_q_init_q_item"
+                                 baseTableName="questionnaire_item_initial"
+                                 baseColumnNames="questionnaire_item_id"
+                                 referencedTableName="questionnaire_item"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="questionnaire_item_initial" constraintName="fk_q_init_q_item"/>
+            <dropTable tableName="questionnaire_item_initial"/>
+            <dropSequence sequenceName="questionnaire_item_initial_seq"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="questionnaire-005-create-questionnaire-response" author="elijah">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="questionnaire_response"/>
+            </not>
+        </preConditions>
+
+        <createSequence sequenceName="questionnaire_response_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="questionnaire_response">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="fhir_uuid" type="UUID">
+                <constraints nullable="false" unique="true"/>
+            </column>
+            <column name="questionnaire_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="subject_id" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="status" type="VARCHAR(30)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="authored" type="TIMESTAMP"/>
+            <column name="summary" type="VARCHAR(1000)"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="questionnaire_response" indexName="idx_qr_uuid">
+            <column name="fhir_uuid"/>
+        </createIndex>
+
+        <createIndex tableName="questionnaire_response" indexName="idx_qr_questionnaire">
+            <column name="questionnaire_id"/>
+        </createIndex>
+
+        <createIndex tableName="questionnaire_response" indexName="idx_qr_subject">
+            <column name="subject_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint constraintName="fk_qr_questionnaire"
+                                 baseTableName="questionnaire_response"
+                                 baseColumnNames="questionnaire_id"
+                                 referencedTableName="questionnaire"
+                                 referencedColumnNames="id"
+                                 onDelete="RESTRICT"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="questionnaire_response" constraintName="fk_qr_questionnaire"/>
+            <dropTable tableName="questionnaire_response"/>
+            <dropSequence sequenceName="questionnaire_response_seq"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="questionnaire-006-create-questionnaire-response-item" author="elijah">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="questionnaire_response_item"/>
+            </not>
+        </preConditions>
+
+        <createSequence sequenceName="questionnaire_response_item_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="questionnaire_response_item">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="questionnaire_response_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="parent_item_id" type="INTEGER"/>
+            <column name="link_id" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="text" type="TEXT"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="questionnaire_response_item" indexName="idx_qri_response">
+            <column name="questionnaire_response_id"/>
+        </createIndex>
+
+        <createIndex tableName="questionnaire_response_item" indexName="idx_qri_parent">
+            <column name="parent_item_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint constraintName="fk_qri_response"
+                                 baseTableName="questionnaire_response_item"
+                                 baseColumnNames="questionnaire_response_id"
+                                 referencedTableName="questionnaire_response"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <addForeignKeyConstraint constraintName="fk_qri_parent"
+                                 baseTableName="questionnaire_response_item"
+                                 baseColumnNames="parent_item_id"
+                                 referencedTableName="questionnaire_response_item"
+                                 referencedColumnNames="id"
+                                 onDelete="SET NULL"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="questionnaire_response_item" constraintName="fk_qri_response"/>
+            <dropForeignKeyConstraint baseTableName="questionnaire_response_item" constraintName="fk_qri_parent"/>
+            <dropTable tableName="questionnaire_response_item"/>
+            <dropSequence sequenceName="questionnaire_response_item_seq"/>
+        </rollback>
+
+    </changeSet>
+
+    <changeSet id="questionnaire-007-create-questionnaire-response-answer" author="elijah">
+
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="questionnaire_response_answer"/>
+            </not>
+        </preConditions>
+
+        <createSequence sequenceName="questionnaire_response_answer_seq" startValue="1" incrementBy="1"/>
+
+        <createTable tableName="questionnaire_response_answer">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+            <column name="questionnaire_response_item_id" type="INTEGER">
+                <constraints nullable="false"/>
+            </column>
+            <column name="value_string" type="VARCHAR(1000)"/>
+            <column name="value_boolean" type="BOOLEAN"/>
+            <column name="value_integer" type="INT"/>
+            <column name="value_decimal" type="DECIMAL(18,2)"/>
+            <column name="value_date" type="DATE"/>
+            <column name="value_datetime" type="TIMESTAMP"/>
+            <column name="coding_code" type="VARCHAR(100)"/>
+            <column name="coding_system" type="VARCHAR(255)"/>
+            <column name="coding_display" type="VARCHAR(255)"/>
+            <column name="value_reference" type="VARCHAR(255)"/>
+            <column name="sys_user_id" type="VARCHAR(36)"/>
+            <column name="last_updated" type="TIMESTAMP">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex tableName="questionnaire_response_answer" indexName="idx_qra_item">
+            <column name="questionnaire_response_item_id"/>
+        </createIndex>
+
+        <addForeignKeyConstraint constraintName="fk_qra_qri"
+                                 baseTableName="questionnaire_response_answer"
+                                 baseColumnNames="questionnaire_response_item_id"
+                                 referencedTableName="questionnaire_response_item"
+                                 referencedColumnNames="id"
+                                 onDelete="CASCADE"/>
+
+        <rollback>
+            <dropForeignKeyConstraint baseTableName="questionnaire_response_answer" constraintName="fk_qra_qri"/>
+            <dropTable tableName="questionnaire_response_answer"/>
+            <dropSequence sequenceName="questionnaire_response_answer_seq"/>
+        </rollback>
+
+    </changeSet>
+
+</databaseChangeLog>

@@ -113,6 +113,12 @@ public class StatisticsReport extends IndicatorReport implements IReportCreator,
             yearAnalysis = yearAnalysis.stream().filter(analysis -> SpringContext.getBean(IStatusService.class)
                     .matches(analysis.getStatusId(), AnalysisStatus.Finalized)).collect(Collectors.toList());
 
+            // A test sent to a reference laboratory is that laboratory's work, not
+            // this one's, even once its result has been typed in here and released.
+            // Counting it here would overstate this laboratory's workload.
+            yearAnalysis = yearAnalysis.stream().filter(analysis -> !analysis.isReferredOut())
+                    .collect(Collectors.toList());
+
             // filter the analysis by priority
             if (form.getPriority() != null || form.getPriority().size() > 0) {
                 if (form.getPriority().size() < OrderPriority.values().length) {

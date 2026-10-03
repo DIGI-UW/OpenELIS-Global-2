@@ -19,20 +19,20 @@ import { CommonProperties } from "./menu/CommonProperties";
 import ConfigMenuDisplay from "./generalConfig/common/ConfigMenuDisplay";
 import SiteBrandingConfig from "./generalConfig/siteBranding/SiteBrandingConfig";
 import ProviderMenu from "./ProviderMenu/ProviderMenu";
+import ProviderTitleMenu from "./providerTitle/ProviderTitleMenu";
 import DataExportStatus from "./DataExportStatus/DataExportStatus";
 import LabelPresetList from "./labelPresets/LabelPresetList";
 import { Redirect } from "react-router-dom";
-import AnalyzerTestName from "./analyzerTestName/AnalyzerTestName";
-import PluginList from "./pluginFile/PluginFile";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
-import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
 import PanelEditor from "./testCatalog/PanelEditor";
 import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
+import CatalogImport from "./catalogImport/CatalogImport";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
-import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
-import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
+import LocationsPage, {
+  legacyOrganizationEditTarget,
+} from "./locations/LocationsPage";
 import UserManagement from "./userManagement/UserManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod";
@@ -43,36 +43,8 @@ import NotificationTriggerConfig from "./notificationTriggerConfig/NotificationT
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
-import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd";
-import TestAdd from "./testManagementConfigMenu/TestAdd";
-import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry";
-import TestOrderability from "./testManagementConfigMenu/TestOrderability";
-import MethodCreate from "./testManagementConfigMenu/MethodCreate";
-import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement";
-import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
-import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
 import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
-import LegacySampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement";
 import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
-import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
-import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
-import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
-import SampleTypeTestAssign from "./testManagementConfigMenu/SampleTypeTestAssign";
-import UomManagement from "./testManagementConfigMenu/UomManagement";
-import UomCreate from "./testManagementConfigMenu/UomCreate";
-import PanelManagement from "./testManagementConfigMenu/PanelManagement";
-import PanelCreate from "./testManagementConfigMenu/PanelCreate";
-import PanelOrder from "./testManagementConfigMenu/PanelOrder";
-import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign";
-import TestActivation from "./testManagementConfigMenu/TestActivation";
-import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
-import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
-import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry";
-import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry";
-import TestSectionEdit from "./testManagementConfigMenu/TestSectionEdit";
-import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
-import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
-import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry";
 import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
   LanguageManagement,
@@ -84,6 +56,8 @@ import DatabaseCleaning from "./databaseCleaning/DatabaseCleaning";
 import VectorSurveillanceSetup from "./vectorSurveillance/VectorSurveillanceSetup";
 import SampleAcceptanceChecklistSetup from "./sampleAcceptance/SampleAcceptanceChecklistSetup";
 import AdminDashboard from "./AdminDashboard";
+import StuckAnalyzerEvents from "./StuckAnalyzerEvents";
+import MicrobiologyReferenceAdmin from "./microbiologyReference/MicrobiologyReferenceAdmin";
 
 function Admin() {
   const { path } = useRouteMatch();
@@ -91,13 +65,27 @@ function Admin() {
   return (
     <Switch>
       <Route
+        path={`${path}/MicrobiologyReference/:section/:detailId?`}
+        component={MicrobiologyReferenceAdmin}
+      />
+      <Route
         path={`${path}/calendarManagement`}
         component={CalendarManagement}
       />
       <Route path={`${path}/reflex`} component={ReflexTestManagement} />
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
-      <Route path={`${path}/TestCatalog`} component={TestCatalog} />
+      {/* The legacy View Test Catalog page is gone; its address opens the list. */}
+      <Redirect
+        exact
+        from={`${path}/TestCatalog`}
+        to={`${path}/TestCatalogList`}
+      />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
+      <Route path={`${path}/CatalogImport`} component={CatalogImport} />
+      <Route
+        path={`${path}/stuckAnalyzerEvents`}
+        render={() => <StuckAnalyzerEvents basePath={path} />}
+      />
       <Route
         path={`${path}/TestCatalogEditor/group/:ids/:section?`}
         component={CombinedTestEditor}
@@ -113,24 +101,36 @@ function Admin() {
         component={TestCatalogEditor}
       />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
-      <Route path={`${path}/AnalyzerTestName`} component={AnalyzerTestName} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
+      {/* OGC-781: the Programs rework keeps the live /program URL so bookmarks
+          and deep links survive; /programV2 was its pre-release alias. */}
+      <Redirect from={`${path}/programV2`} to={`${path}/program`} />
       <Route path={`${path}/program`} component={ProgramManagement} />
       <Route path={`${path}/providerMenu`} component={ProviderMenu} />
+      <Route path={`${path}/providerTitleMenu`} component={ProviderTitleMenu} />
       <Route path={`${path}/dataExportStatus`} component={DataExportStatus} />
       <Route path={`${path}/NotifyUser`} component={PushNotificationPage} />
       <Redirect
         from={`${path}/barcodeConfiguration`}
         to={`${path}/labelPresets`}
       />
-      <Route
-        path={`${path}/organizationManagement`}
-        component={OrganizationManagement}
+      {/* OGC-1363: Locations & Organizations replaces Organization Management
+          and absorbs the vector Sampling Sites page; the old routes redirect. */}
+      <Route path={`${path}/locations`} component={LocationsPage} />
+      <Redirect
+        from={`${path}/organizationManagement`}
+        to={`${path}/locations`}
       />
       <Route
         path={`${path}/organizationEdit`}
-        component={OrganizationAddModify}
+        render={({ location }) => (
+          <Redirect to={legacyOrganizationEditTarget(path, location)} />
+        )}
+      />
+      <Redirect
+        from={`${path}/vectorSurveillanceSetup/sampling-sites`}
+        to={`${path}/locations/sites`}
       />
       <Route
         path={`${path}/resultReportingConfiguration`}
@@ -168,75 +168,75 @@ function Admin() {
         path={`${path}/testManagementConfigMenu`}
         component={TestManagementConfigMenu}
       />
+      {/* The legacy test-management pages are gone. Every address they had
+          opens the editor that replaced it: tests, panels, sample types and
+          lab units have editors of their own; result select lists are
+          dictionary entries; methods are listed under Methods. */}
       <Route
-        path={`${path}/ResultSelectListAdd`}
-        component={ResultSelectListAdd}
+        path={`${path}/TestAdd`}
+        render={() => (
+          <Redirect to={`${path}/TestCatalogEditor/new/basic-info`} />
+        )}
       />
-      {/* OGC-1112 FR-38: the unified New test flow (TestCatalogEditor/new) is the
-          intended create path. The legacy 7-step Add Test and the legacy Modify Test
-          are kept available in parallel temporarily during the transition. */}
-      <Route path={`${path}/TestAdd`} component={TestAdd} />
-      <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
-      <Route path={`${path}/TestOrderability`} component={TestOrderability} />
-      <Route path={`${path}/MethodCreate`} component={MethodCreate} />
       <Route
-        path={`${path}/TestSectionManagement`}
-        component={TestSectionManagement}
+        path={[
+          `${path}/TestModifyEntry`,
+          `${path}/TestActivation`,
+          `${path}/TestOrderability`,
+          `${path}/TestRenameEntry`,
+          `${path}/UomManagement`,
+          `${path}/UomCreate`,
+          `${path}/UomRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/TestCatalogList`} />}
       />
-      <Route path={`${path}/TestSectionCreate`} component={TestSectionCreate} />
-      <Route path={`${path}/TestSectionOrder`} component={TestSectionOrder} />
       <Route
-        path={`${path}/TestSectionTestAssign`}
-        component={TestSectionTestAssign}
+        path={[
+          `${path}/PanelManagement`,
+          `${path}/PanelCreate`,
+          `${path}/PanelOrder`,
+          `${path}/PanelTestAssign`,
+          `${path}/PanelRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/TestCatalogList?entity=panels`} />}
       />
-      {/* Manage Sample Types under the legacy Test Management menu keeps opening
-          the legacy page. The new editor answers on its own path so that link,
-          and every other legacy one, is left where it was. */}
       <Route
-        path={`${path}/SampleTypeManagement`}
-        exact
-        component={LegacySampleTypeManagement}
+        path={[
+          `${path}/SampleTypeManagement`,
+          `${path}/SampleTypeCreate`,
+          `${path}/SampleTypeOrder`,
+          `${path}/SampleTypeTestAssign`,
+          `${path}/SampleTypeRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/SampleTypeEditor`} />}
       />
       <Route
         path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
         component={SampleTypeEditor}
       />
       <Route
+        path={[
+          `${path}/TestSectionManagement`,
+          `${path}/TestSectionCreate`,
+          `${path}/TestSectionOrder`,
+          `${path}/TestSectionTestAssign`,
+          `${path}/TestSectionEdit`,
+          `${path}/TestSectionRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/LabUnitManagement`} />}
+      />
+      <Route
         path={`${path}/LabUnitManagement/:labUnitId?/:section?`}
         component={LabUnitManagement}
       />
-      <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
-      <Route path={`${path}/SampleTypeOrder`} component={SampleTypeOrder} />
       <Route
-        path={`${path}/SampleTypeTestAssign`}
-        component={SampleTypeTestAssign}
-      />
-      <Route path={`${path}/UomManagement`} component={UomManagement} />
-      <Route path={`${path}/UomCreate`} component={UomCreate} />
-      {/* OGC-224 — the legacy Panel pages stay authoritative until the new
-          Panels context is stabilized; they are not redirected. */}
-      <Route path={`${path}/PanelManagement`} component={PanelManagement} />
-      <Route path={`${path}/PanelCreate`} component={PanelCreate} />
-      <Route path={`${path}/PanelOrder`} component={PanelOrder} />
-      <Route path={`${path}/PanelTestAssign`} component={PanelTestAssign} />
-      <Route path={`${path}/TestActivation`} component={TestActivation} />
-      <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
-      <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
-      <Route
-        path={`${path}/SampleTypeRenameEntry`}
-        component={SampleTypeRenameEntry}
+        path={[`${path}/ResultSelectListAdd`, `${path}/SelectListRenameEntry`]}
+        render={() => <Redirect to={`${path}/DictionaryMenu`} />}
       />
       <Route
-        path={`${path}/TestSectionRenameEntry`}
-        component={TestSectionRenameEntry}
+        path={[`${path}/MethodCreate`, `${path}/MethodRenameEntry`]}
+        render={() => <Redirect to={`${path}/MethodManagement`} />}
       />
-      <Route path={`${path}/TestSectionEdit`} component={TestSectionEdit} />
-      <Route path={`${path}/UomRenameEntry`} component={UomRenameEntry} />
-      <Route
-        path={`${path}/SelectListRenameEntry`}
-        component={SelectListRenameEntry}
-      />
-      <Route path={`${path}/MethodRenameEntry`} component={MethodRenameEntry} />
       <Route
         path={`${path}/ComplianceStandardsAdmin`}
         component={ComplianceStandardsAdmin}
@@ -251,90 +251,81 @@ function Admin() {
       />
       <Route
         path={`${path}/NonConformityConfigurationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="NonConformityConfigurationMenu"
-            label="Non Conformity Configuration Menu"
             id="sidenav.label.admin.formEntry.nonconformityconfig"
           />
         )}
       />
       <Route
         path={`${path}/MenuStatementConfigMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="MenuStatementConfigMenu"
-            label="Menu Statement Configuration Menu"
             id="sidenav.label.admin.formEntry.menustatementconfig"
           />
         )}
       />
       <Route
         path={`${path}/ValidationConfigurationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="ValidationConfigurationMenu"
-            label="Validation Configuration Menu"
             id="sidenav.label.admin.formEntry.validationconfig"
           />
         )}
       />
       <Route
         path={`${path}/SampleEntryConfigurationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="SampleEntryConfigMenu"
-            label="Sample Entry Configuration Menu"
             id="sidenav.label.admin.formEntry.sampleEntryconfig"
           />
         )}
       />
       <Route
         path={`${path}/WorkPlanConfigurationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="WorkplanConfigurationMenu"
-            label="WorkPlan Configuration Menu"
             id="sidenav.label.admin.formEntry.Workplanconfig"
           />
         )}
       />
       <Route
         path={`${path}/SiteInformationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="SiteInformationMenu"
-            label="Site Information Menu"
             id="sidenav.label.admin.formEntry.siteInfoconfig"
           />
         )}
       />
       <Route
         path={`${path}/ResultConfigurationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="ResultConfigurationMenu"
-            label="Result Configuration Menu"
             id="sidenav.label.admin.formEntry.resultConfig"
           />
         )}
       />
       <Route
         path={`${path}/PatientConfigurationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="PatientConfigurationMenu"
-            label="Patient Configuration Menu"
             id="sidenav.label.admin.formEntry.patientconfig"
           />
         )}
       />
       <Route
         path={`${path}/PrintedReportsConfigurationMenu`}
-        component={() => (
+        render={() => (
           <ConfigMenuDisplay
             menuType="PrintedReportsConfigurationMenu"
-            label="PrintedReports Configuration Menu"
             id="sidenav.label.admin.formEntry.PrintedReportsconfig"
           />
         )}
@@ -352,7 +343,6 @@ function Admin() {
         component={NotificationTriggerConfig}
       />
       <Route path={`${path}/DictionaryMenu`} component={DictionaryManagement} />
-      <Route path={`${path}/PluginFile`} component={PluginList} />
       <Route
         path={`${path}/SearchIndexManagement`}
         component={SearchIndexManagement}

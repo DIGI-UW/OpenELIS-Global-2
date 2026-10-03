@@ -38,6 +38,7 @@ import org.openelisglobal.dataexchange.order.ElectronicOrderSortOrderCategoryCon
 import org.openelisglobal.dataexchange.order.form.ElectronicOrderViewForm;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderDisplayItem;
+import org.openelisglobal.dataexchange.service.order.ElectronicOrderLabUnitScope;
 import org.openelisglobal.dataexchange.service.order.ElectronicOrderService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.util.OrganizationTypeList;
@@ -72,6 +73,8 @@ public class StudyElectronicOrdersController extends BaseController {
     private StatusOfSampleService statusOfSampleService;
     @Autowired
     private ElectronicOrderService electronicOrderService;
+    @Autowired
+    private ElectronicOrderLabUnitScope electronicOrderLabUnitScope;
     @Autowired
     private PatientService patientService;
     @Autowired
@@ -178,7 +181,8 @@ public class StudyElectronicOrdersController extends BaseController {
             List<ElectronicOrder> electronicOrders;
             List<ElectronicOrderDisplayItem> eOrderDisplayItems;
 
-            electronicOrders = electronicOrderService.searchForElectronicOrders(form);
+            electronicOrders = electronicOrderLabUnitScope.restrictToUserLabUnits(
+                    electronicOrderService.searchForElectronicOrders(form), getSysUserId(request));
             eOrderDisplayItems = convertToDisplayItem(electronicOrders, form.getUseAllInfo());
             form.setSearchFinished(true);
             form.seteOrders(eOrderDisplayItems);

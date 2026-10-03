@@ -68,6 +68,9 @@ const AMR_OPTIONS = [
 ];
 
 const SEARCH_DEBOUNCE_MS = 300;
+// A single character matches most of the catalog and is not a search yet
+// (OGC-1134); the box waits for a second one before it asks the server.
+const SEARCH_MIN_LENGTH = 2;
 
 // FR-61 — errors sort ahead of warnings ahead of info in the per-row tag list.
 const SEVERITY_RANK = { ERROR: 0, WARNING: 1, INFO: 2 };
@@ -129,7 +132,13 @@ const TestsList = () => {
   }, []);
 
   // Debounce the search box: fetch once the user pauses, not on every keystroke.
+  // A term shorter than the minimum neither queries nor rewrites the URL; the
+  // rows already on screen stay until the term is long enough or cleared.
   useEffect(() => {
+    const term = search.trim();
+    if (term.length > 0 && term.length < SEARCH_MIN_LENGTH) {
+      return undefined;
+    }
     const timer = setTimeout(
       () => setDebouncedSearch(search),
       SEARCH_DEBOUNCE_MS,

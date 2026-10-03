@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    The pathology case view rework (FR-2.1) replaces three
+    PathologyStatus values with the bench stages that absorb them. Hibernate
+    stores the constant name in clinlims.pathology_sample.status, so a row left
+    on a retired name cannot be loaded, and every dashboard and case view query
+    that would return it fails instead. This migration therefore has to ship
+    together with the enum change, not after it.
+
+    ADDITIONAL_REQUEST maps to READY_PATHOLOGIST because that is the stage the
+    case was in when the request was raised; whether a request is still
+    outstanding is now read from pathology_request rows rather than encoded as
+    a stage of its own.
+    -->
+    <changeSet id="OGC-264-pathology-status-bench-stages" author="OGC">
+        <comment>Map the retired PathologyStatus values onto the bench stages that replace them (FR-2.2)</comment>
+        <update tableName="pathology_sample" schemaName="clinlims">
+            <column name="status" value="GROSSING"/>
+            <where>status = 'CUTTING'</where>
+        </update>
+        <update tableName="pathology_sample" schemaName="clinlims">
+            <column name="status" value="MICROTOMY"/>
+            <where>status = 'SLICING'</where>
+        </update>
+        <update tableName="pathology_sample" schemaName="clinlims">
+            <column name="status" value="READY_PATHOLOGIST"/>
+            <where>status = 'ADDITIONAL_REQUEST'</where>
+        </update>
+        <rollback>
+            <!-- The merge is lossy: a row that was CUTTING cannot be told apart
+                 afterwards from one that was always GROSSING, and writing a name
+                 the enum no longer has back into the column would only recreate
+                 the unloadable rows this changeset exists to remove. -->
+            <empty/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

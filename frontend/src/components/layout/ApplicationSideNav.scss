@@ -1,0 +1,118 @@
+@use "@carbon/styles/scss/spacing";
+@use "@carbon/styles/scss/type";
+
+// Shared by the configured main menu and administration menu. Carbon's white
+// Theme supplies colors; this file owns navigation typography and hierarchy.
+#mainHeader .application-side-nav {
+  --cds-border-interactive: var(--cds-interactive-01, var(--cds-focus));
+  border-inline-end: 1px solid var(--cds-border-subtle-01);
+  overflow-y: auto;
+  overflow-x: hidden;
+
+  .cds--side-nav__items {
+    padding-block-start: 0;
+  }
+
+  .cds--side-nav__link,
+  .cds--side-nav__submenu {
+    @include type.type-style("body-compact-01");
+    display: flex;
+    align-items: center;
+    position: relative;
+    width: 100%;
+    block-size: auto;
+    min-block-size: spacing.$spacing-08;
+    padding: spacing.$spacing-03 spacing.$spacing-05;
+    border-radius: 0;
+    color: var(--cds-text-secondary);
+    text-decoration: none;
+    background: transparent;
+
+    &:hover {
+      background: var(--cds-background-hover);
+      color: var(--cds-text-primary);
+    }
+    &:focus:not(:focus-visible) {
+      outline: none;
+    }
+    &:focus-visible {
+      outline: 2px solid var(--cds-focus);
+      outline-offset: -2px;
+    }
+  }
+
+  .cds--side-nav__link-text,
+  .cds--side-nav__submenu-title {
+    font: inherit;
+    color: inherit;
+    min-width: 0;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    overflow: visible;
+  }
+
+  .cds--side-nav__icon {
+    flex-shrink: 0;
+    margin-inline-end: spacing.$spacing-04;
+    svg {
+      fill: currentColor;
+    }
+  }
+  .cds--side-nav__submenu-chevron {
+    margin-inline: auto 0;
+    padding-inline-start: spacing.$spacing-03;
+  }
+
+  .cds--side-nav__link[aria-current="page"],
+  .cds--side-nav__link--current {
+    color: var(--cds-text-primary);
+    background: var(--cds-layer-selected-01);
+    font-weight: 600;
+  }
+
+  // Hierarchy changes indentation, never the label's font or line height.
+  $ancestor: ".cds--side-nav__menu";
+  @for $depth from 1 through 5 {
+    #{$ancestor} > li > .cds--side-nav__link,
+    #{$ancestor} > li > .cds--side-nav__submenu {
+      padding-inline-start: spacing.$spacing-09 +
+        ($depth - 1) *
+        spacing.$spacing-05;
+    }
+    $ancestor: "#{$ancestor} .cds--side-nav__menu";
+  }
+
+  .configured-nav-section {
+    padding: spacing.$spacing-03 spacing.$spacing-05;
+    h2 {
+      @include type.type-style("label-01");
+      color: var(--cds-text-secondary);
+      text-transform: uppercase;
+    }
+  }
+  .cds--side-nav__divider:first-child {
+    display: none;
+  }
+  .configured-nav-unavailable .cds--side-nav__link,
+  .cds--side-nav__link[aria-disabled="true"] {
+    cursor: default;
+    background: transparent;
+    color: var(--cds-text-secondary);
+  }
+  .configured-nav-unavailable small {
+    @include type.type-style("label-01");
+    display: block;
+  }
+
+  .adminSideNav__sectionsContext {
+    @include type.type-style("label-01");
+    padding: spacing.$spacing-02 spacing.$spacing-05 spacing.$spacing-03;
+    color: var(--cds-text-secondary);
+  }
+
+  .sidenav-pin-row {
+    display: flex;
+    justify-content: flex-end;
+    padding: spacing.$spacing-02 spacing.$spacing-03 0;
+  }
+}

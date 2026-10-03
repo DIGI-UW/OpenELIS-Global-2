@@ -31,6 +31,7 @@ import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
 import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
 import org.openelisglobal.result.controller.LogbookResultsBaseController;
@@ -38,7 +39,9 @@ import org.openelisglobal.result.form.LogbookResultsForm;
 import org.openelisglobal.result.form.SingleResultEntryForm;
 import org.openelisglobal.result.service.AnalysisTimelineService;
 import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultEntryPresenceService;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.SystemUserService;
@@ -61,6 +64,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.Errors;
+import org.springframework.validation.ObjectError;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -121,6 +125,8 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     @Autowired
     private AnalysisTimelineService analysisTimelineService;
     @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
+    @Autowired
     private TestResultComponentService testResultComponentService;
     @Autowired
     private TestResultInterpretationService interpretationService;
@@ -134,6 +140,12 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
     /**
      * Lab Units the user may enter results for, each carrying its domain so the
      * page can derive {@code currentDomain} (FR-M1).
+     *
+     * <p>
+     * OGC-189 (M2): a <em>viewer</em> control, so it lists {@code isActive OR
+     * hasContent}. A lab unit deactivated while analyses are still in flight stays
+     * here until they are finished — filtering it out would strand that work on a
+     * worklist nobody can reach.
      */
     @GetMapping(value = "lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -143,7 +155,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         if (resultsRole == null) {
             return Collections.emptyList();
         }
-        List<IdValuePair> sections = userService.getUserTestSections(getSysUserId(request), resultsRole.getId());
+        List<IdValuePair> sections = userService.getUserViewerTestSections(getSysUserId(request), resultsRole.getId());
         List<Map<String, String>> labUnits = new ArrayList<>();
         for (IdValuePair pair : sections) {
             Map<String, String> unit = new HashMap<>();
@@ -291,6 +303,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
             return staleResponse;
         }
 
+        // A test carrying a live referral is not referred again, and the bench has to
+        // be told rather than have the refer-out quietly dropped from the save.
+        if (item.isRefer() && ResultUtil.hasOpenReferral(analysis)) {
+            body.put("error", MessageUtil.getMessage("referral.error.alreadyReferred"));
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
         item.setModified(true);
         reuseExistingResultForComponent(item, analysis);
 
@@ -306,16 +325,25 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
 
         Errors errors = dataSet.validateModifiedItems();
         if (errors.hasErrors()) {
-            body.put("error", errors.getAllErrors().stream().map(e -> MessageUtil.getMessage(e.getCode()))
-                    .collect(Collectors.joining("; ")));
+            body.put("error", joinErrorMessages(errors));
             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        }
+
+        List<ResultEntryAlert> alerts = acknowledgementService.alertsForItems(Collections.singletonList(item));
+        List<ResultEntryAlert> owed = alerts.stream().filter(alert -> !alert.isAcknowledged())
+                .collect(Collectors.toList());
+        if (!owed.isEmpty()) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(acknowledgementService.refusalBody(owed));
         }
 
         ResultUtil.createResultsFromItems(dataSet, supportReferrals, alwaysValidate, useTechnicianName, statusRuleSet,
                 request);
         ResultUtil.createAnalysisOnlyUpdates(dataSet, request);
 
-        List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
+        List<IResultUpdate> updaters = new ArrayList<>(ResultUpdateRegister.getRegisteredUpdaters());
+        updaters.add(acknowledgementService.acknowledgementRecorder(alerts,
+                ResultEntryAcknowledgement.SOURCE_RESULTS_ENTRY, getSysUserId(request)));
         try {
             List<Analysis> reflexAnalyses = logbookPersistService.persistDataSet(dataSet, updaters,
                     getSysUserId(request));
@@ -345,6 +373,13 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
                 Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
+                    } catch (RuntimeException ex) {
+                        LogEvent.logError(ex);
+                    }
+                });
+                dataSet.getCalculatedResults().forEach(calculated -> {
+                    try {
+                        testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
                     } catch (RuntimeException ex) {
                         LogEvent.logError(ex);
                     }
@@ -390,7 +425,7 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         Stream.concat(dataSet.getNewResults().stream(), dataSet.getModifiedResults().stream()).map(rs -> rs.result)
                 .filter(r -> r != null && r.getId() != null).findFirst().ifPresent(r -> {
                     body.put("resultId", r.getId());
-                    body.put("rawResultValue", StringUtil.blankIfNull(r.getValue()));
+                    body.put("rawResultValue", StringUtil.blankIfNull(r.getEnteredValue()));
                     body.put("resultValue", resultService.getResultValue(r, false));
                 });
         return ResponseEntity.ok(body);
@@ -493,6 +528,25 @@ public class ResultEntryRestController extends LogbookResultsBaseController {
         public void setVisibleAnalysisIds(List<String> visibleAnalysisIds) {
             this.visibleAnalysisIds = visibleAnalysisIds;
         }
+    }
+
+    /**
+     * The validation errors as one line for the bench, each resolved with its
+     * arguments so the accession and the refused value are named rather than left
+     * as "{0}" (OGC-1408). The per-accession header ends with a colon and
+     * introduces the errors after it, so those follow it with a space; errors are
+     * otherwise separated with a semicolon.
+     */
+    private static String joinErrorMessages(Errors errors) {
+        StringBuilder joined = new StringBuilder();
+        for (ObjectError error : errors.getAllErrors()) {
+            String text = MessageUtil.getMessage(error.getCode(), error.getArguments()).trim();
+            if (joined.length() > 0) {
+                joined.append(joined.charAt(joined.length() - 1) == ':' ? " " : "; ");
+            }
+            joined.append(text);
+        }
+        return joined.toString();
     }
 
     private ResponseEntity<Map<String, Object>> rejectIfStale(TestResultItem item, Analysis analysis,

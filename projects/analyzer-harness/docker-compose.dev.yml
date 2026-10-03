@@ -1,4 +1,8 @@
 services:
+  harness-catalog-init:
+    volumes:
+      - ./config-templates:/templates:ro
+
   certs:
     image: itechuw/certgen:main
     platform: linux/amd64
@@ -15,12 +19,12 @@ services:
 
   oe.openelis.org:
     image: itechuw/openelis-global-2-dev:develop
-    # Local build: `docker compose build oe.openelis.org` (or `reset-env.sh --build`)
-    # rebuilds this image from the branch's Dockerfile.dev so local source drives the
-    # webapp, overriding the pulled :develop image tag.
+    # scripts/dev-stack builds this image from the branch's Dockerfile.dev so local
+    # source drives the webapp, overriding the pulled :develop image tag.
     build:
       context: ../..
       dockerfile: Dockerfile.dev
+      target: dev-runtime
     depends_on:
       db.openelis.org:
         condition: service_healthy
@@ -37,16 +41,14 @@ services:
       - lucene_index-vol:/var/lib/lucene_index
       - ../../target/OpenELIS-Global.war:/usr/local/tomcat/webapps/OpenELIS-Global.war
       - ../../volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
-      - ./volume/plugins:/var/lib/openelis-global/plugins
       - ./volume/programs:/var/lib/openelis-global/programs
       - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+      - reporting-data:/var/lib/openelis-global/reporting
       - ./volume/logs/tomcatLogs:/usr/local/tomcat/logs
       - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
       - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
-      - ./volume/configuration:/var/lib/openelis-global/configuration
+      - configuration-data:/var/lib/openelis-global/configuration
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
-      - ./volume/analyzer-imports:/data/analyzer-imports
-      - ../../projects/analyzer-profiles:/data/analyzer-profiles:ro
     secrets:
       - source: datasource.password
       - source: common.properties
@@ -63,18 +65,22 @@ services:
       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
       TZ: Africa/Nairobi
       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
-                  -Djavax.net.ssl.trustStorePassword=tspass
-                  -Djavax.net.ssl.trustStoreType=pkcs12
-                  -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
-                  -Djavax.net.ssl.keyStorePassword=kspass
-                  -Djavax.net.ssl.keyStoreType=pkcs12"
+        -Djavax.net.ssl.trustStorePassword=tspass
+        -Djavax.net.ssl.trustStoreType=pkcs12
+        -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
+        -Djavax.net.ssl.keyStorePassword=kspass
+        -Djavax.net.ssl.keyStoreType=pkcs12"
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - ../../tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
     secrets:
       - source: hapi_application.yaml
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f org.apache.catalina.startup.Bootstrap >/dev/null"]
+      test:
+        [
+          "CMD-SHELL",
+          "pgrep -f org.apache.catalina.startup.Bootstrap >/dev/null",
+        ]
       interval: 15s
       timeout: 10s
       retries: 20
@@ -119,4 +125,3 @@ secrets:
     file: ./volume/properties/common.properties
   hapi_application.yaml:
     file: ./volume/properties/hapi_application.yaml
-

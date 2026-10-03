@@ -27,6 +27,14 @@ const password = process.env.TEST_PASS || "adminADMIN!";
  * No direct database access. All interactions through UI or REST API.
  */
 
+// Restore the site setting even when a step fails, so later specs in the run
+// do not meet signing dialogs they never asked for.
+test.afterEach(async ({ page }) => {
+  const siteInfo = new SiteInformationPage(page);
+  await siteInfo.goto();
+  await siteInfo.setBooleanSetting("electronicSignatureEnabled", false);
+});
+
 test("E-Signature — full result entry and validation flow", async ({
   page,
 }) => {
@@ -61,22 +69,21 @@ test("E-Signature — full result entry and validation flow", async ({
 
   // ── Step 3: Result Entry — AUTHORED signature ─────────────────
 
-  await test.step("Navigate to Result Entry and search for order", async () => {
-    await page.goto("/result?type=order&doRange=false", {
-      waitUntil: "domcontentloaded",
-    });
+  await test.step("Open the unified Results worklist for the order", async () => {
+    // The unified worklist is the default result entry page; a deep link with
+    // the accession number loads that order's rows directly.
+    await page.goto(
+      `/Results?accessionNumber=${encodeURIComponent(accessionNumber)}`,
+      { waitUntil: "domcontentloaded" },
+    );
 
-    // Search by accession number (scope to main to avoid header Search button)
     const main = page.getByRole("main");
-    const searchInput = main.getByPlaceholder(/accession/i);
-    await expect(searchInput).toBeVisible({ timeout: NAV_TIMEOUT });
-    await searchInput.fill(accessionNumber);
-    await main.getByRole("button", { name: /search/i }).click();
-
-    // Wait for results to load
-    await expect(main.getByRole("button", { name: "Save" })).toBeVisible({
-      timeout: NAV_TIMEOUT,
-    });
+    await expect(
+      main.getByRole("heading", { name: /result/i }).first(),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
+    await expect(
+      main.locator("tr", { hasText: accessionNumber }).first(),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
   });
 
   await test.step("Enter a result so the analysis reaches the validation queue", async () => {
@@ -84,14 +91,19 @@ test("E-Signature — full result entry and validation flow", async ({
     // saving an empty row persists nothing and leaves the queue empty.
     const resultInput = page
       .getByRole("main")
-      .locator('input[id^="ResultValue"]')
+      .locator('input[id^="unifiedResultValue-"]')
       .first();
     await expect(resultInput).toBeVisible({ timeout: UI_TIMEOUT });
     await resultInput.fill("6");
   });
 
   await test.step("Click Save — e-sig modal appears", async () => {
-    await page.getByRole("button", { name: "Save" }).click();
+    // Typing a value makes the row dirty, which is what offers its Save.
+    await page
+      .getByRole("main")
+      .getByRole("button", { name: /^save$/i })
+      .first()
+      .click();
 
     const modal = page.getByRole("dialog");
     await expect(modal).toBeVisible({ timeout: UI_TIMEOUT });
@@ -144,11 +156,12 @@ test("E-Signature — full result entry and validation flow", async ({
     await pwInput.click();
     await pwInput.pressSequentially(password, { delay: 30 });
 
-    // The signature releases the result save; sync on that request so the
-    // navigation that follows cannot cancel it mid-flight.
+    // The signature releases the per-row save. The unified worklist stays on
+    // the page: sync on the save response and on the row turning read-only
+    // (its Save gives way to Edit) before moving on.
     const resultsSaved = page.waitForResponse(
       (response) =>
-        response.url().includes("/rest/LogbookResults") &&
+        response.url().includes("/rest/results-entry/analysis/") &&
         response.request().method() === "POST",
       { timeout: LONG_TIMEOUT },
     );
@@ -159,6 +172,12 @@ test("E-Signature — full result entry and validation flow", async ({
     // Modal should close after successful signature
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
     await resultsSaved;
+    await expect(
+      page
+        .getByRole("main")
+        .getByRole("button", { name: /^edit$/i })
+        .first(),
+    ).toBeVisible({ timeout: LONG_TIMEOUT });
   });
 
   // ── Step 4: Validation — VALIDATED_AND_RELEASED signature ─────
@@ -168,12 +187,12 @@ test("E-Signature — full result entry and validation flow", async ({
       waitUntil: "domcontentloaded",
     });
 
-    // Search by accession number (scope to main to avoid header Search button)
+    // Search by accession number in the one Validation search (OGC-1418)
     const main = page.getByRole("main");
-    const searchInput = main.getByPlaceholder(/accession|lab no/i);
+    const searchInput = main.locator("#validationSearch");
     await expect(searchInput).toBeVisible({ timeout: NAV_TIMEOUT });
     await searchInput.fill(accessionNumber);
-    await main.getByRole("button", { name: /search/i }).click();
+    await main.getByTestId("validation-load").click();
 
     // OGC-1030: release is per row, from the review panel — the queue row's
     // expander is what appears once the search has loaded.
@@ -220,20 +239,20 @@ test("E-Signature — full result entry and validation flow", async ({
 
     // In password-only mode, just enter password
     await modal.locator('input[type="password"]').fill(password);
+
+    // A successful release rereads the queue in place. Sync on that read so
+    // the cleanup step's navigation cannot collide with it, then assert on
+    // what the page shows.
+    const queueReread = page.waitForResponse(
+      (response) =>
+        response.url().includes("/rest/AccessionValidation") &&
+        response.request().method() === "GET",
+      { timeout: LONG_TIMEOUT },
+    );
     await modal.getByRole("button", { name: /sign/i }).click();
 
     await expect(modal).toBeHidden({ timeout: LONG_TIMEOUT });
-
-    // Wait for the page to finish any post-sign navigation/redirect
-    // before attempting cleanup navigation
-    await page.waitForLoadState("networkidle");
-  });
-
-  // ── Cleanup: Restore original e-sig setting ───────────────────
-
-  await test.step("Disable e-signatures (cleanup)", async () => {
-    const siteInfo = new SiteInformationPage(page);
-    await siteInfo.goto();
-    await siteInfo.setBooleanSetting("electronicSignatureEnabled", false);
+    await queueReread;
+    await expect(page).toHaveURL(/\/validation/);
   });
 });

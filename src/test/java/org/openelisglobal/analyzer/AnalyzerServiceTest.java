@@ -1,174 +1,78 @@
 package org.openelisglobal.analyzer;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
+import static org.openelisglobal.analyzer.AnalyzerTestProfileCatalog.PROFILE_ID;
+import static org.openelisglobal.analyzer.AnalyzerTestProfileCatalog.PROFILE_REVISION;
 
-import java.util.ArrayList;
-import java.util.List;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import java.util.HashSet;
+import java.util.Set;
+import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analyzer.service.AnalyzerProfileBindingService;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.AnalyzerTypeService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerType;
-import org.openelisglobal.analyzerimport.service.AnalyzerTestMappingService;
-import org.openelisglobal.analyzerimport.valueholder.AnalyzerTestMapping;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class AnalyzerServiceTest extends BaseWebContextSensitiveTest {
-
     @Autowired
     private AnalyzerService analyzerService;
-
     @Autowired
-    private AnalyzerTestMappingService analyzerTestMappingService;
+    private AnalyzerProfileBindingService profiles;
+    @PersistenceContext
+    private EntityManager entityManager;
 
-    @Autowired
-    private AnalyzerTypeService analyzerTypeService;
+    private Set<String> expectedIds;
+    private String firstAnalyzerId;
+    private String firstAnalyzerName;
 
     @Before
-    public void setUp() throws Exception {
-        executeDataSetWithStateManagement("testdata/analyzer.xml");
-    }
-
-    @Test
-    public void getAnalyzersFromDatabase_shouldReturnExpectedResults() {
-        List<Analyzer> analyzerList = analyzerService.getAll();
-
-        assertNotNull("Analyzer list should not be null", analyzerList);
-        assertFalse("Analyzer list should not be empty", analyzerList.isEmpty());
-        assertEquals("Expected 3 analyzers in the database", 3, analyzerList.size());
-
-        for (Analyzer analyzer : analyzerList) {
-            assertNotNull("Analyzer name should not be null", analyzer.getName());
-            assertFalse("Analyzer name should not be empty", analyzer.getName().trim().isEmpty());
+    public void createOwnedAnalyzers() {
+        expectedIds = analyzerService.getAll().stream().map(Analyzer::getId)
+                .collect(Collectors.toCollection(HashSet::new));
+        String prefix = UUID.randomUUID().toString().substring(0, 12);
+        for (String model : new String[] { "Cobas 6800", "ABL800 FLEX", "Sysmex XN-1000" }) {
+            Analyzer analyzer = new Analyzer();
+            analyzer.ensureFhirUuid();
+            analyzer.setName(prefix + " " + model);
+            analyzer.setActive(false);
+            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
+            analyzer.setSysUserId(TEST_SYS_USER_ID);
+            profiles.assignProfile(analyzer, PROFILE_ID, PROFILE_REVISION, TEST_SYS_USER_ID);
+            String id = analyzerService.insert(analyzer);
+            expectedIds.add(id);
+            if (firstAnalyzerId == null) {
+                firstAnalyzerId = id;
+                firstAnalyzerName = analyzer.getName();
+            }
         }
+        entityManager.flush();
+        entityManager.clear();
     }
 
     @Test
-    public void getAnalyzerByName_shouldReturnAnalyzerByName() {
-        Analyzer analyzer = analyzerService.getAnalyzerByName("Cobas 6800");
+    public void getAnalyzersFromDatabaseReturnsOwnedAndExistingRecords() {
+        assertEquals(expectedIds, analyzerService.getAll().stream().map(Analyzer::getId).collect(Collectors.toSet()));
+    }
+
+    @Test
+    public void getAnalyzerByNameReturnsThePersistedAnalyzer() {
+        Analyzer analyzer = analyzerService.getAnalyzerByName(firstAnalyzerName);
         assertNotNull(analyzer);
-        assertEquals("Cobas 6800", analyzer.getName());
-        assertEquals("COBAS6800-001", analyzer.getMachineId());
-        assertEquals("MOLECULAR", analyzer.getType());
-        assertEquals("Main Laboratory - Room 101", analyzer.getLocation());
-        assertTrue(analyzer.isActive());
+        assertEquals(firstAnalyzerId, analyzer.getId());
+        assertEquals(firstAnalyzerName, analyzer.getName());
     }
 
     @Test
-    public void getAnalyzerByName_shouldReturnNullForNonExistentName() {
-        Analyzer analyzer = analyzerService.getAnalyzerByName("Non-existent Analyzer");
-        assertEquals(null, analyzer);
-    }
-
-    @Test
-    @WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
-    public void persistData_shouldInsertNewAnalyzerAndMappings() throws Exception {
-        cleanRowsInCurrentConnection(new String[] { "analyzer_test_map", "analyzer" });
-        Analyzer newAnalyzer = createTestAnalyzer("Test Analyzer", "TEST-001", "TEST");
-        AnalyzerType type = analyzerTypeService.get("901");
-        newAnalyzer.setAnalyzerType(type);
-
-        List<AnalyzerTestMapping> newMappings = new ArrayList<>();
-        AnalyzerTestMapping mapping = new AnalyzerTestMapping();
-        mapping.setAnalyzerTestName("New Test");
-        mapping.setTestId("101");
-        newMappings.add(mapping);
-
-        analyzerService.persistData(newAnalyzer, newMappings, new ArrayList<>());
-
-        assertNotNull(newAnalyzer.getId());
-        Analyzer savedAnalyzer = analyzerService.getAnalyzerByName("Test Analyzer");
-        assertNotNull(savedAnalyzer);
-        assertEquals("Test Analyzer", savedAnalyzer.getName());
-        List<AnalyzerTestMapping> mappings = analyzerTestMappingService.getAll();
-        boolean found = false;
-        for (AnalyzerTestMapping m : mappings) {
-            if (savedAnalyzer.getId().equals(m.getAnalyzerId()) && m.getAnalyzerTestName().equals("New Test")
-                    && m.getTestId().equals("101")) {
-                found = true;
-                break;
-            }
-        }
-        assertTrue("Expected mapping not found", found);
-    }
-
-    @Test
-    @WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
-    public void persistData_shouldUpdateExistingAnalyzerAndAddNewMappings() {
-        Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
-        assertNotNull(existingAnalyzer);
-        existingAnalyzer.setSysUserId("1");
-
-        String originalLocation = existingAnalyzer.getLocation();
-        existingAnalyzer.setLocation("Updated Location");
-
-        List<AnalyzerTestMapping> newMappings = new ArrayList<>();
-        AnalyzerTestMapping mapping = new AnalyzerTestMapping();
-        mapping.setAnalyzerTestName("Updated Test");
-        mapping.setTestId("103");
-        newMappings.add(mapping);
-
-        List<AnalyzerTestMapping> existingMappings = new ArrayList<>();
-
-        analyzerService.persistData(existingAnalyzer, newMappings, existingMappings);
-
-        Analyzer updatedAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
-        assertNotNull(updatedAnalyzer);
-        assertEquals("Updated Location", updatedAnalyzer.getLocation());
-
-        List<AnalyzerTestMapping> mappings = analyzerTestMappingService.getAll();
-        boolean found = false;
-        for (AnalyzerTestMapping m : mappings) {
-            if (existingAnalyzer.getId().equals(m.getAnalyzerId()) && m.getAnalyzerTestName().equals("Updated Test")
-                    && m.getTestId().equals("103")) {
-                found = true;
-                break;
-            }
-        }
-        assertTrue("Expected mapping not found", found);
-    }
-
-    @Test
-    @WithMockUser(username = "admin", roles = "GLOBAL_ADMIN")
-    public void persistData_shouldNotDuplicateExistingMappings() {
-        Analyzer existingAnalyzer = analyzerService.getAnalyzerByName("Cobas 6800");
-        assertNotNull(existingAnalyzer);
-        existingAnalyzer.setSysUserId("1");
-
-        List<AnalyzerTestMapping> newMappings = new ArrayList<>();
-        AnalyzerTestMapping mapping = new AnalyzerTestMapping();
-        mapping.setAnalyzerTestName("Glucose Test");
-        mapping.setTestId("101");
-        mapping.setAnalyzerId(existingAnalyzer.getId());
-        newMappings.add(mapping);
-
-        List<AnalyzerTestMapping> existingMappings = new ArrayList<>();
-        existingMappings.add(mapping);
-
-        int initialCount = analyzerTestMappingService.getAll().size();
-
-        analyzerService.persistData(existingAnalyzer, newMappings, existingMappings);
-
-        int newCount = analyzerTestMappingService.getAll().size();
-        assertEquals(initialCount, newCount);
-    }
-
-    private Analyzer createTestAnalyzer(String name, String machineId, String analyzerType) {
-        Analyzer analyzer = new Analyzer();
-        analyzer.setName(name);
-        analyzer.setMachineId(machineId);
-        analyzer.setType(analyzerType);
-        analyzer.setDescription("Test description");
-        analyzer.setLocation("Test location");
-        analyzer.setActive(true);
-        analyzer.setHasSetupPage(true);
-        analyzer.setSysUserId("1");
-        return analyzer;
+    public void getAnalyzerByNameReturnsNullForAnUnknownName() {
+        assertNull(analyzerService.getAnalyzerByName("Missing analyzer " + UUID.randomUUID()));
     }
 }

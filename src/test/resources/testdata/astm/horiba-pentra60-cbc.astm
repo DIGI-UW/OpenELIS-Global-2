@@ -1,6 +1,6 @@
 # ASTM LIS2-A2 Sample: Horiba ABX Pentra 60 CBC
 # Purpose: Test Horiba Pentra 60 plugin ASTM parsing (Feature 011, M9)
-# Reference: specs/011-madagascar-analyzer-integration/research.md Section 12
+# Historical context: Git history for specs/011-madagascar-analyzer-integration
 #
 # Analyzer: Horiba ABX Pentra 60 C+ (5-Part Differential Hematology)
 # Protocol: ASTM LIS2-A2 over RS232

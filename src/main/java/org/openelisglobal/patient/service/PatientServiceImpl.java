@@ -3,6 +3,7 @@ package org.openelisglobal.patient.service;
 import jakarta.annotation.PostConstruct;
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -574,6 +575,12 @@ public class PatientServiceImpl extends AuditableBaseObjectServiceImpl<Patient, 
     @Transactional(readOnly = true)
     public List<Patient> getPatientsByNationalId(String nationalId) {
         return getBaseObjectDAO().getPatientsByNationalId(nationalId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Patient> getMergedPatientsIn(Collection<String> patientIds) {
+        return getBaseObjectDAO().getMergedPatientsIn(patientIds);
     }
 
     @Override

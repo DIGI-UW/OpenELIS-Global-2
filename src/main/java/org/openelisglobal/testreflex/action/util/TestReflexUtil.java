@@ -374,9 +374,8 @@ public class TestReflexUtil {
                     reflex.setActionScriptletId(splitActionId[1]);
                 }
 
-                Optional<Analysis> newAnalysis = addReflexTest(reflex, reflexBean.getResult(),
-                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, addedActionId, false,
-                        sysUserId);
+                Optional<Analysis> newAnalysis = addReflexTest(reflex, reflexBean.getResult(), patientIdOf(reflexBean),
+                        reflexBean.getSample(), true, true, addedActionId, false, sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
@@ -424,8 +423,8 @@ public class TestReflexUtil {
                 boolean allSibAnalysisCausedReflex = doAllAnalysisHaveReflex(parentAnalysisList, reflexBean);
 
                 Optional<Analysis> newAnalysis = addReflexTest(reflexForResult, reflexBean.getResult(),
-                        reflexBean.getPatient().getId(), reflexBean.getSample(), true, true, null,
-                        allSibAnalysisCausedReflex, sysUserId);
+                        patientIdOf(reflexBean), reflexBean.getSample(), true, true, null, allSibAnalysisCausedReflex,
+                        sysUserId);
                 if (newAnalysis.isPresent()) {
                     reflexAnalysises.add(newAnalysis.get());
                 }
@@ -438,7 +437,7 @@ public class TestReflexUtil {
                     boolean handleAction = siblingReflex.getActionScriptletId() != null
                             && !siblingReflex.getActionScriptletId().equals(reflexForResult.getActionScriptletId());
 
-                    newAnalysis = addReflexTest(siblingReflex, reflexBean.getResult(), reflexBean.getPatient().getId(),
+                    newAnalysis = addReflexTest(siblingReflex, reflexBean.getResult(), patientIdOf(reflexBean),
                             reflexBean.getSample(), addTest, handleAction, null, allSibAnalysisCausedReflex, sysUserId);
                     if (newAnalysis.isPresent()) {
                         reflexAnalysises.add(newAnalysis.get());
@@ -554,6 +553,15 @@ public class TestReflexUtil {
             handledReflexsBySample.put(resultSet.getSample().getId(), handledReflexIdList);
         }
         return handledReflexIdList;
+    }
+
+    /**
+     * The patient id a reflex action is recorded against, or {@code null} for a
+     * sample without a patient (environmental and vector orders), which the
+     * observation history accepts (OGC-356).
+     */
+    public static String patientIdOf(TestReflexBean reflexBean) {
+        return reflexBean.getPatient() == null ? null : reflexBean.getPatient().getId();
     }
 
     private Optional<Analysis> addReflexTest(TestReflex reflex, Result result, String patientId, Sample sample,
