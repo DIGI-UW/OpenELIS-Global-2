@@ -63,7 +63,7 @@ final class WorkplanPdf {
             headers.add(MessageUtil.getMessage("report.testName"));
         }
         if (nextVisit) {
-            headers.add(MessageUtil.getMessage("report.appointmentDate"));
+            headers.add(MessageUtil.getMessage("sample.entry.nextVisit.date"));
         }
         if (withResults) {
             headers.add(MessageUtil.getMessage("report.results"));

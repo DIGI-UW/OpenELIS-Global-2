@@ -66,6 +66,7 @@ public class WorkplanPdfTest extends BaseWebContextSensitiveTest {
 
         String text = PdfText.of(new TestWorkplanReport("Glucose").renderPdf(rows()));
 
+        assertTrue(text, text.contains("Date of reception Date of next visit"));
         assertTrue(text, text.contains(ORDER_ONE + " SUBJ-1 01/10/2026 15/10/2026"));
         assertTrue(text, text.contains(ORDER_TWO + " SUBJ-2 02/10/2026"));
     }
