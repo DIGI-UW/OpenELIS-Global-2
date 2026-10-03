@@ -88,7 +88,7 @@
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, (SELECT id FROM clinlims.system_privilege WHERE name = 'esig:use')
             FROM clinlims.system_role r
-            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist', 'Validation', 'Results');
+            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist', 'Validation');
         </sql>
     </changeSet>
 
@@ -105,8 +105,12 @@
       "An unexpected error occurred" (AccessDenied on
       ElectronicSignatureService#certifyUser, PRIV_ESIG_USE).
 
-      On an existing database 012-009-add-esig-use is MARK_RAN (the privilege
-      exists), so this separate changeset is what actually repairs the grant.
+      The grant must live in this SEPARATE changeset and 012-009-add-esig-use
+      must be left byte-for-byte alone: it has already run everywhere, so
+      editing its SQL changes its checksum and Liquibase then refuses to start
+      with "Validation Failed: ... was: 8:a412... but is now: 8:2dd4...",
+      taking the whole Spring context down. A new changeset is the only safe
+      way to add a grant after the fact.
     -->
     <changeSet author="openelis" id="012-009a-grant-esig-use-to-results">
         <preConditions onFail="MARK_RAN">
