@@ -1,17 +1,8 @@
 package org.openelisglobal.audittrail.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletResponse;
+import java.awt.Color;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -39,6 +30,15 @@ import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -394,9 +394,9 @@ public class SystemAuditEventRestController {
             PdfWriter.getInstance(document, response.getOutputStream());
             document.open();
 
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD, BaseColor.WHITE);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+            Font headerFont = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
+            Font cellFont = new Font(Font.HELVETICA, 9);
+            Font titleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
 
             document.add(new Phrase(MessageUtil.getMessage("auditTrail.export.title.systemAuditEvents") + "\n\n",
                     titleFont));
@@ -414,7 +414,7 @@ public class SystemAuditEventRestController {
                     MessageUtil.getMessage("auditTrail.export.header.newValue") };
             for (String header : headers) {
                 PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
-                cell.setBackgroundColor(new BaseColor(51, 102, 179));
+                cell.setBackgroundColor(new Color(51, 102, 179));
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 cell.setPadding(5);
                 table.addCell(cell);

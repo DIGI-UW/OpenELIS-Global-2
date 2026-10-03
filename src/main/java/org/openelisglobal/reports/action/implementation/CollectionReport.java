@@ -13,9 +13,6 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.pdf.PdfCopyFields;
-import com.itextpdf.text.pdf.PdfReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -39,6 +36,9 @@ import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.reports.action.implementation.reportBeans.ErrorMessages;
 import org.openelisglobal.reports.form.ReportForm;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.pdf.PdfCopyFields;
+import org.openpdf.text.pdf.PdfReader;
 
 public abstract class CollectionReport implements IReportCreator {
     protected String requestedReport;

@@ -1,14 +1,8 @@
 package org.openelisglobal.esig.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPTable;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.awt.Color;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +25,12 @@ import org.openelisglobal.esig.valueholder.EsigFirstUseCertification;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.qa.security.QaPermissions;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPTable;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -309,10 +309,10 @@ public class ElectronicSignatureRestController extends BaseRestController {
             Document document = new Document(PageSize.A4.rotate());
             PdfExportSupport.openWithPageNumbers(document, response.getOutputStream(), "export.page");
 
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
-            Font metaFont = new Font(Font.FontFamily.HELVETICA, 9);
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD, BaseColor.WHITE);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
+            Font titleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
+            Font metaFont = new Font(Font.HELVETICA, 9);
+            Font headerFont = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
+            Font cellFont = new Font(Font.HELVETICA, 9);
 
             PdfExportSupport.addHeading(document, MessageUtil.getMessage("esig.export.title"), titleFont, metaFont,
                     MessageUtil.getMessage("export.labName") + ": " + PdfExportSupport.labName(configurationProperties)

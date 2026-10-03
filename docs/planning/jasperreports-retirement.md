@@ -16,9 +16,9 @@ gone.
   (`tknie/jaspergo`) compiled none of the 47 live templates.
 - The application already builds its recent PDFs in code through
   `common/util/PdfExportSupport` (EQA, compliance certificates, audit trail,
-  e-signature, QC export, inventory, shipment manifests). That code uses iText
-  5, which is end-of-life and AGPL-licensed, and conflicts with this project's
-  MPL-2.0 license.
+  e-signature, QC export, inventory, shipment manifests). That code used iText
+  5, which is end-of-life and AGPL-licensed and conflicts with this project's
+  MPL-2.0 license; step 2 moved it to OpenPDF.
 - OpenPDF 3.x is maintained and dual-licensed LGPL-2.1 / MPL-2.0. Its classes
   keep the iText names (`Document`, `PdfPTable`, `PdfWriter`,
   `PdfPageEventHelper`, `Barcode128`) under the `org.openpdf.text` package.
@@ -34,6 +34,8 @@ gone.
 
 ## Verification for each port
 
+- Tests read generated PDFs with `testsupport/PdfText` (PDFBox), so they do not
+  depend on the library that wrote the PDF.
 - Before porting a report, capture its current PDF for a fixed input (same
   database fixtures, same parameters) from the running application.
 - After porting, render the same input and compare the extracted text page by
@@ -76,11 +78,10 @@ reports `.gitignore` listed only tracked files and was removed with them.
 
 ### Code outside PDF reports that touches these libraries
 
-- 18 files use iText 5 (`com.itextpdf`), including `PdfExportSupport`, the EQA,
-  compliance, audit trail, e-signature, inventory, QC and shipment PDF writers,
-  and the barcode label classes.
-- `barcode/BarcodeLabelMaker` uses `com.lowagie` iText 2.1.7, which reaches the
-  classpath only through `jasperreports`.
+- Since step 2, `PdfExportSupport` and the EQA, compliance, audit trail,
+  e-signature, inventory, QC, shipment and barcode label writers run on OpenPDF.
+  `com.lowagie` iText 2.1.7 stays on the classpath only as a dependency of
+  `jasperreports`.
 - The CSV export report creators import Jasper types through the shared
   `IReportCreator` / `Report` classes;
   `compliance/controller/rest/CertificateFonts` and
@@ -99,7 +100,7 @@ Each step is one PR to `develop`. Status is updated in this file as steps land.
 | Step | Change                                                                                                                                                                                                                                                                  | Status      |
 | ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
 | 1    | Delete the dead templates and add this roadmap                                                                                                                                                                                                                          | in review   |
-| 2    | Add OpenPDF; port `PdfExportSupport`, the 18 iText 5 files and `BarcodeLabelMaker` to it; remove `itextpdf`                                                                                                                                                             | not started |
+| 2    | Add OpenPDF; port `PdfExportSupport`, the 18 iText 5 files and `BarcodeLabelMaker` to it; remove `itextpdf`                                                                                                                                                             | in review   |
 | 3    | Separate the report interfaces from Jasper types so CSV exporters, `CertificateFonts` and other non-PDF code compile without JasperReports; delete the unreachable freezer report creators and the two `ReportsServlet` providers after confirming nothing reaches them | not started |
 | 4    | Port the workplans                                                                                                                                                                                                                                                      | not started |
 | 5    | Port the management reports and the shared headers and footers they use                                                                                                                                                                                                 | not started |
