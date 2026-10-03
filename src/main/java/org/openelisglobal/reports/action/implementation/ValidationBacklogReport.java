@@ -119,7 +119,6 @@ public class ValidationBacklogReport extends Report {
     public void initializeReport(ReportForm form) {
         super.initializeReport();
 
-        createReportParameters();
         setMapForAllSections();
         loadBuckets();
         bucketsToBeans();

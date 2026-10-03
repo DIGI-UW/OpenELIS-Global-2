@@ -19,9 +19,9 @@ package org.openelisglobal.reports.action.implementation;
 import java.sql.Timestamp;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
@@ -40,32 +40,49 @@ import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.service.SampleService;
-import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openpdf.text.PageSize;
 
 public abstract class ActivityReport extends Report implements IReportCreator {
-    private int PREFIX_LENGTH = AccessionNumberUtil.getMainAccessionNumberGenerator().getInvarientLength();
     protected List<ActivityReportBean> testsResults;
-    protected String reportPath = "";
     protected DateRange dateRange;
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(testsResults);
+    protected byte[] renderReport() {
+        List<String> headers = Arrays.asList(MessageUtil.getContextualMessage("quick.entry.accession.number"),
+                MessageUtil.getMessage("barcode.label.info.collectionDate"),
+                MessageUtil.getMessage("report.receptionDate"),
+                MessageUtil.getMessage("barcode.label.info.patientName"),
+                isReportByTest() ? MessageUtil.getMessage("report.patientCode")
+                        : MessageUtil.getMessage("report.patientCode") + " / "
+                                + MessageUtil.getMessage("report.testName"),
+                MessageUtil.getMessage("report.status"), MessageUtil.getMessage("report.results"),
+                MessageUtil.getMessage("report.label.datetype.resultdate"),
+                MessageUtil.getMessage("report.turnaround") + " (" + MessageUtil.getMessage("report.days") + ")",
+                MessageUtil.getMessage("report.turnaround") + " (" + MessageUtil.getMessage("report.hours") + ")");
+        List<List<String>> rows = new ArrayList<>();
+        ActivityReportBean above = new ActivityReportBean();
+        for (ActivityReportBean item : testsResults) {
+            boolean firstOfOrder = !Objects.equals(item.getAccessionNumber(), above.getAccessionNumber());
+            rows.add(Arrays.asList(item.getAccessionNumber(),
+                    ManagementReportPdf.whenChanged(item.getCollectionDate(), above.getCollectionDate(), firstOfOrder),
+                    ManagementReportPdf.whenChanged(item.getReceivedDate(), above.getReceivedDate(), firstOfOrder),
+                    ManagementReportPdf.whenChanged(patientName(item), patientName(above), firstOfOrder),
+                    item.getPatientOrTestName(), item.getSampleStatus(), item.getResultValue(), item.getResultDate(),
+                    item.getTurnaroundDays(), item.getTurnaroundHours()));
+            above = item;
+        }
+        return ManagementReportPdf.render(PageSize.A4.rotate(), MessageUtil.getMessage("report.activity"),
+                getActivityLabel(), dateRange, headers,
+                new float[] { 2.4f, 1.1f, 1.1f, 1.8f, 2.4f, 1.4f, 1.6f, 1.7f, 0.9f, 0.9f }, rows);
     }
 
-    @Override
-    protected void createReportParameters() {
-        reportParameters.put("activityLabel", getActivityLabel());
-        reportParameters.put("accessionPrefix", AccessionNumberUtil.getMainAccessionNumberGenerator().getPrefix());
-        reportParameters.put("labNumberTitle", MessageUtil.getContextualMessage("quick.entry.accession.number"));
-        reportParameters.put("labName", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName));
-        reportParameters.put("SUBREPORT_DIR", reportPath);
-        reportParameters.put("startDate", dateRange.getLowDateStr());
-        reportParameters.put("endDate", dateRange.getHighDateStr());
-        reportParameters.put("isReportByTest", isReportByTest());
+    private static String patientName(ActivityReportBean item) {
+        return GenericValidator.isBlankOrNull(item.getPatientLastName())
+                || GenericValidator.isBlankOrNull(item.getPatientFirstName()) ? ""
+                        : item.getPatientLastName() + ", " + item.getPatientFirstName();
     }
 
     protected boolean isReportByTest() {
@@ -82,7 +99,6 @@ public abstract class ActivityReport extends Report implements IReportCreator {
         ReportSpecificationList selection = form.getSelectList();
         dateRange = new DateRange(form.getLowerDateRange(), form.getUpperDateRange());
 
-        super.createReportParameters();
         errorFound = !validateSubmitParameters(selection);
         if (errorFound) {
             return;
@@ -190,11 +206,6 @@ public abstract class ActivityReport extends Report implements IReportCreator {
             return sampleStatus;
         }
         return MessageUtil.getMessage("report.activity.referredOut");
-    }
-
-    @Override
-    protected String reportFileName() {
-        return "ActivityReport";
     }
 
     protected ActivityReportBean createIdentityActivityBean(ActivityReportBean item, boolean blankCollectionDate) {
