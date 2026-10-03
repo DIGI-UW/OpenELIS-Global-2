@@ -159,7 +159,9 @@ test.describe("Server paging through Carbon", () => {
     await expect(page.locator("#patient2-lastName")).toBeVisible();
     await expect(page.locator("#lastName")).toHaveCount(0);
 
-    await firstLastName.fill("a");
+    // Every fixture patient's last name starts with "TEST-", so both panels can
+    // list candidates without depending on patients created by earlier specs.
+    await firstLastName.fill("TEST");
     const searched = page.waitForResponse((response) =>
       response.url().includes("/rest/patient-search-results"),
     );
@@ -185,7 +187,7 @@ test.describe("Server paging through Carbon", () => {
     ).toBeVisible({ timeout: UI_TIMEOUT });
     await expect(page.locator("#patient1-lastName")).toHaveCount(0);
 
-    await page.locator("#patient2-lastName").fill("a");
+    await page.locator("#patient2-lastName").fill("TEST");
     const searchedAgain = page.waitForResponse((response) =>
       response.url().includes("/rest/patient-search-results"),
     );
