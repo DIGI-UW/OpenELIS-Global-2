@@ -422,8 +422,8 @@ public class DisplayListController extends BaseRestController {
         try {
             return StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage());
         } catch (AccessDeniedException denied) {
-            System.out.println("DIAG auth="
-                    + org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication());
+            // Deliberately NOT rethrown: this is one optional field of a map every
+            // role fetches, not the thing the caller asked for.
             return "";
         }
     }
