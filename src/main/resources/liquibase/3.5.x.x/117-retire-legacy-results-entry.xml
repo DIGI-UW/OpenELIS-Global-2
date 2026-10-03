@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Result entry has one page, /Results. The legacy result-entry pages are
+         gone, so the switch between the two (resultsEntryUnifiedRoute, seeded by
+         059 and turned on by 089) is removed from Result configuration, and the
+         menu rows of the retired pages are deactivated. Their addresses still
+         redirect to /Results. -->
+    <changeSet id="retire-results-entry-unified-route-switch" author="mozzy11">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'resultsEntryUnifiedRoute'
+            </sqlCheck>
+        </preConditions>
+        <comment>The unified Results Entry page is the only one; its switch is removed</comment>
+        <delete schemaName="clinlims" tableName="site_information">
+            <where>name = 'resultsEntryUnifiedRoute'</where>
+        </delete>
+        <rollback>
+            <insert schemaName="clinlims" tableName="site_information">
+                <column name="id" valueSequenceNext="site_information_seq" />
+                <column name="name" value="resultsEntryUnifiedRoute" />
+                <column name="lastupdated" valueComputed="${now}" />
+                <column name="description" value="If true, the unified Results Entry worklist replaces the legacy result entry pages (legacy routes redirect)" />
+                <column name="value" value="true" />
+                <column name="encrypted" value="false" />
+                <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+                <column name="value_type" value="boolean" />
+                <column name="instruction_key" value="instructions.results.entry.unified.route" />
+                <column name="group" value="0" />
+            </insert>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="retire-legacy-results-entry-menu-rows" author="mozzy11">
+        <comment>The retired result-entry pages leave the Results menu; Results Entry stays</comment>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="is_active" valueBoolean="false"/>
+            <where>element_id IN ('menu_results_logbook', 'menu_results_patient', 'menu_results_accession',
+                'menu_results_range', 'menu_results_status')</where>
+        </update>
+        <update schemaName="clinlims" tableName="menu">
+            <column name="is_active" valueBoolean="true"/>
+            <where>element_id = 'menu_results_unified'</where>
+        </update>
+        <rollback>
+            <update schemaName="clinlims" tableName="menu">
+                <column name="is_active" valueBoolean="true"/>
+                <where>element_id IN ('menu_results_logbook', 'menu_results_patient', 'menu_results_accession',
+                    'menu_results_range', 'menu_results_status')</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

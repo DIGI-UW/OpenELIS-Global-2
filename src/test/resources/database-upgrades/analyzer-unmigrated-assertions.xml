@@ -3,26 +3,92 @@
     xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
-    <changeSet id="assert-unmigrated-analyzer-preserved"
+    <changeSet id="assert-unmigrated-analyzer-exported"
         author="openelis">
         <preConditions onFail="HALT" onError="HALT">
-            <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM analyzer a JOIN analyzer_plugin_config c ON
-                c.analyzer_id = a.id
-                WHERE a.id = 900011 AND a.is_active IS TRUE AND a.status = 'SETUP'
-                AND a.ip_address = '192.0.2.11' AND a.port = 5000
-                AND a.import_directory = '/upgrade/incoming'
-                AND a.bridge_connection_id IS NULL AND a.site_binding_revision_id IS
-                NULL
-                AND c.config::text LIKE '%preserve-me%'
-            </sqlCheck>
-            <tableExists tableName="analyzer_test_map" />
-            <columnExists tableName="analyzer"
-                columnName="machine_id" />
-            <sqlCheck expectedResult="0">
-                SELECT COUNT(*) FROM databasechangelog WHERE id =
-                '098-remove-superseded-analyzer-schema'
-            </sqlCheck>
+            <!-- The analyzer itself survives; only its pre-Bridge settings move. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM analyzer
+                WHERE id = 900011 AND name = 'Unmigrated fixture' AND is_active IS TRUE
+                AND status = 'SETUP' AND bridge_connection_id IS NULL
+                AND site_binding_revision_id IS NULL
+            ]]></sqlCheck>
+            <!-- One export run holds the settings as a JSON document per analyzer. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run
+                WHERE source = 'ANALYZER_LEGACY' AND status = 'EXPORTED'
+                AND finished_at IS NOT NULL
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzers') d
+                WHERE r.source = 'ANALYZER_LEGACY'
+                AND (d->>'id')::numeric = 900011 AND d->>'name' = 'Unmigrated fixture'
+                AND d->>'ip_address' = '192.0.2.11' AND (d->>'port')::int = 5000
+                AND d->>'import_directory' = '/upgrade/incoming'
+                AND d->>'bridge_connection_id' IS NULL
+            ]]></sqlCheck>
+            <!-- Every removed table's rows are in the export, keyed by table name. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_plugin_config') c
+                WHERE r.source = 'ANALYZER_LEGACY'
+                AND (c->>'analyzer_id')::numeric = 900011
+                AND c->'config'->>'instrumentSetting' = 'preserve-me'
+            ]]></sqlCheck>
+            <!-- The pre-Bridge storage is gone. -->
+            <not>
+                <tableExists tableName="analyzer_type" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_test_map" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_plugin_config" />
+            </not>
+            <not>
+                <tableExists tableName="serial_port_configuration" />
+            </not>
+            <not>
+                <tableExists tableName="file_import_configuration" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_error" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_qc_rule" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_activation_candidate" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="analyzer_type_id" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="ip_address" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="machine_id" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="profile_binding_id" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="discovered_source_id" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="active_candidate_id" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="transport_mode" />
+            </not>
         </preConditions>
         <sql>SELECT 1;</sql>
     </changeSet>

@@ -2,6 +2,7 @@ import { toLocalIsoDate } from "../../utils/Utils";
 import { useServerData } from "../../utils/useServerData";
 import { tatDelta } from "../../reports/tat/tatUtils";
 import { isoDaysFromToday, weekStart } from "../common/qaDates";
+import { labNow } from "../../utils/labClock";
 
 /**
  * Shared data hooks for the QA Overview aggregators (OGC-694).
@@ -143,7 +144,7 @@ const tatQuery = (from, to) =>
  */
 export const useTatRollup = () => {
   const current = useServerData(
-    tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(new Date())),
+    tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(labNow())),
   );
   const prior = useServerData(
     tatQuery(

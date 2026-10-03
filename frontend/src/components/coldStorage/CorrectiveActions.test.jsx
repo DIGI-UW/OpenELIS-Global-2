@@ -1,12 +1,21 @@
 import React from "react";
 import { vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 import { NotificationContext } from "../layout/contexts";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import CorrectiveActions from "./CorrectiveActions";
+import { fetchCorrectiveActions } from "./api";
+import { loadLabClock, resetLabClock } from "../utils/labClock";
+import { getFromOpenElisServer } from "../utils/Utils";
+
+vi.mock("../utils/Utils", async (importOriginal) => ({
+  ...(await importOriginal()),
+  getFromOpenElisServer: vi.fn(),
+}));
 
 vi.mock("./api", () => ({
   fetchCorrectiveActions: vi.fn(() => Promise.resolve([])),
@@ -69,4 +78,33 @@ describe("CorrectiveActions create-device link by role", () => {
 
     expect(await screen.findByText(CREATE_DEVICE_LINK)).toBeInTheDocument();
   });
+});
+
+it("current month ends at the server clock even when the browser clock is wrong", async () => {
+  const clock = vi
+    .spyOn(Date, "now")
+    .mockReturnValue(Date.parse("2031-03-05T20:00:00Z"));
+  getFromOpenElisServer.mockImplementation((url, cb) =>
+    cb({ date: "2031-03-06", time: "10:00", timezone: "Pacific/Kiritimati" }),
+  );
+  try {
+    await loadLabClock();
+    renderFor(["Reception"]);
+    await waitFor(() =>
+      expect(document.querySelector("#time-filter button")).not.toBeNull(),
+    );
+    fireEvent.click(document.querySelector("#time-filter button"));
+    fireEvent.click(
+      await screen.findByRole("option", { name: "Current Month" }),
+    );
+    await waitFor(() =>
+      expect(fetchCorrectiveActions).toHaveBeenLastCalledWith({
+        startDate: "2031-02-28T10:00:00.000Z",
+        endDate: expect.stringMatching(/^2031-03-05T20:00:/),
+      }),
+    );
+  } finally {
+    resetLabClock();
+    clock.mockRestore();
+  }
 });

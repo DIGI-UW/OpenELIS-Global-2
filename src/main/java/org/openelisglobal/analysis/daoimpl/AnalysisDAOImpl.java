@@ -344,13 +344,21 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         }
     }
 
+    /**
+     * The unit's analyses in the given statuses, QC samples excluded. Joined LEFT
+     * to the sample item so vector pool analyses (no sample item, a pool id) are
+     * kept; the QC profile exclusion applies to item-level analyses only.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
             List<String> statusIdList, boolean sortedByDateAndAccession) throws LIMSRuntimeException {
         try {
-            String sql = "from Analysis a where a.testSection.id = :testSectionId AND a.statusId IN (:statusIdList) AND "
-                    + QC_SAMPLE_ITEM_NOT_IN_PROFILE + " order by a.sampleItem.sample.accessionNumber";
+            String sql = "SELECT a FROM Analysis a LEFT JOIN a.sampleItem si LEFT JOIN si.sample s"
+                    + " WHERE a.testSection.id = :testSectionId AND a.statusId IN (:statusIdList)"
+                    + " AND ((si IS NOT NULL"
+                    + " AND CAST(si.id AS integer) NOT IN (SELECT q.sampleItemId FROM SampleItemQcProfile q))"
+                    + " OR (si IS NULL AND a.vectorPoolId IS NOT NULL))" + " ORDER BY s.accessionNumber, a.id";
 
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("testSectionId", testSectionId);

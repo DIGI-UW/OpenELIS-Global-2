@@ -54,5 +54,10 @@ support the positive/negative detection meanings and distinguish INVALID, ERROR
 and NO RESULT. The profile does not equate ERROR with Invalid or invent an
 INDETERMINATE translation.
 
+The test's primary result is that categorical overall call. Its only numeric
+components are the non-primary N2 and E cycle-threshold values that
+`055-seed-molecular-components.xml` adds with the `Ct` unit, which stay blank
+when an instrument does not transmit per-target Ct.
+
 What remains to be qualified is tracked in the
-[analyzer roadmap](../../specs/roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+[analyzer roadmap](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/specs/roadmaps/ogc-1054-analyzer-feature-roadmap.md).

@@ -187,6 +187,29 @@ public class DisplayListControllerStageFlagsTest extends BaseWebContextSensitive
                 "false", configs.get(Property.PATHOLOGY_STAGE_COVERSLIPPING_ENABLED.toString()));
     }
 
+    /**
+     * OGC-1417 — Results Entry, Validation and analyzer review show the custom
+     * critical message from here; the placeholder the site ships with is not a
+     * message, so it is published as none and the screens show their translated
+     * default.
+     */
+    @Test
+    public void configurationProperties_publishTheCustomCriticalMessage_butNotThePlaceholder() throws Exception {
+        String before = ConfigurationProperties.getInstance().getPropertyValue(Property.customCriticalMessage);
+        try {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.customCriticalMessage,
+                    "Call the clinician now");
+            assertEquals("Call the clinician now", configs().get(Property.customCriticalMessage.toString()));
+
+            ConfigurationProperties.getInstance().setPropertyValue(Property.customCriticalMessage,
+                    "Set new critical result message");
+            assertEquals("", configs().get(Property.customCriticalMessage.toString()));
+        } finally {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.customCriticalMessage,
+                    before == null ? "" : before);
+        }
+    }
+
     // helpers
 
     /**

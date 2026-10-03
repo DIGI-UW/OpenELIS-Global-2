@@ -399,8 +399,9 @@
   <include relativeToChangelogFile="true" file="090-patient-search-trigram-indexes.xml"/>
   <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
 
-  <!-- Destructive analyzer cleanup is deferred to a future migration after
-       verified data transfer. See docs/analyzer-upgrade-migration.md. -->
+  <!-- The analyzer cutover changesets below leave the pre-Bridge storage in place;
+       116-remove-pre-bridge-analyzer-storage exports and removes it.
+       See docs/analyzers/pre-bridge-settings-export.md. -->
   <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
   <include relativeToChangelogFile="true" file="089-analyzer-site-binding-confirmation.xml"/>
@@ -600,7 +601,24 @@
   <!-- Locations and Organizations: organization profile fields, identifiers, change log, sampling-site link, category and ownership lists. -->
   <include relativeToChangelogFile="true" file="112-locations-organizations.xml"/>
 
+  <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
+  <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
+
+  <!-- Validation is one page: the menu item opens it and the per-search entries are retired. -->
+  <include relativeToChangelogFile="true" file="114-validation-menu-collapse.xml"/>
+
+  <!-- Organization State / Province holds a province or region name. -->
+  <include relativeToChangelogFile="true" file="115-organization-state-length.xml"/>
+
+  <!-- Pre-Bridge analyzer settings: exported to the configuration-import history, then their tables and columns removed. -->
+  <include relativeToChangelogFile="true" file="116-remove-pre-bridge-analyzer-storage.xml"/>
+
+  <!-- Result entry has one page: the unified-route switch and the legacy result-entry menu rows are retired. -->
+  <include relativeToChangelogFile="true" file="117-retire-legacy-results-entry.xml"/>
+  <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
+  <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
+
   <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
-  <include relativeToChangelogFile="true" file="113-analyzer-delivery-action.xml"/>
+  <include relativeToChangelogFile="true" file="119-analyzer-delivery-action.xml"/>
 
 </databaseChangeLog>

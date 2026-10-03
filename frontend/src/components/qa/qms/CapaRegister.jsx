@@ -18,6 +18,7 @@ import { isoDaysFromToday } from "../common/qaDates";
 import QAEmptyState from "../common/QAEmptyState";
 import QAStatTiles from "../common/QAStatTiles";
 import "../common/QAStyles.css";
+import { labNow } from "../../utils/labClock";
 
 /**
  * Cross-NCE CAPA Register (OGC-707) at /qa/qms/capa-register. Read-only view of every
@@ -64,7 +65,7 @@ const CapaRegister = () => {
     );
   }, []);
 
-  const today = toLocalIsoDate(new Date());
+  const today = toLocalIsoDate(labNow());
   const weekAhead = isoDaysFromToday(7);
   const ninetyAgo = isoDaysFromToday(-90);
 

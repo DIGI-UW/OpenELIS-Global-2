@@ -222,8 +222,7 @@ export interface LocationPickerConfirm {
 }
 
 /**
- * The old Results page's confirm-to-REST translation
- * (SearchResultForm.handleLocationAssignment), extracted verbatim: deepest
+ * The confirm-to-REST translation inherited from the old Results page: deepest
  * assignable level wins, movement (a location already exists) goes to /move
  * with a defaulted reason, first assignment goes to /assign. Returns null
  * when nothing assignable was selected.

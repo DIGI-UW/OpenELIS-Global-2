@@ -20,6 +20,7 @@ import {
 import { useIntl } from "react-intl";
 import { useParams, Link as RouterLink } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { getFromOpenElisServer } from "../../utils/Utils";
 import { hintStyle } from "../eqaCommon";
 import { fetchParticipantPerformance } from "./Workbench/workbenchApi";
 
@@ -55,6 +56,7 @@ const ParticipantPerformance = () => {
   const [rows, setRows] = useState([]);
   const [loading, setLoading] = useState(true);
   const [failed, setFailed] = useState(false);
+  const [schemeName, setSchemeName] = useState("");
 
   useEffect(() => {
     let live = true;
@@ -65,6 +67,11 @@ const ParticipantPerformance = () => {
       setRows(data);
       setFailed(!Array.isArray(data));
       setLoading(false);
+    });
+    getFromOpenElisServer(`/rest/eqa/programs/${schemeId}`, (scheme) => {
+      if (live) {
+        setSchemeName(scheme?.name || "");
+      }
     });
     return () => {
       live = false;
@@ -83,7 +90,13 @@ const ParticipantPerformance = () => {
         <Column lg={16} md={8} sm={4}>
           <Section>
             <Heading>
-              {t("eqa.performance.title", "Participant performance")}
+              {schemeName
+                ? t(
+                    "eqa.performance.titleForScheme",
+                    "Participant performance: {scheme}",
+                    { scheme: schemeName },
+                  )
+                : t("eqa.performance.title", "Participant performance")}
             </Heading>
             <p style={hintStyle}>
               {t(
@@ -207,7 +220,7 @@ const ParticipantRow = ({ row, t }) => {
           {row.mostRecentPerformance ? (
             <Tag type={PERFORMANCE_TAG[row.mostRecentPerformance] || "gray"}>
               {t(
-                `eqa.performanceStatus.${row.mostRecentPerformance.toLowerCase()}`,
+                `eqa.labperf.verdict.${row.mostRecentPerformance.toLowerCase()}`,
                 row.mostRecentPerformance,
               )}
             </Tag>
@@ -264,7 +277,7 @@ const ParticipantRow = ({ row, t }) => {
                       <TableCell>
                         {analyte.performance
                           ? t(
-                              `eqa.performanceStatus.${analyte.performance.toLowerCase()}`,
+                              `eqa.labperf.verdict.${analyte.performance.toLowerCase()}`,
                               analyte.performance,
                             )
                           : "—"}

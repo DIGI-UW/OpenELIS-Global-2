@@ -35,9 +35,12 @@ import org.openelisglobal.note.service.NoteServiceImpl;
 import org.openelisglobal.note.valueholder.Note;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.result.action.util.ResultEntryAlert;
 import org.openelisglobal.result.action.util.ResultUtil;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleService;
@@ -71,6 +74,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private EffectiveTestStatusService effectiveTestStatusService;
     @Autowired
@@ -109,6 +114,12 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     @Override
     @Transactional
     public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId) {
+        acceptAndPersist(allResults, sysUserId, List.of());
+    }
+
+    @Override
+    @Transactional
+    public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts) {
         List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
         retainResolvableResults(actionableResults);
         keepGroupingsOnOneOrder(actionableResults);
@@ -158,6 +169,36 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
 
         analyzerResultsService.persistAnalyzerResults(deletableAnalyzerResults, sampleGroupList, sysUserId);
+        recordAcknowledgements(alerts, sampleGroupList, sysUserId);
+    }
+
+    /** Each acknowledged value names the analysis and result it was saved as. */
+    private void recordAcknowledgements(List<ResultEntryAlert> alerts, List<SampleGrouping> sampleGroupList,
+            String sysUserId) {
+        if (alerts.isEmpty()) {
+            return;
+        }
+        for (ResultEntryAlert alert : alerts) {
+            sampleGroupList.stream()
+                    .filter(group -> group.sample != null
+                            && Objects.equals(group.sample.getAccessionNumber(), alert.getAccessionNumber()))
+                    .flatMap(group -> group.resultList.stream()).filter(result -> savedFor(result, alert)).findFirst()
+                    .ifPresent(result -> {
+                        alert.setResult(result);
+                        alert.setAnalysisId(result.getAnalysis().getId());
+                    });
+        }
+        acknowledgementService.recordAcknowledgements(alerts, ResultEntryAcknowledgement.SOURCE_ANALYZER_REVIEW,
+                sysUserId);
+    }
+
+    private static boolean savedFor(Result result, ResultEntryAlert alert) {
+        if (result == null || result.getAnalysis() == null || result.getAnalysis().getTest() == null
+                || !Objects.equals(result.getAnalysis().getTest().getId(), alert.getTestId())) {
+            return false;
+        }
+        return alert.getComponentId() == null || (result.getTestResult() != null
+                && Objects.equals(alert.getComponentId(), result.getTestResult().getComponentId()));
     }
 
     /**

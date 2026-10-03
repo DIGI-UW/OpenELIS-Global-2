@@ -1746,7 +1746,7 @@ npm run cy:run
 npm run cy:failfast
 
 # Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 
 # Open Cypress UI (interactive mode)
 npm run cy:open

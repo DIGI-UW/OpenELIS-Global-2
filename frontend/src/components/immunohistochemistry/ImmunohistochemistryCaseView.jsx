@@ -32,7 +32,7 @@ import {
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import { SearchResults } from "../resultPage/SearchResultForm";
+import UnifiedResults from "../resultPage/unified/UnifiedResults";
 import { FormattedMessage, useIntl } from "react-intl";
 import PatientHeader from "../common/PatientHeader";
 import QuestionnaireResponse from "../common/QuestionnaireResponse";
@@ -68,9 +68,7 @@ function ImmunohistochemistryCaseView() {
   const [reportTypes, setReportTypes] = useState([]);
   const [technicianUsers, setTechnicianUsers] = useState([]);
   const [pathologistUsers, setPathologistUsers] = useState([]);
-  const [results, setResults] = useState({ testResult: [] });
   const [loading, setLoading] = useState(true);
-  const [resultsLoading, setResultsLoading] = useState(true);
   const [loadingReport, setLoadingReport] = useState(false);
   const [intensityList, setIntensityList] = useState([]);
   const [cerbB2PatternList, setCerbB2PatternList] = useState([]);
@@ -871,38 +869,6 @@ function ImmunohistochemistryCaseView() {
     }
   };
 
-  const setResultsWithId = (results) => {
-    if (results) {
-      var i = 0;
-      if (results.testResult) {
-        results.testResult.forEach((item) => (item.id = "" + i++));
-      }
-      setResults(results);
-    } else {
-      setResults({ testResult: [] });
-    }
-    setResultsLoading(false);
-  };
-
-  const getResults = () => {
-    setResults({ testResult: [] });
-    var searchEndPoint =
-      "/rest/LogbookResults?" +
-      "labNumber=" +
-      immunohistochemistrySampleInfo.labNumber +
-      "&doRange=" +
-      false +
-      "&finished=" +
-      true +
-      "&patientPK=" +
-      "&collectionDate=" +
-      "&recievedDate=" +
-      "&selectedTest=" +
-      "&selectedSampleStatus=" +
-      "&selectedAnalysisStatus=";
-    getFromOpenElisServer(searchEndPoint, setResultsWithId);
-  };
-
   const toBase64 = (file) =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
@@ -996,14 +962,6 @@ function ImmunohistochemistryCaseView() {
     };
   }, []);
 
-  useEffect(() => {
-    componentMounted.current = true;
-    getResults();
-    return () => {
-      componentMounted.current = false;
-    };
-  }, [immunohistochemistrySampleInfo.labNumber]);
-
   return (
     <>
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
@@ -1059,9 +1017,7 @@ function ImmunohistochemistryCaseView() {
       <Stack gap={4}>
         <Grid fullWidth={true} className="orderLegendBody">
           {notificationVisible === true ? <AlertDialog /> : ""}
-          {(loading || resultsLoading) && (
-            <Loading description="Loading Dasboard..." />
-          )}
+          {loading && <Loading description="Loading Dasboard..." />}
 
           <Column lg={16} md={8} sm={4}>
             <Button
@@ -1173,11 +1129,14 @@ function ImmunohistochemistryCaseView() {
                 </h5>
               </Column>
               <Column lg={16} md={8} sm={4}>
-                <SearchResults
-                  results={results}
-                  setResultForm={setResults}
-                  refreshOnSubmit={false}
-                />
+                {immunohistochemistrySampleInfo.labNumber && (
+                  <UnifiedResults
+                    key={immunohistochemistrySampleInfo.labNumber}
+                    accessionNumber={immunohistochemistrySampleInfo.labNumber}
+                    embedded
+                    includeFinished
+                  />
+                )}
               </Column>
             </Grid>
           </Column>

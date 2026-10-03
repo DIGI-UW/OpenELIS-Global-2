@@ -140,6 +140,11 @@ export async function enterResults(
     // handler sets isModified=true on rows the user edits; our automated
     // seed must do the same explicitly.
     m.isModified = true;
+    // OGC-1417: the server refuses a critical value, or one outside the valid
+    // range, until the person entering it has acknowledged it. A seed stands
+    // in for that person, so it gives the acknowledgement the modal asks for.
+    m.criticalAcknowledged = true;
+    m.invalidResultConfirmed = true;
     delete m.result;
   }
 

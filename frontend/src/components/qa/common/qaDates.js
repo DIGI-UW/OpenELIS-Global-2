@@ -1,5 +1,6 @@
 import { addDays, startOfWeek } from "date-fns";
 import { toLocalIsoDate } from "../../utils/Utils";
+import { labNow } from "../../utils/labClock";
 
 /**
  * Date helpers shared by every QA surface. Each page used to carry its own
@@ -12,16 +13,16 @@ export const DAY_MS = 24 * 60 * 60 * 1000;
 
 /** Local yyyy-MM-dd `days` from today; negative counts backwards. */
 export const isoDaysFromToday = (days) =>
-  toLocalIsoDate(addDays(new Date(), days));
+  toLocalIsoDate(addDays(labNow(), days));
 
 /** The {fromDate, toDate} window a QA filter opens on: the last `days` days. */
 export const lastDays = (days) => ({
   fromDate: isoDaysFromToday(-days),
-  toDate: toLocalIsoDate(new Date()),
+  toDate: toLocalIsoDate(labNow()),
 });
 
 /** Local Monday of the week containing `now`, at midnight. */
-export const weekStart = (now = new Date()) =>
+export const weekStart = (now = labNow()) =>
   startOfWeek(now, { weekStartsOn: 1 });
 
 /**
