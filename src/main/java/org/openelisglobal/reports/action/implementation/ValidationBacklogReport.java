@@ -13,21 +13,31 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ValidationBacklogData;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
+import org.openpdf.text.Document;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPTable;
 
 /**
  * The contents of this file are subject to the Mozilla Public License Version
@@ -65,14 +75,44 @@ public class ValidationBacklogReport extends Report {
         }
     }
 
-    @Override
-    protected String reportFileName() {
-        return "ValidationBacklog";
-    }
+    private static final Font TITLE_FONT = new Font(Font.HELVETICA, 14, Font.BOLD);
+    private static final Font META_FONT = new Font(Font.HELVETICA, 9);
+    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 10, Font.BOLD);
+    private static final Font CELL_FONT = new Font(Font.HELVETICA, 10);
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        ConfigurationProperties config = ConfigurationProperties.getInstance();
+        List<String> metaLines = new ArrayList<>();
+        String siteName = config.getPropertyValue(Property.SiteName);
+        if (!GenericValidator.isBlankOrNull(siteName)) {
+            metaLines.add(siteName);
+        }
+        String directorName = config.getPropertyValue(Property.labDirectorName);
+        if (!GenericValidator.isBlankOrNull(directorName)) {
+            metaLines.add(MessageUtil.getMessage("report.labManager") + " " + directorName);
+        }
+        metaLines.add(DateUtil.getCurrentDateAsText() + " " + DateUtil.getCurrentTimeAsText());
+
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4, 36, 36, 36, 48);
+        PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
+        PdfExportSupport.addHeading(document, MessageUtil.getMessage("banner.menu.report.validation.backlog"),
+                TITLE_FONT, META_FONT, metaLines.stream().map(line -> line + "\n").toArray(String[]::new));
+        document.add(new Phrase("\n", META_FONT));
+
+        PdfPTable table = new PdfPTable(new float[] { 3, 1 });
+        table.setWidthPercentage(60);
+        table.setHeaderRows(1);
+        PdfExportSupport.addHeaderRow(table, HEADER_FONT, 4, MessageUtil.getMessage("report.testSection"),
+                MessageUtil.getMessage("report.total"));
+        for (ValidationBacklogData item : reportItems) {
+            table.addCell(new Phrase(item.getTestSection(), CELL_FONT));
+            table.addCell(new Phrase(item.getCount(), CELL_FONT));
+        }
+        document.add(table);
+        document.close();
+        return out.toByteArray();
     }
 
     @Override
