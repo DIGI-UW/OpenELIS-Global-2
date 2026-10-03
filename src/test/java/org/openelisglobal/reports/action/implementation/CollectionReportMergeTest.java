@@ -3,13 +3,16 @@ package org.openelisglobal.reports.action.implementation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayInputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import net.sf.jasperreports.engine.JREmptyDataSource;
+import net.sf.jasperreports.engine.JasperCompileManager;
+import net.sf.jasperreports.engine.JasperReport;
 import net.sf.jasperreports.engine.JasperRunManager;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.junit.Test;
-import org.openelisglobal.reports.action.implementation.reportBeans.ErrorMessages;
 import org.openelisglobal.testsupport.PdfText;
 
 /**
@@ -38,13 +41,28 @@ public class CollectionReportMergeTest {
         assertTrue(text, secondAt > firstAt);
     }
 
+    private static final String ONE_PAGE_REPORT = """
+            <jasperReport xmlns="http://jasperreports.sourceforge.net/jasperreports"
+                xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                xsi:schemaLocation="http://jasperreports.sourceforge.net/jasperreports http://jasperreports.sourceforge.net/xsd/jasperreport.xsd"
+                name="OnePage" pageWidth="595" pageHeight="842" columnWidth="555"
+                leftMargin="20" rightMargin="20" topMargin="20" bottomMargin="20">
+              <parameter name="message" class="java.lang.String"/>
+              <title>
+                <band height="30">
+                  <textField>
+                    <reportElement x="0" y="0" width="555" height="30"/>
+                    <textFieldExpression><![CDATA[$P{message}]]></textFieldExpression>
+                  </textField>
+                </band>
+              </title>
+            </jasperReport>
+            """;
+
     private byte[] renderNotice(String message) throws Exception {
-        String reportDir = getClass().getClassLoader().getResource("reports/").getPath();
-        Map<String, Object> parameters = new HashMap<>();
-        parameters.put("SUBREPORT_DIR", reportDir);
-        ErrorMessages messages = new ErrorMessages();
-        messages.setMsgLine1(message);
-        return JasperRunManager.runReportToPdf(reportDir + "NoticeOfReportError.jasper", parameters,
-                new JRBeanCollectionDataSource(List.of(messages)));
+        JasperReport report = JasperCompileManager
+                .compileReport(new ByteArrayInputStream(ONE_PAGE_REPORT.getBytes(StandardCharsets.UTF_8)));
+        return JasperRunManager.runReportToPdf(report, new HashMap<>(Map.of("message", message)),
+                new JREmptyDataSource());
     }
 }

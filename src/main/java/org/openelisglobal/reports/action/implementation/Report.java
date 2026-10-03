@@ -198,10 +198,25 @@ public abstract class Report implements IReportCreator {
     @Override
     public byte[] runReport() throws UnsupportedEncodingException, IOException, SQLException, IllegalStateException,
             JRException, ParseException {
+        return errorFound ? ReportErrorPdf.render(errorMsgs) : renderReport();
+    }
+
+    /**
+     * The report's PDF once its content is built. Reports still drawn by a Jasper
+     * template fill it with {@link #getReportDataSource()}.
+     */
+    protected byte[] renderReport() throws UnsupportedEncodingException, IOException, SQLException,
+            IllegalStateException, JRException, ParseException {
         return JasperRunManager.runReportToPdf(fullReportFilename, getReportParameters(), getReportDataSource());
     }
 
-    public abstract JRDataSource getReportDataSource() throws IllegalStateException;
+    /**
+     * Rows for the Jasper template; reports that override {@link #renderReport()}
+     * have none.
+     */
+    public JRDataSource getReportDataSource() throws IllegalStateException {
+        return null;
+    }
 
     @Override
     public HashMap<String, Object> getReportParameters() throws IllegalStateException {
@@ -380,5 +395,11 @@ public abstract class Report implements IReportCreator {
         return new ArrayList<>();
     }
 
-    protected abstract String reportFileName();
+    /**
+     * The Jasper template's name; reports that override {@link #renderReport()}
+     * have none.
+     */
+    protected String reportFileName() {
+        return null;
+    }
 }
