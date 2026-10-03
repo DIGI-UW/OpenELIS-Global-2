@@ -618,4 +618,8 @@
   <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
   <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
 
+  <!-- Future changelogs are placed in changes/ and named by UTC timestamp.
+       Liquibase executes them in alphabetical order, avoiding base.xml merge conflicts. -->
+  <includeAll path="changes/" relativeToChangelogFile="true" errorIfMissingOrEmpty="false"/>
+
 </databaseChangeLog>

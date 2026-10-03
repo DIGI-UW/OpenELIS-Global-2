@@ -90,6 +90,7 @@ run_backend() {
   scripts/run-java21 mvn spotless:check
   "$NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs
   python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+  python3 .github/scripts/check-liquibase-changelogs.py
   (cd dataexport && ../scripts/run-java21 mvn clean install)
   scripts/run-java21 mvn clean install -Dspotless.check.skip=true
 }

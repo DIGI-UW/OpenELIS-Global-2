@@ -66,6 +66,8 @@ Verify compliance with
       [Testing Roadmap](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
       for comprehensive Cypress guidance
 - [ ] **Schema Management**: Database changes via Liquibase changesets only
+      (new migrations in `changes/` named `YYYYMMDDTHHMM-<ticket>-<slug>.xml` with
+      `logicalFilePath` and `id` matching file stem; do NOT edit `base.xml`)
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded
       text)
 - [ ] **Security & Compliance**: RBAC, audit trail, input validation included

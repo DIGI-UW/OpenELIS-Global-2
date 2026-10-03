@@ -1168,16 +1168,23 @@ in production.
 
 **Rules**:
 
-- Schema migrations in `src/main/resources/liquibase/{version}/` (e.g.,
-  `3.3.x.x/`)
-- Changesets MUST have unique IDs: `{sequence}-{description}` (e.g.,
-  `023-storage-device-connectivity`)
-- All changesets MUST be placed inside versioned folders - NO module-specific
-  folders outside version directories
+- New schema migrations MUST be placed in `src/main/resources/liquibase/{version}/changes/`
+  (e.g., `3.5.x.x/changes/`)
+- Filenames MUST follow UTC timestamped naming: `YYYYMMDDTHHMM-<ticket>-<slug>.xml`
+  (e.g., `20261002T2230-OGC-1416-remove-pre-bridge-analyzer-storage.xml`)
+- `<databaseChangeLog>` MUST set `logicalFilePath` equal to the file stem
+- Changeset `id` MUST equal the file stem (for multi-changeset files, each `id`
+  must start with the file stem)
+- Changeset `author` MUST be your GitHub handle
+- `base.xml` MUST NOT be modified for new changelogs; `includeAll` runs files in
+  `changes/` in alphabetical order
+- Previously applied changelogs are immutable (do NOT edit or delete existing changesets)
 - Use Liquibase XML format (NOT raw SQL unless necessary for performance)
 - Rollback scripts MUST be provided for structural changes
 - Test migrations on empty database AND production-like data volume
 - NO `ALTER TABLE` or `CREATE TABLE` via psql/pgAdmin in deployed environments
+- NO appending to `base.xml` for new work (causes concurrent PR conflicts; CI guards this)
+
 
 **Rationale**: Liquibase ensures repeatable deployments, version control for
 schema, and audit trail for compliance (SLIPTA/ISO requirements). Direct SQL
