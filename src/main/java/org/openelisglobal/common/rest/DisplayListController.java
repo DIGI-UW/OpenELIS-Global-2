@@ -399,8 +399,6 @@ public class DisplayListController extends BaseRestController {
     }
 
     // these are fetched before login
-    @GetMapping(value = "open-configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
     /**
      * The custom critical message, or blank when this user may not read it.
      *
@@ -428,6 +426,8 @@ public class DisplayListController extends BaseRestController {
         }
     }
 
+    @GetMapping(value = "open-configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
     private Map<String, Object> getOpenConfigurationProperties() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(Property.restrictFreeTextProviderEntry.toString(),
