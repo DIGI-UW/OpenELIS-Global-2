@@ -15,17 +15,14 @@
  */
 package org.openelisglobal.workplan.reports;
 
-import java.util.HashMap;
 import java.util.List;
+import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openelisglobal.workplan.form.WorkplanForm;
 
 public interface IWorkplanReport {
 
-    HashMap<String, Object> getParameters();
+    List<TestResultItem> prepareRows(WorkplanForm dynaForm);
 
-    String getFileName();
+    byte[] renderPdf(List<TestResultItem> rows);
 
-    List<?> prepareRows(WorkplanForm dynaForm);
-
-    void setReportPath(String reportPath);
 }
