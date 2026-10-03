@@ -617,5 +617,7 @@
   <include relativeToChangelogFile="true" file="117-retire-legacy-results-entry.xml"/>
   <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
   <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
+  <!-- Configure RetroCI DBS sample type via site setting instead of hardcoded abbreviation. -->
+  <include relativeToChangelogFile="true" file="119-retroci-dbs-sample-type-config.xml"/>
 
 </databaseChangeLog>
