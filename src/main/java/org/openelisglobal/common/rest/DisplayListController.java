@@ -452,6 +452,14 @@ public class DisplayListController extends BaseRestController {
         // session — hence the open endpoint rather than the authenticated one.
         configs.put(Property.OVERRIDE_DEFAULT_TRANSLATION.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.OVERRIDE_DEFAULT_TRANSLATION));
+        // Same reason: how a date is written (mm/dd vs dd/mm) is a display format,
+        // not privileged data, and anything rendering or parsing a date before
+        // login needs it. Callers that read only this endpoint - the Playwright
+        // seed helpers among them - otherwise fall back to a different locale and
+        // send day-first dates to a month-first server, which rejects them as
+        // "Date may not be in the past".
+        configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.releaseNumber.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber));
         configs.put(Property.ACCESSION_NUMBER_VALIDATE.toString(),
