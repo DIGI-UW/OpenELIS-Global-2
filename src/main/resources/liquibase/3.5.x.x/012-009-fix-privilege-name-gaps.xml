@@ -88,8 +88,48 @@
             INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
             SELECT r.id, (SELECT id FROM clinlims.system_privilege WHERE name = 'esig:use')
             FROM clinlims.system_role r
-            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist', 'Validation');
+            WHERE trim(r.name) IN ('Pathologist', 'Cytopathologist', 'Validation', 'Results');
         </sql>
+    </changeSet>
+
+    <!--
+      Results must hold esig:use to sign the results it authors, and the grant
+      has to live HERE rather than in 012-004.
+
+      012-004 is included before this file (base.xml lines 83 and 88), so when
+      012-004k and 012-004z ran their
+      "SELECT ... WHERE p.name = 'esig:use'" matched nothing - the privilege is
+      created by 012-009-add-esig-use above, later in the same run. Both
+      inserted zero rows while Liquibase recorded them as applied, so the grant
+      silently never happened: certifying an e-signature as Results answered
+      "An unexpected error occurred" (AccessDenied on
+      ElectronicSignatureService#certifyUser, PRIV_ESIG_USE).
+
+      On an existing database 012-009-add-esig-use is MARK_RAN (the privilege
+      exists), so this separate changeset is what actually repairs the grant.
+    -->
+    <changeSet author="openelis" id="012-009a-grant-esig-use-to-results">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_privilege WHERE name = 'esig:use'
+            </sqlCheck>
+        </preConditions>
+        <comment>Grant esig:use to Results, after the privilege exists (idempotent)</comment>
+        <sql>
+            INSERT INTO clinlims.system_role_privilege (system_role_id, privilege_id)
+            SELECT r.id, p.id FROM clinlims.system_role r, clinlims.system_privilege p
+            WHERE trim(r.name) = 'Results' AND p.name = 'esig:use'
+              AND NOT EXISTS (SELECT 1 FROM clinlims.system_role_privilege srp
+                              WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id);
+        </sql>
+        <rollback>
+            <sql>
+                DELETE FROM clinlims.system_role_privilege srp
+                USING clinlims.system_role r, clinlims.system_privilege p
+                WHERE srp.system_role_id = r.id AND srp.privilege_id = p.id
+                  AND trim(r.name) = 'Results' AND p.name = 'esig:use';
+            </sql>
+        </rollback>
     </changeSet>
 
 </databaseChangeLog>
