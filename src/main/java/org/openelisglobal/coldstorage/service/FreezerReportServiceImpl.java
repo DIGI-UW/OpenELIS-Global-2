@@ -1,6 +1,5 @@
 package org.openelisglobal.coldstorage.service;
 
-import java.io.File;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
@@ -9,14 +8,10 @@ import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.time.temporal.WeekFields;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
-import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JasperRunManager;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.alert.service.AlertService;
 import org.openelisglobal.alert.valueholder.Alert;
 import org.openelisglobal.coldstorage.service.dto.FreezerDailyLogData;
@@ -24,10 +19,8 @@ import org.openelisglobal.coldstorage.service.dto.FreezerMonthlyLogData;
 import org.openelisglobal.coldstorage.service.dto.FreezerWeeklyLogData;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.coldstorage.valueholder.FreezerReading;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -91,36 +84,16 @@ public class FreezerReportServiceImpl implements FreezerReportService {
 
     @Override
     public byte[] generatePdfReport(String reportType, Long freezerId, LocalDate startDate, LocalDate endDate) {
-        try {
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Starting PDF generation - reportType: " + reportType + ", freezerId: " + freezerId);
-
-            String reportPath = getReportPath(reportType);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport", "Report path: " + reportPath);
-
-            Map<String, Object> parameters = buildReportParameters(freezerId, startDate, endDate, reportType);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Parameters built: " + parameters.size() + " parameters");
-
-            JRBeanCollectionDataSource dataSource = buildDataSource(reportType, freezerId, startDate, endDate);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Data source built with " + dataSource.getRecordCount() + " records");
-
-            File reportFile = new ClassPathResource(reportPath).getFile();
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Report file exists: " + reportFile.exists() + ", path: " + reportFile.getAbsolutePath());
-
-            byte[] pdfBytes = JasperRunManager.runReportToPdf(reportFile.getAbsolutePath(), parameters, dataSource);
-            LogEvent.logInfo(this.getClass().getSimpleName(), "generatePdfReport",
-                    "PDF generated successfully: " + pdfBytes.length + " bytes");
-
-            return pdfBytes;
-        } catch (JRException | java.io.IOException e) {
-            LogEvent.logError(this.getClass().getSimpleName(), "generatePdfReport",
-                    "Error generating report: " + e.getMessage());
-            e.printStackTrace();
-            throw new RuntimeException("Failed to generate PDF report", e);
-        }
+        FreezerTemperatureReportPdf.Heading heading = buildHeading(freezerId, startDate, endDate, reportType);
+        return switch (reportType.toLowerCase()) {
+        case "daily", "dailylog", "freezerdailylogreport" ->
+            FreezerTemperatureReportPdf.daily(heading, generateDailyLogData(freezerId, startDate, endDate));
+        case "weekly", "weeklylog" ->
+            FreezerTemperatureReportPdf.weekly(heading, generateWeeklyLogData(freezerId, startDate, endDate));
+        case "monthly", "monthlylog" ->
+            FreezerTemperatureReportPdf.monthly(heading, generateMonthlyLogData(freezerId, startDate, endDate));
+        default -> throw new IllegalArgumentException("Unknown report type: " + reportType);
+        };
     }
 
     @Override
@@ -339,15 +312,8 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         return java.time.Month.valueOf(monthName.toUpperCase()).getValue();
     }
 
-    private String getReportPath(String reportType) {
-        // Use single unified template for all report types
-        return "reports/FreezerTemperatureMonitoringReport.jasper";
-    }
-
-    private Map<String, Object> buildReportParameters(Long freezerId, LocalDate startDate, LocalDate endDate,
+    private FreezerTemperatureReportPdf.Heading buildHeading(Long freezerId, LocalDate startDate, LocalDate endDate,
             String reportType) {
-        Map<String, Object> parameters = new HashMap<>();
-
         String facilityName = siteInformationService.getSiteInformationByName("siteNumber") != null
                 ? siteInformationService.getSiteInformationByName("siteNumber").getValue()
                 : "Laboratory";
@@ -360,7 +326,6 @@ public class FreezerReportServiceImpl implements FreezerReportService {
             }
         }
 
-        // Determine report type display name
         String reportTypeDisplay = switch (reportType.toLowerCase()) {
         case "daily", "dailylog", "freezerdailylogreport" -> "Daily Log";
         case "weekly", "weeklylog" -> "Weekly Log";
@@ -368,31 +333,9 @@ public class FreezerReportServiceImpl implements FreezerReportService {
         default -> "Temperature Log";
         };
 
-        parameters.put("reportTitle", "Temperature Monitoring Report");
-        parameters.put("reportType", reportTypeDisplay);
-        parameters.put("labName", facilityName);
-        parameters.put("facilityName", facilityName);
-        parameters.put("freezerName", freezerName);
-        parameters.put("startDate", startDate.format(DATE_FORMATTER));
-        parameters.put("endDate", endDate.format(DATE_FORMATTER));
-        parameters.put("reportDate", LocalDate.now().format(DATE_FORMATTER));
-        parameters.put("complianceFooter",
-                "This report complies with CAP, CLIA, FDA, and WHO guidelines for temperature-controlled storage monitoring.");
-
-        return parameters;
-    }
-
-    private JRBeanCollectionDataSource buildDataSource(String reportType, Long freezerId, LocalDate startDate,
-            LocalDate endDate) {
-        return switch (reportType.toLowerCase()) {
-        case "daily", "dailylog", "freezerdailylogreport" ->
-            new JRBeanCollectionDataSource(generateDailyLogData(freezerId, startDate, endDate));
-        case "weekly", "weeklylog" ->
-            new JRBeanCollectionDataSource(generateWeeklyLogData(freezerId, startDate, endDate));
-        case "monthly", "monthlylog" ->
-            new JRBeanCollectionDataSource(generateMonthlyLogData(freezerId, startDate, endDate));
-        default -> throw new IllegalArgumentException("Unknown report type: " + reportType);
-        };
+        return new FreezerTemperatureReportPdf.Heading(reportTypeDisplay, facilityName, freezerName,
+                startDate.format(DATE_FORMATTER), endDate.format(DATE_FORMATTER),
+                LocalDate.now().format(DATE_FORMATTER));
     }
 
     private FreezerDailyLogData mapToDailyLogData(FreezerReading reading, List<Alert> freezerAlerts) {
