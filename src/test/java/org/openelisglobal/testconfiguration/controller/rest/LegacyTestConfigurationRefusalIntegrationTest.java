@@ -13,6 +13,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.aop.framework.AopProxyUtils;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +41,9 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
 
     private static final String UOM_PREFIX = "LTCRIT";
     private static final String METHOD_NAME = "LTCRIT Method";
+    /** Ids for the Results and Validation roles if this test must seed them. */
+    private static final long RESULTS_ROLE_ID = 95501L;
+    private static final long VALIDATION_ROLE_ID = 95502L;
 
     @Autowired
     private DataSource dataSource;
@@ -122,6 +126,8 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
      */
     @Test
     public void methodCreate_isCreatedOnce_andTheSameNameAgainIs409() throws Exception {
+        ensureRole(RESULTS_ROLE_ID, Constants.ROLE_RESULTS);
+        ensureRole(VALIDATION_ROLE_ID, Constants.ROLE_VALIDATION);
         String body = "{\"methodEnglishName\":\"" + METHOD_NAME + "\",\"methodFrenchName\":\"" + METHOD_NAME + " FR\"}";
         postJson("/rest/MethodCreate", body).andExpect(status().isOk());
         postJson("/rest/MethodCreate", body).andExpect(status().isConflict())
@@ -129,6 +135,22 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
 
         assertEquals(Integer.valueOf(1),
                 jdbc.queryForObject("SELECT count(*) FROM clinlims.method WHERE name = ?", Integer.class, METHOD_NAME));
+    }
+
+    /**
+     * A method create grants the Results and Validation roles on the method's
+     * modules by role name, so both must exist; other fixtures truncate the shared
+     * role seed, so they are seeded here when absent rather than assumed.
+     */
+    private void ensureRole(long id, String name) {
+        Integer present = jdbc.queryForObject("SELECT count(*) FROM clinlims.system_role WHERE trim(name) = ?",
+                Integer.class, name);
+        if (present == 0) {
+            jdbc.update(
+                    "INSERT INTO clinlims.system_role (id, name, description, is_grouping_role, display_key,"
+                            + " active, editable) VALUES (?, ?, ?, false, ?, true, false)",
+                    id, name, name + " role", "role." + name.toLowerCase());
+        }
     }
 
     private ResultActions postJson(String url, String body) throws Exception {
