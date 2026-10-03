@@ -135,7 +135,7 @@ jobs:
         if: always()
         uses: anchore/sbom-action@v0
         with:
-          path: .
+          file: target/OpenELIS-Global.war
           output-file: sbom.spdx.json
           artifact-name: openelis-backend-sbom.spdx.json
           dependency-snapshot: ${{ github.event_name == 'push' }}

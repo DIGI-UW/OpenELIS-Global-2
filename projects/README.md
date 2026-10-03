@@ -14,8 +14,7 @@ runtime code.
 
 ### Current projects
 
-- `projects/catalyst/` — OGC-70 Catalyst (LLM-powered lab data assistant).
-  Tracked as a git submodule pinned to the `main` branch of
-  [DIGI-UW/openelis-catalyst](https://github.com/DIGI-UW/openelis-catalyst).
-  After cloning OpenELIS-Global-2, run
-  `git submodule update --init projects/catalyst` to populate.
+- `projects/analyzer-harness/` — the analyzer E2E parity stack (Compose files,
+  seeding and parity scripts) used by CI and local analyzer testing.
+- `projects/reporting-uat/` — runtime qualification tools for the isolated
+  reporting UAT deployment.

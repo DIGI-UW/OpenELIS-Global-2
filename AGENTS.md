@@ -762,8 +762,8 @@ convention. Relocate one with `git worktree move <old> .worktrees/<short-name>`,
 which preserves commits, and clear dead entries with `git worktree prune`.
 
 **Do not skip the setup step.** `git worktree add` does not initialize
-submodules, so a fresh worktree has all 11 of them empty. Several are build
-inputs rather than optional extras: `./Dockerfile` does
+submodules, so a fresh worktree has all of them empty. Several are build inputs
+rather than optional extras: `./Dockerfile` does
 `WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
 out with `submodules: recursive`. Skip it and a Docker build fails roughly
 twenty minutes in with `there is no POM in this directory`, which reads like a
