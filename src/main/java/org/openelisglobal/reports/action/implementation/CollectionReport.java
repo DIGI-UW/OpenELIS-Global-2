@@ -23,14 +23,9 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import net.sf.jasperreports.engine.JRException;
-import net.sf.jasperreports.engine.JasperRunManager;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.common.log.LogEvent;
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -88,16 +83,9 @@ public abstract class CollectionReport implements IReportCreator {
     public byte[] runReport() throws JRException, DocumentException {
         List<byte[]> byteList = generateReports();
         if (byteList.isEmpty()) {
-            Map<String, Object> parameterMap = new HashMap<>();
-            parameterMap.put("SUBREPORT_DIR", reportPath);
-            parameterMap.put("directorName",
-                    ConfigurationProperties.getInstance().getPropertyValue(Property.labDirectorName));
-            List<ErrorMessages> errorMsgs = new ArrayList<>();
             ErrorMessages msgs = new ErrorMessages();
             msgs.setMsgLine1(MessageUtil.getMessage("report.error.message.noPrintableItems"));
-            errorMsgs.add(msgs);
-            return JasperRunManager.runReportToPdf(reportPath + "NoticeOfReportError.jasper", parameterMap,
-                    new JRBeanCollectionDataSource(errorMsgs));
+            return ReportErrorPdf.render(List.of(msgs));
         } else {
             return merge(byteList);
         }
