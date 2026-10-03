@@ -51,6 +51,8 @@ import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleqaevent.service.SampleQaEventService;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.openelisglobal.siteinformation.service.SiteInformationService;
+import org.openelisglobal.siteinformation.valueholder.SiteInformation;
 import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -106,6 +108,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private IStatusService statusService;
     @Autowired
     private ResultLimitService resultLimitService;
+    @Autowired
+    private SiteInformationService siteInformationService;
 
     // ---------------------------------------------------------------
     // Public entry point
@@ -407,7 +411,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      * on the accession pins one of the candidates, and no special-case rule
      * (RetroCI LDBS→DBS) applies.
      */
-    private boolean needsSpecimenChoice(AnalyzerResultItem item) {
+    boolean needsSpecimenChoice(AnalyzerResultItem item) {
         if (item.getIsControl() || GenericValidator.isBlankOrNull(item.getTestId())) {
             return false;
         }
@@ -416,9 +420,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 .anyMatch(candidate -> candidate.getTypeOfSampleId().equals(item.getTypeOfSampleId()))) {
             return false;
         }
-        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && item.getAccessionNumber() != null
+        String dbsSampleTypeId = resolveDbsSampleTypeId();
+        if (isRetroCi() && dbsSampleTypeId != null && item.getAccessionNumber() != null
                 && item.getAccessionNumber().startsWith("LDBS")
-                && candidates.stream().anyMatch(c -> DBS_SAMPLE_TYPE_ID.equals(c.getTypeOfSampleId()))) {
+                && candidates.stream().anyMatch(c -> dbsSampleTypeId.equals(c.getTypeOfSampleId()))) {
             return false;
         }
         Sample sample = sampleService.getSampleByAccessionNumber(item.getAccessionNumber());
@@ -1175,10 +1180,11 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         }
     }
 
-    private String getTypeOfSampleId(List<String> typeOfSampleIds, String accessionNumber) {
-        if (IS_RETROCI && DBS_SAMPLE_TYPE_ID != null && accessionNumber.startsWith("LDBS")
-                && typeOfSampleIds.contains(DBS_SAMPLE_TYPE_ID)) {
-            return DBS_SAMPLE_TYPE_ID;
+    String getTypeOfSampleId(List<String> typeOfSampleIds, String accessionNumber) {
+        String dbsSampleTypeId = resolveDbsSampleTypeId();
+        if (isRetroCi() && dbsSampleTypeId != null && accessionNumber != null && accessionNumber.startsWith("LDBS")
+                && typeOfSampleIds.contains(dbsSampleTypeId)) {
+            return dbsSampleTypeId;
         }
         if (typeOfSampleIds.size() > 1) {
             // Accepted ambiguous groups are intercepted by the FR-8 hold; this
@@ -1237,33 +1243,84 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // Configuration constants (copied from controller)
     // ---------------------------------------------------------------
 
-    private static final boolean IS_RETROCI = org.openelisglobal.common.util.ConfigurationProperties.getInstance()
-            .isPropertyValueEqual(org.openelisglobal.common.util.ConfigurationProperties.Property.configurationName,
-                    "CI_GENERAL");
+    public static final String RETROCI_DBS_SAMPLE_TYPE_CONFIG = "retroci.dbs.sampleType";
 
-    private final String DBS_SAMPLE_TYPE_ID;
+    private Boolean retroCiOverride = null;
 
-    /**
-     * Resolves the DBS sample type ID when running in RetroCI mode. The type is
-     * matched on its local abbreviation first because a catalog import can rewrite
-     * the description; a missing type must not stop the application from starting.
-     */
-    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
-        DBS_SAMPLE_TYPE_ID = IS_RETROCI ? resolveDbsSampleTypeId(typeOfSampleService) : null;
+    private boolean isRetroCi() {
+        if (retroCiOverride != null) {
+            return retroCiOverride;
+        }
+        try {
+            org.openelisglobal.common.util.ConfigurationProperties config = org.openelisglobal.common.util.ConfigurationProperties
+                    .getInstance();
+            return config != null && config.isPropertyValueEqual(
+                    org.openelisglobal.common.util.ConfigurationProperties.Property.configurationName, "CI_GENERAL");
+        } catch (Exception e) {
+            return false;
+        }
     }
 
-    private static String resolveDbsSampleTypeId(TypeOfSampleService typeOfSampleService) {
-        TypeOfSample typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain("DBS",
-                Domain.CLINICAL.name());
+    void setRetroCiForTesting(Boolean retroCi) {
+        this.retroCiOverride = retroCi;
+    }
+
+    public AnalyzerResultsAcceptServiceImpl() {
+    }
+
+    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService) {
+        this.typeOfSampleService = typeOfSampleService;
+    }
+
+    public AnalyzerResultsAcceptServiceImpl(TypeOfSampleService typeOfSampleService,
+            SiteInformationService siteInformationService) {
+        this.typeOfSampleService = typeOfSampleService;
+        this.siteInformationService = siteInformationService;
+    }
+
+    /**
+     * Resolves the DBS sample type ID dynamically when running in RetroCI mode. The
+     * type is identified by a configured site setting (ID or abbreviation, falling
+     * back to description). Reading the setting at result processing time ensures
+     * catalog changes take effect without restarting the server. If the setting is
+     * missing or the referenced sample type cannot be found, a warning is logged
+     * and null is returned (LDBS accessions will not default to DBS).
+     */
+    String resolveDbsSampleTypeId() {
+        if (!isRetroCi()) {
+            return null;
+        }
+        if (siteInformationService == null || typeOfSampleService == null) {
+            return null;
+        }
+        SiteInformation siteInfo = siteInformationService.getSiteInformationByName(RETROCI_DBS_SAMPLE_TYPE_CONFIG);
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            siteInfo = siteInformationService.getSiteInformationByName("retrociDbsSampleType");
+        }
+        if (siteInfo == null || GenericValidator.isBlankOrNull(siteInfo.getValue())) {
+            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
+                    "No RetroCI DBS sample type configured; LDBS accessions will not default to DBS");
+            return null;
+        }
+        String configValue = siteInfo.getValue().trim();
+        TypeOfSample typeOfSample = null;
+        if (configValue.matches("\\d+")) {
+            typeOfSample = typeOfSampleService.getTypeOfSampleById(configValue);
+        }
+        if (typeOfSample == null) {
+            typeOfSample = typeOfSampleService.getTypeOfSampleByLocalAbbrevAndDomain(configValue,
+                    Domain.CLINICAL.name());
+        }
         if (typeOfSample == null) {
             TypeOfSample searchType = new TypeOfSample();
-            searchType.setDescription("DBS");
+            searchType.setDescription(configValue);
             searchType.setDomain(Domain.CLINICAL.name());
             typeOfSample = typeOfSampleService.getTypeOfSampleByDescriptionAndDomain(searchType, false);
         }
         if (typeOfSample == null) {
             LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "resolveDbsSampleTypeId",
-                    "No clinical DBS sample type found; LDBS accessions will not default to DBS");
+                    "Configured RetroCI DBS sample type '" + configValue
+                            + "' not found; LDBS accessions will not default to DBS");
             return null;
         }
         return typeOfSample.getId();

@@ -628,4 +628,7 @@
   <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
   <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
 
+  <!-- Configure RetroCI DBS sample type via site setting instead of hardcoded abbreviation. -->
+  <include relativeToChangelogFile="true" file="121-retroci-dbs-sample-type-config.xml"/>
+
 </databaseChangeLog>
