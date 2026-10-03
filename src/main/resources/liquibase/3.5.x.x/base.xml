@@ -618,4 +618,7 @@
   <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
   <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
 
+  <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
+  <include relativeToChangelogFile="true" file="119-analyzer-delivery-action.xml"/>
+
 </databaseChangeLog>
