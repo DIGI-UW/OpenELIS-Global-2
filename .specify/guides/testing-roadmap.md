@@ -156,8 +156,12 @@ regardless of implementation are scaffolding, not tests.
   enabled state to the spec's seeded IDs, or assert a before and after delta. A
   date window alone is not a scope. Never loosen an assertion because other data
   might be present; narrow the read.
-- **E6. No clock or time zone dependence.** Use explicit dates or the server's
-  "today". A spec must give the same result in any browser time zone.
+- **E6. No clock or time zone dependence.** Use explicit dates and freeze or
+  inject the clock used by the code under test when it reads the current time,
+  including the server clock when applicable. A live server's "today" is not
+  pinned time. For current-date behavior, set that clock to the dates or
+  boundaries being exercised. A spec must give the same result in any browser
+  time zone.
 
 ### Universal
 

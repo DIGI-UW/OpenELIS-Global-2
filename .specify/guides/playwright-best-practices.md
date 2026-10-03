@@ -75,7 +75,10 @@ whenever a spec is added.
   window alone is not a scope.
 - **Never widen an assertion because other data might be present.** Narrow the
   read: filter by your specimen, patient, or accession.
-- **Pin time.** Use explicit dates or the server's "today", never the browser's.
+- **Pin time.** Use explicit dates and freeze or inject the clock used by the
+  code under test when it reads the current time, including the server clock
+  when applicable. A live server's "today" is not pinned time. For current-date
+  behavior, set that clock to the dates or boundaries being exercised.
 
 ```typescript
 // ❌ BAD: Test depends on previous test's state

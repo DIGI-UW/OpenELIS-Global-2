@@ -33,6 +33,7 @@ Templates Requiring Updates:
   ✅ .specify/guides/testing-roadmap.md - U4, E5, E6 and checklist item
   ✅ .specify/guides/playwright-best-practices.md - "Keep Tests Isolated"
   ✅ .ai/skills/playwright/SKILL.md - non-negotiables
+  ✅ .specify/templates/plan-template.md - Constitution Check and Test Data Management
 
 Follow-up TODOs:
   - Scheduled unsharded and shuffled-order guard runs (separate PR).
@@ -1190,8 +1191,9 @@ catch-and-continue in @Transactional. HQL/SQL param tests required.
 fetch() in components. Use waitFor (not deprecated wait). i18n assertions for
 user-visible text.
 
-**E2E (E1–E4):** Every test step must have an assertion. No deprecated
+**E2E (E1–E6):** Every test step must have an assertion. No deprecated
 isVisible({timeout}). No .catch(() => false) on locators. API-first data setup.
+Read only your own data. No clock or time zone dependence (V.7).
 
 **Universal (U1–U4):** Inversion Test mandatory. One bug = one regression test.
 No any() without justification. Tests are isolated (V.7).
@@ -1213,9 +1215,12 @@ Rules:
   not a scope.
 - **Never widen an assertion because other data might be present.** Narrow the
   read instead.
-- **Pin time.** Use explicit dates, or take "today" from the server that owns
-  the data. A test MUST NOT pass or fail depending on the browser's clock or
-  time zone.
+- **Pin time.** Use explicit dates and freeze or inject the clock used by the
+  code under test when it reads the current time, including the server clock
+  when applicable. A live server's "today" is not pinned time. Tests of
+  current-date behavior MUST set that clock to the dates or boundaries being
+  exercised. A test MUST NOT pass or fail depending on the wall clock or the
+  browser's time zone.
 - **Exempt: shared read-only reference data**, such as the configured test
   catalog and authentication state. A test that changes reference data MUST
   restore it or run against its own copy.
