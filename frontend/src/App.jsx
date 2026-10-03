@@ -74,9 +74,8 @@ import {
   ControlLotSetup,
   RuleConfigPanel,
 } from "./components/qc";
-import ResultSearch from "./components/resultPage/ResultSearch";
 import {
-  LegacyResultsGate,
+  LegacyResultsRedirect,
   UnifiedResultsRoute,
 } from "./components/resultPage/unified/routeGates";
 import { getFromOpenElisServer } from "./components/utils/Utils";
@@ -1620,8 +1619,8 @@ export default function App() {
                   role={Roles.RESULTS}
                   privilege={Privileges.RESULT_ENTER}
                 />
-                {/* OGC-1020 (R1): canonical unified worklist, gated by the
-                    results.entry.unifiedRoute site flag */}
+                {/* OGC-1020 (R1): the one results-entry page; the legacy
+                    result-entry addresses below redirect to it */}
                 <SecureRoute
                   path="/Results"
                   exact
@@ -1633,83 +1632,17 @@ export default function App() {
                   role={Roles.RESULTS}
                   privilege={Privileges.RESULT_ENTER}
                 />
-                <SecureRoute
-                  path="/result"
+                <Route
+                  path={[
+                    "/result",
+                    "/LogbookResults",
+                    "/PatientResults",
+                    "/AccessionResults",
+                    "/StatusResults",
+                    "/RangeResults",
+                  ]}
                   exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                  privilege={Privileges.RESULT_ENTER}
-                />
-                <SecureRoute
-                  path="/LogbookResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                  privilege={Privileges.RESULT_ENTER}
-                />
-                <SecureRoute
-                  path="/PatientResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                  privilege={Privileges.RESULT_ENTER}
-                />
-                <SecureRoute
-                  path="/AccessionResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                  privilege={Privileges.RESULT_ENTER}
-                />
-                <SecureRoute
-                  path="/StatusResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                  privilege={Privileges.RESULT_ENTER}
-                />
-                <SecureRoute
-                  path="/RangeResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                  privilege={Privileges.RESULT_ENTER}
+                  render={() => <LegacyResultsRedirect />}
                 />
                 <SecureRoute
                   path="/RoutineReports"

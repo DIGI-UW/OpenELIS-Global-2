@@ -15,7 +15,6 @@ const API = "/api/OpenELIS-Global";
 const CATALOG = `${API}/rest/test-catalog`;
 const SERUM_SAMPLE_TYPE_ID = "2";
 const SEX_SETTING = "Patient sex required";
-const UNIFIED_ROUTE_SETTING = "resultsEntryUnifiedRoute";
 const REASON = "Reference range not applied: patient sex not recorded";
 
 async function createSexSpecificTest(page: Page): Promise<string> {
@@ -117,19 +116,14 @@ async function existingSiteAndProvider(
 
 test.describe("OGC-1362 optional patient sex", () => {
   let sexWasRequired = true;
-  let unifiedWasOn = false;
 
   test.beforeEach(async ({ page }) => {
     sexWasRequired = await isSettingOn(page, SEX_SETTING);
-    unifiedWasOn = await isSettingOn(page, UNIFIED_ROUTE_SETTING);
   });
 
   test.afterEach(async ({ page }) => {
     if ((await isSettingOn(page, SEX_SETTING)) !== sexWasRequired) {
       await setSetting(page, SEX_SETTING, sexWasRequired);
-    }
-    if ((await isSettingOn(page, UNIFIED_ROUTE_SETTING)) !== unifiedWasOn) {
-      await setSetting(page, UNIFIED_ROUTE_SETTING, unifiedWasOn);
     }
   });
 
@@ -153,9 +147,6 @@ test.describe("OGC-1362 optional patient sex", () => {
     if (sexWasRequired) {
       await setSetting(page, SEX_SETTING, false);
     }
-    if (unifiedWasOn) {
-      await setSetting(page, UNIFIED_ROUTE_SETTING, false);
-    }
     const testId = await createSexSpecificTest(page);
     const now = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
@@ -171,7 +162,7 @@ test.describe("OGC-1362 optional patient sex", () => {
     expect(accession, "order without a patient sex must save").toBeTruthy();
 
     await page.goto(
-      `/result?type=order&accessionNumber=${encodeURIComponent(accession)}`,
+      `/Results?accessionNumber=${encodeURIComponent(accession)}`,
       { waitUntil: "domcontentloaded" },
     );
     const entryRow = page
@@ -180,17 +171,11 @@ test.describe("OGC-1362 optional patient sex", () => {
       .filter({ hasText: "OGC1362 Sex" })
       .first();
     await expect(entryRow).toContainText(REASON, { timeout: NAV_TIMEOUT });
-    await entryRow.locator('input[id^="ResultValue"]').fill("14");
-    const saved = page.waitForResponse(
-      (response) =>
-        response.url().includes("/rest/LogbookResults") &&
-        response.request().method() === "POST",
+    await entryRow.locator('input[id^="unifiedResultValue-"]').fill("14");
+    await entryRow.getByRole("button", { name: /^save$/i }).click();
+    await expect(entryRow.getByRole("button", { name: /^edit$/i })).toBeVisible(
+      { timeout: UI_TIMEOUT },
     );
-    await page
-      .getByRole("button", { name: "Save", exact: true })
-      .last()
-      .click();
-    await saved;
 
     await page.goto(
       `/validation?type=order&accessionNumber=${encodeURIComponent(accession)}`,

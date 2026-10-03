@@ -470,8 +470,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
                   style={{ color: "blue" }}
                   href={
                     selectedTile.type == "ORDERS_IN_PROGRESS"
-                      ? "/result?type=order&doRange=false&accessionNumber=" +
-                        cell.value
+                      ? "/Results?accessionNumber=" +
+                        encodeURIComponent(cell.value)
                       : "validation?type=order&accessionNumber=" + cell.value
                   }
                 >

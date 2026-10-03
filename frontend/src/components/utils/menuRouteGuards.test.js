@@ -408,7 +408,10 @@ describe("the four workbench roles keep their own menus", () => {
 
   const ESSENTIALS = {
     Reception: ["/order/clinical", "/SamplePatientEntry", "/PatientManagement"],
-    Results: ["/LogbookResults", "/AccessionResults", "/PatientResults"],
+    // develop #4528 retired the legacy Results Entry pages; /Results is the
+    // only results workbench now, and it carries the RESULT_ENTER guard the
+    // six retired paths used to carry individually.
+    Results: ["/Results"],
     Validation: [
       "/ResultValidation",
       "/AccessionValidation",
@@ -433,9 +436,7 @@ describe("the four workbench roles keep their own menus", () => {
     expect(menuEntryVisible("/AccessionValidation", session("Reception"))).toBe(
       false,
     );
-    expect(menuEntryVisible("/AccessionResults", session("Validation"))).toBe(
-      false,
-    );
+    expect(menuEntryVisible("/Results", session("Validation"))).toBe(false);
     expect(menuEntryVisible("/qa/qms/audit-trail", session("Reports"))).toBe(
       false,
     );

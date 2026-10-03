@@ -942,10 +942,6 @@ export const Roles = {
  * matching change here.
  */
 export const ROUTE_GUARDS = {
-  "/AccessionResults": {
-    privilege: Privileges.RESULT_ENTER,
-    role: [Roles.RESULTS],
-  },
   "/AccessionValidation": {
     privilege: Privileges.RESULT_VALIDATE,
     role: [Roles.VALIDATION],
@@ -994,10 +990,6 @@ export const ROUTE_GUARDS = {
     privilege: Privileges.RESULT_PATHOLOGY_SIGN_OFF,
   },
   "/LaporanHasil": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
-  "/LogbookResults": {
-    privilege: Privileges.RESULT_ENTER,
-    role: [Roles.RESULTS],
-  },
   // App.jsx guards this through REPORTING_ROUTE_PATHS (a constant), so the
   // menu map never mirrored it and the sidebar offered Custom Data Export to
   // every role; SecureRoute then rendered a blank page. Mirrors role={Roles.REPORTS}.
@@ -1078,10 +1070,6 @@ export const ROUTE_GUARDS = {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
   },
-  "/PatientResults": {
-    privilege: Privileges.RESULT_ENTER,
-    role: [Roles.RESULTS],
-  },
   // A patient's RESULTS viewer. Its read (/rest/result-tree,
   // PatientResultTreeService.getResultTree) is gated on result:view, and the
   // legacy PatientResults module belongs to Results, so routing it to
@@ -1092,10 +1080,6 @@ export const ROUTE_GUARDS = {
   "/PrintBarcode": {
     privilege: Privileges.ORDER_CREATE,
     role: [Roles.RECEPTION],
-  },
-  "/RangeResults": {
-    privilege: Privileges.RESULT_ENTER,
-    role: [Roles.RESULTS],
   },
   "/Report": { privilege: Privileges.REPORT_RUN, role: [Roles.REPORTS] },
   // Declared as develop declares it (nonConformityRoutePermissions.test.js):
@@ -1156,10 +1140,6 @@ export const ROUTE_GUARDS = {
     role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN],
   },
   "/SampleShipment/settings": { role: [Roles.RECEPTION, Roles.GLOBAL_ADMIN] },
-  "/StatusResults": {
-    privilege: Privileges.RESULT_ENTER,
-    role: [Roles.RESULTS],
-  },
   "/Storage": { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
   "/Storage/:resource(sample-items|inventory-lots|rooms|devices|shelves|racks|boxes)":
     { role: [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN] },
@@ -1365,7 +1345,6 @@ export const ROUTE_GUARDS = {
     permission: "qa.view.qms",
     role: [Roles.RECEPTION, Roles.VALIDATION],
   },
-  "/result": { privilege: Privileges.RESULT_ENTER, role: [Roles.RESULTS] },
   "/validation": {
     privilege: Privileges.RESULT_VALIDATE,
     role: [Roles.VALIDATION],

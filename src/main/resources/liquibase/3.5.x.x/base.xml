@@ -623,4 +623,9 @@
   <!-- Pre-Bridge analyzer settings: exported to the configuration-import history, then their tables and columns removed. -->
   <include relativeToChangelogFile="true" file="116-remove-pre-bridge-analyzer-storage.xml"/>
 
+  <!-- Result entry has one page: the unified-route switch and the legacy result-entry menu rows are retired. -->
+  <include relativeToChangelogFile="true" file="117-retire-legacy-results-entry.xml"/>
+  <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
+  <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
+
 </databaseChangeLog>

@@ -75,9 +75,15 @@ describe("App route guards", () => {
     // develop, and the remaining 76 are guarded here. Lowering this further
     // means privilege guards were lost, which is exactly what this caught when
     // the merge left only 6.
+    //
+    // 67 -> 61 when develop retired the legacy Results Entry pages (#4528):
+    // /result, /LogbookResults, /PatientResults, /AccessionResults,
+    // /StatusResults and /RangeResults became one unguarded <Route> that only
+    // redirects to /Results, which keeps its own RESULT_ENTER guard. Exactly
+    // six RESULT_ENTER guards went (19 -> 13) and nothing else moved.
     const privilegeGuards =
       appSource.match(/privilege=\{Privileges\.[A-Z_]+\}/g) || [];
-    expect(privilegeGuards.length).toBeGreaterThanOrEqual(67);
+    expect(privilegeGuards.length).toBeGreaterThanOrEqual(61);
   });
 
   it("names only privileges that exist on the Privileges constant", () => {

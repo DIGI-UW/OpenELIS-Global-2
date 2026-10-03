@@ -1,5 +1,8 @@
 package org.openelisglobal.result.controller.rest;
 
+import static org.hamcrest.CoreMatchers.everyItem;
+import static org.hamcrest.CoreMatchers.hasItem;
+import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
@@ -1045,5 +1048,70 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(status().isOk()).andReturn().getResponse().getContentAsString();
         assertFalse("another component's events must not leak", componentB.contains("scoped to A"));
         assertTrue(componentB.contains("analysis wide"));
+    }
+
+    /**
+     * The Results page sends a typed lab number together with the selected Lab
+     * Unit. Both must hold: the unit's worklist narrowed to that order, and nothing
+     * when the order has no work in the unit, not the whole unit with the lab
+     * number ignored.
+     */
+    @Test
+    public void labNumberNarrowsTheLabUnitWorklist() throws Exception {
+        jdbc.update("UPDATE clinlims.sample SET status_id = 9109 WHERE id = 1");
+        jdbc.update("UPDATE clinlims.analysis SET status_id = 9103 WHERE id = 1");
+        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
+        when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
+                .thenReturn(List.of(new IdValuePair("1", "TB"), new IdValuePair("2", "TestSection2")));
+        try {
+            mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", "1").param("doRange", "false")
+                    .param("finished", "false").session(session)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult.length()").value(1))
+                    .andExpect(jsonPath("$.testResult[0].accessionNumber").value("12345"));
+
+            mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", "1").param("labNumber", "12345")
+                    .param("doRange", "false").param("finished", "false").session(session)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult.length()").value(1));
+
+            mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", "1").param("labNumber", "13333")
+                    .param("doRange", "false").param("finished", "false").session(session)).andExpect(status().isOk())
+                    .andExpect(jsonPath("$.testResult.length()").value(0));
+        } finally {
+            reset(displayList);
+        }
+    }
+
+    /**
+     * The date filter loads by collection date, with or without a Lab Unit; a typed
+     * lab number narrows that list too.
+     */
+    @Test
+    public void labNumberNarrowsTheDateWorklist() throws Exception {
+        jdbc.update("UPDATE clinlims.sample SET status_id = 9109 WHERE id = 1");
+        jdbc.update("UPDATE clinlims.analysis SET status_id = 9103 WHERE id = 1");
+        DisplayListService displayList = webApplicationContext.getBean(DisplayListService.class);
+        when(displayList.getList(DisplayListService.ListType.TEST_SECTION_ACTIVE))
+                .thenReturn(List.of(new IdValuePair("1", "TB"), new IdValuePair("2", "TestSection2")));
+        try {
+            for (String testSectionId : new String[] { "", "1" }) {
+                mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", testSectionId)
+                        .param("collectionDate", "15/11/2023").param("doRange", "false").param("finished", "false")
+                        .session(session)).andExpect(status().isOk())
+                        .andExpect(jsonPath("$.testResult[*].accessionNumber", hasItem("12345")));
+
+                mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", testSectionId)
+                        .param("collectionDate", "15/11/2023").param("labNumber", "12345").param("doRange", "false")
+                        .param("finished", "false").session(session)).andExpect(status().isOk())
+                        .andExpect(jsonPath("$.testResult[*].accessionNumber", everyItem(is("12345"))))
+                        .andExpect(jsonPath("$.testResult[*].accessionNumber", hasItem("12345")));
+
+                mockMvc.perform(get("/rest/LogbookResults").param("testSectionId", testSectionId)
+                        .param("collectionDate", "15/11/2023").param("labNumber", "99999").param("doRange", "false")
+                        .param("finished", "false").session(session)).andExpect(status().isOk())
+                        .andExpect(jsonPath("$.testResult.length()").value(0));
+            }
+        } finally {
+            reset(displayList);
+        }
     }
 }

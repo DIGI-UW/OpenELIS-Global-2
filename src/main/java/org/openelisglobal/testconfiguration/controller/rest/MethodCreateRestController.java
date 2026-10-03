@@ -7,7 +7,6 @@ import java.util.Locale;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.method.service.MethodService;
@@ -114,7 +113,7 @@ public class MethodCreateRestController extends BaseController {
             methodCreateService.insertMethod(localization, method, workplanModule, resultModule, validationModule,
                     workplanResultModule, resultResultModule, validationValidationModule);
         } catch (LIMSRuntimeException e) {
-            LogEvent.logDebug(e);
+            return saveFailure(e);
         }
 
         DisplayListService.getInstance().refreshList(DisplayListService.ListType.METHODS);
