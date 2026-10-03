@@ -5,8 +5,6 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
@@ -41,6 +39,7 @@ import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -790,16 +789,7 @@ public class EQAPerformanceReportIntegrationTest extends EQASpineTestBase {
     }
 
     private String pdfText(byte[] pdf) throws IOException {
-        PdfReader reader = new PdfReader(pdf);
-        try {
-            StringBuilder text = new StringBuilder();
-            for (int page = 1; page <= reader.getNumberOfPages(); page++) {
-                text.append(PdfTextExtractor.getTextFromPage(reader, page)).append('\n');
-            }
-            return text.toString();
-        } finally {
-            reader.close();
-        }
+        return PdfText.of(pdf);
     }
 
     /**
