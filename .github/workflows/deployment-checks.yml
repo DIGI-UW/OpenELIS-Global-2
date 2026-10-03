@@ -21,3 +21,4 @@ jobs:
       - run: node --test .github/scripts/publish-checkpoints.test.cjs
       - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
       - run: python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+      - run: python3 .github/scripts/check-liquibase-changelogs.py
