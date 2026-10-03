@@ -54,7 +54,6 @@ public class RejectionReportByTestSection extends RejectionReport implements IRe
     protected void buildReportContent(ReportSpecificationList panelSelection) {
 
         unitName = getNameForId(panelSelection);
-        createReportParameters();
 
         rejections = new ArrayList<>();
         ArrayList<RejectionReportBean> rawResults = new ArrayList<>();

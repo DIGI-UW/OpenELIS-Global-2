@@ -48,7 +48,6 @@ public class RejectionReportByTest extends RejectionReport implements IReportPar
     protected void buildReportContent(ReportSpecificationList testSelection) {
 
         testName = getNameForId(testSelection);
-        createReportParameters();
 
         rejections = new ArrayList<>();
         List<Note> testRejectionNotes = SpringContext.getBean(NoteService.class).getTestNotesInDateRangeByType(
