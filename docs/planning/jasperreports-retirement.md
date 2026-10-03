@@ -83,33 +83,33 @@ reports `.gitignore` listed only tracked files and was removed with them.
   `com.lowagie` iText 2.1.7 stays on the classpath only as a dependency of
   `jasperreports`.
 - The CSV export report creators import Jasper types through the shared
-  `IReportCreator` / `Report` classes;
-  `compliance/controller/rest/CertificateFonts` and
-  `reports/valueholder/common/JRHibernateDataSource` also import Jasper.
-- `FreezerExcursionReport` and `FreezerAuditTrailReport` build Jasper data
-  sources, but production code never constructs them and their templates were
-  deleted in 729ca1299f.
-- The legacy `ReportsServlet` providers load templates that are not in the
-  repository: `ResultsReportProvider` (`rslts_*.jasper`) and
-  `MycologyWorksheetProvider` (`/WEB-INF/reports/specimen_list.jasper`).
+  `IReportCreator` / `Report` classes, and
+  `reports/valueholder/common/JRHibernateDataSource` imports Jasper. These go
+  when the last template is ported.
+- `compliance/controller/rest/CertificateFonts` loads DejaVu Sans from the
+  `jasperreports-fonts` jar, so the certificate needs another source for that
+  font before the jar is removed.
+- The templates render with the standard Helvetica font, the same font the
+  code-generated PDFs use, so porting a report does not change which characters
+  it can print.
 
 ## Plan
 
 Each step is one PR to `develop`. Status is updated in this file as steps land.
 
-| Step | Change                                                                                                                                                                                                                                                                  | Status      |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------- |
-| 1    | Delete the dead templates and add this roadmap                                                                                                                                                                                                                          | in review   |
-| 2    | Add OpenPDF; port `PdfExportSupport`, the 18 iText 5 files and `BarcodeLabelMaker` to it; remove `itextpdf`                                                                                                                                                             | in review   |
-| 3    | Separate the report interfaces from Jasper types so CSV exporters, `CertificateFonts` and other non-PDF code compile without JasperReports; delete the unreachable freezer report creators and the two `ReportsServlet` providers after confirming nothing reaches them | not started |
-| 4    | Port the workplans                                                                                                                                                                                                                                                      | not started |
-| 5    | Port the management reports and the shared headers and footers they use                                                                                                                                                                                                 | not started |
-| 6    | Port the indicators, including the bar chart and the table component                                                                                                                                                                                                    | not started |
-| 7    | Port the cold storage report                                                                                                                                                                                                                                            | not started |
-| 8    | Port the patient result reports                                                                                                                                                                                                                                         | not started |
-| 9    | Port the study patient reports                                                                                                                                                                                                                                          | not started |
-| 10   | Port the study non-conformity reports                                                                                                                                                                                                                                   | not started |
-| 11   | Remove `jasperreports`, `jasperreports-fonts`, the remaining templates and `JRHibernateDataSource`; re-check whether `jfreechart` and `barbecue` are still used                                                                                                         | not started |
+| Step | Change                                                                                                                                                                                                                                                                         | Status      |
+| ---- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ----------- |
+| 1    | Delete the dead templates and add this roadmap                                                                                                                                                                                                                                 | in review   |
+| 2    | Add OpenPDF; port `PdfExportSupport`, the 18 iText 5 files and `BarcodeLabelMaker` to it; remove `itextpdf`                                                                                                                                                                    | in review   |
+| 3    | Delete report code nothing reaches: the `ReportsServlet` subsystem (no UI path; two of its providers load templates that are not in the repository, the third names a class that does not exist) and the freezer excursion and audit trail report creators (never constructed) | in review   |
+| 4    | Port the workplans                                                                                                                                                                                                                                                             | not started |
+| 5    | Port the management reports and the shared headers and footers they use                                                                                                                                                                                                        | not started |
+| 6    | Port the indicators, including the bar chart and the table component                                                                                                                                                                                                           | not started |
+| 7    | Port the cold storage report                                                                                                                                                                                                                                                   | not started |
+| 8    | Port the patient result reports                                                                                                                                                                                                                                                | not started |
+| 9    | Port the study patient reports                                                                                                                                                                                                                                                 | not started |
+| 10   | Port the study non-conformity reports                                                                                                                                                                                                                                          | not started |
+| 11   | Remove `jasperreports`, `jasperreports-fonts`, the remaining templates, `JRHibernateDataSource` and the Jasper types in `IReportCreator` / `Report`; give `CertificateFonts` its own DejaVu source; re-check whether `jfreechart` and `barbecue` are still used                | not started |
 
 ## Rejected alternatives
 
