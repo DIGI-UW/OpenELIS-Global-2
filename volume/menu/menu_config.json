@@ -260,27 +260,7 @@
       "elementId": "menu_results",
       "childMenus": [
         {
-          "elementId": "menu_results_logbook",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_results_patient",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_results_accession",
-          "childMenus": []
-        },
-        {
           "elementId": "menu_results_referred",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_results_range",
-          "childMenus": []
-        },
-        {
-          "elementId": "menu_results_status",
           "childMenus": []
         },
         {

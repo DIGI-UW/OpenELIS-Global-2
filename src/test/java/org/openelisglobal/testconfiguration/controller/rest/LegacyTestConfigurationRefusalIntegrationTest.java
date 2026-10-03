@@ -39,11 +39,14 @@ import org.springframework.validation.beanvalidation.LocalValidatorFactoryBean;
 public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String UOM_PREFIX = "LTCRIT";
+    private static final String METHOD_NAME = "LTCRIT Method";
 
     @Autowired
     private DataSource dataSource;
     @Autowired
     private UomCreateRestController uomCreateRestController;
+    @Autowired
+    private MethodCreateRestController methodCreateRestController;
     @Autowired
     private MethodRenameEntryRestController methodRenameEntryRestController;
     @Autowired
@@ -63,9 +66,9 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
         validator.setMessageInterpolator(new ParameterMessageInterpolator());
         validator.afterPropertiesSet();
-        validatingMvc = MockMvcBuilders
-                .standaloneSetup(target(uomCreateRestController), target(methodRenameEntryRestController),
-                        target(testSectionRenameEntryRestController), target(testSectionOrderRestController))
+        validatingMvc = MockMvcBuilders.standaloneSetup(target(uomCreateRestController),
+                target(methodCreateRestController), target(methodRenameEntryRestController),
+                target(testSectionRenameEntryRestController), target(testSectionOrderRestController))
                 .setValidator(validator).build();
     }
 
@@ -113,6 +116,21 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
                 .andExpect(jsonPath("$.error").value("validation"));
     }
 
+    /**
+     * Manage Methods is the only method page left; a taken name used to come back
+     * 200 with nothing written, so the page reported success.
+     */
+    @Test
+    public void methodCreate_isCreatedOnce_andTheSameNameAgainIs409() throws Exception {
+        String body = "{\"methodEnglishName\":\"" + METHOD_NAME + "\",\"methodFrenchName\":\"" + METHOD_NAME + " FR\"}";
+        postJson("/rest/MethodCreate", body).andExpect(status().isOk());
+        postJson("/rest/MethodCreate", body).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value("duplicate"));
+
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.method WHERE name = ?", Integer.class, METHOD_NAME));
+    }
+
     private ResultActions postJson(String url, String body) throws Exception {
         return validatingMvc
                 .perform(post(url).contentType(MediaType.APPLICATION_JSON).content(body).session(adminSession()));
@@ -125,6 +143,15 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
 
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.unit_of_measure WHERE name LIKE ?", UOM_PREFIX + "%");
+        jdbc.update("DELETE FROM clinlims.system_role_module WHERE system_module_id IN (SELECT id FROM"
+                + " clinlims.system_module WHERE name LIKE ?)", "%:" + METHOD_NAME);
+        jdbc.update("DELETE FROM clinlims.system_module WHERE name LIKE ?", "%:" + METHOD_NAME);
+        jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id IN (SELECT name_localization_id"
+                + " FROM clinlims.method WHERE name = ?)", METHOD_NAME);
+        jdbc.update(
+                "WITH removed AS (DELETE FROM clinlims.method WHERE name = ? RETURNING name_localization_id)"
+                        + " DELETE FROM clinlims.localization WHERE id IN (SELECT name_localization_id FROM removed)",
+                METHOD_NAME);
     }
 
     private static Object target(Object bean) {

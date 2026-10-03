@@ -7,7 +7,6 @@ import GeneralConfigurationsPage from "./GeneralConfigurationsPage";
 import NotifyUserPage from "./NotifyUserPage";
 import ResultReportingConfigurationPage from "./ResultReportingConfiguration";
 import BatchTestReassignmentandCancelationPage from "./BatchTestReassignmentandCancelation";
-import TestManagementPage from "./TestManagementPage";
 
 class AdminPage {
   constructor() {
@@ -23,7 +22,6 @@ class AdminPage {
       resultReportingConfig: "[data-cy='resultReportingConfiguration']",
       batchTest: "[data-cy='batchTestReassignment']",
       span: "span",
-      testManagement: "[data-cy='testManagementConfigMenu']",
     };
   }
 
@@ -292,14 +290,6 @@ class AdminPage {
       .should("exist")
       .click({ force: true });
     return new BatchTestReassignmentandCancelationPage();
-  }
-
-  goToTestManagementPage() {
-    cy.get(this.selectors.testManagement)
-      .scrollIntoView()
-      .should("exist")
-      .click({ force: true });
-    return new TestManagementPage();
   }
 }
 

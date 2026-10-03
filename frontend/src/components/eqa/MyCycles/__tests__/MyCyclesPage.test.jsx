@@ -295,7 +295,7 @@ describe("MyCyclesPage", () => {
     const link = within(expanded).getByText("2026-00018421");
     expect(link.closest("a")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=2026-00018421",
+      "/Results?accessionNumber=2026-00018421",
     );
     // per-analyst column absent for a non-per-analyst scheme
     expect(within(expanded).queryByText("Assigned analyst")).toBeNull();
@@ -350,7 +350,7 @@ describe("MyCyclesPage", () => {
     const link = within(table).getByText("DEV01260000000000014");
     expect(link.closest("a")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=DEV01260000000000014",
+      "/Results?accessionNumber=DEV01260000000000014",
     );
     expect(getFromOpenElisServer).toHaveBeenCalledWith(
       "/rest/eqa/orders",

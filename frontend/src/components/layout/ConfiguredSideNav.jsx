@@ -13,6 +13,7 @@ import { reportingMenuDestination } from "../reports/CustomDataExport/useReporti
 
 import { navigationIcons as icons } from "./navigationIcons";
 
+// Retired result-entry pages; their menu rows may still exist on a site.
 const legacyResults = new Set([
   "menu_results_logbook",
   "menu_results_patient",
@@ -33,17 +34,14 @@ export function canonicalMenuUrl(url) {
   return moved ? moved + reporting.slice(path.length) : reporting;
 }
 
-export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
+export default function ConfiguredSideNav({ menus }) {
   const intl = useIntl();
   const location = useLocation();
   const visibleMenus = useMemo(() => {
     const filter = (items) =>
       items
         .filter(
-          ({ menu }) =>
-            menu.isActive &&
-            (menu.elementId !== "menu_results_unified" || unifiedResultsOn) &&
-            (!legacyResults.has(menu.elementId) || !unifiedResultsOn),
+          ({ menu }) => menu.isActive && !legacyResults.has(menu.elementId),
         )
         .map((item) => ({
           ...item,
@@ -54,7 +52,7 @@ export default function ConfiguredSideNav({ menus, unifiedResultsOn }) {
           childMenus: filter(item.childMenus || []),
         }));
     return filter(menus || []);
-  }, [menus, unifiedResultsOn]);
+  }, [menus]);
   const expandedMenus = useMenuAutoExpand(visibleMenus);
   const label = (key) => intl.formatMessage({ id: key, defaultMessage: key });
 

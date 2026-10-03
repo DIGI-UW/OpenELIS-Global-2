@@ -8,7 +8,6 @@ import {
   seedPatient,
   type SeededPatient,
 } from "../../../helpers/seed-patient-order";
-import { isSettingOn, setSetting } from "../../../fixtures/esig-admin";
 
 /**
  * Add Order (/SamplePatientEntry) beyond the happy path covered elsewhere: the
@@ -24,7 +23,6 @@ const REFERRAL_REASON = "Equipment failure";
 const REFERENCE_LAB = "CEDRES";
 const SITE = "279 - CAMES MAN";
 const REQUESTER = "Prime, Optimus";
-const UNIFIED_RESULTS = "resultsEntryUnifiedRoute";
 
 async function serumTestId(page: Page, name: string): Promise<string> {
   const types: Array<{ id: string; value: string }> = await (
@@ -119,17 +117,6 @@ async function openResultRow(page: Page, labNumber: string) {
 
 test.describe("Add Order program, referral and remembered requester", () => {
   test.describe("checked on the results worklist", () => {
-    let unifiedWasOn = true;
-
-    test.beforeEach(async ({ page }) => {
-      unifiedWasOn = await isSettingOn(page, UNIFIED_RESULTS);
-      if (!unifiedWasOn) await setSetting(page, UNIFIED_RESULTS, true);
-    });
-
-    test.afterEach(async ({ page }) => {
-      if (!unifiedWasOn) await setSetting(page, UNIFIED_RESULTS, false);
-    });
-
     test("the program picked on the Program step is saved with the order", async ({
       page,
     }) => {

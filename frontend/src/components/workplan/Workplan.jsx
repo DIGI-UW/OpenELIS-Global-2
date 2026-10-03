@@ -347,8 +347,8 @@ export default function Workplan(props) {
                                   <Link
                                     style={{ color: "blue" }}
                                     href={
-                                      `/result?type=order&doRange=false&source=${sourceTitle}&accessionNumber=` +
-                                      row.accessionNumber
+                                      `/Results?accessionNumber=` +
+                                      encodeURIComponent(row.accessionNumber)
                                     }
                                   >
                                     <u>
