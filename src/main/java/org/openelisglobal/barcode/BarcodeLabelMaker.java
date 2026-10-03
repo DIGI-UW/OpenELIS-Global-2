@@ -684,7 +684,7 @@ public class BarcodeLabelMaker {
             }
 
             // convert table to image, scale image, and center it on document
-            document.add(scaleCentreTableAsImage(label, writer, table));
+            document.add(scaleCentreTableAsImage(label, writer, table, false));
         } else {
             // QR code layout with QR on left, fields on right
             PdfPTable mainTable = new PdfPTable(2); // 2 columns for QR and fields
@@ -742,25 +742,35 @@ public class BarcodeLabelMaker {
             fieldsCell.setPadding(5);
             mainTable.addCell(fieldsCell);
 
-            document.add(scaleCentreTableAsImage(label, writer, mainTable));
+            document.add(scaleCentreTableAsImage(label, writer, mainTable, true));
         }
     }
 
     /**
      * Converts table to a scaled, centered image
      *
-     * @param label  The label to specify the dimensions
-     * @param writer For the stream
-     * @param table  The table to convert and scale
+     * @param label           The label to specify the dimensions
+     * @param writer          For the stream
+     * @param table           The table to convert and scale
+     * @param keepProportions Scale width and height together instead of only
+     *                        stretching the height to the label
      * @return An image representation of the table
      * @throws BadElementException
      */
-    private Image scaleCentreTableAsImage(Label label, PdfWriter writer, PdfPTable table) throws BadElementException {
+    private Image scaleCentreTableAsImage(Label label, PdfWriter writer, PdfPTable table, boolean keepProportions)
+            throws BadElementException {
         PdfContentByte cb = writer.getDirectContent();
         PdfTemplate template = cb.createTemplate(table.getTotalWidth(), table.getTotalHeight());
         table.writeSelectedRows(0, -1, 0, table.getTotalHeight(), template);
         Image labelAsImage = Image.getInstance(template);
-        labelAsImage.scaleAbsoluteHeight(label.pdfHeight - (2 * label.getMargin()));
+        if (keepProportions) {
+            // Scaling only the height stretches the content; a QR code with
+            // non-square modules does not scan.
+            labelAsImage.scaleToFit(label.pdfWidth - (2 * label.getMargin()),
+                    label.pdfHeight - (2 * label.getMargin()));
+        } else {
+            labelAsImage.scaleAbsoluteHeight(label.pdfHeight - (2 * label.getMargin()));
+        }
         labelAsImage.setAbsolutePosition(((label.pdfWidth) - labelAsImage.getScaledWidth()) / 2,
                 ((label.pdfHeight) - labelAsImage.getScaledHeight()) / 2);
         return labelAsImage;
