@@ -7,7 +7,21 @@ import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface SystemUserService extends BaseObjectService<SystemUser, String> {
 
-    @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
+    /**
+     * Populates a SystemUser from its id - in practice to put an author's name on a
+     * record.
+     *
+     * <p>
+     * Every caller does exactly that: NoteServiceImpl#createSystemUser attaches the
+     * note's author, ResultsLoadUtility names who entered a result, and
+     * NonConformityUpdateWorker names who raised the event. Gated on
+     * PRIV_SYSTEM_USER_MANAGE - granted to no role at all - saving a result with a
+     * note answered 403 for the Results role, because writing the note resolves its
+     * own author. Reading a user's display name is not user administration, so it
+     * takes PRIV_SYSTEM_USER_VIEW; the administrative writes on this interface keep
+     * PRIV_SYSTEM_USER_MANAGE.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_SYSTEM_USER_MANAGE','PRIV_SYSTEM_USER_VIEW')")
     void getData(SystemUser systemUser);
 
     @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
