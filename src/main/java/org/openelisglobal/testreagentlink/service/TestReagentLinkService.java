@@ -1,6 +1,7 @@
 package org.openelisglobal.testreagentlink.service;
 
 import java.util.List;
+import org.openelisglobal.common.security.CrudPrivileges;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -17,6 +18,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
  * endpoint answered 403 for the Results role on its own screen.
  */
 @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
+@CrudPrivileges(write = "PRIV_TEST_CONFIGURE")
 public interface TestReagentLinkService extends BaseObjectService<TestReagentLink, String> {
 
     @PreAuthorize("hasAnyAuthority('PRIV_TEST_CONFIGURE','PRIV_CATALOGUE_VIEW')")
