@@ -615,5 +615,7 @@
 
   <!-- Result entry has one page: the unified-route switch and the legacy result-entry menu rows are retired. -->
   <include relativeToChangelogFile="true" file="117-retire-legacy-results-entry.xml"/>
+  <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
+  <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
 
 </databaseChangeLog>
