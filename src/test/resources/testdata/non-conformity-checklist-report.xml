@@ -1,0 +1,38 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="931" description="Plasma" />
+    <localization_value id="931" localization_id="931"
+        locale="en" value="Plasma" />
+
+    <!-- name must match StatusService.addToOrderMap() -->
+    <status_of_sample id="1" description="Test Entered"
+        code="1" status_type="ORDER" lastupdated="2025-03-18"
+        name="Test Entered" display_key="sample.status.entered" is_active="Y" />
+
+    <!-- the checklist reads these display keys -->
+    <type_of_sample id="931" description="Plasma" domain="H"
+        name_localization_id="931" display_key="sample.type.Plasma"
+        lastupdated="2024-01-01 12:00:00" />
+    <qa_event id="931" name="Coagulated"
+        description="Coagulated sample" display_key="qa_event.coagulated"
+        is_billable="N" is_holdable="N" lastupdated="2024-01-01 12:00:00" />
+
+    <person id="931" last_name="Doe" first_name="Jane"
+        lastupdated="2024-01-01 12:00:00" />
+    <patient id="931" person_id="931" gender="F"
+        national_id="SUBJ-0042" birth_date="1992-03-12 00:00:00"
+        entered_birth_date="12/03/1992" lastupdated="2024-01-01 12:00:00" />
+
+    <sample id="931" accession_number="DEV0124000000000931"
+        status_id="1" collection_date="2024-06-03 07:30:00"
+        received_date="2024-06-03 08:00:00" entered_date="2024-06-03 08:00:00"
+        lastupdated="2024-06-03 08:00:00" />
+    <sample_human id="931" samp_id="931" patient_id="931"
+        lastupdated="2024-06-03 08:00:00" />
+    <sample_item id="931" samp_id="931" typeosamp_id="931"
+        sort_order="1" status_id="1" lastupdated="2024-06-03 08:00:00" />
+
+    <sample_qaevent id="931" qa_event_id="931"
+        sample_id="931" sampleitem_id="931" entered_date="2024-06-04 09:00:00"
+        lastupdated="2024-06-04 09:00:00" />
+</dataset>

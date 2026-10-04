@@ -17,14 +17,9 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.services.TableIdService;
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
-import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
@@ -69,31 +64,11 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
     // private List<SampleQaEvent> sampleQaEvents;
 
     @Override
-    protected void createReportParameters() throws IllegalStateException {
-        super.createReportParameters();
-        String nonConformity = MessageUtil.getContextualMessage("banner.menu.nonconformity");
-        reportParameters.put("status", nonConformity);
-        reportParameters.put("reportTitle", nonConformity);
-        // reportParameters.put("reportPeriod",
-        // MessageUtil.getContextualMessage("banner.menu.nonconformity") + " " +
-        // dateRange.toString());
-        // reportParameters.put("supervisorSignature",
-        // ConfigurationProperties.getInstance().isPropertyValueEqual(Property.SIGNATURES_ON_NONCONFORMITY_REPORTS,
-        // "true"));
-        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.configurationName, "CI_GENERAL")) {
-            reportParameters.put("headerName", "CILNSPHeader.jasper");
-        } else {
-            // reportParameters.put("headerName", getHeaderName());
-        }
-    }
-
-    @Override
     public void initializeReport(ReportForm form) {
         super.initializeReport();
         lowerNumber = form.getAccessionDirectNoSuffix();
         upperNumber = form.getHighAccessionDirectNoSuffix();
         // dateRange = new DateRange(lowDateStr, highDateStr);
-        createReportParameters();
         errorFound = !validateAccessionNumbers();
         if (errorFound) {
             return;
@@ -193,8 +168,8 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
     }
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        return StudyNonConformityPdf.checklist(reportItems);
     }
 
     static class ReportItemsComparator implements Comparator<ARVReportData> {
@@ -218,13 +193,6 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
             return compare;
         }
     }
-
-    @Override
-    protected String reportFileName() {
-        return "retroCINonConformityByLabno";
-    }
-
-    protected abstract String getHeaderName();
 
     protected String getObservationValues(String observationTypeId) {
         List<ObservationHistory> observationList = observationService.getAll(patient, sample, observationTypeId);

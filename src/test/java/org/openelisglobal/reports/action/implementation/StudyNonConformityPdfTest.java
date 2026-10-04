@@ -9,6 +9,7 @@ import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.reports.action.implementation.reportBeans.ARVReportData;
 import org.openelisglobal.reports.action.implementation.reportBeans.FollowupRequiredData;
 import org.openelisglobal.reports.action.implementation.reportBeans.NonConformityReportData;
 import org.openelisglobal.testsupport.PdfText;
@@ -79,6 +80,86 @@ public class StudyNonConformityPdfTest extends BaseWebContextSensitiveTest {
                 occurrences(text, "Suivi Requis Remarque"));
         assertFalse("markup never prints: " + text, text.contains("<br/>"));
         assertLine(lines, DateUtil.getCurrentDateAsText());
+    }
+
+    @Test
+    public void checklistMarks_matchAReasonOnItsTubeTypeAndNeverByPrefix() {
+        StudyNonConformityPdf.ChecklistMarks marks = StudyNonConformityPdf.ChecklistMarks
+                .of("sample.type.Plasma:qa_event.coagulated;sample.type.Serum:qa_event.hemolytic;-1:qa_event.DBS_DI");
+
+        assertTrue(marks.onEdtaTube("coagulated"));
+        assertFalse(marks.onDryTube("coagulated"));
+        assertTrue(marks.onDryTube("hemolytic"));
+        assertFalse(marks.onEdtaTube("hemolytic"));
+        assertTrue(marks.any("DBS_DI"));
+        assertFalse("DBS_D is a different reason from DBS_DI", marks.any("DBS_D"));
+        assertFalse(StudyNonConformityPdf.ChecklistMarks.of(null).any("coagulated"));
+    }
+
+    @Test
+    public void checklist_ticksAnOrdersTubeFormAndSectionReasons() throws Exception {
+        ARVReportData order = order("DEV0126000000000961");
+        order.setAllQaEvents("sample.type.dryTube:qa_event.coagulated;-1:qa_event.noForm;-1:qa_event.Error_Sample");
+        order.setReceptionQaEvent("Sample without form");
+        order.setHematologyQaEvent("Clotted");
+        ARVReportData clean = order("DEV0126000000000970");
+
+        byte[] pdf = StudyNonConformityPdf.checklist(List.of(order, clean));
+
+        assertEquals("each order has its own page", 2, PdfText.pageCount(pdf));
+        String page = PdfText.ofPage(pdf, 1);
+        List<String> lines = lines(page);
+        assertLine(lines, "RAPPORT DE NON-CONFORMITE CLIENT");
+        for (String field : new String[] { "Sujetno: SUBJ-0042", "Labno: DEV0126000000000961", "Sexe: F",
+                "Date Naiss.: 12/03/1992", "Age: 34", "Date de Prél.: 01/10/2026 08:40",
+                "Date de Réception: 01/10/2026", "Prescripteur: Dr Prescriber", "Site: Central Clinic" }) {
+            assertTrue(field + " in " + lines, page.contains(field));
+        }
+        assertLine(lines, "Tube EDTA/Sang total/Plasma Tube Sec/ Sérum");
+        assertLine(lines, "Echantillon Coagulé X");
+        assertLine(lines, "Echantillon Hémolysé");
+        assertLine(lines, "Echantillon sans fiche X Absence de l’heure du prélèvement");
+        assertLine(lines, "Fiche entachée de sang Erreur de tube de prélèvement X");
+        assertLine(lines, "Section: Saisie Réception X Biochimie Immunologie(CD4) Charge virale");
+        assertLine(lines, "Diagnostic précoce (EID) Sérologie VIH Hématologie X");
+        assertLine(lines, "CONCLUSION : L’échantillon ne peut être traité ou analysé ce jour.");
+        assertLine(lines, "Prière refaire le prélèvement sur : Tube EDTA Tube sec Carte DBS Whatman 903");
+        assertLine(lines, "Signature, date (jj/mm/aaaa), et cachet du Laboratoire/Biologiste");
+        assertFalse("a tube order gets the tube form: " + lines, page.contains("Age de l’enfant"));
+
+        assertLine(lines(PdfText.ofPage(pdf, 2)), "No QaEvent");
+    }
+
+    @Test
+    public void checklist_givesAnEarlyInfantDiagnosisOrderTheDbsCardForm() throws Exception {
+        ARVReportData order = order("DEV0126000000000961");
+        order.setAllQaEvents("-1:qa_event.adult;-1:qa_event.DBS_3;-1:qa_event.DBS_DI");
+        order.setVirologyEidQaEvent("Child older than 18 months");
+
+        List<String> lines = lines(PdfText.of(StudyNonConformityPdf.checklist(List.of(order))));
+
+        assertLine(lines, "Carte DBS Whatman 903");
+        assertLine(lines, "Age de l’enfant > 18 mois X");
+        assertLine(lines, "DBS: Nombre de spot rempli < 3 X");
+        assertLine(lines, "Elution du disque DBS impossible X");
+        assertLine(lines, "DBS spot de sang dilué par l’alcool");
+        assertLine(lines, "Diagnostic précoce (EID) X Sérologie VIH Hématologie");
+        assertLine(lines, "Prière refaire le prélèvement sur : Tube EDTA Tube sec Carte DBS Whatman 903 X");
+        assertFalse("an EID order gets the DBS form: " + lines, lines.contains("Echantillon Coagulé"));
+    }
+
+    private static ARVReportData order(String labNo) {
+        ARVReportData order = new ARVReportData();
+        order.setLabNo(labNo);
+        order.setSubjectNumber("SUBJ-0042");
+        order.setBirth_date("12/03/1992");
+        order.setAge("34");
+        order.setGender("F");
+        order.setCollectiondate("01/10/2026 08:40");
+        order.setReceptiondate("01/10/2026 09:15");
+        order.setOrgname("Central Clinic");
+        order.setDoctor("Dr Prescriber");
+        return order;
     }
 
     private static NonConformityReportData nonConformity(String accession, String section, String reason,
