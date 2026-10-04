@@ -75,11 +75,12 @@ public final class PdfExportSupport {
      * Open the document onto the stream with a page number on the footer of every
      * page, worded by the given message key.
      */
-    public static void openWithPageNumbers(Document document, OutputStream out, String pageMessageKey)
+    public static PdfWriter openWithPageNumbers(Document document, OutputStream out, String pageMessageKey)
             throws DocumentException {
         PdfWriter writer = PdfWriter.getInstance(document, out);
         writer.setPageEvent(new PageNumberFooter(pageMessageKey));
         document.open();
+        return writer;
     }
 
     /**

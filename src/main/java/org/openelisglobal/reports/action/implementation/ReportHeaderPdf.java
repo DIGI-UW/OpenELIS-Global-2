@@ -42,16 +42,16 @@ final class ReportHeaderPdf {
 
     /**
      * Opens the document, with page numbers when the site's report settings ask for
-     * them.
+     * them. A report adds its own page events to the writer returned.
      */
-    static void open(Document document, OutputStream out) {
+    static PdfWriter open(Document document, OutputStream out) {
         if ("true"
                 .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.USE_PAGE_NUMBERS_ON_REPORTS))) {
-            PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
-        } else {
-            PdfWriter.getInstance(document, out);
-            document.open();
+            return PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
         }
+        PdfWriter writer = PdfWriter.getInstance(document, out);
+        document.open();
+        return writer;
     }
 
     /** The site name and its additional information, leaving out blank ones. */

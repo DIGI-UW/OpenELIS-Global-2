@@ -42,7 +42,9 @@ gone.
   documents; their layout is reviewed, not only their text.
 - Each ported report gets a test that renders it and asserts on its content, at
   the level the report's data comes from (integration test when it queries the
-  database).
+  database). A report extending `RetroCIReport`, whose static block needs the
+  study's observation types and analytes, is drawn by a separate class tested on
+  its own, as `SectionPerformancePdf` and `StudyNonConformityPdf` are.
 - Reports reachable from the UI keep a Playwright check that the PDF downloads.
 
 ## Inventory
@@ -106,17 +108,21 @@ reports `.gitignore` listed only tracked files and was removed with them.
 - Cold storage: `FreezerTemperatureMonitoringReport` is drawn by
   `coldstorage/service/FreezerTemperatureReportPdf` for the daily, weekly and
   monthly logs.
+- Study non-conformity: `NonConformityNotification` and
+  `RetroCI_FollowupRequired_ByLocation` are drawn by `StudyNonConformityPdf` for
+  `RetroCINonConformityNotification` and `RetroCIFollowupRequiredByLocation`,
+  their labels kept in French.
 
 ### Live reports
 
-28 templates remain. Grouped by family, with the code that loads them:
+26 templates remain. Grouped by family, with the code that loads them:
 
 | Family                     | Templates                                                                                                                                                                                                                                                                                                                                           | Loaded by                                                                                                                                                                                 |
 | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Patient results            | `PatientReportCDI`, `PatientClinicalReport`, `TBPatientReport`, `PatientPathologyReport`, `PatientCytologyReport`, `PatientImmunoChemistryReport`, `PatientImmunoChemistryResults`, `DualInSituHybridizationReport`, `BreastCancerHormoneReceptorReport`                                                                                            | `PatientCILNSPClinical`, `PatientClinicalReport`, `TBPatientReport`, the pathology report creators                                                                                        |
 | Shared headers and footers | `CDIHeader`, `CILNSPHeader`, `CILNSPFooter`, `GeneralHeader`, `RetroCIHeader`                                                                                                                                                                                                                                                                       | subreports of the families above, chosen through the `headerName` parameter; `CILNSPFooter` is passed by name, but no template draws it                                                   |
 | Study patient reports      | `Patient_ARV_Version1`, `Patient_ARV_Version2`, `Patient_ARV_Followup_patient_info`, `RetroCI_Patient_EID`, `RetroCI_Patient_EID_Version2`, `RetroCI_Patient_EID_info`, `RetroCI_Patient_EID_info_Version2`, `Patient_VL_Version_Nationale`, `Patient_Indeterminate_Version1`, `Patient_Indeterminate_Version2`, `Patient_Indeterminate_ByLocation` | `PatientARVReport` and its version subclasses, `PatientEIDReport`, `PatientVLReport`, `PatientIndeterminateReport`, `PatientIndeterminateByLocationReport`, `PatientSpecialRequestReport` |
-| Study non-conformity       | `retroCINonConformityByLabno`, `NonConformityNotification`, `RetroCI_FollowupRequired_ByLocation`                                                                                                                                                                                                                                                   | `NonConformityByLabno`, `RetroCINonConformityNotification`, `RetroCIFollowupRequiredByLocation`                                                                                           |
+| Study non-conformity       | `retroCINonConformityByLabno`                                                                                                                                                                                                                                                                                                                       | `NonConformityByLabno` (`RetroCINonConformityByLabno`)                                                                                                                                    |
 
 ### Code outside PDF reports that touches these libraries
 
@@ -151,7 +157,7 @@ land.
 | 7    | Port the cold storage report                                                                                                                                                                                                                                                                                                                                                                                                                                       | in review                           |
 | 8    | Port the patient result reports, in three PRs: the routine patient report (`PatientReportCDI_vreduit`) with the accreditation logos in the shared header and the site's paper size setting for every code-built PDF, its layout signed off by a reviewer from before/after page images; the other clinical reports and the TB report; the pathology family, which also removes `PatientReport`'s Jasper plumbing and the `CDIHeader` and `CILNSPFooter` subreports | first PR in draft for layout review |
 | 9    | Port the study patient reports                                                                                                                                                                                                                                                                                                                                                                                                                                     | not started                         |
-| 10   | Port the study non-conformity reports                                                                                                                                                                                                                                                                                                                                                                                                                              | not started                         |
+| 10   | Port the study non-conformity reports, in two PRs: the client notification and the follow-up list; the non-conformity checklist by lab number                                                                                                                                                                                                                                                                                                                      | first PR in review                  |
 | 11   | Remove `jasperreports`, `jasperreports-fonts`, the remaining templates, `JRHibernateDataSource` and the Jasper types in `IReportCreator` / `Report`; give `CertificateFonts` its own DejaVu source; re-check whether `jfreechart` and `barbecue` are still used                                                                                                                                                                                                    | not started                         |
 
 ## Rejected alternatives
