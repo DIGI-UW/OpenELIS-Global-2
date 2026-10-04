@@ -49,7 +49,7 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      backend: ${{ steps.filter.outputs.backend || 'true' }}
+      backend: ${{ steps.stack.outputs.deferred == 'true' && 'false' || steps.filter.outputs.backend || 'true' }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request'
@@ -73,6 +73,26 @@ jobs:
               - '.github/ci/ci.analyzer-harness.yml'
               - '.github/workflows/backend.yml'
               - '.github/scripts/publish-checkpoints*.cjs'
+      # GitHub runs every pull request in a stack as if it targeted the stack's
+      # base, so a 20-PR stack would run Build + Test 20 times per push. The top
+      # pull request contains every commit of the stack, so its run covers them
+      # all; a pull request below the top skips Build + Test and the checkpoint
+      # passes as it does for a change outside the backend paths. Missing or
+      # malformed stack metadata runs Build + Test.
+      - name: Decide stack scope
+        id: stack
+        if: github.event_name == 'pull_request'
+        env:
+          POSITION: ${{ github.event.pull_request.stack.position }}
+          SIZE: ${{ github.event.pull_request.stack.size }}
+          STACK: ${{ github.event.pull_request.stack.number }}
+        run: |
+          if [[ "$POSITION" =~ ^[0-9]+$ && "$SIZE" =~ ^[0-9]+$ && "$POSITION" -ge 1 && "$POSITION" -lt "$SIZE" ]]; then
+            echo "Stacked PR $POSITION of $SIZE (stack #$STACK); Build + Test runs on the top of the stack"
+            echo "deferred=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "deferred=false" >> "$GITHUB_OUTPUT"
+          fi
 
   backend-verify:
     name: Build + Test
