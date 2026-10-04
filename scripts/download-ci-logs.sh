@@ -194,13 +194,16 @@ else
 fi
 
 log_info "Reading the checks GitHub shows on $REF..."
-RUNS_JSON=$(gh api graphql -F owner="${REPO%%/*}" -F name="${REPO#*/}" -F ref="$REF" -f query='
-query($owner: String!, $name: String!, $ref: String!) {
+# A commit re-run many times carries more than 100 contexts, so every page is
+# read before the newest run of each check is chosen.
+PAGES=$(gh api graphql --paginate -F owner="${REPO%%/*}" -F name="${REPO#*/}" -F ref="$REF" -f query='
+query($owner: String!, $name: String!, $ref: String!, $endCursor: String) {
   repository(owner: $owner, name: $name) {
     object(expression: $ref) {
       ... on Commit {
         statusCheckRollup {
-          contexts(first: 100) {
+          contexts(first: 100, after: $endCursor) {
+            pageInfo { hasNextPage endCursor }
             nodes {
               __typename
               ... on CheckRun { name status conclusion startedAt detailsUrl
@@ -212,10 +215,15 @@ query($owner: String!, $name: String!, $ref: String!) {
       }
     }
   }
-}' --jq '
-    def pending: test("^(pending|queued|in_progress|expected|waiting|requested)$");
+}' 2>/dev/null) || {
+    log_error "Failed to read the checks on $REF"
+    exit 1
+}
+# STALE is a check GitHub no longer trusts and shows as pending, as gh pr checks does.
+RUNS_JSON=$(printf '%s' "$PAGES" | jq -s '
+    def pending: test("^(pending|queued|in_progress|expected|waiting|requested|stale)$");
     def failed: test("^(failure|error|cancelled|timed_out|action_required|startup_failure)$");
-    [(.data.repository.object.statusCheckRollup.contexts.nodes // [])[]
+    [.[] | (.data.repository.object.statusCheckRollup.contexts.nodes // [])[]
      | if .__typename == "CheckRun" then
          {url: (.detailsUrl // ""),
           workflowName: (.checkSuite.workflowRun.workflow.name // .name),
@@ -240,10 +248,7 @@ query($owner: String!, $name: String!, $ref: String!) {
            status: (if any(.result | pending) then "in_progress" else "completed" end),
            conclusion: (if any(.result | failed) then "failure"
                         elif any(.result | pending) then null
-                        else "success" end)})' 2>/dev/null) || {
-    log_error "Failed to read the checks on $REF"
-    exit 1
-}
+                        else "success" end)})')
 
 if [[ -n "$WORKFLOW" ]]; then
     RUNS_JSON=$(echo "$RUNS_JSON" | jq --arg w "$WORKFLOW" \

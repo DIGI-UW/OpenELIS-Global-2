@@ -562,10 +562,14 @@ git push
 **Post-push holistic check (MANDATORY):**
 
 After pushing, immediately check ALL workflow statuses — not just the one you
-fixed:
+fixed. Same two sources as the preflight check:
 
 ```bash
-gh pr checks $PR_NUMBER
+if [ -n "$PR_NUMBER" ]; then
+  gh pr checks $PR_NUMBER
+else
+  ./scripts/download-ci-logs.sh --branch $BRANCH --list
+fi
 ```
 
 This catches cascading failures (e.g., a test fix that breaks formatting) before
