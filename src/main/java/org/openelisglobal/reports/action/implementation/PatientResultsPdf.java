@@ -203,8 +203,11 @@ final class PatientResultsPdf {
         validation.setTotalWidth(document.right() - document.left());
         validation.setLockedWidth(true);
         PdfPCell comments = new PdfPCell(new Phrase(MessageUtil.getMessage("report.labInfomation"), TEXT_FONT));
-        comments.setRowspan(2);
+        comments.setFixedHeight(VALIDATION_HEIGHT);
         validation.addCell(comments);
+        // a row-spanning cell drawn by writeSelectedRows keeps only its first row's
+        // height
+        PdfPTable signatureAndDate = new PdfPTable(1);
         PdfPCell signature = new PdfPCell();
         signature.setFixedHeight(VALIDATION_HEIGHT - 20);
         signature.setBorder(Rectangle.TOP | Rectangle.LEFT | Rectangle.RIGHT);
@@ -223,11 +226,15 @@ final class PatientResultsPdf {
                 signature.addElement(new Phrase("\n" + settings.labDirectorTitle(), TEXT_FONT));
             }
         }
-        validation.addCell(signature);
+        signatureAndDate.addCell(signature);
         PdfPCell date = new PdfPCell(new Phrase(MessageUtil.getMessage("report.date"), TEXT_FONT));
         date.setFixedHeight(20);
         date.setBorder(Rectangle.BOTTOM | Rectangle.LEFT | Rectangle.RIGHT);
-        validation.addCell(date);
+        signatureAndDate.addCell(date);
+        PdfPCell signatureColumn = new PdfPCell(signatureAndDate);
+        signatureColumn.setBorder(Rectangle.NO_BORDER);
+        signatureColumn.setPadding(0);
+        validation.addCell(signatureColumn);
 
         if (writer.getVerticalPosition(true) - document.bottom() < VALIDATION_HEIGHT + 6) {
             document.newPage();
