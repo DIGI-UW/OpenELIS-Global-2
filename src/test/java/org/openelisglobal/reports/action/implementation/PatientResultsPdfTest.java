@@ -82,6 +82,18 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void printsTheSiteNameLinesInTheHeader() throws Exception {
+        PatientResultsPdf.Settings settings = new PatientResultsPdf.Settings(
+                List.of("Central Public Health Laboratory", "PO Box 12, Port Moresby"), List.of(), null, true,
+                "URAP Number", false, null, null, null, false);
+
+        List<String> lines = lines(PdfText.of(PatientResultsPdf.render(settings, rows("PAT-0001"))));
+
+        assertLine(lines, "Central Public Health Laboratory");
+        assertLine(lines, "PO Box 12, Port Moresby");
+    }
+
+    @Test
     public void printsOnTheSitesPaperSize() throws Exception {
         ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, "Letter");
         byte[] letter = PatientResultsPdf.render(settings(false, List.of(), null), rows("PAT-0001"));
