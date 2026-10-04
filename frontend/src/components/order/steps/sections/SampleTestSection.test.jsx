@@ -3,6 +3,7 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import "@testing-library/jest-dom";
+import { vi } from "vitest";
 import { IntlProvider } from "react-intl";
 import messages from "../../../../languages/en.json";
 
@@ -98,7 +99,12 @@ const sample = {
 
 const renderSection = (
   setSamples,
-  { currentSamples = [sample], orderData = {}, setOrderData = vi.fn() } = {},
+  {
+    currentSamples = [sample],
+    orderData = {},
+    setOrderData = vi.fn(),
+    workflowType,
+  } = {},
 ) =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -108,6 +114,7 @@ const renderSection = (
         orderData={orderData}
         setOrderData={setOrderData}
         isReadOnly={false}
+        workflowType={workflowType}
       />
     </IntlProvider>,
   );
@@ -414,6 +421,82 @@ describe("SampleTestSection — search with no matches", () => {
     );
     expect(
       screen.queryByLabelText("Malaria Rapid Test"),
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe("SampleTestSection selected-tag close buttons", () => {
+  const catalogue = {
+    tests: [cultureTest],
+    panels: [{ id: "9", name: "Sepsis panel", testIds: "42" }],
+  };
+  const selected = {
+    ...sample,
+    tests: [cultureTest],
+    panels: [{ id: "9", name: "Sepsis panel" }],
+  };
+
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+  });
+
+  // The tags used to pass dismissTooltipLabel alone, so every close button was
+  // named Carbon's English "Dismiss"; see removeLabel in the component for why
+  // both props are needed.
+  it("names each selected test and panel's close button after what it removes", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/user-sample-types") {
+        callback([{ id: "5", value: "Blood" }]);
+      }
+      if (url === "/rest/sample-type-tests?sampleType=5") {
+        callback(catalogue);
+      }
+    });
+    renderSection(vi.fn(), { currentSamples: [selected] });
+
+    await screen.findAllByText("Blood culture");
+
+    expect(
+      screen.getByRole("button", { name: "Remove Blood culture" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Sepsis panel" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("names them the same way in the per-sample manifest picker", async () => {
+    const user = userEvent.setup();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/environmental-sample-types") {
+        callback([{ id: "5", value: "Blood" }]);
+      }
+      if (url === "/rest/vector/dictionary/sample-containers") {
+        callback([]);
+      }
+      if (url === "/rest/sample-type-tests?sampleType=5") {
+        callback(catalogue);
+      }
+    });
+    renderSection(vi.fn(), {
+      currentSamples: [selected],
+      workflowType: "environmental",
+    });
+
+    await user.click(
+      await screen.findByRole("button", { name: /Tests & Panels/ }),
+    );
+
+    expect(
+      screen.getByRole("button", { name: "Remove Blood culture" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Sepsis panel" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss" }),
     ).not.toBeInTheDocument();
   });
 });
