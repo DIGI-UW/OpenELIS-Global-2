@@ -118,16 +118,16 @@ public class EQAAlertRestController extends ControllerUtills {
         if (target == null) {
             return ResponseEntity.notFound().build();
         }
-        if (target.getStatus() != AlertStatus.OPEN) {
-            return ResponseEntity.status(HttpStatus.CONFLICT)
-                    .body(Map.of("error", "Only an open alert can be acknowledged"));
-        }
-        String comment = comment(body);
-        if (target.getSeverity() == AlertSeverity.CRITICAL && comment == null) {
+        String notes = notes(body);
+        if (target.getSeverity() == AlertSeverity.CRITICAL && notes == null) {
             return ResponseEntity.badRequest()
                     .body(Map.of("error", "A comment is required to acknowledge a critical alert"));
         }
-        alertService.acknowledgeAlert(id, Integer.valueOf(getSysUserId(request)), comment);
+        try {
+            alertService.acknowledgeAlert(id, Integer.valueOf(getSysUserId(request)), notes);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(Map.of("error", e.getMessage()));
+        }
         return ResponseEntity.ok(Map.of("status", AlertStatus.ACKNOWLEDGED.name()));
     }
 
@@ -142,11 +142,11 @@ public class EQAAlertRestController extends ControllerUtills {
             return ResponseEntity.status(HttpStatus.CONFLICT)
                     .body(Map.of("error", "Only an acknowledged alert can be resolved"));
         }
-        String comment = comment(body);
-        if (comment == null) {
+        String notes = notes(body);
+        if (notes == null) {
             return ResponseEntity.badRequest().body(Map.of("error", "A resolution comment is required"));
         }
-        alertService.resolveAlert(id, Integer.valueOf(getSysUserId(request)), comment);
+        alertService.resolveAlert(id, Integer.valueOf(getSysUserId(request)), notes);
         return ResponseEntity.ok(Map.of("status", AlertStatus.RESOLVED.name()));
     }
 
@@ -158,9 +158,8 @@ public class EQAAlertRestController extends ControllerUtills {
         }
     }
 
-    // The dashboard sends the text under "notes"; older callers used "comment".
-    private String comment(Map<String, String> body) {
-        String comment = body == null ? null : body.getOrDefault("comment", body.get("notes"));
-        return comment == null || comment.isBlank() ? null : comment.trim();
+    private String notes(Map<String, String> body) {
+        String notes = body == null ? null : body.get("notes");
+        return notes == null || notes.isBlank() ? null : notes.trim();
     }
 }

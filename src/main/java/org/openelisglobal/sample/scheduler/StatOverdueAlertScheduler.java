@@ -23,6 +23,7 @@ public class StatOverdueAlertScheduler {
 
     private static final String TURNAROUND_CONFIG = "statTurnaroundMinutes";
     private static final int DEFAULT_TURNAROUND_MINUTES = 60;
+    private static final int LOOKBACK_DAYS = 7;
     private static final String ENTITY_TYPE = "Sample";
 
     @Autowired
@@ -41,14 +42,20 @@ public class StatOverdueAlertScheduler {
     public void checkStatTurnaround() {
         int minutes = turnaroundMinutes();
         Timestamp cutoff = Timestamp.from(Instant.now().minus(minutes, ChronoUnit.MINUTES));
+        Timestamp since = Timestamp.from(Instant.now().minus(LOOKBACK_DAYS, ChronoUnit.DAYS));
         List<String> awaitingResult = Stream
                 .of(AnalysisStatus.NotStarted, AnalysisStatus.TechnicalRejected, AnalysisStatus.BiologistRejected)
                 .map(statusService::getStatusID).toList();
 
-        for (Sample sample : sampleService.getStatSamplesReceivedBeforeWithAnalysisIn(cutoff, awaitingResult)) {
+        for (Sample sample : sampleService.getStatSamplesReceivedBetweenWithAnalysisIn(since, cutoff, awaitingResult)) {
+            Long sampleId = Long.parseLong(sample.getId());
+            // Any status counts: a resolved alert must not come back on the next run.
+            if (alertService.getAlertsByEntity(ENTITY_TYPE, sampleId).stream()
+                    .anyMatch(alert -> alert.getAlertType() == AlertType.STAT_OVERDUE)) {
+                continue;
+            }
             String accession = sample.getAccessionNumber();
-            alertService.createAlert(AlertType.STAT_OVERDUE, ENTITY_TYPE, Long.parseLong(sample.getId()),
-                    AlertSeverity.CRITICAL,
+            alertService.createAlert(AlertType.STAT_OVERDUE, ENTITY_TYPE, sampleId, AlertSeverity.CRITICAL,
                     "STAT order " + accession + " has no result " + minutes + " minutes after receipt",
                     String.format("{\"sampleId\":\"%s\",\"accessionNumber\":\"%s\",\"turnaroundMinutes\":%d}",
                             sample.getId(), accession, minutes));

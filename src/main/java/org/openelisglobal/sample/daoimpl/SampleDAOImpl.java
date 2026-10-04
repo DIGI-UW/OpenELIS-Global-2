@@ -776,18 +776,20 @@ public class SampleDAOImpl extends BaseDAOImpl<Sample, String> implements Sample
     }
 
     @Override
-    public List<Sample> getStatSamplesReceivedBeforeWithAnalysisIn(java.sql.Timestamp cutoff,
+    public List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(java.sql.Timestamp since, java.sql.Timestamp cutoff,
             List<String> analysisStatusIds) {
-        String sql = "from Sample s where s.priority = :stat and s.receivedTimestamp <= :cutoff and exists (from"
-                + " Analysis a where a.sampleItem.sample.id = s.id and a.statusId in (:statusIds))";
+        String sql = "from Sample s where s.priority = :stat and s.receivedTimestamp > :since and"
+                + " s.receivedTimestamp <= :cutoff and exists (from Analysis a where a.sampleItem.sample.id = s.id"
+                + " and a.statusId in (:statusIds))";
         try {
             Query<Sample> query = entityManager.unwrap(Session.class).createQuery(sql, Sample.class);
             query.setParameter("stat", OrderPriority.STAT);
+            query.setParameter("since", since);
             query.setParameter("cutoff", cutoff);
             query.setParameterList("statusIds", analysisStatusIds);
             return query.list();
         } catch (HibernateException e) {
-            handleException(e, "getStatSamplesReceivedBeforeWithAnalysisIn");
+            handleException(e, "getStatSamplesReceivedBetweenWithAnalysisIn");
         }
         return new java.util.ArrayList<>();
     }

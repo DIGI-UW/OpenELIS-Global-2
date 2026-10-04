@@ -93,11 +93,36 @@ public class StatOverdueAlertSchedulerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void repeatRuns_keepOneAlertPerOrder() {
+    public void repeatRuns_keepOneAlertPerOrderAndDoNotTouchIt() {
         scheduler.checkStatTurnaround();
         scheduler.checkStatTurnaround();
 
-        assertEquals(1, statOverdueAlerts().size());
+        List<Alert> alerts = statOverdueAlerts();
+        assertEquals(1, alerts.size());
+        assertEquals(Integer.valueOf(0), alerts.get(0).getDuplicateCount());
+    }
+
+    @Test
+    public void aResolvedAlert_isNotRaisedAgainWhileTheOrderStaysUnresulted() {
+        scheduler.checkStatTurnaround();
+        Long alertId = statOverdueAlerts().get(0).getId();
+        jdbc.update("UPDATE clinlims.alert SET status = 'RESOLVED' WHERE id = ?", alertId);
+
+        scheduler.checkStatTurnaround();
+
+        List<Alert> alerts = statOverdueAlerts();
+        assertEquals(1, alerts.size());
+        assertEquals(alertId, alerts.get(0).getId());
+        assertEquals(AlertStatus.RESOLVED, alerts.get(0).getStatus());
+    }
+
+    @Test
+    public void statOrdersReceivedBeforeTheLookbackWindow_raiseNoAlert() {
+        order(STAT_SAMPLE, "STAT", "8 days");
+
+        scheduler.checkStatTurnaround();
+
+        assertTrue(statOverdueAlerts().isEmpty());
     }
 
     private List<Alert> statOverdueAlerts() {
@@ -117,11 +142,18 @@ public class StatOverdueAlertSchedulerTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    // Fixtures that load site_information drop the seeded row, so put it back.
     private void setTurnaroundMinutes(String minutes) {
-        jdbc.update("DELETE FROM clinlims.site_information WHERE name = 'statTurnaroundMinutes'");
-        jdbc.update("INSERT INTO clinlims.site_information (id, name, value, value_type, lastupdated)"
-                + " VALUES (nextval('clinlims.site_information_seq'), 'statTurnaroundMinutes', ?, 'text', now())",
-                minutes);
+        if (jdbc.update("UPDATE clinlims.site_information SET value = ? WHERE name = 'statTurnaroundMinutes'",
+                minutes) == 0) {
+            jdbc.update(
+                    "INSERT INTO clinlims.site_information (id, name, value, value_type, lastupdated,"
+                            + " description, domain_id) VALUES (nextval('clinlims.site_information_seq'),"
+                            + " 'statTurnaroundMinutes', ?, 'text', now(), 'Minutes after receipt a STAT order may go"
+                            + " without a result before an Overdue STAT alert is raised',"
+                            + " (SELECT id FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig'))",
+                    minutes);
+        }
     }
 
     // Other fixtures truncate status_of_sample, so restore the rows StatusService

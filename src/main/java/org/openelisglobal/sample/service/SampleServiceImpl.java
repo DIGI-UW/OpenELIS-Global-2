@@ -625,8 +625,8 @@ public class SampleServiceImpl extends AuditableBaseObjectServiceImpl<Sample, St
 
     @Override
     @Transactional(readOnly = true)
-    public List<Sample> getStatSamplesReceivedBeforeWithAnalysisIn(java.sql.Timestamp cutoff,
+    public List<Sample> getStatSamplesReceivedBetweenWithAnalysisIn(java.sql.Timestamp since, java.sql.Timestamp cutoff,
             List<String> analysisStatusIds) {
-        return sampleDAO.getStatSamplesReceivedBeforeWithAnalysisIn(cutoff, analysisStatusIds);
+        return sampleDAO.getStatSamplesReceivedBetweenWithAnalysisIn(since, cutoff, analysisStatusIds);
     }
 }

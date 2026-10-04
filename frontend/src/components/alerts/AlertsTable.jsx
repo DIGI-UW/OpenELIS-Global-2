@@ -90,7 +90,6 @@ const AlertsTable = ({
     message: alert.message,
     status: alert.status,
     startTime: alert.startTimeForDisplay,
-    actions: alert.status === "OPEN" ? "acknowledge" : "",
     _original: alert,
   }));
 

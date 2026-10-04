@@ -9,11 +9,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.sql.Timestamp;
 import java.time.OffsetDateTime;
-import java.util.Arrays;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -59,11 +56,12 @@ public class AlertsDashboardIntegrationTest extends BaseWebContextSensitiveTest 
                 "Temperature drifting", "{}");
 
         JsonNode row = dashboardRow(alert.getId());
+        OffsetDateTime stored = alertService.get(alert.getId()).getStartTime();
 
         assertTrue("startTime must not be a bare epoch number", row.get("startTime").isTextual());
-        assertEquals(alert.getStartTime().toInstant(), OffsetDateTime.parse(row.get("startTime").asText()).toInstant());
-        assertEquals(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(
-                Timestamp.from(alert.getStartTime().toInstant())), row.get("startTimeForDisplay").asText());
+        assertEquals(stored.toInstant(), OffsetDateTime.parse(row.get("startTime").asText()).toInstant());
+        assertEquals(DateUtil.convertTimestampToStringDateAndConfiguredHourTime(Timestamp.from(stored.toInstant())),
+                row.get("startTimeForDisplay").asText());
     }
 
     @Test
@@ -125,10 +123,16 @@ public class AlertsDashboardIntegrationTest extends BaseWebContextSensitiveTest 
     }
 
     @Test
-    public void typeFilterOffersEveryAlertType() {
-        List<String> expected = Arrays.stream(AlertType.values()).map(Enum::name).collect(Collectors.toList());
+    public void acknowledgingAnAlertThatIsNotOpenIsRefused() {
+        Alert alert = openAlert(AlertSeverity.WARNING);
+        controller.acknowledgeAlert(alert.getId(), Map.of("notes", "First call"), sessionRequest());
 
-        assertEquals(expected, controller.getAlertTypes().getBody());
+        assertEquals(HttpStatus.CONFLICT, controller
+                .acknowledgeAlert(alert.getId(), Map.of("notes", "Second call"), sessionRequest()).getStatusCode());
+
+        Alert stored = alertService.get(alert.getId());
+        assertEquals(AlertStatus.ACKNOWLEDGED, stored.getStatus());
+        assertEquals("First call", stored.getAcknowledgmentNotes());
     }
 
     private Alert openAlert(AlertSeverity severity) {
