@@ -132,8 +132,8 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
             if (QAService.isOrderNonConforming(sample) || isUnderInvestigation(sample)) {
                 FollowupRequiredData item = new FollowupRequiredData();
 
-                item.setCollectiondate(
-                        sample.getCollectionDateForDisplay() + " " + sample.getCollectionTimeForDisplay());
+                item.setCollectiondate(sample.getCollectionDate() == null ? null
+                        : sample.getCollectionDateForDisplay() + " " + sample.getCollectionTimeForDisplay());
                 item.setReceivedDate(sample.getReceivedDateForDisplay() + " " + sample.getReceivedTimeForDisplay());
                 item.setLabNo(sample.getAccessionNumber());
                 item.setDoctor(getOptionalObservationHistory(sample, OBSERVATION_DOCTOR_ID));
@@ -178,7 +178,8 @@ public class RetroCIFollowupRequiredByLocation extends RetroCIReport implements 
             }
             allNotes.append(" : ");
 
-            if ("0".equals(qa.getObservationValue(QAObservationType.SECTION))) {
+            String section = qa.getObservationValue(QAObservationType.SECTION);
+            if (GenericValidator.isBlankOrNull(section) || "0".equals(section)) {
                 allNotes.append(MessageUtil.getMessage("report.followup.no.section"));
             } else {
                 allNotes.append(qa.getObservationForDisplay(QAObservationType.SECTION));
