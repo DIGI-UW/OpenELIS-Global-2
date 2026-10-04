@@ -10,7 +10,8 @@ import {
 /**
  * Spec 012 T044 — privilege-aware route access.
  *
- * The Results route (`/AccessionResults`) is guarded by SecureRoute with
+ * The Results route (`/Results`, which /AccessionResults redirects to since
+ * develop #4528) is guarded by SecureRoute with
  * `role={Roles.RESULTS}`. With privilege-equivalent granting (T040), access is
  * driven by the privilege that role really guards — `result:enter` — not the
  * role name string:
@@ -46,12 +47,15 @@ test.describe("RBAC privilege-aware route access", () => {
     page.on("dialog", (d) => {
       void d.accept().catch(() => undefined);
     });
-    await page.goto("/AccessionResults", { waitUntil: "domcontentloaded" });
+    await page.goto("/Results", { waitUntil: "domcontentloaded" });
 
     // SecureRoute denies (Reception lacks result:enter): confirmAlert fires and
-    // redirects to origin, so the Results accession search box never renders.
+    // redirects to origin, so the unified Results search box never renders.
+    // Asserted against the control the page actually has - "Enter Accession
+    // Number" belonged to the pages develop #4528 retired, so a count of 0 on
+    // it would pass for every role and prove nothing.
     await expect(
-      page.getByRole("textbox", { name: "Enter Accession Number" }),
+      page.getByRole("searchbox", { name: "Search by lab number" }),
     ).toHaveCount(0);
     await context.close();
   });
@@ -69,13 +73,16 @@ test.describe("RBAC privilege-aware route access", () => {
     test.skip(!ok, "Results persona login unavailable");
 
     const page = await context.newPage();
-    await page.goto("/AccessionResults", { waitUntil: "domcontentloaded" });
+    // develop #4528 retired the legacy result-entry pages; /AccessionResults
+    // now redirects to the unified /Results, which carries the same
+    // RESULT_ENTER guard. Assert on where the role actually lands.
+    await page.goto("/Results", { waitUntil: "domcontentloaded" });
 
     // Granted: the role={Roles.RESULTS} route opens because the persona holds
     // result:enter — the privilege that role check maps to (T040), proving the
     // gate is privilege-driven rather than a role-name comparison.
     await expect(
-      page.getByRole("textbox", { name: "Enter Accession Number" }),
+      page.getByRole("searchbox", { name: "Search by lab number" }),
     ).toBeVisible();
     await context.close();
   });

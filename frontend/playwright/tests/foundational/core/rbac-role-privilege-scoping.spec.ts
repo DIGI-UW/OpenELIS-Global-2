@@ -57,9 +57,11 @@ test.describe("RBAC role → privilege scoping", () => {
     test.skip(!ok, "Results persona login unavailable");
 
     const page = await context.newPage();
-    await page.goto("/AccessionResults", { waitUntil: "domcontentloaded" });
+    // develop #4528 retired the legacy result-entry pages; /AccessionResults
+    // redirects to the unified /Results, which keeps the RESULT_ENTER guard.
+    await page.goto("/Results", { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("textbox", { name: "Enter Accession Number" }),
+      page.getByRole("searchbox", { name: "Search by lab number" }),
     ).toBeVisible();
 
     const privileges = await sessionPrivileges(page);
@@ -86,9 +88,11 @@ test.describe("RBAC role → privilege scoping", () => {
     });
 
     // Validation surface (role={Roles.VALIDATION} → result:validate): granted.
-    await page.goto("/AccessionValidation", { waitUntil: "domcontentloaded" });
+    // /AccessionValidation redirects to the one-page /validation search
+    // (develop OGC-1418), whose lab-number box is labelled "Lab number".
+    await page.goto("/validation", { waitUntil: "domcontentloaded" });
     await expect(
-      page.getByRole("textbox", { name: "Enter Accession Number" }),
+      page.getByRole("searchbox", { name: "Lab number" }),
     ).toBeVisible();
 
     const privileges = await sessionPrivileges(page);
