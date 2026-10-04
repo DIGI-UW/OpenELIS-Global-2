@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
+import { labNow } from "../../utils/labClock";
 import {
   Button,
   Column,
@@ -59,10 +60,12 @@ export const ReportNonConformingEvent = () => {
   const intl = useIntl();
   const location = useLocation();
 
+  const today = format(labNow(), "MM/dd/yyyy");
+
   const [nceForm, setnceForm] = useState({
     nceNumber: "",
     reporterName: "",
-    dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+    dateOfEvent: today,
     reportingUnit: "",
     title: "",
     description: "",
@@ -370,7 +373,7 @@ export const ReportNonConformingEvent = () => {
       setnceForm({
         nceNumber: "",
         reporterName: "",
-        dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+        dateOfEvent: today,
         reportingUnit: "",
         title: "",
         description: "",
@@ -464,7 +467,7 @@ export const ReportNonConformingEvent = () => {
     setnceForm({
       nceNumber: "",
       reporterName: "",
-      dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+      dateOfEvent: today,
       reportingUnit: "",
       title: "",
       description: "",
@@ -581,7 +584,7 @@ export const ReportNonConformingEvent = () => {
                 datePickerType="single"
                 dateFormat="m/d/Y"
                 value={nceForm.dateOfEvent}
-                maxDate={format(new Date(), "MM/dd/yyyy")}
+                maxDate={today}
                 onChange={(dates) => {
                   if (dates && dates[0]) {
                     const formatted = format(new Date(dates[0]), "MM/dd/yyyy");

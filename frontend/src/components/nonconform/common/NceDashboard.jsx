@@ -37,6 +37,7 @@ import { NotificationContext } from "../../layout/Layout";
 import { useHistory, useLocation } from "react-router-dom";
 import { formatActionType } from "./actionTypes";
 import "./NceDashboard.css";
+import { daysFromLabToday } from "../../utils/labClock";
 
 const STATUS_CONFIG = {
   Pending: { type: "green", icon: InProgress, labelKey: "nce.status.open" },
@@ -161,7 +162,6 @@ export const NceDashboard = () => {
       overdue: 0,
     };
 
-    const now = new Date();
     list.forEach((nce) => {
       if (nce.severity === "CRITICAL") counts.critical++;
       else if (nce.severity === "MAJOR") counts.major++;
@@ -170,8 +170,7 @@ export const NceDashboard = () => {
 
       // Check if overdue (more than 7 days old and not completed)
       if (nce.status !== "Completed" && nce.dateOfEvent) {
-        const eventDate = new Date(nce.dateOfEvent);
-        const daysDiff = Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
+        const daysDiff = -daysFromLabToday(nce.dateOfEvent);
         if (daysDiff > 7) counts.overdue++;
       }
     });
@@ -245,9 +244,7 @@ export const NceDashboard = () => {
   // Get days since event
   const getDaysSince = (dateString) => {
     if (!dateString) return null;
-    const eventDate = new Date(dateString);
-    const now = new Date();
-    return Math.floor((now - eventDate) / (1000 * 60 * 60 * 24));
+    return -daysFromLabToday(dateString);
   };
 
   // Check if NCE is overdue

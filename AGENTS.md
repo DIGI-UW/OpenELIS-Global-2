@@ -1746,7 +1746,7 @@ npm run cy:run
 npm run cy:failfast
 
 # Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 
 # Open Cypress UI (interactive mode)
 npm run cy:open
@@ -2548,6 +2548,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
+**Last Updated:** 2026-09-29 **Constitution Version:** 1.12.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

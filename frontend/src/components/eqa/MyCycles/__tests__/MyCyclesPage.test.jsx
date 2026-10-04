@@ -79,6 +79,15 @@ describe("MyCyclesPage", () => {
     expect(screen.queryByTestId("cycle-row-4")).not.toBeInTheDocument();
   });
 
+  test("the Cycle column shows the cycle's name", () => {
+    renderPage();
+    const row = screen.getByTestId("cycle-row-1");
+    expect(
+      within(row).getByText("WHO AFRO HIV VL 2026-02"),
+    ).toBeInTheDocument();
+    expect(within(row).queryByText("Cycle 2026-02")).toBeNull();
+  });
+
   test("Receive panel deep-links to Add Order with the cycle in the query string", () => {
     const planned = {
       ...MOCK_CYCLES[0],
@@ -108,7 +117,7 @@ describe("MyCyclesPage", () => {
   test("New cycle posts the enrolled programme, name and deadline, then confirms", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Programme (from My Programs)"), {
+    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
       target: { value: "CPHL National HIV Viral Load EQA" },
     });
     fireEvent.change(screen.getByLabelText("Cycle name"), {
@@ -141,7 +150,7 @@ describe("MyCyclesPage", () => {
   test("New cycle shows the server's refusal instead of a false success", async () => {
     renderPage();
     fireEvent.click(screen.getByRole("button", { name: /New cycle/i }));
-    fireEvent.change(screen.getByLabelText("Programme (from My Programs)"), {
+    fireEvent.change(screen.getByLabelText("Scheme (from My EQA Schemes)"), {
       target: { value: "CPHL National HIV Viral Load EQA" },
     });
     fireEvent.change(screen.getByLabelText("Cycle name"), {
@@ -286,7 +295,7 @@ describe("MyCyclesPage", () => {
     const link = within(expanded).getByText("2026-00018421");
     expect(link.closest("a")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=2026-00018421",
+      "/Results?accessionNumber=2026-00018421",
     );
     // per-analyst column absent for a non-per-analyst scheme
     expect(within(expanded).queryByText("Assigned analyst")).toBeNull();
@@ -341,7 +350,7 @@ describe("MyCyclesPage", () => {
     const link = within(table).getByText("DEV01260000000000014");
     expect(link.closest("a")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=DEV01260000000000014",
+      "/Results?accessionNumber=DEV01260000000000014",
     );
     expect(getFromOpenElisServer).toHaveBeenCalledWith(
       "/rest/eqa/orders",

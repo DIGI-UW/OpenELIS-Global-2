@@ -28,6 +28,7 @@ import {
   readRememberedRequester,
   rememberRequester,
 } from "../../rememberedRequester";
+import { labNow } from "../../../utils/labClock";
 
 /**
  * RequesterSection - Site/Requesting-Organization, Requestor contact, and
@@ -938,7 +939,7 @@ const RequesterSection = ({
               id="requiredBy"
               type="date"
               className="env-manifest-datetime"
-              min={toLocalIsoDate(new Date())}
+              min={toLocalIsoDate(labNow())}
               value={orderData?.sampleOrderItems?.requiredBy || ""}
               onChange={(e) => {
                 setOrderData((prev) => ({

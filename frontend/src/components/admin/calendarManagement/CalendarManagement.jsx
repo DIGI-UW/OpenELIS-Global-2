@@ -34,14 +34,17 @@ import { NotificationContext } from "../../layout/Layout";
 import WeekendConfig from "./WeekendConfig";
 import CsvImportPreview from "./CsvImportPreview";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { labNow } from "../../utils/labClock";
 
-const currentYear = new Date().getFullYear();
-const yearOptions = Array.from({ length: 5 }, (_, i) => ({
-  id: String(currentYear - 1 + i),
-  text: String(currentYear - 1 + i),
-}));
+const yearOptionsAround = (currentYear) =>
+  Array.from({ length: 5 }, (_, i) => ({
+    id: String(currentYear - 1 + i),
+    text: String(currentYear - 1 + i),
+  }));
 
 function CalendarManagement() {
+  const [currentYear] = useState(() => labNow().getFullYear());
+  const yearOptions = yearOptionsAround(currentYear);
   const intl = useIntl();
 
   const headers = [

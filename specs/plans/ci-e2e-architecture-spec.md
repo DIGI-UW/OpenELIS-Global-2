@@ -19,7 +19,7 @@ PR-facing E2E validation across trusted and fork-originated contributions.
 
 - Build workflow:
   [`../../.github/workflows/e2e-playwright.yml`](../../.github/workflows/e2e-playwright.yml)
-  - Builds artifacts, plugins, and Docker images.
+  - Builds the Docker images.
   - Publishes GHCR images directly for non-fork runs.
   - Exports a prebuilt image handoff payload for fork runs.
 - Wrapper workflow:
@@ -53,8 +53,6 @@ See the operator runbook for troubleshooting and expectations:
   - GHCR image references for downstream execution.
 - `e2e-image-handoff`
   - Fork-only prebuilt image archive and source image lists.
-- `e2e-plugin-jars`
-  - Runtime plugin payload consumed by downstream tests.
 
 ### 3.2 Transfer modes
 
@@ -75,6 +73,20 @@ See the operator runbook for troubleshooting and expectations:
   - `03 - E2E` builds once and exports handoff payloads.
   - `E2E / Tests` publishes those exact images to GHCR and then runs the
     executor.
+
+### 3.4 Shard allocation
+
+- Playwright core uses four shards; analyzer harness uses two. Each shard has
+  one worker and its own application/database stack.
+- Deprecated Cypress uses two shards: an explicit Core list and Independent,
+  which discovers every remaining spec. New Cypress specs therefore stay covered.
+- The current Cypress split contains eight files in each group. In run
+  `37032755474`, files with measured durations sum to 3m08s in Core and 3m24s
+  in Independent. Five files restored by the spec-path fix have no recent
+  timings; three run in Core and two in Independent. Recheck the balance after
+  the first complete run, using test-step time separately from stack startup.
+- Shard topology changes take effect after merging to the default branch,
+  because the `workflow_run` executor uses that branch's workflow definitions.
 
 ## 4. Trust Boundary Model
 
@@ -114,8 +126,8 @@ not the Actions list label by itself.
 Parity failures can still happen even with the correct CI topology:
 
 - Non-deterministic E2E tests.
-- Runtime timing sensitivity across containers, DB readiness, plugins, and
-  browser startup.
+- Runtime timing sensitivity across containers, DB readiness and browser
+  startup.
 - Comparing the wrong audit surface when diagnosing runs.
 
 The main remaining parity risk is test/runtime instability, not `workflow_run`

@@ -21,6 +21,7 @@ import {
 } from "../utils/Utils";
 import "./ShipmentDashboard.css";
 import ShipmentNavigation from "./ShipmentNavigation";
+import { labNow } from "../utils/labClock";
 
 const ShipmentSettings = () => {
   const intl = useIntl();
@@ -339,7 +340,7 @@ const ShipmentSettings = () => {
                 <FormattedMessage
                   id="shipment.settings.prefixPreview"
                   values={{
-                    preview: `${boxLabelPrefix.trim().toUpperCase() || "BOX"}-${new Date().getFullYear()}-0001`,
+                    preview: `${boxLabelPrefix.trim().toUpperCase() || "BOX"}-${labNow().getFullYear()}-0001`,
                   }}
                 />
               </p>

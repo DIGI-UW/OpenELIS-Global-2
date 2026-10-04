@@ -70,6 +70,7 @@ jobs:
     with:
       projects: "core-app,core-demo"
       artifact_prefix: "core"
+      shard_indices: "[1,2,3,4]"
       compose_files: "build.docker-compose.yml"
       fixture_mode: "core"
       setup_analyzer_harness: false
