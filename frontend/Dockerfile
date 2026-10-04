@@ -20,7 +20,7 @@
 # `runtime` MUST stay last (build-push-action defaults to the final stage).
 
 # ---- base: shared foundation ----
-FROM node:20.20-alpine AS base
+FROM node:26.10-alpine AS base
 RUN apk update && apk upgrade && apk add --no-cache bash
 WORKDIR /app
 ENV PATH=/app/node_modules/.bin:$PATH
@@ -41,7 +41,7 @@ FROM base AS build
 RUN npm run build
 
 # ---- runtime: nginx serving static SPA on HTTP :80 (edge-termination pattern) ----
-FROM nginx:1.27-alpine AS runtime
+FROM nginx:1.31-alpine AS runtime
 USER root
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY --from=build /app/nginx/nginx.conf /etc/nginx/conf.d/default.conf

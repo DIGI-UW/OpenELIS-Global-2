@@ -1,7 +1,7 @@
 ##
 # Build Stage
 #
-FROM maven:3-eclipse-temurin-21 AS build
+FROM maven:3-eclipse-temurin-24 AS build
 
 RUN --mount=target=/var/lib/apt/lists,type=cache,sharing=locked \
     --mount=target=/var/cache/apt,type=cache,sharing=locked \

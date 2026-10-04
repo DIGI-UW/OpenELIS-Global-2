@@ -1,5 +1,5 @@
 # Keep the PostgreSQL major version on a supported operating-system base.
-FROM postgres:14.24-bookworm
+FROM postgres:18.6-bookworm
 
 RUN apt-get update && apt-get install -y gettext-base && rm -rf /var/lib/apt/lists/*
 # Copy initialization scripts and data files into the container

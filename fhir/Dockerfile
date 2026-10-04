@@ -1,7 +1,7 @@
 # Retain the HAPI application without inheriting its retired Bullseye runtime.
-FROM hapiproject/hapi:v6.6.0-tomcat AS hapi
+FROM hapiproject/hapi:v8.12.0-1-tomcat AS hapi
 
-FROM tomcat:9.0.121-jre17-temurin-noble
+FROM tomcat:11.0.25-jre17-temurin-noble
 
 USER root
 RUN apt-get update \
