@@ -1,5 +1,6 @@
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -7,6 +8,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
@@ -19,6 +21,7 @@ import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * The header of the code-built reports: the site's left and right logos, its
@@ -33,6 +36,20 @@ final class ReportHeaderPdf {
     private static final float LOGO_SIZE = 70;
 
     private ReportHeaderPdf() {
+    }
+
+    /**
+     * Opens the document, with page numbers when the site's report settings ask for
+     * them.
+     */
+    static void open(Document document, OutputStream out) {
+        if ("true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.USE_PAGE_NUMBERS_ON_REPORTS))) {
+            PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
+        } else {
+            PdfWriter.getInstance(document, out);
+            document.open();
+        }
     }
 
     /** The site name and its additional information, leaving out blank ones. */

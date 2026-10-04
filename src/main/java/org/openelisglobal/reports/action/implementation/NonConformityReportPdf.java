@@ -17,7 +17,6 @@ import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
-import org.openpdf.text.pdf.PdfWriter;
 
 /**
  * The non-conformity reports: each order's non-conformities by received date,
@@ -130,13 +129,7 @@ final class NonConformityReportPdf {
 
     private static Document open(Rectangle pageSize, ByteArrayOutputStream out, String title, String period) {
         Document document = new Document(pageSize, 36, 36, 36, 48);
-        if ("true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.USE_PAGE_NUMBERS_ON_REPORTS))) {
-            PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
-        } else {
-            PdfWriter.getInstance(document, out);
-            document.open();
-        }
+        ReportHeaderPdf.open(document, out);
         ReportHeaderPdf.add(document, title, ReportHeaderPdf.siteNameLines());
         Paragraph periodLine = new Paragraph(period, PERIOD_FONT);
         periodLine.setSpacingBefore(6);
