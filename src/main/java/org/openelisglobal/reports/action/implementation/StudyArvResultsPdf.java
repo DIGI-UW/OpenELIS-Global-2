@@ -3,6 +3,7 @@ package org.openelisglobal.reports.action.implementation;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.reports.action.implementation.reportBeans.ARVReportData;
 import org.openpdf.text.Chunk;
@@ -222,6 +223,17 @@ final class StudyArvResultsPdf {
         return footer;
     }
 
+    /** The date the report was printed, at the foot of every page. */
+    private static final class ReportDateFooter extends PdfPageEventHelper {
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_RIGHT,
+                    new Phrase(DateUtil.getCurrentDateAsText(), TEXT_FONT), document.right(), document.bottom() - 20,
+                    0);
+        }
+    }
+
     private static final class ReferenceFooter extends PdfPageEventHelper {
         private final PdfPTable footer;
 
@@ -235,6 +247,8 @@ final class StudyArvResultsPdf {
             Phrase title = new Phrase("Valeurs de Référence", TEXT_FONT);
             ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_LEFT, title, document.left(), top + 4,
                     0);
+            ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_RIGHT,
+                    new Phrase(DateUtil.getCurrentDateAsText(), TEXT_FONT), document.right(), top + 4, 0);
             footer.writeSelectedRows(0, -1, document.left(), top, writer.getDirectContent());
         }
     }
@@ -242,7 +256,7 @@ final class StudyArvResultsPdf {
     static byte[] versionTwo(List<ARVReportData> orders, Settings settings) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PdfExportSupport.pageSize(), 30, 30, 30, 40);
-        ReportHeaderPdf.open(document, out);
+        ReportHeaderPdf.open(document, out).setPageEvent(new ReportDateFooter());
         for (int index = 0; index < orders.size(); index++) {
             if (index > 0) {
                 document.newPage();

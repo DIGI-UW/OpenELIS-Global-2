@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ARVReportData;
 import org.openelisglobal.testsupport.PdfText;
 
@@ -56,7 +57,7 @@ public class StudyArvResultsPdfTest extends BaseWebContextSensitiveTest {
         assertLine(lines, "9.1 22 25 0.9");
         assertLine(lines, "Etat de l'échantillon:Normal");
         assertLine(lines, "Positif VIH1");
-        assertLine(lines, "Valeurs de Référence");
+        assertLine(lines, "Valeurs de Référence " + DateUtil.getCurrentDateAsText());
 
         order.setVih("En cours");
         String pending = PdfText.of(StudyArvResultsPdf.versionOne(List.of(order), SETTINGS));
@@ -79,7 +80,7 @@ public class StudyArvResultsPdfTest extends BaseWebContextSensitiveTest {
         assertLine(checklist, "RAPPORT DE NON-CONFORMITE CLIENT");
         assertLine(checklist, "Echantillon Hémolysé X");
         for (int page = 1; page <= 2; page++) {
-            assertLine(lines(PdfText.ofPage(pdf, page)), "Valeurs de Référence");
+            assertLine(lines(PdfText.ofPage(pdf, page)), "Valeurs de Référence " + DateUtil.getCurrentDateAsText());
         }
     }
 
@@ -100,6 +101,7 @@ public class StudyArvResultsPdfTest extends BaseWebContextSensitiveTest {
         assertLine(lines, "Glycémie(g/l) X 0.60 - 1.1 g/l 0.60 – 1.1 g/l");
         assertLine(lines, "CD4#(cel/ul) 640 500 - 1600");
         assertLine(lines, "Ampli2 < LL copies/ml <LL");
+        assertLine(lines, DateUtil.getCurrentDateAsText());
     }
 
     @Test
