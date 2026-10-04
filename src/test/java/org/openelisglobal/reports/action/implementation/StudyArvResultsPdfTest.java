@@ -72,7 +72,10 @@ public class StudyArvResultsPdfTest extends BaseWebContextSensitiveTest {
         byte[] pdf = StudyArvResultsPdf.versionOne(List.of(order), SETTINGS);
 
         assertEquals(2, PdfText.pageCount(pdf));
-        List<String> checklist = lines(PdfText.ofPage(pdf, 2));
+        String checklistPage = PdfText.ofPage(pdf, 2);
+        List<String> checklist = lines(checklistPage);
+        assertTrue("the checklist page identifies the patient: " + checklist,
+                checklistPage.contains("Sujetno: SUBJ-0042") && checklistPage.contains("Labno: DEV0126000000000961"));
         assertLine(checklist, "RAPPORT DE NON-CONFORMITE CLIENT");
         assertLine(checklist, "Echantillon Hémolysé X");
         for (int page = 1; page <= 2; page++) {

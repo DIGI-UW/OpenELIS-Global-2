@@ -69,6 +69,8 @@ final class StudyArvResultsPdf {
             addImage(document, settings.images().signatures(), 230, 40, Element.ALIGN_RIGHT);
             if (order.getAllQaEvents() != null) {
                 document.newPage();
+                ReportHeaderPdf.add(document, settings.studyName(), ReportHeaderPdf.siteNameLines());
+                StudyPatientBlockPdf.add(document, order);
                 Paragraph title = new Paragraph("RAPPORT DE NON-CONFORMITE CLIENT", HEADING_FONT);
                 title.setAlignment(Element.ALIGN_CENTER);
                 title.setSpacingAfter(8);
