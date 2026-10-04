@@ -1,7 +1,6 @@
 package org.openelisglobal.search.dao;
 
 import ca.uhn.fhir.rest.param.DateRangeParam;
-import ca.uhn.fhir.rest.param.StringAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.param.TokenParam;
 import jakarta.persistence.criteria.CriteriaBuilder;
@@ -15,7 +14,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.stream.Stream;
 import org.openelisglobal.common.fhir.dao.BaseFhirDao;
 import org.openelisglobal.common.fhir.dao.DateParamBounds;
 import org.openelisglobal.common.fhir.internals.FhirCriteriaContext;
@@ -51,8 +49,11 @@ public class PatientSearchDao extends BaseFhirDao {
     private static final String ST_IDENTITY = "ST";
     private static final String GUID_IDENTITY = "GUID";
 
-    public PatientSearchDao(FhirPropertyResolver propertyResolver) {
+    private final FacadeHelperDao facadeHelperDao;
+
+    public PatientSearchDao(FhirPropertyResolver propertyResolver, FacadeHelperDao facadeHelperDao) {
         super(propertyResolver);
+        this.facadeHelperDao = facadeHelperDao;
     }
 
     public List<Patient> search(PatientSearchParams params, int offset, int pageSize) {
@@ -85,7 +86,6 @@ public class PatientSearchDao extends BaseFhirDao {
 
         addPredicate(context, createIdPredicate(context, params.getId()));
         addPredicate(context, createPatientIdentifierPredicate(context, params.getIdentifier()));
-        addPredicate(context, createNamePredicate(context, params.getName()));
         addPredicate(context,
                 createStringPredicate(context, FhirConstants.FIRST_NAME_SEARCH_HANDLER, params.getGiven()));
         addPredicate(context,
@@ -93,24 +93,33 @@ public class PatientSearchDao extends BaseFhirDao {
         addPredicate(context, createBirthDatePredicate(context, params.getBirthDate()));
         addPredicate(context, createGenderPredicate(context, params.getGender()));
         addPredicate(context, createLastUpdatedPredicate(context, params.getLastUpdated()));
-    }
+        addPredicate(context, facadeHelperDao.createNamePredicate(context, params.getName()));
 
-    /** {@code Patient?name=x} matches either the given or the family name. */
-    private <R> Optional<Predicate> createNamePredicate(FhirCriteriaContext<Patient, R> context,
-            StringAndListParam name) {
+        addPredicate(context, createStringPredicate(context, FhirConstants.CITY_SEARCH_HANDLER, params.getCity()));
 
-        if (name == null) {
-            return Optional.empty();
-        }
-        CriteriaBuilder criteriaBuilder = requireCriteriaBuilder(context);
-        Expression<String> given = resolveStringExpression(context, FhirConstants.FIRST_NAME_SEARCH_HANDLER);
-        Expression<String> family = resolveStringExpression(context, FhirConstants.LAST_NAME_SEARCH_HANDLER);
+        addPredicate(context, createStringPredicate(context, FhirConstants.STATE_SEARCH_HANDLER, params.getState()));
 
-        return handleStringAndListParam(criteriaBuilder, name,
-                parameter -> combineWithOr(criteriaBuilder,
-                        Stream.of(createSingleStringPredicate(criteriaBuilder, given, parameter),
-                                createSingleStringPredicate(criteriaBuilder, family, parameter))
-                                .flatMap(Optional::stream).toList()));
+        addPredicate(context,
+                createStringPredicate(context, FhirConstants.POSTALCODE_SEARCH_HANDLER, params.getPostalCode()));
+
+        addPredicate(context,
+                createStringPredicate(context, FhirConstants.COUNTRY_SEARCH_HANDLER, params.getCountry()));
+
+        /*
+         * Searches every ContactPoint-related field.
+         */
+        addPredicate(context, facadeHelperDao.createTelecomPredicate(context, params.getTelecom()));
+
+        /*
+         * Searches only the email field.
+         */
+        addPredicate(context, facadeHelperDao.createEmailPredicate(context, params.getEmail()));
+
+        /*
+         * Searches telephone-related fields, excluding email and fax.
+         */
+        addPredicate(context, facadeHelperDao.createPhonePredicate(context, params.getPhone()));
+
     }
 
     /**
