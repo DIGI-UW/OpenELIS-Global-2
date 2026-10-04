@@ -19,6 +19,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -186,11 +187,9 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
                 reason.setColspan(3);
                 table.addCell(reason);
             }
-            table.addCell(
-                    cell(newTest
-                            ? MessageUtil.getMessage("report.reception") + ": " + item.getReceivedDate() + "\n"
-                                    + MessageUtil.getMessage("report.test") + ": " + item.getTestDate()
-                            : "", CELL_FONT));
+            table.addCell(cell(newTest ? MessageUtil.getMessage("report.reception") + ": "
+                    + Objects.toString(item.getReceivedDate(), "") + "\n" + MessageUtil.getMessage("report.test") + ": "
+                    + Objects.toString(item.getTestDate(), "") : "", CELL_FONT));
             table.addCell(cell(item.getReferralTestName(), CELL_FONT));
             table.addCell(cell(withUnits(item.getReferralResult(), item.getUom()), CELL_FONT));
             table.addCell(cell("", CELL_FONT));

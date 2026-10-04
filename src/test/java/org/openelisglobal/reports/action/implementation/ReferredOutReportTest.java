@@ -30,6 +30,7 @@ public class ReferredOutReportTest extends BaseWebContextSensitiveTest {
         assertLine(lines, "Test: 04/06/2024");
         assertLine(lines, "HIV-1 RNA 1150 copies/mL 05/06/2024 10/06/2024");
         assertLine(lines, "DEV0124000000000922 CD4 Equipment down");
+        assertTrue("a test not yet run has no date: " + lines, lines.stream().noneMatch(line -> line.contains("null")));
         assertEquals("the dates print once per local test: " + lines, 2,
                 lines.stream().filter(line -> line.startsWith("Reception:")).count());
     }
@@ -42,8 +43,10 @@ public class ReferredOutReportTest extends BaseWebContextSensitiveTest {
                         "HIV-1 RNA", "1150", "05/06/2024", "10/06/2024"));
                 reportItems.add(referral("DEV0124000000000921", "Viral Load", "1200", "copies/mL", "Confirmation",
                         "HIV-1 Genotype", "Wild type", "05/06/2024", "12/06/2024"));
-                reportItems.add(referral("DEV0124000000000922", "CD4", "", "cells/uL", "Equipment down", "CD4 count",
-                        "640", "06/06/2024", "08/06/2024"));
+                ClinicalPatientData cd4 = referral("DEV0124000000000922", "CD4", "", "cells/uL", "Equipment down",
+                        "CD4 count", "640", "06/06/2024", "08/06/2024");
+                cd4.setTestDate(null);
+                reportItems.add(cd4);
             }
         };
         ReportForm form = new ReportForm();
