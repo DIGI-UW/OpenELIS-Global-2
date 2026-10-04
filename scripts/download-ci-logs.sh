@@ -28,7 +28,6 @@ RUN_ID=""
 WORKFLOW=""
 FAILED_ONLY=false
 LIST_ONLY=false
-LIMIT=10
 
 usage() {
     cat <<EOF
@@ -38,12 +37,11 @@ Download CI logs for a PR or branch.
 
 Options:
   --pr <number>       PR number to get logs for
-  --branch <name>     Branch name to get logs for
+  --branch <name>     Branch whose newest commit's checks to get logs for
   --run-id <id>       Download a specific run by ID (skips PR/branch lookup)
   --workflow <name>   Filter to specific workflow (e.g., backend.yml, frontend.yml, e2e-playwright.yml)
   --failed            Only download failed runs
   --list              List available runs without downloading
-  --limit <n>         Max runs to list/check (default: 10)
   -h, --help          Show this help
 
 Examples:
@@ -86,10 +84,6 @@ while [[ $# -gt 0 ]]; do
         --list)
             LIST_ONLY=true
             shift
-            ;;
-        --limit)
-            LIMIT="$2"
-            shift 2
             ;;
         -h|--help)
             usage
@@ -182,34 +176,79 @@ if [[ -n "$RUN_ID" ]]; then
     exit 0
 fi
 
-# Build gh run list command
-GH_ARGS=(run list --limit "$LIMIT" --json "databaseId,name,status,conclusion,headBranch,event,createdAt,workflowName")
-
+# Runs come from the commit's statusCheckRollup, the checks GitHub shows on it.
+# Listing runs by branch shows something else: runs started by workflow_run
+# (E2E / Tests) and Dependabot are filed under develop's newest commit,
+# whichever PR they test, and a PR branch's own listing has no E2E / Tests run.
+REPO="$(get_repo_info)"
 if [[ -n "$PR" ]]; then
-    # Get the branch name for this PR
     log_info "Looking up PR #$PR..."
-    PR_BRANCH=$(gh pr view "$PR" --json headRefName -q '.headRefName' 2>/dev/null) || {
+    REF=$(gh pr view "$PR" --json headRefOid -q '.headRefOid' 2>/dev/null) || {
         log_error "Could not find PR #$PR"
         exit 1
     }
-    log_info "PR #$PR is on branch: $PR_BRANCH"
-    GH_ARGS+=(--branch "$PR_BRANCH")
     IDENTIFIER="pr-$PR"
-elif [[ -n "$BRANCH" ]]; then
-    GH_ARGS+=(--branch "$BRANCH")
+else
+    REF="$BRANCH"
     IDENTIFIER="branch-${BRANCH//\//-}"
 fi
 
-if [[ -n "$WORKFLOW" ]]; then
-    GH_ARGS+=(--workflow "$WORKFLOW")
-fi
-
-# Fetch runs
-log_info "Fetching workflow runs..."
-RUNS_JSON=$(gh "${GH_ARGS[@]}" 2>/dev/null) || {
-    log_error "Failed to list runs"
+log_info "Reading the checks GitHub shows on $REF..."
+RUNS_JSON=$(gh api graphql -F owner="${REPO%%/*}" -F name="${REPO#*/}" -F ref="$REF" -f query='
+query($owner: String!, $name: String!, $ref: String!) {
+  repository(owner: $owner, name: $name) {
+    object(expression: $ref) {
+      ... on Commit {
+        statusCheckRollup {
+          contexts(first: 100) {
+            nodes {
+              __typename
+              ... on CheckRun { name status conclusion startedAt detailsUrl
+                checkSuite { workflowRun { workflow { name resourcePath } } } }
+              ... on StatusContext { context state createdAt targetUrl }
+            }
+          }
+        }
+      }
+    }
+  }
+}' --jq '
+    def pending: test("^(pending|queued|in_progress|expected|waiting|requested)$");
+    def failed: test("^(failure|error|cancelled|timed_out|action_required|startup_failure)$");
+    [(.data.repository.object.statusCheckRollup.contexts.nodes // [])[]
+     | if .__typename == "CheckRun" then
+         {url: (.detailsUrl // ""),
+          workflowName: (.checkSuite.workflowRun.workflow.name // .name),
+          workflowPath: (.checkSuite.workflowRun.workflow.resourcePath // ""),
+          checkName: .name,
+          result: ((if (.conclusion // "") == "" then .status else .conclusion end) | ascii_downcase),
+          createdAt: (.startedAt // "")}
+       else
+         {url: (.targetUrl // ""), workflowName: .context, workflowPath: "", checkName: .context,
+          result: (.state | ascii_downcase), createdAt: (.createdAt // "")}
+       end
+     | . + {databaseId: ([.url | match("/actions/runs/([0-9]+)").captures[0].string][0])}
+     | select(.databaseId != null)]
+    # A re-run leaves the earlier run of a check on the commit; GitHub shows
+    # only the newest run of each check name.
+    | group_by([.workflowName, .checkName]) | map(max_by(.createdAt))
+    | group_by(.databaseId)
+    | map({databaseId: (.[0].databaseId | tonumber),
+           workflowName: ((map(select(.workflowPath != "")) + .)[0].workflowName),
+           workflowPath: (map(.workflowPath) | max),
+           createdAt: (map(.createdAt) | min),
+           status: (if any(.result | pending) then "in_progress" else "completed" end),
+           conclusion: (if any(.result | failed) then "failure"
+                        elif any(.result | pending) then null
+                        else "success" end)})' 2>/dev/null) || {
+    log_error "Failed to read the checks on $REF"
     exit 1
 }
+
+if [[ -n "$WORKFLOW" ]]; then
+    RUNS_JSON=$(echo "$RUNS_JSON" | jq --arg w "$WORKFLOW" \
+        '[.[] | select(.workflowName == $w or (.workflowPath | endswith("/" + $w)))]')
+fi
 
 # Filter to failed only if requested
 if [[ "$FAILED_ONLY" == true ]]; then
