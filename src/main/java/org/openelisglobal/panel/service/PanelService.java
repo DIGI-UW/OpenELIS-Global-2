@@ -4,7 +4,11 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+// Same as TypeOfSampleService: listing the panels on an order is a catalogue
+// read, not panel administration.
+@PreAuthorize("hasAnyAuthority('PRIV_PANEL_VIEW','PRIV_CATALOGUE_VIEW')")
 public interface PanelService extends BaseObjectService<Panel, String> {
 
     void getData(Panel panel);

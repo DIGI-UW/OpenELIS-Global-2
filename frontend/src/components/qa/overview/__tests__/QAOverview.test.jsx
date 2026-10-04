@@ -231,6 +231,25 @@ beforeEach(() => {
 });
 
 describe("QAOverview", () => {
+  // Results reaches the overview without qa.view.qms. The CAPA and
+  // accreditation tiles sit behind that key server-side, so the fetches are
+  // skipped rather than 403ing. Inversion: the other tests in this file run
+  // with the key (renderQa's default) and assert those tiles present and read.
+  it("skips the CAPA and accreditation reads without qa.view.qms", async () => {
+    await act(async () => {
+      renderQa(<QAOverview />, { entries: ["/qa/overview"], permissions: [] });
+    });
+    await waitFor(() =>
+      expect(document.querySelectorAll(".cds--skeleton__text")).toHaveLength(0),
+    );
+    expect(callsTo("/rest/nce/capa-register")).toHaveLength(0);
+    expect(callsTo("/rest/accreditation/summary")).toHaveLength(0);
+    // The page itself still renders for that session.
+    expect(
+      screen.getByRole("heading", { name: "QA Overview" }),
+    ).toBeInTheDocument();
+  });
+
   test("renders the six sections; remaining placeholders match the light-up plan", async () => {
     await renderPage();
 

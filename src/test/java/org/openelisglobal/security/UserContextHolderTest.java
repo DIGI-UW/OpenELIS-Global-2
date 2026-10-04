@@ -58,6 +58,12 @@ public class UserContextHolderTest extends BaseWebContextSensitiveTest {
         // Resolve admin directly via the same path UserContextHolder uses, so
         // the test asserts on identical lookup semantics rather than chasing
         // a parallel login_user/system_user divergence between CI and local.
+        // getDataForLoginUser is @PreAuthorize'd (PRIV_SYSTEM_USER_VIEW) and the
+        // @Before cleared the context, so authenticate for this prerequisite lookup
+        // before installing the test's own context below.
+        SecurityContext prereqCtx = SecurityContextHolder.createEmptyContext();
+        prereqCtx.setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A", fullTestAuthorities()));
+        SecurityContextHolder.setContext(prereqCtx);
         SystemUser adminSystemUser = systemUserService.getDataForLoginUser("admin");
         assertNotNull("Test prerequisite: admin SystemUser must exist (BaseWebContextSensitiveTest"
                 + ".ensureBaselineSystemUserRows() should have inserted it)", adminSystemUser);

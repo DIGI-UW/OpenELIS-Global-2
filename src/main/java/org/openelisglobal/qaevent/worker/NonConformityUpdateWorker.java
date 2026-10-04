@@ -26,6 +26,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.formfields.FormFields;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.QAService;
 import org.openelisglobal.common.services.QAService.QAObservationType;
@@ -82,6 +83,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.validation.Errors;
 
 @Service
+@CrossDomainService(callers = "NCE form worker; persists through gated NCE services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 public class NonConformityUpdateWorker implements INonConformityUpdateWorker {
 

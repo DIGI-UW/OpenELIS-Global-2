@@ -15,6 +15,7 @@ import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.qc.dto.AnalyteDetail;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
@@ -74,7 +75,9 @@ public class QCDashboardServiceTest extends BaseWebContextSensitiveTest {
     public void restoreTestSectionNames() {
         // The fixture changes the name cache as well as database rows. Refresh
         // only after rollback so the next test sees names from the restored data.
-        testSectionService.refreshNames();
+        // @AfterTransaction runs after @After has cleared the test principal, so
+        // the gated refresh needs the system actor.
+        SystemContext.runAsSystem(testSectionService::refreshNames);
     }
 
     /**

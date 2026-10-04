@@ -6,6 +6,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
 import org.openelisglobal.esig.valueholder.EsigFirstUseCertification;
 import org.openelisglobal.esig.valueholder.SignatureMeaning;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for electronic signatures per 21 CFR Part 11.
@@ -41,6 +42,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @throws IllegalArgumentException if user not certified or credentials invalid
      * @throws IllegalStateException    if e-signatures are disabled
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     ElectronicSignature executeSignature(String username, String password, SignatureMeaning meaning, String recordType,
             Long recordId, String rejectionReason, String clientIp, String userAgent);
 
@@ -55,6 +57,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param recordId   ID of the record
      * @return list of signatures ordered chronologically
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     List<ElectronicSignature> getSignaturesForRecord(String recordType, Long recordId);
 
     /**
@@ -63,6 +66,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param userId user ID
      * @return list of signatures ordered by most recent first
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     List<ElectronicSignature> getSignaturesByUser(Long userId);
 
     /**
@@ -71,6 +75,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param meaning signature meaning to filter by
      * @return list of signatures ordered by most recent first
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     List<ElectronicSignature> getSignaturesByMeaning(SignatureMeaning meaning);
 
     /**
@@ -124,6 +129,14 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param username username
      * @return true if certified
      */
+    /**
+     * Whether the named user holds an e-signature certificate. Every results and
+     * validation save asks this about the CALLER before deciding whether to prompt
+     * for a signature, so it is gated like a results read, not like signing: on
+     * esig:use alone the Results role's save aborted on a 403 before it was ever
+     * sent.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_ESIG_USE','PRIV_RESULT_ENTER','PRIV_RESULT_VALIDATE')")
     boolean isUserCertified(String username);
 
     /**
@@ -137,6 +150,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @return the created certification record
      * @throws IllegalArgumentException if credentials invalid or already certified
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     EsigFirstUseCertification certifyUser(String username, String password, String certificationText, String clientIp,
             String userAgent);
 
@@ -144,15 +158,26 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * Revoke a user's certification (admin action). User will need to re-certify
      * before signing.
      *
+     * <p>
+     * Gated on user administration, NOT on PRIV_ESIG_USE: esig:use is held by every
+     * role that signs (Results, Validation, Pathologist, Cytopathologist), so
+     * gating the revoke on it would let any signer strip another signer's
+     * certification. PRIV_SYSTEM_USER_MANAGE is granted to no role, which leaves it
+     * to admin - the same reach as the user administration screens it belongs with.
+     *
      * @param username username whose certification to revoke
      */
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
     void revokeCertification(String username);
 
     /**
-     * Get all certifications (for admin view).
+     * Get all certifications (for admin view). Administration of who may sign, so
+     * it sits with {@link #revokeCertification(String)} on user administration
+     * rather than on the signing privilege itself.
      *
      * @return list of all certifications
      */
+    @PreAuthorize("hasAuthority('PRIV_SYSTEM_USER_MANAGE')")
     List<EsigFirstUseCertification> getAllCertifications();
 
     // ========================
@@ -165,6 +190,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param username username
      * @return true if session is active (user has signed at least once)
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     boolean hasActiveSigningSession(String username);
 
     /**
@@ -173,6 +199,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @param username username
      * @return count of signatures in session, or 0 if no active session
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     int getSessionSigningCount(String username);
 
     /**
@@ -180,6 +207,7 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      *
      * @param username username
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     void clearSigningSession(String username);
 
     // ========================
@@ -191,5 +219,11 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      *
      * @return true if e-signatures are enabled
      */
+    /**
+     * Whether the e-signature feature is switched on, a configuration flag every
+     * results and validation save reads first. Gated like a results read; on
+     * esig:use alone the Results role could not save a result at all.
+     */
+    @PreAuthorize("hasAnyAuthority('PRIV_ESIG_USE','PRIV_RESULT_ENTER','PRIV_RESULT_VALIDATE')")
     boolean isEsigEnabled();
 }

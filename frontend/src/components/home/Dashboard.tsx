@@ -64,6 +64,7 @@ import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
   hasRole,
+  Roles,
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -254,6 +255,20 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     );
   };
 
+  const loadCount = (data) => {
+    if (componentMounted.current) {
+      // Keep the initialised shape when the request fails or is denied. The
+      // helper invokes this callback with undefined on a non-2xx response, and
+      // overwriting state with it crashed the whole landing page on the first
+      // tile read (`counts.ordersInProgress` of undefined) rather than showing
+      // an empty dashboard. A role without access to a metric should see a
+      // blank tile, not a white screen.
+      if (data) {
+        setCounts((current) => ({ ...current, ...data }));
+      }
+      setLoading(false);
+    }
+  };
   const arrows = serverPageArrowsProps({
     paging,
     onPageRequest: loadResultsPage,
@@ -393,7 +408,7 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const handleMaximizeClick = (tile) => {
     if (
       testSections?.length > 0 ||
-      hasRole(userSessionDetails, "Global Administrator")
+      hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)
     ) {
       setSelectedTile(tile);
     } else {

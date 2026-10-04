@@ -27,10 +27,10 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.CsvParsingUtil;
 import org.openelisglobal.configuration.service.ConfigurationImportRunService;
-import org.openelisglobal.configuration.service.ConfigurationInitializationService;
 import org.openelisglobal.configuration.service.ConfigurationReloadFileResult;
 import org.openelisglobal.configuration.service.ConfigurationReloadOptions;
 import org.openelisglobal.configuration.service.ConfigurationReloadResult;
+import org.openelisglobal.configuration.service.ConfigurationReloadService;
 import org.openelisglobal.configuration.service.CsvLoadSummary;
 import org.openelisglobal.configuration.service.CsvRow;
 import org.openelisglobal.configuration.service.ImportRunContext;
@@ -111,7 +111,14 @@ public class LocationsImportServiceImpl implements LocationsImportService {
     private ConfigurationImportRunService importRunService;
     @Autowired
     @Lazy
-    private ConfigurationInitializationService initializationService;
+    // Injected by INTERFACE, not by the concrete class develop wrote here. On
+    // this branch ConfigurationInitializationService implements
+    // ConfigurationReloadService (so reload() can be gated on
+    // PRIV_SYSTEM_CONFIGURE), which makes Spring wrap it in a JDK interface
+    // proxy; a field typed as the concrete class then fails with "expected to
+    // be of type ... but was actually of type jdk.proxy2.$Proxy", and every
+    // import silently applied nothing (counts all 0).
+    private ConfigurationReloadService initializationService;
     @Autowired
     @Lazy
     private OrganizationsConfigurationHandler organizationsHandler;

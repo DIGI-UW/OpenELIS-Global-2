@@ -17,6 +17,7 @@ import {
   Settings,
   TableOfContents,
   User,
+  UserRole,
   WarningAlt,
 } from "@carbon/icons-react";
 
@@ -25,6 +26,16 @@ const ADMIN_DASHBOARD_LINKS = [
     messageId: "unifiedSystemUser.browser.title",
     path: "userManagement",
     icon: User,
+  },
+  {
+    messageId: "role.management.title",
+    path: "roleManagement",
+    icon: UserRole,
+  },
+  {
+    messageId: "organization.main.title",
+    path: "organizationManagement",
+    icon: ContainerSoftware,
   },
   {
     messageId: "sidenav.label.admin.locations",

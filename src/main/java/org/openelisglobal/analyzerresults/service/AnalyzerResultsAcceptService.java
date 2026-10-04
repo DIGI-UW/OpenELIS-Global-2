@@ -3,6 +3,7 @@ package org.openelisglobal.analyzerresults.service;
 import java.util.List;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
 import org.openelisglobal.result.action.util.ResultEntryAlert;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Orchestrates the "accept analyzer results" workflow: extracts actionable
@@ -23,11 +24,13 @@ public interface AnalyzerResultsAcceptService {
      *                   (accepted, rejected, deleted, and untouched)
      * @param sysUserId  the authenticated user's system id
      */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_ENTER','PRIV_RESULT_MODIFY')")
     void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId);
 
     /**
      * The same, recording in the same transaction each acknowledgement the reviewer
      * gave for a value they retyped (OGC-1417).
      */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_ENTER','PRIV_RESULT_MODIFY')")
     void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts);
 }

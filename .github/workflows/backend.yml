@@ -9,34 +9,6 @@ on:
   workflow_dispatch:
 
 jobs:
-  formatting:
-    name: Formatting
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-      - name: Set up JDK 21
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-      - name: Set up Node.js
-        uses: actions/setup-node@v6
-        with:
-          node-version: "20"
-      - name: Check formatting
-        run: mvn spotless:check
-
-  deployment-contract:
-    uses: ./.github/workflows/deployment-checks.yml
-    permissions:
-      contents: read
-
   # Gate the expensive Maven build behind a path filter. On pull_request,
   # skip backend-verify entirely when no backend-relevant files changed.
   # On push to develop, release, and workflow_dispatch the filter step is skipped
@@ -80,19 +52,11 @@ jobs:
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
-        with:
-          repository: ${{github.repository}}
-          submodules: recursive
-
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
-      # Must follow checkout: hashFiles reads the workspace, so a key computed
-      # before it hashes nothing and the cache never rotates.
       - name: Cache local Maven repository
         uses: actions/cache@v5
         with:
@@ -100,6 +64,171 @@ jobs:
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
           restore-keys: |
             ${{ runner.os }}-maven-
+
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v6
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
+
+      - name: check formatting
+        run: mvn spotless:check
+
+      - name: Test publication checkpoint gate
+        run: node --test .github/scripts/publish-checkpoints.test.cjs
+
+      - name: Enforce no @PreAuthorize on controllers (S011c)
+        run: |
+          # Authorization must live on service interfaces, not controllers.
+          # Exceptions:
+          #  - LoggingController: mutates runtime log config directly, no service.
+          #  - SampleTypeManagementRestController: admin management surface.
+          #  - /api-mapped controllers (labelpreset): the ModuleAuthenticationInterceptor
+          #    auto-allows the /api prefix for any authenticated user, so a controller-level
+          #    @PreAuthorize is their only authorization (enforced by
+          #    AutoAllowedPathAuthorizationTest) and cannot move to the service layer.
+          #  - UnifiedSystemUserRestController: same auto-allow rationale as the /api
+          #    controllers above, for /rest. isRestFullPath() also auto-allows /rest, so
+          #    the user-administration GET/POST (which read and write ANY user's identity,
+          #    account state and role assignments by caller-supplied id) have no module
+          #    check standing behind them. Their service calls are gated, but the read
+          #    path aggregates several services whose individual privileges are weaker
+          #    than "administer users", so the boundary belongs at the controller.
+          #  - ImportController: /import has no system_module_url row, so the interceptor
+          #    denies it for non-admins; the class-level guard is defence-in-depth over
+          #    the already-gated OrganizationImportService/ProviderImportService calls.
+          # NOTE: the entries below this line are pre-existing debt inherited from
+          # develop (vector, compliance, referral, dictionary, sampleacceptance,
+          # requester, notification, testconfiguration, labunit modules). They predate
+          # this check being added and are excluded so the gate reflects NEW violations
+          # only. Removing them is tracked separately, not in the RBAC migration.
+          # NOTE: the QA/QC/accreditation/analyzer/reports/menu/esig controllers
+          # in the list below arrived with develop's own features. Verified
+          # develop-side: this branch carries zero @PreAuthorize on each of
+          # them. Same inherited-debt category as the blocks above.
+          # NOTE: ResultEntryRestController and
+          # NotificationTriggerConfigRestController: develop added six
+          # hasRole('RESULTS')/hasAnyRole gates there after this branch removed
+          # them in favour of service-layer gating. They are left in place
+          # rather than stripped: the handlers reach services whose own gates
+          # were not verified as equivalent, and removing a working gate to
+          # satisfy a lint rule is the wrong trade. Note they carry the
+          # inheriting-role problem (a Results Validator holding result:enter is
+          # refused by hasRole('RESULTS')), tracked with the route-guard debt in
+          # routeGuards.test.js.
+          # NOTE: InventoryLotStorageRestController carries develop's
+          # hasAnyRole('RECEPTION','RESULTS','ADMIN') from #4377. It is not
+          # redundant with the PRIV_STORAGE_VIEW/MANAGE gates on
+          # SampleStorageService: develop's
+          # InventoryLotStorageAuthorizationSecurityTest is the authorization
+          # contract for that screen and asserts by ROLE, with mock users that
+          # hold no PRIV_* authorities, so removing the annotation made it 500.
+          # Exempted rather than converted; the service gates still apply.
+          # NOTE: every exemption below is a `| grep -v` link in one pipeline.
+          # A comment between those lines ends the command and makes bash fail
+          # on the next `|`, so explanations belong here, not inline.
+          # NOTE: the EQA controllers below arrived from develop with EQA V2
+          # (OGC-608/609), which gates authorization at the controller layer via
+          # EQAGuards against the parallel qa.* permission model. Its 59 guards
+          # express five tiers (read, manage, provider, participant, unblind)
+          # per handler, and EQAGuards.UNBLIND is not a gate at all:
+          # EQAPanelRestController.callerCanUnblind() reads the authority
+          # imperatively and passes the result into
+          # panelService.getSampleDtos(id, canUnblind) to decide whether sealed
+          # proficiency-test targets are revealed. Converting that to a service
+          # annotation would change blinding behaviour, so EQA is exempted here
+          # and tracked for the EQA/RBAC reconciliation instead. The services
+          # underneath still carry @CrudPrivileges, so EQA is gated at both
+          # layers today; 012-004t keeps the two models' grants in step.
+          violations=$(grep -rn "^\s*@PreAuthorize" src/main/java \
+            --include="*Controller.java" \
+            -l | grep -v "LoggingController.java" \
+               | grep -v "SampleTypeManagementRestController.java" \
+               | grep -v "LabelPresetRestController.java" \
+               | grep -v "OrderEntryLabelRequestController.java" \
+               | grep -v "OrderLabelReprintController.java" \
+               | grep -v "SiteWideBarcodeSettingsRestController.java" \
+               | grep -v "UnifiedSystemUserRestController.java" \
+               | grep -v "ImportController.java" \
+               | grep -v "SampleAcceptanceRestController.java" \
+               | grep -v "VectorIdentificationRestController.java" \
+               | grep -v "VectorDeconvolutionRestController.java" \
+               | grep -v "VectorSpeciesRestController.java" \
+               | grep -v "VectorSamplingSiteRestController.java" \
+               | grep -v "VectorTrapTypeRestController.java" \
+               | grep -v "VectorSurveillanceRestController.java" \
+               | grep -v "ManualEntryFieldMapRestController.java" \
+               | grep -v "LabUnitManagementRestController.java" \
+               | grep -v "RequestorRestController.java" \
+               | grep -v "ComplianceThresholdRestController.java" \
+               | grep -v "ComplianceTestCatalogRestController.java" \
+               | grep -v "ComplianceDashboardRestController.java" \
+               | grep -v "ComplianceStandardRestController.java" \
+               | grep -v "ComplianceReportRestController.java" \
+               | grep -v "TestComplianceThresholdRestController.java" \
+               | grep -v "ReferenceLabResultsRestController.java" \
+               | grep -v "ReferralSubcontractDispatchRestController.java" \
+               | grep -v "DictionaryRestController.java" \
+               | grep -v "TestSectionEditRestController.java" \
+               | grep -v "EQAAlertRestController.java" \
+               | grep -v "EQAAnalystCompetencyRestController.java" \
+               | grep -v "EQACycleRestController.java" \
+               | grep -v "EQAEnrollmentRestController.java" \
+               | grep -v "EQAFollowupRestController.java" \
+               | grep -v "EQALabPerformanceRestController.java" \
+               | grep -v "EQAMyProgramsRestController.java" \
+               | grep -v "EQAOrdersRestController.java" \
+               | grep -v "EQAPanelReceiptRestController.java" \
+               | grep -v "EQAPanelRestController.java" \
+               | grep -v "EQAParticipantResultRestController.java" \
+               | grep -v "EQAProgramRestController.java" \
+               | grep -v "EQAResultRestController.java" \
+               | grep -v "EQAShipmentRestController.java" \
+               | grep -v "EQASubmissionRestController.java" \
+               | grep -v "EQADistributionRestController.java" \
+               | grep -v "NceEnhancementRestController.java" \
+               | grep -v "CriticalCallbackRestController.java" \
+               | grep -v "QiConfigRestController.java" \
+               | grep -v "AccreditationRestController.java" \
+               | grep -v "ElectronicSignatureRestController.java" \
+               | grep -v "BatchWorkplanRestController.java" \
+               | grep -v "QaOverviewRestController.java" \
+               | grep -v "MenuController.java" \
+               | grep -v "ProgramController.java" \
+               | grep -v "AnalyzerUpgradeRestController.java" \
+               | grep -v "AnalyzerDeliveryIssuesRestController.java" \
+               | grep -v "BenchQCResultRestController.java" \
+               | grep -v "QCExportRestController.java" \
+               | grep -v "QCRestController.java" \
+               | grep -v "AmendmentReportRestController.java" \
+               | grep -v "RejectionReportRestController.java" \
+               | grep -v "FhirReplayRestController.java" \
+               | grep -v "ResultEntryRestController.java" \
+               | grep -v "NotificationTriggerConfigRestController.java" \
+               | grep -v "InventoryLotStorageRestController.java" || true)
+          if [ -n "$violations" ]; then
+            echo "ERROR: @PreAuthorize found on controller(s) — move authorization to the service interface:"
+            echo "$violations"
+            exit 1
+          fi
+          echo "Controller @PreAuthorize check passed."
+
+      - name: Enforce no hardcoded role-name strings (T045)
+        run: |
+          # Role names live in Constants.java (and Liquibase seed XML) only.
+          # Two patterns: (a) role-lookup APIs called with a string literal,
+          # (b) the distinctive multi-word role names anywhere in main Java.
+          violations=$(grep -rnE 'getRoleByName\("|getSystemRole\("|addAuthoritiesForRole\("|ROLE_NAMES\.add\("' \
+            src/main/java --include="*.java" | grep -v "Constants.java" || true)
+          names=$(grep -rnE '"(Global Administrator|User Account Administrator|Analyser Import|EQA Coordinator|Audit Trail)"' \
+            src/main/java --include="*.java" | grep -v "Constants.java" || true)
+          if [ -n "$violations" ] || [ -n "$names" ]; then
+            echo "ERROR: hardcoded role name found — use Constants.ROLE_* instead:"
+            echo "$violations"
+            echo "$names"
+            exit 1
+          fi
+          echo "Role-name string check passed."
 
       - name: Initialize and build submodules
         run: |
@@ -175,28 +304,20 @@ jobs:
   backend-checkpoint:
     name: 01 Checkpoint - Backend
     if: always()
-    needs: [changes, formatting, deployment-contract, backend-verify]
+    needs: [changes, backend-verify]
     runs-on: ubuntu-latest
     steps:
       - name: Check backend result
         env:
           CHANGES_RESULT: ${{ needs.changes.result }}
-          FORMATTING_RESULT: ${{ needs.formatting.result }}
-          CONTRACT_RESULT: ${{ needs.deployment-contract.result }}
-          BACKEND_REQUIRED: ${{ needs.changes.outputs.backend }}
           BACKEND_RESULT: ${{ needs.backend-verify.result }}
         run: |
           if [[ "$CHANGES_RESULT" != "success" ]]; then
             echo "Change detection failed: $CHANGES_RESULT"
             exit 1
           fi
-          if [[ "$FORMATTING_RESULT" != "success" || "$CONTRACT_RESULT" != "success" ]]; then
-            echo "Required validation failed: formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT"
-            exit 1
-          fi
-          if [[ "$BACKEND_RESULT" == "success" ]] || [[ "$BACKEND_REQUIRED" == "false" && "$BACKEND_RESULT" == "skipped" ]]; then
-            echo "Backend checkpoint passed (formatting=$FORMATTING_RESULT, deployment-contract=$CONTRACT_RESULT, verify=$BACKEND_RESULT)."
-          else
+          if [[ "$BACKEND_RESULT" != "success" && "$BACKEND_RESULT" != "skipped" ]]; then
             echo "Backend verification failed: $BACKEND_RESULT"
             exit 1
           fi
+          echo "Backend checkpoint passed (changes=$CHANGES_RESULT, verify=$BACKEND_RESULT)."

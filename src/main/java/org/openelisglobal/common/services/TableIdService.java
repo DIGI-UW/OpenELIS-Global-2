@@ -19,6 +19,7 @@ package org.openelisglobal.common.services;
 import jakarta.annotation.PostConstruct;
 import org.openelisglobal.address.service.AddressPartService;
 import org.openelisglobal.address.valueholder.AddressPart;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
 import org.openelisglobal.organization.service.OrganizationTypeService;
@@ -32,6 +33,7 @@ import org.springframework.stereotype.Service;
 
 /** */
 @Service
+@CrossDomainService(callers = "Static table-id lookup helper. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class TableIdService {
 
     private static TableIdService INSTANCE;

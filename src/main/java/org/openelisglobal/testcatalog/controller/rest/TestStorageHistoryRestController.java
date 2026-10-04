@@ -10,7 +10,6 @@ import org.openelisglobal.testsamplehandling.valueholder.TestSampleHandling;
 import org.openelisglobal.testsamplehandling.valueholder.TestSampleHandlingHistory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -24,7 +23,6 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestController
 @RequestMapping("/rest/test-catalog/{testId}/storage/history")
-@PreAuthorize("hasRole('ADMIN')")
 public class TestStorageHistoryRestController {
 
     private final TestSampleHandlingService handlingService;

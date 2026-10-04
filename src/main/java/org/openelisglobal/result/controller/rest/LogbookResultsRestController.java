@@ -76,6 +76,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.Errors;
@@ -570,6 +571,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                         notification.setCreatedDate(OffsetDateTime.now());
                         notification.setReadAt(null);
                         notificationDAO.save(notification);
+                    } catch (AccessDeniedException denied) {
+                        // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                        throw denied;
                     } catch (Exception e) {
                     }
                 }
@@ -600,6 +604,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 alertable.forEach(rs -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(rs.result, currentUser);
+                    } catch (AccessDeniedException denied) {
+                        // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                        throw denied;
                     } catch (RuntimeException ex) {
                         LogEvent.logError(ex);
                     }
@@ -607,6 +614,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 actionDataSet.getCalculatedResults().forEach(calculated -> {
                     try {
                         testAlertEvaluationService.evaluateAndDispatch(calculated, currentUser);
+                    } catch (AccessDeniedException denied) {
+                        // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                        throw denied;
                     } catch (RuntimeException ex) {
                         LogEvent.logError(ex);
                     }
@@ -775,6 +785,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             }
             return sampleEQAService.findPerAnalystSchemeId(Long.valueOf(analysis.getSampleItem().getSample().getId()))
                     .isPresent();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (RuntimeException e) {
             LogEvent.logError("checking EQA per-analyst capture for analysis " + analysisId, e);
             return false;
@@ -798,6 +811,9 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
             try {
                 cycleSubmissionService.assignAnalyst(analysisService.get(item.getAnalysisId()),
                         Long.valueOf(item.getEqaAnalystId()), sysUserId);
+            } catch (AccessDeniedException denied) {
+                // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                throw denied;
             } catch (RuntimeException e) {
                 LogEvent.logError("recording the EQA analyst for analysis " + item.getAnalysisId(), e);
             }

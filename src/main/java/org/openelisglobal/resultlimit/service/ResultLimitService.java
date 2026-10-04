@@ -11,15 +11,20 @@ import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
 import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.valueholder.Test;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ResultLimitService extends BaseObjectService<ResultLimit, String> {
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<ResultLimit> getAllResultLimits() throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<ResultLimit> getPageOfResultLimits(int startingRecNo) throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     void getData(ResultLimit resultLimit) throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ResultLimit> getAllResultLimitsForTest(String testId) throws LIMSRuntimeException;
 
     /**
@@ -27,9 +32,11 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * {@link #saveRangesForTest} manages. Dictionary (select-list) limits are left
      * out, as that save never changes them.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ResultLimit> getNumericRangesForTest(String testId);
 
     /** OGC-949 M7: reference ranges scoped to a result component. */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ResultLimit> getResultLimitsByComponentId(String componentId);
 
     /**
@@ -39,22 +46,31 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * rows absent from {@code desired} are deleted. Runs in one transaction so a
      * partial failure rolls the whole set back.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitById(String resultLimitId) throws LIMSRuntimeException;
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     String getDisplayAgeRange(ResultLimit resultLimit, String separator);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     String getDisplayValidRange(ResultLimit resultLimit, String significantDigits, String separator);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     String getDisplayReportingRange(ResultLimit resultLimit, String significantDigits, String separator);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     String getDisplayCriticalRange(ResultLimit resultLimit, String significantDigits, String separator);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     String getDisplayReferenceRange(ResultLimit resultLimit, String significantDigits, String separator);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     String getDisplayNormalRange(double low, double high, String significantDigits, String separator);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient);
 
     /**
@@ -62,8 +78,10 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * {@code sampleTypeId} win over shared (null-scope) rows; null sample type
      * evaluates against the shared set.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForTestAndPatient(Test test, Patient patient);
 
     /**
@@ -72,21 +90,29 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * but scoped to the component's own limits. Returns null when the component has
      * no matching range.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient);
 
     /** Specimen-aware variant of the component selection (OGC-1145 Phase 2). */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForComponentAndPatient(String componentId, Patient patient, String sampleTypeId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<IdValuePair> getPredefinedAgeRanges();
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ResultLimit> getResultLimits(String testId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ResultLimit> getResultLimits(Test test);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForAnalysis(Analysis analysis);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<ComplianceEvaluation> getComplianceResultsForAnalysis(Analysis analysis, String resultValue);
 
     /**
@@ -99,6 +125,7 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * This is the single selection behind both Results Entry and Validation, so the
      * two screens cannot show different ranges for the same result.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient);
 
     /**
@@ -108,6 +135,7 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * {@code componentId} wins when set; otherwise the component is derived from
      * the result.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient, String componentId);
 
     /**
@@ -115,6 +143,7 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * also says why no range was applied when the patient's sex or birth date is
      * missing and the test has a range that depends on it.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ResultLimitSelection selectResultLimitForResult(Analysis analysis, Result result, Patient patient,
             String componentId);
 
@@ -126,6 +155,13 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * The ordered tests whose reference range will not be applied for the patient
      * because the patient's sex or birth date is missing, by display name and
      * without repeats; empty when every range applies.
+     *
+     * <p>
+     * Also accepts PRIV_ORDER_VIEW: this reads reference-range CONFIGURATION and
+     * test names, never a patient's result values, and the order-save path calls it
+     * to build the warning shown after the save. On PRIV_RESULT_VIEW alone it
+     * denied Reception after the order had already committed.
      */
+    @PreAuthorize("hasAnyAuthority('PRIV_RESULT_VIEW','PRIV_ORDER_VIEW')")
     List<String> getTestNamesWithRangeNotApplied(List<OrderedTest> orderedTests, Patient patient);
 }

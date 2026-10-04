@@ -44,6 +44,9 @@ public class VectorSpeciesRestController {
     @GetMapping(value = "/lifecycle-stages", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<Map<String, String>>> getLifecycleStages(@RequestParam String sampleTypeId) {
         try {
+            // Vector order entry's species and lifecycle pickers. sample_type:view is
+            // admin-scoped and the broad catch turns a denial into a 500, leaving the
+            // picker empty with no explanation. Reads only; create/update stay gated.
             List<Dictionary> stages = vectorSpeciesService.getLifecycleStagesBySampleTypeId(sampleTypeId);
             List<Map<String, String>> result = stages.stream().map(d -> {
                 String code = d.getLocalAbbreviation();

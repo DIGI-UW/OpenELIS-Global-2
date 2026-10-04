@@ -1,5 +1,7 @@
 package org.openelisglobal.sampleacceptance.service;
 
+import org.springframework.security.access.prepost.PreAuthorize;
+
 /**
  * Resample action (S-09 / OGC-580, FR-10), per failed specimen. In one atomic
  * transaction: record an NCE against the specimen, reject just that
@@ -25,6 +27,7 @@ public interface ResampleService {
      * @param userId       the acting system user id
      * @return identifiers of the parent order, the new draft order, and the NCE
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     ResampleResult resample(String sampleItemId, String reason, Integer userId);
 
     /**
@@ -35,6 +38,7 @@ public interface ResampleService {
      * the (deferred) rejection notification; it is not persisted on the item (there
      * is no free-text reject-reason column).
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     void reject(String sampleItemId, String reason, Integer userId);
 
     /**
@@ -42,5 +46,6 @@ public interface ResampleService {
      * to every live member {@code sample_item} of the pool, all-or-nothing. No
      * replacement order. Voided/already-rejected members are skipped.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     void rejectPool(Integer vectorPoolId, String reason, Integer userId);
 }

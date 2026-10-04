@@ -44,11 +44,14 @@ import org.openelisglobal.reports.service.WHONetReportServiceImpl;
 import org.openelisglobal.result.controller.AnalyzerResultsController;
 import org.openelisglobal.result.controller.rest.AccessionResultsRestController;
 import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.certs.service.TruststoreService;
+import org.openelisglobal.systemuser.controller.rest.UnifiedSystemUserRestController;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
+import org.springframework.beans.factory.config.AutowireCapableBeanFactory;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.ComponentScan;
@@ -72,6 +75,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @Import(org.openelisglobal.common.rest.provider.SampleEntryTestsForTypeProviderRestController.class)
 @ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
+        "org.openelisglobal.common.security", "org.openelisglobal.security.login", "org.openelisglobal.privilege",
         "org.openelisglobal.samplebatchentry.service", "org.openelisglobal.patient",
         "org.openelisglobal.patientidentity", "org.openelisglobal.gender", "org.openelisglobal.patientidentitytype",
         "org.openelisglobal.patienttype", "org.openelisglobal.address", "org.openelisglobal.dictionary",
@@ -130,7 +134,12 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
         "org.openelisglobal.questionnaire", "org.openelisglobal.qa", "org.openelisglobal.microbiology",
         "org.openelisglobal.batchworkplan" }, excludeFilters = {
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.systemuser.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.audittrail.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.workplan.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.common.rest.DisplayListController"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.login.BasicAuthFilter"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.[BS].*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.vector.controller.*"),
@@ -152,6 +161,10 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.DaemonUserConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.login.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org\\.openelisglobal\\..*Test\\$TestConfig"),
+                // EndpointAccessControlTest declares an inner @RestController stub under
+                // org.openelisglobal.security; it registers that stub itself, so keep the
+                // package scan from double-registering it (ambiguous /rest/stub mapping).
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.security.EndpointAccessControlTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qc.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qa.controller.*"),
@@ -197,7 +210,7 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public WHONetReportService whonetReportService() {
-        return mock(WHONetReportService.class);
+        return GatedServiceMocks.stubbableMock(WHONetReportService.class);
     }
 
     @Bean
@@ -219,7 +232,7 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     @Profile("test")
     public TruststoreService truststoreService() {
-        return mock(TruststoreService.class);
+        return GatedServiceMocks.stubbableMock(TruststoreService.class);
     }
 
     @Bean()
@@ -254,13 +267,13 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     @Profile("test")
     public TestNotificationConfigService testNotificationConfigService() {
-        return mock(TestNotificationConfigService.class);
+        return GatedServiceMocks.stubbableMock(TestNotificationConfigService.class);
     }
 
     @Bean()
     @Profile("test")
     public TestNotificationService testNotificationService() {
-        return mock(TestNotificationService.class);
+        return GatedServiceMocks.stubbableMock(TestNotificationService.class);
     }
 
     @Bean()
@@ -272,7 +285,7 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean()
     @Profile("test")
     public AnalysisNotificationConfigService analysisNotificationConfigService() {
-        return mock(AnalysisNotificationConfigService.class);
+        return GatedServiceMocks.stubbableMock(AnalysisNotificationConfigService.class);
     }
 
     @Bean()
@@ -475,6 +488,13 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Bean
     public org.openelisglobal.login.controller.ChangePasswordLoginController changePasswordLoginController() {
         return new org.openelisglobal.login.controller.ChangePasswordLoginController();
+    }
+
+    @Bean
+    public UnifiedSystemUserRestController unifiedSystemUserRestController(AutowireCapableBeanFactory beanFactory) {
+        UnifiedSystemUserRestController controller = new UnifiedSystemUserRestController();
+        beanFactory.autowireBean(controller);
+        return controller;
     }
 
     @Bean

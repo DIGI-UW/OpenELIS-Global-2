@@ -27,6 +27,7 @@ import org.openelisglobal.coldstorage.service.FreezerService;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -66,51 +67,67 @@ public class AlertRestControllerSecurityTest extends SecuritySliceMockMvcTest {
 
     @Test
     public void getAlerts_receptionRole_returns200() throws Exception {
-        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer").with(user("r").roles("RECEPTION")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer")
+                .with(user("r").authorities(SeededRoleAuthorities.role("RECEPTION")))).andExpect(status().isOk());
     }
 
     @Test
     public void getAlerts_resultsRole_returns200() throws Exception {
         mockMvc.perform(get("/rest/alerts").param("entityType", "ANALYSIS").param("entityId", "5")
-                .with(user("res").roles("RESULTS"))).andExpect(status().isOk());
+                .with(user("res").authorities(SeededRoleAuthorities.role("RESULTS")))).andExpect(status().isOk());
     }
 
     @Test
     public void getAlerts_validationRole_returns200() throws Exception {
         mockMvc.perform(get("/rest/alerts").param("entityType", "ANALYSIS").param("entityId", "5")
-                .with(user("val").roles("VALIDATION"))).andExpect(status().isOk());
+                .with(user("val").authorities(SeededRoleAuthorities.role("VALIDATION")))).andExpect(status().isOk());
     }
 
     @Test
     public void getAlerts_adminRole_returns200() throws Exception {
-        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer").with(user("a").roles("ADMIN")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer")
+                .with(user("a").authorities(SeededRoleAuthorities.role("ADMIN")))).andExpect(status().isOk());
     }
 
+    /**
+     * The inversion for the 200 cases above: a role without alert:view is refused,
+     * so those assertions are not passing because the gate is absent.
+     *
+     * <p>
+     * This used REPORTS until 012-004o granted that role alert:view for the freezer
+     * audit report, at which point the test failed with 200 - correctly, since
+     * Reports is no longer unrelated to alerts. User Account Administrator is
+     * chosen instead because it administers accounts and has no clinical or
+     * reporting reason to read an alert; if it is ever granted alert:view, pick
+     * another role from the seed rather than deleting this test.
+     */
     @Test
     public void getAlerts_unrelatedRole_returns403() throws Exception {
-        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer").with(user("rep").roles("REPORTS")))
+        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer")
+                .with(user("uaa").authorities(SeededRoleAuthorities.role("USER_ACCOUNT_ADMIN"))))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     public void getAlerts_byEntityTypeAlone_returnsOnlyThatEntityTypesAlerts() throws Exception {
-        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer").with(user("a").roles("ADMIN")))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.length()").value(1))
+        mockMvc.perform(get("/rest/alerts").param("entityType", "Freezer")
+                .with(user("a").authorities(SeededRoleAuthorities.role("ADMIN")))).andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].alertType").value("FREEZER_TEMPERATURE"));
     }
 
     @Test
     public void acknowledgeAlert_resultsRole_returns403() throws Exception {
-        mockMvc.perform(put("/rest/alerts/" + FREEZER_ALERT_ID + "/acknowledge").with(user("res").roles("RESULTS"))
+        mockMvc.perform(put("/rest/alerts/" + FREEZER_ALERT_ID + "/acknowledge")
+                .with(user("res").authorities(SeededRoleAuthorities.role("RESULTS"))).session(sessionForSysUser(42))
                 .contentType(MediaType.APPLICATION_JSON).content("{\"notes\":\"n\"}"))
                 .andExpect(status().isForbidden());
     }
 
     @Test
     public void deleteAlert_receptionRole_returns403() throws Exception {
-        mockMvc.perform(delete("/rest/alerts/" + FREEZER_ALERT_ID).with(user("r").roles("RECEPTION")))
+        mockMvc.perform(delete("/rest/alerts/" + FREEZER_ALERT_ID)
+                .with(user("r").authorities(SeededRoleAuthorities.role("RECEPTION"))).session(sessionForSysUser(42)))
                 .andExpect(status().isForbidden());
     }
 
@@ -119,9 +136,8 @@ public class AlertRestControllerSecurityTest extends SecuritySliceMockMvcTest {
      */
     @Test
     public void deleteAlert_adminRole_onFreezerAlert_returns204() throws Exception {
-        mockMvc.perform(
-                delete("/rest/alerts/" + FREEZER_ALERT_ID).session(sessionForSysUser(1)).with(user("a").roles("ADMIN")))
-                .andExpect(status().isNoContent());
+        mockMvc.perform(delete("/rest/alerts/" + FREEZER_ALERT_ID).session(sessionForSysUser(1))
+                .with(user("a").authorities(SeededRoleAuthorities.role("ADMIN")))).andExpect(status().isNoContent());
     }
 
     /**
@@ -131,7 +147,7 @@ public class AlertRestControllerSecurityTest extends SecuritySliceMockMvcTest {
     @Test
     public void deleteAlert_adminRole_onNonFreezerAlert_returns403() throws Exception {
         mockMvc.perform(delete("/rest/alerts/" + ANALYSIS_ALERT_ID).session(sessionForSysUser(1))
-                .with(user("a").roles("ADMIN"))).andExpect(status().isForbidden());
+                .with(user("a").authorities(SeededRoleAuthorities.role("ADMIN")))).andExpect(status().isForbidden());
     }
 
     /**
@@ -182,14 +198,14 @@ public class AlertRestControllerSecurityTest extends SecuritySliceMockMvcTest {
             when(service.getAlertsByEntity(eq("ANALYSIS"), anyLong())).thenReturn(Collections.emptyList());
             when(service.get(FREEZER_ALERT_ID)).thenReturn(freezerAlert);
             when(service.get(ANALYSIS_ALERT_ID)).thenReturn(analysisAlert);
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean
         FreezerService freezerService() {
             FreezerService service = mock(FreezerService.class);
             when(service.findById(any())).thenReturn(Optional.empty());
-            return service;
+            return asGatedBean(service);
         }
 
         @Bean

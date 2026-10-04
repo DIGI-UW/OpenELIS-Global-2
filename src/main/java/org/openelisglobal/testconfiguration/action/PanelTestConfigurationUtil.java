@@ -19,6 +19,7 @@ package org.openelisglobal.testconfiguration.action;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
@@ -29,6 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Builds sample-type/panel maps for the catalog screens. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class PanelTestConfigurationUtil {
 
     @Autowired

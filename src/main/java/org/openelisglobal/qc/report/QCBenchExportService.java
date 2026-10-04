@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 import java.util.List;
 import java.util.function.Supplier;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCControlLot;
@@ -27,6 +28,14 @@ import org.springframework.transaction.annotation.Transactional;
  * transaction. The sibling chart export does the same in
  * {@code QCChartDataService.getExportModel}.
  */
+/**
+ * Exempt from service-layer gating for now, not ungated: reached only from
+ * QCExportRestController, which develop gates at the controller (develop's own
+ * authorization model). Arrived with develop after this branch moved gating to
+ * services; folding it into PRIV_* is part of the EQA/QA reconciliation, see
+ * docs/rbac/eqa-authorization-collision.md.
+ */
+@CrossDomainService(callers = "QCExportRestController")
 @Service
 public class QCBenchExportService {
 

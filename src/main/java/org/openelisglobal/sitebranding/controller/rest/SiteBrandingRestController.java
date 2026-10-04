@@ -22,7 +22,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.MediaTypeFactory;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -82,7 +81,6 @@ public class SiteBrandingRestController extends BaseRestController {
      * PUT /rest/site-branding - Update branding configuration
      */
     @PutMapping(value = { "/", "" })
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateBranding(@Valid @RequestBody SiteBrandingForm form, HttpServletRequest request) {
         logger.info("PUT /rest/site-branding/ - Update request received");
         logger.debug(
@@ -208,7 +206,6 @@ public class SiteBrandingRestController extends BaseRestController {
      * POST /rest/site-branding/logo/{type} - Upload logo file Task Reference: T031
      */
     @PostMapping(value = "/logo/{type}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> uploadLogo(@PathVariable String type, @RequestParam("file") MultipartFile file,
             HttpServletRequest request) {
         logger.info("POST /rest/site-branding/logo/{} - Logo upload request received", type);
@@ -350,7 +347,6 @@ public class SiteBrandingRestController extends BaseRestController {
      * T062
      */
     @DeleteMapping("/logo/{type}")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> removeLogo(@PathVariable String type, HttpServletRequest request) {
         logger.info("DELETE /rest/site-branding/logo/{} - Logo removal request received", type);
 
@@ -411,7 +407,6 @@ public class SiteBrandingRestController extends BaseRestController {
      * Reference: T067
      */
     @PostMapping("/reset")
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> resetBranding(HttpServletRequest request) {
         try {
             // Get sysUserId for audit

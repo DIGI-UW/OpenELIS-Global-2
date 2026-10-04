@@ -4,6 +4,7 @@ import org.openelisglobal.patient.merge.dto.PatientMergeDetailsDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeExecutionResultDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeRequestDTO;
 import org.openelisglobal.patient.merge.dto.PatientMergeValidationResultDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for patient merge operations. Handles validation, data
@@ -18,6 +19,7 @@ public interface PatientMergeService {
      * @param request The merge request containing patient IDs and primary selection
      * @return Validation result with errors, warnings, and data summary
      */
+    @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
     PatientMergeValidationResultDTO validateMerge(PatientMergeRequestDTO request);
 
     /**
@@ -27,6 +29,7 @@ public interface PatientMergeService {
      * @param patientId The patient ID to retrieve details for
      * @return Patient details with data summary
      */
+    @PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
     PatientMergeDetailsDTO getMergeDetails(String patientId);
 
     /**
@@ -38,5 +41,6 @@ public interface PatientMergeService {
      * @param sysUserId The ID of the user performing the merge (for audit trail)
      * @return Execution result with success status and merge audit ID
      */
+    @PreAuthorize("hasAuthority('PRIV_PATIENT_MANAGE')")
     PatientMergeExecutionResultDTO executeMerge(PatientMergeRequestDTO request, String sysUserId);
 }

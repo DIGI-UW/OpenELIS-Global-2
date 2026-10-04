@@ -540,12 +540,17 @@ const SampleType = (props) => {
   }, [selectedSampleType.id, testsRetry]);
 
   useEffect(() => {
-    getFromOpenElisServer(`/rest/UomCreate`, fetchUomCreate);
+    // /rest/uom, not /rest/UomCreate: the latter is the unit-of-measure ADMIN
+    // screen, permitted only to the UomCreate module (Global Administrator and
+    // Test Management), so it 403s for every order-entry role and the Unit
+    // dropdown came up empty with an access error in the console. /rest/uom is
+    // the read-only list and returns the same {id, value} rows.
+    getFromOpenElisServer(`/rest/uom`, fetchUomCreate);
   }, []);
 
   const fetchUomCreate = (res) => {
     if (componentMounted.current && res) {
-      setUomList(res.existingUomList || []);
+      setUomList(Array.isArray(res) ? res : []);
     }
   };
 

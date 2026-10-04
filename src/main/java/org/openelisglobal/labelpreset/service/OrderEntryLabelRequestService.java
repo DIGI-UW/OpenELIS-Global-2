@@ -2,6 +2,7 @@ package org.openelisglobal.labelpreset.service;
 
 import org.openelisglobal.labelpreset.dto.OrderEntryLabelRequestPayload;
 import org.openelisglobal.labelpreset.dto.OrderEntryLabelRequestResponse;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Order Entry Labels-section aggregation service (OGC-285 M5). Computes the
@@ -15,6 +16,7 @@ import org.openelisglobal.labelpreset.dto.OrderEntryLabelRequestResponse;
  * always produce the same output. No persistence — the JSONB snapshot is
  * written separately by {@link OrderLabelRequestService} at order-save time.
  */
+@PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
 public interface OrderEntryLabelRequestService {
 
     /**

@@ -4,7 +4,9 @@ import java.util.List;
 import java.util.Map;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.person.valueholder.Person;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_PATIENT_VIEW')")
 public interface PersonService extends BaseObjectService<Person, String> {
     void getData(Person person);
 

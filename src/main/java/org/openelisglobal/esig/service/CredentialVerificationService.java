@@ -1,6 +1,7 @@
 package org.openelisglobal.esig.service;
 
 import org.openelisglobal.esig.valueholder.AuthMethod;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service for verifying user credentials during electronic signature
@@ -22,6 +23,7 @@ public interface CredentialVerificationService {
      * @throws IllegalArgumentException if credentials are invalid
      * @throws IllegalStateException    if authentication system is unavailable
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     AuthMethod verifyCredentials(Long userId, String password);
 
     /**
@@ -33,6 +35,7 @@ public interface CredentialVerificationService {
      * @throws IllegalArgumentException if credentials are invalid
      * @throws IllegalStateException    if authentication system is unavailable
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     AuthMethod verifyCredentialsByLoginName(String loginName, String password);
 
     /**
@@ -40,6 +43,7 @@ public interface CredentialVerificationService {
      *
      * @return true if Keycloak is the configured auth provider
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     boolean isKeycloakEnabled();
 
     /**
@@ -47,5 +51,6 @@ public interface CredentialVerificationService {
      *
      * @return true if local auth is available
      */
+    @PreAuthorize("hasAuthority('PRIV_ESIG_USE')")
     boolean isLocalAuthEnabled();
 }

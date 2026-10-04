@@ -117,6 +117,11 @@ public class SampleTypeRequestRestController {
 
     /**
      * Convert entity to DTO with test and panel names resolved.
+     *
+     * <p>
+     * Names the tests, panels and linked methods already requested on this order so
+     * the collection screen can show them. All three reads accept
+     * {@code PRIV_CATALOGUE_VIEW}, so this runs as the caller.
      */
     private SampleTypeRequestDTO convertToDTO(SampleTypeRequest entity) {
         SampleTypeRequestDTO dto = new SampleTypeRequestDTO(entity);

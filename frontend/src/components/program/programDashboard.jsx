@@ -72,7 +72,11 @@ const ProgramDashboard = () => {
       currentPage,
     });
 
-    const formatted = form.orderPrograms.map((item) => ({
+    // orderProgramsDashboardForm comes back as {} when there are no program
+    // samples at all, so orderPrograms is absent rather than empty; mapping it
+    // directly threw and took the dashboard down instead of showing the empty
+    // table.
+    const formatted = (form.orderPrograms || []).map((item) => ({
       id: String(item.programSampleId),
       patientId: item.patientPK,
       patientName: `${item.firstName || ""} ${item.lastName || ""}`,

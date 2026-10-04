@@ -7,6 +7,7 @@ import java.util.Locale;
 import java.util.Map;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.odoo.client.OdooConnection;
 import org.openelisglobal.odoo.config.TestProductMapping;
@@ -30,6 +31,7 @@ import org.springframework.stereotype.Service;
  * in OpenELIS.
  */
 @Service
+@CrossDomainService(callers = "Odoo ERP integration pipeline — internal infrastructure")
 public class OdooIntegrationService {
 
     private static final Logger log = LogManager.getLogger(OdooIntegrationService.class);

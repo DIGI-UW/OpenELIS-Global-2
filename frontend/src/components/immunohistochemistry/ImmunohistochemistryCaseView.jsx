@@ -28,6 +28,8 @@ import {
   postToOpenElisServerFullResponse,
   postToOpenElisServerForPDF,
   hasRole,
+  hasPrivilege,
+  Privileges,
 } from "../utils/Utils";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { NotificationContext } from "../layout/Layout";
@@ -910,7 +912,7 @@ function ImmunohistochemistryCaseView() {
 
   const setInitialImmunohistochemistrySampleInfo = (e) => {
     if (
-      hasRole(userSessionDetails, "Pathologist") &&
+      hasPrivilege(userSessionDetails, Privileges.RESULT_PATHOLOGY_SIGN_OFF) &&
       !e.assignedPathologistId &&
       e.status === "READY_PATHOLOGIST"
     ) {
@@ -1536,7 +1538,10 @@ function ImmunohistochemistryCaseView() {
                 </Grid>
               </Column>
 
-              {hasRole(userSessionDetails, "Pathologist") && (
+              {hasPrivilege(
+                userSessionDetails,
+                Privileges.RESULT_PATHOLOGY_SIGN_OFF,
+              ) && (
                 <Column lg={16} md={8} sm={4}>
                   <Grid fullWidth={true} className="gridBoundary">
                     <>

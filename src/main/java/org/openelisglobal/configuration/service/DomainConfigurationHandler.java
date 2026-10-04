@@ -1,11 +1,13 @@
 package org.openelisglobal.configuration.service;
 
 import java.io.InputStream;
+import org.openelisglobal.common.service.CrossDomainService;
 
 /**
  * Interface for domain-specific configuration handlers. Each domain (e.g.,
  * questionnaires, roles, etc.) should implement this interface.
  */
+@CrossDomainService(callers = "configuration plugin SPI — implemented per domain")
 public interface DomainConfigurationHandler {
 
     /**

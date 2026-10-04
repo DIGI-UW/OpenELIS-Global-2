@@ -18,7 +18,7 @@ import org.openelisglobal.common.util.ControllerUtills;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -51,7 +51,6 @@ public class AlertRestController extends ControllerUtills {
      * The expression gates the method rather than the query, so RESULTS and
      * VALIDATION also reach {@code ?entityType=Freezer} and the unscoped listing.
      */
-    @PreAuthorize("hasAnyRole('RECEPTION', 'RESULTS', 'VALIDATION', 'ADMIN')")
     @GetMapping
     public ResponseEntity<List<AlertDTO>> getAlerts(@RequestParam(required = false) String entityType,
             @RequestParam(required = false) Long entityId) {
@@ -72,7 +71,6 @@ public class AlertRestController extends ControllerUtills {
         return ResponseEntity.ok(alertDTOs);
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<AlertDTO> getAlertById(@PathVariable Long id) {
         try {
@@ -83,7 +81,6 @@ public class AlertRestController extends ControllerUtills {
         }
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}/acknowledge")
     public ResponseEntity<AlertDTO> acknowledgeAlert(@PathVariable Long id,
             @RequestBody AcknowledgeAlertRequest request, HttpServletRequest httpRequest) {
@@ -93,12 +90,13 @@ public class AlertRestController extends ControllerUtills {
             return ResponseEntity.ok(convertToDTO(acknowledgedAlert));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @PutMapping("/{id}/resolve")
     public ResponseEntity<AlertDTO> resolveAlert(@PathVariable Long id, @RequestBody ResolveAlertRequest request,
             HttpServletRequest httpRequest) {
@@ -108,6 +106,8 @@ public class AlertRestController extends ControllerUtills {
             return ResponseEntity.ok(convertToDTO(resolvedAlert));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
@@ -122,7 +122,6 @@ public class AlertRestController extends ControllerUtills {
      * clear an alert from Active Alerts), and it raises alerts under "Freezer"
      * alone.
      */
-    @PreAuthorize("hasRole('ADMIN')")
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteAlert(@PathVariable Long id, HttpServletRequest httpRequest) {
         try {
@@ -136,12 +135,13 @@ public class AlertRestController extends ControllerUtills {
             // alertService.get throws rather than returning null, so an id already
             // cleared by another admin lands here.
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException e) {
+            throw e; // let the service gate's denial reach the 403 handler
         } catch (Exception e) {
             return ResponseEntity.status(500).build();
         }
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/count")
     public ResponseEntity<Map<String, Long>> countActiveAlerts(@RequestParam String entityType,
             @RequestParam Long entityId) {

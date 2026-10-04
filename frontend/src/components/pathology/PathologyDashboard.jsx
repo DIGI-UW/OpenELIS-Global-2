@@ -27,6 +27,8 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
   hasRole,
+  hasPrivilege,
+  Privileges,
 } from "../utils/Utils";
 import {
   serverPageArrowsProps,
@@ -145,7 +147,7 @@ function PathologyDashboard() {
       cell.info.header === "assignedPathologist" &&
       !cell.value &&
       status === "READY_PATHOLOGIST" &&
-      hasRole(userSessionDetails, "Pathologist")
+      hasPrivilege(userSessionDetails, Privileges.RESULT_PATHOLOGY_SIGN_OFF)
     ) {
       return (
         <TableCell key={cell.id}>

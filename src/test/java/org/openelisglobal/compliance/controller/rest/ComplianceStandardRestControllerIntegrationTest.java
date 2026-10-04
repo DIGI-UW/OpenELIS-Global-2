@@ -48,13 +48,16 @@ public class ComplianceStandardRestControllerIntegrationTest extends BaseWebCont
     public void setUp() throws Exception {
         super.setUp();
         // Mutating compliance-standard endpoints require GLOBAL_ADMIN per the
-        // FRS S-01 §9 authz table. The base test fixture authenticates as
-        // ROLE_ADMIN/ROLE_RESULTS, which would 403 our PUT/POST/DELETE tests,
-        // so we widen authorities here.
+        // FRS S-01 §9 authz table, so we add ROLE_GLOBAL_ADMIN. Start from the
+        // base fixture's fullTestAuthorities() (all PRIV_* + ROLE_ADMIN/RESULTS)
+        // rather than replacing it — the dataset load in
+        // executeDataSetWithStateManagement refreshes privilege-gated caches
+        // (StatusService -> getAllStatusOfSamples, PRIV_SAMPLE_STATUS_VIEW), which
+        // AccessDenied under a bare ROLE_* principal.
+        java.util.List<SimpleGrantedAuthority> authorities = new java.util.ArrayList<>(fullTestAuthorities());
+        authorities.add(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN"));
         SecurityContextHolder.getContext()
-                .setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A",
-                        java.util.List.of(new SimpleGrantedAuthority("ROLE_GLOBAL_ADMIN"),
-                                new SimpleGrantedAuthority("ROLE_ADMIN"), new SimpleGrantedAuthority("ROLE_RESULTS"))));
+                .setAuthentication(new UsernamePasswordAuthenticationToken("admin", "N/A", authorities));
         executeDataSetWithStateManagement("testdata/compliance_standards.xml");
     }
 

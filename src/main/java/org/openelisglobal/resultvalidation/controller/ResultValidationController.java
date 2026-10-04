@@ -159,7 +159,7 @@ public class ResultValidationController extends BaseResultValidationController {
         if (GenericValidator.isBlankOrNull(newPage)) {
 
             // load testSections for drop down
-            String resultsRoleId = roleService.getRoleByName(Constants.ROLE_VALIDATION).getId();
+            String resultsRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_VALIDATION).getId());
             List<IdValuePair> testSections = userService.getUserViewerTestSections(getSysUserId(request),
                     resultsRoleId);
             form.setTestSections(testSections);

@@ -15,27 +15,77 @@
  */
 package org.openelisglobal.role.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.SequenceGenerator;
+import jakarta.persistence.Table;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.systemusermodule.valueholder.PermissionAgent;
 
-public class Role extends BaseObject<String> implements PermissionAgent {
+@Entity
+@Table(name = "system_role", schema = "clinlims")
+public class Role extends BaseObject<Integer> implements PermissionAgent {
 
     private static final long serialVersionUID = 1L;
 
-    private String id;
-    private String name;
-    private String description;
-    private boolean groupingRole;
-    private String groupingParent;
-    private String displayKey;
-    private boolean active;
-    private boolean editable;
+    @Id
+    @GeneratedValue(strategy = GenerationType.SEQUENCE, generator = "system_role_seq_gen")
+    @SequenceGenerator(name = "system_role_seq_gen", sequenceName = "system_role_seq", schema = "clinlims", allocationSize = 1)
+    @Column(name = "ID")
+    private Integer id;
 
-    public String getId() {
+    @Column(name = "name", nullable = false)
+    private String name;
+
+    @Column(name = "description")
+    private String description;
+
+    @Column(name = "is_grouping_role")
+    private Boolean groupingRole;
+
+    /**
+     * UI taxonomy only: which container row ({@code is_grouping_role}) this role
+     * renders under in User Management. NOT privilege inheritance — see
+     * {@link #parentRoleId}.
+     */
+    @Column(name = "grouping_parent")
+    private Integer groupingParent;
+
+    /**
+     * Privilege inheritance (spec 012 FR-005): this role's effective privileges are
+     * its own plus, recursively, those of the role named here.
+     * {@code PrivilegeServiceImpl.resolveAllPrivilegesForRole} walks this chain,
+     * guarding against cycles with a visited set.
+     *
+     * <p>
+     * Deliberately distinct from {@link #groupingParent}. Overloading one column
+     * for both meanings makes them mutually exclusive: a role that points at a base
+     * role to inherit its privileges stops matching the UI's group filter and
+     * becomes unassignable, while a role that points at a container to stay visible
+     * inherits whatever that container holds.
+     */
+    @Column(name = "parent_role_id")
+    private Integer parentRoleId;
+
+    @Column(name = "display_key")
+    private String displayKey;
+
+    @Column(name = "active")
+    private Boolean active;
+
+    @Column(name = "editable")
+    private Boolean editable;
+
+    @Override
+    public Integer getId() {
         return id;
     }
 
-    public void setId(String id) {
+    @Override
+    public void setId(Integer id) {
         this.id = id;
     }
 
@@ -55,28 +105,38 @@ public class Role extends BaseObject<String> implements PermissionAgent {
         this.description = description;
     }
 
+    @Override
     public String getDisplayName() {
         return getName();
     }
 
+    @Override
     public String getShortNameForDisplay() {
         return getName();
     }
 
-    public boolean getGroupingRole() {
+    public Boolean getGroupingRole() {
         return groupingRole;
     }
 
-    public void setGroupingRole(boolean groupingRole) {
+    public void setGroupingRole(Boolean groupingRole) {
         this.groupingRole = groupingRole;
     }
 
-    public String getGroupingParent() {
+    public Integer getGroupingParent() {
         return groupingParent;
     }
 
-    public void setGroupingParent(String groupingParent) {
+    public void setGroupingParent(Integer groupingParent) {
         this.groupingParent = groupingParent;
+    }
+
+    public Integer getParentRoleId() {
+        return parentRoleId;
+    }
+
+    public void setParentRoleId(Integer parentRoleId) {
+        this.parentRoleId = parentRoleId;
     }
 
     public String getDisplayKey() {
@@ -87,23 +147,24 @@ public class Role extends BaseObject<String> implements PermissionAgent {
         this.displayKey = displayKey;
     }
 
+    @Override
     protected String getDefaultLocalizedName() {
         return getName();
     }
 
-    public boolean isActive() {
+    public Boolean isActive() {
         return active;
     }
 
-    public void setActive(boolean active) {
+    public void setActive(Boolean active) {
         this.active = active;
     }
 
-    public boolean isEditable() {
+    public Boolean isEditable() {
         return editable;
     }
 
-    public void setEditable(boolean editable) {
+    public void setEditable(Boolean editable) {
         this.editable = editable;
     }
 }

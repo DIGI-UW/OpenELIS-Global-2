@@ -20,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.Errors;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.InitBinder;
@@ -33,7 +32,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RestController
 @RequestMapping("/rest")
 @SuppressWarnings("unused")
-@PreAuthorize("hasRole('ADMIN')")
 public class DictionaryMenuRestController extends BaseMenuController<Dictionary> {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "selectedIDs*" };

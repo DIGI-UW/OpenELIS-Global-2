@@ -10,6 +10,7 @@ import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.form.MicroAstAnalyzerResultRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -37,6 +38,12 @@ public class MicroAstAnalyzerEventService {
         this.objectMapper = objectMapper;
     }
 
+    // Analyzer result ingestion. This is a @Service class with no interface, so
+    // ServicePrivilegeCoverageTest (which scans interfaces) never saw it — the
+    // controller's hasRole('ANALYSER_IMPORT') was the only gate, and removing it
+    // for S011c left this ungated. analyzer:import is the privilege the Analyser
+    // Import role already holds, so the machine boundary is unchanged.
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_IMPORT')")
     public AnalyzerEvent receive(MicroAstAnalyzerEventCommand command, String performedBy) {
         validate(command);
         AnalyzerEventRegistration registration = persistenceService.createIfAbsent(toEvent(command));

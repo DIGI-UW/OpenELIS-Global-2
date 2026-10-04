@@ -8,7 +8,6 @@ import org.openelisglobal.microbiology.service.MicroReportProjectionService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/release")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroReportReleaseRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroReportReleaseService releaseService;
@@ -41,14 +39,12 @@ public class MicroReportReleaseRestController extends MicrobiologyRestController
     }
 
     @PostMapping("/final")
-    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroReportReleaseForm> releaseFinal(@PathVariable String caseId,
             HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(releaseService.releaseFinal(caseId, authenticatedUserId(httpRequest))));
     }
 
     @PostMapping("/amended")
-    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroReportReleaseForm> releaseAmended(@PathVariable String caseId,
             HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toForm(releaseService.releaseAmended(caseId, authenticatedUserId(httpRequest))));

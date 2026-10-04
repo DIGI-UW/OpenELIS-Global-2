@@ -16,6 +16,7 @@ import org.openelisglobal.address.valueholder.AddressPart;
 import org.openelisglobal.address.valueholder.PersonAddress;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -45,6 +46,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.validation.Errors;
 
 @Service
+@CrossDomainService(callers = "Patient form binding; persistence runs through gated patient services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 public class PatientManagementUpdate extends ControllerUtills implements IPatientUpdate {
 

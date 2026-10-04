@@ -8,12 +8,15 @@ import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ReferralSetService {
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void updateReferralSets(List<ReferralSet> referralSetList, List<Sample> modifiedSamples, Set<Sample> parentSamples,
             List<ReferralResult> removableReferralResults, String sysUserId);
 
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void createSaveReferralSetsSamplePatientEntry(List<ReferralItem> referralItems, SamplePatientUpdateData updateData);
 
     /**
@@ -27,6 +30,7 @@ public interface ReferralSetService {
      * for env/vector workflows so referral persistence is atomic with the order
      * save (no silent async failure when the FHIR store is unreachable).
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     void createDraftReferralSetsForOrderEntry(List<ReferralItem> referralItems, SamplePatientUpdateData updateData);
 
     /**
@@ -34,6 +38,7 @@ public interface ReferralSetService {
      * new referral gets one: the lifecycle transitions read it, so a referral
      * without one can never advance past the state it was created in.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     ReferralSubcontract buildSubcontractFromItem(ReferralItem referralItem, String currentUserId);
 
     /**
@@ -41,5 +46,6 @@ public interface ReferralSetService {
      * the referral is inserted, so the audit trail starts at inception rather than
      * at the first transition.
      */
+    @PreAuthorize("hasAuthority('PRIV_REFERRAL_MANAGE')")
     void insertInitialDraftHistory(String referralId, String actorUserId);
 }

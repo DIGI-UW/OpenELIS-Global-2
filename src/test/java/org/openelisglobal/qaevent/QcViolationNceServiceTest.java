@@ -36,6 +36,7 @@ import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCRuleViolation;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.security.concurrent.DelegatingSecurityContextExecutorService;
 
 /**
  * Integration tests for the Westgard-violation → NCE auto-create flow (OGC-701
@@ -200,7 +201,9 @@ public class QcViolationNceServiceTest extends BaseWebContextSensitiveTest {
     public void createNceForViolation_isConcurrencySafeUnderSimultaneousViolations() throws Exception {
         int n = 8;
         CountDownLatch startGate = new CountDownLatch(1);
-        ExecutorService pool = Executors.newFixedThreadPool(n);
+        // Worker threads do not inherit the SecurityContext, so the gated service
+        // calls inside would be denied. Spring's delegating executor copies it.
+        ExecutorService pool = new DelegatingSecurityContextExecutorService(Executors.newFixedThreadPool(n));
         try {
             List<Future<NcEvent>> futures = new java.util.ArrayList<>();
             for (int i = 0; i < n; i++) {

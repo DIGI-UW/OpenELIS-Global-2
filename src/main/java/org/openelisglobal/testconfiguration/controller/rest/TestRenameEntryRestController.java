@@ -13,7 +13,6 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testconfiguration.form.TestRenameEntryForm;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,7 +25,6 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasRole('ADMIN')")
 public class TestRenameEntryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "testId", "nameEnglish", "nameFrench",

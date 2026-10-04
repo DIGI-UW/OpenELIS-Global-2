@@ -15,7 +15,11 @@ import { useIntl, FormattedMessage } from "react-intl";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
-import { Roles, postToOpenElisServerJsonResponse } from "../../../utils/Utils";
+import {
+  hasPrivilege,
+  Privileges,
+  postToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
 import {
   ANSWER,
   getSampleItemEvaluation,
@@ -166,9 +170,9 @@ const SampleAcceptanceChecklist = ({
       .join("\n");
   }, [items, answers]);
 
-  const canResample = (userSessionDetails?.roles || []).some((r) =>
-    [Roles.RECEPTION, Roles.RESULTS, Roles.GLOBAL_ADMIN].includes(r),
-  );
+  // Resampling edits the order, so it follows order:edit rather than a list of
+  // roles that happened to need it.
+  const canResample = hasPrivilege(userSessionDetails, Privileges.ORDER_EDIT);
 
   // AB: under ADVISORY enforcement a user could simply carry on past a failed
   // check and nothing was kept — no reason, no user, no timestamp. Continuing

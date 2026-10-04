@@ -2,6 +2,7 @@ package org.openelisglobal.common.util;
 
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.security.DaemonAuthenticationToken;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -99,7 +100,18 @@ public class UserContextHolder {
 
     private SystemUser resolveSystemUser(String principalName) {
         try {
-            SystemUser user = systemUserService.getDataForLoginUser(principalName);
+            // Resolving the current principal's own SystemUser is a self-identity
+            // primitive invoked on every audited write (fillSysUserIdIfMissing),
+            // including under the daemon token, so it must not require the caller to
+            // hold PRIV_SYSTEM_USER_VIEW that gates getDataForLoginUser. Scope system
+            // context around the lookup (restore, not clear).
+            boolean wasSet = SystemInitFlag.enter();
+            SystemUser user;
+            try {
+                user = systemUserService.getDataForLoginUser(principalName);
+            } finally {
+                SystemInitFlag.exit(wasSet);
+            }
             if (user != null) {
                 return user;
             }

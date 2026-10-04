@@ -356,7 +356,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
         try {
             return userService.getUserTestSections(performedBy,
-                    roleService.getRoleByName(Constants.ROLE_RESULTS).getId());
+                    String.valueOf(roleService.getRoleByName(Constants.ROLE_RESULTS).getId()));
         } finally {
             RequestContextHolder.resetRequestAttributes();
         }
@@ -378,7 +378,7 @@ public class MicrobiologyReferenceDataIntegrationTest extends BaseWebContextSens
     }
 
     private void grantResultsAccess(String systemUserId, TestSection reportSection) {
-        String resultsRoleId = roleService.getRoleByName(Constants.ROLE_RESULTS).getId();
+        String resultsRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_RESULTS).getId());
         UserLabUnitRoles labUnitRoles = userRoleService.getUserLabUnitRoles(systemUserId);
         if (labUnitRoles == null) {
             labUnitRoles = new UserLabUnitRoles();

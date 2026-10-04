@@ -4,6 +4,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import org.apache.commons.validator.GenericValidator;
+import org.openelisglobal.common.security.SystemContext;
 import org.openelisglobal.organization.service.OrganizationIdentifierService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.service.OrganizationTypeService;
@@ -34,11 +35,35 @@ public class SamplingSiteOrganizationSync {
     @Autowired
     private OrganizationIdentifierService identifierService;
 
+    /**
+     * Mirrors a sampling site into the Organization table.
+     *
+     * <p>
+     * The body runs in system context because it is an internal consequence of
+     * saving the site, not organization administration: it reaches
+     * {@code insertUnchecked}, {@code updateUnchecked} and
+     * {@code linkOrganizationAndType}, all of which require
+     * PRIV_ORGANIZATION_MANAGE - a privilege granted to no role at all, so without
+     * this NOBODY could create a vector sampling site. Reception creates one from
+     * the order-entry form.
+     *
+     * <p>
+     * This does not make anything reachable that was not: the caller's own access
+     * is decided at the entry point, {@code VectorSamplingSiteService}, whose
+     * writes require PRIV_SAMPLE_TYPE_MANAGE and whose
+     * {@code resolveOrCreateForOrder} requires that or PRIV_ORDER_CREATE. A user
+     * who may not save the site never reaches here; this only stops the mirror
+     * denying them halfway through, exactly as {@link SystemContext} describes.
+     */
     @Transactional
     public void syncFromSite(VectorSamplingSite site, String sysUserId) {
         if (site == null || GenericValidator.isBlankOrNull(site.getName())) {
             return;
         }
+        SystemContext.runAsSystem(() -> syncIntoOrganization(site, sysUserId));
+    }
+
+    private void syncIntoOrganization(VectorSamplingSite site, String sysUserId) {
         Organization organization = site.getOrganizationId() == null ? null
                 : organizationService.get(String.valueOf(site.getOrganizationId()));
         boolean isNew = organization == null;

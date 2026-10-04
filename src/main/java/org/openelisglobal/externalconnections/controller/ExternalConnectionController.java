@@ -118,8 +118,6 @@ public class ExternalConnectionController extends BaseController {
         }
         if (form.getCertificateAuthenticationData() != null) {
             externalConnectionAuthData.put(AuthType.CERTIFICATE, form.getCertificateAuthenticationData());
-            loadCertificateIntoTruststore(form.getExternalConnection().getNameLocalization().getLocalizedValue(),
-                    form.getCertificateAuthenticationData().getCertificate());
         }
 
         if (null == externalConnectionId || 0 == externalConnectionId) {
@@ -128,6 +126,16 @@ public class ExternalConnectionController extends BaseController {
         } else {
             externalConnectionService.updateExternalConnection(externalConnectionAuthData, externalConnectionContacts,
                     externalConnection);
+        }
+
+        // Install the uploaded CA cert into the JVM truststore only AFTER the
+        // privilege-checked persistence above has succeeded — otherwise an
+        // AccessDeniedException on the service call would still leave the
+        // attacker-supplied certificate trusted for outbound TLS. addTrustedCert
+        // is itself gated (PRIV_EXTCONNECTION_MANAGE).
+        if (form.getCertificateAuthenticationData() != null) {
+            loadCertificateIntoTruststore(form.getExternalConnection().getNameLocalization().getLocalizedValue(),
+                    form.getCertificateAuthenticationData().getCertificate());
         }
         ConfigurationProperties.loadDBValuesIntoConfiguration();
         return findForward(FWD_SUCCESS_INSERT, form);

@@ -14,7 +14,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionSource;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +23,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/amendments")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseAmendmentRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseAmendmentService amendmentService;
@@ -50,7 +48,6 @@ public class MicroCaseAmendmentRestController extends MicrobiologyRestController
     }
 
     @PostMapping
-    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroCaseAmendmentForm> open(@PathVariable String caseId,
             @RequestBody MicroCaseAmendmentRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity
@@ -58,7 +55,6 @@ public class MicroCaseAmendmentRestController extends MicrobiologyRestController
     }
 
     @PostMapping("/current/cancel")
-    @PreAuthorize(MicrobiologyRestControllerSupport.SUPERVISOR_ACCESS)
     public ResponseEntity<MicroCaseAmendmentForm> cancel(@PathVariable String caseId,
             @RequestBody MicroCaseAmendmentRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity

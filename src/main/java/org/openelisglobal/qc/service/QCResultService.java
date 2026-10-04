@@ -8,6 +8,7 @@ import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.qc.form.BenchQCCaptureForm;
 import org.openelisglobal.qc.valueholder.QCResult;
 import org.openelisglobal.qc.valueholder.QCSource;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Result management. Supports User Story 8:
@@ -38,6 +39,7 @@ public interface QCResultService extends BaseObjectService<QCResult, String> {
      * @throws IllegalArgumentException if control lot not found or not ACTIVE, or
      *                                  if result value is null/invalid
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCResult createQCResult(String analyzerId, String testId, String controlLotId, String controlLevel,
             BigDecimal resultValue, String unit, LocalDateTime timestamp) throws IllegalArgumentException;
 

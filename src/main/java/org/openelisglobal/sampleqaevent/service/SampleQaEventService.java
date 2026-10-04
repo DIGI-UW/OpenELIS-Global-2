@@ -5,7 +5,9 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleqaevent.valueholder.SampleQaEvent;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_NCE_VIEW')")
 public interface SampleQaEventService extends BaseObjectService<SampleQaEvent, String> {
     void getData(SampleQaEvent sampleQaEvent);
 

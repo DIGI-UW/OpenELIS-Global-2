@@ -73,12 +73,18 @@ public class MicrobiologyReferenceAdminRestControllerTest {
     }
 
     @Test
-    public void adminControllersRequireAdminRole() {
-        PreAuthorize reference = MicrobiologyReferenceAdminRestController.class.getAnnotation(PreAuthorize.class);
-        PreAuthorize breakpoint = MicroBreakpointAdminRestController.class.getAnnotation(PreAuthorize.class);
+    public void adminSurfacesRequireTestConfigurePrivilege() throws Exception {
+        // Reference and breakpoint administration is test-catalog configuration, so
+        // the gate moved from hasRole('ADMIN') on the controllers to test:configure
+        // on the services (S011c) — the same privilege the rest of the catalog
+        // editor uses. Global Admin still passes via the privilege sentinel.
+        PreAuthorize reference = MicrobiologyReferenceAdminService.class.getMethod("getOrganism", String.class)
+                .getAnnotation(PreAuthorize.class);
+        PreAuthorize breakpoint = MicroBreakpointAdminService.class.getMethod("getStandard", String.class)
+                .getAnnotation(PreAuthorize.class);
 
-        assertEquals("hasRole('ADMIN')", reference.value());
-        assertEquals("hasRole('ADMIN')", breakpoint.value());
+        assertEquals("hasAuthority('PRIV_TEST_CONFIGURE')", reference.value());
+        assertEquals("hasAuthority('PRIV_TEST_CONFIGURE')", breakpoint.value());
     }
 
     private MockHttpServletRequest requestFor(String userId) {

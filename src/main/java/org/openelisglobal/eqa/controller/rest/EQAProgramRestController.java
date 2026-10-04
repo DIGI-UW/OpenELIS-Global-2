@@ -18,6 +18,7 @@ import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -81,6 +82,9 @@ public class EQAProgramRestController extends ControllerUtills {
             Long id = programService.insert(program);
             program = programService.get(id);
             return ResponseEntity.ok(toProgramDto(program));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -160,6 +164,9 @@ public class EQAProgramRestController extends ControllerUtills {
             return ResponseEntity.ok(toProgramDto(program));
         } catch (ObjectNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -207,6 +214,9 @@ public class EQAProgramRestController extends ControllerUtills {
             return ResponseEntity.ok(dtos);
         } catch (ObjectNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }
@@ -248,6 +258,9 @@ public class EQAProgramRestController extends ControllerUtills {
                     .map(this::toAnalystDto).collect(Collectors.toList()));
         } catch (ObjectNotFoundException e) {
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));
         }

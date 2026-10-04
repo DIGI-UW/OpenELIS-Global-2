@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.menu.service.MenuService;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
@@ -22,6 +23,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.web.WebAppConfiguration;
@@ -48,7 +50,12 @@ public class MenuControllerSecurityTest extends SecuritySliceMockMvcTest {
 
     @Test
     public void adminCanReadAndChangeAdminMenu() throws Exception {
-        var adminUser = user("admin").roles("ADMIN");
+        // ROLE_ADMIN alone does not pass a PRIV_ gate on this branch; in the running
+        // app
+        // Global Administrator carries every privilege via the "*" sentinel. Model
+        // that.
+        var adminUser = user("admin").authorities(new SimpleGrantedAuthority("ROLE_ADMIN"),
+                new SimpleGrantedAuthority("PRIV_SYSTEM_CONFIGURE"), new SimpleGrantedAuthority("PRIV_SITE_INFO_VIEW"));
         mockMvc.perform(get("/rest/admin/menu").with(adminUser)).andExpect(status().isOk());
         mockMvc.perform(get("/rest/admin/menu/missing").with(adminUser)).andExpect(status().isOk());
         mockMvc.perform(post("/rest/admin/menu").with(adminUser).contentType(MediaType.APPLICATION_JSON).content("[]"))
@@ -76,7 +83,7 @@ public class MenuControllerSecurityTest extends SecuritySliceMockMvcTest {
         MenuService menuService() {
             MenuService service = mock(MenuService.class);
             when(service.getAll()).thenReturn(List.of());
-            return service;
+            return GatedServiceMocks.asGatedBean(service);
         }
 
         @Bean
@@ -86,17 +93,17 @@ public class MenuControllerSecurityTest extends SecuritySliceMockMvcTest {
 
         @Bean
         UserService userService() {
-            return mock(UserService.class);
+            return GatedServiceMocks.stubbableMock(UserService.class);
         }
 
         @Bean
         TestSectionService testSectionService() {
-            return mock(TestSectionService.class);
+            return GatedServiceMocks.stubbableMock(TestSectionService.class);
         }
 
         @Bean
         UserRoleService userRoleService() {
-            return mock(UserRoleService.class);
+            return GatedServiceMocks.stubbableMock(UserRoleService.class);
         }
     }
 }

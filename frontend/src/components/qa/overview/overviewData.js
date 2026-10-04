@@ -1,4 +1,11 @@
-import { toLocalIsoDate } from "../../utils/Utils";
+import { useContext } from "react";
+import {
+  toLocalIsoDate,
+  hasPrivilege,
+  hasQaPermission,
+  Privileges,
+} from "../../utils/Utils";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { useServerData } from "../../utils/useServerData";
 import { tatDelta } from "../../reports/tat/tatUtils";
 import { isoDaysFromToday, weekStart } from "../common/qaDates";
@@ -27,7 +34,16 @@ export const useOverviewSummary = () => {
 // Accreditation portfolio summary (OGC-686): counts per status plus
 // worstStatus, which is null when no non-inactive body exists.
 export const useAccreditationSummary = () => {
-  const query = useServerData("/rest/accreditation/summary");
+  // /rest/accreditation/summary sits behind qa.view.qms, which Results does
+  // not hold while it does reach this overview; null stops the request.
+  const { userSessionDetails: accreditationSession } = useContext(
+    UserSessionDetailsContext,
+  );
+  const query = useServerData(
+    hasQaPermission(accreditationSession, "qa.view.qms")
+      ? "/rest/accreditation/summary"
+      : null,
+  );
   return {
     loading: query.isLoading,
     accreditation:
@@ -143,16 +159,26 @@ const tatQuery = (from, to) =>
  * has no completed runs at all.
  */
 export const useTatRollup = () => {
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  // /rest/reports/tat/summary is gated on PRIV_REPORT_RUN, while the QA
+  // overview is open to Reception and Validation, who do not hold it. Passing
+  // null to useServerData is what stops the request, so the rollup reports no
+  // TAT rather than firing a guaranteed 403 on every visit.
+  const permitted = hasPrivilege(userSessionDetails, Privileges.REPORT_RUN);
   const current = useServerData(
-    tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(labNow())),
+    permitted
+      ? tatQuery(isoDaysFromToday(-TAT_WINDOW_DAYS), toLocalIsoDate(labNow()))
+      : null,
   );
   const prior = useServerData(
-    tatQuery(
-      isoDaysFromToday(-(2 * TAT_WINDOW_DAYS + 1)),
-      isoDaysFromToday(-(TAT_WINDOW_DAYS + 1)),
-    ),
+    permitted
+      ? tatQuery(
+          isoDaysFromToday(-(2 * TAT_WINDOW_DAYS + 1)),
+          isoDaysFromToday(-(TAT_WINDOW_DAYS + 1)),
+        )
+      : null,
   );
-  const loading = current.isLoading || prior.isLoading;
+  const loading = permitted && (current.isLoading || prior.isLoading);
   return {
     loading,
     tat:
