@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "node frontend/scripts/i18n-check.js --hook"
+          }
+        ]
+      }
+    ]
+  }
+}
