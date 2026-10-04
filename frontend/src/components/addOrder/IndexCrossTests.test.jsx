@@ -82,7 +82,10 @@ const crossTestOrder = () => ({
 const renderWithOrder = () => {
   window.history.pushState({}, "", "/SamplePatientEntry?ID=EORD1145X1");
   global.fetch = vi.fn(() =>
-    Promise.resolve({ json: () => Promise.resolve(crossTestOrder()) }),
+    Promise.resolve({
+      ok: true,
+      json: () => Promise.resolve(crossTestOrder()),
+    }),
   );
   return render(
     <MemoryRouter>
