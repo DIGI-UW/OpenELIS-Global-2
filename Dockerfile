@@ -68,7 +68,7 @@ FROM tomcat:10-jre21
 COPY install/createDefaultPassword.sh ./
 
 
-#Clean out unneccessary files from tomcat (especially pre-existing applications) 
+#Clean out unnecessary files from tomcat (especially pre-existing applications) 
 RUN rm -rf /usr/local/tomcat/webapps/* \ 
     /usr/local/tomcat/conf/Catalina/localhost/manager.xml
 

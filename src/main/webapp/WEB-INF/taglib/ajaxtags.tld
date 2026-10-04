@@ -91,7 +91,7 @@
       <required>false</required>
       <rtexprvalue>true</rtexprvalue>
       <description>
-        A comma-seperated list of values of options to be marked as selected by default if they
+        A comma-separated list of values of options to be marked as selected by default if they
         exist in the new set of options
       </description>
     </attribute>
