@@ -152,10 +152,7 @@ final class StudyNonConformityPdf {
         document.add(table);
     }
 
-    /**
-     * Notes are stored with {@code <br/>
-     * } between their lines.
-     */
+    // notes are stored with <br/> between their lines
     private static void addNotes(PdfPTable table, String heading, String notes) {
         if (notes == null) {
             return;
