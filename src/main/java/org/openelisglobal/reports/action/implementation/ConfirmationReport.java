@@ -13,18 +13,19 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -50,6 +51,13 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
+import org.openpdf.text.Document;
+import org.openpdf.text.Font;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.Rectangle;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
 
 public class ConfirmationReport extends IndicatorReport implements IReportCreator, IReportParameterSetter {
 
@@ -76,21 +84,94 @@ public class ConfirmationReport extends IndicatorReport implements IReportCreato
     }
 
     @Override
-    protected String reportFileName() {
-        return "ConfirmationSummary";
+    protected byte[] renderReport() {
+        return render(reportItems);
     }
 
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    /** The confirmations under the shared header, grouped by requesting site. */
+    byte[] render(List<ConfirmationData> items) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = startPdf(out, lowerDateRange + " - " + upperDateRange);
+        String site = null;
+        for (ConfirmationData item : items) {
+            if (!Objects.equals(site, item.getOrganizationName())) {
+                site = item.getOrganizationName();
+                Paragraph siteLine = new Paragraph(MessageUtil.getMessage("report.site") + ": " + site, LABEL_FONT);
+                siteLine.setSpacingBefore(10);
+                document.add(siteLine);
+            }
+            PdfPTable order = new PdfPTable(4);
+            order.setWidthPercentage(100);
+            order.setSpacingBefore(6);
+            for (String key : new String[] { "report.requestOrderNumber", "report.confirmationOrderNumber",
+                    "report.sampleType", "report.reception" }) {
+                order.addCell(plain(MessageUtil.getMessage(key), LABEL_FONT));
+            }
+            for (String value : new String[] { item.getRequesterAccession(), item.getLabAccession(),
+                    item.getSampleType(), item.getReceptionDate() }) {
+                order.addCell(plain(value, CELL_FONT));
+            }
+            PdfPCell contact = plain(
+                    MessageUtil.getMessage("report.requesterContact") + ": " + nullToEmpty(item.getRequesterName()),
+                    CELL_FONT);
+            contact.setColspan(4);
+            order.addCell(contact);
+            PdfPCell reach = plain(MessageUtil.getMessage("report.telephoneAbv") + ": "
+                    + nullToEmpty(item.getRequesterPhone()) + "    " + MessageUtil.getMessage("report.fax") + ": "
+                    + nullToEmpty(item.getRequesterFax()) + "    " + MessageUtil.getMessage("report.email") + ": "
+                    + nullToEmpty(item.getRequesterEMail()), CELL_FONT);
+            reach.setColspan(4);
+            order.addCell(reach);
+            document.add(order);
+
+            PdfPTable results = new PdfPTable(new float[] { 155, 120, 120, 123 });
+            results.setWidthPercentage(100);
+            PdfExportSupport.addHeaderRow(results, HEADER_FONT, 3, "", MessageUtil.getMessage("report.test"),
+                    MessageUtil.getMessage("report.result"), MessageUtil.getMessage("report.completionDate"));
+            for (int i = 0; i < item.getRequesterTest().size(); i++) {
+                String result = item.getRequesterResult().get(i);
+                addResultRow(results, i == 0 ? MessageUtil.getMessage("report.initialResults") : "",
+                        item.getRequesterTest().get(i), "".equals(result) ? "No data" : result, "");
+            }
+            for (int i = 0; i < item.getLabTest().size(); i++) {
+                String result = item.getLabResult().get(i);
+                addResultRow(results, i == 0 ? MessageUtil.getMessage("report.confirmationResult") : "",
+                        item.getLabTest().get(i),
+                        "".equals(result) ? MessageUtil.getMessage("report.test.status.inProgress") : result,
+                        item.getCompleationDate().get(i));
+            }
+            document.add(results);
+            document.add(new Paragraph(MessageUtil.getMessage("report.note") + ": " + nullToEmpty(item.getNote()),
+                    CELL_FONT));
+        }
+        document.close();
+        return out.toByteArray();
+    }
+
+    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 8, Font.BOLD);
+    private static final Font LABEL_FONT = new Font(Font.HELVETICA, 9, Font.BOLD);
+    private static final Font CELL_FONT = new Font(Font.HELVETICA, 9);
+
+    private static void addResultRow(PdfPTable table, String label, String test, String result, String date) {
+        for (String value : new String[] { label, test, result, date }) {
+            table.addCell(new Phrase(nullToEmpty(value), CELL_FONT));
+        }
+    }
+
+    private static PdfPCell plain(String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Phrase(nullToEmpty(text), font));
+        cell.setBorder(Rectangle.NO_BORDER);
+        return cell;
+    }
+
+    private static String nullToEmpty(String value) {
+        return value == null ? "" : value;
     }
 
     @Override
     public void initializeReport(ReportForm form) {
         super.initializeReport();
         setDateRange(form);
-
-        createReportParameters();
 
         setConfirmationData();
     }
