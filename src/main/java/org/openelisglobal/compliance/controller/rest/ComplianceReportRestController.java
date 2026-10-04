@@ -10,6 +10,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.compliance.service.ComplianceEvaluationResult;
 import org.openelisglobal.compliance.service.ComplianceEvaluationService;
 import org.openelisglobal.compliance.service.ComplianceReportGenerationService;
@@ -29,7 +30,6 @@ import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Element;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
@@ -297,7 +297,7 @@ public class ComplianceReportRestController {
         Font labelFont = CertificateFonts.bold(9);
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
+        Document document = new Document(PdfExportSupport.pageSize());
         PdfWriter.getInstance(document, buf);
         document.open();
 
@@ -427,7 +427,7 @@ public class ComplianceReportRestController {
         Font labelFont = CertificateFonts.bold(9);
 
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4);
+        Document document = new Document(PdfExportSupport.pageSize());
         PdfWriter.getInstance(document, buf);
         document.open();
 

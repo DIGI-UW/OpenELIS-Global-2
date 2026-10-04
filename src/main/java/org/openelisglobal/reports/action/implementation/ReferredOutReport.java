@@ -41,7 +41,6 @@ import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPCell;
@@ -155,7 +154,7 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
             }
         }
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4.rotate(), 36, 36, 36, 48);
+        Document document = new Document(PdfExportSupport.pageSize().rotate(), 36, 36, 36, 48);
         ReportHeaderPdf.open(document, out);
         ReportHeaderPdf.add(document,
                 MessageUtil.getMessage("report.test.status.referredOut") + ": " + reportLocation.getOrganizationName(),

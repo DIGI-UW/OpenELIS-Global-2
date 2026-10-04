@@ -10,11 +10,11 @@ import org.apache.poi.ss.usermodel.CellStyle;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Element;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
@@ -43,7 +43,7 @@ public final class InventoryReportWriter {
 
     public static void writePdf(ReportTable table, OutputStream out) throws IOException {
         try {
-            Document document = new Document(PageSize.A4.rotate());
+            Document document = new Document(PdfExportSupport.pageSize().rotate());
             PdfWriter.getInstance(document, out);
             document.open();
 

@@ -11,7 +11,6 @@ import org.openelisglobal.reports.action.implementation.NonConformityBy.CountRep
 import org.openelisglobal.reports.action.implementation.reportBeans.NonConformityReportData;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
@@ -37,7 +36,7 @@ final class NonConformityReportPdf {
     static byte[] byDate(String title, String period, List<NonConformityReportData> items,
             boolean showSiteSubjectNumber) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = open(PageSize.A4.rotate(), out, title, period);
+        Document document = open(PdfExportSupport.pageSize().rotate(), out, title, period);
         String[] headers = { MessageUtil.getMessage("report.section"), MessageUtil.getMessage("report.date"),
                 MessageUtil.getMessage("report.reasonForRejection"),
                 MessageUtil.getMessage("report.typeOfSample").trim(), MessageUtil.getMessage("report.biologist"),
@@ -86,7 +85,7 @@ final class NonConformityReportPdf {
      */
     static byte[] bySectionAndReason(String title, String period, List<CountReportItem> items) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = open(PageSize.A4, out, title, period);
+        Document document = open(PdfExportSupport.pageSize(), out, title, period);
         String total = MessageUtil.getMessage("report.total");
         PdfPTable table = new PdfPTable(new float[] { 270, 50 });
         table.setWidthPercentage(60);

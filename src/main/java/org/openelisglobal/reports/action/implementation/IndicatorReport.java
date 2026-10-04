@@ -22,12 +22,12 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ErrorMessages;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
@@ -76,7 +76,7 @@ public abstract class IndicatorReport extends Report {
      * the site code when one is configured.
      */
     protected Document startPdf(ByteArrayOutputStream out, String period) {
-        return startPdf(out, PageSize.A4, period);
+        return startPdf(out, PdfExportSupport.pageSize(), period);
     }
 
     /**

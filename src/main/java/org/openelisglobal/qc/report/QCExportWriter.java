@@ -44,7 +44,6 @@ import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Font;
 import org.openpdf.text.Image;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPTable;
@@ -147,7 +146,7 @@ public final class QCExportWriter {
         DateFormat sdf = DateFormat.getDateTimeInstance(DateFormat.MEDIUM, DateFormat.SHORT,
                 LocaleContextHolder.getLocale());
         try {
-            Document document = new Document(PageSize.A4, 36, 36, 42, 42);
+            Document document = new Document(PdfExportSupport.pageSize(), 36, 36, 42, 42);
             PdfExportSupport.openWithPageNumbers(document, out, "export.page");
 
             Font titleFont = new Font(Font.HELVETICA, 15, Font.BOLD);

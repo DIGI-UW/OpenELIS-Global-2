@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <property name="now" value="now()" dbms="postgresql"/>
+
+    <changeSet author="openelis" id="120-report-paper-size">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.site_information WHERE name = 'reportPaperSize'</sqlCheck>
+        </preConditions>
+        <comment>Paper size printed reports are laid out on, A4 or Letter; set under Admin &gt; General Configuration &gt; Printed Reports Configuration.</comment>
+        <insert schemaName="clinlims" tableName="dictionary_category">
+            <column name="id" valueSequenceNext="dictionary_category_seq" />
+            <column name="description" value="Report Paper Size" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="local_abbrev" value="PaperSize" />
+            <column name="name" value="ReportPaperSize" />
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="dict_entry" value="A4" />
+            <column name="sort_order" valueNumeric="1" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'ReportPaperSize')" />
+        </insert>
+        <insert schemaName="clinlims" tableName="dictionary">
+            <column name="id" valueSequenceNext="dictionary_seq" />
+            <column name="is_active" value="Y" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="dict_entry" value="Letter" />
+            <column name="sort_order" valueNumeric="2" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'ReportPaperSize')" />
+        </insert>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="reportPaperSize" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="Paper size of printed reports" />
+            <column name="value" value="A4" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'printedReportsConfig')" />
+            <column name="value_type" value="dictionary" />
+            <column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'ReportPaperSize')" />
+            <column name="instruction_key" value="instructions.report.paper.size" />
+            <column name="description_key" value="siteInfo.reportPaperSize" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'reportPaperSize'</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="dictionary">
+                <where>dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'ReportPaperSize')</where>
+            </delete>
+            <delete schemaName="clinlims" tableName="dictionary_category">
+                <where>name = 'ReportPaperSize'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

@@ -28,7 +28,6 @@ import org.openelisglobal.qa.security.QaPermissions;
 import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPTable;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -306,7 +305,7 @@ public class ElectronicSignatureRestController extends BaseRestController {
 
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
         try {
-            Document document = new Document(PageSize.A4.rotate());
+            Document document = new Document(PdfExportSupport.pageSize().rotate());
             PdfExportSupport.openWithPageNumbers(document, response.getOutputStream(), "export.page");
 
             Font titleFont = new Font(Font.HELVETICA, 14, Font.BOLD);

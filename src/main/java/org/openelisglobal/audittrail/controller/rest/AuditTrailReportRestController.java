@@ -10,6 +10,7 @@ import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.action.workers.AuditTrailViewWorker;
 import org.openelisglobal.audittrail.form.AuditTrailViewForm;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
@@ -17,7 +18,6 @@ import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Element;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
@@ -110,7 +110,7 @@ public class AuditTrailReportRestController {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         try {
-            Document document = new Document(PageSize.A4.rotate());
+            Document document = new Document(PdfExportSupport.pageSize().rotate());
             PdfWriter.getInstance(document, response.getOutputStream());
             document.open();
 

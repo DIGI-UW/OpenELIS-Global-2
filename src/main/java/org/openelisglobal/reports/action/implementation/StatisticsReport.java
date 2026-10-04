@@ -36,7 +36,6 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPCell;
@@ -103,7 +102,7 @@ public class StatisticsReport extends IndicatorReport implements IReportCreator,
     /** Tests and samples per month for each test, with the year's totals. */
     byte[] render(List<StatisticsReportData> items) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = startPdf(out, PageSize.A3.rotate(), year,
+        Document document = startPdf(out, PdfExportSupport.largePageSize().rotate(), year,
                 MessageUtil.getMessage("label.openreports.testsection") + " " + labUnits,
                 MessageUtil.getMessage("sample.batchentry.order.receptiontime") + ": " + receptionTime,
                 MessageUtil.getMessage("sample.entry.priority") + ": " + priority);

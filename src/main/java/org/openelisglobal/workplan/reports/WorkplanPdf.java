@@ -14,7 +14,6 @@ import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.test.beanItems.TestResultItem;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPTable;
 
@@ -116,7 +115,7 @@ final class WorkplanPdf {
 
     private static byte[] layout(String title, List<String> metaLines, List<String> headers, List<List<String>> rows) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4, 36, 36, 36, 48);
+        Document document = new Document(PdfExportSupport.pageSize(), 36, 36, 36, 48);
         PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
         PdfExportSupport.addHeading(document, title, TITLE_FONT, META_FONT,
                 metaLines.stream().map(line -> line + "\n").toArray(String[]::new));

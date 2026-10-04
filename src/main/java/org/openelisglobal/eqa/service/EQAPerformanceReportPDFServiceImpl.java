@@ -20,6 +20,7 @@ import org.openelisglobal.analyte.dao.AnalyteDAO;
 import org.openelisglobal.analyte.valueholder.Analyte;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.eqa.dao.EQACycleDAO;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
@@ -48,7 +49,6 @@ import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Element;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
@@ -145,7 +145,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
      */
     private byte[] render(EQACycle cycle, List<Row> rows, String participant, boolean includeLabColumns) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4.rotate(), 36, 36, 42, 42);
+        Document document = new Document(PdfExportSupport.pageSize().rotate(), 36, 36, 42, 42);
         try {
             PdfWriter.getInstance(document, out);
             document.open();
@@ -416,7 +416,7 @@ public class EQAPerformanceReportPDFServiceImpl implements EQAPerformanceReportP
         }
         document.add(paragraph(MessageUtil.getMessage("eqa.report.table.title"), SECTION_FONT, 14f));
 
-        // Eleven columns are tight on A4 landscape: the difference column is kept
+        // Eleven columns are tight on a landscape page: the difference column is kept
         // narrow (its content is "-8 (-8%)") and its room comes off the analyte,
         // which already wraps on a long name either way. Widening it instead
         // wrapped the reported value and its unit onto a second line, which is the

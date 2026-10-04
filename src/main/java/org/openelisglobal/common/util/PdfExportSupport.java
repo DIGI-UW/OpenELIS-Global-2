@@ -12,7 +12,9 @@ import org.openpdf.text.Document;
 import org.openpdf.text.DocumentException;
 import org.openpdf.text.Element;
 import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
 import org.openpdf.text.Phrase;
+import org.openpdf.text.Rectangle;
 import org.openpdf.text.pdf.ColumnText;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
@@ -106,6 +108,27 @@ public final class PdfExportSupport {
         cell.setHorizontalAlignment(Element.ALIGN_CENTER);
         cell.setPadding(padding);
         return cell;
+    }
+
+    /**
+     * The paper size reports print on: Letter when the site is configured for it,
+     * otherwise A4.
+     */
+    public static Rectangle pageSize() {
+        return isLetterPaper() ? PageSize.LETTER : PageSize.A4;
+    }
+
+    /**
+     * The next paper size up (A3 or Tabloid), for a report too wide for the site's
+     * paper.
+     */
+    public static Rectangle largePageSize() {
+        return isLetterPaper() ? PageSize.TABLOID : PageSize.A3;
+    }
+
+    private static boolean isLetterPaper() {
+        return "Letter".equalsIgnoreCase(ConfigurationProperties.getInstance()
+                .getPropertyValue(ConfigurationProperties.Property.REPORT_PAPER_SIZE));
     }
 
     /** The configured site name for the report heading, never null. */

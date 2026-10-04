@@ -13,7 +13,6 @@ import org.openelisglobal.coldstorage.service.dto.FreezerWeeklyLogData;
 import org.openelisglobal.common.util.PdfExportSupport;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
@@ -82,7 +81,7 @@ final class FreezerTemperatureReportPdf {
     private static <T, K> byte[] render(Heading heading, List<T> rows, Function<T, K> groupKey,
             Function<K, String> groupTitle, float[] widths, String[] headers, Function<T, String[]> cells) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4.rotate(), 30, 30, 30, 40);
+        Document document = new Document(PdfExportSupport.pageSize().rotate(), 30, 30, 30, 40);
         PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
         addHeading(document, heading);
 

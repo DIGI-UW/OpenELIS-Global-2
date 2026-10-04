@@ -9,12 +9,12 @@ import org.jfree.chart.JFreeChart;
 import org.jfree.chart.plot.PlotOrientation;
 import org.jfree.data.category.DefaultCategoryDataset;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.SectionPerformanceData;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
 import org.openpdf.text.Image;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.pdf.PdfTemplate;
 import org.openpdf.text.pdf.PdfWriter;
@@ -30,7 +30,7 @@ final class SectionPerformancePdf {
 
     static byte[] render(List<SectionPerformanceData> items) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4.rotate(), 20, 20, 20, 20);
+        Document document = new Document(PdfExportSupport.pageSize().rotate(), 20, 20, 20, 20);
         PdfWriter writer = PdfWriter.getInstance(document, out);
         document.open();
         document.add(new Paragraph(DateUtil.getCurrentDateAsText() + "  " + DateUtil.getCurrentTimeAsText(),

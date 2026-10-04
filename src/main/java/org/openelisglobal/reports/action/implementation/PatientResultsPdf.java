@@ -7,13 +7,13 @@ import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
 import org.openpdf.text.Document;
 import org.openpdf.text.Element;
 import org.openpdf.text.Font;
 import org.openpdf.text.Image;
-import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
@@ -50,7 +50,7 @@ final class PatientResultsPdf {
 
     static byte[] render(Settings settings, List<ClinicalPatientData> items) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = new Document(PageSize.A4, 30, 30, 30, 50);
+        Document document = new Document(PdfExportSupport.pageSize(), 30, 30, 30, 50);
         PdfWriter writer = PdfWriter.getInstance(document, out);
         Footer footer = new Footer(settings.usePageNumbers());
         writer.setPageEvent(footer);

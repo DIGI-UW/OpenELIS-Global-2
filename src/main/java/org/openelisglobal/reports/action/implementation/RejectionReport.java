@@ -31,6 +31,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -44,7 +45,6 @@ import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestServiceImpl;
-import org.openpdf.text.PageSize;
 
 public abstract class RejectionReport extends Report implements IReportCreator {
     private int PREFIX_LENGTH = AccessionNumberUtil.getMainAccessionNumberGenerator().getInvarientLength();
@@ -77,8 +77,8 @@ public abstract class RejectionReport extends Report implements IReportCreator {
                     item.getRejectionReason(), item.getTechnician()));
             above = item;
         }
-        return ManagementReportPdf.render(PageSize.A4, MessageUtil.getMessage("reject.report"), getActivityLabel(),
-                dateRange, headers, new float[] { 1.2f, 1.2f, 1.8f, 2.6f, 2.2f, 1.2f }, rows);
+        return ManagementReportPdf.render(PdfExportSupport.pageSize(), MessageUtil.getMessage("reject.report"),
+                getActivityLabel(), dateRange, headers, new float[] { 1.2f, 1.2f, 1.8f, 2.6f, 2.2f, 1.2f }, rows);
     }
 
     protected boolean isReportByTest() {

@@ -625,4 +625,7 @@
   <!-- Overdue STAT alerts: the turnaround target they are raised against. -->
   <include relativeToChangelogFile="true" file="119-stat-turnaround-config.xml"/>
 
+  <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
+  <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
+
 </databaseChangeLog>

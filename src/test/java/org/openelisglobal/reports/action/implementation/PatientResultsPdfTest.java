@@ -9,13 +9,29 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import javax.imageio.ImageIO;
+import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.util.ConfigurationProperties;
+import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.testsupport.PdfText;
 
 public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
+
+    private String originalPaperSize;
+
+    @Before
+    public void setUp() {
+        originalPaperSize = ConfigurationProperties.getInstance().getPropertyValue(Property.REPORT_PAPER_SIZE);
+    }
+
+    @After
+    public void tearDown() {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, originalPaperSize);
+    }
 
     @Test
     public void listsAPatientsOrderDetailsAndResultsBySection() throws Exception {
@@ -63,6 +79,17 @@ public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
                 .render(settings(false, List.of(logo()), "Accredited to ISO 15189 for marked tests"), rows("PAT-0001"));
 
         assertContains(lines(PdfText.of(pdf)), "Accredited to ISO 15189 for marked tests");
+    }
+
+    @Test
+    public void printsOnTheSitesPaperSize() throws Exception {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, "Letter");
+        byte[] letter = PatientResultsPdf.render(settings(false, List.of(), null), rows("PAT-0001"));
+        ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, "A4");
+        byte[] a4 = PatientResultsPdf.render(settings(false, List.of(), null), rows("PAT-0001"));
+
+        assertEquals(792f, PdfText.pageHeight(letter, 1), 0.5f);
+        assertEquals(842f, PdfText.pageHeight(a4, 1), 0.5f);
     }
 
     @Test

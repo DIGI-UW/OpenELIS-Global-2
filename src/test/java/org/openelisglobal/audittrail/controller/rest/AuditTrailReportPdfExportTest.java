@@ -14,6 +14,7 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.audittrail.action.workers.AuditTrailItem;
 import org.openelisglobal.audittrail.action.workers.AuditTrailViewWorker;
+import org.openelisglobal.common.util.DefaultConfigurationProperties;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testsupport.PdfText;
@@ -32,6 +33,9 @@ public class AuditTrailReportPdfExportTest {
     @Mock
     private AuditTrailViewWorker worker;
 
+    @Mock
+    private DefaultConfigurationProperties configurationProperties;
+
     private Object previousFactory;
     private Object previousMessageUtil;
 
@@ -41,6 +45,7 @@ public class AuditTrailReportPdfExportTest {
         previousMessageUtil = ReflectionTestUtils.getField(MessageUtil.class, "instance");
         ReflectionTestUtils.setField(SpringContext.class, "factory", beanFactory);
         when(beanFactory.getBean(AuditTrailViewWorker.class)).thenReturn(worker);
+        when(beanFactory.getBean(DefaultConfigurationProperties.class)).thenReturn(configurationProperties);
 
         StaticMessageSource messages = new StaticMessageSource();
         messages.addMessage("auditTrail.export.title.orderAuditTrail", LocaleContextHolder.getLocale(),

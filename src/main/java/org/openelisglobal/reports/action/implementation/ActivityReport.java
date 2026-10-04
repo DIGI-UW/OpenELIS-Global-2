@@ -28,6 +28,7 @@ import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
@@ -43,7 +44,6 @@ import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.spring.util.SpringContext;
-import org.openpdf.text.PageSize;
 
 public abstract class ActivityReport extends Report implements IReportCreator {
     protected List<ActivityReportBean> testsResults;
@@ -74,8 +74,8 @@ public abstract class ActivityReport extends Report implements IReportCreator {
                     item.getTurnaroundDays(), item.getTurnaroundHours()));
             above = item;
         }
-        return ManagementReportPdf.render(PageSize.A4.rotate(), MessageUtil.getMessage("report.activity"),
-                getActivityLabel(), dateRange, headers,
+        return ManagementReportPdf.render(PdfExportSupport.pageSize().rotate(),
+                MessageUtil.getMessage("report.activity"), getActivityLabel(), dateRange, headers,
                 new float[] { 2.4f, 1.1f, 1.1f, 1.8f, 2.2f, 1.2f, 1.5f, 1.7f, 1.3f, 1.3f }, rows);
     }
 
