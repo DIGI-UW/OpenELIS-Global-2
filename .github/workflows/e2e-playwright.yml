@@ -25,11 +25,12 @@ concurrency:
 
 jobs:
   # ─── Detect Changes ─────────────────────────────────────────────────────────
-  # Skips the Shared Build when a pull request changes only documentation. This
-  # is only an optimisation: E2E / Tests re-decides from the default branch's
-  # copy of .github/scripts/e2e-scope.cjs before it reports the checkpoint, so a
-  # pull request cannot skip E2E by editing this file. Every other event always
-  # builds.
+  # Skips the Shared Build when a pull request changes only documentation, or
+  # sits below the top of a stack (the top pull request's run covers the whole
+  # stack). This is only an optimisation: E2E / Tests re-decides from the
+  # default branch's copy of .github/scripts/e2e-scope.cjs before it reports the
+  # checkpoint, so a pull request cannot skip E2E by editing this file. Every
+  # other event always builds.
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -55,11 +56,10 @@ jobs:
         with:
           script: |
             const scope = require('./.github/scripts/e2e-scope.cjs');
-            const files = await scope.listPullRequestFiles({ github, owner: context.repo.owner,
-              repo: context.repo.repo, pullNumber: context.payload.pull_request.number });
-            const e2e = scope.requiresE2E(files);
-            core.info(`${files.length} changed file(s); E2E ${e2e ? 'required' : 'skipped: documentation only'}`);
-            core.setOutput('e2e', e2e ? 'true' : 'false');
+            const reason = await scope.skipReason({ github, owner: context.repo.owner,
+              repo: context.repo.repo, pull: context.payload.pull_request });
+            core.info(reason ? `E2E skipped: ${reason.description}` : 'E2E required');
+            core.setOutput('e2e', reason ? 'false' : 'true');
       # E2E / Tests reads this to know which pull request triggered the build.
       # It is only a lookup key there: the wrapper accepts it only when the API
       # confirms that pull request is open at this exact head sha.
