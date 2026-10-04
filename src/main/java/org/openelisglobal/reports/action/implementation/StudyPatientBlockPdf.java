@@ -23,30 +23,48 @@ final class StudyPatientBlockPdf {
     private StudyPatientBlockPdf() {
     }
 
+    /**
+     * The block's values; pregnancy and breastfeeding print blank when a report
+     * does not record them.
+     */
+    record Patient(String subjectNumber, String labNo, String gender, String pregnancy, String birthDate, String age,
+            String breastfeeding, String collected, String received, String doctor, String site, String completed,
+            String validated) {
+        static Patient of(ARVReportData order) {
+            return new Patient(order.getSubjectNumber(), order.getLabNo(), order.getGender(), null,
+                    order.getBirth_date(), order.getAge(), null, order.getCollectiondate(), order.getReceptiondate(),
+                    order.getDoctor(), order.getOrgname(), order.getCompleationdate(), order.getReleasedate());
+        }
+    }
+
     static void add(Document document, ARVReportData order) {
+        add(document, Patient.of(order));
+    }
+
+    static void add(Document document, Patient patient) {
         PdfPTable block = new PdfPTable(new float[] { 140, 140, 95, 95 });
         block.setWidthPercentage(100);
         block.setSpacingBefore(8);
         block.setSpacingAfter(8);
-        block.addCell(field("Sujetno", order.getSubjectNumber()));
-        block.addCell(field("Labno", order.getLabNo()));
-        block.addCell(field("Sexe", order.getGender()));
-        block.addCell(field("Grossesse", null));
-        block.addCell(field("Date Naiss.", order.getBirth_date()));
-        block.addCell(field("Age", order.getAge()));
-        block.addCell(field("Allaitement", null));
+        block.addCell(field("Sujetno", patient.subjectNumber()));
+        block.addCell(field("Labno", patient.labNo()));
+        block.addCell(field("Sexe", patient.gender()));
+        block.addCell(field("Grossesse", patient.pregnancy()));
+        block.addCell(field("Date Naiss.", patient.birthDate()));
+        block.addCell(field("Age", patient.age()));
+        block.addCell(field("Allaitement", patient.breastfeeding()));
         block.addCell(field(null, null));
-        block.addCell(field("Date de Prél.", order.getCollectiondate()));
-        block.addCell(field("Date de Réception", day(order.getReceptiondate())));
+        block.addCell(field("Date de Prél.", patient.collected()));
+        block.addCell(field("Date de Réception", day(patient.received())));
         PdfPCell prescriber = new PdfPCell();
         prescriber.setColspan(2);
         prescriber.setRowspan(2);
-        prescriber.addElement(labelled("Prescripteur", order.getDoctor()));
-        prescriber.addElement(labelled("Site", order.getOrgname()));
+        prescriber.addElement(labelled("Prescripteur", patient.doctor()));
+        prescriber.addElement(labelled("Site", patient.site()));
         prescriber.addElement(labelled("Adresse", null));
         block.addCell(prescriber);
-        block.addCell(field("Date de Réalisation", order.getCompleationdate()));
-        block.addCell(field("Date de validation", order.getReleasedate()));
+        block.addCell(field("Date de Réalisation", patient.completed()));
+        block.addCell(field("Date de validation", patient.validated()));
         document.add(block);
     }
 
