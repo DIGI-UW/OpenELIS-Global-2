@@ -137,8 +137,6 @@ public class ReportImplementationFactory {
                 return new TBOrderReport();
             } else if (report.equals("Trends")) {
                 return new ExportTrendsByDate();
-            } else if (report.equals("ExportWHONETReportByDate")) {
-                return new WHONETExportRoutineByDate();
             } else if (report.equals("covidResultsReport")) {
                 return new CovidResultsReport();
             } else if (report.equals("statisticsReport")) {
@@ -273,8 +271,6 @@ public class ReportImplementationFactory {
                 return new ExportTrendsByDate();
             } else if (report.equals("TBOrderExport")) {
                 return new ExportTBOrdersByDate();
-            } else if (report.equals("ExportWHONETReportByDate")) {
-                return new WHONETExportRoutineByDate();
             } else if (report.equals("covidResultsReport")) {
                 return new CovidResultsReport();
             } else if (report.equals("statisticsReport")) {
