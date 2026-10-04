@@ -1,9 +1,17 @@
 // Decides whether a pull request needs the E2E suites at all.
 //
-// The rule is a skip-list, not an include-list: E2E is skipped only when every
-// changed path is documentation. A path this list misses makes E2E run when it
-// did not need to, which is safe; an include-list that missed a path would
-// give a code change a green checkpoint without running anything.
+// Two rules skip them, and both fail towards running E2E:
+//
+// - Documentation only. The rule is a skip-list, not an include-list: E2E is
+//   skipped only when every changed path is documentation. A path this list
+//   misses makes E2E run when it did not need to, which is safe; an
+//   include-list that missed a path would give a code change a green
+//   checkpoint without running anything.
+// - Below the top of a stack. GitHub runs every pull request in a stack as if
+//   it targeted the stack's base, so a 20-PR stack would run E2E 20 times. The
+//   top pull request contains every commit of the stack, so its run covers them
+//   all; the others defer to it. Stack metadata that is missing or malformed
+//   means "run E2E".
 //
 // Both sides use this file. `03 - E2E` calls it to skip the Shared Build, and
 // `E2E / Tests` calls it again from the default branch to decide the
@@ -32,6 +40,43 @@ function requiresE2E(files) {
   return files.some(
     (file) => !isDocsPath(file.filename) || (file.previous_filename !== undefined && !isDocsPath(file.previous_filename)),
   );
+}
+
+// The stack a pull request defers to, or null when it runs E2E itself: not in
+// a stack, or the top of its stack. The REST pull request object and the
+// pull_request event payload both carry `stack` with `number`, `position`
+// (1 is the bottom) and `size`. Anything that is not a positive integer below
+// `size` runs E2E.
+function stackDeferral(pull) {
+  const stack = pull && pull.stack;
+  if (!stack) {
+    return null;
+  }
+  const { position, size } = stack;
+  if (!Number.isInteger(position) || !Number.isInteger(size) || position < 1 || size < 1 || position >= size) {
+    return null;
+  }
+  return { number: stack.number, position, size };
+}
+
+// Why a pull request skips E2E, as { kind, description }, or null when it runs
+// E2E. The description is the checkpoint status text, so both workflows and
+// the gate say the same thing.
+async function skipReason({ github, owner, repo, pull }) {
+  const files = await listPullRequestFiles({ github, owner, repo, pullNumber: pull.number });
+  if (!requiresE2E(files)) {
+    return { kind: "docs", files: files.length, description: "Documentation-only change; E2E suites skipped" };
+  }
+  const deferral = stackDeferral(pull);
+  if (deferral) {
+    return {
+      kind: "stack",
+      files: files.length,
+      ...deferral,
+      description: `Stacked PR ${deferral.position} of ${deferral.size} (stack #${deferral.number}); E2E runs on the top of the stack`,
+    };
+  }
+  return null;
 }
 
 async function listPullRequestFiles({ github, owner, repo, pullNumber }) {
@@ -94,4 +139,13 @@ async function resolvePullRequest({ github, owner, repo, claimedNumber, headOwne
   return pull;
 }
 
-module.exports = { isDocsPath, requiresE2E, listPullRequestFiles, openPullsAtHead, resolvePullRequest, MAX_LISTED_FILES };
+module.exports = {
+  isDocsPath,
+  requiresE2E,
+  stackDeferral,
+  skipReason,
+  listPullRequestFiles,
+  openPullsAtHead,
+  resolvePullRequest,
+  MAX_LISTED_FILES,
+};

@@ -105,6 +105,12 @@ path. Risk is reduced, not eliminated.
 
 - `03 Checkpoint - E2E` is the only required PR-facing E2E status.
 - The wrapper workflow owns pending and terminal status reporting.
+- The wrapper posts the checkpoint as `success` without running the suites in
+  two cases, both decided from the default branch's copy of
+  `.github/scripts/e2e-scope.cjs`: the pull request changes only documentation,
+  or it sits below the top of a stack, whose top pull request contains every
+  commit of the stack and runs E2E for all of them. The status description names
+  the reason.
 - In `workflow_run`, two identities exist:
   - run identity: what GitHub shows in Actions UI for the triggered run
   - validation identity: the code ref and commit actually validated downstream
