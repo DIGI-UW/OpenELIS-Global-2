@@ -376,6 +376,7 @@ public class TbSampleServiceImpl implements TbSampleService {
             analysis.setEnteredDate(DateUtil.getNowAsTimestamp());
             analysis.setIsReportable(test.getIsReportable());
             analysis.setAnalysisType(DEFAULT_ANALYSIS_TYPE);
+            analysis.setMethod(test.getMethod());
             analysis.setStartedDate(DateUtil.getNowAsTimestamp());
             analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
             analysis.setSysUserId(formData.getSysUserId());
