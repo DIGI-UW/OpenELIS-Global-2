@@ -18,12 +18,12 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.ByteArrayOutputStream;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -31,6 +31,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ErrorMessages;
 import org.openelisglobal.reports.action.implementation.reportBeans.IPCIRealisationTest;
@@ -40,6 +41,13 @@ import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
+import org.openpdf.text.Document;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
 
 public class IPCIRealisationReport extends Report {
 
@@ -104,8 +112,6 @@ public class IPCIRealisationReport extends Report {
             msgs.setMsgLine1(MessageUtil.getMessage("report.error.message.date.format"));
             errorMsgs.add(msgs);
         }
-
-        createReportParameters();
 
         initializeReportItems();
 
@@ -196,25 +202,60 @@ public class IPCIRealisationReport extends Report {
                 || BIOLOGIST_REJECT_ID.equals(analysis.getStatusId());
     }
 
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
+    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 9, Font.BOLD);
+    private static final Font CELL_FONT = new Font(Font.HELVETICA, 9);
 
-        reportParameters.put("startDate", lowerDateRange);
-        reportParameters.put("stopDate", upperDateRange);
-        reportParameters.put("date_debut", lowerDateRange);
-        reportParameters.put("date_fin", upperDateRange);
+    @Override
+    protected byte[] renderReport() {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = new Document(PageSize.A4, 36, 36, 36, 48);
+        ReportHeaderPdf.open(document, out);
+        ReportHeaderPdf.add(document, "Rapport sur la realisation des tests", ReportHeaderPdf.siteNameLines());
+        Paragraph period = new Paragraph(
+                lowerDateRange + " - " + upperDateRange + "    Date du rapport : " + DateUtil.getCurrentDateAsText(),
+                CELL_FONT);
+        period.setSpacingBefore(6);
+        period.setSpacingAfter(8);
+        document.add(period);
+
+        PdfPTable table = new PdfPTable(new float[] { 3, 2, 2, 2 });
+        table.setWidthPercentage(100);
+        table.setHeaderRows(1);
+        PdfExportSupport.addHeaderRow(table, HEADER_FONT, 3, "Test", "Demande", "Effectue", "Non effectue");
+        int[] grand = new int[3];
+        int start = 0;
+        while (start < reportItems.size()) {
+            String section = reportItems.get(start).getSectionName();
+            PdfPCell sectionCell = new PdfPCell(new Phrase(section, HEADER_FONT));
+            sectionCell.setColspan(4);
+            table.addCell(sectionCell);
+            int[] sectionTotals = new int[3];
+            int end = start;
+            while (end < reportItems.size() && Objects.equals(reportItems.get(end).getSectionName(), section)) {
+                IPCIRealisationTest item = reportItems.get(end);
+                int[] counts = { item.getRequired(), item.getPerformed(), item.getNoPerformed() };
+                table.addCell(new Phrase(item.getTestName(), CELL_FONT));
+                for (int i = 0; i < counts.length; i++) {
+                    table.addCell(new Phrase(String.valueOf(counts[i]), CELL_FONT));
+                    sectionTotals[i] += counts[i];
+                    grand[i] += counts[i];
+                }
+                end++;
+            }
+            addTotalRow(table, "Total", sectionTotals);
+            start = end;
+        }
+        addTotalRow(table, "Totaux", grand);
+        document.add(table);
+        document.close();
+        return out.toByteArray();
     }
 
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
-    }
-
-    @Override
-    protected String reportFileName() {
-
-        return "IPCIRealisationTest";
+    private static void addTotalRow(PdfPTable table, String label, int[] totals) {
+        table.addCell(new Phrase(label, HEADER_FONT));
+        for (int total : totals) {
+            table.addCell(new Phrase(String.valueOf(total), HEADER_FONT));
+        }
     }
 
     private class TestBucket {

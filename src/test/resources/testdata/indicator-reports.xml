@@ -74,7 +74,10 @@
         started_date="2026-06-02 09:00:00"
         completed_date="2026-06-03 09:00:00" lastupdated="2026-06-03 09:00:00" />
 
-    <!-- IndicatorHIV resolves this analyte when the class loads -->
+    <!-- IndicatorHIV and RetroCIReport resolve these analytes when their classes
+        load -->
     <analyte id="941" name="Conclusion" is_active="Y"
+        lastupdated="2025-03-18 12:00:00" />
+    <analyte id="942" name="generated CD4 Count" is_active="Y"
         lastupdated="2025-03-18 12:00:00" />
 </dataset>
