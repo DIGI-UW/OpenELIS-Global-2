@@ -95,12 +95,17 @@ public final class PdfExportSupport {
     /** The blue, centred header row shared by the export tables. */
     public static void addHeaderRow(PdfPTable table, Font font, float padding, String... headers) {
         for (String header : headers) {
-            PdfPCell cell = new PdfPCell(new Phrase(header, font));
-            cell.setBackgroundColor(HEADER_BACKGROUND);
-            cell.setHorizontalAlignment(Element.ALIGN_CENTER);
-            cell.setPadding(padding);
-            table.addCell(cell);
+            table.addCell(headerCell(header, font, padding));
         }
+    }
+
+    /** One cell of that header row, for headers that span rows or columns. */
+    public static PdfPCell headerCell(String header, Font font, float padding) {
+        PdfPCell cell = new PdfPCell(new Phrase(header, font));
+        cell.setBackgroundColor(HEADER_BACKGROUND);
+        cell.setHorizontalAlignment(Element.ALIGN_CENTER);
+        cell.setPadding(padding);
+        return cell;
     }
 
     /** The configured site name for the report heading, never null. */

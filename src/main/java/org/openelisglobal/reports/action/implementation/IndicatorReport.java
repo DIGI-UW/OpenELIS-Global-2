@@ -30,6 +30,7 @@ import org.openpdf.text.Font;
 import org.openpdf.text.PageSize;
 import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
+import org.openpdf.text.Rectangle;
 
 public abstract class IndicatorReport extends Report {
 
@@ -41,25 +42,6 @@ public abstract class IndicatorReport extends Report {
     public void setRequestParameters(ReportForm form) {
         new ReportSpecificationParameters(ReportSpecificationParameters.Parameter.DATE_RANGE, getNameForReportRequest(),
                 null).setRequestParameters(form);
-    }
-
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-
-        reportParameters.put("startDate", lowerDateRange);
-        reportParameters.put("stopDate", upperDateRange);
-        reportParameters.put("siteId", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteCode));
-        reportParameters.put("directorName",
-                ConfigurationProperties.getInstance().getPropertyValue(Property.labDirectorName));
-        reportParameters.put("labName1", getLabNameLine1());
-        reportParameters.put("labName2", getLabNameLine2());
-        reportParameters.put("reportTitle", getNameForReport());
-        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.configurationName, "CI LNSP")) {
-            reportParameters.put("headerName", "CILNSPHeader.jasper");
-        } else {
-            reportParameters.put("headerName", "GeneralHeader.jasper");
-        }
     }
 
     protected void setDateRange(ReportForm form) {
@@ -94,7 +76,14 @@ public abstract class IndicatorReport extends Report {
      * the site code when one is configured.
      */
     protected Document startPdf(ByteArrayOutputStream out, String period) {
-        Document document = new Document(PageSize.A4, 36, 36, 36, 48);
+        return startPdf(out, PageSize.A4, period);
+    }
+
+    /**
+     * As above, on the given page size, with further heading lines after the first.
+     */
+    protected Document startPdf(ByteArrayOutputStream out, Rectangle pageSize, String period, String... moreLines) {
+        Document document = new Document(pageSize, 36, 36, 36, 48);
         ReportHeaderPdf.open(document, out);
         List<String> nameLines = new ArrayList<>();
         for (String line : new String[] { getLabNameLine1(), getLabNameLine2() }) {
@@ -112,8 +101,13 @@ public abstract class IndicatorReport extends Report {
                     new Font(Font.HELVETICA, 10)));
         }
         meta.setSpacingBefore(6);
-        meta.setSpacingAfter(8);
+        meta.setSpacingAfter(moreLines.length == 0 ? 8 : 0);
         document.add(meta);
+        for (int i = 0; i < moreLines.length; i++) {
+            Paragraph line = new Paragraph(moreLines[i], new Font(Font.HELVETICA, 10));
+            line.setSpacingAfter(i == moreLines.length - 1 ? 8 : 0);
+            document.add(line);
+        }
         return document;
     }
 

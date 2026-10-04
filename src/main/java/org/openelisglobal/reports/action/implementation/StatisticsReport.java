@@ -1,8 +1,10 @@
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.ByteArrayOutputStream;
 import java.sql.Timestamp;
 import java.time.LocalTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Collections;
 import java.util.Date;
@@ -12,8 +14,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.DisplayListService;
@@ -24,6 +24,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.StatisticsReportData;
 import org.openelisglobal.reports.form.ReportForm;
@@ -33,6 +34,13 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
+import org.openpdf.text.Document;
+import org.openpdf.text.Font;
+import org.openpdf.text.PageSize;
+import org.openpdf.text.Paragraph;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
 
 public class StatisticsReport extends IndicatorReport implements IReportCreator, IReportParameterSetter {
 
@@ -57,7 +65,6 @@ public class StatisticsReport extends IndicatorReport implements IReportCreator,
     public void initializeReport(ReportForm form) {
         super.initializeReport();
         inntialiseReportParams(form);
-        createReportParameters();
         createReportData(form);
     }
 
@@ -82,14 +89,77 @@ public class StatisticsReport extends IndicatorReport implements IReportCreator,
     }
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        return render(reportItems);
     }
 
-    @Override
-    protected String reportFileName() {
-        // TODO Auto-generated method stub
-        return "StatisticsReport";
+    private static final String[] MONTH_KEYS = { "report.january", "report.february", "report.march", "report.april",
+            "report.may", "report.june", "report.july", "report.august", "report.september", "report.october",
+            "report.november", "report.december" };
+    private static final Font HEADER_FONT = new Font(Font.HELVETICA, 6.5f, Font.BOLD);
+    private static final Font CELL_FONT = new Font(Font.HELVETICA, 6.5f);
+    private static final Font TOTAL_FONT = new Font(Font.HELVETICA, 6.5f, Font.BOLD);
+
+    /** Tests and samples per month for each test, with the year's totals. */
+    byte[] render(List<StatisticsReportData> items) {
+        ByteArrayOutputStream out = new ByteArrayOutputStream();
+        Document document = startPdf(out, PageSize.A3.rotate(), year,
+                MessageUtil.getMessage("label.openreports.testsection") + " " + labUnits,
+                MessageUtil.getMessage("sample.batchentry.order.receptiontime") + ": " + receptionTime,
+                MessageUtil.getMessage("sample.entry.priority") + ": " + priority);
+
+        float[] widths = new float[25];
+        widths[0] = 4;
+        Arrays.fill(widths, 1, 25, 1);
+        PdfPTable table = new PdfPTable(widths);
+        table.setWidthPercentage(100);
+        table.setHeaderRows(2);
+        PdfPCell testHeader = PdfExportSupport.headerCell(MessageUtil.getMessage("report.test"), HEADER_FONT, 2);
+        testHeader.setRowspan(2);
+        table.addCell(testHeader);
+        for (String month : MONTH_KEYS) {
+            PdfPCell monthHeader = PdfExportSupport.headerCell(MessageUtil.getMessage(month), HEADER_FONT, 2);
+            monthHeader.setColspan(2);
+            table.addCell(monthHeader);
+        }
+        for (int i = 0; i < 12; i++) {
+            table.addCell(PdfExportSupport.headerCell(MessageUtil.getMessage("report.tests"), HEADER_FONT, 2));
+            table.addCell(PdfExportSupport.headerCell(MessageUtil.getMessage("report.samples"), HEADER_FONT, 2));
+        }
+        int[] totals = new int[24];
+        for (StatisticsReportData item : items) {
+            if (item.getTestName() == null) {
+                PdfPCell none = new PdfPCell(new Phrase(MessageUtil.getMessage("report.no.section.tests"), CELL_FONT));
+                none.setColspan(25);
+                table.addCell(none);
+                continue;
+            }
+            table.addCell(new Phrase(item.getTestName(), CELL_FONT));
+            int[] counts = monthlyCounts(item);
+            for (int i = 0; i < counts.length; i++) {
+                table.addCell(new Phrase(String.valueOf(counts[i]), CELL_FONT));
+                totals[i] += counts[i];
+            }
+        }
+        table.addCell(new Phrase(MessageUtil.getMessage("report.total"), TOTAL_FONT));
+        for (int total : totals) {
+            table.addCell(new Phrase(String.valueOf(total), TOTAL_FONT));
+        }
+        document.add(table);
+        document.add(
+                new Paragraph(MessageUtil.getMessage("referral.report.date") + ": " + DateUtil.getCurrentDateAsText(),
+                        new Font(Font.HELVETICA, 8)));
+        document.close();
+        return out.toByteArray();
+    }
+
+    private static int[] monthlyCounts(StatisticsReportData item) {
+        return new int[] { item.getTestsJan(), item.getSamplesJan(), item.getTestsFeb(), item.getSamplesFeb(),
+                item.getTestsMar(), item.getSamplesMar(), item.getTestsApr(), item.getSamplesApr(), item.getTestsMay(),
+                item.getSamplesMay(), item.getTestsJun(), item.getSamplesJun(), item.getTestsJul(),
+                item.getSamplesJul(), item.getTestsAug(), item.getSamplesAug(), item.getTestsSep(),
+                item.getSamplesSep(), item.getTestsOct(), item.getSamplesOct(), item.getTestsNov(),
+                item.getSamplesNov(), item.getTestsDec(), item.getSamplesDec() };
     }
 
     public void createReportData(ReportForm form) {
@@ -278,25 +348,6 @@ public class StatisticsReport extends IndicatorReport implements IReportCreator,
             emptydata.setTestName(null);
             reportItems.add(emptydata);
         }
-    }
-
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-
-        reportParameters.put("siteId", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteCode));
-        reportParameters.put("directorName",
-                ConfigurationProperties.getInstance().getPropertyValue(Property.labDirectorName));
-        reportParameters.put("labName1", getLabNameLine1());
-        reportParameters.put("labName2", getLabNameLine2());
-        reportParameters.put("reportTitle", getNameForReport());
-        reportParameters.put("usePageNumbers", "true");
-        reportParameters.put("headerName", "GeneralHeader.jasper");
-        reportParameters.put("year", year);
-        reportParameters.put("labUnits", MessageUtil.getMessage("label.openreports.testsection") + " " + labUnits);
-        reportParameters.put("workHours",
-                MessageUtil.getMessage("sample.batchentry.order.receptiontime") + ": " + receptionTime);
-        reportParameters.put("priority", MessageUtil.getMessage("sample.entry.priority") + ": " + priority);
     }
 
     private List<IdValuePair> getYearList() {
