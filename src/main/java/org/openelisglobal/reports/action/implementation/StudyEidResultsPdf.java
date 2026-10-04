@@ -57,12 +57,11 @@ final class StudyEidResultsPdf {
             + "prélèvement pour confirmation";
 
     /**
-     * The section heading images, laboratory reference and signatures, when the
-     * site has them.
+     * The section heading images and laboratory reference, when the site has them.
      */
     record Images(byte[] examination, byte[] results, byte[] interpretations, byte[] precautions,
-            byte[] laboratoryReference, byte[] signatures) {
-        static final Images NONE = new Images(null, null, null, null, null, null);
+            byte[] laboratoryReference) {
+        static final Images NONE = new Images(null, null, null, null, null);
     }
 
     record Settings(String studyName, Images images) {
@@ -112,7 +111,6 @@ final class StudyEidResultsPdf {
 
             addHeading(document, images.interpretations(), "INTERPRÉTATIONS");
             document.add(new Paragraph(INTERPRETATIONS, SMALL_FONT));
-            addImage(document, images.signatures(), 191, 80, Element.ALIGN_RIGHT);
             addHeading(document, images.precautions(), "Précautions et Limites de la Procédure");
             document.add(new Paragraph(PRECAUTIONS, SMALL_FONT));
 

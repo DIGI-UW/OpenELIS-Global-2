@@ -66,7 +66,7 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
                 Objects.toString(reportParameters.get("studyName"), ""),
                 new StudyEidResultsPdf.Images(reportImage("EXAMEN_EID.jpg"), reportImage("RESULTATS.jpg"),
                         reportImage("INTERPRETATIONS.jpg"), reportImage("PRECAUTIONS.jpg"),
-                        reportImage("EID_LaboRef.jpg"), reportImage("EIDSign.jpg")));
+                        reportImage("EID_LaboRef.jpg")));
         return usesVersionTwoLayout() ? StudyEidResultsPdf.versionTwo(reportItems, settings)
                 : StudyEidResultsPdf.versionOne(reportItems, settings);
     }
