@@ -9,6 +9,14 @@ on:
   workflow_dispatch:
   workflow_call:
 
+# A new push to a pull request cancels that PR's run still in progress. Other
+# events get a group of their own, so develop pushes, releases and manual runs
+# are never cancelled. The literal prefix keeps the group distinct when this
+# workflow is called from another one.
+concurrency:
+  group: frontend-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
 
@@ -25,16 +33,51 @@ jobs:
       contents: read
       pull-requests: read
     outputs:
-      frontend: ${{ steps.filter.outputs.frontend || 'true' }}
+      frontend: ${{ steps.stack.outputs.deferred == 'true' && 'false' || steps.filter.outputs.frontend || 'true' }}
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request'
         uses: actions/checkout@v6
+      # GitHub runs every pull request in a stack as if it targeted the stack's
+      # base, so a 20-PR stack would run Static and Image 20 times per push. The top
+      # pull request contains every commit of the stack, so its run covers them
+      # all; a pull request below the top skips Static and Image and the checkpoint
+      # passes as it does for a change outside the frontend paths. The top's own
+      # diff is one layer, so its path filter runs against the stack's base
+      # instead (see the filter step). Missing or malformed stack metadata runs
+      # Static and Image with the ordinary filter.
+      - name: Decide stack scope
+        id: stack
+        if: github.event_name == 'pull_request'
+        env:
+          POSITION: ${{ github.event.pull_request.stack.position }}
+          SIZE: ${{ github.event.pull_request.stack.size }}
+          STACK: ${{ github.event.pull_request.stack.number }}
+        run: |
+          if [[ "$POSITION" =~ ^[0-9]+$ && "$SIZE" =~ ^[0-9]+$ && "$POSITION" -ge 1 && "$SIZE" -ge 1 ]]; then
+            if [[ "$POSITION" -lt "$SIZE" ]]; then
+              echo "Stacked PR $POSITION of $SIZE (stack #$STACK); Static and Image runs on the top of the stack"
+              echo "deferred=true" >> "$GITHUB_OUTPUT"
+              echo "top=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "Top of stack #$STACK ($POSITION of $SIZE); paths are compared against the stack's base"
+            echo "deferred=false" >> "$GITHUB_OUTPUT"
+            echo "top=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "deferred=false" >> "$GITHUB_OUTPUT"
+          echo "top=false" >> "$GITHUB_OUTPUT"
+      # With a token the filter reads the pull request's own files, which for
+      # the top of a stack is one layer; with no token it diffs the checkout
+      # against `base` with git, and the stack's base gives the whole stack.
       - name: Detect frontend paths
         id: filter
         if: github.event_name == 'pull_request'
         uses: dorny/paths-filter@v4
         with:
+          token: ${{ steps.stack.outputs.top != 'true' && github.token || '' }}
+          base: ${{ steps.stack.outputs.top == 'true' && github.event.pull_request.stack.base.ref || '' }}
           filters: |
             frontend:
               - 'frontend/**'

@@ -145,14 +145,19 @@ branch. Please switch to a feature branch first."
 **Holistic CI status check (MANDATORY):**
 
 Before diving into specific failures, get the full picture across ALL workflows
-— not just E2E. This matches what the user sees in the GitHub PR UI:
+— not just E2E. Read only what GitHub shows, the commit's `statusCheckRollup`:
 
 ```bash
-# If PR exists, use gh pr checks for the same view as the GitHub UI
-gh pr checks $PR_NUMBER 2>/dev/null || \
-  gh run list --branch $BRANCH --limit 10 --json name,status,conclusion,workflowName \
-    --jq '.[] | "\(.workflowName) / \(.name): \(.conclusion // .status)"'
+# A PR: the same checks as the PR page
+gh pr checks $PR_NUMBER
+
+# No PR: the runs behind the checks on the branch's newest commit
+./scripts/download-ci-logs.sh --branch $BRANCH --list
 ```
+
+If the user linked a run or job, diagnose that job first
+(`gh run view <run-id> --job <job-id> --log`); widen to other checks only from
+the rollup above.
 
 **Check ALL workflows**, not just the one you expect to fail:
 
@@ -192,14 +197,21 @@ This project uses a **two-stage E2E pipeline**:
 
 **Critical gotchas:**
 
-- `E2E / Tests` always shows `head_branch: develop` in the API because
-  `workflow_run` events inherit the base branch. It tests the **PR's code** via
+- `E2E / Tests` runs on develop because `workflow_run` runs on the default
+  branch. GitHub files every PR's `E2E / Tests` run (and every Dependabot run)
+  under develop's name and newest commit, while it tests the **PR's code** via
   the `e2e-build-context` artifact (which contains `pr_number` and `head_sha`).
+  So any listing by branch or commit shows other PRs' E2E failures as
+  develop's, and finds no E2E run on the PR's own branch. The only view that
+  matches GitHub is the commit's `statusCheckRollup`: `gh pr checks` for a PR,
+  `scripts/download-ci-logs.sh --branch <branch> --list` for a branch tip.
 - `gh run watch --exit-status` **does NOT work** for `E2E / Tests` runs. It
   reports exit code 0 even when the run fails. **Never use it for E2E
   monitoring.**
-- `gh run list --branch <pr-branch>` will NOT find `E2E / Tests` runs because
-  they show as `develop`. Use `gh pr checks` instead.
+- Listing runs by branch or commit (`gh run list --branch`/`--commit`,
+  `gh api .../actions/runs?head_sha=`/`?branch=`), `check-runs`, `check-suites`
+  and `commits/<sha>/status` all differ from what GitHub shows. The combined
+  status endpoint leaves out check runs entirely.
 
 **How to find the E2E Tests run for a PR:**
 
@@ -212,6 +224,10 @@ gh pr checks $PR_NUMBER
 # Extract it if needed:
 gh pr checks $PR_NUMBER 2>&1 | grep "03 Checkpoint - E2E[^-]"
 ```
+
+`03 Checkpoint - E2E` stays pending until every suite finishes, so a shard can
+fail long before the checkpoint does. While it is pending, open the run it links
+(`gh run view <RUN_ID>`) and start on any failed job instead of waiting.
 
 **How to verify CI status (MANDATORY — replace all `gh run watch` usage):**
 
@@ -234,7 +250,10 @@ fi
 **Never use these for E2E status:**
 
 - `gh run watch <run-id> --exit-status` — exits 0 on failure for workflow_run
-- `gh run list --branch <pr-branch>` — misses E2E / Tests runs
+- `gh run list --branch` / `--commit` — misses the PR's E2E / Tests run and
+  shows other PRs' runs on develop
+- `gh api` on `check-runs`, `check-suites`, `commits/<sha>/status` or
+  `actions/runs?head_sha=` — same problem, or leaves out check runs
 - `gh run view <run-id> --json conclusion` on the `03 - E2E` run — this is the
   build, not the tests
 
@@ -300,13 +319,6 @@ re-run the failed CI job before diagnosing:
 
 ```bash
 gh run rerun $RUN_ID --failed
-```
-
-Check if the same test passed in recent runs on this branch:
-
-```bash
-gh run list --branch $BRANCH --limit 5 \
-  --json databaseId,conclusion --jq '.[] | select(.conclusion=="success")'
 ```
 
 If the test passes on re-run → classify as **flaky**, log it, and move on. If it
@@ -550,11 +562,14 @@ git push
 **Post-push holistic check (MANDATORY):**
 
 After pushing, immediately check ALL workflow statuses — not just the one you
-fixed:
+fixed. Same two sources as the preflight check:
 
 ```bash
-gh pr checks $PR_NUMBER 2>/dev/null || \
-  gh run list --branch $BRANCH --limit 5
+if [ -n "$PR_NUMBER" ]; then
+  gh pr checks $PR_NUMBER
+else
+  ./scripts/download-ci-logs.sh --branch $BRANCH --list
+fi
 ```
 
 This catches cascading failures (e.g., a test fix that breaks formatting) before
