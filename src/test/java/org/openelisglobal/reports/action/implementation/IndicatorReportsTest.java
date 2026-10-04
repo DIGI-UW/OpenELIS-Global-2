@@ -34,9 +34,11 @@ public class IndicatorReportsTest extends BaseWebContextSensitiveTest {
         assertLine(lines, "Test Not Started In Progress * Completed Total");
         assertLine(lines, "Hematology");
         assertLine(lines, "Hemoglobin 1 1 1 3");
-        assertLine(lines, "Total 1 1 1 3");
+        assertTrue("a test without a sort order lists last: " + lines,
+                lines.indexOf("Hematocrit 0 0 1 1") > lines.indexOf("Hemoglobin 1 1 1 3"));
+        assertLine(lines, "Total 1 1 2 4");
         assertLine(lines, "There are no tests for this lab unit in the date range selected");
-        assertLine(lines, "Total Laboratories 1 1 1 3");
+        assertLine(lines, "Total Laboratories 1 1 2 4");
     }
 
     @Test

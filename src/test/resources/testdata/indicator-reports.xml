@@ -3,6 +3,7 @@
     <localization id="941" description="Hematology" />
     <localization id="942" description="user" />
     <localization id="943" description="Hemoglobin" />
+    <localization id="945" description="Hematocrit" />
     <localization id="944" description="Blood" />
     <localization_value id="941" localization_id="941"
         locale="en" value="Hematology" />
@@ -10,6 +11,8 @@
         locale="en" value="user" />
     <localization_value id="943" localization_id="943"
         locale="en" value="Hemoglobin" />
+    <localization_value id="945" localization_id="945"
+        locale="en" value="Hematocrit" />
     <localization_value id="944" localization_id="944"
         locale="en" value="Blood" />
 
@@ -44,6 +47,11 @@
         test_section_id="941" is_active="Y" orderable="true" sort_order="1"
         guid="indicator-test-941" name_localization_id="943"
         reporting_name_localization_id="943" lastupdated="2025-03-18 12:00:00" />
+    <!-- an active test configured without a sort order -->
+    <test id="942" description="Hematocrit" name="Hematocrit"
+        test_section_id="941" is_active="Y" orderable="true"
+        guid="indicator-test-942" name_localization_id="945"
+        reporting_name_localization_id="945" lastupdated="2025-03-18 12:00:00" />
 
     <sample id="941" accession_number="DEV0126000000000941"
         status_id="1" received_date="2026-06-01 08:00:00"
@@ -59,6 +67,10 @@
         started_date="2026-06-02 09:00:00" lastupdated="2026-06-02 09:00:00" />
     <analysis id="943" sampitem_id="941" test_sect_id="941"
         test_id="941" revision="1" status_id="6" analysis_type="MANUAL"
+        started_date="2026-06-02 09:00:00"
+        completed_date="2026-06-03 09:00:00" lastupdated="2026-06-03 09:00:00" />
+    <analysis id="944" sampitem_id="941" test_sect_id="941"
+        test_id="942" revision="1" status_id="6" analysis_type="MANUAL"
         started_date="2026-06-02 09:00:00"
         completed_date="2026-06-03 09:00:00" lastupdated="2026-06-03 09:00:00" />
 

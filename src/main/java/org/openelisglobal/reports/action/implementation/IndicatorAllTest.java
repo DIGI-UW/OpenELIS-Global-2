@@ -21,6 +21,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
@@ -138,6 +139,12 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
     private static final Font LABEL_FONT = new Font(Font.HELVETICA, 9, Font.BOLD);
     private static final Font CELL_FONT = new Font(Font.HELVETICA, 9);
 
+    /** A test configured without a sort order lists after the ones with one. */
+    private static int sortOrder(Test test) {
+        return GenericValidator.isBlankOrNull(test.getSortOrder()) ? Integer.MAX_VALUE
+                : Integer.parseInt(test.getSortOrder());
+    }
+
     private static void addTotalRow(PdfPTable table, String label, int[] totals) {
         table.addCell(new Phrase(label, LABEL_FONT));
         for (int value : totals) {
@@ -171,7 +178,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
             TestBucket bucket = new TestBucket();
 
             bucket.testName = TestServiceImpl.getUserLocalizedReportingTestName(test);
-            bucket.testSort = Integer.parseInt(test.getSortOrder());
+            bucket.testSort = sortOrder(test);
             bucket.testSection = test.getTestSection().getLocalizedName();
             bucket.sectionSort = test.getTestSection().getSortOrderInt();
 
@@ -292,7 +299,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
                 if (testBucket == null) {
                     testBucket = new TestBucket();
                     testBucket.testName = TestServiceImpl.getUserLocalizedReportingTestName(test);
-                    testBucket.testSort = Integer.parseInt(test.getSortOrder());
+                    testBucket.testSort = sortOrder(test);
                     testBucket.testSection = analysis.getTestSection().getLocalizedName();
                     testBucket.sectionSort = analysis.getTestSection().getSortOrderInt();
                     concatSection_TestToBucketMap.put(concatedName, testBucket);
