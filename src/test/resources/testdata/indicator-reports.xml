@@ -1,0 +1,68 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <localization id="941" description="Hematology" />
+    <localization id="942" description="user" />
+    <localization id="943" description="Hemoglobin" />
+    <localization id="944" description="Blood" />
+    <localization_value id="941" localization_id="941"
+        locale="en" value="Hematology" />
+    <localization_value id="942" localization_id="942"
+        locale="en" value="user" />
+    <localization_value id="943" localization_id="943"
+        locale="en" value="Hemoglobin" />
+    <localization_value id="944" localization_id="944"
+        locale="en" value="Blood" />
+
+    <!-- names must match StatusService.addToOrderMap() / addToAnalysisMap() -->
+    <status_of_sample id="1" description="Test Entered"
+        code="1" status_type="ORDER" lastupdated="2025-03-18"
+        name="Test Entered" display_key="sample.status.entered" is_active="Y" />
+    <status_of_sample id="5" description="Not Tested"
+        code="5" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Not Tested" display_key="status.analysis.not.started"
+        is_active="Y" />
+    <status_of_sample id="6" description="Finalized"
+        code="6" status_type="ANALYSIS" lastupdated="2025-03-18"
+        name="Finalized" display_key="status.analysis.finalized" is_active="Y" />
+    <status_of_sample id="10"
+        description="Technical Acceptance" code="10" status_type="ANALYSIS"
+        lastupdated="2025-03-18" name="Technical Acceptance"
+        display_key="status.analysis.technical.accepted" is_active="Y" />
+
+    <type_of_sample id="941" description="Blood" domain="H"
+        name_localization_id="944" lastupdated="2025-03-18 12:00:00" />
+
+    <test_section id="941" name="Hematology"
+        description="Hematology" is_external="N" is_active="Y"
+        lastupdated="2025-03-18 12:00:00" sort_order="1"
+        name_localization_id="941" />
+    <test_section id="942" name="user" description="user"
+        is_external="N" is_active="Y" lastupdated="2025-03-18 12:00:00"
+        sort_order="2" name_localization_id="942" />
+
+    <test id="941" description="Hemoglobin" name="Hemoglobin"
+        test_section_id="941" is_active="Y" orderable="true" sort_order="1"
+        guid="indicator-test-941" name_localization_id="943"
+        reporting_name_localization_id="943" lastupdated="2025-03-18 12:00:00" />
+
+    <sample id="941" accession_number="DEV0126000000000941"
+        status_id="1" received_date="2026-06-01 08:00:00"
+        entered_date="2026-06-01 08:00:00" lastupdated="2026-06-01 08:00:00" />
+    <sample_item id="941" samp_id="941" typeosamp_id="941"
+        sort_order="1" status_id="1" lastupdated="2026-06-01 08:00:00" />
+
+    <analysis id="941" sampitem_id="941" test_sect_id="941"
+        test_id="941" revision="1" status_id="5" analysis_type="MANUAL"
+        started_date="2026-06-02 09:00:00" lastupdated="2026-06-02 09:00:00" />
+    <analysis id="942" sampitem_id="941" test_sect_id="941"
+        test_id="941" revision="1" status_id="10" analysis_type="MANUAL"
+        started_date="2026-06-02 09:00:00" lastupdated="2026-06-02 09:00:00" />
+    <analysis id="943" sampitem_id="941" test_sect_id="941"
+        test_id="941" revision="1" status_id="6" analysis_type="MANUAL"
+        started_date="2026-06-02 09:00:00"
+        completed_date="2026-06-03 09:00:00" lastupdated="2026-06-03 09:00:00" />
+
+    <!-- IndicatorHIV resolves this analyte when the class loads -->
+    <analyte id="941" name="Conclusion" is_active="Y"
+        lastupdated="2025-03-18 12:00:00" />
+</dataset>
