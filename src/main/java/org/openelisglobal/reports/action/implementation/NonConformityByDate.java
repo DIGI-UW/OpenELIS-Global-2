@@ -17,8 +17,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory.AccessionFormat;
 import org.openelisglobal.common.provider.validation.AlphanumAccessionValidator;
 import org.openelisglobal.common.services.QAService;
@@ -62,30 +60,12 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
     private List<SampleQaEvent> sampleQaEvents;
 
     @Override
-    protected void createReportParameters() throws IllegalStateException {
-        super.createReportParameters();
-        String nonConformity = MessageUtil.getContextualMessage("banner.menu.nonconformity");
-        reportParameters.put("status", nonConformity);
-        reportParameters.put("reportTitle", nonConformity);
-        reportParameters.put("reportPeriod",
-                MessageUtil.getContextualMessage("banner.menu.nonconformity") + "  " + dateRange.toString());
-        reportParameters.put("supervisorSignature", ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(Property.SIGNATURES_ON_NONCONFORMITY_REPORTS, "true"));
-        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.configurationName, "CI LNSP")) {
-            reportParameters.put("headerName", "CILNSPHeader.jasper");
-        } else {
-            reportParameters.put("headerName", getHeaderName());
-        }
-    }
-
-    @Override
     public void initializeReport(ReportForm form) {
         super.initializeReport();
         lowDateStr = form.getLowerDateRange();
         highDateStr = form.getUpperDateRange();
         dateRange = new DateRange(lowDateStr, highDateStr);
 
-        createReportParameters();
         errorFound = !validateSubmitParameters();
         if (errorFound) {
             return;
@@ -165,8 +145,15 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
     }
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    protected byte[] renderReport() {
+        String title = MessageUtil.getContextualMessage("banner.menu.nonconformity");
+        return NonConformityReportPdf.byDate(title, title + "  " + dateRange.toString(), reportItems,
+                showSiteSubjectNumber());
+    }
+
+    /** Whether each order lists the patient's site subject number. */
+    protected boolean showSiteSubjectNumber() {
+        return true;
     }
 
     /** check everything */
@@ -198,10 +185,4 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
         }
     }
 
-    @Override
-    protected String reportFileName() {
-        return "NonConformityByReceivedDate";
-    }
-
-    protected abstract String getHeaderName();
 }

@@ -1,5 +1,7 @@
 package org.openelisglobal.reports.action.implementation;
 
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import java.util.Arrays;
@@ -23,8 +25,41 @@ public class NonConformityReportTest extends BaseWebContextSensitiveTest {
     public void byDate_listsEachOrdersNonConformities() throws Exception {
         List<String> lines = render(new HaitiNonConformityByDate());
 
-        assertContains(lines, "DEV0124000000000911");
-        assertContains(lines, "DEV0124000000000912");
+        assertLine(lines, "Non-Conforming Events 01/01/2024 - 12/12/2024");
+        assertContains(lines,
+                "Laboratory Number (Accession Number): DEV0124000000000911 Date of reception: 03/06/2024 08:00");
+        assertContains(lines, "Section Date Reason for rejection Type of sample Biologist Note");
+        assertLine(lines, "25/06/2024 Hemolysed Serum");
+        assertContains(lines,
+                "Laboratory Number (Accession Number): DEV0124000000000912 Date of reception: 04/06/2024 08:00");
+        assertLine(lines, "25/06/2024 Clotted Serum");
+        assertLine(lines, "26/06/2024 Hemolysed Serum");
+        assertEquals("one comments line per order: " + lines, 2,
+                lines.stream().filter(line -> line.startsWith("Comments:")).count());
+        assertFalse("the routine report leaves out the site subject number: " + lines,
+                lines.stream().anyMatch(line -> line.contains("Site Subject No.")));
+    }
+
+    @Test
+    public void studyByDate_listsTheSiteSubjectNumberUnderTheSiteHeader() throws Exception {
+        List<String> lines = render(new RetroCINonConformityByDate());
+
+        assertContains(lines, "Site Subject No.:");
+        assertFalse("the header comes from site information: " + lines,
+                lines.stream().anyMatch(line -> line.contains("CIRBA") || line.contains("Dr TONI")));
+    }
+
+    @Test
+    public void bySectionAndReason_countsEachReasonWithinItsSection() throws Exception {
+        List<String> lines = render(new HaitiNonConformityBySectionReason());
+
+        assertLine(lines, "Non Conformity Report by Unit and Reason");
+        assertLine(lines, "01/01/2024 - 12/12/2024");
+        assertLine(lines, "Not specified");
+        assertLine(lines, "Clotted 1");
+        assertLine(lines, "Hemolysed 2");
+        assertLine(lines, "Total: Not specified 3");
+        assertFalse("a single section has no grand total: " + lines, lines.contains("Total 3"));
     }
 
     private List<String> render(Report report) throws Exception {
@@ -34,6 +69,10 @@ public class NonConformityReportTest extends BaseWebContextSensitiveTest {
         report.initializeReport(form);
         report.setReportPath(reportDir);
         return Arrays.asList(PdfText.of(report.runReport()).split("\n"));
+    }
+
+    private void assertLine(List<String> lines, String expected) {
+        assertTrue(expected + " in " + lines, lines.contains(expected));
     }
 
     private void assertContains(List<String> lines, String expected) {
