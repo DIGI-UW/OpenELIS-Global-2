@@ -36,9 +36,10 @@ public class RealisationAndPerformanceReportTest extends BaseWebContextSensitive
         assertTrue(String.valueOf(lines), lines.stream().anyMatch(line -> line.startsWith("01/01/2026 - 12/12/2026")));
         assertLine(lines, "Test Demande Effectue Non effectue");
         assertLine(lines, "Hematology");
+        assertLine(lines, "Hematocrit 1 1 0");
         assertLine(lines, "Hemoglobin 3 1 2");
-        assertLine(lines, "Total 3 1 2");
-        assertLine(lines, "Totaux 3 1 2");
+        assertLine(lines, "Total 4 2 2");
+        assertLine(lines, "Totaux 4 2 2");
         assertTrue("the site comes from site information: " + lines,
                 lines.stream().noneMatch(line -> line.contains("IPCI")));
     }
