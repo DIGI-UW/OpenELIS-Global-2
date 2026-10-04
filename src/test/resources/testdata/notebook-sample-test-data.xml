@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+
+    <system_user id="1" login_name="alice" first_name="Alice"
+        last_name="Tester" is_active="Y" is_employee="Y" />
+
+    <localization id="1" description="Blood Sample"
+        lastupdated="2025-01-01 00:00:00" />
+
+    <dictionary id="100" />
+    <dictionary id="101" />
+
+    <notebook id="2" title="Test Entry Notebook 1" type="100"
+        protocol="Entry Protocol 1" content="Entry content 1"
+        objective="Objective 1" status="DRAFT" is_template="false"
+        technician_id="1" creator_id="1" date_created="2025-01-02 10:00:00"
+        last_updated="2025-01-02 10:00:00" />
+
+    <status_of_sample id="3"
+        description="The sample has been entered into the system" code="1"
+        status_type="ORDER" lastupdated="2025-03-18" name="Testing Started" />
+
+    <type_of_sample id="1" description="Blood Sample"
+        domain="H" name_localization_id="1" lastupdated="2023-12-01 12:00:00" />
+
+    <sample id="1" accession_number="TEST-NBS-001"
+        status_id="3" received_date="2025-01-01 00:00:00"
+        entered_date="2025-01-01 00:00:00" />
+
+    <sample_item id="1" samp_id="1" typeosamp_id="1"
+        sort_order="1" status_id="3" lastupdated="2025-01-01 00:00:00" />
+
+    <notebook_samples id="1" notebook_id="2" sample_item_id="1" />
+
+</dataset>
