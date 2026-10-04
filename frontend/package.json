@@ -10,7 +10,7 @@
     "@carbon/charts-react": "^1.27.3",
     "@carbon/icons-react": "^11.17.0",
     "@carbon/react": "^1.15.0",
-    "@tanstack/react-query": "^4.44.0",
+    "@tanstack/react-query": "^5.104.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^9.5.0",
     "@testing-library/user-event": "^14.6.1",
