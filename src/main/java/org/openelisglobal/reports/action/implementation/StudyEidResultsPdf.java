@@ -306,7 +306,7 @@ final class StudyEidResultsPdf {
         }
     }
 
-    /** The glossary at the foot of every version two page. */
+    /** The glossary and the report date at the foot of every version two page. */
     private static final class GlossaryFooter extends PdfPageEventHelper {
         @Override
         public void onEndPage(PdfWriter writer, Document document) {
@@ -314,6 +314,8 @@ final class StudyEidResultsPdf {
             column.setSimpleColumn(document.left(), 20, document.right(), document.bottom() - 16);
             column.addElement(new Paragraph(GLOSSARY, SMALL_FONT));
             column.go();
+            ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_RIGHT,
+                    new Phrase(DateUtil.getCurrentDateAsText(), SMALL_FONT), document.right(), 22, 0);
         }
     }
 }

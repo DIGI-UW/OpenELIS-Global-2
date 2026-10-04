@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.EIDReportData;
 import org.openelisglobal.testsupport.PdfText;
 
@@ -85,6 +86,7 @@ public class StudyEidResultsPdfTest extends BaseWebContextSensitiveTest {
         assertLine(lines, "Rang de la PCR: 2");
         assertLine(lines, "Commentaire Laboratoire:");
         assertLine(lines, "LEXIQUE");
+        assertLine(lines, DateUtil.getCurrentDateAsText());
     }
 
     @Test
