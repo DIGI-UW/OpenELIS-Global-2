@@ -3,8 +3,7 @@ package org.openelisglobal.reports.action.implementation;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -53,13 +52,23 @@ public abstract class PatientEIDReport extends RetroCIPatientReport {
         return MessageUtil.getMessage("reports.label.patient.EID");
     }
 
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
+    /**
+     * Whether the report gives the PCR result with the child's clinic and a
+     * glossary.
+     */
+    protected boolean usesVersionTwoLayout() {
+        return false;
+    }
 
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    @Override
+    protected byte[] renderReport() {
+        StudyEidResultsPdf.Settings settings = new StudyEidResultsPdf.Settings(
+                Objects.toString(reportParameters.get("studyName"), ""),
+                new StudyEidResultsPdf.Images(reportImage("EXAMEN_EID.jpg"), reportImage("RESULTATS.jpg"),
+                        reportImage("INTERPRETATIONS.jpg"), reportImage("PRECAUTIONS.jpg"),
+                        reportImage("EID_LaboRef.jpg"), reportImage("EIDSign.jpg")));
+        return usesVersionTwoLayout() ? StudyEidResultsPdf.versionTwo(reportItems, settings)
+                : StudyEidResultsPdf.versionOne(reportItems, settings);
     }
 
     @Override

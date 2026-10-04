@@ -13,9 +13,6 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
@@ -23,7 +20,6 @@ import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ReportTrackingService;
@@ -96,26 +92,9 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
                 : StudyArvResultsPdf.versionOne(reportItems, settings);
     }
 
-    /** The section reference images and signatures the web application ships. */
     private StudyArvResultsPdf.Images images() {
-        Object imagesPath = reportParameters.get("imagesPath");
-        if (imagesPath == null) {
-            return StudyArvResultsPdf.Images.NONE;
-        }
-        return new StudyArvResultsPdf.Images(image(imagesPath, "HEMATO_LaboRef.jpg"),
-                image(imagesPath, "IMMUNO_LaboRef.jpg"), image(imagesPath, "BIOCH_LaboRef.jpg"),
-                image(imagesPath, "SERO_LaboRef.jpg"));
-    }
-
-    private static byte[] image(Object imagesPath, String fileName) {
-        Path file = Path.of(imagesPath.toString(), fileName);
-        try {
-            return Files.isReadable(file) ? Files.readAllBytes(file) : null;
-        } catch (IOException e) {
-            LogEvent.logError(PatientARVReport.class.getSimpleName(), "image",
-                    "Unreadable report image " + file + ": " + e.getMessage());
-            return null;
-        }
+        return new StudyArvResultsPdf.Images(reportImage("HEMATO_LaboRef.jpg"), reportImage("IMMUNO_LaboRef.jpg"),
+                reportImage("BIOCH_LaboRef.jpg"), reportImage("SERO_LaboRef.jpg"));
     }
 
     @Override
