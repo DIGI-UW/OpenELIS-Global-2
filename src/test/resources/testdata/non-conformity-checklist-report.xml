@@ -32,6 +32,13 @@
     <sample_item id="931" samp_id="931" typeosamp_id="931"
         sort_order="1" status_id="1" lastupdated="2024-06-03 08:00:00" />
 
+    <!-- collected without a date -->
+    <sample id="932" accession_number="DEV0124000000000932"
+        status_id="1" received_date="2024-06-03 09:00:00"
+        entered_date="2024-06-03 09:00:00" lastupdated="2024-06-03 09:00:00" />
+    <sample_human id="932" samp_id="932" patient_id="931"
+        lastupdated="2024-06-03 09:00:00" />
+
     <sample_qaevent id="931" qa_event_id="931"
         sample_id="931" sampleitem_id="931" entered_date="2024-06-04 09:00:00"
         lastupdated="2024-06-04 09:00:00" />

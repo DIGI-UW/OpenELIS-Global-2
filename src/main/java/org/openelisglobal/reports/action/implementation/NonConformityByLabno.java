@@ -103,7 +103,8 @@ public abstract class NonConformityByLabno extends Report implements IReportCrea
             data.setBirth_date(patient.getBirthDateForDisplay());
             data.setAge(DateUtil.getCurrentAgeForDate(patient.getBirthDate(), sample.getCollectionDate()));
             data.setGender(patient.getGender());
-            data.setCollectiondate(sample.getCollectionDateForDisplay() + " " + sample.getCollectionTimeForDisplay());
+            data.setCollectiondate(sample.getCollectionDate() == null ? null
+                    : sample.getCollectionDateForDisplay() + " " + sample.getCollectionTimeForDisplay());
             data.setReceptiondate(DateUtil.convertTimestampToStringDate(sample.getReceivedTimestamp()));
 
             SampleOrganization sampleOrg = new SampleOrganization();
