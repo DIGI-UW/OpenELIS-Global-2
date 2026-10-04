@@ -36,12 +36,9 @@ final class StudyArvResultsPdf {
     private static final Font UNDERLINED_FONT = new Font(Font.HELVETICA, 9, Font.UNDERLINE);
     private static final float FOOTER_BOTTOM = 20;
 
-    /**
-     * The laboratory's section reference images and signatures, when the site has
-     * them.
-     */
-    record Images(byte[] hematology, byte[] immunology, byte[] biochemistry, byte[] serology, byte[] signatures) {
-        static final Images NONE = new Images(null, null, null, null, null);
+    /** The laboratory's section reference images, when the site has them. */
+    record Images(byte[] hematology, byte[] immunology, byte[] biochemistry, byte[] serology) {
+        static final Images NONE = new Images(null, null, null, null);
     }
 
     record Settings(String studyName, Images images) {
@@ -66,7 +63,6 @@ final class StudyArvResultsPdf {
             StudyPatientBlockPdf.add(document, order);
             document.add(new Paragraph("Diagnostic Clinique", HEADING_FONT));
             addVersionOneResults(document, order, settings.images());
-            addImage(document, settings.images().signatures(), 230, 40, Element.ALIGN_RIGHT);
             if (order.getAllQaEvents() != null) {
                 document.newPage();
                 ReportHeaderPdf.add(document, settings.studyName(), ReportHeaderPdf.siteNameLines());
@@ -174,14 +170,6 @@ final class StudyArvResultsPdf {
         }
         grid.setSpacingAfter(4);
         document.add(grid);
-    }
-
-    private static void addImage(Document document, byte[] bytes, float width, float height, int alignment) {
-        Image image = image(bytes, width, height);
-        if (image != null) {
-            image.setAlignment(alignment);
-            document.add(image);
-        }
     }
 
     private static Image image(byte[] bytes, float width, float height) {

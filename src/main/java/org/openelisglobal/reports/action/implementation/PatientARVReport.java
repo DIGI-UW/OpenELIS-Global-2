@@ -104,7 +104,7 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         }
         return new StudyArvResultsPdf.Images(image(imagesPath, "HEMATO_LaboRef.jpg"),
                 image(imagesPath, "IMMUNO_LaboRef.jpg"), image(imagesPath, "BIOCH_LaboRef.jpg"),
-                image(imagesPath, "SERO_LaboRef.jpg"), image(imagesPath, "ALLSign.jpg"));
+                image(imagesPath, "SERO_LaboRef.jpg"));
     }
 
     private static byte[] image(Object imagesPath, String fileName) {
