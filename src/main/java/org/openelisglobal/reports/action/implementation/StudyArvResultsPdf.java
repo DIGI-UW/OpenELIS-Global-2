@@ -76,7 +76,7 @@ final class StudyArvResultsPdf {
                         .of(order.getAllQaEvents());
                 document.add(StudyNonConformityPdf.tubeReasons(marks));
                 document.add(StudyNonConformityPdf.otherReasons(marks, false));
-                StudyNonConformityPdf.addSections(document, order);
+                StudyNonConformityPdf.addSections(document, StudyNonConformityPdf.SectionMarks.of(order));
                 document.add(StudyNonConformityPdf.conclusion(false));
             }
         }

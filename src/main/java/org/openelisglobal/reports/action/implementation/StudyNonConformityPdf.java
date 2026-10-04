@@ -182,7 +182,7 @@ final class StudyNonConformityPdf {
             boolean earlyInfantDiagnosis = order.getVirologyEidQaEvent() != null;
             document.add(earlyInfantDiagnosis ? dbsCardReasons(marks) : tubeReasons(marks));
             document.add(otherReasons(marks, earlyInfantDiagnosis));
-            addSections(document, order);
+            addSections(document, SectionMarks.of(order));
             document.add(conclusion(earlyInfantDiagnosis));
         }
         document.close();
@@ -226,7 +226,7 @@ final class StudyNonConformityPdf {
         return table;
     }
 
-    private static PdfPTable dbsCardReasons(ChecklistMarks marks) {
+    static PdfPTable dbsCardReasons(ChecklistMarks marks) {
         PdfPTable table = new PdfPTable(new float[] { 391, 160 });
         table.setWidthPercentage(100);
         addReasonHeader(table, 1);
@@ -290,25 +290,35 @@ final class StudyNonConformityPdf {
         table.addCell(rest);
     }
 
-    /** The sections the order's non-conformities came from. */
-    static void addSections(Document document, ARVReportData order) {
+    /** The sections an order's non-conformities came from. */
+    record SectionMarks(boolean reception, boolean biochemistry, boolean immunology, boolean viralLoad,
+            boolean earlyInfantDiagnosis, boolean serology, boolean hematology) {
+        static SectionMarks of(ARVReportData order) {
+            return new SectionMarks(order.getReceptionQaEvent() != null, order.getBiochemistryQaEvent() != null,
+                    order.getImmunologyQaEvent() != null, order.getVirologyVlQaEvent() != null,
+                    order.getVirologyEidQaEvent() != null, order.getSerologyQaEvent() != null,
+                    order.getHematologyQaEvent() != null);
+        }
+    }
+
+    static void addSections(Document document, SectionMarks sections) {
         PdfPTable first = new PdfPTable(new float[] { 52, 40, 18, 62, 18, 58, 18, 100, 18, 72, 18 });
         first.setWidthPercentage(100);
         first.setSpacingBefore(8);
         first.addCell(plain("Section:", LABEL_FONT));
         addSection(first, "Saisie", false);
-        addSection(first, "Réception", order.getReceptionQaEvent() != null);
-        addSection(first, "Biochimie", order.getBiochemistryQaEvent() != null);
-        addSection(first, "Immunologie(CD4)", order.getImmunologyQaEvent() != null);
-        addSection(first, "Charge virale", order.getVirologyVlQaEvent() != null);
+        addSection(first, "Réception", sections.reception());
+        addSection(first, "Biochimie", sections.biochemistry());
+        addSection(first, "Immunologie(CD4)", sections.immunology());
+        addSection(first, "Charge virale", sections.viralLoad());
         document.add(first);
         PdfPTable second = new PdfPTable(new float[] { 52, 130, 18, 80, 18, 80, 18, 78 });
         second.setWidthPercentage(100);
         second.setSpacingBefore(4);
         second.addCell(plain("", CELL_FONT));
-        addSection(second, "Diagnostic précoce (EID)", order.getVirologyEidQaEvent() != null);
-        addSection(second, "Sérologie VIH", order.getSerologyQaEvent() != null);
-        addSection(second, "Hématologie", order.getHematologyQaEvent() != null);
+        addSection(second, "Diagnostic précoce (EID)", sections.earlyInfantDiagnosis());
+        addSection(second, "Sérologie VIH", sections.serology());
+        addSection(second, "Hématologie", sections.hematology());
         second.addCell(plain("", CELL_FONT));
         document.add(second);
     }
