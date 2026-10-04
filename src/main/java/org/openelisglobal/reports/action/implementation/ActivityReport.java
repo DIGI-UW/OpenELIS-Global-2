@@ -136,7 +136,7 @@ public abstract class ActivityReport extends Report implements IReportCreator {
         PatientService patientService = SpringContext.getBean(PatientService.class);
         SampleHumanService sampleHumanService = SpringContext.getBean(SampleHumanService.class);
         Patient patient = sampleHumanService.getPatientForSample(sample);
-        Person person = patient.getPerson();
+        Person person = patient == null ? null : patient.getPerson();
         item.setResultValue(resultService.getResultValueForDisplay(result, "\n", true, true));
         item.setSampleStatus(activityStatus(sampleService.getSampleStatusForDisplay(sample), result));
         item.setTechnician(resultService.getSignature(result));
@@ -167,9 +167,9 @@ public abstract class ActivityReport extends Report implements IReportCreator {
         item.setCollectionDate(
                 DateUtil.convertTimestampToTwoYearStringDate(result.getAnalysis().getSampleItem().getCollectionDate()));
 
-        item.setPatientLastName(person.getLastName() == null ? "" : person.getLastName());
-        item.setPatientFirstName(person.getFirstName() == null ? "" : person.getFirstName());
-        item.setPatientId(patient.getStringId() == null ? "" : patient.getStringId());
+        item.setPatientLastName(person == null || person.getLastName() == null ? "" : person.getLastName());
+        item.setPatientFirstName(person == null || person.getFirstName() == null ? "" : person.getFirstName());
+        item.setPatientId(patient == null || patient.getStringId() == null ? "" : patient.getStringId());
 
         List<String> values = new ArrayList<>();
         // values.add(

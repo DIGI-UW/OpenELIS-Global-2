@@ -3,6 +3,7 @@ package org.openelisglobal.reports.action.implementation;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.After;
@@ -10,10 +11,12 @@ import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
 import org.openelisglobal.common.provider.validation.IAccessionNumberGenerator;
 import org.openelisglobal.reports.action.implementation.reportBeans.ActivityReportBean;
 import org.openelisglobal.reports.form.ReportForm;
+import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.testsupport.PdfText;
 
@@ -46,6 +49,22 @@ public class ActivityReportTest extends BaseWebContextSensitiveTest {
         assertTrue("an order's patient prints once: " + text,
                 text.contains("DEV0126000000000101 Creatinine Finalized 80 umol/L 02/10/2026 10:00 1.10 26.50"));
         assertTrue(text, text.contains("DEV0126000000000102 Doe, John Glucose Referred out 6.1 mmol/L"));
+    }
+
+    @Test
+    public void anOrderWithoutAPatientIsListedWithABlankPatient() throws Exception {
+        executeDataSetWithStateManagement("testdata/validation-backlog-report.xml");
+        Result result = new Result();
+        result.setAnalysis(SpringContext.getBean(AnalysisService.class).get("901"));
+        result.setResultType("N");
+        result.setValue("5.4");
+        result.setLastupdated(new Timestamp(System.currentTimeMillis()));
+
+        ActivityReportBean item = report().createActivityReportBean(result, true);
+
+        assertTrue(item.getAccessionNumber(), item.getAccessionNumber().endsWith("901"));
+        assertTrue("no patient name: " + item.getPatientLastName(), item.getPatientLastName().isEmpty());
+        assertTrue("no patient id: " + item.getPatientId(), item.getPatientId().isEmpty());
     }
 
     private ActivityReport report() {
