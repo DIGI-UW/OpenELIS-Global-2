@@ -431,7 +431,10 @@ final class StudyNonConformityPdf {
         }
     }
 
-    /** The laboratory's signature line at the foot of every checklist page. */
+    /**
+     * The laboratory's signature line and the date the report was printed, at the
+     * foot of every checklist page.
+     */
     private static final class SignatureFooter extends PdfPageEventHelper {
 
         @Override
@@ -439,6 +442,9 @@ final class StudyNonConformityPdf {
             ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_RIGHT,
                     new Phrase("Signature, date (jj/mm/aaaa), et cachet du Laboratoire/Biologiste", TEXT_FONT),
                     document.right(), document.bottom() - 34, 0);
+            ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_RIGHT,
+                    new Phrase(DateUtil.getCurrentDateAsText(), TEXT_FONT), document.right(), document.bottom() - 60,
+                    0);
         }
     }
 

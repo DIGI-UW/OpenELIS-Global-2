@@ -128,6 +128,9 @@ public class StudyNonConformityPdfTest extends BaseWebContextSensitiveTest {
         assertFalse("a tube order gets the tube form: " + lines, page.contains("Age de l’enfant"));
 
         assertLine(lines(PdfText.ofPage(pdf, 2)), "No QaEvent");
+        for (int number = 1; number <= 2; number++) {
+            assertLine(lines(PdfText.ofPage(pdf, number)), DateUtil.getCurrentDateAsText());
+        }
     }
 
     @Test
