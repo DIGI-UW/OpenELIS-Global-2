@@ -154,7 +154,7 @@ describe("ProgramManagement", () => {
     });
 
     renderWithIntl(<ProgramManagement />);
-    expect(screen.getByText("No EQA programs found")).toBeTruthy();
+    expect(screen.getByText("No EQA schemes found")).toBeTruthy();
   });
 
   test("opens create form when button clicked", () => {
@@ -277,7 +277,7 @@ describe("ProgramForm", () => {
   test("shows validation error when name is empty", () => {
     renderWithIntl(<ProgramForm program={null} onClose={vi.fn()} />);
     fireEvent.click(screen.getByText("Add Scheme"));
-    expect(screen.getByText("Program name is required")).toBeTruthy();
+    expect(screen.getByText("Scheme name is required")).toBeTruthy();
   });
 
   test("renders provider field", () => {
@@ -375,7 +375,7 @@ describe("ProgramForm test assignments", () => {
       expect(container.querySelector("#program-tests")).toBeTruthy(),
     );
 
-    fireEvent.click(screen.getByText("Save Program"));
+    fireEvent.click(screen.getByText("Save scheme"));
 
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     const urls = putToOpenElisServerFullResponse.mock.calls.map((c) => c[0]);

@@ -261,7 +261,7 @@ uses an analyzer's pinned profile reference, or an exact match of the old type
 name to one active Bridge profile family; anything ambiguous stays pending for
 an administrator to resolve. Transferred analyzers stay inactive until an
 operator confirms mappings and activates them. Database startup does not depend
-on Bridge. [Existing analyzer upgrade](../../docs/analyzer-upgrade-migration.md)
+on Bridge. [Pre-Bridge analyzer settings](../../docs/analyzers/pre-bridge-settings-export.md)
 describes eligibility, retry and the pending cases.
 
 The old connection columns remain as migration inputs until populated-site

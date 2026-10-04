@@ -24,6 +24,7 @@ import {
   useOrderContext,
 } from "./orderContextSections";
 import CriticalBanner from "./CriticalBanner";
+import CriticalCallbackAction from "./CriticalCallbackAction";
 import HistorySection from "./HistorySection";
 import InterpretationSection from "./InterpretationSection";
 import ReagentsQcSection from "./ReagentsQcSection";
@@ -49,6 +50,7 @@ import {
   rememberSectionChoice,
   resetSectionLayout,
 } from "./sectionLayout";
+import { labNow } from "../../utils/labClock";
 
 /**
  * OGC-1021 (R2 of OGC-811) — the expanded row panel.
@@ -109,7 +111,7 @@ export interface RejectDraft {
 
 /** dd/MM/yyyy — the app's date format; FR-F2's "defaults to now". */
 export const todayForReferral = (): string => {
-  const now = new Date();
+  const now = labNow();
   const dd = String(now.getDate()).padStart(2, "0");
   const mm = String(now.getMonth() + 1).padStart(2, "0");
   return `${dd}/${mm}/${now.getFullYear()}`;
@@ -694,11 +696,24 @@ const ExpandedPanel: React.FC<ExpandedPanelProps> = ({
         </div>
       )}
 
-      {/* Critical banner (FR-C2) — the one full-width banner; ack never gates Save (FR-A4) */}
+      {/* Critical banner (FR-C2) — the one full-width banner. The person
+          entering the value acknowledges it at Save (OGC-1417); the banner's
+          dashboard acknowledgement is the follow-up. */}
       {flag === "CRITICAL" && (
         <CriticalBanner
           analysisId={row.analysisId as string | undefined}
           criticalRange={row.criticalRange}
+        />
+      )}
+      {flag === "CRITICAL" && !editable && (
+        <CriticalCallbackAction
+          row={{
+            resultId: row.resultId as string | undefined,
+            testName: row.testName as string | undefined,
+            resultValue: row.resultValue as string | undefined,
+            unitsOfMeasure: row.unitsOfMeasure as string | undefined,
+            accessionNumber: row.accessionNumber as string | undefined,
+          }}
         />
       )}
 

@@ -82,6 +82,7 @@ const WardsSection = ({
   sectionId,
   onActiveChange,
   onChanged,
+  onDraftsChange,
 }) => {
   const intl = useIntl();
   const { notify } = useContext(LocationsContext);
@@ -93,6 +94,15 @@ const WardsSection = ({
   const [targets, setTargets] = useState([]);
   const [errors, setErrors] = useState({});
   const parent = organization.row;
+  const source = `record-${parent.id}`;
+  const refusal = (error) => {
+    const fieldMessage = Object.values(error.fieldErrors || {})[0];
+    return (
+      fieldMessage ||
+      error.message ||
+      intl.formatMessage({ id: "error.locations.request.failed" })
+    );
+  };
   const includeInactive = statusFilter && statusFilter !== "active";
 
   const reload = () =>
@@ -103,6 +113,12 @@ const WardsSection = ({
   useEffect(() => {
     setWards(organization.wards || []);
   }, [organization]);
+
+  useEffect(() => {
+    if (onDraftsChange) {
+      onDraftsChange(newWards.filter((ward) => ward.name.trim()).length);
+    }
+  }, [newWards]);
 
   const serviceTypes = lists ? lists.serviceTypes : [];
   const shown = wards.filter((ward) => includeInactive || ward.active);
@@ -149,32 +165,81 @@ const WardsSection = ({
         setDraft(null);
         reload();
         onChanged && onChanged();
+        notify(
+          intl.formatMessage(
+            { id: "message.locations.saved" },
+            { name: draft.name },
+          ),
+          "success",
+          null,
+          source,
+        );
       })
       .catch((error) => {
         if (error.status === 422) {
           setErrors(error.fieldErrors || {});
         }
-        notify(error.message, "error");
+        notify(
+          intl.formatMessage(
+            { id: "error.locations.ward.notSaved" },
+            { name: draft.name, reason: refusal(error) },
+          ),
+          "error",
+          null,
+          source,
+        );
       });
   };
 
-  const saveNew = () => {
+  /**
+   * FR-D2: new wards are saved one at a time. Each one saved leaves the drafts,
+   * so a failure says which ward was not saved, and Save again sends only the
+   * wards still waiting.
+   */
+  const saveNew = async () => {
     setErrors({});
     const ready = newWards.filter(
       (ward) => ward.name.trim() && ward.serviceType,
     );
-    Promise.all(ready.map((ward) => createWard(parent.id, toRequest(ward))))
-      .then(() => {
-        setNewWards([]);
-        reload();
-        onChanged && onChanged();
-      })
-      .catch((error) => {
+    let saved = 0;
+    let failed = false;
+    for (const ward of ready) {
+      try {
+        await createWard(parent.id, toRequest(ward));
+        saved++;
+        setNewWards((current) => current.filter((draft) => draft !== ward));
+      } catch (error) {
         if (error.status === 422) {
           setErrors(error.fieldErrors || {});
         }
-        notify(error.message, "error");
-      });
+        notify(
+          intl.formatMessage(
+            { id: "error.locations.ward.notSaved" },
+            { name: ward.name.trim(), reason: refusal(error) },
+          ),
+          "error",
+          null,
+          source,
+        );
+        failed = true;
+        break;
+      }
+    }
+    if (saved > 0) {
+      reload();
+      onChanged && onChanged();
+      if (!failed) {
+        notify(
+          intl.formatMessage(
+            { id: "message.locations.wards.saved" },
+            { count: saved },
+          ),
+          "success",
+          null,
+          source,
+        );
+      }
+    }
   };
 
   const move = (ward, target) => {

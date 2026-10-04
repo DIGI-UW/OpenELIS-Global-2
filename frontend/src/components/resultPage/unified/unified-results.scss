@@ -252,6 +252,8 @@
   border-left-color: #8a3ffc;
 }
 
+/* The modifiers are qualified with the base class so they outrank Carbon's
+   .cds--tag--gray, which loads later and otherwise paints every flag gray. */
 .unifiedFlagTag {
   font-weight: 700;
 
@@ -259,26 +261,26 @@
     margin-right: 0.25rem;
     vertical-align: -0.125rem;
   }
-}
 
-.unifiedFlagTag--normal {
-  background: #defbe6;
-  color: #0e6027;
-}
+  &.unifiedFlagTag--normal {
+    background: #defbe6;
+    color: #0e6027;
+  }
 
-.unifiedFlagTag--abnormal {
-  background: #fcf4d6;
-  color: #684e00;
-}
+  &.unifiedFlagTag--abnormal {
+    background: #fcf4d6;
+    color: #684e00;
+  }
 
-.unifiedFlagTag--critical {
-  background: #fff1f1;
-  color: #a2191f;
-}
+  &.unifiedFlagTag--critical {
+    background: #fff1f1;
+    color: #a2191f;
+  }
 
-.unifiedFlagTag--invalid {
-  background: #f6f2ff;
-  color: #6929c4;
+  &.unifiedFlagTag--invalid {
+    background: #f6f2ff;
+    color: #6929c4;
+  }
 }
 
 .unifiedCriticalRange {

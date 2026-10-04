@@ -12,6 +12,7 @@ import {
   weekStart,
 } from "./overviewData";
 import { toLocalIsoDate } from "../../utils/Utils";
+import { labNow } from "../../utils/labClock";
 
 const Stat = ({ labelKey, value, sub, loading }) => {
   const intl = useIntl();
@@ -47,7 +48,7 @@ const ThisWeek = () => {
     (summary && summary.week.weekStart) || toLocalIsoDate(weekStart());
   const { loading: callbacksLoading, callbacks } = useCallbackSummary(
     summaryLoading ? null : weekFrom,
-    toLocalIsoDate(new Date()),
+    toLocalIsoDate(labNow()),
   );
 
   // NCE counters wait for the summary too: its server week boundary keeps

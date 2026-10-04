@@ -203,4 +203,68 @@ describe("ImportExportView (OGC-1363)", () => {
       await screen.findByText(/'wrong' is not an import area/),
     ).toBeInTheDocument();
   });
+  const previewWith = async (plan) => {
+    utils.postToOpenElisServerFormDataJsonResponse.mockImplementation(
+      (path, data, cb) => cb(plan),
+    );
+    wrap();
+    const input = document.querySelector('input[type="file"]');
+    fireEvent.change(input, {
+      target: {
+        files: [
+          new File(["type,name\n"], "organizations-png.csv", {
+            type: "text/csv",
+          }),
+        ],
+      },
+    });
+    await screen.findByTestId("locations-import-file");
+    fireEvent.click(screen.getByTestId("locations-import-preview"));
+    await screen.findByTestId("locations-import-count-new");
+  };
+
+  it("shows a file's own errors and the columns it ignored (OGC-1420 1d)", async () => {
+    await previewWith({
+      ...PLAN,
+      errors: ["organizations-png.csv: the file is empty"],
+      ignoredColumns: ["Notes", "Region"],
+    });
+    expect(screen.getByTestId("locations-import-file-error")).toHaveTextContent(
+      "organizations-png.csv: the file is empty",
+    );
+    expect(screen.getByTestId("locations-import-ignored")).toHaveTextContent(
+      "These columns are not imported and were ignored: Notes, Region",
+    );
+  });
+
+  it("names each recent run's files and tells a preview from an apply (OGC-1420 9b)", async () => {
+    api.getJson.mockResolvedValue([
+      {
+        id: "r2",
+        startedAt: "2026-10-02 10:00",
+        user: "admin",
+        mode: "merge",
+        summary: '{"new":2,"updated":1}',
+        files: ["organizations-png.csv"],
+        action: "apply",
+      },
+      {
+        id: "r1",
+        startedAt: "2026-10-02 09:55",
+        user: "admin",
+        mode: "merge",
+        summary: '{"new":2}',
+        files: ["organizations-draft.csv"],
+        action: "preview",
+      },
+    ]);
+    wrap();
+    const applied = await screen.findByTestId("locations-import-run-r2");
+    expect(applied).toHaveTextContent("Applied");
+    expect(applied).toHaveTextContent("organizations-png.csv");
+    expect(applied).toHaveTextContent("2 New, 1 Updated");
+    expect(screen.getByTestId("locations-import-run-r1")).toHaveTextContent(
+      "Preview",
+    );
+  });
 });

@@ -171,9 +171,9 @@ public class CytologySampleServiceImpl extends AuditableBaseObjectServiceImpl<Cy
         for (TestResultItem testResultItem : testResultItems) {
             if (!testResultItem.getIsGroupSeparator()) {
                 if (ResultType.isTextOnlyVariant(testResultItem.getResultType())) {
-                    testResultItem.setResultValue(MessageUtil.getMessage("result.cytoology.seereport"));
+                    testResultItem.setResultValue(MessageUtil.getMessage("result.cytology.seereport"));
                 }
-                Analysis analysis = analysisService.get(sample.getId());
+                Analysis analysis = analysisService.get(testResultItem.getAnalysisId());
                 ResultSaveBean bean = ResultSaveBeanAdapter.fromTestResultItem(testResultItem);
                 ResultSaveService resultSaveService = new ResultSaveService(analysis, form.getSystemUserId());
                 List<Result> results = resultSaveService.createResultsFromTestResultItem(bean, new ArrayList<>());

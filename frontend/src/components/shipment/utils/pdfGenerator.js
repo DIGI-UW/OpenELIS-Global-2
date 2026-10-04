@@ -1,6 +1,7 @@
 import jsPDF from "jspdf";
 import { applyPlugin } from "jspdf-autotable";
 import bwipjs from "bwip-js";
+import { labNow } from "../../utils/labClock";
 
 // jspdf-autotable 5 stopped patching jsPDF on import, so the bare side-effect
 // import left doc.autoTable undefined and every table-bearing PDF here threw
@@ -251,7 +252,7 @@ export const generateManifestPDF = async (manifestData, formatMessage) => {
   doc.setFontSize(8);
   doc.setFont(undefined, "normal");
   doc.text(
-    `${formatMessage({ id: "shipment.manifest.generated" }) || "Generated:"} ${new Date().toLocaleString()}`,
+    `${formatMessage({ id: "shipment.manifest.generated" }) || "Generated:"} ${labNow().toLocaleString()}`,
     20,
     yPos,
   );
@@ -413,7 +414,7 @@ export const generateLabelPDF = (boxData, formatMessage) => {
     margin,
     pageH - 4,
   );
-  doc.text(new Date().toLocaleDateString(), pageW - margin, pageH - 4, {
+  doc.text(labNow().toLocaleDateString(), pageW - margin, pageH - 4, {
     align: "right",
   });
 

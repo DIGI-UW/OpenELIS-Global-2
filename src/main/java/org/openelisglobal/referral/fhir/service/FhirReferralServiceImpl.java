@@ -656,7 +656,9 @@ public class FhirReferralServiceImpl implements FhirReferralService {
             org.openelisglobal.patient.valueholder.Patient patient = analysis.getSampleItem() == null ? null
                     : sampleHumanService.getPatientForSample(analysis.getSampleItem().getSample());
             String patientId = patient == null ? "" : patient.getId();
-            String deepLink = "/result?analysisId=" + analysis.getId();
+            String accessionNumber = analysis.getSampleItem() == null ? ""
+                    : analysis.getSampleItem().getSample().getAccessionNumber();
+            String deepLink = "/Results?accessionNumber=" + accessionNumber;
             String json = "{\"analysisId\":\"" + analysis.getId() + "\",\"patientId\":" + jsonStr(patientId)
                     + ",\"testCode\":" + jsonStr(testCode) + ",\"value\":" + jsonStr(value) + ",\"range\":"
                     + jsonStr(range) + ",\"deepLink\":" + jsonStr(deepLink) + "}";

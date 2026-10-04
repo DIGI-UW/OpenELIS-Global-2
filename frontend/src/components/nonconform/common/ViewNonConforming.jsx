@@ -191,6 +191,14 @@ export const ViewNonConformingEvent = () => {
     }
   };
 
+  const savedEvent = data?.nceEventsSearchResults?.[0];
+  const savedCategory = data?.nceCategories?.find(
+    (c) => String(c.id) === String(savedEvent?.nceCategoryId),
+  )?.value;
+  const savedType = data?.nceTypes?.find(
+    (t) => String(t.id) === String(savedEvent?.nceTypeId),
+  )?.value;
+
   const canSubmitNceForm =
     !!formData.labComponent &&
     !!formData.nceCategory &&
@@ -555,7 +563,7 @@ export const ViewNonConformingEvent = () => {
           </Column>
 
           {/* Display saved severity */}
-          {data.severity && (
+          {savedEvent?.severity && (
             <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
               <div style={{ marginBottom: "10px" }}>
                 <span style={{ color: "#3366B3", fontWeight: "bold" }}>
@@ -568,18 +576,18 @@ export const ViewNonConformingEvent = () => {
               <div style={{ marginBottom: "10px" }}>
                 <Tag
                   type={
-                    data.severity === "CRITICAL"
+                    savedEvent.severity === "CRITICAL"
                       ? "red"
-                      : data.severity === "MAJOR"
+                      : savedEvent.severity === "MAJOR"
                         ? "magenta"
-                        : data.severity === "MINOR"
+                        : savedEvent.severity === "MINOR"
                           ? "blue"
                           : "green"
                   }
                 >
                   <FormattedMessage
-                    id={`nce.severity.${data.severity?.toLowerCase() || "low"}`}
-                    defaultMessage={data.severity || "Low"}
+                    id={`nce.severity.${savedEvent.severity.toLowerCase()}`}
+                    defaultMessage={savedEvent.severity}
                   />
                 </Tag>
               </div>
@@ -587,7 +595,7 @@ export const ViewNonConformingEvent = () => {
           )}
 
           {/* Display saved category */}
-          {data.nceCategory && (
+          {savedCategory && (
             <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
               <div style={{ marginBottom: "10px" }}>
                 <span style={{ color: "#3366B3", fontWeight: "bold" }}>
@@ -597,19 +605,19 @@ export const ViewNonConformingEvent = () => {
                   />
                 </span>
               </div>
-              <div style={{ marginBottom: "10px" }}>{data.nceCategory}</div>
+              <div style={{ marginBottom: "10px" }}>{savedCategory}</div>
             </Column>
           )}
 
           {/* Display saved type */}
-          {data.nceType && (
+          {savedType && (
             <Column lg={3} md={3} sm={3} style={{ marginBottom: "20px" }}>
               <div style={{ marginBottom: "10px" }}>
                 <span style={{ color: "#3366B3", fontWeight: "bold" }}>
                   <FormattedMessage id="nce.field.type" defaultMessage="Type" />
                 </span>
               </div>
-              <div style={{ marginBottom: "10px" }}>{data.nceType}</div>
+              <div style={{ marginBottom: "10px" }}>{savedType}</div>
             </Column>
           )}
 

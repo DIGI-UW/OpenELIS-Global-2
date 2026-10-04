@@ -80,7 +80,7 @@ const CriticalBanner: React.FC<CriticalBannerProps> = ({
           <FormattedMessage id="label.results.critical.banner.title" />
         </div>
         <div className="unifiedCriticalBannerText">
-          <FormattedMessage id="label.results.critical.banner.body" />
+          <FormattedMessage id="label.results.critical.banner.notify" />
           {criticalRange && (
             <>
               {" "}

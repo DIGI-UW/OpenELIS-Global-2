@@ -128,10 +128,6 @@ public class DeviceProvider implements IResourceProvider {
 
             analyzer.setSysUserId(userId);
 
-            if (analyzer.getAnalyzerType() != null) {
-                analyzer.getAnalyzerType().setSysUserId(userId);
-            }
-
             Analyzer saved = analyzerService.save(analyzer);
 
             if (saved == null) {

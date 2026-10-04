@@ -3,6 +3,7 @@ package org.openelisglobal.resultvalidation;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -227,5 +228,70 @@ public class AccessionValidationReviewPanelTest extends BaseWebContextSensitiveT
         assertEquals(1, notes.size());
         assertEquals("I", notes.get(0).get("note_type"));
         assertEquals("Transcription error", notes.get(0).get("text"));
+    }
+
+    /**
+     * OGC-1417 — a validator correcting a value into the critical range
+     * acknowledges it before the correction is stored, as at Results Entry, and the
+     * acknowledgement records the Validation page as where it was given.
+     */
+    @Test
+    public void modify_toACriticalValue_isRefusedUntilAcknowledged_thenRecorded() throws Exception {
+        ConfigurationProperties.getInstance().setPropertyValue(Property.notesRequiredForModifyResults, "false");
+        jdbcTemplate.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
+                + " low_normal, high_normal, low_valid, high_valid, low_reporting_range, high_reporting_range,"
+                + " low_critical, high_critical, always_validate, lastupdated) VALUES (9501, 1, 4, 0, 'Infinity',"
+                + " 5, 20, '-Infinity', 'Infinity', '-Infinity', 'Infinity', 2, 50, false, NOW())"
+                + " ON CONFLICT (id) DO NOTHING");
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/modify").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(rowBody("75", "Transcription error", "I", "MODIFICATION")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"));
+        assertEquals("10.5",
+                jdbcTemplate.queryForObject("SELECT value FROM clinlims.result WHERE id = 100", String.class));
+
+        mockMvc.perform(post("/rest/AccessionValidation/analysis/100/modify").session(session)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(rowBody("75", "Transcription error", "I", "MODIFICATION").replace("\"isAccepted\"",
+                        "\"criticalAcknowledged\":true,\"isAccepted\"")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.outcome").value("modified"));
+        entityManager.flush();
+
+        Map<String, Object> acknowledgement = jdbcTemplate
+                .queryForMap("SELECT kind, source, result_id, result_value FROM clinlims.result_entry_acknowledgement"
+                        + " WHERE analysis_id = 100");
+        assertEquals("CRITICAL_ACKNOWLEDGED", acknowledgement.get("kind"));
+        assertEquals("VALIDATION", acknowledgement.get("source"));
+        assertEquals(100, ((Number) acknowledgement.get("result_id")).intValue());
+        assertEquals("75", acknowledgement.get("result_value"));
+    }
+
+    /**
+     * OGC-1417 — the batch validation save is a REST save too: a critical
+     * correction posted through it is refused until it is acknowledged.
+     */
+    @Test
+    public void batchSave_ofACriticalCorrection_isRefusedUntilAcknowledged() throws Exception {
+        jdbcTemplate.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, min_age, max_age,"
+                + " low_normal, high_normal, low_valid, high_valid, low_reporting_range, high_reporting_range,"
+                + " low_critical, high_critical, always_validate, lastupdated) VALUES (9502, 1, 4, 0, 'Infinity',"
+                + " 5, 20, '-Infinity', 'Infinity', '-Infinity', 'Infinity', 2, 50, false, NOW())"
+                + " ON CONFLICT (id) DO NOTHING");
+        mockMvc.perform(get("/rest/AccessionValidation").param("accessionNumber", "VAL-RP-001").session(session))
+                .andExpect(status().isOk());
+        // the batch save's stale-page check reads the result-entry page cache, which
+        // a session that has opened Results Entry carries
+        session.setAttribute(IActionConstants.RESULTS_SESSION_CACHE, new java.util.ArrayList<>(
+                List.of(new java.util.ArrayList<>(List.of(new org.openelisglobal.result.valueholder.Result())))));
+
+        String row = rowBody("75", "", "I", "VALIDATION").replace("\"isAccepted\":false", "\"isAccepted\":true");
+        mockMvc.perform(post("/rest/AccessionValidation").session(session).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"resultList\":[" + row + "],\"paging\":{\"currentPage\":\"1\"}}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.acknowledgementRequired[0].kind").value("CRITICAL"));
+        assertEquals("10.5",
+                jdbcTemplate.queryForObject("SELECT value FROM clinlims.result WHERE id = 100", String.class));
     }
 }

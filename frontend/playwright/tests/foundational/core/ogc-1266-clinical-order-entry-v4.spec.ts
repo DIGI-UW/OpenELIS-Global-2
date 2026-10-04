@@ -156,17 +156,17 @@ test.describe("OGC-1266 clinical order entry", () => {
         : ["Enter Order", "Prepare Samples", "Sample check"],
     );
 
-    // The collector is what the step still needs; the laboratory took the
-    // sample itself. Storage is skipped, and both travel with the save.
-    const checklist = page.getByTestId("to-continue-checklist");
-    await expect(checklist).toContainText("Collector for", {
+    // OGC-1419: the collector is optional, so a sample with its collection
+    // date and time and no collector continues. Storage is skipped, and it
+    // travels with the save.
+    const card = page.getByTestId("sample-collection-card-0");
+    await expect(card.locator("#collector-0")).toHaveValue("", {
       timeout: UI_TIMEOUT,
     });
-    await page
-      .getByTestId("sample-collection-card-0")
-      .locator('label[for="labPerformedSampling-0"]')
-      .click();
-    await expect(checklist).toHaveCount(0);
+    await expect(card.locator('label[for="collector-0"]')).toHaveText(
+      "Collector",
+    );
+    await expect(page.getByTestId("to-continue-checklist")).toHaveCount(0);
     const storage = page.getByTestId("prepare-storage-section");
     await expect(storage).toContainText(`${labNumber}-1`);
     await page.locator('label[for="skip-storage-checkbox"]').click();

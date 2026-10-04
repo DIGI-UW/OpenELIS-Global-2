@@ -3,9 +3,21 @@
   margin-bottom: 1rem;
 }
 
+/* Pinned below the header so a message is seen wherever the page is scrolled. */
+.locationsPage .locationsToasts {
+  position: fixed;
+  top: 3.5rem;
+  right: 1rem;
+  z-index: 8000;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: min(32rem, calc(100vw - 2rem));
+}
+
 .locationsPage .locationsToast {
   max-width: 100%;
-  margin-bottom: 1rem;
+  margin: 0;
 }
 
 .locationsPage .cds--table-toolbar {
@@ -115,4 +127,19 @@
 
 .locationsPage .locationsHistory {
   margin-top: 1rem;
+}
+
+/* OGC-1420 (9c): the import page fits a 1280 px screen; long rows wrap. */
+.locationsPage .locationsImport .cds--stack-horizontal {
+  flex-wrap: wrap;
+}
+
+.locationsPage .locationsImport td {
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.locationsPage .locationsCollisions ul {
+  margin: 0 0 1rem 1rem;
+  list-style: disc;
 }

@@ -23,84 +23,75 @@ const menus = (definitions) =>
     childMenus: menus(childMenus),
   }));
 
-test.each([false, true])(
-  "the reporting instance follows the mock sections with one Results Entry link (unified=%s)",
-  (unifiedResultsOn) => {
-    const { container } = render(
-      <MemoryRouter
-        initialEntries={[
-          "/reports/custom-data-export?view=queue&job=example&uat=navigation",
-        ]}
-      >
-        <IntlProvider locale="en" messages={messages}>
-          <SideNav expanded aria-label="Side navigation">
-            <SideNavItems>
-              <ConfiguredSideNav
-                menus={menus(profile.menus)}
-                unifiedResultsOn={unifiedResultsOn}
-              />
-            </SideNavItems>
-          </SideNav>
-        </IntlProvider>
-      </MemoryRouter>,
+test("the reporting instance follows the mock sections with one Results Entry link", () => {
+  const { container } = render(
+    <MemoryRouter
+      initialEntries={[
+        "/reports/custom-data-export?view=queue&job=example&uat=navigation",
+      ]}
+    >
+      <IntlProvider locale="en" messages={messages}>
+        <SideNav expanded aria-label="Side navigation">
+          <SideNavItems>
+            <ConfiguredSideNav menus={menus(profile.menus)} />
+          </SideNavItems>
+        </SideNav>
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+  expect(
+    screen.getAllByRole("heading").map((heading) => heading.textContent),
+  ).toEqual(["Main Menu", "Patient & Orders", "Reports", "Administration"]);
+  expect(
+    screen.getByRole("link", { name: "Order Test", exact: true }),
+  ).toHaveAttribute("href", "/SamplePatientEntry");
+  expect(
+    screen.getByRole("link", { name: "Results Entry", exact: true }),
+  ).toHaveAttribute("href", "/Results");
+  expect(
+    screen.getByRole("link", { name: "Results Validation", exact: true }),
+  ).toHaveAttribute("href", "/validation");
+  expect(
+    screen.getByRole("link", { name: "My Report Queue", exact: true }),
+  ).toHaveAttribute("aria-current", "page");
+  expect(container.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
+  expect(
+    screen.getByRole("link", { name: "Custom Data Export", exact: true }),
+  ).toHaveAttribute("href", "/reports/custom-data-export?uat=navigation");
+  expect(
+    screen.getByRole("link", { name: "My Report Queue", exact: true }),
+  ).toHaveAttribute(
+    "href",
+    "/reports/custom-data-export?uat=navigation&view=queue",
+  );
+  expect(container.querySelector("#menu_home_nav svg")).toBeTruthy();
+  const unavailable = container.querySelector(
+    "#menu_reports_patient_print_queue_nav",
+  );
+  expect(unavailable).toHaveAttribute("aria-disabled", "true");
+  expect(unavailable).not.toHaveAttribute("href");
+  expect(unavailable).toHaveTextContent("Not yet connected");
+  expect(
+    screen.getByRole("button", { name: "Other reports", exact: true }),
+  ).toHaveAttribute("aria-expanded", "false");
+  const more = screen.getByRole("button", {
+    name: "More tools",
+    exact: true,
+  });
+  expect(more).toHaveAttribute("aria-expanded", "false");
+  fireEvent.click(more);
+  expect(more).toHaveAttribute("aria-expanded", "true");
+  expect(
+    screen.getByRole("link", { name: "Alerts", exact: true }),
+  ).toHaveAttribute("href", "/Alerts");
+  for (const list of container.querySelectorAll(
+    ".cds--side-nav__items, .cds--side-nav__menu",
+  )) {
+    expect([...list.children].every((child) => child.tagName === "LI")).toBe(
+      true,
     );
-    expect(
-      screen.getAllByRole("heading").map((heading) => heading.textContent),
-    ).toEqual(["Main Menu", "Patient & Orders", "Reports", "Administration"]);
-    expect(
-      screen.getByRole("link", { name: "Order Test", exact: true }),
-    ).toHaveAttribute("href", "/SamplePatientEntry");
-    expect(
-      screen.getByRole("link", { name: "Results Entry", exact: true }),
-    ).toHaveAttribute(
-      "href",
-      unifiedResultsOn ? "/Results" : "/PatientResults",
-    );
-    expect(
-      screen.getByRole("link", { name: "Results Validation", exact: true }),
-    ).toHaveAttribute("href", "/ResultValidation?type=&test=");
-    expect(
-      screen.getByRole("link", { name: "My Report Queue", exact: true }),
-    ).toHaveAttribute("aria-current", "page");
-    expect(container.querySelectorAll('[aria-current="page"]')).toHaveLength(1);
-    expect(
-      screen.getByRole("link", { name: "Custom Data Export", exact: true }),
-    ).toHaveAttribute("href", "/reports/custom-data-export?uat=navigation");
-    expect(
-      screen.getByRole("link", { name: "My Report Queue", exact: true }),
-    ).toHaveAttribute(
-      "href",
-      "/reports/custom-data-export?uat=navigation&view=queue",
-    );
-    expect(container.querySelector("#menu_home_nav svg")).toBeTruthy();
-    const unavailable = container.querySelector(
-      "#menu_reports_patient_print_queue_nav",
-    );
-    expect(unavailable).toHaveAttribute("aria-disabled", "true");
-    expect(unavailable).not.toHaveAttribute("href");
-    expect(unavailable).toHaveTextContent("Not yet connected");
-    expect(
-      screen.getByRole("button", { name: "Other reports", exact: true }),
-    ).toHaveAttribute("aria-expanded", "false");
-    const more = screen.getByRole("button", {
-      name: "More tools",
-      exact: true,
-    });
-    expect(more).toHaveAttribute("aria-expanded", "false");
-    fireEvent.click(more);
-    expect(more).toHaveAttribute("aria-expanded", "true");
-    expect(
-      screen.getByRole("link", { name: "Alerts", exact: true }),
-    ).toHaveAttribute("href", "/Alerts");
-    for (const list of container.querySelectorAll(
-      ".cds--side-nav__items, .cds--side-nav__menu",
-    )) {
-      expect([...list.children].every((child) => child.tagName === "LI")).toBe(
-        true,
-      );
-    }
-  },
-);
+  }
+});
 
 describe("groups stay open across navigation", () => {
   const qaMenus = () =>
@@ -159,7 +150,7 @@ describe("groups stay open across navigation", () => {
           />
           <SideNav expanded aria-label="Side navigation">
             <SideNavItems>
-              <ConfiguredSideNav menus={qaMenus()} unifiedResultsOn={false} />
+              <ConfiguredSideNav menus={qaMenus()} />
             </SideNavItems>
           </SideNav>
         </IntlProvider>
@@ -221,5 +212,75 @@ describe("groups stay open across navigation", () => {
 
     expect(openGroups()).toHaveLength(3);
     expect(document.querySelectorAll('[aria-current="page"]')).toHaveLength(0);
+  });
+});
+
+describe("internal links that open in a new window", () => {
+  const renderHelp = () =>
+    render(
+      <MemoryRouter initialEntries={["/Dashboard"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <SideNav expanded aria-label="Side navigation">
+            <SideNavItems>
+              <ConfiguredSideNav
+                menus={menus([
+                  {
+                    elementId: "menu_help",
+                    displayKey: "banner.menu.help",
+                    childMenus: [
+                      {
+                        elementId: "menu_help_user_manual",
+                        displayKey: "banner.menu.help.usermanual",
+                        actionURL: "/docs/UserManual",
+                        openInNewWindow: true,
+                      },
+                      {
+                        elementId: "menu_help_form_VL",
+                        displayKey: "banner.menu.help.formVL",
+                        actionURL: "/documentation/VL.pdf",
+                        openInNewWindow: true,
+                      },
+                      {
+                        elementId: "menu_help_same_tab",
+                        displayKey: "banner.menu.help.contact",
+                        actionURL: "/ReleaseNotes",
+                        openInNewWindow: false,
+                      },
+                    ],
+                  },
+                ])}
+              />
+            </SideNavItems>
+          </SideNav>
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+  it("renders them as plain anchors that open a new tab", () => {
+    renderHelp();
+    const manual = document.getElementById("menu_help_user_manual_nav");
+    expect(manual).toHaveAttribute("href", "/docs/UserManual");
+    expect(manual).toHaveAttribute("target", "_blank");
+    expect(manual).toHaveAttribute("rel", "noopener noreferrer");
+    const vl = document.getElementById("menu_help_form_VL_nav");
+    expect(vl).toHaveAttribute("href", "/documentation/VL.pdf");
+    expect(vl).toHaveAttribute("target", "_blank");
+  });
+
+  it("the click is left to the browser instead of the router", () => {
+    renderHelp();
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    document.getElementById("menu_help_user_manual_nav").dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(false);
+  });
+
+  it("keeps router links for internal URLs without openInNewWindow", () => {
+    renderHelp();
+    const sameTab = document.getElementById("menu_help_same_tab_nav");
+    expect(sameTab).toHaveAttribute("href", "/ReleaseNotes");
+    expect(sameTab).not.toHaveAttribute("target");
+    const click = new MouseEvent("click", { bubbles: true, cancelable: true });
+    sameTab.dispatchEvent(click);
+    expect(click.defaultPrevented).toBe(true);
   });
 });

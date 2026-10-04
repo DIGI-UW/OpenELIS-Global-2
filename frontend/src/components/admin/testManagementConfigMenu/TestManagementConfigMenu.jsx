@@ -1,4 +1,4 @@
-import React, { useContext, useRef } from "react";
+import React, { useContext } from "react";
 import {
   Heading,
   Grid,
@@ -10,10 +10,10 @@ import {
 } from "@carbon/react";
 import { NotificationContext } from "../../layout/Layout";
 import { AlertDialog } from "../../common/CustomNotification";
-import { FormattedMessage, injectIntl, useIntl } from "react-intl";
+import { FormattedMessage, injectIntl } from "react-intl";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
-let breadcrumbs = [
+const breadcrumbs = [
   { label: "home.label", link: "/" },
   { label: "breadcrums.admin.managment", link: "/MasterListsPage" },
   {
@@ -22,13 +22,112 @@ let breadcrumbs = [
   },
 ];
 
+/**
+ * The catalogue editors: each one creates, edits, renames, orders, activates
+ * and assigns its entity in one place, so there is one tile per entity.
+ */
+const CATALOGUE_TILES = [
+  {
+    id: "TestCatalogList",
+    href: "/MasterListsPage/TestCatalogList",
+    label: "sidenav.label.admin.testmgt.testCatalogEditor",
+    explain: "configuration.testCatalog.tests.explain",
+  },
+  {
+    id: "PanelsList",
+    href: "/MasterListsPage/TestCatalogList?entity=panels",
+    label: "label.testCatalog.entity.panels",
+    explain: "configuration.testCatalog.panels.explain",
+  },
+  {
+    id: "SampleTypeEditor",
+    href: "/MasterListsPage/SampleTypeEditor",
+    label: "sidenav.label.admin.sampleTypeManagement",
+    explain: "configuration.testCatalog.sampleTypes.explain",
+  },
+  {
+    id: "LabUnitManagement",
+    href: "/MasterListsPage/LabUnitManagement",
+    label: "sidenav.label.admin.labUnitManagement",
+    explain: "configuration.testCatalog.labUnits.explain",
+  },
+  {
+    id: "MethodManagement",
+    href: "/MasterListsPage/MethodManagement",
+    label: "configuration.method",
+    explain: "configuration.testCatalog.methods.explain",
+  },
+  {
+    id: "CatalogImport",
+    href: "/MasterListsPage/CatalogImport",
+    label: "sidenav.label.admin.catalogImport",
+    explain: "configuration.testCatalog.import.explain",
+  },
+];
+
+const RULE_TILES = [
+  {
+    id: "reflex",
+    href: "/MasterListsPage/reflex",
+    label: "sidenav.label.admin.testmgt.reflex",
+  },
+  {
+    id: "calculatedValue",
+    href: "/MasterListsPage/calculatedValue",
+    label: "sidenav.label.admin.testmgt.calculated",
+  },
+  {
+    id: "programs",
+    href: "/MasterListsPage/program",
+    label: "admin.programs.title",
+    explain: "admin.programs.subtitle",
+  },
+  {
+    id: "ComplianceStandardsAdmin",
+    href: "/MasterListsPage/ComplianceStandardsAdmin",
+    label: "compliance.admin.title",
+    explain: "compliance.admin.tile.explain",
+  },
+];
+
+const Tiles = ({ tiles }) => (
+  <UnorderedList>
+    {tiles.map((tile, index) => (
+      <React.Fragment key={tile.id}>
+        {index > 0 && <br />}
+        <ClickableTile href={tile.href} id={tile.id}>
+          <FormattedMessage id={tile.label} />
+          {tile.explain && (
+            <UnorderedList nested>
+              <ListItem>
+                <FormattedMessage id={tile.explain} />
+              </ListItem>
+            </UnorderedList>
+          )}
+        </ClickableTile>
+      </React.Fragment>
+    ))}
+  </UnorderedList>
+);
+
+const SectionHeading = ({ id }) => (
+  <Grid fullWidth={true}>
+    <Column lg={16} md={8} sm={4}>
+      <Section>
+        <Section>
+          <Section>
+            <Heading>
+              <FormattedMessage id={id} />
+            </Heading>
+          </Section>
+        </Section>
+      </Section>
+    </Column>
+  </Grid>
+);
+
 function TestManagementConfigMenu() {
-  const { notificationVisible, setNotificationVisible, addNotification } =
-    useContext(NotificationContext);
-
-  const intl = useIntl();
-
-  const componentMounted = useRef(false);
+  const { notificationVisible } = useContext(NotificationContext);
 
   return (
     <>
@@ -46,303 +145,25 @@ function TestManagementConfigMenu() {
         </Grid>
         <br />
         <div className="orderLegendBody">
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <Section>
-                <Section>
-                  <Section>
-                    <Heading>
-                      <FormattedMessage id="configuration.test.management.spelling" />
-                    </Heading>
-                  </Section>
-                </Section>
-              </Section>
-            </Column>
-          </Grid>
+          <SectionHeading id="sidenav.label.admin.testCatalog" />
           <br />
           <hr />
           <br />
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              <UnorderedList>
-                <ClickableTile
-                  href="/MasterListsPage/TestRenameEntry"
-                  id="TestRenameEntry"
-                >
-                  <FormattedMessage id="configuration.test.rename" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.test.rename.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/PanelRenameEntry"
-                  id="PanelRenameEntry"
-                >
-                  <FormattedMessage id="configuration.panel.rename" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.panel.rename.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/SampleTypeRenameEntry"
-                  id="SampleTypeRenameEntry"
-                >
-                  <FormattedMessage id="configuration.type.rename" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.type.rename.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/TestSectionRenameEntry"
-                  id="TestSectionRenameEntry"
-                >
-                  <FormattedMessage id="configuration.testSection.rename" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.testSection.rename.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/UomRenameEntry"
-                  id="UomRenameEntry"
-                >
-                  <FormattedMessage id="configuration.uom.rename" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.uom.rename.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/SelectListRenameEntry"
-                  id="SelectListRenameEntry"
-                >
-                  <FormattedMessage id="configuration.selectList.rename" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.selectList.rename.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/MethodRenameEntry"
-                  id="MethodRenameEntry"
-                >
-                  <FormattedMessage id="configuration.method.rename" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.method.rename.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-              </UnorderedList>
+              <Tiles tiles={CATALOGUE_TILES} />
             </Column>
           </Grid>
           <br />
           <hr />
           <br />
-          <Grid fullWidth={true}>
-            <Column lg={16} md={8} sm={4}>
-              <Section>
-                <Section>
-                  <Section>
-                    <Heading>
-                      <FormattedMessage id="configuration.test.management.organization" />
-                    </Heading>
-                  </Section>
-                </Section>
-              </Section>
-            </Column>
-          </Grid>
+          <SectionHeading id="configuration.test.management.organization" />
           <br />
           <hr />
           <br />
           <Grid fullWidth={true}>
             <Column lg={16} md={8} sm={4}>
-              <UnorderedList>
-                <ClickableTile
-                  href="/MasterListsPage/TestCatalog"
-                  id="TestCatalog"
-                >
-                  <FormattedMessage id="configuration.test.catalog" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.test.catalog.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/MethodManagement"
-                  id="MethodManagement"
-                >
-                  <FormattedMessage id="configuration.method" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.method.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile href="/MasterListsPage/TestAdd" id="TestAdd">
-                  <FormattedMessage id="configuration.test.add" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.test.add.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/TestModifyEntry"
-                  id="TestModifyEntry"
-                >
-                  <FormattedMessage id="configuration.test.modify" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.test.modify.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/TestActivation"
-                  id="TestActivation"
-                >
-                  <FormattedMessage id="configuration.test.activate" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.test.activate.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/TestOrderability"
-                  id="TestOrderability"
-                >
-                  <FormattedMessage id="configuration.test.orderable" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.test.orderable.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/TestSectionManagement"
-                  id="TestSectionManagement"
-                >
-                  <FormattedMessage id="configuration.testUnit.manage" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.testUnit.manage.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/SampleTypeManagement"
-                  id="SampleTypeManagement"
-                >
-                  <FormattedMessage id="configuration.sampleType.manage" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.sampleType.manage.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/UomManagement"
-                  id="UomManagement"
-                >
-                  <FormattedMessage id="configuration.uom.manage" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.uom.manage.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/PanelManagement"
-                  id="PanelManagement"
-                >
-                  <FormattedMessage id="configuration.panel.manage" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.panel.manage.explain" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/ResultSelectListAdd"
-                  id="ResultSelectListAdd"
-                >
-                  <FormattedMessage id="configuration.selectList.add" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="configuration.selectList.add.explain" />
-                    </ListItem>
-                    <ListItem>
-                      <FormattedMessage id="configuration.selectList.add.alert" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile href="/MasterListsPage/reflex" id="reflex">
-                  <FormattedMessage id="sidenav.label.admin.testmgt.reflex" />
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/calculatedValue"
-                  id="calculatedValue"
-                >
-                  <FormattedMessage id="sidenav.label.admin.testmgt.calculated" />
-                </ClickableTile>
-                <br />
-                <ClickableTile href="/MasterListsPage/program" id="programs">
-                  <FormattedMessage id="admin.programs.title" />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage id="admin.programs.subtitle" />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-                <br />
-                <ClickableTile
-                  href="/MasterListsPage/ComplianceStandardsAdmin"
-                  id="ComplianceStandardsAdmin"
-                >
-                  <FormattedMessage
-                    id="compliance.admin.title"
-                    defaultMessage="Compliance Standards Administration"
-                  />
-                  <UnorderedList nested>
-                    <ListItem>
-                      <FormattedMessage
-                        id="compliance.admin.tile.explain"
-                        defaultMessage="Manage compliance standards, parameter groups, and per-test thresholds (e.g. PP 22/2021, WHO Drinking Water)."
-                      />
-                    </ListItem>
-                  </UnorderedList>
-                </ClickableTile>
-              </UnorderedList>
+              <Tiles tiles={RULE_TILES} />
             </Column>
           </Grid>
           <br />

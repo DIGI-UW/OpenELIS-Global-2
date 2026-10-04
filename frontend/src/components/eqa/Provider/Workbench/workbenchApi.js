@@ -142,10 +142,10 @@ export const markDelivered = (cycleId, organizationId, callback) =>
   );
 
 /** The override note is only required when the panel's reserve is short. */
-export const sendRepeat = (cycleId, organizationId, overrideNote, callback) =>
+export const sendRepeat = (cycleId, organizationId, fields, callback) =>
   postToOpenElisServerFullResponse(
     `/rest/eqa/cycles/${cycleId}/receipts/${organizationId}/repeat`,
-    JSON.stringify({ overrideNote }),
+    JSON.stringify(fields),
     withBody(callback),
   );
 
