@@ -78,6 +78,7 @@ public class StudyNonConformityPdfTest extends BaseWebContextSensitiveTest {
         assertEquals("only an order under investigation shows its follow-up: " + lines, 1,
                 occurrences(text, "Suivi Requis Remarque"));
         assertFalse("markup never prints: " + text, text.contains("<br/>"));
+        assertLine(lines, DateUtil.getCurrentDateAsText());
     }
 
     private static NonConformityReportData nonConformity(String accession, String section, String reason,

@@ -114,7 +114,7 @@ final class StudyNonConformityPdf {
     static byte[] followupRequired(String title, List<FollowupRequiredData> items) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PdfExportSupport.pageSize(), 36, 36, 36, 48);
-        ReportHeaderPdf.open(document, out);
+        ReportHeaderPdf.open(document, out).setPageEvent(new ReportDateFooter());
         ReportHeaderPdf.add(document, title, ReportHeaderPdf.siteNameLines());
         int start = 0;
         while (start < items.size()) {
@@ -177,6 +177,17 @@ final class StudyNonConformityPdf {
         Phrase phrase = new Phrase(label + ": ", LABEL_FONT);
         phrase.add(new Phrase(Objects.toString(value, ""), valueFont));
         return phrase;
+    }
+
+    /** The date the report was printed, at the foot of every page. */
+    private static final class ReportDateFooter extends PdfPageEventHelper {
+
+        @Override
+        public void onEndPage(PdfWriter writer, Document document) {
+            ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_RIGHT,
+                    new Phrase(DateUtil.getCurrentDateAsText(), TEXT_FONT), document.right(), document.bottom() - 24,
+                    0);
+        }
     }
 
     /** The client's signature and transmission lines at the foot of every page. */
