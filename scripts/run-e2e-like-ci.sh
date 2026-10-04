@@ -67,7 +67,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 case "$SUITE" in
-  core|cypress-core|cypress-admin|cypress-independent) ;;
+  core|cypress-core|cypress-independent) ;;
   *) echo "Unsupported suite: $SUITE" >&2; exit 2 ;;
 esac
 
@@ -78,15 +78,23 @@ SLUG="$(basename "$PROJECT_ROOT" | tr '[:upper:]' '[:lower:]' \
         | sed 's/[^a-z0-9][^a-z0-9]*/-/g; s/^-//; s/-$//' | cut -c1-28 | sed 's/-$//')"
 DIGEST="$(printf '%s' "$PROJECT_ROOT" | shasum -a 256 | cut -c1-8)"
 export E2E_STACK_PROJECT="oe2-${SLUG:-worktree}-${DIGEST}-e2e"
+if [[ -n "${OE_CI_PROJECT_FILE:-}" ]]; then
+  printf '%s\n' "$E2E_STACK_PROJECT" > "$OE_CI_PROJECT_FILE"
+fi
 
 COMPOSE=(docker compose -p "$E2E_STACK_PROJECT"
-         -f build.docker-compose.yml
-         -f build.docker-compose.worktree.yml)
+         -f "$PROJECT_ROOT/build.docker-compose.yml"
+         -f "$PROJECT_ROOT/build.docker-compose.worktree.yml")
 if [[ "$CLEANUP" == true ]]; then
   cleanup_stack() {
     local status=$?
     trap - EXIT
-    "${COMPOSE[@]}" down -v --remove-orphans >/dev/null 2>&1 || true
+    if ! "${COMPOSE[@]}" down -v --remove-orphans; then
+      echo "Failed to clean CI-parity stack: $E2E_STACK_PROJECT" >&2
+      if [[ "$status" == 0 ]]; then
+        status=1
+      fi
+    fi
     exit "$status"
   }
   trap cleanup_stack EXIT
@@ -190,6 +198,9 @@ echo -e "${GREEN}✓ Dependencies ready${NC}"
 echo ""
 
 # Step 4: Run the selected CI suite against this run's fresh stack.
+export CI=true
+export LC_ALL=en_US.UTF-8
+export LANG=en_US.UTF-8
 export TEST_USER="${TEST_USER:-admin}"
 export TEST_PASS="${TEST_PASS:-adminADMIN!}"
 if [[ "$SUITE" == core ]]; then

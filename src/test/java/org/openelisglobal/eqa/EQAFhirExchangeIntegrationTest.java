@@ -17,9 +17,12 @@ import org.hl7.fhir.r4.model.Resource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
+import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQAFhirExchangeService;
 import org.openelisglobal.eqa.service.EQAFhirSubmissionService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
+import org.openelisglobal.eqa.valueholder.EQAPanel;
+import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
@@ -47,6 +50,8 @@ public class EQAFhirExchangeIntegrationTest extends EQASpineTestBase {
     private EQAFhirSubmissionService submissionService;
     @Autowired
     private EQAFhirExchangeService exchangeService;
+    @Autowired
+    private EQAPanelSampleDAO eqaPanelSampleDAO;
     @Autowired
     private FhirConfig fhirConfig;
 
@@ -182,6 +187,61 @@ public class EQAFhirExchangeIntegrationTest extends EQASpineTestBase {
 
         assertFalse("a replayed score report is a no-op, not a second scoring",
                 exchangeService.applyScoreReport(scoreReport, observations(scores)));
+    }
+
+    /**
+     * OGC-1243 and OGC-1244 over FHIR: a participant that ran two samples of one
+     * analyte sends two Observations, each naming its provider sample, and the
+     * provider files each value against that sample instead of folding them into
+     * one result per test.
+     */
+    @Test
+    public void twoSamplesOfOneAnalyteTravelByTheirSampleCodes() {
+        jdbc.update("UPDATE clinlims.eqa_participant_result SET provider_sample_code = 'EXCH-A' WHERE cycle_id = ?",
+                participantCycle.getId());
+        Long roundId = jdbc.queryForObject("SELECT round_id FROM clinlims.eqa_participant_result WHERE cycle_id = ?",
+                Long.class, participantCycle.getId());
+        Long second = insertParticipantResult(participantCycle, readBackRound(roundId), ENROLLMENT, ANALYTE,
+                EQASubmissionStatus.SUBMITTED, "980");
+        jdbc.update("UPDATE clinlims.eqa_participant_result SET provider_sample_code = 'EXCH-B' WHERE id = ?", second);
+        EQAPanel panel = insertPanel(scheme, p -> {
+            p.setCycle(providerCycle);
+            p.setPanelName("Exchange two-level panel");
+        });
+        panelSample(panel, "EXCH-A");
+        panelSample(panel, "EXCH-B");
+
+        Map<String, Resource> resources = submissionService.participantSubmissionResources(participantCycle.getId(),
+                ENROLLMENT);
+        List<Observation> observations = observations(resources);
+        assertEquals("each Observation names its provider sample", List.of("EXCH-A", "EXCH-B"),
+                observations.stream().map(this::sampleCode).sorted().toList());
+
+        DiagnosticReport report = report(resources);
+        readdress(report, providerConsignment);
+        assertTrue(exchangeService.applyParticipantReport(report, observations));
+
+        assertEquals(List.of("EXCH-A|105.50000", "EXCH-B|980.00000"),
+                jdbc.query(
+                        "SELECT s.sample_code, r.result_value FROM clinlims.eqa_result r"
+                                + " JOIN clinlims.eqa_panel_sample s ON s.id = r.eqa_panel_sample_id"
+                                + " WHERE r.participant_organization_id = ? ORDER BY s.sample_code",
+                        (rs, i) -> rs.getString(1) + "|" + rs.getBigDecimal(2).toPlainString(), ORG));
+    }
+
+    private void panelSample(EQAPanel panel, String code) {
+        EQAPanelSample sample = new EQAPanelSample();
+        sample.setPanel(panel);
+        sample.setSampleCode(code);
+        sample.setAnalyteId(ANALYTE);
+        sample.setSysUserId(USER);
+        eqaPanelSampleDAO.insert(sample);
+    }
+
+    private String sampleCode(Observation observation) {
+        String system = fhirConfig.getOeFhirSystem() + EQAFhirSubmissionService.SAMPLE_CODE_SUFFIX;
+        return observation.getIdentifier().stream().filter(identifier -> system.equals(identifier.getSystem()))
+                .map(Identifier::getValue).findFirst().orElse(null);
     }
 
     @Test

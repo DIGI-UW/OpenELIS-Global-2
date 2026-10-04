@@ -31,7 +31,7 @@ if [[ "$PLAN_ONLY" == true ]]; then
   printf '%s\n' \
     'Backend: formatting, deployment contract, DataExport, full Maven build and tests' \
     'Frontend: clean install, formatting, lint, Playwright guard, full Vitest, image build, i18n' \
-    'E2E: shared plugin build, core Playwright, both analyzer projects, all three Cypress shards (fresh database per suite)'
+    'E2E: shared build, all four core Playwright shards, both analyzer projects, both Cypress shards (fresh database per suite)'
   exit 0
 fi
 
@@ -114,7 +114,7 @@ for path in sorted(glob.glob('src/languages/*.json')):
     if duplicates:
         errors.append(f'{path}: duplicate keys: {duplicates[:5]}')
 base = subprocess.check_output(['git', 'merge-base', 'HEAD', 'origin/develop'], text=True).strip()
-changed = subprocess.check_output(['git', 'diff', '--name-only', base, 'HEAD', '--', 'frontend/src/languages/'], text=True).splitlines()
+changed = subprocess.check_output(['git', 'diff', '--name-only', base, 'HEAD', '--', ':/frontend/src/languages/'], text=True).splitlines()
 non_english = [path for path in changed if path.endswith('.json') and not path.endswith('/en.json')]
 if non_english:
     errors.append('Non-English locale changes: ' + ', '.join(non_english))
@@ -135,7 +135,8 @@ run_e2e_step() {
   printf 'FAIL\n' > "$ARTIFACT_DIR/$name.status"
   local checkout="$ARTIFACT_DIR/checkouts/e2e/frontend"
   local evidence="$ARTIFACT_DIR/$name-artifacts"
-  for path in test-results playwright-report cypress/screenshots; do
+  # CI=true selects Playwright's blob reporter, so blob-report holds the report.
+  for path in test-results playwright-report blob-report cypress/screenshots; do
     if [[ -d "$checkout/$path" ]]; then
       mkdir -p "$evidence/$(dirname "$path")"
       cp -R "$checkout/$path" "$evidence/$path" || true
@@ -147,10 +148,18 @@ run_e2e_step() {
 run_shared_build() {
   local root="$ARTIFACT_DIR/checkouts/e2e"
   cd "$root"
+  # GitHub's shared image job reads this exact two-file set.
+  docker buildx bake \
+    -f build.docker-compose.yml \
+    -f .github/ci/ci.analyzer-harness.yml \
+    --print >/dev/null || return
+  docker compose \
+    -f build.docker-compose.yml \
+    -f .github/ci/ci.analyzer-harness.yml \
+    config --images >/dev/null || return
   (cd dataexport/dataexport-core && ../../scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true) || return
   (cd dataexport && ../scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true) || return
-  scripts/run-java21 mvn clean install -DskipTests -Dspotless.check.skip=true -Drevision=3.2.1.3 || return
-  scripts/run-java21 mvn -f plugins/pom.xml -pl analyzers/GenericASTM,analyzers/GenericHL7,analyzers/GenericFile -am clean install -DskipTests -Dmaven.test.skip=true
+  scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true
 }
 
 run_e2e() {
@@ -158,25 +167,53 @@ run_e2e() {
   local failed=0
   cd "$root"
   run_e2e_step e2e-scope node --test .github/scripts/e2e-scope.test.cjs || failed=1
-  run_e2e_step shared-build-plugins run_shared_build || failed=1
+  run_e2e_step shared-build run_shared_build || failed=1
   run_e2e_step e2e-frontend-deps bash -c "cd frontend && npm ci --legacy-peer-deps" || failed=1
-  run_e2e_step core-playwright scripts/run-e2e-like-ci.sh --cleanup || failed=1
+  export OE_CI_PROJECT_FILE="$ARTIFACT_DIR/core-compose-project.txt"
+  for shard in 1 2 3 4; do
+    run_e2e_step "core-playwright-$shard" scripts/run-e2e-like-ci.sh --cleanup -- --shard="$shard/4" || failed=1
+  done
   run_e2e_step analyzer-foundational projects/analyzer-harness/ci-parity-test.sh --build --project harness-foundational --artifact-dir "$ARTIFACT_DIR/analyzer-foundational" || failed=1
   run_e2e_step analyzer-demo projects/analyzer-harness/ci-parity-test.sh --project harness-demo --artifact-dir "$ARTIFACT_DIR/analyzer-demo" || failed=1
-  for shard in core admin independent; do
+  for shard in core independent; do
     run_e2e_step "cypress-$shard" scripts/run-e2e-like-ci.sh --suite "cypress-$shard" --cleanup || failed=1
   done
   return "$failed"
 }
 
 pids=()
+cleanup_owned_stacks() {
+  local root="$ARTIFACT_DIR/checkouts/e2e"
+  local project
+  if [[ -f "$ARTIFACT_DIR/core-compose-project.txt" ]]; then
+    project="$(cat "$ARTIFACT_DIR/core-compose-project.txt")"
+    (cd "$root" && E2E_STACK_PROJECT="$project" docker compose -p "$project" \
+      -f build.docker-compose.yml -f build.docker-compose.worktree.yml \
+      down -v --remove-orphans) >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
+  fi
+  for lane in analyzer-foundational analyzer-demo; do
+    local project_file="$ARTIFACT_DIR/$lane/compose-project.txt"
+    [[ -f "$project_file" ]] || continue
+    project="$(cat "$project_file")"
+    (cd "$root" && CI_PARITY_COMPOSE_PROJECT="$project" \
+      CI_PARITY_IMAGE_PREFIX=ci-cleanup CI_PARITY_ANALYZER_SUBNET_PREFIX=10.64 \
+      docker compose -p "$project" -f build.docker-compose.yml \
+      -f projects/analyzer-harness/docker-compose.base.yml \
+      -f .github/ci/ci.analyzer-harness.yml \
+      -f projects/analyzer-harness/docker-compose.ci-parity-isolated.yml \
+      down -v --remove-orphans) >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
+  done
+}
 interrupt_lanes() {
   trap - INT TERM
-  for pid in "${pids[@]}"; do kill -TERM "$pid" 2>/dev/null || true; done
+  for pid in "${pids[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
   for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
+  for pid in "${pids[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
+  cleanup_owned_stacks
   exit 130
 }
 trap interrupt_lanes INT TERM
+set -m # Give each background lane its own process group for cancellation.
 for lane in backend frontend e2e; do
   (
     set -e
@@ -193,7 +230,7 @@ set -e
 
 failed=0
 printf '\nLocal CI result for %s\n' "$HEAD_SHA"
-for lane in backend frontend e2e-scope shared-build-plugins e2e-frontend-deps core-playwright analyzer-foundational analyzer-demo cypress-core cypress-admin cypress-independent; do
+for lane in backend frontend e2e-scope shared-build e2e-frontend-deps core-playwright-1 core-playwright-2 core-playwright-3 core-playwright-4 analyzer-foundational analyzer-demo cypress-core cypress-independent; do
   if [[ -f "$ARTIFACT_DIR/$lane.status" ]]; then
     result="$(cat "$ARTIFACT_DIR/$lane.status")"
   elif [[ -f "$ARTIFACT_DIR/$lane.exit" ]]; then

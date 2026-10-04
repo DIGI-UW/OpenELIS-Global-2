@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -171,12 +170,13 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         advanceToScored(cycle, sysUserId);
 
         int followups = 0;
+        Map<Long, String> sampleCodes = sampleCodes(cycle);
         for (Map.Entry<Long, List<EQAResult>> entry : byOrganization(distribution.getId()).entrySet()) {
             if (count(entry.getValue(), EQAPerformanceStatus.UNACCEPTABLE) == 0) {
                 continue;
             }
             followupService.enqueueForOrganization(cycle.getScheme(), cycle, entry.getKey(),
-                    snapshotRows(entry.getValue()), isPersistentFailure(cycle, entry.getKey()), sysUserId);
+                    snapshotRows(entry.getValue(), sampleCodes), isPersistentFailure(cycle, entry.getKey()), sysUserId);
             followups++;
         }
 
@@ -198,15 +198,22 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     public String buildScoreCsv(Long cycleId, Long organizationId) {
         // analyte_name is what a participant on another instance matches on when it
         // imports these scores: test ids and names are the provider's own.
+        // sample_code names the panel sample each row answers, so a participant that
+        // reported two samples of one test can tell the two scores apart. It is the
+        // last column: readers find columns by header name, and one that predates it
+        // simply ignores it.
         StringBuilder csv = new StringBuilder(
-                "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on\n");
+                "test,analyte_name,result_value,target_value,z_score,performance_status,scored_on,sample_code\n");
         // The column has always been named for scoring and filled from the
         // submission date, which is a different fact, and participating
         // laboratories import this file. Scoring runs over the whole cycle at once,
         // so the date is the cycle's: stamped the first time it reached SCORED, and
         // blank on a cycle scored before anything recorded that.
-        String scoredOn = scoredOn(cycle(cycleId));
+        EQACycle cycle = cycle(cycleId);
+        String scoredOn = scoredOn(cycle);
+        Map<Long, String> sampleCodes = sampleCodes(cycle);
         for (EQAResult result : resultsFor(cycleId, organizationId)) {
+            String sampleCode = sampleCodes.get(result.getPanelSampleId());
             // Only the free-text cells are escaped. Running a decimal through csvEscape
             // would quote a negative Z as a formula and print it as '-0.28 (found
             // driving the download, 2026-08-24).
@@ -218,7 +225,8 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
                     .append(',').append(number(result.getTargetValue())).append(',').append(number(result.getZScore()))
                     .append(',')
                     .append(result.getPerformanceStatus() == null ? "" : result.getPerformanceStatus().name())
-                    .append(',').append(scoredOn).append('\n');
+                    .append(',').append(scoredOn).append(',')
+                    .append(sampleCode == null ? "" : StringUtil.csvEscape(sampleCode)).append('\n');
         }
         return csv.toString();
     }
@@ -237,26 +245,24 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     public Map<String, Object> intakeGrid(Long cycleId, Long organizationId) {
         EQACycle cycle = cycle(cycleId);
         EQADistribution distribution = distributionOf(cycle);
-        Map<Long, EQAResult> onFile = new HashMap<>();
+        Map<String, EQAResult> onFile = new HashMap<>();
         if (distribution != null) {
             for (EQAResult result : eqaResultDAO.findByDistributionId(distribution.getId())) {
                 if (organizationId.equals(result.getParticipantOrganizationId())) {
-                    onFile.put(result.getTestId(), result);
+                    onFile.put(rowKey(result.getTestId(), result.getPanelSampleId()), result);
                 }
             }
         }
         List<Map<String, Object>> tests = new ArrayList<>();
-        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
-            if (!Boolean.TRUE.equals(assignment.getIsActive())) {
-                continue;
-            }
+        for (IntakeRow intake : intakeRows(cycle)) {
             Map<String, Object> row = new LinkedHashMap<>();
-            row.put("testId", assignment.getTestId());
-            row.put("testName", testName(assignment.getTestId()));
-            Long analyteId = analyteIdOrNull(assignment.getTestId());
-            row.put("analyteId", analyteId);
-            row.put("analyteName", eqaPanelService.analyteName(analyteId));
-            EQAResult result = onFile.get(assignment.getTestId());
+            row.put("testId", intake.testId());
+            row.put("testName", testName(intake.testId()));
+            row.put("analyteId", intake.analyteId());
+            row.put("analyteName", intake.analyteName());
+            row.put("panelSampleId", intake.panelSampleId());
+            row.put("sampleCode", intake.sampleCode());
+            EQAResult result = onFile.get(rowKey(intake.testId(), intake.panelSampleId()));
             row.put("reported", result == null ? null : reportedOf(result));
             row.put("performanceStatus", result == null || result.getPerformanceStatus() == null ? null
                     : result.getPerformanceStatus().name());
@@ -275,36 +281,56 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             EQACycleStatus.SCORING);
 
     @Override
-    public Map<String, Object> takeIn(Long cycleId, Long organizationId, Map<Long, String> reportedByTest,
+    public Map<String, Object> takeIn(Long cycleId, Long organizationId, List<EQAIntakeValue> reported,
             EQASubmissionMethod method, String sysUserId) {
         EQACycle cycle = cycle(cycleId);
         if (!INTAKE_STATES.contains(cycle.getStatus())) {
             throw new IllegalStateException(
                     "Results are taken in between shipping and scoring; this cycle is " + cycle.getStatus());
         }
-        Set<Long> assigned = new HashSet<>();
-        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
-            if (Boolean.TRUE.equals(assignment.getIsActive())) {
-                assigned.add(assignment.getTestId());
-            }
-        }
-        for (Long testId : reportedByTest.keySet()) {
-            if (!assigned.contains(testId)) {
-                // Named by id: the test may not exist at all, and resolving its name would
-                // turn a clean refusal into a not-found error.
-                throw new IllegalArgumentException(
-                        "Test " + testId + " is not part of scheme " + cycle.getScheme().getName());
-            }
+        // Every value is resolved before anything is written, so one bad row refuses
+        // the whole submission instead of leaving it half taken in.
+        List<IntakeRow> rows = intakeRows(cycle);
+        List<EQAIntakeValue> resolved = new ArrayList<>();
+        for (EQAIntakeValue value : reported) {
+            resolved.add(
+                    new EQAIntakeValue(value.testId(), resolve(rows, cycle, value).panelSampleId(), value.value()));
         }
         EQADistribution distribution = findOrOpenDistribution(cycle, sysUserId);
-        for (Map.Entry<Long, String> entry : reportedByTest.entrySet()) {
-            if (entry.getValue() == null || entry.getValue().isBlank()) {
+        for (EQAIntakeValue value : resolved) {
+            if (value.value() == null || value.value().isBlank()) {
                 continue;
             }
-            eqaResultService.submitReportedValue(distribution.getId(), organizationId, entry.getKey(), entry.getValue(),
-                    method, sysUserId);
+            eqaResultService.submitReportedValue(distribution.getId(), organizationId, value.testId(),
+                    value.panelSampleId(), value.value(), method, sysUserId);
         }
         return intakeGrid(cycleId, organizationId);
+    }
+
+    /**
+     * The intake row a value answers. A value that names no panel sample is
+     * accepted only where its test has a single row: with two samples of one test
+     * on the panel, choosing either would judge the value against a target it may
+     * never have been measured against.
+     */
+    private IntakeRow resolve(List<IntakeRow> rows, EQACycle cycle, EQAIntakeValue value) {
+        List<IntakeRow> forTest = rows.stream().filter(row -> row.testId().equals(value.testId())).toList();
+        if (forTest.isEmpty()) {
+            // Named by id: the test may not exist at all, and resolving its name would
+            // turn a clean refusal into a not-found error.
+            throw new IllegalArgumentException(
+                    "Test " + value.testId() + " is not part of scheme " + cycle.getScheme().getName());
+        }
+        if (value.panelSampleId() != null) {
+            return forTest.stream().filter(row -> value.panelSampleId().equals(row.panelSampleId())).findFirst()
+                    .orElseThrow(() -> new IllegalArgumentException("Panel sample " + value.panelSampleId()
+                            + " is not a sample of test " + value.testId() + " in this cycle"));
+        }
+        if (forTest.size() > 1) {
+            throw new IllegalArgumentException("Test " + value.testId() + " has " + forTest.size()
+                    + " samples on this cycle's panel; say which sample the value answers");
+        }
+        return forTest.get(0);
     }
 
     @Override
@@ -316,33 +342,29 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
         List<String> header = EqaCsv.split(lines[0]);
         int nameColumn = EqaCsv.indexOf(header, "analyte_name");
         int valueColumn = EqaCsv.indexOf(header, "result_value");
+        int sampleColumn = EqaCsv.indexOf(header, "sample_code");
         if (nameColumn < 0 || valueColumn < 0) {
             throw new IllegalArgumentException(
                     "The CSV needs analyte_name and result_value columns (the participant's export bundle)");
         }
-        Map<String, String> byAnalyteName = new LinkedHashMap<>();
-        Map<String, Integer> rowOf = new HashMap<>();
+        List<LabelledValue> values = new ArrayList<>();
         for (int i = 1; i < lines.length; i++) {
             if (lines[i].isBlank()) {
                 continue;
             }
             List<String> cells = EqaCsv.split(lines[i]);
-            String name = EqaCsv.cell(cells, nameColumn);
             String value = EqaCsv.cell(cells, valueColumn);
             if (value.isEmpty()) {
                 continue;
             }
-            byAnalyteName.put(name, value);
-            rowOf.put(name, i + 1);
+            String sampleCode = sampleColumn < 0 ? "" : EqaCsv.cell(cells, sampleColumn);
+            values.add(new LabelledValue(i + 1, sampleCode.isEmpty() ? null : sampleCode,
+                    EqaCsv.cell(cells, nameColumn), value));
         }
-        Map<String, Object> grid = takeInByAnalyteName(cycleId, organizationId, byAnalyteName,
+        Map<String, Object> grid = takeInLabelled(cycle(cycleId), organizationId, values,
                 EQASubmissionMethod.FILE_UPLOAD, sysUserId);
-        List<String> errors = new ArrayList<>();
-        for (Object unmapped : (List<?>) grid.get("unmapped")) {
-            errors.add("Row " + rowOf.get(String.valueOf(unmapped)) + ": no test in this scheme reports '" + unmapped
-                    + "'");
-        }
-        grid.put("imported", byAnalyteName.size() - errors.size());
+        List<?> errors = (List<?>) grid.remove("rejected");
+        grid.put("imported", values.size() - errors.size());
         grid.put("errors", errors);
         return grid;
     }
@@ -350,82 +372,133 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     @Override
     public Map<String, Object> takeInByAnalyteName(Long cycleId, Long organizationId,
             Map<String, String> reportedByAnalyteName, EQASubmissionMethod method, String sysUserId) {
-        EQACycle cycle = cycle(cycleId);
-        Map<String, Long> testByAnalyteName = new HashMap<>();
-        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
-            String name = eqaPanelService.analyteName(analyteIdOrNull(assignment.getTestId()));
-            if (Boolean.TRUE.equals(assignment.getIsActive()) && name != null) {
-                testByAnalyteName.put(name.trim().toLowerCase(), assignment.getTestId());
-            }
-        }
-        Map<Long, String> reported = new LinkedHashMap<>();
-        List<String> unmapped = new ArrayList<>();
-        for (Map.Entry<String, String> entry : reportedByAnalyteName.entrySet()) {
-            String name = entry.getKey() == null ? "" : entry.getKey().trim();
-            Long testId = testByAnalyteName.get(name.toLowerCase());
-            if (testId == null) {
-                unmapped.add(name);
-                continue;
-            }
-            reported.put(testId, entry.getValue());
-        }
-        Map<String, Object> grid = takeIn(cycleId, organizationId, reported, method, sysUserId);
-        grid.put("unmapped", unmapped);
+        List<LabelledValue> values = new ArrayList<>();
+        reportedByAnalyteName.forEach((name, value) -> values.add(new LabelledValue(0, null, name, value)));
+        Map<String, Object> grid = takeInLabelled(cycle(cycleId), organizationId, values, method, sysUserId);
+        grid.remove("rejected");
         return grid;
     }
 
     /**
-     * Judge every reported value against the target its panel sealed, numeric and
-     * qualitative alike, through the same comparison the in-house lane uses. A
-     * qualitative result has no peer z and never had one; a numeric result keeps
-     * the z the statistics pass computed, as the reported statistic beside the
-     * verdict rather than as the verdict.
-     *
-     * <p>
-     * A result whose analyte has no sealed target keeps whatever the peer
-     * statistics decided — a scheme that reports without a target has nothing else
-     * to be judged against.
+     * A value as another instance names it: by the panel sample code where it sends
+     * one, otherwise by analyte name. {@code line} is its CSV row, or 0.
      */
-    /**
-     * The targets this cycle's panel material sealed, by the analyte each answers.
-     */
-    @Override
-    @Transactional(readOnly = true)
-    public Map<Long, String> sealedTargetsByTest(Long cycleId) {
-        EQACycle cycle = cycle(cycleId);
-        Map<Long, EQAPanelSample> byAnalyte = sealedTargetsByAnalyte(cycle);
-        Map<Long, String> byTest = new HashMap<>();
-        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
-            Long analyteId = analyteIdOrNull(assignment.getTestId());
-            EQAPanelSample sample = analyteId == null ? null : byAnalyte.get(analyteId);
-            if (sample != null) {
-                byTest.put(assignment.getTestId(), sample.getTargetValue());
-            }
+    private record LabelledValue(int line, String sampleCode, String analyteName, String value) {
+        String label() {
+            return sampleCode != null ? sampleCode.trim() : analyteName == null ? "" : analyteName.trim();
         }
-        return byTest;
     }
 
-    private Map<Long, EQAPanelSample> sealedTargetsByAnalyte(EQACycle cycle) {
-        Map<Long, EQAPanelSample> targetByAnalyte = new HashMap<>();
-        for (EQAPanel panel : eqaPanelDAO.getAllMatching("cycle.id", cycle.getId())) {
-            for (EQAPanelSample sample : eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId())) {
-                if (sample.getAnalyteId() != null && sample.getTargetValue() != null) {
-                    targetByAnalyte.put(sample.getAnalyteId(), sample);
+    /**
+     * Resolve named values to intake rows and take them in. The grid comes back
+     * with {@code unmapped} (the labels that matched no single row) and
+     * {@code rejected} (why, one line per value, prefixed with its CSV row).
+     */
+    private Map<String, Object> takeInLabelled(EQACycle cycle, Long organizationId, List<LabelledValue> values,
+            EQASubmissionMethod method, String sysUserId) {
+        List<IntakeRow> rows = intakeRows(cycle);
+        List<EQAIntakeValue> reported = new ArrayList<>();
+        List<String> unmapped = new ArrayList<>();
+        List<String> rejected = new ArrayList<>();
+        for (LabelledValue value : values) {
+            String label = value.label();
+            List<IntakeRow> matches;
+            String problem;
+            if (value.sampleCode() != null) {
+                matches = rows.stream()
+                        .filter(row -> row.sampleCode() != null && row.sampleCode().trim().equalsIgnoreCase(label))
+                        .toList();
+                problem = matches.isEmpty() ? "no sample '" + label + "' was sent in this cycle"
+                        : "sample '" + label + "' is on more than one panel in this cycle";
+            } else {
+                // A value keyed by name alone may still name a sample: an instance that
+                // sends sample codes over FHIR puts the code where the name would be.
+                matches = rows.stream()
+                        .filter(row -> row.sampleCode() != null && row.sampleCode().trim().equalsIgnoreCase(label))
+                        .toList();
+                if (matches.isEmpty()) {
+                    matches = rows.stream().filter(
+                            row -> row.analyteName() != null && row.analyteName().trim().equalsIgnoreCase(label))
+                            .toList();
                 }
+                problem = matches.isEmpty() ? "no test in this scheme reports '" + label + "'"
+                        : "'" + label + "' is reported by " + matches.size()
+                                + " samples on this cycle's panel; add a sample_code column naming which one";
+            }
+            if (matches.size() != 1) {
+                unmapped.add(label);
+                rejected.add(value.line() > 0 ? "Row " + value.line() + ": " + problem : problem);
+                continue;
+            }
+            IntakeRow row = matches.get(0);
+            reported.add(new EQAIntakeValue(row.testId(), row.panelSampleId(), value.value()));
+        }
+        Map<String, Object> grid = takeIn(cycle.getId(), organizationId, reported, method, sysUserId);
+        grid.put("unmapped", unmapped);
+        grid.put("rejected", rejected);
+        return grid;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, String> sealedTargetsByResult(Long cycleId) {
+        EQACycle cycle = cycle(cycleId);
+        EQADistribution distribution = distributionOf(cycle);
+        Map<Long, String> byResult = new HashMap<>();
+        if (distribution == null) {
+            return byResult;
+        }
+        List<EQAPanelSample> samples = panelSamples(cycle);
+        for (EQAResult result : eqaResultDAO.findByDistributionId(distribution.getId())) {
+            EQAPanelSample sample = targetFor(result, samples);
+            if (sample != null) {
+                byResult.put(result.getId(), sample.getTargetValue());
             }
         }
-        return targetByAnalyte;
+        return byResult;
+    }
+
+    /**
+     * The sealed panel sample a result is judged against: the sample it answers. A
+     * result that names no sample (a V1 row, or one taken in before results named
+     * their sample) is matched by analyte only where the panel seals a single
+     * sample of it; with two, either choice could be the wrong target.
+     */
+    private EQAPanelSample targetFor(EQAResult result, List<EQAPanelSample> samples) {
+        if (result.getPanelSampleId() != null) {
+            return samples.stream().filter(
+                    sample -> result.getPanelSampleId().equals(sample.getId()) && sample.getTargetValue() != null)
+                    .findFirst().orElse(null);
+        }
+        Long analyteId = analyteIdOrNull(result.getTestId());
+        if (analyteId == null) {
+            return null;
+        }
+        List<EQAPanelSample> sealed = samples.stream()
+                .filter(sample -> analyteId.equals(sample.getAnalyteId()) && sample.getTargetValue() != null).toList();
+        return sealed.size() == 1 ? sealed.get(0) : null;
     }
 
     private boolean hasSealedTarget(EQACycle cycle) {
-        return !sealedTargetsByAnalyte(cycle).isEmpty();
+        return panelSamples(cycle).stream()
+                .anyMatch(sample -> sample.getAnalyteId() != null && sample.getTargetValue() != null);
     }
 
+    /**
+     * Judge every reported value against the target its own panel sample sealed,
+     * numeric and qualitative alike, through the same comparison the in-house lane
+     * uses. A qualitative result has no peer z and never had one; a numeric result
+     * keeps the z the statistics pass computed, as the reported statistic beside
+     * the verdict rather than as the verdict.
+     *
+     * <p>
+     * A result with no sealed target keeps whatever the peer statistics decided: a
+     * scheme that reports without a target has nothing else to be judged against.
+     */
     private void judgeAgainstPanelTargets(EQACycle cycle, Long distributionId) {
-        Map<Long, EQAPanelSample> targetByAnalyte = sealedTargetsByAnalyte(cycle);
+        List<EQAPanelSample> samples = panelSamples(cycle);
         for (EQAResult result : eqaResultDAO.findByDistributionId(distributionId)) {
-            Long analyteId = analyteIdOrNull(result.getTestId());
-            EQAPanelSample target = analyteId == null ? null : targetByAnalyte.get(analyteId);
+            EQAPanelSample target = targetFor(result, samples);
             if (target == null) {
                 continue;
             }
@@ -475,6 +548,85 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
 
     private Long analyteIdOrNull(Long testId) {
         return testId == null ? null : eqaPanelService.findAnalyteIdForTest(String.valueOf(testId));
+    }
+
+    /**
+     * One row of a cycle's intake: a panel sample of an assigned test, or the test
+     * itself when the panel carries no sample of it.
+     */
+    private record IntakeRow(Long testId, Long analyteId, String analyteName, EQAPanelSample sample) {
+        Long panelSampleId() {
+            return sample == null ? null : sample.getId();
+        }
+
+        String sampleCode() {
+            return sample == null ? null : sample.getSampleCode();
+        }
+    }
+
+    /**
+     * The rows a laboratory reports into, in the scheme's test order. A multi-level
+     * panel carries several samples of one test, each with its own target, so each
+     * sample is its own row (OGC-1243). The first assigned test that reports a
+     * sample's analyte takes it, so two tests sharing an analyte do not both claim
+     * one sample.
+     */
+    private List<IntakeRow> intakeRows(EQACycle cycle) {
+        Map<Long, List<EQAPanelSample>> samplesByAnalyte = new LinkedHashMap<>();
+        for (EQAPanelSample sample : panelSamples(cycle)) {
+            if (sample.getAnalyteId() != null) {
+                samplesByAnalyte.computeIfAbsent(sample.getAnalyteId(), key -> new ArrayList<>()).add(sample);
+            }
+        }
+        List<IntakeRow> rows = new ArrayList<>();
+        for (EQAProgramTest assignment : eqaProgramService.getTestAssignments(cycle.getScheme().getId())) {
+            if (!Boolean.TRUE.equals(assignment.getIsActive())) {
+                continue;
+            }
+            Long analyteId = analyteIdOrNull(assignment.getTestId());
+            String analyteName = eqaPanelService.analyteName(analyteId);
+            List<EQAPanelSample> samples = analyteId == null ? null : samplesByAnalyte.remove(analyteId);
+            if (samples == null) {
+                rows.add(new IntakeRow(assignment.getTestId(), analyteId, analyteName, null));
+                continue;
+            }
+            for (EQAPanelSample sample : samples) {
+                rows.add(new IntakeRow(assignment.getTestId(), analyteId, analyteName, sample));
+            }
+        }
+        return rows;
+    }
+
+    /**
+     * Every panel sample the cycle carries, panel by panel and then by sample code.
+     */
+    private List<EQAPanelSample> panelSamples(EQACycle cycle) {
+        List<EQAPanel> panels = new ArrayList<>(eqaPanelDAO.getAllMatching("cycle.id", cycle.getId()));
+        panels.sort(Comparator.comparing(EQAPanel::getId));
+        List<EQAPanelSample> samples = new ArrayList<>();
+        for (EQAPanel panel : panels) {
+            List<EQAPanelSample> onPanel = new ArrayList<>(eqaPanelSampleDAO.getAllMatching("panel.id", panel.getId()));
+            onPanel.sort(Comparator.comparing(EQAPanelSample::getSampleCode,
+                    Comparator.nullsLast(Comparator.naturalOrder())));
+            samples.addAll(onPanel);
+        }
+        return samples;
+    }
+
+    private Map<Long, String> sampleCodes(EQACycle cycle) {
+        Map<Long, String> codes = new HashMap<>();
+        for (EQAPanelSample sample : panelSamples(cycle)) {
+            codes.put(sample.getId(), sample.getSampleCode());
+        }
+        return codes;
+    }
+
+    /**
+     * A result's place in the intake: its panel sample, or its test when it answers
+     * none.
+     */
+    private static String rowKey(Long testId, Long panelSampleId) {
+        return panelSampleId != null ? "sample:" + panelSampleId : "test:" + testId;
     }
 
     // ---- helpers ----
@@ -663,9 +815,11 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             cycleRow.put("cycleNumber", cycle.getCycleNumber());
             cycleRow.put("cycleName", cycle.getCycleName());
             List<Map<String, Object>> analytes = new ArrayList<>();
+            Map<Long, String> sampleCodes = sampleCodes(cycle);
             for (EQAResult result : reported) {
                 Map<String, Object> analyte = new LinkedHashMap<>();
                 analyte.put("test", testName(result.getTestId()));
+                analyte.put("sampleCode", sampleCodes.get(result.getPanelSampleId()));
                 analyte.put("reported", reportedOf(result));
                 analyte.put("zScore", result.getZScore());
                 analyte.put("performance",
@@ -730,7 +884,7 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
     /**
      * The snapshot the register prints; it outlives later re-scoring of the row.
      */
-    private List<Map<String, Object>> snapshotRows(List<EQAResult> results) {
+    private List<Map<String, Object>> snapshotRows(List<EQAResult> results, Map<Long, String> sampleCodes) {
         List<Map<String, Object>> rows = new ArrayList<>();
         for (EQAResult result : results) {
             if (result.getPerformanceStatus() != EQAPerformanceStatus.UNACCEPTABLE) {
@@ -739,6 +893,8 @@ public class EQAProviderScoringServiceImpl implements EQAProviderScoringService 
             Map<String, Object> row = new LinkedHashMap<>();
             row.put("testId", result.getTestId());
             row.put("testName", testName(result.getTestId()));
+            row.put("panelSampleId", result.getPanelSampleId());
+            row.put("sampleCode", sampleCodes.get(result.getPanelSampleId()));
             row.put("reported", reportedOf(result));
             row.put("target", result.getTargetValue());
             row.put("zScore", result.getZScore());

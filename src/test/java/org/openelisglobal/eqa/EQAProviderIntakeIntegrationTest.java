@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.parser.PdfTextExtractor;
@@ -12,8 +15,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.config.ControllerSetup;
+import org.openelisglobal.eqa.controller.rest.EQAResultRestController;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.EQAProviderScoringService;
@@ -23,7 +30,12 @@ import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /**
  * Provider-side intake of participant results (OGC-613): phoned and emailed
@@ -105,7 +117,7 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
     @Test
     public void reportedValuesLandAsNumbersOrWordsAndAreEchoedBack() {
         Map<String, Object> grid = scoringService.takeIn(cycle.getId(), FIRST_ORG,
-                Map.of(TEST_VL, "105.5", TEST_SERO, "Reactive"), EQASubmissionMethod.MANUAL, USER);
+                byTest(Map.of(TEST_VL, "105.5", TEST_SERO, "Reactive")), EQASubmissionMethod.MANUAL, USER);
 
         assertEquals(new BigDecimal("105.50000"), resultValue(FIRST_ORG, TEST_VL));
         assertNull(resultText(FIRST_ORG, TEST_VL));
@@ -115,8 +127,8 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
         assertEquals(0, new BigDecimal("105.5").compareTo((BigDecimal) reportedInGrid(grid, TEST_VL)));
         assertNull("nothing reported for CD4 yet", reportedInGrid(grid, TEST_CD4));
 
-        scoringService.takeIn(cycle.getId(), FIRST_ORG, Map.of(TEST_SERO, "Non-reactive"), EQASubmissionMethod.MANUAL,
-                USER);
+        scoringService.takeIn(cycle.getId(), FIRST_ORG, byTest(Map.of(TEST_SERO, "Non-reactive")),
+                EQASubmissionMethod.MANUAL, USER);
         assertEquals("a second entry overwrites, it does not duplicate", "Non-reactive",
                 resultText(FIRST_ORG, TEST_SERO));
         assertEquals(Integer.valueOf(2),
@@ -130,7 +142,7 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
             long org = FIRST_ORG + i;
             String viralLoad = i == ORGS - 1 ? "400" : "100";
             String cd4 = String.valueOf(1000 + i);
-            scoringService.takeIn(cycle.getId(), org, Map.of(TEST_VL, viralLoad, TEST_CD4, cd4),
+            scoringService.takeIn(cycle.getId(), org, byTest(Map.of(TEST_VL, viralLoad, TEST_CD4, cd4)),
                     EQASubmissionMethod.MANUAL, USER);
         }
 
@@ -151,7 +163,8 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
     public void qualitativeResultsAreJudgedAgainstThePanelTarget() {
         for (int i = 0; i < ORGS; i++) {
             scoringService.takeIn(cycle.getId(), FIRST_ORG + i,
-                    Map.of(TEST_SERO, i == ORGS - 1 ? "Non-reactive" : "reactive"), EQASubmissionMethod.MANUAL, USER);
+                    byTest(Map.of(TEST_SERO, i == ORGS - 1 ? "Non-reactive" : "reactive")), EQASubmissionMethod.MANUAL,
+                    USER);
         }
 
         scoringService.scoreCycle(cycle.getId(), USER);
@@ -188,7 +201,7 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
 
         String[] reported = { "39.5", "40", "40.5", "41", "80" };
         for (int i = 0; i < reported.length; i++) {
-            scoringService.takeIn(cycle.getId(), FIRST_ORG + i, Map.of(TEST_VL, reported[i]),
+            scoringService.takeIn(cycle.getId(), FIRST_ORG + i, byTest(Map.of(TEST_VL, reported[i])),
                     EQASubmissionMethod.MANUAL, USER);
         }
         long outlier = FIRST_ORG + reported.length - 1;
@@ -217,7 +230,8 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
     public void theProviderPrintsAPerParticipantReportFromWhatTheLaboratoryReported() throws IOException {
         for (int i = 0; i < ORGS; i++) {
             scoringService.takeIn(cycle.getId(), FIRST_ORG + i,
-                    Map.of(TEST_SERO, i == ORGS - 1 ? "Non-reactive" : "reactive"), EQASubmissionMethod.MANUAL, USER);
+                    byTest(Map.of(TEST_SERO, i == ORGS - 1 ? "Non-reactive" : "reactive")), EQASubmissionMethod.MANUAL,
+                    USER);
         }
         scoringService.scoreCycle(cycle.getId(), USER);
         long failing = FIRST_ORG + ORGS - 1;
@@ -320,7 +334,8 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
             for (int p = 0; p < ORGS; p++) {
                 long org = FIRST_ORG + p;
                 String value = org == drifting ? driftingValues[i] : "reactive";
-                scoringService.takeIn(round.getId(), org, Map.of(TEST_SERO, value), EQASubmissionMethod.MANUAL, USER);
+                scoringService.takeIn(round.getId(), org, byTest(Map.of(TEST_SERO, value)), EQASubmissionMethod.MANUAL,
+                        USER);
             }
             scoringService.scoreCycle(round.getId(), USER);
         }
@@ -416,18 +431,39 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
     @Test
     public void intakeRefusesATestOutsideTheSchemeAndACycleNotYetShipped() {
         try {
-            scoringService.takeIn(cycle.getId(), FIRST_ORG, Map.of(424242L, "1"), EQASubmissionMethod.MANUAL, USER);
+            scoringService.takeIn(cycle.getId(), FIRST_ORG, byTest(Map.of(424242L, "1")), EQASubmissionMethod.MANUAL,
+                    USER);
             fail("a test the scheme does not run must be refused");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage(), expected.getMessage().contains("not part of scheme"));
         }
         jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'PLANNED' WHERE id = ?", cycle.getId());
         try {
-            scoringService.takeIn(cycle.getId(), FIRST_ORG, Map.of(TEST_VL, "1"), EQASubmissionMethod.MANUAL, USER);
+            scoringService.takeIn(cycle.getId(), FIRST_ORG, byTest(Map.of(TEST_VL, "1")), EQASubmissionMethod.MANUAL,
+                    USER);
             fail("a cycle that has not shipped has no results to take in");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage(), expected.getMessage().contains("PLANNED"));
         }
+        assertEquals(Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_result", Integer.class));
+    }
+
+    @Test
+    public void resultEntryOnAClosedCycleAnswersAConflictThatNamesTheState() throws Exception {
+        EQAResultRestController controller = new EQAResultRestController();
+        ReflectionTestUtils.setField(controller, "scoringService", scoringService);
+        MockMvc rest = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ControllerSetup()).build();
+        UserSessionData session = new UserSessionData();
+        session.setSytemUserId(1);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        rest.perform(post("/rest/eqa/cycles/" + cycle.getId() + "/results")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, session).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"organizationId\": " + FIRST_ORG + ", \"results\": [{\"testId\": " + TEST_VL
+                        + ", \"value\": \"1\"}]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(CoreMatchers.containsString("CLOSED")));
         assertEquals(Integer.valueOf(0),
                 jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_result", Integer.class));
     }

@@ -2,6 +2,8 @@ package org.openelisglobal.eqa;
 
 import static org.junit.Assert.assertTrue;
 
+import java.util.List;
+import java.util.Map;
 import java.util.function.Consumer;
 import javax.sql.DataSource;
 import org.junit.After;
@@ -12,6 +14,7 @@ import org.openelisglobal.eqa.dao.EQAPanelDAO;
 import org.openelisglobal.eqa.dao.EQAPanelReceiptDAO;
 import org.openelisglobal.eqa.dao.EQAParticipantResultDAO;
 import org.openelisglobal.eqa.dao.EQARoundDAO;
+import org.openelisglobal.eqa.service.EQAIntakeValue;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQAPanel;
@@ -214,5 +217,14 @@ public abstract class EQASpineTestBase extends BaseWebContextSensitiveTest {
             messages.append(current.getMessage()).append(' ');
         }
         return messages.toString();
+    }
+
+    /**
+     * Intake values for a panel that carries one sample (or none) per test, keyed
+     * by test id, which is how most intake tests read.
+     */
+    protected static List<EQAIntakeValue> byTest(Map<Long, String> reportedByTest) {
+        return reportedByTest.entrySet().stream()
+                .map(entry -> new EQAIntakeValue(entry.getKey(), null, entry.getValue())).toList();
     }
 }

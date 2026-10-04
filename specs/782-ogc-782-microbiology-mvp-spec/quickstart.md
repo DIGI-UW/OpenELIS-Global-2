@@ -15,7 +15,6 @@ source artifact from scratch.
    - `specs/782-ogc-782-microbiology-mvp-spec/plan.md`
    - `specs/782-ogc-782-microbiology-mvp-spec/research.md`
    - `specs/782-ogc-782-microbiology-mvp-spec/data-model.md`
-   - `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
    - `specs/roadmaps/microbiology-spec-health-cleanup-list.md`
 
 ## Code QA Skills

@@ -15,11 +15,21 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Clock;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
@@ -28,6 +38,9 @@ import org.openelisglobal.eqa.valueholder.EQACycle;
 import org.openelisglobal.eqa.valueholder.EQACycleStatus;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
+import org.openelisglobal.result.service.LogbookResultsPersistService;
+import org.openelisglobal.resultvalidation.service.ResultValidationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.AopTestUtils;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -69,6 +82,8 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     private static final long SAMPLE = 9901L;
     private static final long SAMPLE_ITEM = 9901L;
     private static final long SAMPLE_EQA = 9901L;
+    /** The second order of a two-sample panel (OGC-1244). */
+    private static final long SECOND_SAMPLE = 9902L;
 
     /**
      * Fixture ids are assigned here rather than from a sequence: the sample_eqa and
@@ -82,6 +97,15 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private IStatusService statusService;
+
+    @Autowired
+    private AnalysisService analysisService;
+
+    @Autowired
+    private ResultValidationService resultValidationService;
+
+    @Autowired
+    private LogbookResultsPersistService logbookPersistService;
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -135,7 +159,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         // orders themselves.
         jdbc.update("DELETE FROM clinlims.eqa_participant_result");
         jdbc.update("DELETE FROM clinlims.eqa_lab_enrollment_test_map WHERE enrollment_id = ?", ENROLLMENT);
-        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
         super.cleanEqaTables();
         cleanOrders();
     }
@@ -176,21 +200,23 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     private void ensureOrderCatalog() {
         jdbc.update("INSERT INTO clinlims.localization (id, description) SELECT 9901, 'EQA T14'"
                 + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.localization WHERE id = 9901)");
+        // lastupdated is the entity's version: left null, Hibernate takes the row for
+        // an unsaved instance and refuses to save an analysis that points at it.
         jdbc.update("INSERT INTO clinlims.test_section (id, name, description, is_external, sort_order,"
-                + " name_localization_id) SELECT 9901, 'EQA T14', 'EQA T14 section', 'N',"
-                + " 9901, 9901 WHERE NOT EXISTS (SELECT 1 FROM clinlims.test_section WHERE id = 9901)");
+                + " name_localization_id, lastupdated) SELECT 9901, 'EQA T14', 'EQA T14 section', 'N',"
+                + " 9901, 9901, now() WHERE NOT EXISTS (SELECT 1 FROM clinlims.test_section WHERE id = 9901)");
         jdbc.update("INSERT INTO clinlims.type_of_sample (id, description, domain, name_localization_id, lastupdated)"
                 + " SELECT 9901, 'EQA T14 specimen', 'H', 9901, now()"
                 + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.type_of_sample WHERE id = 9901)");
     }
 
     private void cleanOrders() {
-        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
         jdbc.update("DELETE FROM clinlims.result WHERE analysis_id BETWEEN 9911 AND 9930");
-        jdbc.update("DELETE FROM clinlims.analysis WHERE sampitem_id = ?", SAMPLE_ITEM);
-        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id = ?", SAMPLE);
-        jdbc.update("DELETE FROM clinlims.sample_item WHERE id = ?", SAMPLE_ITEM);
-        jdbc.update("DELETE FROM clinlims.sample WHERE id = ?", SAMPLE);
+        jdbc.update("DELETE FROM clinlims.analysis WHERE sampitem_id IN (?, ?)", SAMPLE_ITEM, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_eqa WHERE sample_id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample_item WHERE id IN (?, ?)", SAMPLE_ITEM, SECOND_SAMPLE);
+        jdbc.update("DELETE FROM clinlims.sample WHERE id IN (?, ?)", SAMPLE, SECOND_SAMPLE);
         // Last, and in this order: the bridge mints a test_analyte link — and for the
         // probe test an analyte too — for a test the catalog never mapped, and the
         // analyses that reference them have to go first. Dropping them keeps the next
@@ -248,12 +274,17 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     }
 
     private long analysis(long testId, long analyteId, String value, AnalysisStatus status, boolean withAnalyte) {
+        return analysisOn(SAMPLE_ITEM, testId, analyteId, value, status, withAnalyte);
+    }
+
+    private long analysisOn(long sampleItemId, long testId, long analyteId, String value, AnalysisStatus status,
+            boolean withAnalyte) {
         long analysisId = nextAnalysisId++;
         jdbc.update(
                 "INSERT INTO clinlims.analysis (id, sampitem_id, test_sect_id, test_id, revision, analysis_type,"
                         + " entry_date, status_id, lastupdated, fhir_uuid)"
                         + " VALUES (?, ?, 9901, ?, 1, 'ROUTINE', now(), ?::numeric, now(), gen_random_uuid())",
-                analysisId, SAMPLE_ITEM, testId, statusService.getStatusID(status));
+                analysisId, sampleItemId, testId, statusService.getStatusID(status));
         if (value != null) {
             // Result type and significant_digits are set the way a configured test
             // sets them. On a numeric result left at 0 digits,
@@ -297,6 +328,138 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
     private int failureAlerts(Long cycleId) {
         return jdbc.queryForObject("SELECT count(*) FROM clinlims.alert WHERE alert_type = 'EQA_SUBMISSION_FAILED'"
                 + " AND alert_entity_type = 'EQACycle' AND alert_entity_id = ?", Integer.class, cycleId);
+    }
+
+    /**
+     * The two orders of a multi-level panel: the same test on two provider samples,
+     * each order naming the provider's code for its sample as the laboratory
+     * entered it at order entry.
+     */
+    private void twoSampleOrders(EQACycle cycle, Long roundId) {
+        eqaOrder(cycle, roundId);
+        jdbc.update("UPDATE clinlims.sample_eqa SET eqa_provider_sample_id = 'APC-26-6-A' WHERE id = ?", SAMPLE_EQA);
+        jdbc.update(
+                "INSERT INTO clinlims.sample (id, accession_number, entered_date, received_date,"
+                        + " collection_date, lastupdated) VALUES (?, 'EQAT14002', now(), now(), now(), now())",
+                SECOND_SAMPLE);
+        jdbc.update(
+                "INSERT INTO clinlims.sample_item (id, sort_order, status_id, samp_id, typeosamp_id,"
+                        + " collection_date, lastupdated) VALUES (?, 1, ?::numeric, ?, 9901, now(), now())",
+                SECOND_SAMPLE, statusService.getStatusID(AnalysisStatus.NotStarted), SECOND_SAMPLE);
+        jdbc.update(
+                "INSERT INTO clinlims.sample_eqa (id, sample_id, is_eqa_sample, eqa_enrollment_id, cycle_id,"
+                        + " round_id, eqa_provider_sample_id, sys_user_id, last_updated)"
+                        + " VALUES (?, ?, true, ?, ?, ?, 'APC-26-6-B', ?, now())",
+                SECOND_SAMPLE, SECOND_SAMPLE, ENROLLMENT, cycle.getId(), roundId, USER);
+        finalizedAnalysis(VL_TEST, VL_ANALYTE, "505");
+        analysisOn(SECOND_SAMPLE, VL_TEST, VL_ANALYTE, "1190", AnalysisStatus.Finalized, true);
+    }
+
+    /** analyte|provider sample|value|status, one line per participant result. */
+    private List<String> rowsBySample(Long cycleId) {
+        return jdbc.query(
+                "SELECT analyte_id, provider_sample_code, result_value, submission_status, provider_target"
+                        + " FROM clinlims.eqa_participant_result WHERE cycle_id = ? ORDER BY provider_sample_code",
+                (rs, i) -> rs.getLong(1) + "|" + rs.getString(2) + "|" + rs.getString(3) + "|" + rs.getString(4) + "|"
+                        + rs.getString(5),
+                cycleId);
+    }
+
+    // ---- OGC-1244: two samples of one analyte ----
+
+    @Test
+    public void twoSamplesOfOneAnalyte_areTwoResultsAndTheBundleNamesEachSample() {
+        EQAProgram scheme = externalScheme(true);
+        EQACycle cycle = readBack(insertCycle(scheme, 21));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        assertEquals("each sample keeps its own value",
+                List.of(VL_ANALYTE + "|APC-26-6-A|505.00|VALIDATED_PARTIAL|null",
+                        VL_ANALYTE + "|APC-26-6-B|1190.00|VALIDATED_PARTIAL|null"),
+                rowsBySample(cycle.getId()));
+        String[] lines = cycleSubmissionService.exportBundleCsv(cycle.getId(), ENROLLMENT).split("\n");
+        assertEquals("cycle_id,cycle_name,round_number,analyte_id,analyte_name,result_value,result_unit,"
+                + "submission_status,entered_at,sample_code", lines[0]);
+        List<String> valueAndSample = java.util.Arrays.stream(lines).skip(1)
+                .map(line -> line.split(",", -1)[5] + "@" + line.substring(line.lastIndexOf(',') + 1)).sorted()
+                .toList();
+        assertEquals(List.of("1190.00@APC-26-6-B", "505.00@APC-26-6-A"), valueAndSample);
+    }
+
+    @Test
+    public void aScoresFileNamingItsSample_scoresThatSampleAndKeepsTheProvidersTarget() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 22));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenReturn(true);
+        windowElapsed();
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        Map<String, Object> outcome = cycleSubmissionService.intakeScoresCsv(cycle.getId(), ENROLLMENT,
+                "analyte_name,result_value,target_value,z_score,performance_status,sample_code\n"
+                        + "HIV viral load,1190,1105,-2.42,QUESTIONABLE,APC-26-6-B\n",
+                USER);
+
+        assertEquals(1, outcome.get("scored"));
+        assertEquals("the score lands on the sample the provider judged, and only there", List
+                .of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190.00|SCORED|1105"),
+                rowsBySample(cycle.getId()));
+        String followup = jdbc.queryForObject(
+                "SELECT participant_result_summary_json FROM" + " clinlims.eqa_participant_followup WHERE cycle_id = ?",
+                String.class, cycle.getId());
+        assertTrue("follow-up shows the scored sample's value: " + followup,
+                followup.contains("\"reported\":\"1190.00\""));
+        assertTrue("and the target it was judged against: " + followup, followup.contains("\"target\":\"1105\""));
+        assertTrue("and which sample it was: " + followup, followup.contains("\"sampleCode\":\"APC-26-6-B\""));
+    }
+
+    @Test
+    public void aScoreThatDoesNotNameItsSample_isRefusedWhenTwoSamplesShareTheAnalyte() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 23));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenReturn(true);
+        windowElapsed();
+        cycleSubmissionService.advanceCycle(cycle.getId());
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
+                        List.of(Map.of("analyteId", VL_ANALYTE, "performance", "questionable")), USER));
+        assertTrue(refused.getMessage(), refused.getMessage().contains("must name its sample_code"));
+        assertEquals("nothing is scored", List.of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null",
+                VL_ANALYTE + "|APC-26-6-B|1190.00|SUBMITTED|null"), rowsBySample(cycle.getId()));
+    }
+
+    /**
+     * Found in the phase B walkthrough: once sample B was scored, a score naming no
+     * sample landed on A by elimination. A resent score for B in the old format
+     * would do the same, so the rule is per analyte, not per unscored row.
+     */
+    @Test
+    public void afterOneSampleIsScored_aScoreThatDoesNotNameItsSampleIsStillRefused() {
+        EQAProgram scheme = externalScheme(false);
+        EQACycle cycle = readBack(insertCycle(scheme, 24));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        twoSampleOrders(cycle, roundId);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenReturn(true);
+        windowElapsed();
+        cycleSubmissionService.advanceCycle(cycle.getId());
+        cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
+                List.of(Map.of("analyteId", VL_ANALYTE, "performance", "questionable", "sampleCode", "APC-26-6-B")),
+                USER);
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> cycleSubmissionService.intakeScores(cycle.getId(), ENROLLMENT,
+                        List.of(Map.of("analyteId", VL_ANALYTE, "performance", "acceptable")), USER));
+        assertTrue(refused.getMessage(), refused.getMessage().contains("HIV viral load has 2 samples"));
+        assertEquals("sample A is still waiting for its own score", List
+                .of(VL_ANALYTE + "|APC-26-6-A|505.00|SUBMITTED|null", VL_ANALYTE + "|APC-26-6-B|1190.00|SCORED|null"),
+                rowsBySample(cycle.getId()));
     }
 
     // ---- the happy path ----
@@ -347,6 +510,38 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
                 cycleSubmissionService.advanceCycle(cycle.getId()));
         assertEquals(auditRows, auditTriggers(cycle.getId()).size());
         assertEquals(1, participantResults(cycle.getId()).size());
+    }
+
+    @Test
+    public void validatingTheLastResult_makesTheCycleReadyToSubmitAtOnce() {
+        EQAProgram scheme = externalScheme(true);
+        EQACycle cycle = readBack(insertCycle(scheme, 35));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        eqaOrder(cycle, roundId);
+        Analysis validated = analysisService.get(String.valueOf(finalizedAnalysis(VL_TEST, VL_ANALYTE, "4.75")));
+
+        resultValidationService.persistdata(new ArrayList<>(), List.of(validated), new ArrayList<>(), new ArrayList<>(),
+                new ArrayList<>(), new ArrayList<>(), null, new ArrayList<>(), USER);
+
+        assertEquals(EQACycleStatus.READY_TO_SUBMIT, readBack(cycle.getId()).getStatus());
+        assertEquals("VALIDATED_PARTIAL", participantResults(cycle.getId()).get(0).get("submission_status"));
+        verify(fhirStub, never()).submitCycleViaFhir(anyLong(), anyLong());
+    }
+
+    @Test
+    public void aResultFinalizedAtEntry_makesTheCycleReadyToSubmitAtOnce() {
+        EQAProgram scheme = externalScheme(true);
+        EQACycle cycle = readBack(insertCycle(scheme, 36));
+        Long roundId = insertRound(cycle, 1, "OPEN");
+        eqaOrder(cycle, roundId);
+        ResultsUpdateDataSet entry = new ResultsUpdateDataSet(USER);
+        entry.getModifiedAnalysis()
+                .add(analysisService.get(String.valueOf(finalizedAnalysis(VL_TEST, VL_ANALYTE, "4.75"))));
+
+        logbookPersistService.persistDataSet(entry, new ArrayList<>(), USER);
+
+        assertEquals(EQACycleStatus.READY_TO_SUBMIT, readBack(cycle.getId()).getStatus());
+        verify(fhirStub, never()).submitCycleViaFhir(anyLong(), anyLong());
     }
 
     // ---- the window, the cap, and the gates ----
@@ -450,6 +645,43 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         assertTrue(refused.getMessage(), refused.getMessage().contains("ready to submit"));
 
         verify(fhirStub).submitCycleViaFhir(cycle.getId(), ENROLLMENT);
+        assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
+    }
+
+    // First post blocks until a second post arrives or 2s pass, so a second
+    // request past the state check is caught posting.
+    @Test
+    public void reviewSubmit_clickedTwiceAtOnce_postsOnceAndRefusesTheSecond() throws Exception {
+        EQACycle cycle = heldAtTheReviewGate(34);
+        AtomicInteger posts = new AtomicInteger();
+        CountDownLatch firstPosting = new CountDownLatch(1);
+        CountDownLatch secondPosting = new CountDownLatch(1);
+        when(fhirStub.submitCycleViaFhir(anyLong(), anyLong())).thenAnswer(call -> {
+            if (posts.incrementAndGet() == 1) {
+                firstPosting.countDown();
+                secondPosting.await(2, TimeUnit.SECONDS);
+            } else {
+                secondPosting.countDown();
+            }
+            return true;
+        });
+
+        ExecutorService clicks = Executors.newFixedThreadPool(2);
+        try {
+            Future<EQACycle> first = clicks.submit(() -> cycleSubmissionService.submitAfterReview(cycle.getId(), USER));
+            assertTrue("the first click never reached the provider", firstPosting.await(10, TimeUnit.SECONDS));
+            Future<EQACycle> second = clicks
+                    .submit(() -> cycleSubmissionService.submitAfterReview(cycle.getId(), USER));
+
+            assertEquals(EQACycleStatus.SUBMITTED, first.get(20, TimeUnit.SECONDS).getStatus());
+            ExecutionException refused = assertThrows(ExecutionException.class, () -> second.get(20, TimeUnit.SECONDS));
+            assertTrue("the second click must be refused as already submitted, not fail: " + refused.getCause(),
+                    refused.getCause() instanceof IllegalStateException);
+        } finally {
+            clicks.shutdownNow();
+        }
+
+        assertEquals("the provider receives the cycle once", 1, posts.get());
         assertEquals(EQACycleStatus.SUBMITTED, readBack(cycle.getId()).getStatus());
     }
 
@@ -846,7 +1078,7 @@ public class EQAAutoSubmissionIntegrationTest extends EQASpineTestBase {
         String[] lines = csv.split("\n");
         assertEquals("header plus one row", 2, lines.length);
         assertEquals("cycle_id,cycle_name,round_number,analyte_id,analyte_name,result_value,result_unit,"
-                + "submission_status,entered_at", lines[0]);
+                + "submission_status,entered_at,sample_code", lines[0]);
         assertTrue("a value with a comma must be quoted, or the column count shifts: " + lines[1],
                 lines[1].contains("\"Positive, weak\""));
         assertTrue(lines[1].startsWith(cycle.getId() + ",,1," + VL_ANALYTE + ","));

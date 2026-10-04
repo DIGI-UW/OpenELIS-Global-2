@@ -9,4 +9,7 @@ public interface NceCategoryService extends BaseObjectService<NceCategory, Integ
     List<NceCategory> getAllNceCategories();
 
     List<IdValuePair> getActiveCategoriesAsIdValuePairs();
+
+    /** All catalog labels for historical views, including inactive rows. */
+    List<IdValuePair> getAllCategoriesAsIdValuePairs();
 }

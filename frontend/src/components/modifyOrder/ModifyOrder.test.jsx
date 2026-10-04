@@ -254,6 +254,26 @@ describe("ModifyOrder — a refused save says why (OGC-1366)", () => {
     );
   });
 
+  test("a stale save names who changed the order, offers Refresh and disables Submit (OGC-1376)", async () => {
+    await submitAndAnswer({
+      ok: false,
+      status: 409,
+      json: async () => ({
+        status: 409,
+        messageKey: "error.order.staleSave",
+        messageArgs: { 0: "ELIS,Open", 1: "29/09/2026 10:54" },
+      }),
+    });
+
+    expect(
+      screen.getByText(
+        "This order was updated by ELIS,Open at 29/09/2026 10:54. Refresh to see the latest version, then make your change again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Refresh" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /submit/i })).toBeDisabled();
+  });
+
   test("a response with no readable reason keeps the generic message", async () => {
     const shown = await submitAndAnswer({
       ok: false,

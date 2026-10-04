@@ -2,8 +2,6 @@ package org.openelisglobal.configuration.service;
 
 import java.io.BufferedReader;
 import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -66,12 +64,14 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
 
     @Override
     public void processConfiguration(InputStream inputStream, String fileName, boolean dryRun) throws Exception {
-        BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8));
+        BufferedReader reader = CsvParsingUtil.openCsvReader(inputStream);
         String headerLine = reader.readLine();
         if (headerLine == null) {
             throw new IllegalArgumentException(getDomainName() + " configuration file " + fileName + " is empty");
         }
-        Map<String, Integer> columns = indexColumns(CsvParsingUtil.parseCsvLine(headerLine));
+        String[] headers = CsvParsingUtil.parseCsvLine(headerLine);
+        Map<String, Integer> columns = indexColumns(headers);
+        Map<String, String> headerText = headerText(headers);
         for (String required : requiredColumns()) {
             if (!columns.containsKey(required.toLowerCase(Locale.ROOT))) {
                 throw new IllegalArgumentException(
@@ -87,7 +87,7 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
             if (line.trim().isEmpty() || line.trim().startsWith("#")) {
                 continue;
             }
-            rows.add(new CsvRow(columns, CsvParsingUtil.parseCsvLine(line), lineNumber));
+            rows.add(new CsvRow(columns, CsvParsingUtil.parseCsvLine(line), lineNumber, headerText));
         }
 
         CsvLoadSummary summary = new CsvLoadSummary(getDomainName(), fileName);
@@ -106,6 +106,17 @@ public abstract class AbstractCatalogCsvHandler implements DomainConfigurationHa
         if (unresolvedReferenceService != null) {
             unresolvedReferenceService.recordPending(getDomainName(), fileName, lineNumber);
         }
+    }
+
+    private static Map<String, String> headerText(String[] headers) {
+        Map<String, String> text = new HashMap<>();
+        for (String header : headers) {
+            String trimmed = header == null ? "" : header.trim();
+            if (!trimmed.isEmpty()) {
+                text.putIfAbsent(trimmed.toLowerCase(Locale.ROOT), trimmed);
+            }
+        }
+        return text;
     }
 
     private static Map<String, Integer> indexColumns(String[] headers) {

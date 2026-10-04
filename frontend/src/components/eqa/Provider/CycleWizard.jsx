@@ -88,6 +88,7 @@ const CycleWizard = () => {
   const [saving, setSaving] = useState(false);
 
   const [cycleName, setCycleName] = useState("");
+  const [nameTouched, setNameTouched] = useState(false);
   const [cycleNumber, setCycleNumber] = useState("");
   const [plannedStartDate, setPlannedStartDate] = useState("");
   const [plannedEndDate, setPlannedEndDate] = useState("");
@@ -300,7 +301,8 @@ const CycleWizard = () => {
                   id="cycle-name"
                   labelText={t("eqa.provider.wizard.cycleName", "Cycle name")}
                   value={cycleName}
-                  invalid={!cycleName.trim()}
+                  invalid={nameTouched && !cycleName.trim()}
+                  onBlur={() => setNameTouched(true)}
                   invalidText={t(
                     "eqa.provider.wizard.cycleName.required",
                     "A cycle needs a name.",

@@ -1,6 +1,27 @@
 services:
+  harness-catalog-init:
+    image: alpine:3.21
+    restart: "no"
+    volumes:
+      - configuration-data:/catalog
+    command:
+      - /bin/sh
+      - -ec
+      - |
+        for domain in tests test-results; do
+          target="/catalog/backend/$$domain"
+          mkdir -p "$$target"
+          for source in /templates/$$domain/*.csv; do
+            [ -f "$$source" ] || continue
+            file="$$target/$${source##*/}"
+            [ -e "$$file" ] || cp "$$source" "$$file"
+          done
+        done
+        chown -R 8443:8443 /catalog/backend
+
   certs:
     container_name: oe-certs
+    restart: "no"
     environment:
       KEYSTORE_PW: '"kspass"'
       TRUSTSTORE_PW: '"tspass"'
@@ -31,6 +52,11 @@ services:
       DEFAULT_PW: adminADMIN!
       TZ: Africa/Nairobi
       SPRING_LIQUIBASE_CONTEXTS: test
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      harness-catalog-init:
+        condition: service_completed_successfully
     networks:
       - default
     healthcheck:
@@ -42,6 +68,9 @@ services:
 
   fhir.openelis.org:
     container_name: external-fhir-api
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     ports:
       - "8081:8080"
       - "8444:8443"
@@ -55,6 +84,9 @@ services:
   # Shared by CI and local development; all durable Bridge state survives
   # container replacement and ordinary down/up (only --volumes removes it).
   openelis-analyzer-bridge:
+    depends_on:
+      certs:
+        condition: service_completed_successfully
     volumes:
       - bridge-data:/data/openelis-analyzer-bridge
     environment:
@@ -63,6 +95,13 @@ services:
 
   proxy:
     container_name: openelisglobal-proxy
+    depends_on:
+      certs:
+        condition: service_completed_successfully
+      frontend.openelis.org:
+        condition: service_started
+      oe.openelis.org:
+        condition: service_healthy
     ports:
       - "80:80"
       - "443:443"

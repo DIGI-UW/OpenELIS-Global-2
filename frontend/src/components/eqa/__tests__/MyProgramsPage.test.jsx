@@ -1,12 +1,14 @@
-import React from "react";
+import React, { useState } from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { IntlProvider } from "react-intl";
 import messages from "../../../languages/en.json";
 import MyProgramsPage from "../MyProgramsPage";
 import {
   getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import { NotificationContext } from "../../layout/Layout";
 
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
@@ -28,15 +30,6 @@ vi.mock("../../layout/Layout", () => {
     }),
   };
 });
-
-vi.mock("../../common/CustomNotification", () => ({
-  NotificationKinds: {
-    success: "success",
-    error: "error",
-    info: "info",
-    warning: "warning",
-  },
-}));
 
 vi.mock("../../common/PageBreadCrumb", () => {
   return {
@@ -120,7 +113,7 @@ describe("MyProgramsPage", () => {
   test("renders page subtitle", () => {
     renderPage();
     expect(
-      screen.getByText("Programs this laboratory participates in"),
+      screen.getByText("Schemes this laboratory participates in"),
     ).toBeTruthy();
   });
 
@@ -225,6 +218,46 @@ describe("MyProgramsPage", () => {
     // Still short of an effective date, so the transition stays refused.
     expect(confirm.disabled).toBe(true);
     expect(putToOpenElisServerFullResponse).not.toHaveBeenCalled();
+  });
+
+  test("saving a new enrollment says it was saved", () => {
+    const WithNotifications = ({ children }) => {
+      const [notifications, setNotifications] = useState([]);
+      return (
+        <NotificationContext.Provider
+          value={{
+            notifications,
+            addNotification: (n) => setNotifications((all) => [...all, n]),
+            removeNotification: () => {},
+          }}
+        >
+          {children}
+        </NotificationContext.Provider>
+      );
+    };
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
+      cb({ id: 3 }),
+    );
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <WithNotifications>
+          <MyProgramsPage />
+        </WithNotifications>
+      </IntlProvider>,
+    );
+
+    fireEvent.click(screen.getByText("Enroll in Scheme"));
+    fireEvent.change(screen.getByLabelText("Scheme Name"), {
+      target: { value: "Virology PT" },
+    });
+    fireEvent.change(screen.getByLabelText("Provider"), {
+      target: { value: "NHLS" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save Enrollment" }));
+
+    expect(
+      screen.getByText("Scheme enrollment created successfully"),
+    ).toBeInTheDocument();
   });
 
   test("shows inline enrollment form when Enroll in Scheme is clicked", () => {

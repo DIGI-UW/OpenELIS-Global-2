@@ -16,6 +16,7 @@ import org.openelisglobal.shipment.fhir.ShipmentFhirImportService;
 import org.openelisglobal.shipment.fhir.ShippingBoxFhirTransform;
 import org.openelisglobal.shipment.valueholder.BoxState;
 import org.openelisglobal.shipment.valueholder.ShippingBox;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,6 +47,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
 
     @Autowired
     private ReferralService referralService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Override
     @Transactional(readOnly = true)
@@ -204,6 +208,9 @@ public class ShippingBoxServiceImpl implements ShippingBoxService {
             // the samples that are actually added afterwards, each of which moves it by
             // one; taking a figure from the caller as well counts every sample twice.
             box.setActualSampleCount(0);
+            if (box.getCreatedBy() == null && box.getSystemUserId() != null) {
+                box.setCreatedBy(systemUserService.getUserById(String.valueOf(box.getSystemUserId())));
+            }
 
             Integer id = shippingBoxDAO.insert(box);
             logger.info("Created shipping box with ID: {}", id);

@@ -10,6 +10,7 @@ import {
 import { useIntl } from "react-intl";
 import { getWhonetDatePreset, getWhonetDateRange } from "./WhonetRoutes";
 import "./MicrobiologySurveillanceFilters.scss";
+import { labNow } from "../utils/labClock";
 
 const EMPTY_OPTIONS = {
   specimenTypes: [],
@@ -42,7 +43,7 @@ const MicrobiologySurveillanceFilters = ({
   idPrefix = "microbiology-surveillance",
 }) => {
   const intl = useIntl();
-  const referenceNow = useMemo(() => now || new Date(), [now]);
+  const referenceNow = useMemo(() => now || labNow(), [now]);
   const inferredPeriod = getWhonetDatePreset(state, referenceNow);
   const [period, setPeriod] = useState(inferredPeriod);
 

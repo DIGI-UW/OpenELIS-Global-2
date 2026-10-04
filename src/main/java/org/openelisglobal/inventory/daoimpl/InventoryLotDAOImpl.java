@@ -57,7 +57,9 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             String hql = "FROM InventoryLot l " + "WHERE l.inventoryItem.id = :itemId "
                     + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
                     + "AND l.currentQuantity > 0 "
-                    + "ORDER BY l.expirationDate ASC NULLS LAST, l.calculatedExpiryAfterOpening ASC NULLS LAST";
+                    // Use the lowest of the printed expiration date and calculated
+                    // expiration date, ignoring any null values
+                    + "ORDER BY least(l.expirationDate, l.calculatedExpiryAfterOpening) ASC NULLS LAST";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
             query.setParameter("itemId", itemId);

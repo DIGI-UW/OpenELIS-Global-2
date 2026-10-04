@@ -1,6 +1,6 @@
 # Analyzer Testing Services
 #
-# Analyzer mock, Bridge, and virtual serial ports for E2E testing.
+# Analyzer mock and Bridge for E2E testing.
 # The M1 assembled lane publishes only profile-gated priority analyzers:
 #   GET/POST http://localhost:8085/simulate/astm/genexpert_astm
 #
@@ -55,8 +55,6 @@ services:
 
   # ASTM-HTTP Bridge — always running, handles all analyzers.
   # Inbound: ASTM 12001, MLLP 2575 (HL7); forwards to OE via HTTP.
-  # Outbound: OE sends ?forwardAddress={ip}&forwardPort={port} from DB,
-  #   bridge opens TCP to that analyzer.
   openelis-analyzer-bridge:
     container_name: openelis-analyzer-bridge
     # Run as root in CI/test harness to avoid bind-mount permission mismatches
@@ -68,7 +66,7 @@ services:
       dockerfile: Dockerfile
     image: openelis-analyzer-bridge.harness
     ports:
-      - "8442:8443" # HTTPS API port
+      - "127.0.0.1:8442:8443" # HTTPS API port, for host-side tests only
       - "12000:12001" # ASTM listen port (inbound from analyzers)
       - "2575:2575" # MLLP HL7 listener (OGC-325)
     volumes:
@@ -108,23 +106,6 @@ services:
           - bridge.openelis.org
     restart: unless-stopped
 
-  virtual-serial:
-    image: alpine/socat
-    entrypoint: ["/bin/sh", "-c"]
-    command:
-      - |
-        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB0 pty,raw,echo=0,link=/serial/ttyVUSB0-peer &
-        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB1 pty,raw,echo=0,link=/serial/ttyVUSB1-peer &
-        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB2 pty,raw,echo=0,link=/serial/ttyVUSB2-peer &
-        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB3 pty,raw,echo=0,link=/serial/ttyVUSB3-peer &
-        socat -d -d pty,raw,echo=0,link=/serial/ttyVUSB4 pty,raw,echo=0,link=/serial/ttyVUSB4-peer &
-        wait
-    volumes:
-      - serial-vol:/serial
-    networks:
-      - analyzer-net
-    restart: unless-stopped
-
   # OE joins both default (proxy/db/fhir/frontend) and analyzer-net (mock/bridge).
   oe.openelis.org:
     environment:
@@ -136,8 +117,6 @@ services:
       analyzer-net:
         aliases:
           - oe.openelis.org
-    volumes:
-      - serial-vol:/dev/serial
 
   # Proxy needs both networks to reach OE.
   proxy:
@@ -148,7 +127,3 @@ services:
 networks:
   analyzer-net:
     driver: bridge
-
-volumes:
-  serial-vol:
-    driver: local

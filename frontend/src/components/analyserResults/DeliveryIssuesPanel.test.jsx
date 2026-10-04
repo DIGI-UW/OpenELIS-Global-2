@@ -133,6 +133,38 @@ describe("DeliveryIssuesPanel", () => {
     ).toBeVisible();
   });
 
+  it("does not claim the outbox is empty when a success response lacks rows", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({ status: "success", data: { count: 0 } }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        "Undelivered results could not be loaded from the Analyzer Bridge.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("The Bridge has no undelivered results."),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows an incomplete-list error instead of a false count", async () => {
+    getFromOpenElisServer.mockImplementation((_url, callback) =>
+      callback({
+        status: "error",
+        messageKey: "analyzer.deliveryIssues.error.incompleteList",
+      }),
+    );
+    renderPanel();
+
+    expect(
+      await screen.findByText(
+        "The Analyzer Bridge has more undelivered results than this view can load. Review the Bridge outbox directly.",
+      ),
+    ).toBeVisible();
+  });
+
   it("retries one result through OpenELIS and reloads the list", async () => {
     respondWith([deadLettered]);
     postToOpenElisServerJsonResponse.mockImplementation(

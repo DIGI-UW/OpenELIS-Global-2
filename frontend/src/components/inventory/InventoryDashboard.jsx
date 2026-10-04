@@ -48,6 +48,7 @@ import {
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
 import "./InventoryList.css";
+import { daysFromLabToday } from "../utils/labClock";
 
 const QC_TAG_KIND = {
   PASSED: "green",
@@ -70,10 +71,7 @@ const PENDING_QC_STOCK_STATUS = {
   kind: "cyan",
 };
 
-const daysToExpiry = (lot) =>
-  Math.floor(
-    (new Date(lot.expirationDate) - new Date()) / (1000 * 60 * 60 * 24),
-  );
+const daysToExpiry = (lot) => daysFromLabToday(lot.expirationDate);
 
 // A tile's count, the filter it applies to the table below and the stock-status
 // tag on each row all read the rule named here, so an edit to a rule reaches

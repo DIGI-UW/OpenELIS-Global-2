@@ -40,6 +40,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import "./PathologyDashboard.css";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { inProgressStageIds, stageLabel } from "./pathologyStages";
+import { labNow } from "../utils/labClock";
 
 function PathologyDashboard() {
   const componentMounted = useRef(false);
@@ -304,7 +305,7 @@ function PathologyDashboard() {
 
   const getPastWeek = () => {
     // Get the current date
-    var currentDate = new Date();
+    var currentDate = labNow();
 
     // Calculate the date of the past week
     var pastWeekDate = new Date(currentDate);

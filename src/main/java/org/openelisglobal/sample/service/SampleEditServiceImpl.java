@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -394,6 +395,11 @@ public class SampleEditServiceImpl implements SampleEditService {
         }
 
         persistSampleStorageLocation(addedSamples);
+
+        Sample versioned = entityManager.find(Sample.class, updatedSample.getId());
+        if (versioned != null) {
+            entityManager.lock(versioned, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        }
 
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", patientId);

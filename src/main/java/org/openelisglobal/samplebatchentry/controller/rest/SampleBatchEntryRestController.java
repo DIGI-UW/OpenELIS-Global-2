@@ -2,7 +2,10 @@ package org.openelisglobal.samplebatchentry.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.lang.reflect.InvocationTargetException;
+import java.util.List;
+import java.util.Map;
 import java.util.StringTokenizer;
+import java.util.stream.Collectors;
 import org.dom4j.Document;
 import org.dom4j.DocumentException;
 import org.dom4j.DocumentHelper;
@@ -14,32 +17,23 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
-import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.StringUtil;
-import org.openelisglobal.common.validator.BaseErrors;
-import org.openelisglobal.dataexchange.fhir.exception.FhirPersistanceException;
-import org.openelisglobal.dataexchange.fhir.exception.FhirTransformationException;
-import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.organization.service.OrganizationService;
 import org.openelisglobal.organization.valueholder.Organization;
-import org.openelisglobal.patient.action.IPatientUpdate;
-import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
-import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.action.bean.PatientSearch;
-import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
-import org.openelisglobal.sample.service.PatientManagementUpdate;
-import org.openelisglobal.sample.service.SamplePatientEntryService;
-import org.openelisglobal.sample.validator.SamplePatientEntryFormValidator;
 import org.openelisglobal.samplebatchentry.form.SampleBatchEntryForm;
+import org.openelisglobal.samplebatchentry.form.SampleBatchEntrySaveForm;
+import org.openelisglobal.samplebatchentry.service.SampleBatchEntryService;
 import org.openelisglobal.samplebatchentry.validator.SampleBatchEntryFormValidator;
-import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.WebDataBinder;
@@ -82,12 +76,7 @@ public class SampleBatchEntryRestController extends BaseController {
     OrganizationService organizationService;
 
     @Autowired
-    SamplePatientEntryFormValidator entryFormValidator;
-
-    @Autowired
-    private SamplePatientEntryService samplePatientEntryService;
-
-    protected FhirTransformService fhirTransformService = SpringContext.getBean(FhirTransformService.class);
+    private SampleBatchEntryService sampleBatchEntryService;
 
     @InitBinder
     public void initBinder(WebDataBinder binder) {
@@ -158,56 +147,15 @@ public class SampleBatchEntryRestController extends BaseController {
 
     @PostMapping(value = "/SamplePatientEntryBatch", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public SamplePatientEntryForm showSamplePatientEntrySave(HttpServletRequest request,
-            @RequestBody @Validated(SamplePatientEntryForm.SamplePatientEntryBatch.class) SamplePatientEntryForm form,
+    public ResponseEntity<Object> showSamplePatientEntrySave(HttpServletRequest request,
+            @RequestBody @Validated(SamplePatientEntryForm.SamplePatientEntryBatch.class) SampleBatchEntrySaveForm form,
             BindingResult result, RedirectAttributes redirectAttributes)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
 
-        entryFormValidator.validate(form, result);
-        if (result.hasErrors()) {
-            saveErrors(result);
-        }
-        SamplePatientUpdateData updateData = new SamplePatientUpdateData(getSysUserId(request));
-
-        PatientManagementInfo patientInfo = form.getPatientProperties();
-        SampleOrderItem sampleOrder = form.getSampleOrderItems();
-
-        boolean trackPayments = ConfigurationProperties.getInstance()
-                .isPropertyValueEqual(Property.TRACK_PATIENT_PAYMENT, "true");
-
-        String receivedDateForDisplay = sampleOrder.getReceivedDateForDisplay();
-        if (org.apache.commons.validator.GenericValidator.isBlankOrNull(receivedDateForDisplay)) {
-            receivedDateForDisplay = DateUtil.getCurrentDateAsText();
-        }
-
-        if (!org.apache.commons.validator.GenericValidator.isBlankOrNull(sampleOrder.getReceivedTime())) {
-            receivedDateForDisplay += " " + sampleOrder.getReceivedTime();
-        } else {
-            receivedDateForDisplay += " 00:00";
-        }
-
-        updateData.setCollectionDateFromRecieveDateIfNeeded(receivedDateForDisplay);
-        updateData.initializeRequester(sampleOrder);
-
-        PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
-        patientUpdate.setSysUserIdFromRequest(request);
-        testAndInitializePatientForSaving(request, patientInfo, patientUpdate, updateData);
-
-        updateData.setAccessionNumber(sampleOrder.getLabNo());
-        updateData.initProvider(sampleOrder);
-        updateData.initSampleData(form.getSampleXML(), receivedDateForDisplay, trackPayments, sampleOrder);
-        updateData.validateSample(result);
-
-        if (result.hasErrors()) {
-            saveErrors(result);
-        }
-
         try {
-            samplePatientEntryService.persistData(updateData, patientUpdate, patientInfo, form, request);
-            try {
-                fhirTransformService.transformPersistOrderEntryFhirObjects(updateData, patientInfo, false, null);
-            } catch (FhirTransformationException | FhirPersistanceException e) {
-                LogEvent.logError(e);
+            if (!sampleBatchEntryService.save(form, result, request, getSysUserId(request))) {
+                saveErrors(result);
+                return ResponseEntity.badRequest().body(buildErrorBody(result));
             }
         } catch (LIMSRuntimeException e) {
             if (e.getCause() instanceof StaleObjectStateException) {
@@ -219,24 +167,24 @@ public class SampleBatchEntryRestController extends BaseController {
             LogEvent.logInfo(this.getClass().getSimpleName(), "showSamplePatientEntrySave", result.toString());
             saveErrors(result);
             request.setAttribute(ALLOW_EDITS_KEY, "false");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(buildErrorBody(result));
         }
 
         redirectAttributes.addFlashAttribute(FWD_SUCCESS, true);
-        return (form);
+        return ResponseEntity.ok(form);
     }
 
-    private void testAndInitializePatientForSaving(HttpServletRequest request, PatientManagementInfo patientInfo,
-            IPatientUpdate patientUpdate, SamplePatientUpdateData updateData)
-            throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
-
-        patientUpdate.setPatientUpdateStatus(patientInfo);
-        updateData.setSavePatient(patientUpdate.getPatientUpdateStatus() != PatientUpdateStatus.NO_ACTION);
-
-        if (updateData.isSavePatient()) {
-            updateData.setPatientErrors(patientUpdate.preparePatientData(request, patientInfo));
-        } else {
-            updateData.setPatientErrors(new BaseErrors());
+    private static Map<String, Object> buildErrorBody(BindingResult result) {
+        List<Map<String, String>> fieldErrors = result.getFieldErrors().stream().map(fe -> Map.of("field",
+                fe.getField(), "defaultMessage", fe.getDefaultMessage() != null ? fe.getDefaultMessage() : ""))
+                .collect(Collectors.toList());
+        String message = "Validation failed";
+        if (!fieldErrors.isEmpty()) {
+            message = fieldErrors.get(0).get("field") + ": " + fieldErrors.get(0).get("defaultMessage");
+        } else if (!result.getGlobalErrors().isEmpty() && result.getGlobalErrors().get(0).getDefaultMessage() != null) {
+            message = result.getGlobalErrors().get(0).getDefaultMessage();
         }
+        return Map.of("error", message, "fieldErrors", fieldErrors);
     }
 
     @Override

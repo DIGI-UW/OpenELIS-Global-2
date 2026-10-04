@@ -17,6 +17,11 @@ public interface EQAFhirSubmissionService {
     String SCORES_SUFFIX = "/eqa/scores";
     String SCHEME_NAME_SUFFIX = "/eqa/scheme_name";
     String CYCLE_NUMBER_SUFFIX = "/eqa/cycle_number";
+    /**
+     * An Observation's panel sample code, so two samples of one analyte stay apart
+     * between instances.
+     */
+    String SAMPLE_CODE_SUFFIX = "/eqa/sample_code";
 
     /**
      * The DiagnosticReport + Observations a participant sends for a cycle: the

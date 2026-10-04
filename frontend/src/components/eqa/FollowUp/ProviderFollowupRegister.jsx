@@ -24,6 +24,7 @@ import PageBreadCrumb from "../../common/PageBreadCrumb";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { formatDateOnly, hasQaPermission } from "../../utils/Utils";
 import { csvCell, downloadCsv, hintStyle } from "../eqaCommon";
+import RepeatShipmentFields from "../RepeatShipmentFields";
 import {
   fetchProviderRegister,
   notifyParticipant,
@@ -59,7 +60,12 @@ const STATUS_TAG = {
  * two different wordings for the same enum, so they carry separate keys.
  */
 const TRIAGE = [
-  { target: "RESPONSE_RECEIVED", label: "Record response" },
+  {
+    target: "RESPONSE_RECEIVED",
+    label: "Record response",
+    needsNotes: true,
+    response: true,
+  },
   { target: "UNDER_INVESTIGATION", label: "Investigate" },
   { target: "RESOLVED", label: "Resolve", needsNotes: true },
   {
@@ -127,6 +133,9 @@ const ProviderFollowupRegister = () => {
   const [notice, setNotice] = useState(null);
   const [prompt, setPrompt] = useState(null);
   const [notes, setNotes] = useState("");
+  const [repeatForm, setRepeatForm] = useState({});
+  const patchRepeat = (patch) =>
+    setRepeatForm((prev) => ({ ...prev, ...patch }));
   const [busy, setBusy] = useState(false);
 
   const load = useCallback(() => {
@@ -139,11 +148,11 @@ const ProviderFollowupRegister = () => {
 
   useEffect(load, [load]);
 
-  const report = ({ ok, body }, successText) => {
+  const report = ({ ok, body }, successText, successKind = "success") => {
     setBusy(false);
     setNotice(
       ok
-        ? { kind: "success", text: successText }
+        ? { kind: successKind, text: successText }
         : {
             kind: "error",
             text:
@@ -195,19 +204,25 @@ const ProviderFollowupRegister = () => {
                 to: body?.recipient || "",
               },
             )
-          : t(
-              "eqa.provider.followups.csvFallback",
-              "No contact email on file — the notification was downloaded as CSV to send by hand.",
-            ),
+          : body?.recipient
+            ? t(
+                "eqa.provider.followups.sendFailed",
+                "Could not email {to}. The notification was downloaded as CSV to send by hand.",
+                { to: body.recipient },
+              )
+            : t(
+                "eqa.provider.followups.csvFallback",
+                "No contact email on file — the notification was downloaded as CSV to send by hand.",
+              ),
+        body?.emailed ? "success" : "warning",
       );
     });
   };
 
-  const onRepeat = (row, overrideNote) => {
+  const onRepeat = (row, fields) => {
     setBusy(true);
-    requestRepeatPanel(row.id, overrideNote, (response) => {
+    requestRepeatPanel(row.id, fields, (response) => {
       setPrompt(null);
-      setNotes("");
       report(
         response,
         t(
@@ -221,7 +236,7 @@ const ProviderFollowupRegister = () => {
 
   const submitPrompt = () => {
     if (prompt.kind === "repeat") {
-      onRepeat(prompt.row, notes);
+      onRepeat(prompt.row, repeatForm);
       return;
     }
     onTriage(prompt.row, prompt.action, notes);
@@ -357,11 +372,28 @@ const ProviderFollowupRegister = () => {
                             </TableHead>
                             <TableBody>
                               {row.results.map((result, index) => (
-                                <TableRow key={result.testId || index}>
+                                <TableRow
+                                  key={
+                                    result.panelSampleId ||
+                                    result.testId ||
+                                    index
+                                  }
+                                >
                                   <TableCell>
                                     {result.testName ||
                                       result.analyteName ||
                                       "—"}
+                                    {result.sampleCode && (
+                                      <div style={hintStyle}>
+                                        {t(
+                                          "eqa.intake.sample",
+                                          "Sample {code}",
+                                          {
+                                            code: result.sampleCode,
+                                          },
+                                        )}
+                                      </div>
+                                    )}
                                   </TableCell>
                                   <TableCell>
                                     {result.reported ?? "—"}
@@ -372,6 +404,15 @@ const ProviderFollowupRegister = () => {
                               ))}
                             </TableBody>
                           </Table>
+                          {row.responseNotes && (
+                            <p style={{ ...hintStyle, marginBottom: "0.5rem" }}>
+                              {t(
+                                "eqa.provider.followups.responseShown",
+                                "Laboratory's response: {text}",
+                                { text: row.responseNotes },
+                              )}
+                            </p>
+                          )}
                           {row.resolutionNotes && (
                             <p style={{ ...hintStyle, marginBottom: "0.5rem" }}>
                               {row.resolutionNotes}
@@ -432,9 +473,10 @@ const ProviderFollowupRegister = () => {
                                   kind="ghost"
                                   size="sm"
                                   disabled={busy}
-                                  onClick={() =>
-                                    setPrompt({ kind: "repeat", row })
-                                  }
+                                  onClick={() => {
+                                    setRepeatForm({});
+                                    setPrompt({ kind: "repeat", row });
+                                  }}
                                 >
                                   {t(
                                     "eqa.provider.followups.flagRepeat",
@@ -467,7 +509,9 @@ const ProviderFollowupRegister = () => {
           }
           primaryButtonText={t("label.confirm", "Confirm")}
           secondaryButtonText={t("eqa.queue.cancel", "Cancel")}
-          primaryButtonDisabled={busy}
+          primaryButtonDisabled={
+            busy || (prompt.action?.response && !notes.trim())
+          }
           onRequestClose={() => setPrompt(null)}
           onSecondarySubmit={() => setPrompt(null)}
           onRequestSubmit={submitPrompt}
@@ -478,22 +522,34 @@ const ProviderFollowupRegister = () => {
                   "eqa.receipt.repeatHelp",
                   "The repeat comes out of the panel's reserve. If the reserve cannot cover it, a written justification is required before unreserved material is used.",
                 )
-              : t(
-                  "eqa.provider.followups.notesHelp",
-                  "What was agreed with the laboratory. Recorded against the register entry for accreditation trace.",
-                )}
+              : prompt.action.response
+                ? t(
+                    "eqa.provider.followups.responseHelp",
+                    "The root cause the laboratory found and the corrective action it took. Kept with the follow-up.",
+                  )
+                : t(
+                    "eqa.provider.followups.notesHelp",
+                    "What was agreed with the laboratory. Recorded against the register entry for accreditation trace.",
+                  )}
           </p>
-          <TextArea
-            id="eqa-provider-followup-notes"
-            labelText={
-              prompt.kind === "repeat"
-                ? t("eqa.receipt.overrideNote", "Override note")
-                : t("eqa.queue.notes", "Notes")
-            }
-            value={notes}
-            onChange={(event) => setNotes(event.target.value)}
-            rows={3}
-          />
+          {prompt.kind === "repeat" ? (
+            <RepeatShipmentFields form={repeatForm} onChange={patchRepeat} />
+          ) : (
+            <TextArea
+              id="eqa-provider-followup-notes"
+              labelText={
+                prompt.action.response
+                  ? t(
+                      "eqa.provider.followups.responseText",
+                      "What the laboratory said",
+                    )
+                  : t("eqa.queue.notes", "Notes")
+              }
+              value={notes}
+              onChange={(event) => setNotes(event.target.value)}
+              rows={3}
+            />
+          )}
         </Modal>
       )}
     </>

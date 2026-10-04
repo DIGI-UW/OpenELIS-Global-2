@@ -21,6 +21,7 @@ import { postToOpenElisServerFullResponse } from "../../utils/Utils";
 import { serverQuery } from "../../utils/queryClient";
 import { navigationIcons } from "../../layout/navigationIcons";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { withoutRetiredMenus } from "../../layout/retiredMenus";
 import "./GlobalMenuManagement.scss";
 
 const queryKey = ["navigation", "administration"];
@@ -245,7 +246,7 @@ export default function GlobalMenuManagement() {
               )}
               {query.data && (
                 <Accordion>
-                  {query.data.map((item) => (
+                  {withoutRetiredMenus(query.data).map((item) => (
                     <MenuSettings
                       key={item.menu.elementId}
                       item={item}

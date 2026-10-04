@@ -34,6 +34,7 @@ import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { ConfigurationContext } from "../layout/Layout";
 import { getFromOpenElisServer, toLocalIsoDate } from "../utils/Utils";
 import { generateCompliancePdf } from "./utils/compliancePdfGenerator";
+import { labNow } from "../utils/labClock";
 
 const KPI_KEYS = [
   { key: "totalOrders", i18n: "compliance.dashboard.kpi.totalOrders" },
@@ -47,10 +48,10 @@ const KPI_KEYS = [
 ];
 
 function todayStr() {
-  return toLocalIsoDate(new Date());
+  return toLocalIsoDate(labNow());
 }
 function monthsAgoStr(n) {
-  const d = new Date();
+  const d = labNow();
   d.setMonth(d.getMonth() - n);
   return toLocalIsoDate(d);
 }

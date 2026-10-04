@@ -22,6 +22,7 @@ import {
 } from "../../../utils/Utils";
 import UserSessionDetailsContext from "../../../../UserSessionDetailsContext";
 import { hintStyle } from "../../eqaCommon";
+import RepeatShipmentFields from "../../RepeatShipmentFields";
 import {
   distributeScores,
   fetchIntake,
@@ -61,6 +62,18 @@ const RECEIPT_STATUS_KEY = {
 /** Scoring is offered exactly where the provider machine allows it. */
 const SCORABLE = ["SUBMISSIONS_OPEN", "SUBMISSIONS_CLOSED"];
 
+// After scoring, a repeat answers a follow-up, so the follow-up register sends it.
+const REPEATABLE = [
+  "SHIPPED",
+  "DELIVERED",
+  "SUBMISSIONS_OPEN",
+  "SUBMISSIONS_CLOSED",
+];
+
+const INTAKE = [...REPEATABLE, "SCORING"];
+
+const SCORED = ["SCORED", "CLOSED"];
+
 const dateCell = (value) =>
   value ? formatDateOnly(value.substring(0, 10)) : "—";
 
@@ -71,7 +84,13 @@ const dateCell = (value) =>
  * marks delivered — so a receipt recorded by the lab shows up here on
  * the next load without a second source of truth.
  */
-const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
+const ReceiptMonitor = ({
+  cycleId,
+  cycleStatus,
+  distributionMethod,
+  onChanged,
+  onNotice,
+}) => {
   const intl = useIntl();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // Gate each action on the grant its own endpoint asks for, so what is on
@@ -86,7 +105,9 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
   const [rows, setRows] = useState([]);
   const [scores, setScores] = useState([]);
   const [repeating, setRepeating] = useState(null);
-  const [overrideNote, setOverrideNote] = useState("");
+  const [repeatForm, setRepeatForm] = useState({});
+  const patchRepeat = (patch) =>
+    setRepeatForm((prev) => ({ ...prev, ...patch }));
   const [busy, setBusy] = useState(null);
   const [openingSubmissions, setOpeningSubmissions] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -165,9 +186,8 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
 
   const handleRepeat = () => {
     setBusy(repeating.organizationId);
-    sendRepeat(cycleId, repeating.organizationId, overrideNote, (response) => {
+    sendRepeat(cycleId, repeating.organizationId, repeatForm, (response) => {
       setRepeating(null);
-      setOverrideNote("");
       report(
         response,
         "eqa.receipt.repeatSent",
@@ -219,6 +239,23 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
   // numbers or words such as "Reactive" — and saving overwrites what is on file.
   const [intake, setIntake] = useState(null);
 
+  // A panel can carry several samples of one test, each its own row: rows are
+  // keyed by panel sample where there is one, by test where there is not.
+  const intakeKey = (test) =>
+    test.panelSampleId
+      ? `${test.testId}-${test.panelSampleId}`
+      : `${test.testId}`;
+
+  const valuesOf = (tests) =>
+    Object.fromEntries(
+      tests.map((test) => [
+        intakeKey(test),
+        test.reported === null || test.reported === undefined
+          ? ""
+          : String(test.reported),
+      ]),
+    );
+
   const openIntake = (row) => {
     setBusy(row.organizationId);
     fetchIntake(cycleId, row.organizationId, (grid) => {
@@ -227,14 +264,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
       setIntake({
         row,
         tests,
-        values: Object.fromEntries(
-          tests.map((test) => [
-            test.testId,
-            test.reported === null || test.reported === undefined
-              ? ""
-              : String(test.reported),
-          ]),
-        ),
+        values: valuesOf(tests),
         csv: "",
         error: null,
         imported: null,
@@ -246,7 +276,8 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
     intake.tests
       .map((test) => ({
         testId: test.testId,
-        value: intake.values[test.testId] ?? "",
+        panelSampleId: test.panelSampleId ?? null,
+        value: intake.values[intakeKey(test)] ?? "",
       }))
       .filter((entry) => String(entry.value).trim() !== "");
 
@@ -300,14 +331,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
         setIntake({
           ...intake,
           tests,
-          values: Object.fromEntries(
-            tests.map((test) => [
-              test.testId,
-              test.reported === null || test.reported === undefined
-                ? ""
-                : String(test.reported),
-            ]),
-          ),
+          values: valuesOf(tests),
           csv: "",
           error: (body?.errors || []).length ? body.errors.join(" ") : null,
           imported: body?.imported ?? 0,
@@ -357,6 +381,8 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
 
   const scoreOf = (organizationId) =>
     scores.find((score) => score.organizationId === organizationId);
+
+  const isScored = SCORED.includes(cycleStatus);
 
   return (
     <>
@@ -512,7 +538,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                           : "—"}
                     </TableCell>
                     <TableCell>
-                      {score
+                      {score && isScored
                         ? t(
                             "eqa.score.counts",
                             "{unacceptable} unacceptable of {total}",
@@ -534,20 +560,27 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                           {t("eqa.receipt.markReceived", "Mark received")}
                         </Button>
                       )}
-                      {isProvider && row.shipmentId && (
-                        <Button
-                          kind="ghost"
-                          size="sm"
-                          disabled={busy === row.organizationId}
-                          onClick={() => {
-                            setRepeating(row);
-                            setOverrideNote("");
-                          }}
-                        >
-                          {t("eqa.receipt.sendRepeat", "Send repeat")}
-                        </Button>
-                      )}
-                      {isProvider && (
+                      {isProvider &&
+                        row.shipmentId &&
+                        REPEATABLE.includes(cycleStatus) && (
+                          <Button
+                            kind="ghost"
+                            size="sm"
+                            disabled={busy === row.organizationId}
+                            onClick={() => {
+                              setRepeating(row);
+                              setRepeatForm({
+                                overrideNote: "",
+                                courier: row.courier || "",
+                                trackingNumber: "",
+                                estimatedDeliveryDate: "",
+                              });
+                            }}
+                          >
+                            {t("eqa.receipt.sendRepeat", "Send repeat")}
+                          </Button>
+                        )}
+                      {isProvider && INTAKE.includes(cycleStatus) && (
                         <Button
                           kind="ghost"
                           size="sm"
@@ -557,9 +590,9 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
                           {t("eqa.intake.enterResults", "Enter results")}
                         </Button>
                       )}
-                      {score && score.resultCount > 0 && (
+                      {score && isScored && score.resultCount > 0 && (
                         <>
-                          {isProvider && (
+                          {isProvider && distributionMethod !== "CSV" && (
                             <Button
                               kind="ghost"
                               size="sm"
@@ -632,9 +665,13 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
               kind="success"
               lowContrast
               hideCloseButton
-              title={t("eqa.intake.imported", "{count} values imported.", {
-                count: intake.imported,
-              })}
+              title={t(
+                "eqa.intake.imported",
+                "{count, plural, one {# value imported.} other {# values imported.}}",
+                {
+                  count: intake.imported,
+                },
+              )}
               style={{ marginBottom: "1rem" }}
             />
           )}
@@ -657,26 +694,37 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
               </TableHead>
               <TableBody>
                 {intake.tests.map((test) => (
-                  <TableRow key={test.testId}>
+                  <TableRow key={intakeKey(test)}>
                     <TableCell>
                       {test.testName}
+                      {test.sampleCode && (
+                        <div style={hintStyle}>
+                          {t("eqa.intake.sample", "Sample {code}", {
+                            code: test.sampleCode,
+                          })}
+                        </div>
+                      )}
                       {test.analyteName && (
                         <div style={hintStyle}>{test.analyteName}</div>
                       )}
                     </TableCell>
                     <TableCell>
                       <TextInput
-                        id={`intake-${test.testId}`}
-                        labelText={test.testName}
+                        id={`intake-${intakeKey(test)}`}
+                        labelText={
+                          test.sampleCode
+                            ? `${test.testName} ${test.sampleCode}`
+                            : test.testName
+                        }
                         hideLabel
                         size="sm"
-                        value={intake.values[test.testId] ?? ""}
+                        value={intake.values[intakeKey(test)] ?? ""}
                         onChange={(event) =>
                           setIntake({
                             ...intake,
                             values: {
                               ...intake.values,
-                              [test.testId]: event.target.value,
+                              [intakeKey(test)]: event.target.value,
                             },
                           })
                         }
@@ -789,13 +837,7 @@ const ReceiptMonitor = ({ cycleId, cycleStatus, onChanged, onNotice }) => {
               "The repeat comes out of the panel's reserve. If the reserve cannot cover it, a written justification is required before unreserved material is used.",
             )}
           </p>
-          <TextArea
-            id="eqa-repeat-override-note"
-            labelText={t("eqa.receipt.overrideNote", "Override note")}
-            value={overrideNote}
-            onChange={(event) => setOverrideNote(event.target.value)}
-            rows={3}
-          />
+          <RepeatShipmentFields form={repeatForm} onChange={patchRepeat} />
         </Modal>
       )}
     </>

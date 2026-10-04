@@ -49,14 +49,14 @@ public interface EQAProviderScoringService {
     List<EQAResult> reportedResultsFor(Long cycleId, Long organizationId);
 
     /**
-     * The sealed target for each of the cycle's tests, keyed by test id, as a word
-     * or a number. {@code eqa_result.target_value} is numeric, so a qualitative
-     * target lives only on the panel sample that sealed it — the report reads it
-     * here rather than deriving the panel a second time. Where a panel seals two
-     * samples against one analyte the last wins, which is the same reading the
-     * scoring pass itself takes.
+     * The sealed target each of the cycle's results was judged against, keyed by
+     * {@code eqa_result} id, as a word or a number. {@code eqa_result.target_value}
+     * is numeric, so a qualitative target lives only on the panel sample that
+     * sealed it; the report reads it here rather than deriving the panel a second
+     * time. A result is matched to its own panel sample, so two samples of one test
+     * each carry their own target.
      */
-    Map<Long, String> sealedTargetsByTest(Long cycleId);
+    Map<Long, String> sealedTargetsByResult(Long cycleId);
 
     /**
      * One row per laboratory enrolled in the scheme, carrying its rolling pass rate
@@ -71,32 +71,43 @@ public interface EQAProviderScoringService {
     List<Map<String, Object>> getParticipantPerformance(Long schemeId);
 
     /**
-     * The intake grid for one participant: the scheme's tests with the value
-     * already on file for each, so phoned and emailed results can be keyed on the
-     * provider side.
+     * The intake grid for one participant: one row per panel sample of each of the
+     * scheme's tests (one row for a test the panel carries no sample of), with the
+     * value already on file for each, so phoned and emailed results can be keyed on
+     * the provider side.
      */
     Map<String, Object> intakeGrid(Long cycleId, Long organizationId);
 
     /**
-     * Provider-side intake of a participant's reported values, keyed by test id.
+     * Provider-side intake of a participant's reported values, one per intake row.
      * Numbers and qualitative words alike; the cycle's distribution is opened on
      * demand. Answers the refreshed grid.
+     *
+     * @throws IllegalArgumentException when a value names a test outside the
+     *                                  scheme, a panel sample outside the cycle, or
+     *                                  a test with several panel samples without
+     *                                  saying which sample it answers
      */
-    Map<String, Object> takeIn(Long cycleId, Long organizationId, Map<Long, String> reportedByTest,
+    Map<String, Object> takeIn(Long cycleId, Long organizationId, List<EQAIntakeValue> reported,
             EQASubmissionMethod method, String sysUserId);
 
     /**
      * Import a participant's export bundle CSV (columns analyte_name and
-     * result_value; the rest is ignored). Analytes are matched by name to the
-     * scheme's tests, because the two instances do not share ids. Rows naming an
-     * analyte this scheme does not run are reported back, not dropped silently.
+     * result_value, and sample_code where the participant sends it; the rest is
+     * ignored). A row naming a sample code is matched to that panel sample; any
+     * other row is matched by analyte name to the scheme's tests, because the two
+     * instances do not share ids. Rows naming an analyte this scheme does not run,
+     * a sample this cycle did not send, or an analyte the panel carries several
+     * samples of without a sample code are reported back, not dropped silently.
      */
     Map<String, Object> importReportedCsv(Long cycleId, Long organizationId, String csv, String sysUserId);
 
     /**
-     * Take in values keyed by analyte <i>name</i> — the identity another instance
-     * shares — resolving each to the scheme's test. The answer is the grid plus an
-     * {@code unmapped} list naming analytes this scheme does not run.
+     * Take in values keyed by analyte <i>name</i>, or by panel sample code where
+     * the sender has one (the identities another instance shares), resolving each
+     * to the scheme's test and sample. The answer is the grid plus an
+     * {@code unmapped} list naming analytes this scheme does not run, or runs as
+     * several panel samples that a name alone cannot choose between.
      */
     Map<String, Object> takeInByAnalyteName(Long cycleId, Long organizationId,
             Map<String, String> reportedByAnalyteName, EQASubmissionMethod method, String sysUserId);

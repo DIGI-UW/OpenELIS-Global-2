@@ -205,6 +205,11 @@ public class TestResultItem implements ResultItem, Serializable {
     private ResultDisplayType resultDisplayType = ResultDisplayType.TEXT;
     private boolean isModified = false;
 
+    // OGC-1417: the person entering the value has acknowledged it as critical,
+    // or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
+
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
 
@@ -435,6 +440,12 @@ public class TestResultItem implements ResultItem, Serializable {
     /** The scheme the Analyst picker reads its eligible-analyst list from. */
     private String eqaSchemeId;
 
+    /**
+     * The row's scheme is in-house, so the order is blinded and result entry must
+     * not mark it as EQA.
+     */
+    private boolean eqaInHouse = false;
+
     /** The analyst chosen at result entry; round-trips back on save. */
     private String eqaAnalystId;
 
@@ -499,6 +510,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public boolean isRejected() {
         return rejected;
+    }
+
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
     }
 
     public void setRejected(boolean rejected) {
@@ -1240,6 +1267,14 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setEqaSchemeId(String eqaSchemeId) {
         this.eqaSchemeId = eqaSchemeId;
+    }
+
+    public boolean getEqaInHouse() {
+        return eqaInHouse;
+    }
+
+    public void setEqaInHouse(boolean eqaInHouse) {
+        this.eqaInHouse = eqaInHouse;
     }
 
     public String getEqaAnalystId() {

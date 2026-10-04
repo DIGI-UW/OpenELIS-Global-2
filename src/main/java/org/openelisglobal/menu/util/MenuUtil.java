@@ -47,7 +47,7 @@ public class MenuUtil {
 
     /**
      * The intent of this method is to allow menu items to be added outside of the
-     * database. Typically plugins
+     * database.
      *
      * @param menu The menu item to be added
      */

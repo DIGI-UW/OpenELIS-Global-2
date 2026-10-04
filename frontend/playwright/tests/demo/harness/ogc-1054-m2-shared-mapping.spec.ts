@@ -1,6 +1,7 @@
 import { expect, test } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const PROFILE_NAME = "Cepheid GeneXpert (ASTM Mode)";
@@ -214,20 +215,16 @@ test.describe("OGC-1054 M2 shared analyzer type mapping", () => {
       page.getByRole("button", { name: /^RIF.*Needs mapping$/ }),
     ).toHaveAttribute("aria-expanded", "true");
 
-    const detected = rifRow.getByRole("combobox", {
-      name: "OpenELIS result for DETECTED",
-    });
-    await expect(detected).toBeVisible();
-    await detected.click();
-    await page.getByRole("option", { name: "DETECTED", exact: true }).click();
-
-    const notDetected = rifRow.getByRole("combobox", {
-      name: "OpenELIS result for NOT DETECTED",
-    });
-    await notDetected.click();
-    await page
-      .getByRole("option", { name: "NOT DETECTED", exact: true })
-      .click();
+    await chooseCarbonOption(
+      rifRow.getByRole("combobox", { name: "OpenELIS result for DETECTED" }),
+      "DETECTED",
+    );
+    await chooseCarbonOption(
+      rifRow.getByRole("combobox", {
+        name: "OpenELIS result for NOT DETECTED",
+      }),
+      "NOT DETECTED",
+    );
     const indeterminateRow = rifRow
       .locator(".analyzer-type-mapping__result-row")
       .filter({ has: page.getByText("INDETERMINATE", { exact: true }) });

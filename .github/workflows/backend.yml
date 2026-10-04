@@ -64,7 +64,6 @@ jobs:
               - 'src/**'
               - 'pom.xml'
               - 'dataexport/**'
-              - 'plugins/**'
               - 'fhir/**'
               - 'Dockerfile'
               - 'build.docker-compose.yml'
@@ -81,11 +80,19 @@ jobs:
     if: needs.changes.outputs.backend == 'true'
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout OpenELIS-Global2
+        uses: actions/checkout@v6
+        with:
+          repository: ${{github.repository}}
+          submodules: recursive
+
       - name: Set up JDK 21
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "21"
+      # Must follow checkout: hashFiles reads the workspace, so a key computed
+      # before it hashes nothing and the cache never rotates.
       - name: Cache local Maven repository
         uses: actions/cache@v5
         with:
@@ -94,19 +101,13 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-maven-
 
-      - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
-        with:
-          repository: ${{github.repository}}
-          submodules: recursive
-
       - name: Initialize and build submodules
         run: |
           cd dataexport
           mvn clean install
           cd ..
 
-      - name: Build main project (produces classes JAR and test-jar for plugins)
+      - name: Build main project
         run: mvn clean install -Dspotless.check.skip=true
 
       - name: Preserve backend and existing-data upgrade diagnostics
