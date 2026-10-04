@@ -20,7 +20,7 @@ import {
 import { Copy } from "@carbon/icons-react";
 import DataTable from "react-data-table-component";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Link as RouterLink } from "react-router-dom";
+import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import ValidationSearchFormValues from "../formModel/innitialValues/ValidationSearchFormValues";
 import { NotificationKinds } from "../common/CustomNotification";
 import { postToOpenElisServerFullResponse } from "../utils/Utils";
@@ -34,6 +34,9 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+import ResultAlertModal, {
+  acknowledgementRefusal,
+} from "../resultPage/ResultAlertModal";
 
 export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
   if (!analyzerId) {
@@ -44,12 +47,18 @@ export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
 };
 
 export const buildHeldResultResolutionUrl = (row, analyzerId) => {
+  const mappingIssues = [
+    "unknown_analyzer_test",
+    "test_mapping_not_ready",
+    "unknown_analyzer_result_value",
+    "result_mapping_not_ready",
+    "invalid_result_mapping",
+  ];
   if (
-    row.importIssueReason !== "unknown_analyzer_result_value" ||
+    !mappingIssues.includes(row.importIssueReason) ||
     !row.sourceProfileId ||
     !row.sourceProfileRevision ||
     !row.rawTestCode ||
-    !row.rawResultValue ||
     !analyzerId
   ) {
     return null;
@@ -57,14 +66,20 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
 
   const query = new URLSearchParams({
     revision: String(row.sourceProfileRevision),
+    analyzerId: String(analyzerId),
     returnTo: buildAnalyzerResultsRedirectUrl(analyzerId),
     focusTest: row.rawTestCode,
-    focusValue: row.rawResultValue,
   });
+  if (row.rawResultValue) {
+    query.set("focusValue", row.rawResultValue);
+  }
   return `/analyzers/types/${encodeURIComponent(row.sourceProfileId)}/mapping?${query.toString()}`;
 };
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
+  const draftEdits = useRef({});
+  const history = useHistory();
+  const location = useLocation();
 
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -73,6 +88,9 @@ const AnalyserResults = (props) => {
   const intl = useIntl();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // OGC-1417: retyped values the server will not accept until the reviewer
+  // acknowledges them as critical, or confirms them outside the valid range
+  const [resultAlert, setResultAlert] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -80,6 +98,52 @@ const AnalyserResults = (props) => {
       componentMounted.current = false;
     };
   }, []);
+
+  // Edits restored after a mapping visit stay unsaved drafts, so the next
+  // visit carries them again.
+  useEffect(() => {
+    draftEdits.current = Object.fromEntries(
+      Object.entries(props.restoredEdits ?? {}).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+  }, [props.results, props.restoredEdits]);
+
+  const rememberEdit = (rowId, field, value) => {
+    const id = String(rowId);
+    draftEdits.current[id] = { ...draftEdits.current[id], [field]: value };
+  };
+
+  const openMappingWithDraft = (event, resolutionUrl) => {
+    if (
+      event.button !== 0 ||
+      event.metaKey ||
+      event.ctrlKey ||
+      event.shiftKey ||
+      event.altKey
+    ) {
+      return;
+    }
+    event.preventDefault();
+    const edits = Object.fromEntries(
+      Object.entries(draftEdits.current).map(([id, fields]) => [
+        id,
+        { ...fields },
+      ]),
+    );
+    const worklistDraft = {
+      analyzerId: String(props.analyzerId),
+      page: Number(props.results?.paging?.currentPage) || 1,
+      edits,
+    };
+    history.replace({
+      pathname: location.pathname,
+      search: location.search,
+      state: { ...location.state, worklistDraft },
+    });
+    history.push(resolutionUrl, { worklistDraft });
+  };
 
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
@@ -91,7 +155,9 @@ const AnalyserResults = (props) => {
     (result) => result.importIssueReason,
   );
   const actionablePatientResults = patientResults.filter(
-    (result) => !result.importIssueReason,
+    (result) =>
+      !result.importIssueReason ||
+      result.importIssueReason === "awaiting_specimen",
   );
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
@@ -184,6 +250,16 @@ const AnalyserResults = (props) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
     setIsSubmitting(false);
+    if (response.status == 422) {
+      const body = await response.json().catch(() => null);
+      const refusal = acknowledgementRefusal(
+        body ? { ...body, status: 422 } : null,
+      );
+      if (refusal) {
+        setResultAlert(refusal);
+        return;
+      }
+    }
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
@@ -202,10 +278,44 @@ const AnalyserResults = (props) => {
     setNotificationVisible(true);
   };
 
+  const confirmResultAlert = () => {
+    const pending = resultAlert;
+    setResultAlert(null);
+    if (!pending) {
+      return;
+    }
+    const rows = props.results?.resultList || [];
+    pending.alerts.forEach((alert) => {
+      const row = rows.find(
+        (candidate) => String(candidate.id) === String(alert.rowId),
+      );
+      if (!row) {
+        return;
+      }
+      if (alert.kind === "CRITICAL") {
+        row.criticalAcknowledged = true;
+      } else {
+        row.invalidResultConfirmed = true;
+      }
+    });
+    handleSave();
+  };
+
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
     jpSet(form, name, value);
+    const field = name.match(/\.(result|note)$/)?.[1];
+    if (field) rememberEdit(rowId, field, value);
+    if (field === "result") {
+      const row = (form.resultList || []).find(
+        (candidate) => String(candidate.id) === String(rowId),
+      );
+      if (row) {
+        row.criticalAcknowledged = false;
+        row.invalidResultConfirmed = false;
+      }
+    }
   };
 
   const handleDatePickerChange = (date, rowId) => {
@@ -220,6 +330,7 @@ const AnalyserResults = (props) => {
     );
     if (row) {
       row[fieldName] = e.target.checked;
+      rememberEdit(rowId, fieldName, e.target.checked);
     }
   };
 
@@ -230,6 +341,7 @@ const AnalyserResults = (props) => {
     const row = (props.results.resultList || []).find((r) => r.id === rowId);
     if (row) {
       row.typeOfSampleId = e.target.value;
+      rememberEdit(rowId, "typeOfSampleId", e.target.value);
     }
   };
 
@@ -239,6 +351,7 @@ const AnalyserResults = (props) => {
     );
     if (row) {
       row[fieldName] = checked;
+      rememberEdit(rowId, fieldName, checked);
     }
   };
   const validateResults = (e, rowId) => {
@@ -252,6 +365,7 @@ const AnalyserResults = (props) => {
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
+    const awaitingSpecimen = row.importIssueReason === "awaiting_specimen";
     switch (column.id) {
       case "sampleInfo":
         return (
@@ -315,6 +429,9 @@ const AnalyserResults = (props) => {
                 labelText={intl.formatMessage({
                   id: "label.testCatalog.specimenType",
                 })}
+                aria-label={intl.formatMessage({
+                  id: "label.testCatalog.specimenType",
+                })}
                 helperText={intl.formatMessage({
                   id: "notice.testCatalog.intake.awaitingSpecimen",
                 })}
@@ -335,7 +452,7 @@ const AnalyserResults = (props) => {
         );
 
       case "save":
-        if (held) {
+        if (held && !awaitingSpecimen) {
           return null;
         }
         return (
@@ -349,6 +466,7 @@ const AnalyserResults = (props) => {
                       name={"resultList[?(@.id == " + row.id + ")].isAccepted"}
                       labelText=""
                       value={true}
+                      defaultChecked={Boolean(row.isAccepted)}
                       onChange={(e) => handleCheckBox(e, row.id, "isAccepted")}
                     />
                   )}
@@ -372,6 +490,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isRejected"}
                     labelText=""
                     value={true}
+                    defaultChecked={Boolean(row.isRejected)}
                     onChange={(e) => handleCheckBox(e, row.id, "isRejected")}
                   />
                 )}
@@ -394,6 +513,7 @@ const AnalyserResults = (props) => {
                     name={"resultList[?(@.id == " + row.id + ")].isDeleted"}
                     labelText=""
                     value={true}
+                    defaultChecked={Boolean(row.isDeleted)}
                     onChange={(e) => handleCheckBox(e, row.id, "isDeleted")}
                   />
                 )}
@@ -416,6 +536,7 @@ const AnalyserResults = (props) => {
                 type="text"
                 labelText=""
                 rows={2}
+                defaultValue={row.note || ""}
                 onChange={(e) => handleChange(e, row.id)}
               ></TextArea>
             </div>
@@ -423,7 +544,7 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        if (held) {
+        if (held && !awaitingSpecimen) {
           const resolutionUrl = buildHeldResultResolutionUrl(
             row,
             props.analyzerId,
@@ -443,7 +564,13 @@ const AnalyserResults = (props) => {
                 />
               </div>
               {resolutionUrl && (
-                <CarbonLink as={RouterLink} to={resolutionUrl}>
+                <CarbonLink
+                  as={RouterLink}
+                  to={resolutionUrl}
+                  onClick={(event) =>
+                    openMappingWithDraft(event, resolutionUrl)
+                  }
+                >
                   <FormattedMessage id="analyzer.results.held.reviewMapping" />
                 </CarbonLink>
               )}
@@ -705,6 +832,14 @@ const AnalyserResults = (props) => {
           </AccordionItem>
         </Accordion>
       )}
+      <ResultAlertModal
+        open={Boolean(resultAlert)}
+        alerts={resultAlert?.alerts || []}
+        mode="save"
+        customCriticalMessage={resultAlert?.customCriticalMessage}
+        onConfirm={confirmResultAlert}
+        onCorrect={() => setResultAlert(null)}
+      />
     </>
   );
 };

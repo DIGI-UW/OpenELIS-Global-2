@@ -83,6 +83,7 @@ import org.openelisglobal.reports.form.ReportForm.DateType;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
@@ -600,7 +601,8 @@ public abstract class PatientReport extends Report {
         // itself.
         recordAccreditationCandidate(currentAnalysis, test);
         NoteService noteService = SpringContext.getBean(NoteService.class);
-        String note = noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true);
+        String note = withRangeNotAppliedNote(
+                noteService.getNotesAsString(currentAnalysis, true, true, "<br/>", FILTER, true), resultList);
         if (note != null) {
             data.setNote(note);
         }
@@ -776,6 +778,30 @@ public abstract class PatientReport extends Report {
         }
 
         return "";
+    }
+
+    /**
+     * Appends the reason no reference range was applied when the patient's sex or
+     * birth date is missing and the test has a range that depends on it. Evaluated
+     * when the report is built, so recording the missing value later removes it.
+     */
+    protected String withRangeNotAppliedNote(String note, List<Result> resultList) {
+        if (currentAnalysis == null || currentPatient == null || resultList == null || resultList.isEmpty()
+                || resultList.stream().allMatch(result -> GenericValidator.isBlankOrNull(result.getValue()))) {
+            return note;
+        }
+        try {
+            ResultLimitSelection selection = SpringContext.getBean(ResultLimitService.class)
+                    .selectResultLimitForResult(currentAnalysis, resultList.get(0), currentPatient, null);
+            if (!selection.isRangeNotApplied()) {
+                return note;
+            }
+            String reason = MessageUtil.getMessage(selection.getReason().getMessageKey());
+            return GenericValidator.isBlankOrNull(note) ? reason : note + "<br/>" + reason;
+        } catch (RuntimeException e) {
+            LogEvent.logError("No range-not-applied note for analysis " + currentAnalysis.getId(), e);
+            return note;
+        }
     }
 
     /**

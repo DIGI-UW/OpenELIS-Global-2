@@ -12,7 +12,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 
-final class AnalyzerSiteBindingCatalogState {
+public final class AnalyzerSiteBindingCatalogState {
 
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final Map<String, AnalyzerMappingCatalogService.TestOption> activeTests;
@@ -24,11 +24,11 @@ final class AnalyzerSiteBindingCatalogState {
                 .collect(Collectors.toMap(AnalyzerMappingCatalogService.TestOption::id, Function.identity()));
     }
 
-    static AnalyzerSiteBindingCatalogState load(AnalyzerMappingCatalogService mappingCatalogService) {
+    public static AnalyzerSiteBindingCatalogState load(AnalyzerMappingCatalogService mappingCatalogService) {
         return new AnalyzerSiteBindingCatalogState(mappingCatalogService);
     }
 
-    Validation validate(AnalyzerSiteBindingSnapshot binding) {
+    public Validation validate(AnalyzerSiteBindingSnapshot binding) {
         if (binding == null) {
             return Validation.empty();
         }
@@ -78,14 +78,14 @@ final class AnalyzerSiteBindingCatalogState {
         return optionIds.contains(result.getTestResultId());
     }
 
-    record ResultSourceKey(String sourceRowKey, String rawValue) {
+    public record ResultSourceKey(String sourceRowKey, String rawValue) {
     }
 
-    record Validation(Set<String> currentBoundTestRows, Set<String> currentExcludedTestRows,
+    public record Validation(Set<String> currentBoundTestRows, Set<String> currentExcludedTestRows,
             Set<ResultSourceKey> currentBoundResultRows, Set<ResultSourceKey> currentExcludedResultRows, int testRows,
             int resultRows) {
 
-        Validation {
+        public Validation {
             currentBoundTestRows = currentBoundTestRows == null ? Set.of() : Set.copyOf(currentBoundTestRows);
             currentExcludedTestRows = currentExcludedTestRows == null ? Set.of() : Set.copyOf(currentExcludedTestRows);
             currentBoundResultRows = currentBoundResultRows == null ? Set.of() : Set.copyOf(currentBoundResultRows);
@@ -101,7 +101,7 @@ final class AnalyzerSiteBindingCatalogState {
             return isCurrentBoundTest(sourceRowKey) || isCurrentExcludedTest(sourceRowKey);
         }
 
-        boolean isCurrentBoundTest(String sourceRowKey) {
+        public boolean isCurrentBoundTest(String sourceRowKey) {
             return currentBoundTestRows.contains(sourceRowKey);
         }
 
@@ -113,7 +113,7 @@ final class AnalyzerSiteBindingCatalogState {
             return isCurrentBoundResult(sourceRowKey, rawValue) || isCurrentExcludedResult(sourceRowKey, rawValue);
         }
 
-        boolean isCurrentBoundResult(String sourceRowKey, String rawValue) {
+        public boolean isCurrentBoundResult(String sourceRowKey, String rawValue) {
             return currentBoundResultRows.contains(new ResultSourceKey(sourceRowKey, rawValue));
         }
 

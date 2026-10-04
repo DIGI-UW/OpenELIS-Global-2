@@ -63,13 +63,15 @@ public abstract class CSVSampleExportReport extends CSVExportReport {
             return super.runReport();
         }
 
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream(100000);
-        buffer.write(csvColumnBuilder.getColumnNamesLine().getBytes("windows-1252"));
+        try {
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream(100000);
+            buffer.write(csvColumnBuilder.getColumnNamesLine().getBytes("windows-1252"));
 
-        writeResultsToBuffer(buffer);
-        csvColumnBuilder.closeResultSet();
-
-        return buffer.toByteArray();
+            writeResultsToBuffer(buffer);
+            return buffer.toByteArray();
+        } finally {
+            csvColumnBuilder.closeResultSet();
+        }
     }
 
     protected void writeResultsToBuffer(ByteArrayOutputStream buffer)

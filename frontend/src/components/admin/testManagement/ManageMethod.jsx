@@ -29,7 +29,7 @@ let breadcrumbs = [
   },
   {
     label: "sidenav.label.admin.testmgt.ManageMethod",
-    link: "/MasterListsPage/MethodManagment",
+    link: "/MasterListsPage/MethodManagement",
   },
 ];
 
@@ -46,13 +46,17 @@ function ManageMethod() {
   const [existingMethods, setExistingMethods] = useState([]);
   const [inactiveMethods, setInactiveMethods] = useState([]);
 
-  useEffect(() => {
+  const loadMethods = () => {
     getFromOpenElisServer("/rest/MethodCreate", handleMethods);
+  };
+
+  useEffect(() => {
+    loadMethods();
   }, []);
 
   const handleMethods = (res) => {
-    setExistingMethods(res.existingMethodList);
-    setInactiveMethods(res.inactiveMethodList);
+    setExistingMethods(res?.existingMethodList || []);
+    setInactiveMethods(res?.inactiveMethodList || []);
   };
 
   const openAddModal = () => {
@@ -75,11 +79,17 @@ function ManageMethod() {
         title: intl.formatMessage({ id: "notification.title" }),
         message: intl.formatMessage({ id: "save.config.success.msg" }),
       });
+      loadMethods();
     } else {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({
+          id:
+            res.status === 409
+              ? "configuration.method.create.duplicate"
+              : "server.error.msg",
+        }),
       });
     }
   };

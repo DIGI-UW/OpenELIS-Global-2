@@ -130,6 +130,8 @@ public class TestResultItem implements ResultItem, Serializable {
     private double upperAbnormalRange;
     private double lowerAbnormalRange;
     private String normalRange = "";
+    /** Message key saying why no reference range was applied, or null. */
+    private String rangeNotAppliedReason;
     // Authored critical bounds, null when the range has none (OGC-1121).
     private Double lowerCritical;
     private Double higherCritical;
@@ -202,6 +204,11 @@ public class TestResultItem implements ResultItem, Serializable {
 
     private ResultDisplayType resultDisplayType = ResultDisplayType.TEXT;
     private boolean isModified = false;
+
+    // OGC-1417: the person entering the value has acknowledged it as critical,
+    // or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
 
     @Pattern(regexp = ValidationHelper.ID_REGEX, groups = { LogbookResultsForm.LogbookResults.class })
     private String analysisId;
@@ -424,6 +431,24 @@ public class TestResultItem implements ResultItem, Serializable {
     private boolean isEqaSample = false;
     private String eqaPriority;
 
+    /**
+     * The row's scheme captures who ran the sample, so result entry shows the
+     * Analyst column for it.
+     */
+    private boolean eqaPerAnalyst = false;
+
+    /** The scheme the Analyst picker reads its eligible-analyst list from. */
+    private String eqaSchemeId;
+
+    /**
+     * The row's scheme is in-house, so the order is blinded and result entry must
+     * not mark it as EQA.
+     */
+    private boolean eqaInHouse = false;
+
+    /** The analyst chosen at result entry; round-trips back on save. */
+    private String eqaAnalystId;
+
     // QC profile metadata (null on client samples). Sourced from
     // SampleItemQcProfile.
     private String qcType;
@@ -485,6 +510,22 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public boolean isRejected() {
         return rejected;
+    }
+
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
     }
 
     public void setRejected(boolean rejected) {
@@ -1212,6 +1253,38 @@ public class TestResultItem implements ResultItem, Serializable {
         this.eqaPriority = eqaPriority;
     }
 
+    public boolean getEqaPerAnalyst() {
+        return eqaPerAnalyst;
+    }
+
+    public void setEqaPerAnalyst(boolean eqaPerAnalyst) {
+        this.eqaPerAnalyst = eqaPerAnalyst;
+    }
+
+    public String getEqaSchemeId() {
+        return eqaSchemeId;
+    }
+
+    public void setEqaSchemeId(String eqaSchemeId) {
+        this.eqaSchemeId = eqaSchemeId;
+    }
+
+    public boolean getEqaInHouse() {
+        return eqaInHouse;
+    }
+
+    public void setEqaInHouse(boolean eqaInHouse) {
+        this.eqaInHouse = eqaInHouse;
+    }
+
+    public String getEqaAnalystId() {
+        return eqaAnalystId;
+    }
+
+    public void setEqaAnalystId(String eqaAnalystId) {
+        this.eqaAnalystId = eqaAnalystId;
+    }
+
     public String getQualifiedDictionaryId() {
         return qualifiedDictionaryId;
     }
@@ -1447,5 +1520,13 @@ public class TestResultItem implements ResultItem, Serializable {
 
     public void setAnalysisNotes(List<AnalysisNote> analysisNotes) {
         this.analysisNotes = analysisNotes;
+    }
+
+    public String getRangeNotAppliedReason() {
+        return rangeNotAppliedReason;
+    }
+
+    public void setRangeNotAppliedReason(String rangeNotAppliedReason) {
+        this.rangeNotAppliedReason = rangeNotAppliedReason;
     }
 }

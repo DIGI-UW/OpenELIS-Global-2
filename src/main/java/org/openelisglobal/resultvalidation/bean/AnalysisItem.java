@@ -13,6 +13,7 @@
  */
 package org.openelisglobal.resultvalidation.bean;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
@@ -49,6 +50,11 @@ public class AnalysisItem implements Serializable {
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String result;
+
+    // OGC-1417: the validator correcting the value has acknowledged it as
+    // critical, or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
 
     private String receivedDate;
 
@@ -242,6 +248,8 @@ public class AnalysisItem implements Serializable {
     private boolean clear = false;
 
     private String criticalRange;
+    /** Message key saying why no reference range was applied, or null. */
+    private String rangeNotAppliedReason;
 
     private String enteredBy;
 
@@ -1163,5 +1171,34 @@ public class AnalysisItem implements Serializable {
 
     public void setExpandedUncertainty(String expandedUncertainty) {
         this.expandedUncertainty = expandedUncertainty;
+    }
+
+    public String getRangeNotAppliedReason() {
+        return rangeNotAppliedReason;
+    }
+
+    public void setRangeNotAppliedReason(String rangeNotAppliedReason) {
+        this.rangeNotAppliedReason = rangeNotAppliedReason;
+    }
+
+    @JsonIgnore
+    public boolean isRangeNotApplied() {
+        return rangeNotAppliedReason != null;
+    }
+
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
     }
 }

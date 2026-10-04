@@ -202,6 +202,8 @@ public abstract class ConfigurationProperties {
         // new patient
         PATIENT_NATIONAL_ID_REQUIRED("National ID required", "text"), // True if patient national id is required for new
                                                                       // patient
+        PATIENT_SEX_REQUIRED("Patient sex required", "text"), // True if patient sex is required for new patient
+        PATIENT_AGE_REQUIRED("Patient age required", "text"), // True if patient age/DOB is required for new patient
         QA_SAMPLE_ID_REQUIRED("sample id required", "text"), // True if sample id required from referring lab
 
         MAX_ORDER_LABEL_PRINTED("numMaxOrderLabels", "text"), // Max order labels that can be printed
@@ -317,7 +319,6 @@ public abstract class ConfigurationProperties {
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_ENVIRONMENTAL("sampleAcceptCheck.environmental", "text"),
         SAMPLE_ACCEPTANCE_CHECKLIST_ENFORCEMENT_VECTOR("sampleAcceptCheck.vector", "text"),
 
-        RESULTS_ENTRY_UNIFIED_ROUTE("resultsEntryUnifiedRoute", "text"), // OGC-1020 R1: unified /Results worklist
         // When true the UI layers translation files mounted at /translation over
         // its bundled ones, so a deployment can reword any string without a
         // source change or a frontend rebuild.

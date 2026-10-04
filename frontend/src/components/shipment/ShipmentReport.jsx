@@ -30,6 +30,7 @@ import { NotificationContext } from "../layout/Layout";
 import { getFromOpenElisServer } from "../utils/Utils";
 import ShipmentNavigation from "./ShipmentNavigation";
 import "./ShipmentDashboard.css";
+import { labNow } from "../utils/labClock";
 
 // jspdf-autotable v5 no longer patches jsPDF on a bare import; restore doc.autoTable.
 applyPlugin(jsPDF);
@@ -241,7 +242,7 @@ const ShipmentReport = () => {
       doc.text(
         intl.formatMessage({ id: "shipment.manifest.generated" }) +
           " " +
-          new Date().toLocaleString(),
+          labNow().toLocaleString(),
         14,
         30,
       );

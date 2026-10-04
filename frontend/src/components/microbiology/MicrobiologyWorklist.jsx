@@ -62,6 +62,7 @@ import {
   getWhonetExportUrlFromWorklist,
 } from "./WhonetRoutes";
 import "./MicrobiologyWorklist.css";
+import { labNow } from "../utils/labClock";
 
 const WORKFLOW_OPTIONS = ["BACTERIOLOGY", "MYCOBACTERIOLOGY_TB", "MYCOLOGY"];
 const STAGE_OPTIONS = [
@@ -233,7 +234,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
   const history = useHistory();
   const location = useLocation();
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
-  const referenceNow = useMemo(() => now || new Date(), [now]);
+  const referenceNow = useMemo(() => now || labNow(), [now]);
   const filters = parseMicrobiologyWorklistSearch(
     location.search,
     referenceNow,

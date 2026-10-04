@@ -38,6 +38,7 @@ import { controlLevelItems, useControlLotChart } from "./controlLotChart";
 import PageTitle from "../../common/PageTitle/PageTitle";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import "./ControlChartDetail.css";
+import { labNow } from "../../utils/labClock";
 
 // OGC-704: sigma interpretation band -> Carbon Tag color
 const SIGMA_TAG_TYPE = {
@@ -151,7 +152,7 @@ const ControlChartDetail = () => {
         ctx.drawImage(img, 0, 0);
         const pngUrl = canvas.toDataURL("image/png");
         const link = document.createElement("a");
-        link.download = `qc-chart-${analyzerId}-${new Date().toISOString().split("T")[0]}.png`;
+        link.download = `qc-chart-${analyzerId}-${toLocalIsoDate(labNow())}.png`;
         link.href = pngUrl;
         link.click();
       };

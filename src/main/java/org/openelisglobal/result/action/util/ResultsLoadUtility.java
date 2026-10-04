@@ -53,6 +53,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.eqa.service.EQAParticipantResultService;
 import org.openelisglobal.eqa.service.SampleEQAService;
 import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.internationalization.MessageUtil;
@@ -80,6 +81,7 @@ import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.result.valueholder.ResultInventory;
 import org.openelisglobal.result.valueholder.ResultSignature;
 import org.openelisglobal.resultlimit.service.ResultLimitService;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.util.ValidationSignals;
 import org.openelisglobal.sample.service.SampleService;
@@ -167,6 +169,8 @@ public class ResultsLoadUtility {
     private TestResultService testResultService;
     @Autowired
     private SampleEQAService sampleEQAService;
+    @Autowired
+    private EQAParticipantResultService eqaParticipantResultService;
     @Autowired
     private org.openelisglobal.qc.dao.SampleItemQcProfileDAO sampleItemQcProfileDAO;
     @Autowired
@@ -336,9 +340,14 @@ public class ResultsLoadUtility {
             currentPatient = sampleService.getPatient(sample);
 
             String patientName = "";
-            String patientInfo;
-            String nationalId = patientService.getNationalId(currentPatient);
-            if (depersonalize) {
+            String patientInfo = "";
+            // A blinded EQA order has no patient at all. Reading identity off a null
+            // one used to render the literal words "null" into the Sample Info cell
+            // — "nullnull, null, N" — which reads like corrupt data.
+            String nationalId = currentPatient == null ? null : patientService.getNationalId(currentPatient);
+            if (currentPatient == null) {
+                patientInfo = "";
+            } else if (depersonalize) {
                 patientInfo = GenericValidator.isBlankOrNull(nationalId) ? patientService.getExternalId(currentPatient)
                         : nationalId;
             } else {
@@ -937,8 +946,9 @@ public class ResultsLoadUtility {
         // limits (chosen for the patient's age/gender); other rows use the test-level
         // limits. Either way the selection is patient-conditional (OGC-1127/OGC-949).
         ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
-        ResultLimit resultLimit = resultLimitService.getResultLimitForResult(analysis, result, currentPatient,
-                component == null ? null : component.getId());
+        ResultLimitSelection rangeSelection = resultLimitService.selectResultLimitForResult(analysis, result,
+                currentPatient, component == null ? null : component.getId());
+        ResultLimit resultLimit = rangeSelection.getResultLimit();
 
         String receivedDate = currSample == null ? getCurrentDate() : currSample.getReceivedDateForDisplay();
         String testMethodName = testService.getTestMethodName(test);
@@ -1060,6 +1070,8 @@ public class ResultsLoadUtility {
         }
         testItem.setResultValue(getFormattedResultValue(result));
         setResultLimitDependencies(resultLimit, testItem, testResults, analysis);
+        testItem.setRangeNotAppliedReason(
+                rangeSelection.isRangeNotApplied() ? rangeSelection.getReason().getMessageKey() : null);
         testItem.setPatientName(patientName);
         testItem.setPatientInfo(patientInfo);
         testItem.setReportable(testService.isReportable(test));
@@ -1165,10 +1177,20 @@ public class ResultsLoadUtility {
                 SampleEQA sampleEQA = sampleEQAService.findBySampleId(sampleId).orElse(null);
                 if (sampleEQA != null && Boolean.TRUE.equals(sampleEQA.getIsEqaSample())) {
                     testItem.setEqaSample(true);
+                    testItem.setEqaInHouse(sampleEQAService.isInHouse(sampleId));
                     if (sampleEQA.getEqaPriority() != null) {
                         testItem.setEqaPriority(sampleEQA.getEqaPriority().name());
                     }
                 }
+                // Only schemes that opted in show the Analyst column,
+                // and the scheme id is what its picker reads its eligible list from.
+                sampleEQAService.findPerAnalystSchemeId(sampleId).ifPresent(schemeId -> {
+                    testItem.setEqaPerAnalyst(true);
+                    testItem.setEqaSchemeId(String.valueOf(schemeId));
+                    // Preselect who the sample was sealed for; the bench can change it.
+                    eqaParticipantResultService.findAssignedAnalystId(Long.valueOf(analysis.getId()))
+                            .ifPresent(analystId -> testItem.setEqaAnalystId(String.valueOf(analystId)));
+                });
             }
         } catch (RuntimeException e) {
             String sampleIdStr = eqaSample != null ? eqaSample.getId() : "null";

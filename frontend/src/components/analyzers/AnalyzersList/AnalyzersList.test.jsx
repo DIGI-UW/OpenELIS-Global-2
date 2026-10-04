@@ -17,8 +17,6 @@ vi.mock("../../../services/analyzerService", () => ({
   deactivateAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
   getAnalyzers: vi.fn(),
-  getAnalyzerUpgrade: vi.fn((callback) => callback([])),
-  retryAnalyzerUpgrade: vi.fn(),
   getAnalyzerDeliveryIssues: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
@@ -33,7 +31,7 @@ vi.mock("../../../services/analyzerService", () => ({
 import React from "react";
 
 // 2. Testing Library (all utilities in one import)
-import { act, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 
@@ -55,8 +53,6 @@ import {
   deactivateAnalyzer,
   getAnalyzer,
   getAnalyzers,
-  getAnalyzerUpgrade,
-  retryAnalyzerUpgrade,
   getAnalyzerDeliveryIssues,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -104,7 +100,6 @@ describe("AnalyzersList", () => {
   beforeEach(() => {
     // Reset mocks before each test
     vi.clearAllMocks();
-    getAnalyzerUpgrade.mockImplementation((callback) => callback([]));
     vi.spyOn(Element.prototype, "getBoundingClientRect").mockReturnValue({
       bottom: 40,
       height: 40,
@@ -131,81 +126,6 @@ describe("AnalyzersList", () => {
       }),
     );
     getAnalyzerLabUnits.mockImplementation((callback) => callback([]));
-  });
-
-  test("shows pending transfer and retries through the shared migration action", async () => {
-    getAnalyzers.mockImplementation((_filters, callback) =>
-      callback({ analyzers: [] }),
-    );
-    getAnalyzerUpgrade.mockImplementation((callback) =>
-      callback([
-        {
-          analyzerId: "1",
-          name: "Existing analyzer",
-          status: "PENDING",
-          reason: "analyzer.upgrade.reason.bridgeConnection",
-        },
-      ]),
-    );
-    retryAnalyzerUpgrade.mockImplementation((callback) => {
-      getAnalyzerUpgrade.mockImplementation((read) => read([]));
-      callback([]);
-    });
-    renderWithIntl(<AnalyzersList />);
-    expect(
-      await screen.findByText(
-        `Existing analyzer: ${messages["analyzer.upgrade.reason.bridgeConnection"]}`,
-      ),
-    ).toBeInTheDocument();
-    await userEvent.click(
-      screen.getByRole("button", { name: "Retry configuration transfer" }),
-    );
-    expect(retryAnalyzerUpgrade).toHaveBeenCalledTimes(1);
-    await waitFor(() =>
-      expect(
-        screen.queryByText(
-          `Existing analyzer: ${messages["analyzer.upgrade.reason.bridgeConnection"]}`,
-        ),
-      ).not.toBeInTheDocument(),
-    );
-  });
-
-  test("localizes pending reasons and hides unknown server text", async () => {
-    getAnalyzers.mockImplementation((_filters, callback) =>
-      callback({ analyzers: [] }),
-    );
-    getAnalyzerUpgrade.mockImplementation((callback) =>
-      callback([
-        {
-          analyzerId: "1",
-          name: "GeneXpert",
-          status: "PENDING",
-          reason: "analyzer.upgrade.reason.serialSettings",
-        },
-        {
-          analyzerId: "2",
-          name: "FluoroCycler",
-          status: "PENDING",
-          reason: "Raw backend exception",
-        },
-      ]),
-    );
-    renderWithIntl(
-      <AnalyzersList />,
-      {
-        ...messages,
-        "analyzer.upgrade.reason.serialSettings":
-          "Paramètres série à vérifier.",
-        "analyzer.upgrade.reason.unexpected": "Échec du transfert.",
-      },
-      "fr",
-    );
-    expect(
-      await screen.findByText(
-        "GeneXpert: Paramètres série à vérifier.; FluoroCycler: Échec du transfert.",
-      ),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/Raw backend exception/)).not.toBeInTheDocument();
   });
 
   afterEach(() => {
@@ -402,6 +322,45 @@ describe("AnalyzersList", () => {
     expect(params.get("lifecycleAnalyzerId")).toBeNull();
     expect(params.get("search")).toBe("gene");
     expect(params.get("status")).toBe("ACTIVE");
+  });
+
+  test("keeps the deactivation dialog open when a pending search updates the URL", () => {
+    const analyzer = createMockAnalyzer({
+      id: "42",
+      name: "GeneXpert Lab 1",
+      status: "ACTIVE",
+    });
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() => callback({ analyzers: [analyzer] }));
+    });
+
+    vi.useFakeTimers();
+    try {
+      renderWithIntl(<AnalyzersList />);
+      fireEvent.change(screen.getByTestId("analyzer-search-input"), {
+        target: { value: "GeneXpert" },
+      });
+      fireEvent.click(screen.getByTestId("analyzer-row-overflow-42"));
+      fireEvent.click(screen.getByRole("menuitem", { name: "Deactivate" }));
+      expect(
+        screen.getByRole("heading", { name: "Deactivate analyzer" }),
+      ).toBeVisible();
+
+      act(() => {
+        vi.runOnlyPendingTimers();
+      });
+      expect(new URLSearchParams(window.location.search).get("search")).toBe(
+        "GeneXpert",
+      );
+      expect(new URLSearchParams(window.location.search).get("lifecycle")).toBe(
+        "deactivate",
+      );
+      expect(
+        screen.getByRole("heading", { name: "Deactivate analyzer" }),
+      ).toBeVisible();
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   test("keeps lifecycle evidence visible while a request is in flight", async () => {

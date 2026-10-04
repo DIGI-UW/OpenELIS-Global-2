@@ -413,4 +413,71 @@ describe("SampleTypeManagement", () => {
     ).toBeInTheDocument();
     expect(name).toHaveAttribute("aria-invalid", "true");
   });
+
+  test("a create sends the description the admin typed, not the name", async () => {
+    api.post.mockImplementation((_url, _body, callback) => callback({}));
+    renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");
+
+    await userEvent.type(
+      await screen.findByRole("textbox", { name: /Name/ }),
+      "QA Plain 0923",
+    );
+    await userEvent.type(
+      document.getElementById("st-description"),
+      "  Venous whole blood for chemistry  ",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create Sample Type" }),
+    );
+
+    await waitFor(() => expect(api.post).toHaveBeenCalledTimes(1));
+    const payload = JSON.parse(api.post.mock.calls[0][1]);
+    expect(payload.sampleTypeEnglishName).toBe("QA Plain 0923");
+    expect(payload.description).toBe("Venous whole blood for chemistry");
+  });
+
+  test("a create whose description is taken (409) marks the description, not the name", async () => {
+    api.post.mockImplementation((_url, _body, callback) =>
+      callback({ error: "duplicate", field: "description", status: 409 }),
+    );
+    renderPage("/MasterListsPage/SampleTypeEditor/new/basic-info");
+    const name = await screen.findByRole("textbox", { name: /Name/ });
+    await userEvent.type(name, "Blood culture new");
+    await userEvent.type(
+      document.getElementById("st-description"),
+      "Blood culture specimen",
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Create Sample Type" }),
+    );
+
+    const refusal = messages["error.sampleType.create.duplicateDescription"];
+    expect(refusal).toBeTruthy();
+    expect(
+      await screen.findByText(`Failed to create sample type: ${refusal}`),
+    ).toBeInTheDocument();
+    expect(document.getElementById("st-description")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(name).not.toHaveAttribute("aria-invalid", "true");
+  });
+
+  test("a listed sample type without a description shows none, not its name or a placeholder", async () => {
+    api.get.mockImplementation((url, callback) => {
+      if (url === "/rest/sample-types") {
+        callback({
+          success: true,
+          data: [{ ...sampleType, description: "" }],
+        });
+      } else {
+        callback({});
+      }
+    });
+    renderPage();
+
+    expect(await screen.findByText("Blood culture")).toBeInTheDocument();
+    expect(screen.getAllByText("Blood culture")).toHaveLength(1);
+    expect(screen.queryByText("Sample type from database")).toBeNull();
+  });
 });

@@ -214,6 +214,20 @@ class DeploymentTest(unittest.TestCase):
         self.assertTrue(lucene.is_symlink())
         self.assertEqual(self.root / "lucene", lucene.resolve())
 
+    def test_new_site_uses_bundled_defaults_and_uploaded_catalog_survives_release_change(self):
+        first = deployment.unpack_release(self.bundle, self.root, self.sha)
+        catalog = self.root / "configuration/backend"
+        self.assertEqual([], list(catalog.iterdir()))
+        self.assertEqual(catalog, (first / "configuration/backend").resolve())
+        (catalog / "tests").mkdir()
+        uploaded = catalog / "tests/site-tests.csv"
+        uploaded.write_text("site-owned catalog\n")
+
+        second = deployment.unpack_release(self.bundle, self.root, "c" * 40)
+
+        self.assertEqual(catalog, (second / "configuration/backend").resolve())
+        self.assertEqual("site-owned catalog\n", uploaded.read_text())
+
     def test_site_overlay_is_optional(self):
         self.ready_health()
         self.deploy()
@@ -281,6 +295,28 @@ class DeploymentTest(unittest.TestCase):
         self.assertEqual({self.sha, "previous"}, {path.name for path in releases.iterdir()})
         self.assertIn(["docker", "image", "prune", "--all", "--force"], self.commands)
 
+    def test_site_settings_read_the_env_file_when_compose_cannot_list_it(self):
+        (self.root / ".env").write_text(
+            "# site settings\nexport TEST_USER=qa-admin\nTEST_PASS='qa pass'\nASTM_SIMULATOR_HTTP_PORT=\"9085\"\n")
+
+        def old_compose(args, cwd, capture=False, **kwargs):
+            if args[-2:] == ["config", "--environment"]:
+                raise deployment.subprocess.CalledProcessError(15, args, "unknown flag: --environment")
+            return self.command(args, cwd, capture, **kwargs)
+
+        with patch.object(deployment, "run", side_effect=old_compose):
+            settings = deployment.site_settings(self.root, self.root / "releases" / self.sha)
+
+        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "qa pass", "MOCK_URL": "http://127.0.0.1:9085"},
+                         settings)
+
+    def test_env_file_fallback_drops_trailing_comments_like_compose(self):
+        path = self.root / ".env"
+        path.write_text("TEST_USER=qa-admin # site admin\nTEST_PASS=p#ss\nQUOTED='a # b'\n")
+
+        self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "p#ss", "QUOTED": "a # b"},
+                         deployment.read_env_file(path))
+
     def test_smoke_accession_is_a_valid_unique_accession(self):
         self.assertEqual("DEV01900361250089391", deployment.smoke_accession("36125008939-1"))
         self.assertEqual(20, len(deployment.smoke_accession("9" * 30 + "-12")))
@@ -303,7 +339,7 @@ class AnalyzerDeliveryTest(unittest.TestCase):
             return {"resultList": self.rows}
         raise AssertionError(url)
 
-    def test_pushes_to_the_analyzers_own_listener_and_waits_for_its_rows(self):
+    def test_pushes_to_shared_listener_with_seeded_identity_and_waits_for_its_rows(self):
         polls = []
 
         def arrive_on_second_poll(_seconds):
@@ -314,7 +350,8 @@ class AnalyzerDeliveryTest(unittest.TestCase):
                                                      http=self.http, sleep=arrive_on_second_poll, timeout=5)
         push = self.calls[0]
         self.assertEqual(("POST", "http://mock/simulate/astm/genexpert_astm",
-                          {"destination": deployment.SMOKE_DESTINATION, "sample_id": "DEV01900000000000011"}), push)
+                          {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
+                           "sender_id": "OE2-TEST-GENEXPERT"}), push)
         self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
         self.assertEqual(1, len(polls))
 

@@ -19,6 +19,7 @@ import {
   Tag,
   Loading,
   Button,
+  TextInput,
 } from "@carbon/react";
 import { Checkmark, Warning } from "@carbon/icons-react";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
@@ -54,6 +55,8 @@ const OrderQA = () => {
     resetOrder,
     labNumber,
     markStepComplete,
+    progress,
+    adoptProgress,
   } = useOrderContext();
 
   const workflowType =
@@ -134,29 +137,53 @@ const OrderQA = () => {
   const displayLabNumber =
     labNumber || orderData?.sampleOrderItems?.labNo || "";
 
-  // Records that the order reached and passed QA review. The dashboard reads
-  // the presence of this record to mark the order complete, so it is written
-  // even though intake acceptance — not a second checklist — is what is
-  // actually reviewed on this step.
-  const recordQaReview = useCallback(async () => {
-    if (!displayLabNumber) {
-      return Promise.resolve();
-    }
+  // Records the Sample check on the order. With `release`, the server also
+  // releases the order for testing (FR-F3): under Mandatory acceptance the
+  // gate must be satisfied, and under Optional a release with items
+  // unanswered needs a reason, which is recorded with who released and when.
+  const recordQaReview = useCallback(
+    async ({ release = false, releaseNote = "" } = {}) => {
+      if (!displayLabNumber) {
+        return Promise.resolve();
+      }
 
-    return new Promise((resolve, reject) => {
-      postToOpenElisServerJsonResponse(
-        "/rest/qa-checklist",
-        JSON.stringify({ labNumber: displayLabNumber }),
-        (response) => {
-          if (response && response.success) {
-            resolve(response);
-          } else {
-            reject(new Error(response?.error || "Failed to record QA review"));
-          }
-        },
-      );
-    });
-  }, [displayLabNumber]);
+      return new Promise((resolve, reject) => {
+        postToOpenElisServerJsonResponse(
+          "/rest/qa-checklist",
+          JSON.stringify({
+            labNumber: displayLabNumber,
+            release,
+            releaseNote: releaseNote || undefined,
+          }),
+          (response) => {
+            if (response && response.success) {
+              resolve(response);
+            } else {
+              const failure = new Error(
+                response?.error || "Failed to record QA review",
+              );
+              failure.code = response?.error;
+              failure.blocked = response?.blocked === true;
+              reject(failure);
+            }
+          },
+        );
+      });
+    },
+    [displayLabNumber],
+  );
+
+  // The reason a release with unanswered items carries (FR-F4); asked for only
+  // once the server has said one is needed.
+  const [releaseNote, setReleaseNote] = useState("");
+  const [releaseNoteNeeded, setReleaseNoteNeeded] = useState(false);
+  // Only the clinical lane has a Prepare Samples step to complete first; the
+  // environmental and vector lanes release from their own steps.
+  const prepareComplete =
+    workflowType !== "clinical" ||
+    !progress?.status ||
+    progress.status === "SAMPLES_PREPARED" ||
+    progress.status === "READY_FOR_TESTING";
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -169,6 +196,7 @@ const OrderQA = () => {
         message: intl.formatMessage({ id: "save.order.success.msg" }),
       });
       setNotificationVisible(true);
+      return true;
     } catch (error) {
       console.error("Error recording QA review:", error);
       addNotification({
@@ -177,6 +205,7 @@ const OrderQA = () => {
         message: intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
+      return false;
     } finally {
       setIsSaving(false);
     }
@@ -224,16 +253,27 @@ const OrderQA = () => {
       }
     }
     try {
-      await recordQaReview();
+      const released = await recordQaReview({ release: true, releaseNote });
       markStepComplete("qa");
+      if (released?.progressStatus) {
+        adoptProgress({
+          progressStatus: released.progressStatus,
+          complete: true,
+          progress: {
+            ...progress,
+            readyAt: released.readyAt || null,
+            releaseNote: releaseNote || null,
+          },
+        });
+      }
       setIsSubmitted(true);
       addNotification({
         kind: NotificationKinds.success,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "order.submitted.success.msg",
-          defaultMessage: "Order submitted successfully",
-        }),
+        message: intl.formatMessage(
+          { id: "order.sampleCheck.released" },
+          { labNo: displayLabNumber },
+        ),
       });
       setNotificationVisible(true);
       if (workflowPrefix === "/order/vector") {
@@ -243,16 +283,42 @@ const OrderQA = () => {
         history.push(target);
       }
     } catch (error) {
+      if (error?.code === "order.release.reasonRequired") {
+        setReleaseNoteNeeded(true);
+        addNotification({
+          kind: NotificationKinds.warning,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message: intl.formatMessage({
+            id: "order.sampleCheck.proceedReason",
+          }),
+        });
+        setNotificationVisible(true);
+        return;
+      }
       console.error("Error submitting order:", error);
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: error?.blocked
+          ? intl.formatMessage({ id: "sampleAcceptance.gate.blocked" })
+          : error?.code === "order.release.prepareIncomplete"
+            ? intl.formatMessage({
+                id: "order.sampleCheck.disabled.incomplete",
+              })
+            : intl.formatMessage({ id: "server.error.msg" }),
       });
       setNotificationVisible(true);
     } finally {
       setIsSaving(false);
     }
+  };
+
+  const handleReturnToPrepare = () => {
+    history.push(
+      displayLabNumber
+        ? `${workflowPrefix}/collect?order=${encodeURIComponent(displayLabNumber)}`
+        : `${workflowPrefix}/collect`,
+    );
   };
 
   const handleStartNewOrder = () => {
@@ -267,25 +333,56 @@ const OrderQA = () => {
   const isEnvOrVector =
     workflowType === "environmental" || workflowType === "vector";
 
+  const isClinical = workflowPrefix === "/order/clinical";
+
+  // Clinical (OGC-1266 FR-K15): the release finishes order entry, and the
+  // screen says so in the words of the workflow. Environmental and vector
+  // keep their submission wording.
   if (isSubmitted) {
     return (
-      <OrderWorkflowLayout title="order.step.qa" showSaveButtons={false}>
+      <OrderWorkflowLayout
+        title={isClinical ? "order.step.sampleCheck" : "order.step.qa"}
+        showSaveButtons={false}
+      >
         <Tile className="qa-success-tile">
           <div className="success-content">
             <Checkmark size={48} className="success-icon" />
             <h3>
-              <FormattedMessage
-                id="order.submit.success"
-                defaultMessage="Order Submitted Successfully"
-              />
+              {isClinical ? (
+                <FormattedMessage
+                  id="order.finish.title"
+                  values={{ labNo: displayLabNumber || "---" }}
+                />
+              ) : (
+                <FormattedMessage
+                  id="order.submit.success"
+                  defaultMessage="Order Submitted Successfully"
+                />
+              )}
             </h3>
             <p>
-              <FormattedMessage
-                id="order.submit.success.labNumber"
-                defaultMessage="Lab Number: {labNumber}"
-                values={{ labNumber: displayLabNumber || "---" }}
-              />
+              {isClinical ? (
+                <FormattedMessage id="order.finish.subtitle" />
+              ) : (
+                <FormattedMessage
+                  id="order.submit.success.labNumber"
+                  defaultMessage="Lab Number: {labNumber}"
+                  values={{ labNumber: displayLabNumber || "---" }}
+                />
+              )}
             </p>
+            {isClinical && (
+              <Button
+                kind="secondary"
+                onClick={() =>
+                  history.push(
+                    `${workflowPrefix}?done=${encodeURIComponent(displayLabNumber || "")}`,
+                  )
+                }
+              >
+                <FormattedMessage id="order.finish.backToOrders" />
+              </Button>
+            )}
             <button
               className="cds--btn cds--btn--primary"
               onClick={handleStartNewOrder}
@@ -301,12 +398,43 @@ const OrderQA = () => {
     );
   }
 
+  const toContinue = [];
+  if (!prepareComplete) {
+    toContinue.push({
+      id: "order.sampleCheck.disabled.incomplete",
+      label: intl.formatMessage({
+        id: "order.sampleCheck.disabled.incomplete",
+      }),
+      targetId: null,
+    });
+  }
+  if (acceptanceBlocked) {
+    toContinue.push({
+      id: "order.continue.item.acceptance",
+      label: intl.formatMessage({ id: "order.continue.item.acceptance" }),
+      targetId: "sample-acceptance-review",
+    });
+  }
+
   return (
     <OrderWorkflowLayout
-      title="order.step.qa"
-      canProceed={!acceptanceBlocked}
+      title="order.step.sampleCheck"
+      canProceed={!acceptanceBlocked && prepareComplete}
       onSave={handleSave}
       onSaveAndNext={handleSubmit}
+      toContinue={toContinue}
+      primaryLabelId="order.sampleCheck.release"
+      secondaryAction={
+        workflowPrefix === "/order/clinical" ? (
+          <Button
+            kind="tertiary"
+            onClick={handleReturnToPrepare}
+            disabled={isSaving}
+          >
+            <FormattedMessage id="order.sampleCheck.return" />
+          </Button>
+        ) : null
+      }
       extraButtons={
         displayLabNumber && (
           <Button
@@ -336,12 +464,30 @@ const OrderQA = () => {
             built-in QA checklist that used to render below it was an
             unguarded duplicate with its own state, config load and POST. */}
         {!acceptanceOff && (
-          <SampleAcceptanceReview
-            orderId={orderId}
-            labNumber={displayLabNumber}
-            samples={samples}
-            onBlockedChange={setAcceptanceBlocked}
-          />
+          <div id="sample-acceptance-review">
+            <SampleAcceptanceReview
+              orderId={orderId}
+              labNumber={displayLabNumber}
+              samples={samples}
+              onBlockedChange={setAcceptanceBlocked}
+            />
+          </div>
+        )}
+
+        {/* Under Optional acceptance a release with items unanswered records
+            why (FR-F4); the field appears once the server has asked for it. */}
+        {releaseNoteNeeded && (
+          <Tile className="order-section">
+            <TextInput
+              id="release-note"
+              labelText={intl.formatMessage({
+                id: "order.sampleCheck.proceedReason",
+              })}
+              value={releaseNote}
+              onChange={(e) => setReleaseNote(e.target.value)}
+              maxLength={255}
+            />
+          </Tile>
         )}
 
         {/* Order Summary */}
@@ -467,7 +613,7 @@ const OrderQA = () => {
                     <StructuredListCell>
                       <FormattedMessage
                         id="patient.gender"
-                        defaultMessage="Gender"
+                        defaultMessage="Sex"
                       />
                     </StructuredListCell>
                     <StructuredListCell>

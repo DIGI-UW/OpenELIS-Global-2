@@ -198,3 +198,38 @@ describe("validationTriage — why the bulk button is unavailable (OGC-1226 FR-1
     ).toEqual([{ key: "noReference", count: 1 }]);
   });
 });
+
+describe("validationTriage — range not applied (OGC-1362)", () => {
+  const sexMissing = (overrides = {}) =>
+    heldRow({
+      normalRange: "",
+      normal: false,
+      rangeNotAppliedReason: "result.rangeNotApplied.sexMissing",
+      ...overrides,
+    });
+
+  it("a row whose range was not applied carries the Range not applied chip and needs review", () => {
+    const [item] = triageRows([sexMissing()]);
+    expect(item.chips).toEqual(["rangeNotApplied"]);
+    expect(item.lane).toBe(LANE_NEEDS_REVIEW);
+    expect(item.signals.rangeKnown).toBe(false);
+    expect(item.signals.abnormal).toBe(false);
+  });
+
+  it("a row with a range carries no Range not applied chip", () => {
+    const [item] = triageRows([clearRow({ rangeNotAppliedReason: null })]);
+    expect(item.chips).toEqual([]);
+    expect(deriveSignals(clearRow()).rangeNotApplied).toBe(false);
+  });
+
+  it("is reported apart from tests with no reference value", () => {
+    expect(
+      bulkUnavailableReasons(
+        triageRows([sexMissing(), sexMissing(), heldRow({ normalRange: "" })]),
+      ),
+    ).toEqual([
+      { key: "rangeNotApplied", count: 2 },
+      { key: "noReference", count: 1 },
+    ]);
+  });
+});

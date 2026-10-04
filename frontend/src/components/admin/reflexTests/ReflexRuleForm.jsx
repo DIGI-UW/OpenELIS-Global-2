@@ -629,9 +629,9 @@ function ReflexRule() {
                               toggled={!!rule.active}
                               aria-label="toggle button"
                               id={index + "_toggle"}
-                              labelText={
-                                <FormattedMessage id="rulebuilder.label.toggleRule" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "rulebuilder.label.toggleRule",
+                              })}
                               onToggle={(e) => toggleRule(e, index)}
                               onClick={handleClick}
                             />

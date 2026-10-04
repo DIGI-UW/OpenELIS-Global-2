@@ -57,7 +57,7 @@ This project keeps several worktrees. When asked to work on a branch or PR, find
 its worktree first and make every edit there — never in the primary directory.
 Note that each worktree needs its own installer run, per step 1.
 
-## FILE Ownership Model (014 Remediation)
+## FILE Ownership Model
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
 
@@ -69,8 +69,7 @@ For FILE-based analyzer workflows in OpenELIS Global 2:
   not be added. Any proposal to change this requires an explicit architecture
   decision that supersedes this ownership model.
 
-When guidance conflicts, this ownership model takes precedence for remediation
-work in feature 014.
+When guidance conflicts, this ownership model takes precedence.
 
 ## OpenELIS Work Product/Engineering Boundary
 
@@ -671,7 +670,8 @@ resistance, pulling all future work toward the wrong design.
 - Do NOT add features to superseded components (entities, readers, handlers)
 - Remove legacy code in the same PR, a paired PR, or a tracked priority issue
 - No dual-write to old and new tables/entities
-- Respect component boundaries (bridge owns parsing, OE owns config)
+- Respect component boundaries (Bridge owns parsing and analyzer runtime
+  configuration; OE owns clinical bindings and review)
 - Build on the target architecture, not the legacy one
 
 **Anti-pattern:** Marking code `@Deprecated` without migrating callers or
@@ -739,6 +739,40 @@ scripts/dev-stack up
 - React UI: https://localhost/
 - Legacy UI: https://localhost/api/OpenELIS-Global/
 - FHIR Server: https://fhir.openelis.org:8443/fhir/
+
+### Git Worktrees
+
+**Every worktree goes in `.worktrees/<short-name>` at the repo root, and every
+new worktree needs `setup-workspace.sh` run inside it.**
+
+```bash
+git worktree add -b <branch> .worktrees/<short-name> <base>
+cd .worktrees/<short-name> && bash scripts/setup-workspace.sh
+```
+
+**Never create a worktree in `/tmp`, `/private/tmp`, or any other system temp
+directory.** macOS reaps those, which destroys the worktree while
+`git worktree list` keeps reporting it, so the failure surfaces later as a
+confusing `not a git repository` error. This has already cost work here:
+`/private/tmp/oe2-reporting-stack-audit.<suffix>` was reaped and took
+`/private/tmp/oe2-reporting-samples-fix` with it, because that worktree's `.git`
+file pointed into the deleted parent. Some `/private/tmp/oe2-*` worktrees may
+still appear in `git worktree list`; they are the legacy mistake, not the
+convention. Relocate one with `git worktree move <old> .worktrees/<short-name>`,
+which preserves commits, and clear dead entries with `git worktree prune`.
+
+**Do not skip the setup step.** `git worktree add` does not initialize
+submodules, so a fresh worktree has all of them empty. Several are build inputs
+rather than optional extras: `./Dockerfile` does
+`WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
+out with `submodules: recursive`. Skip it and a Docker build fails roughly
+twenty minutes in with `there is no POM in this directory`, which reads like a
+broken Dockerfile rather than a missing checkout step. If you only need the
+submodules, `git submodule update --init --recursive` is the relevant part.
+
+The same reasoning applies to anything else worth keeping (evidence, triage
+notes, reports, artifacts): if losing the file would cost something, it does not
+belong in a temp directory.
 
 ### Context Recovery After Session Resume
 
@@ -1159,7 +1193,7 @@ for comprehensive guide.
 # Load test fixtures (basic usage)
 ./src/test/resources/load-test-fixtures.sh --profile=core
 
-# Harness fixture lane (includes HARN-* lane data)
+# Harness profile: core fixtures; analyzer orders are created through the API
 ./src/test/resources/load-test-fixtures.sh --profile=harness
 
 # Reset database before loading (clean state)
@@ -1705,9 +1739,6 @@ npm run cy:spec "cypress/e2e/home.cy.js"
 # Run all admin tests
 npm run cy:admin
 
-# Run all analyzer tests
-npm run cy:analyzer
-
 # Run full suite (development)
 npm run cy:run
 
@@ -1715,7 +1746,7 @@ npm run cy:run
 npm run cy:failfast
 
 # Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 
 # Open Cypress UI (interactive mode)
 npm run cy:open
@@ -1821,9 +1852,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
->   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
->   `core-demo-video` run on the build stack only.
+> - The `harness-*` projects need the analyzer stack (`scripts/dev-stack up`,
+>   then `eval "$(scripts/dev-stack env)"`). `core-demo` / `core-demo-video` run
+>   on the build stack only.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -1843,21 +1874,25 @@ Tests are organized into projects by infrastructure requirement. New test files
 must be explicitly added to a project's `testMatch` allowlist in
 `playwright.config.ts`.
 
-| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
-| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
-| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
-| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
-| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
-| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
+| Project                | Purpose                                        | CI job               | Infra Required   |
+| ---------------------- | ---------------------------------------------- | -------------------- | ---------------- |
+| `core-app`             | Core UI tests (no Bridge)                      | `Playwright Core`    | Build stack only |
+| `core-demo`            | UI demos on build stack + SQL fixtures         | `Playwright Core`    | Build stack only |
+| `core-demo-video`      | `core-demo` + `slowMo` + video                 | Local only           | Build stack only |
+| `harness-foundational` | Analyzer workflows through Bridge and the mock | `Playwright Harness` | Full harness     |
+| `harness-demo`         | UI demos requiring the full analyzer harness   | `Playwright Harness` | Full harness     |
+| `harness-demo-video`   | `harness-demo` + `slowMo` + video              | Local only           | Full harness     |
+| `harness-manual-only`  | Real-hardware / manual-only coverage           | Not run in CI        | Full harness     |
 
 #### CI Workflows
 
-| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
-| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
-| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
+Both jobs run from `e2e-tests.yml` through `e2e-authoritative-reusable.yml`,
+which calls `e2e-playwright-reusable.yml` once per lane.
+
+| Job                  | Compose Files                                                                                                | Projects Run                            | Fixtures Loaded                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------- | ----------------------------------------- |
+| `Playwright Core`    | `build.docker-compose.yml`                                                                                   | `core-app` + `core-demo`                | `load-test-fixtures.sh --profile=core`    |
+| `Playwright Harness` | `build.docker-compose.yml` + `projects/analyzer-harness/docker-compose.base.yml` + `ci.analyzer-harness.yml` | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 #### Key Patterns
 
@@ -1959,7 +1994,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/ogc-1054-m3-guided-setup.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -1984,7 +2019,7 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-foundational
 ```
 
 **Harness demos:**
@@ -2481,7 +2516,6 @@ scripts/dev-stack up
 # E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
 npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
 npm run cy:admin                                # All admin tests
-npm run cy:analyzer                             # All analyzer tests
 npm run cy:failfast                             # Full suite with fail-fast (BEFORE PUSHING)
 npm run cy:failfast:spec "cypress/e2e/..."      # Specific test with fail-fast
 
@@ -2514,6 +2548,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
+**Last Updated:** 2026-09-29 **Constitution Version:** 1.12.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

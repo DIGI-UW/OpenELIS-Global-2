@@ -152,7 +152,6 @@ def compose_command(context: StackContext, *arguments: str) -> list[str]:
 def required_submodules() -> tuple[str, ...]:
     return (
         "dataexport",
-        "plugins",
         "tools/analyzer-mock-server",
         "tools/openelis-analyzer-bridge",
     )
@@ -358,7 +357,7 @@ def build_application(context: StackContext, environment: dict[str, str]) -> Non
 
 
 def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str]) -> None:
-    arguments = [str(context.project_dir / "bootstrap.sh"), "--skip-plugins"]
+    arguments = [str(context.project_dir / "bootstrap.sh")]
     if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
         arguments.append("--local")
     run(
@@ -369,7 +368,7 @@ def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    services = ["astm-simulator", "openelis-analyzer-bridge"]
+    services = ["oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"]
     if environment["DEV_STACK_BUILD_FRONTEND"] == "true":
         services.insert(0, "frontend.openelis.org")
     run(
@@ -623,6 +622,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         print_endpoints(context, environment, shell_exports=True)
     elif args.command == "playwright":
         playwright_environment = environment.copy()
+        playwright_environment.update(endpoint_environment(context, environment))
         playwright_environment["BASE_URL"] = playwright_base_url(context, environment)
         print(f"Running Playwright against {playwright_environment['BASE_URL']}")
         run(

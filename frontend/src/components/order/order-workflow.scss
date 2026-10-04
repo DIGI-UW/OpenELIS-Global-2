@@ -1757,3 +1757,17 @@
   color: var(--cds-text-secondary);
   margin: 0.25rem 0 0.5rem;
 }
+
+/* ==========================================================================
+   Saved order: next step
+   ========================================================================== */
+.order-saved-next-action {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+
+  .cds--inline-notification {
+    margin: 0;
+  }
+}

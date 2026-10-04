@@ -65,11 +65,26 @@ public class BridgeOutboxClientTest {
         when(httpClient.get(org.mockito.ArgumentMatchers.startsWith(BASE_URL + "/admin/outbox?state=DMQ&limit=1000"),
                 eq(TIMEOUT))).thenReturn(page(0, 1000));
 
-        List<JsonNode> rows = client.list("DMQ");
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1&offset=10000"), eq(TIMEOUT)))
+                .thenReturn(page(0, 1));
 
-        assertEquals(10_000, rows.size());
+        BridgeAnalyzerConnectionException failure = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> client.list("DMQ"));
+
+        assertEquals("analyzer.deliveryIssues.error.incompleteList", failure.messageKey());
         verify(httpClient, org.mockito.Mockito.times(10)).get(
-                org.mockito.ArgumentMatchers.startsWith(BASE_URL + "/admin/outbox?state=DMQ"), eq(TIMEOUT));
+                org.mockito.ArgumentMatchers.startsWith(BASE_URL + "/admin/outbox?state=DMQ&limit=1000"), eq(TIMEOUT));
+    }
+
+    @Test
+    public void malformedSuccessfulResponseIsNotAnEmptyOutbox() throws Exception {
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox?state=DMQ&limit=1000&offset=0"), eq(TIMEOUT)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, "{}"));
+
+        BridgeAnalyzerConnectionException failure = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> client.list("DMQ"));
+
+        assertEquals("analyzer.deliveryIssues.error.bridgeInvalidResponse", failure.messageKey());
     }
 
     private static BridgeHttpClient.BridgeResponse page(int firstId, int size) {

@@ -1,3 +1,4 @@
+import { releaseScope } from "./validationSearch";
 /**
  * OGC-1027 (Validation v4 slice V1) — pure triage rules for the validation
  * queue: which "Check before release" chips a row carries, which lane it sits
@@ -39,15 +40,17 @@ export const SIGNAL_KEYS = [
   "modified",
   "ackPending",
   "nonconforming",
+  "rangeNotApplied",
 ];
 
 const isTrue = (value) => value === true;
 
+const hasText = (value) => typeof value === "string" && value.trim().length > 0;
+
 export function deriveSignals(row) {
   const source = row || {};
-  const rangeKnown =
-    typeof source.normalRange === "string" &&
-    source.normalRange.trim().length > 0;
+  const rangeNotApplied = hasText(source.rangeNotAppliedReason);
+  const rangeKnown = !rangeNotApplied && hasText(source.normalRange);
   const qcStatus =
     source.qcStatus === QC_PASS
       ? QC_PASS
@@ -61,6 +64,7 @@ export function deriveSignals(row) {
     ackPending: isTrue(source.ackPending),
     nonconforming: isTrue(source.nonconforming),
     critical: isTrue(source.critical),
+    rangeNotApplied,
     rangeKnown,
     inRange: rangeKnown && source.normal === true,
     abnormal: rangeKnown && source.normal === false,
@@ -130,7 +134,9 @@ function dominantSignals(items) {
  * as every reason that applies with its count, in display order. Empty when the
  * button is usable. A row whose test has no reference value in the catalogue is
  * reported as such rather than as a risk, because the fix for it lives in the
- * Test Catalogue, not in the queue.
+ * Test Catalogue, not in the queue; a row whose range was not applied because
+ * the patient's sex or age is missing is reported apart, since its fix is the
+ * patient record.
  */
 export function bulkUnavailableReasons(triaged, { bulkAllowed = true } = {}) {
   const reasons = [];
@@ -146,13 +152,19 @@ export function bulkUnavailableReasons(triaged, { bulkAllowed = true } = {}) {
     return reasons;
   }
   const withReference = items.filter((item) => item.signals.rangeKnown);
-  const noReference = items.filter((item) => !item.signals.rangeKnown);
+  const rangeNotApplied = items.filter((item) => item.signals.rangeNotApplied);
+  const noReference = items.filter(
+    (item) => !item.signals.rangeKnown && !item.signals.rangeNotApplied,
+  );
   if (withReference.length > 0) {
     reasons.push({
       key: "signals",
       count: withReference.length,
       dominant: dominantSignals(withReference),
     });
+  }
+  if (rangeNotApplied.length > 0) {
+    reasons.push({ key: "rangeNotApplied", count: rangeNotApplied.length });
   }
   if (noReference.length > 0) {
     reasons.push({ key: "noReference", count: noReference.length });
@@ -187,23 +199,22 @@ export function clearRows(triaged) {
 }
 
 /**
- * OGC-1029 — the bulk request: the page's own search key (so the server reloads
- * the same queue and re-derives the lane itself) plus the candidate rows with
- * the validator's note. `params` is the page's query string, e.g.
- * "?type=order&accessionNumber=…"; only an accession ("order") search is unranged.
+ * OGC-1029 / OGC-1418 — the bulk request: the page's whole search (so the
+ * server reloads the same queue and re-derives the lane itself) plus the
+ * candidate rows with the validator's note. `params` is the page's query
+ * string; an old ?type= address is read as the search it stands for.
  */
 export function bulkReleaseRequest(results, params, rows) {
-  const search = new URLSearchParams((params || "").replace(/^\?/, ""));
-  const type = search.get("type") || "";
+  const scope = releaseScope(params);
+  const single =
+    Boolean(scope.labNumberFrom) && scope.labNumberFrom === scope.labNumberTo;
   return {
-    accessionNumber:
-      (results && results.accessionNumber) ||
-      search.get("accessionNumber") ||
-      "",
-    testSectionId:
-      (results && results.testSectionId) || search.get("testSectionId") || "",
-    testDate: (results && results.testDate) || search.get("date") || "",
-    doRange: type !== "order",
+    ...scope,
+    accessionNumber: single
+      ? (results && results.accessionNumber) || scope.labNumberFrom
+      : "",
+    testDate: "",
+    doRange: !single,
     rows: (rows || []).map((row) => ({
       analysisId: row.analysisId,
       accessionNumber: row.accessionNumber,

@@ -14,6 +14,7 @@ import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.service.AnalyzerTestCapability;
 import org.openelisglobal.common.domain.Domain;
 import org.openelisglobal.common.services.DisplayListService;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.common.util.ControllerUtills;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -119,6 +120,9 @@ public class TestCatalogEditorRestController {
     // Field-injected (optional) so the existing all-args constructor used by the
     // controller's unit tests stays unchanged; only used to label dictionary
     // options.
+    @Autowired
+    private StaleSaveGuard staleSaveGuard;
+
     @Autowired(required = false)
     private DictionaryService dictionaryService;
 
@@ -335,6 +339,14 @@ public class TestCatalogEditorRestController {
     public static class LabUnitOption {
         public String id;
         public String name;
+        /**
+         * OGC-189 (M2): whether the lab unit is active. This is a <em>chooser</em>, so
+         * the client offers only active units as new choices — but the full list is
+         * still returned so a test already assigned to a deactivated unit can keep
+         * showing its current value instead of rendering blank and silently writing
+         * that blank back on save (the OGC-1191 data-loss class).
+         */
+        public boolean isActive;
     }
 
     @GetMapping(value = "/lab-units", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -347,6 +359,7 @@ public class TestCatalogEditorRestController {
             LabUnitOption option = new LabUnitOption();
             option.id = section.getId();
             option.name = section.getLocalizedName();
+            option.isActive = "Y".equals(section.getIsActive());
             options.add(option);
         }
         options.sort((a, b) -> {
@@ -589,6 +602,11 @@ public class TestCatalogEditorRestController {
         // "activation") — this endpoint answers 409 for two unrelated reasons and
         // the client needs to tell them apart (OGC-1180).
         public String conflict;
+        // The test's version when the editor loaded it; a save against a newer one
+        // is refused with conflict "stale" and the message below (OGC-1376).
+        public String lastupdated;
+        public String messageKey;
+        public Map<String, Object> messageArgs;
     }
 
     @GetMapping(value = "/tests/{testId}/basic-info", produces = MediaType.APPLICATION_JSON_VALUE)
@@ -606,6 +624,9 @@ public class TestCatalogEditorRestController {
         Test test = testService.getTestById(testId);
         if (test == null) {
             return ResponseEntity.notFound().build();
+        }
+        if (StaleSaveGuard.isStale(body.lastupdated, test.getLastupdated())) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(staleConflict(test));
         }
         if (body.domain != null && !DOMAINS.contains(body.domain)) {
             return ResponseEntity.unprocessableEntity().build();
@@ -812,7 +833,21 @@ public class TestCatalogEditorRestController {
         info.antimicrobialResistance = Boolean.TRUE.equals(test.getAntimicrobialResistance());
         info.active = test.isActive();
         info.orderable = Boolean.TRUE.equals(test.getOrderable());
+        info.lastupdated = StaleSaveGuard.token(test.getLastupdated());
         return info;
+    }
+
+    @SuppressWarnings("unchecked")
+    private BasicInfo staleConflict(Test test) {
+        Map<String, Object> described = staleSaveGuard.conflictBody("error.testCatalog.staleSave", "TEST", test.getId(),
+                test.getLastupdated());
+        BasicInfo conflict = new BasicInfo();
+        conflict.testId = test.getId();
+        conflict.conflict = "stale";
+        conflict.messageKey = (String) described.get("messageKey");
+        conflict.messageArgs = (Map<String, Object>) described.get("messageArgs");
+        conflict.lastupdated = (String) described.get("lastupdated");
+        return conflict;
     }
 
     // ── Sample & Results — Result Components (OGC-749 / OGC-962) ───────────────

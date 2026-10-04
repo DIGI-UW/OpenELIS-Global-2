@@ -6,6 +6,7 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -474,6 +475,45 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public List<Analysis> getAllAnalysisByTestSectionAndStatus(String sectionId, List<String> statusList,
             boolean sortedByDateAndAccession) {
         return baseObjectDAO.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, sortedByDateAndAccession);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestSectionIdsWithPendingAnalyses() {
+        return new HashSet<>(baseObjectDAO.getTestSectionIdsWithAnalysesNotInStatus(terminalAnalysisStatusIds()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestSectionIdsWithAnyAnalyses() {
+        // Empty exclusion list = every analysis counts, terminal or not.
+        return new HashSet<>(baseObjectDAO.getTestSectionIdsWithAnalysesNotInStatus(new ArrayList<>()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long[] countAnalysesForLabUnit(String testSectionId) {
+        return baseObjectDAO.countAnalysesByTestSectionSplitByStatus(testSectionId, terminalAnalysisStatusIds());
+    }
+
+    /**
+     * The analysis statuses that count as finished. Finalized and Canceled are
+     * done; the four rejection statuses are dead ends the lab cannot act on any
+     * further. Anything else is still in flight.
+     */
+    private List<String> terminalAnalysisStatusIds() {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        List<String> terminalStatuses = new ArrayList<>();
+        for (StatusService.AnalysisStatus status : new StatusService.AnalysisStatus[] {
+                StatusService.AnalysisStatus.Finalized, StatusService.AnalysisStatus.Canceled,
+                StatusService.AnalysisStatus.SampleRejected, StatusService.AnalysisStatus.TechnicalRejected,
+                StatusService.AnalysisStatus.BiologistRejected, StatusService.AnalysisStatus.RejectedByReferenceLab }) {
+            String id = statusService.getStatusID(status);
+            if (id != null) {
+                terminalStatuses.add(id);
+            }
+        }
+        return terminalStatuses;
     }
 
     @Override

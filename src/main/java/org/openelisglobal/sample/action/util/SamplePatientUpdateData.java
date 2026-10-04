@@ -73,6 +73,8 @@ import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.vector.service.VectorSamplingSiteService;
 import org.openelisglobal.vector.valueholder.VectorSamplingSite;
 import org.springframework.validation.Errors;
+import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 
 /** */
 public class SamplePatientUpdateData {
@@ -114,6 +116,7 @@ public class SamplePatientUpdateData {
     private ProgramService programService = SpringContext.getBean(ProgramService.class);
     private ProgramSampleService programSampleService = SpringContext.getBean(ProgramSampleService.class);
     private List<ObservationHistory> observations = new ArrayList<>();
+    private List<String> clearedObservationTypeIds = new ArrayList<>();
     private List<OrganizationAddress> orgAddressExtra = new ArrayList<>();
     private final String currentUserId;
 
@@ -129,6 +132,11 @@ public class SamplePatientUpdateData {
     private String eqaParticipantId;
     private String eqaDeadline;
     private String eqaPriority;
+    private String eqaCycleId;
+    private String eqaReceivedTempC;
+    private Boolean eqaIntegrityOk;
+    private String eqaIntegrityNotes;
+    private String eqaShippingBoxId;
 
     private boolean customNotificationLogic;
     private List<String> patientEmailNotificationTestIds;
@@ -293,6 +301,14 @@ public class SamplePatientUpdateData {
         return observations;
     }
 
+    /**
+     * Observation types the user emptied on the order form; saving an existing
+     * order removes what it held for them.
+     */
+    public List<String> getClearedObservationTypeIds() {
+        return clearedObservationTypeIds;
+    }
+
     public List<String> getPendingComplianceStandardIds() {
         return pendingComplianceStandardIds;
     }
@@ -330,6 +346,20 @@ public class SamplePatientUpdateData {
             observation.setValueType(valueType);
             observations.add(observation);
         }
+    }
+
+    /**
+     * Like {@link #createObservation}, for a field the order form both shows and
+     * reloads: an empty value clears what the order held, while a value the caller
+     * did not send at all (null) leaves it alone.
+     */
+    private void createClearableObservation(String observationData, String observationType,
+            ObservationHistory.ValueType valueType) {
+        if (observationData != null && observationData.isBlank() && !GenericValidator.isBlankOrNull(observationType)) {
+            clearedObservationTypeIds.add(observationType);
+            return;
+        }
+        createObservation(observationData, observationType, valueType);
     }
 
     public void validateSample(Errors errors) {
@@ -395,7 +425,26 @@ public class SamplePatientUpdateData {
 
         // check patient errors
         if (patientErrors.hasErrors()) {
-            errors.addAllErrors(patientErrors);
+            addPatientErrors(errors);
+        }
+    }
+
+    /**
+     * The patient's errors are collected on their own holder, which carries a
+     * different object name from the order form. Spring refuses to merge such
+     * holders as a whole, and that refusal used to surface a refused patient (a
+     * duplicate national id, a malformed birth date) as a 500 with no message. Each
+     * error is copied on its own instead, a field error under the form's
+     * patientProperties path.
+     */
+    private void addPatientErrors(Errors errors) {
+        for (ObjectError error : patientErrors.getAllErrors()) {
+            if (error instanceof FieldError fieldError) {
+                errors.rejectValue("patientProperties." + fieldError.getField(), fieldError.getCode(),
+                        fieldError.getArguments(), fieldError.getDefaultMessage());
+            } else {
+                errors.reject(error.getCode(), error.getArguments(), error.getDefaultMessage());
+            }
         }
     }
 
@@ -442,7 +491,9 @@ public class SamplePatientUpdateData {
                 sample.setSysUserId(currentUserId);
                 // Update fields that can change during edit
                 sample.setReceivedTimestamp(DateUtil.convertStringDateToTimestamp(receivedDate));
-                sample.setReferringId(sampleOrder.getRequesterSampleID());
+                if (!GenericValidator.isBlankOrNull(sampleOrder.getRequesterSampleID())) {
+                    sample.setReferringId(sampleOrder.getRequesterSampleID());
+                }
                 if (!GenericValidator.isBlankOrNull(sampleOrder.getRequiredBy())) {
                     sample.setRequiredBy(DateUtil.convertStringDateToTimestampWithPatternNoLocale(
                             sampleOrder.getRequiredBy(), "yyyy-MM-dd"));
@@ -922,7 +973,7 @@ public class SamplePatientUpdateData {
 
         createObservation(sampleOrder.getRequestDate(),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.REQUEST_DATE), ValueType.LITERAL);
-        createObservation(sampleOrder.getNextVisitDate(),
+        createClearableObservation(sampleOrder.getNextVisitDate(),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.NEXT_VISIT_DATE),
                 ValueType.LITERAL);
         createObservation(sampleOrder.getTestLocationCode(),
@@ -934,7 +985,7 @@ public class SamplePatientUpdateData {
         createObservation(sampleOrder.getReferringPatientNumber(),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.REFERRERS_PATIENT_ID),
                 ValueType.LITERAL);
-        createObservation(sampleOrder.getProvisionalClinicalDiagnosis(),
+        createClearableObservation(sampleOrder.getProvisionalClinicalDiagnosis(),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.PROVISIONAL_CLINICAL_DIAGNOSIS),
                 ValueType.LITERAL);
         if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.USE_BILLING_REFERENCE_NUMBER, "true")) {
@@ -1027,21 +1078,21 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "regulatoryReference"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_REGULATORY_REFERENCE),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "collectionMethod"),
+        createClearableObservation(getStringValue(envFields, "collectionMethod"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_COLLECTION_METHOD),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "waterTemp"),
+        createClearableObservation(getStringValue(envFields, "waterTemp"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WATER_TEMP),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "ambientTemp"),
+        createClearableObservation(getStringValue(envFields, "ambientTemp"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_AMBIENT_TEMP),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "weather"),
+        createClearableObservation(getStringValue(envFields, "weather"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_WEATHER), ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "preservationMethod"),
+        createClearableObservation(getStringValue(envFields, "preservationMethod"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_PRESERVATION_METHOD),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "fieldNotes"),
+        createClearableObservation(getStringValue(envFields, "fieldNotes"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.ENV_FIELD_NOTES),
                 ValueType.LITERAL);
         String complianceStandardsRaw = getStringValue(envFields, "complianceStandards");
@@ -1114,22 +1165,22 @@ public class SamplePatientUpdateData {
         createObservation(getStringValue(envFields, "vecCollectionSiteName"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_SITE_NAME),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecGpsLatitude"),
+        createClearableObservation(getStringValue(envFields, "vecGpsLatitude"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_GPS_LATITUDE),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecGpsLongitude"),
+        createClearableObservation(getStringValue(envFields, "vecGpsLongitude"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_GPS_LONGITUDE),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecTimeOfDay"),
+        createClearableObservation(getStringValue(envFields, "vecTimeOfDay"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_TIME_OF_DAY),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecRestingContext"),
+        createClearableObservation(getStringValue(envFields, "vecRestingContext"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_RESTING_CONTEXT),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecHumanBitingCatch"),
+        createClearableObservation(getStringValue(envFields, "vecHumanBitingCatch"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_HUMAN_BITING_CATCH),
                 ValueType.LITERAL);
-        createObservation(getStringValue(envFields, "vecCollectionNotes"),
+        createClearableObservation(getStringValue(envFields, "vecCollectionNotes"),
                 observationHistoryService.getObservationTypeIdForType(ObservationType.VS_COLLECTION_NOTES),
                 ValueType.LITERAL);
     }
@@ -1410,6 +1461,46 @@ public class SamplePatientUpdateData {
 
     public void setEqaPriority(String eqaPriority) {
         this.eqaPriority = eqaPriority;
+    }
+
+    public String getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(String eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
+    }
+
+    public String getEqaReceivedTempC() {
+        return eqaReceivedTempC;
+    }
+
+    public void setEqaReceivedTempC(String eqaReceivedTempC) {
+        this.eqaReceivedTempC = eqaReceivedTempC;
+    }
+
+    public Boolean getEqaIntegrityOk() {
+        return eqaIntegrityOk;
+    }
+
+    public void setEqaIntegrityOk(Boolean eqaIntegrityOk) {
+        this.eqaIntegrityOk = eqaIntegrityOk;
+    }
+
+    public String getEqaIntegrityNotes() {
+        return eqaIntegrityNotes;
+    }
+
+    public void setEqaIntegrityNotes(String eqaIntegrityNotes) {
+        this.eqaIntegrityNotes = eqaIntegrityNotes;
+    }
+
+    public String getEqaShippingBoxId() {
+        return eqaShippingBoxId;
+    }
+
+    public void setEqaShippingBoxId(String eqaShippingBoxId) {
+        this.eqaShippingBoxId = eqaShippingBoxId;
     }
 
     /**

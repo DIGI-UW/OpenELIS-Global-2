@@ -123,6 +123,62 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
 
     @Override
     @Transactional(readOnly = true)
+    public List<String> getTestSectionIdsWithAnalysesNotInStatus(List<String> excludedStatusIdList)
+            throws LIMSRuntimeException {
+        try {
+            // Distinct section ids only — the caller needs set membership, not
+            // the analyses themselves, and this populates a dropdown.
+            String sql = "select distinct a.testSection.id from Analysis a where a.testSection is not null";
+            if (excludedStatusIdList != null && !excludedStatusIdList.isEmpty()) {
+                sql += " and a.statusId not in (:excludedStatusIdList)";
+            }
+            Query<String> query = entityManager.unwrap(Session.class).createQuery(sql, String.class);
+            if (excludedStatusIdList != null && !excludedStatusIdList.isEmpty()) {
+                query.setParameterList("excludedStatusIdList", excludedStatusIdList);
+            }
+            return query.list();
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis getTestSectionIdsWithAnalysesNotInStatus()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long[] countAnalysesByTestSectionSplitByStatus(String testSectionId, List<String> terminalStatusIdList)
+            throws LIMSRuntimeException {
+        try {
+            String pendingSql = "select count(a) from Analysis a where a.testSection.id = :sectionId";
+            String historySql = pendingSql;
+            boolean hasTerminal = terminalStatusIdList != null && !terminalStatusIdList.isEmpty();
+            if (hasTerminal) {
+                pendingSql += " and a.statusId not in (:terminalStatusIdList)";
+                historySql += " and a.statusId in (:terminalStatusIdList)";
+            }
+
+            Query<Long> pendingQuery = entityManager.unwrap(Session.class).createQuery(pendingSql, Long.class);
+            pendingQuery.setParameter("sectionId", testSectionId);
+            if (hasTerminal) {
+                pendingQuery.setParameterList("terminalStatusIdList", terminalStatusIdList);
+            }
+            long pending = pendingQuery.uniqueResult() == null ? 0L : pendingQuery.uniqueResult();
+
+            long history = 0L;
+            if (hasTerminal) {
+                Query<Long> historyQuery = entityManager.unwrap(Session.class).createQuery(historySql, Long.class);
+                historyQuery.setParameter("sectionId", testSectionId);
+                historyQuery.setParameterList("terminalStatusIdList", terminalStatusIdList);
+                history = historyQuery.uniqueResult() == null ? 0L : historyQuery.uniqueResult();
+            }
+            return new long[] { pending, history };
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+            throw new LIMSRuntimeException("Error in Analysis countAnalysesByTestSectionSplitByStatus()", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAllAnalysisByTestsAndStatus(List<String> testIdList, List<String> statusIdList)
             throws LIMSRuntimeException {
         try {
@@ -288,13 +344,21 @@ public class AnalysisDAOImpl extends BaseDAOImpl<Analysis, String> implements An
         }
     }
 
+    /**
+     * The unit's analyses in the given statuses, QC samples excluded. Joined LEFT
+     * to the sample item so vector pool analyses (no sample item, a pool id) are
+     * kept; the QC profile exclusion applies to item-level analyses only.
+     */
     @Override
     @Transactional(readOnly = true)
     public List<Analysis> getPageAnalysisByTestSectionAndStatusExcludingQc(String testSectionId,
             List<String> statusIdList, boolean sortedByDateAndAccession) throws LIMSRuntimeException {
         try {
-            String sql = "from Analysis a where a.testSection.id = :testSectionId AND a.statusId IN (:statusIdList) AND "
-                    + QC_SAMPLE_ITEM_NOT_IN_PROFILE + " order by a.sampleItem.sample.accessionNumber";
+            String sql = "SELECT a FROM Analysis a LEFT JOIN a.sampleItem si LEFT JOIN si.sample s"
+                    + " WHERE a.testSection.id = :testSectionId AND a.statusId IN (:statusIdList)"
+                    + " AND ((si IS NOT NULL"
+                    + " AND CAST(si.id AS integer) NOT IN (SELECT q.sampleItemId FROM SampleItemQcProfile q))"
+                    + " OR (si IS NULL AND a.vectorPoolId IS NOT NULL))" + " ORDER BY s.accessionNumber, a.id";
 
             Query<Analysis> query = entityManager.unwrap(Session.class).createQuery(sql, Analysis.class);
             query.setParameter("testSectionId", testSectionId);

@@ -17,6 +17,13 @@ public interface NCEventService extends BaseObjectService<NcEvent, Integer> {
     List<NcEvent> findByNCENumberOrLabOrderId(String nceNumber, String labOrderId);
 
     /**
+     * The non-conformity a given trigger raised, if it already has one. Callers use
+     * it to stay idempotent: an evaluator that runs again over the same trigger
+     * must find its own event rather than raise a second one.
+     */
+    NcEvent findByTriggerSource(String triggerSourceType, String triggerSourceId);
+
+    /**
      * Saves the non-conformity a system trigger raises, or returns the one that
      * already exists for the same trigger. At most one NCE exists per trigger
      * source (uq_nc_event_trigger_source), so a repeated trigger reads back the

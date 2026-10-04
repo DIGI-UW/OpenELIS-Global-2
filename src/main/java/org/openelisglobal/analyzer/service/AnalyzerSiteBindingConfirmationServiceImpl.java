@@ -117,6 +117,16 @@ public class AnalyzerSiteBindingConfirmationServiceImpl implements AnalyzerSiteB
 
     @Override
     @Transactional(readOnly = true)
+    public boolean hasMatchingConfirmation(AnalyzerSiteBindingSnapshot candidate, String recognitionFingerprint) {
+        CandidateContext context = requireCandidate(candidate, recognitionFingerprint);
+        return confirmationDAO.findByRevisionId(candidate.revision().getId())
+                .filter(confirmation -> isCurrent(candidate, context, confirmation)
+                        && hasExactSavedRows(candidate, confirmation))
+                .isPresent();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public AnalyzerSiteBindingVerificationAssessment assessCurrent(AnalyzerSiteBindingSnapshot candidate,
             String recognitionFingerprint) {
         CandidateContext context = requireCandidate(candidate, recognitionFingerprint);

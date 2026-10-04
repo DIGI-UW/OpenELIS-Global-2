@@ -850,7 +850,7 @@ const OutstandingTable = ({
                 <Button
                   kind="tertiary"
                   size="sm"
-                  href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                  href={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
                   className="reference-lab-results__enter-result"
                 >
                   <FormattedMessage id="referral.action.enterResult" />
@@ -1155,7 +1155,7 @@ const ExpandPanel = ({
               <Button
                 kind="primary"
                 size="sm"
-                href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                href={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
               >
                 <FormattedMessage id="referral.action.enterResult" />
               </Button>
@@ -1217,7 +1217,7 @@ const ExpandPanel = ({
             </div>
             {row.labNumber && (
               <CarbonLink
-                href={`/result?accessionNumber=${row.labNumber}`}
+                href={`/Results?accessionNumber=${encodeURIComponent(row.labNumber)}`}
                 className="reference-lab-results__result-entry-link"
               >
                 <FormattedMessage id="referral.action.openResultEntry" />

@@ -19,14 +19,16 @@ import {
   Link,
   Checkbox,
 } from "@carbon/react";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import { getFromOpenElisServer, toLocalIsoDate } from "../../../utils/Utils";
 import { providerDisplayName } from "../../../provider/providerDisplayName";
 import { ConfigurationContext } from "../../../layout/Layout";
+import { priorities } from "../../../data/orderOptions";
 import {
   forgetRequester,
   readRememberedRequester,
   rememberRequester,
 } from "../../rememberedRequester";
+import { labNow } from "../../../utils/labClock";
 
 /**
  * RequesterSection - Site/Requesting-Organization, Requestor contact, and
@@ -187,13 +189,9 @@ const RequesterSection = ({
       ? selectedProvider
       : savedProvider;
 
-  // Priority options - must match backend OrderPriority enum
-  const priorityOptions = [
-    { id: "ROUTINE", value: "Routine" },
-    { id: "STAT", value: "STAT (Urgent)" },
-    { id: "ASAP", value: "ASAP" },
-    { id: "TIMED", value: "Timed" },
-  ];
+  const priorityOptions = ["ROUTINE", "STAT", "ASAP", "TIMED"].map((code) =>
+    priorities.find((priority) => priority.value === code),
+  );
 
   // Component mounted tracking
   useEffect(() => {
@@ -941,7 +939,7 @@ const RequesterSection = ({
               id="requiredBy"
               type="date"
               className="env-manifest-datetime"
-              min={new Date().toISOString().split("T")[0]}
+              min={toLocalIsoDate(labNow())}
               value={orderData?.sampleOrderItems?.requiredBy || ""}
               onChange={(e) => {
                 setOrderData((prev) => ({
@@ -1017,7 +1015,11 @@ const RequesterSection = ({
               disabled={isReadOnly}
             >
               {priorityOptions.map((opt) => (
-                <SelectItem key={opt.id} value={opt.id} text={opt.value} />
+                <SelectItem
+                  key={opt.value}
+                  value={opt.value}
+                  text={intl.formatMessage({ id: opt.labelId })}
+                />
               ))}
             </Select>
           </Column>

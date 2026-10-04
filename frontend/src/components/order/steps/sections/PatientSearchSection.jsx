@@ -1,8 +1,9 @@
-import React, { useState } from "react";
+import React, { useContext, useState } from "react";
 import { FormattedMessage } from "react-intl";
 import { Tile, Button, Tag, Link } from "@carbon/react";
 import SearchPatientForm from "../../../patient/SearchPatientForm";
 import CreatePatientForm from "../../../patient/CreatePatientForm";
+import { OrderContext, SaveStatus } from "../../OrderContext";
 
 /**
  * PatientSearchSection - Patient search with results table and selection card
@@ -17,6 +18,19 @@ import CreatePatientForm from "../../../patient/CreatePatientForm";
  * - XC-2: Unified search pattern
  */
 
+/**
+ * The blank record a New Patient form starts from. One shared object: the form
+ * treats a new `selectedPatient` as a different patient and rewrites the order
+ * from its fields, so a fresh literal on every render would let the form
+ * overwrite the patient the order has just saved.
+ */
+const NEW_PATIENT = {
+  id: "",
+  healthRegion: [],
+  nationalId: "",
+  subjectNumber: "",
+};
+
 const PatientSearchSection = ({
   orderData,
   setOrderData,
@@ -28,9 +42,35 @@ const PatientSearchSection = ({
   const [locallySelectedPatient, setSelectedPatient] = useState(null);
   const [searchInstance, setSearchInstance] = useState(0);
 
-  const selectedPatient = orderData?.patientProperties?.patientPK
-    ? orderData.patientProperties
-    : locallySelectedPatient;
+  // The patient the order holds, as it was when it became the order's patient
+  // (chosen from the search, loaded with the order) or as it was last saved.
+  // The patient form compares its fields against this record to tell an
+  // untouched patient from an edited one, so it must not follow the form's
+  // own writes; it is taken again only for another patient or after a save.
+  const { saveStatus } = useContext(OrderContext);
+  const heldPatientPK = orderData?.patientProperties?.patientPK || "";
+  const [held, setHeld] = useState({
+    patientPK: "",
+    saveStatus,
+    patient: null,
+  });
+  const takeHeldPatient =
+    held.patientPK !== heldPatientPK ||
+    (saveStatus === SaveStatus.SAVED && held.saveStatus !== SaveStatus.SAVED);
+  if (takeHeldPatient || held.saveStatus !== saveStatus) {
+    setHeld({
+      patientPK: heldPatientPK,
+      saveStatus,
+      patient: takeHeldPatient
+        ? (heldPatientPK && orderData.patientProperties) || null
+        : held.patient,
+    });
+  }
+  const heldPatient = takeHeldPatient
+    ? (heldPatientPK && orderData.patientProperties) || null
+    : held.patient;
+
+  const selectedPatient = heldPatient || locallySelectedPatient;
 
   const handleSelectPatient = (patient) => {
     setSelectedPatient(patient);
@@ -133,6 +173,21 @@ const PatientSearchSection = ({
                   ` · ID: ${selectedPatient.nationalId}`}
               </p>
             </div>
+            {/* The order's patient opens locked in the form, with its Edit
+                toggle, the way a saved patient did before Save and exit
+                replaced the in-page save (OGC-1266). */}
+            {!isReadOnly && (
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => setActiveTab("new")}
+              >
+                <FormattedMessage
+                  id="label.button.edit.details"
+                  defaultMessage="Edit details"
+                />
+              </Button>
+            )}
           </div>
         </div>
       )}
@@ -148,6 +203,7 @@ const PatientSearchSection = ({
             idPrefix="order-patient-search"
             getSelectedPatient={handleSelectPatient}
             renderNotifications={false}
+            followUrlLabNumber={false}
           />
         </div>
       )}
@@ -157,14 +213,7 @@ const PatientSearchSection = ({
           <CreatePatientForm
             key={(selectedPatient && selectedPatient.patientPK) || "new"}
             showActionsButton={false}
-            selectedPatient={
-              selectedPatient || {
-                id: "",
-                healthRegion: [],
-                nationalId: "",
-                subjectNumber: "",
-              }
-            }
+            selectedPatient={selectedPatient || NEW_PATIENT}
             orderFormValues={orderData}
             setOrderFormValues={setOrderData}
             error={() => null}

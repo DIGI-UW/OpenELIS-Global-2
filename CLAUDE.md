@@ -10,7 +10,7 @@
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.11.2, 10 core principles)
+   governance (v1.12.0, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -57,12 +57,6 @@ mvn clean install -DskipTests
 - `-DskipTests`: Skips Surefire unit test execution
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
-
-**Exception — CI shared-build root project:** The E2E `shared-build` step in
-`e2e-playwright.yml` intentionally omits `-Dmaven.test.skip=true` on the root
-project build because the `test-jar` artifact must be produced for plugin
-compilation (GenericASTM, GenericFile, GenericHL7 depend on it). The
-`dataexport` and `plugins` sub-builds still use both flags.
 
 ### Pre-Commit Formatting (MANDATORY)
 
@@ -120,6 +114,14 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 1. **Red:** Write failing test first
 2. **Green:** Write minimal code to make test pass
 3. **Refactor:** Improve code quality while keeping tests green
+
+### Git Worktrees (MANDATORY)
+
+> Worktrees go in `.worktrees/<short-name>`, never `/tmp` or `/private/tmp`, and
+> every new one needs `scripts/setup-workspace.sh` run inside it
+> (`git worktree add` does not initialize the submodules, several of which are
+> build inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) § "Git
+> Worktrees".
 
 ### Post-Compaction Context Recovery (MANDATORY)
 
@@ -196,7 +198,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-04-06 **Constitution Version:** 1.11.2
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.12.0
 
 ## Recent Changes
 

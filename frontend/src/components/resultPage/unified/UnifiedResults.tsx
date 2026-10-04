@@ -34,6 +34,12 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
+import ResultAlertModal, {
+  acknowledgementRefusal,
+  ResultAlert,
+} from "../ResultAlertModal";
+import { owedResultAlerts } from "./resultAlerts";
 import {
   serverPageArrowsProps,
   serverPageSizeOf,
@@ -89,6 +95,7 @@ import config from "../../../config.json";
 import SearchPatientForm from "../../patient/SearchPatientForm";
 import { PatientRecord } from "../../patient/types";
 import "./unified-results.scss";
+import { displayRange, rangeNotAppliedKey } from "../../common/rangeNotApplied";
 
 const replaceResultsUrl = (urlState: URLSearchParams) => {
   const query = urlState.toString();
@@ -104,11 +111,9 @@ const patientDisplayName = (patient: PatientRecord) =>
   (patient.subjectNumber ? ` (${patient.subjectNumber})` : "");
 
 /**
- * OGC-1020 (R1 of OGC-811) — unified /Results worklist.
- *
- * Consolidates the legacy result-entry routes behind the
- * `results.entry.unifiedRoute` site flag: one toolbar (search, Lab Unit,
- * date, status chips), a polymorphic result cell (FR-A1), a per-row
+ * OGC-1020 (R1 of OGC-811) — the /Results worklist, the one results-entry
+ * page: one toolbar (search, Lab Unit, date, status chips), a polymorphic
+ * result cell (FR-A1), a per-row
  * read-only→Edit→Save edit-state machine (FR-A2/A3), e-signature on Save
  * (FR-A4), per-analysis save scoping + optimistic version check + soft
  * presence (FR-O1–O3), and cross-domain rendering driven by the selected Lab
@@ -134,6 +139,7 @@ interface WorklistRow extends ResultCellRow, PanelRow {
   patientName?: string;
   sampleType?: string;
   normalRange?: string;
+  rangeNotAppliedReason?: string | null;
   analysisStatusId?: string;
   analysisLastupdated?: string;
   testResultComponentId?: string;
@@ -177,8 +183,29 @@ interface SaveResponse {
   calculated?: string[];
 }
 
-const UnifiedResults: React.FC = () => {
+/**
+ * Embedded in another screen (the Notebook's results modal, an
+ * Immunohistochemistry case), the worklist shows one order's rows and
+ * nothing else: no breadcrumb, heading or toolbar, and the address is left
+ * alone. {@code includeFinished} also lists finalized results.
+ */
+export interface UnifiedResultsProps {
+  accessionNumber?: string;
+  embedded?: boolean;
+  includeFinished?: boolean;
+}
+
+const UnifiedResults: React.FC<UnifiedResultsProps> = ({
+  accessionNumber: embeddedAccession,
+  embedded = false,
+  includeFinished = false,
+}) => {
   const intl = useIntl();
+  const syncUrl = (urlState: URLSearchParams) => {
+    if (!embedded) {
+      replaceResultsUrl(urlState);
+    }
+  };
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
@@ -233,6 +260,24 @@ const UnifiedResults: React.FC = () => {
   };
   const allowResultRejection =
     configurationProperties?.allowResultRejection === "true";
+  const alertInvalidResults =
+    configurationProperties?.ALERT_FOR_INVALID_RESULTS === "true";
+  // OGC-1417: the value a row's modal is asking about, and per row the value
+  // its user already confirmed or acknowledged
+  const [resultAlert, setResultAlert] = useState<{
+    key: string;
+    row: WorklistRow;
+    alerts: ResultAlert[];
+    phase: "entry" | "beforeSign" | "refusal";
+    customCriticalMessage?: string;
+  } | null>(null);
+  const confirmedRef = useRef<
+    Record<string, { value: string; kinds: string[] }>
+  >({});
+  const decisionRef = useRef<{
+    resolve: () => void;
+    reject: (reason: Error) => void;
+  } | null>(null);
   const [nceOpenKey, setNceOpenKey] = useState<string | null>(null);
   const [referralOrganizations, setReferralOrganizations] = useState<IdValue[]>(
     [],
@@ -438,7 +483,7 @@ const UnifiedResults: React.FC = () => {
         }
       }
       params.set("doRange", "false");
-      params.set("finished", "false");
+      params.set("finished", includeFinished ? "true" : "false");
       worklistUrl.current = "/rest/LogbookResults?" + params.toString();
       getFromOpenElisServer(worklistUrl.current, (results?: WorklistResponse) =>
         applyLoadedRows(results, savedRowKey),
@@ -453,7 +498,7 @@ const UnifiedResults: React.FC = () => {
       setOrDrop("accessionNumber", patientPK ? "" : labNumber);
       setOrDrop("testSectionId", patientPK ? "" : selectedLabUnit);
       setOrDrop("collectionDate", patientPK ? "" : collectionDate);
-      replaceResultsUrl(urlState);
+      syncUrl(urlState);
     },
     [
       searchText,
@@ -461,6 +506,8 @@ const UnifiedResults: React.FC = () => {
       collectionDate,
       selectedPatient,
       applyLoadedRows,
+      embedded,
+      includeFinished,
     ],
   );
 
@@ -468,7 +515,7 @@ const UnifiedResults: React.FC = () => {
   const openPatientSearch = () => {
     const urlState = new URLSearchParams(window.location.search);
     urlState.delete("patientId");
-    replaceResultsUrl(urlState);
+    syncUrl(urlState);
     setShowPatientSearch(true);
   };
 
@@ -489,7 +536,7 @@ const UnifiedResults: React.FC = () => {
     setRowStates({});
     const urlState = new URLSearchParams(window.location.search);
     urlState.delete("patientId");
-    replaceResultsUrl(urlState);
+    syncUrl(urlState);
   };
 
   useEffect(() => {
@@ -502,6 +549,13 @@ const UnifiedResults: React.FC = () => {
   // dashboard (?accessionNumber=) and refreshes of a loaded page
   // (?testSectionId=&collectionDate=&status=) reproduce the same view
   useEffect(() => {
+    if (embedded) {
+      if (embeddedAccession) {
+        setSearchText(embeddedAccession);
+        loadWorklist(embeddedAccession);
+      }
+      return;
+    }
     const urlState = new URLSearchParams(window.location.search);
     const accession = urlState.get("accessionNumber");
     const unit = urlState.get("testSectionId");
@@ -538,6 +592,9 @@ const UnifiedResults: React.FC = () => {
 
   // Keep the status chip in the URL too (client-side filter, no refetch)
   useEffect(() => {
+    if (embedded) {
+      return;
+    }
     const urlState = new URLSearchParams(window.location.search);
     if (statusFilter === "ALL") {
       urlState.delete("status");
@@ -824,11 +881,8 @@ const UnifiedResults: React.FC = () => {
 
   const handleSaveResponse = useCallback(
     (target: WorklistRow, response: SaveResponse | undefined) => {
-      if (!response) {
-        return;
-      }
       const key = worklistRowKey(target);
-      if (response.status === 409) {
+      if (response && response.status === 409) {
         // FR-O2: the stale editor loses — nothing merged, refresh offered.
         setStaleInfo((current) => ({
           ...current,
@@ -845,11 +899,17 @@ const UnifiedResults: React.FC = () => {
         }));
         return;
       }
-      if (response.status && response.status >= 400) {
+      if (!response || requestFailed(response)) {
         addNotification({
           title: intl.formatMessage({ id: "notification.title" }),
           message:
-            response.error || intl.formatMessage({ id: "error.save.msg" }),
+            serverMessage(response) ||
+            intl.formatMessage({
+              id:
+                !response || response.status === 0
+                  ? "error.results.save.noResponse"
+                  : "error.save.msg",
+            }),
           kind: NotificationKinds.error,
         });
         setNotificationVisible(true);
@@ -935,11 +995,19 @@ const UnifiedResults: React.FC = () => {
     [addNotification, intl, setNotificationVisible, loadWorklist],
   );
 
-  const handleSave = useCallback(
-    (row: WorklistRow) => {
+  const saveRow = useCallback(
+    (
+      row: WorklistRow,
+      acknowledged: { critical: boolean; invalid: boolean } = {
+        critical: false,
+        invalid: false,
+      },
+    ) => {
       // FR-O1: the payload names and carries exactly this analysis — never
       // the page. Untouched rows cannot be re-submitted or defaulted.
       const item: Record<string, unknown> = { ...row, isModified: true };
+      item.criticalAcknowledged = acknowledged.critical;
+      item.invalidResultConfirmed = acknowledged.invalid;
       // A referral saved against an already-saved result must leave that result
       // exactly as stored. The row carries the value the test reports, which is
       // rounded, so posting it back would quietly rewrite the stored one.
@@ -1016,8 +1084,19 @@ const UnifiedResults: React.FC = () => {
         `/rest/results-entry/analysis/${row.analysisId}/result`,
         JSON.stringify({ testResult: item }),
         (response: SaveResponse | undefined) => {
+          const refusal = acknowledgementRefusal(response);
+          if (refusal) {
+            setResultAlert({
+              key,
+              row,
+              alerts: refusal.alerts,
+              phase: "refusal",
+              customCriticalMessage: refusal.customCriticalMessage,
+            });
+            return;
+          }
           handleSaveResponse(row, response);
-          if (response && (!response.status || response.status < 400)) {
+          if (!requestFailed(response)) {
             setNoteDrafts((current) => {
               const next = { ...current };
               delete next[key];
@@ -1065,6 +1144,133 @@ const UnifiedResults: React.FC = () => {
       rowStates,
     ],
   );
+
+  const owedAlerts = useCallback(
+    (row: WorklistRow) =>
+      owedResultAlerts(row, {
+        alertInvalidResults,
+        writesValue: writesResultValue(
+          rowStates[worklistRowKey(row)] || "EMPTY",
+        ),
+      }),
+    [alertInvalidResults, rowStates],
+  );
+
+  const isConfirmed = (key: string, alert: ResultAlert) => {
+    const confirmed = confirmedRef.current[key];
+    return Boolean(
+      confirmed &&
+      confirmed.value === alert.value &&
+      confirmed.kinds.includes(alert.kind),
+    );
+  };
+
+  const markConfirmed = (key: string, alerts: ResultAlert[]) => {
+    if (!alerts.length) {
+      return;
+    }
+    const previous = confirmedRef.current[key];
+    const kinds =
+      previous && previous.value === alerts[0].value ? previous.kinds : [];
+    confirmedRef.current = {
+      ...confirmedRef.current,
+      [key]: {
+        value: alerts[0].value,
+        kinds: [...kinds, ...alerts.map((alert) => alert.kind)],
+      },
+    };
+  };
+
+  // OGC-1417: a value outside the valid range is questioned as soon as the
+  // field is left, keeping what was typed so it can be corrected. Leaving it
+  // for a button (Save) is not leaving it: Save asks before signing.
+  const handleValueBlur = useCallback(
+    (row: WorklistRow, nextFocus?: EventTarget | null) => {
+      if (nextFocus instanceof HTMLElement && nextFocus.closest("button")) {
+        return;
+      }
+      const key = worklistRowKey(row);
+      const alerts = owedAlerts(row).filter(
+        (alert) => alert.kind === "INVALID" && !isConfirmed(key, alert),
+      );
+      if (alerts.length) {
+        setResultAlert({ key, row, alerts, phase: "entry" });
+      }
+    },
+    [owedAlerts],
+  );
+
+  // OGC-1417: a critical value is acknowledged, and a value outside the valid
+  // range confirmed, before the save is signed: the pop-up comes first and the
+  // signature only once the user has answered it.
+  const beforeSign = useCallback(
+    (row: WorklistRow) =>
+      new Promise<void>((resolve, reject) => {
+        const key = worklistRowKey(row);
+        const alerts = owedAlerts(row).filter(
+          (alert) => !isConfirmed(key, alert),
+        );
+        if (!alerts.length) {
+          resolve();
+          return;
+        }
+        decisionRef.current = { resolve, reject };
+        setResultAlert({
+          key,
+          row,
+          alerts,
+          phase: "beforeSign",
+          customCriticalMessage: configurationProperties?.customCriticalMessage,
+        });
+      }),
+    [owedAlerts, configurationProperties],
+  );
+
+  const handleSave = useCallback(
+    (row: WorklistRow) => {
+      const key = worklistRowKey(row);
+      const confirmed = owedAlerts(row).filter((alert) =>
+        isConfirmed(key, alert),
+      );
+      saveRow(row, {
+        critical: confirmed.some((alert) => alert.kind === "CRITICAL"),
+        invalid: confirmed.some((alert) => alert.kind === "INVALID"),
+      });
+    },
+    [owedAlerts, saveRow],
+  );
+
+  const confirmResultAlert = () => {
+    if (!resultAlert) {
+      return;
+    }
+    const { key, alerts, phase } = resultAlert;
+    setResultAlert(null);
+    markConfirmed(key, alerts);
+    if (phase === "beforeSign") {
+      decisionRef.current?.resolve();
+      decisionRef.current = null;
+    } else if (phase === "refusal") {
+      const latest =
+        rows.find((candidate) => worklistRowKey(candidate) === key) ||
+        resultAlert.row;
+      saveRow(latest, {
+        critical: alerts.some((alert) => alert.kind === "CRITICAL"),
+        invalid: alerts.some((alert) => alert.kind === "INVALID"),
+      });
+    }
+  };
+
+  const correctResultAlert = () => {
+    if (!resultAlert) {
+      return;
+    }
+    const inputId = `unifiedResultValue-${resultAlert.key}`;
+    setResultAlert(null);
+    decisionRef.current?.reject(new Error("corrected"));
+    decisionRef.current = null;
+    window.setTimeout(() => document.getElementById(inputId)?.focus(), 0);
+  };
 
   // Gallery parity: accession leads (mono accent), identity as a sub-line, a
   // patient initials avatar on clinical rows (FR-M2/M3: no patient identity
@@ -1118,125 +1324,155 @@ const UnifiedResults: React.FC = () => {
   return (
     <>
       <AlertDialog />
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      {!embedded && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       {loading && (
         <Loading
           description={intl.formatMessage({ id: "label.results.loading" })}
+          withOverlay={!embedded}
         />
       )}
-      <Grid fullWidth className="unifiedResultsPage">
-        <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Heading>
-              <FormattedMessage id="sidenav.label.results" />
-              {domain !== "CLINICAL" && (
-                <Tag type="cyan" className="unifiedResultsDomainTag">
-                  {formatDomainMessage(intl, "label.results.domain", domain)}
-                </Tag>
-              )}
-            </Heading>
-          </Section>
-        </Column>
+      <Grid
+        fullWidth
+        className={`unifiedResultsPage${embedded ? " unifiedResultsEmbedded" : ""}`}
+        data-testid={embedded ? "unified-results-embedded" : undefined}
+      >
+        {!embedded && (
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Heading>
+                <FormattedMessage id="sidenav.label.results" />
+                {domain !== "CLINICAL" && (
+                  <Tag type="cyan" className="unifiedResultsDomainTag">
+                    {formatDomainMessage(intl, "label.results.domain", domain)}
+                  </Tag>
+                )}
+              </Heading>
+            </Section>
+          </Column>
+        )}
 
         {/* Toolbar: search + Lab Unit + date + patient (FR worklist toolbar) */}
-        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
-          {/* Carbon Search's labelText is visually hidden; render an explicit
+        {!embedded && (
+          <>
+            <Column
+              lg={3}
+              md={4}
+              sm={4}
+              className="unifiedResultsToolbarColumn"
+            >
+              {/* Carbon Search's labelText is visually hidden; render an explicit
               label so the toolbar fields align on one horizontal level */}
-          <div className="cds--label">
-            <FormattedMessage id="label.button.search" />
-          </div>
-          <Search
-            id="unifiedResultsSearch"
-            labelText={intl.formatMessage({ id: "label.results.search" })}
-            placeholder={intl.formatMessage({ id: "label.results.search" })}
-            value={searchText}
-            disabled={Boolean(selectedPatient)}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSearchText(e.target.value)
-            }
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === "Enter") {
-                loadWorklist();
-              }
-            }}
-          />
-        </Column>
-        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
-          <Select
-            id="unifiedResultsLabUnit"
-            labelText={intl.formatMessage({ id: "label.results.labUnit" })}
-            value={selectedLabUnit}
-            disabled={Boolean(selectedPatient)}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setSelectedLabUnit(e.target.value)
-            }
-          >
-            <SelectItem text="" value="" />
-            {labUnits.map((unit) => (
-              <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-            ))}
-          </Select>
-        </Column>
-        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
-          <DatePicker
-            datePickerType="single"
-            dateFormat="d/m/Y"
-            onChange={(dates: Date[]) => {
-              if (dates && dates.length) {
-                const d = dates[0];
-                setCollectionDate(
-                  `${String(d.getDate()).padStart(2, "0")}/${String(
-                    d.getMonth() + 1,
-                  ).padStart(2, "0")}/${d.getFullYear()}`,
-                );
-              } else {
-                setCollectionDate("");
-              }
-            }}
-          >
-            <DatePickerInput
-              id="unifiedResultsDate"
-              labelText={intl.formatMessage({ id: "label.results.date" })}
-              placeholder="dd/mm/yyyy"
-              disabled={Boolean(selectedPatient)}
-            />
-          </DatePicker>
-        </Column>
-        <Column
-          lg={3}
-          md={2}
-          sm={4}
-          className="unifiedResultsToolbarColumn unifiedResultsPatientColumn"
-        >
-          <div className="cds--label">&nbsp;</div>
-          <Button
-            kind="tertiary"
-            size="md"
-            data-testid="search-by-patient"
-            onClick={() =>
-              showPatientSearch
-                ? setShowPatientSearch(false)
-                : openPatientSearch()
-            }
-            disabled={loading}
-          >
-            <FormattedMessage id="label.results.searchByPatient" />
-          </Button>
-        </Column>
-        <Column
-          lg={4}
-          md={2}
-          sm={4}
-          className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
-        >
-          {/* spacer keeps the button on the same level as the labeled fields */}
-          <div className="cds--label">&nbsp;</div>
-          <Button size="md" onClick={() => loadWorklist()} disabled={loading}>
-            <FormattedMessage id="label.results.load" />
-          </Button>
-        </Column>
+              <div className="cds--label">
+                <FormattedMessage id="label.button.search" />
+              </div>
+              <Search
+                id="unifiedResultsSearch"
+                labelText={intl.formatMessage({ id: "label.results.search" })}
+                placeholder={intl.formatMessage({ id: "label.results.search" })}
+                value={searchText}
+                disabled={Boolean(selectedPatient)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchText(e.target.value)
+                }
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === "Enter") {
+                    loadWorklist();
+                  }
+                }}
+              />
+            </Column>
+            <Column
+              lg={3}
+              md={4}
+              sm={4}
+              className="unifiedResultsToolbarColumn"
+            >
+              <Select
+                id="unifiedResultsLabUnit"
+                labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                value={selectedLabUnit}
+                disabled={Boolean(selectedPatient)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setSelectedLabUnit(e.target.value)
+                }
+              >
+                <SelectItem text="" value="" />
+                {labUnits.map((unit) => (
+                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
+                ))}
+              </Select>
+            </Column>
+            <Column
+              lg={3}
+              md={4}
+              sm={4}
+              className="unifiedResultsToolbarColumn"
+            >
+              <DatePicker
+                datePickerType="single"
+                dateFormat="d/m/Y"
+                onChange={(dates: Date[]) => {
+                  if (dates && dates.length) {
+                    const d = dates[0];
+                    setCollectionDate(
+                      `${String(d.getDate()).padStart(2, "0")}/${String(
+                        d.getMonth() + 1,
+                      ).padStart(2, "0")}/${d.getFullYear()}`,
+                    );
+                  } else {
+                    setCollectionDate("");
+                  }
+                }}
+              >
+                <DatePickerInput
+                  id="unifiedResultsDate"
+                  labelText={intl.formatMessage({ id: "label.results.date" })}
+                  placeholder="dd/mm/yyyy"
+                  disabled={Boolean(selectedPatient)}
+                />
+              </DatePicker>
+            </Column>
+            <Column
+              lg={3}
+              md={2}
+              sm={4}
+              className="unifiedResultsToolbarColumn unifiedResultsPatientColumn"
+            >
+              <div className="cds--label">&nbsp;</div>
+              <Button
+                kind="tertiary"
+                size="md"
+                data-testid="search-by-patient"
+                onClick={() =>
+                  showPatientSearch
+                    ? setShowPatientSearch(false)
+                    : openPatientSearch()
+                }
+                disabled={loading}
+              >
+                <FormattedMessage id="label.results.searchByPatient" />
+              </Button>
+            </Column>
+            <Column
+              lg={4}
+              md={2}
+              sm={4}
+              className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
+            >
+              {/* spacer keeps the button on the same level as the labeled fields */}
+              <div className="cds--label">&nbsp;</div>
+              <Button
+                size="md"
+                onClick={() => loadWorklist()}
+                disabled={loading}
+              >
+                <FormattedMessage id="label.results.load" />
+              </Button>
+            </Column>
+          </>
+        )}
 
-        {(showPatientSearch || selectedPatient) && (
+        {!embedded && (showPatientSearch || selectedPatient) && (
           <Column lg={16} md={8} sm={4}>
             <div
               className="bordered-section-panel unifiedResultsPatientPanel"
@@ -1460,8 +1696,10 @@ const UnifiedResults: React.FC = () => {
                           {row.sampleType || "—"}
                         </TableCell>
                         <TableCell>
-                          {row.normalRange}{" "}
-                          {row.unitsOfMeasure ? row.unitsOfMeasure : ""}
+                          {displayRange(intl, row)}{" "}
+                          {row.unitsOfMeasure && !rangeNotAppliedKey(row)
+                            ? row.unitsOfMeasure
+                            : ""}
                         </TableCell>
                         <TableCell className="unifiedResultsValueCell">
                           <span className={accentClass(flag)}>
@@ -1470,6 +1708,9 @@ const UnifiedResults: React.FC = () => {
                               editable={isRowEditable(state)}
                               onValueChange={(field, value) =>
                                 handleValueChange(row, field, value)
+                              }
+                              onValueBlur={(nextFocus) =>
+                                handleValueBlur(row, nextFocus)
                               }
                             />
                           </span>
@@ -1511,6 +1752,7 @@ const UnifiedResults: React.FC = () => {
                               })} ${row.accessionNumber} - ${row.testName}`}
                               recordType="RESULT"
                               recordId={row.analysisId}
+                              onBeforeSign={() => beforeSign(row)}
                               onSign={() => handleSave(row)}
                               disabled={
                                 writesResultValue(state) &&
@@ -1636,6 +1878,7 @@ const UnifiedResults: React.FC = () => {
                                       })} ${row.accessionNumber} - ${row.testName}`}
                                       recordType="RESULT"
                                       recordId={row.analysisId}
+                                      onBeforeSign={() => beforeSign(row)}
                                       onSign={() => handleSave(row)}
                                       disabled={
                                         writesResultValue(state) &&
@@ -1712,6 +1955,14 @@ const UnifiedResults: React.FC = () => {
           />
         </Column>
       </Grid>
+      <ResultAlertModal
+        open={Boolean(resultAlert)}
+        alerts={resultAlert?.alerts || []}
+        mode={resultAlert?.phase === "entry" ? "entry" : "save"}
+        customCriticalMessage={resultAlert?.customCriticalMessage}
+        onConfirm={confirmResultAlert}
+        onCorrect={correctResultAlert}
+      />
     </>
   );
 };

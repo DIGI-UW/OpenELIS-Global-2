@@ -16,6 +16,7 @@ import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
+import org.openelisglobal.test.service.EffectiveTestStatusService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.test.valueholder.TestComparator;
@@ -55,6 +56,8 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     private TypeOfSampleTestService typeOfSampleTestService;
     @Autowired
     private PanelService panelService;
+    @Autowired
+    private EffectiveTestStatusService effectiveTestStatusService;
 
     @PostConstruct
     private synchronized void initializeGlobalVariables() {
@@ -101,9 +104,13 @@ public class TypeOfSampleServiceImpl extends AuditableBaseObjectServiceImpl<Type
     public synchronized List<Test> getActiveTestsBySampleTypeIdAndTestUnit(String sampleType, boolean b,
             List<String> testUnitIds) {
         List<Test> testList = getActiveTestsBySampleTypeId(sampleType, b);
+        // OGC-189 (M4): also drop tests whose lab unit is switched off. This
+        // filter used to consider only the test's own active flag, so a
+        // deactivated lab unit kept taking orders (QA LU-W-11/LU-W-12) — the
+        // unit's status did not participate in orderability at all.
         return testList.stream()
                 .filter(test -> test.getTestSection() == null || testUnitIds.contains(test.getTestSection().getId()))
-                .collect(Collectors.toList());
+                .filter(effectiveTestStatusService::isEffectivelyActive).collect(Collectors.toList());
     }
 
     @Override

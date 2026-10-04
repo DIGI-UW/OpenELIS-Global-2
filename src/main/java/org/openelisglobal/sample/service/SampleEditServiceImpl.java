@@ -1,6 +1,7 @@
 package org.openelisglobal.sample.service;
 
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
@@ -138,7 +139,14 @@ public class SampleEditServiceImpl implements SampleEditService {
         if (updatedSample == null) {
             updatedSample = sampleService.getSampleByAccessionNumber(form.getAccessionNumber());
         }
-        updatedSample.setPriority(form.getSampleOrderItems().getPriority());
+        Sample storedSample = new Sample();
+        storedSample.setId(updatedSample.getId());
+        sampleService.getData(storedSample);
+        if (!Objects.equals(updatedSample.getPriority(), form.getSampleOrderItems().getPriority())) {
+            updatedSample.setPriority(form.getSampleOrderItems().getPriority());
+            updatedSample.setSysUserId(sysUserId);
+            sampleChanged = true;
+        }
         String receivedDateForDisplay = updatedSample.getReceivedDateForDisplay();
         String collectionDateFromRecieveDate = null;
         boolean useReceiveDateForCollectionDate = !FormFields.getInstance().useField(Field.CollectionDate);
@@ -234,6 +242,8 @@ public class SampleEditServiceImpl implements SampleEditService {
         existingSampleHuman.setPatientId(patientId);
         if (orderArtifacts.getProvider() != null) {
             existingSampleHuman.setProviderId(orderArtifacts.getProvider().getId());
+        } else if (orderArtifacts.getDeletableSamplePersonRequester() != null) {
+            existingSampleHuman.setProviderId(null);
         }
         if (newSampleHuman) {
             sampleHumanService.insert(existingSampleHuman);
@@ -271,7 +281,7 @@ public class SampleEditServiceImpl implements SampleEditService {
         }
 
         if (sampleChanged) {
-            sampleService.update(updatedSample);
+            sampleService.updateAgainst(updatedSample, storedSample);
         }
 
         // seems like this is unused
@@ -380,7 +390,16 @@ public class SampleEditServiceImpl implements SampleEditService {
             sampleRequesterService.delete(orderArtifacts.getDeletableSampleOrganizationRequester());
         }
 
+        if (orderArtifacts.getDeletableSamplePersonRequester() != null) {
+            sampleRequesterService.delete(orderArtifacts.getDeletableSamplePersonRequester());
+        }
+
         persistSampleStorageLocation(addedSamples);
+
+        Sample versioned = entityManager.find(Sample.class, updatedSample.getId());
+        if (versioned != null) {
+            entityManager.lock(versioned, LockModeType.OPTIMISTIC_FORCE_INCREMENT);
+        }
 
         request.getSession().setAttribute("lastAccessionNumber", updatedSample.getAccessionNumber());
         request.getSession().setAttribute("lastPatientId", patientId);

@@ -207,3 +207,40 @@ describe("OrderLabel print URLs", () => {
     warnSpy.mockRestore();
   });
 });
+
+// OGC-1192 walk: an environmental order has no patient, and its Order Label
+// read "Lab Nr: DEV01260000000000314 | Patient: ,".
+describe("OrderLabel order label content", () => {
+  const originalOrderData = orderContextValue.orderData;
+  afterEach(() => {
+    orderContextValue.orderData = originalOrderData;
+  });
+
+  test("a patientless order names its sampling site instead of an empty patient", () => {
+    orderContextValue.orderData = {
+      sampleOrderItems: {
+        labNo: "LAB-100",
+        environmentalFields: { samplingSiteName: "Bekasi Tepi Sungai" },
+      },
+      patientProperties: {},
+    };
+    renderWithIntl(<OrderLabel />);
+
+    expect(
+      screen.getByText("Lab Nr: LAB-100 | Bekasi Tepi Sungai"),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/Patient: ,/)).toBeNull();
+  });
+
+  test("a clinical order still names its patient", () => {
+    orderContextValue.orderData = {
+      sampleOrderItems: { labNo: "LAB-100" },
+      patientProperties: { lastName: "Doe", firstName: "Jane" },
+    };
+    renderWithIntl(<OrderLabel />);
+
+    expect(
+      screen.getByText("Lab Nr: LAB-100 | Patient: Doe, Jane"),
+    ).toBeInTheDocument();
+  });
+});
