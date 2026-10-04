@@ -77,6 +77,9 @@ public abstract class Report implements IReportCreator {
     /** OGC-686: latest release date among those tests; null before any is seen. */
     private LocalDate accreditationReleaseDate;
 
+    private List<byte[]> accreditationLogos = new ArrayList<>();
+    private String accreditationNotesLine;
+
     @Override
     public void setRequestedReport(String report) {
         requestedReport = report;
@@ -187,12 +190,24 @@ public abstract class Report implements IReportCreator {
         AccreditationReportData accreditation = SpringContext.getBean(AccreditationReportService.class)
                 .resolve(accreditedCandidateTestIds, accreditationReleaseDate);
         List<byte[]> logos = accreditation.getLogos();
+        accreditationLogos = logos;
+        accreditationNotesLine = accreditation.getNotesLine();
         for (int slot = 0; slot < logos.size(); slot++) {
             reportParameters.put("accredLogo" + (slot + 1), new ByteArrayInputStream(logos.get(slot)));
         }
         if (accreditation.getNotesLine() != null) {
             reportParameters.put("accredNotesLine", accreditation.getNotesLine());
         }
+    }
+
+    /** OGC-686 — the accreditation logos to print, empty when nothing qualifies. */
+    protected List<byte[]> getAccreditationLogos() {
+        return accreditationLogos;
+    }
+
+    /** OGC-686 — the accreditation notes line, or null. */
+    protected String getAccreditationNotesLine() {
+        return accreditationNotesLine;
     }
 
     @Override

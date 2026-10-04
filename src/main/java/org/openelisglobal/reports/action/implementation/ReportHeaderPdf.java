@@ -12,6 +12,7 @@ import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
+import org.openpdf.text.Chunk;
 import org.openpdf.text.Document;
 import org.openpdf.text.Element;
 import org.openpdf.text.Font;
@@ -34,6 +35,7 @@ final class ReportHeaderPdf {
     private static final Font TITLE_FONT = new Font(Font.HELVETICA, 13, Font.BOLD);
     private static final Font MANAGER_FONT = new Font(Font.HELVETICA, 9);
     private static final float LOGO_SIZE = 70;
+    private static final float ACCREDITATION_LOGO_SIZE = 30;
 
     private ReportHeaderPdf() {
     }
@@ -66,6 +68,15 @@ final class ReportHeaderPdf {
     }
 
     static void add(Document document, String title, List<String> nameLines) {
+        add(document, title, nameLines, List.of(), null);
+    }
+
+    /**
+     * As above, with the accreditation logos and notes line (OGC-686) under the
+     * title when the report's tests qualify.
+     */
+    static void add(Document document, String title, List<String> nameLines, List<byte[]> accreditationLogos,
+            String accreditationNotesLine) {
         PdfPTable header = new PdfPTable(new float[] { 1, 4, 1 });
         header.setWidthPercentage(100);
         header.addCell(logo("headerLeftImage", Element.ALIGN_LEFT));
@@ -75,6 +86,20 @@ final class ReportHeaderPdf {
         }
         centre.add(new Phrase(title, TITLE_FONT));
         centre.setAlignment(Element.ALIGN_CENTER);
+        for (byte[] logo : accreditationLogos) {
+            try {
+                Image image = Image.getInstance(logo);
+                image.scaleToFit(ACCREDITATION_LOGO_SIZE, ACCREDITATION_LOGO_SIZE);
+                centre.add(new Chunk(image, 0, 0, true));
+                centre.add(new Chunk(" "));
+            } catch (Exception e) {
+                LogEvent.logError(ReportHeaderPdf.class.getSimpleName(), "add",
+                        "Unreadable accreditation logo: " + e.getMessage());
+            }
+        }
+        if (!GenericValidator.isBlankOrNull(accreditationNotesLine)) {
+            centre.add(new Phrase("\n" + accreditationNotesLine, MANAGER_FONT));
+        }
         PdfPCell centreCell = new PdfPCell();
         centreCell.addElement(centre);
         centreCell.setBorder(Rectangle.NO_BORDER);
