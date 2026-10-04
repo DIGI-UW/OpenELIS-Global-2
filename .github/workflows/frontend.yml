@@ -9,6 +9,14 @@ on:
   workflow_dispatch:
   workflow_call:
 
+# A new push to a pull request cancels that PR's run still in progress. Other
+# events get a group of their own, so develop pushes, releases and manual runs
+# are never cancelled. The literal prefix keeps the group distinct when this
+# workflow is called from another one.
+concurrency:
+  group: frontend-${{ github.event_name == 'pull_request' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 env:
   DOCKER_NAME: ${{ vars.DOCKERHUB_USERNAME }}/${{ github.event.repository.name }}-frontend
 
