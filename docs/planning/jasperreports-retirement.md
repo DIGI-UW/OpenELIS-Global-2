@@ -122,6 +122,12 @@ reports `.gitignore` listed only tracked files and was removed with them.
 - Study report signatures: the study reports no longer draw the fixed signature
   images (`ALLSign.jpg`, `EIDSign.jpg`, `VLSign.jpg`); like the fixed CIRBA
   header, a signature naming one physician is site identity. Decided 2026-10-04.
+- Study indeterminate results: `Patient_Indeterminate_Version1`,
+  `Patient_Indeterminate_Version2` and `Patient_Indeterminate_ByLocation` are
+  drawn by `StudyIndeterminateResultsPdf` for `PatientIndeterminateReport` and
+  its three report classes. With them goes `Patient_ARV_Followup_patient_info`,
+  the patient block `StudyPatientBlockPdf` replaced, and `CILNSPHeader`, which
+  nothing loaded once the non-conformity checklist was ported.
 - Study non-conformity: `NonConformityNotification`,
   `RetroCI_FollowupRequired_ByLocation` and `retroCINonConformityByLabno` are
   drawn by `StudyNonConformityPdf` for `RetroCINonConformityNotification`,
@@ -132,13 +138,12 @@ reports `.gitignore` listed only tracked files and was removed with them.
 
 ### Live reports
 
-18 templates remain. Grouped by family, with the code that loads them:
+13 templates remain. Grouped by family, with the code that loads them:
 
 | Family                     | Templates                                                                                                                                                                                                                                                | Loaded by                                                                                                                               |
 | -------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
 | Patient results            | `PatientReportCDI`, `PatientClinicalReport`, `TBPatientReport`, `PatientPathologyReport`, `PatientCytologyReport`, `PatientImmunoChemistryReport`, `PatientImmunoChemistryResults`, `DualInSituHybridizationReport`, `BreastCancerHormoneReceptorReport` | `PatientCILNSPClinical`, `PatientClinicalReport`, `TBPatientReport`, the pathology report creators                                      |
-| Shared headers and footers | `CDIHeader`, `CILNSPHeader`, `CILNSPFooter`, `GeneralHeader`, `RetroCIHeader`                                                                                                                                                                            | subreports of the families above, chosen through the `headerName` parameter; `CILNSPFooter` is passed by name, but no template draws it |
-| Study patient reports      | `Patient_ARV_Followup_patient_info`, `Patient_Indeterminate_Version1`, `Patient_Indeterminate_Version2`, `Patient_Indeterminate_ByLocation`                                                                                                              | `PatientIndeterminateReport`, `PatientIndeterminateByLocationReport`                                                                    |
+| Shared headers and footers | `CDIHeader`, `CILNSPFooter`, `GeneralHeader`, `RetroCIHeader`                                                                                                                                                                                            | subreports of the families above, chosen through the `headerName` parameter; `CILNSPFooter` is passed by name, but no template draws it |
 
 ### Code outside PDF reports that touches these libraries
 
@@ -172,7 +177,7 @@ land.
 | 6    | Port the indicators, in four PRs: the HIV summary and lab aggregate; the confirmation summary with its table component; the statistics report, which shares their `IndicatorReport` base; the realisation report and the section performance bar chart                                                                                                                                                                                                             | in review                           |
 | 7    | Port the cold storage report                                                                                                                                                                                                                                                                                                                                                                                                                                       | in review                           |
 | 8    | Port the patient result reports, in three PRs: the routine patient report (`PatientReportCDI_vreduit`) with the accreditation logos in the shared header and the site's paper size setting for every code-built PDF, its layout signed off by a reviewer from before/after page images; the other clinical reports and the TB report; the pathology family, which also removes `PatientReport`'s Jasper plumbing and the `CDIHeader` and `CILNSPFooter` subreports | first PR in draft for layout review |
-| 9    | Port the study patient reports, in four PRs: the antiretroviral results; the early infant diagnosis results; the viral load results; the indeterminate results, which also removes the `Patient_ARV_Followup_patient_info` subreport                                                                                                                                                                                                                               | first three PRs in review           |
+| 9    | Port the study patient reports, in four PRs: the antiretroviral results; the early infant diagnosis results; the viral load results; the indeterminate results, which also removes the `Patient_ARV_Followup_patient_info` subreport                                                                                                                                                                                                                               | in review                           |
 | 10   | Port the study non-conformity reports, in two PRs: the client notification and the follow-up list; the non-conformity checklist by lab number                                                                                                                                                                                                                                                                                                                      | in review                           |
 | 11   | Remove `jasperreports`, `jasperreports-fonts`, the remaining templates, `JRHibernateDataSource` and the Jasper types in `IReportCreator` / `Report`; give `CertificateFonts` its own DejaVu source; re-check whether `jfreechart` and `barbecue` are still used                                                                                                                                                                                                    | not started                         |
 
