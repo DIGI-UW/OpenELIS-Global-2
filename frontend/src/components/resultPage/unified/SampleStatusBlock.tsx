@@ -193,7 +193,10 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             kind="danger"
             size="sm"
             disabled={busy}
-            onClick={() => setDisposing(true)}
+            onClick={() => {
+              setDisposing(true);
+              setDisposalSubmitted(false);
+            }}
             data-testid="start-disposal"
           >
             <FormattedMessage id="label.results.sampleStatus.startDisposal" />
@@ -324,6 +327,7 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             size="sm"
             disabled={busy}
             onClick={() => setDisposing(false)}
+            data-testid="cancel-disposal"
           >
             <FormattedMessage id="label.button.cancel" />
           </Button>

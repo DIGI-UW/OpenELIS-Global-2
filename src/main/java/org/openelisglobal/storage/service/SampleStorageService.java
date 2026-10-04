@@ -75,11 +75,11 @@ public interface SampleStorageService {
 
     /**
      * Record usage against a SampleItem's remaining quantity (OGC-1026, Results
-     * Entry v3 R7). Partial use decrements {@code remainingQuantity} (never below
-     * zero); {@code markUsedUp} zeroes it — "exhausted" is remaining == 0, not a
-     * status, and disposal stays an explicit follow-up step. The update rides
-     * {@code SampleItemService.update} so the global audit row reflects the acting
-     * user.
+     * Entry v3 R7). Partial use decrements {@code remainingQuantity} and refuses an
+     * amount above it; {@code markUsedUp} zeroes it — "exhausted" is remaining ==
+     * 0, not a status, and disposal stays an explicit follow-up step. The update
+     * rides {@code SampleItemService.update} so the global audit row reflects the
+     * acting user.
      *
      * @param sampleItemId flexible identifier (internal id, accession number, or
      *                     external id)

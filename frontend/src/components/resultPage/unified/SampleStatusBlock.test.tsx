@@ -194,6 +194,32 @@ describe("SampleStatusBlock (R7 / D13)", () => {
     expect(screen.getByText("This field is required")).toBeInTheDocument();
   });
 
+  it("reopening the disposal form after Cancel shows no required-field errors", () => {
+    wrap(
+      <SampleStatusBlock
+        sampleItemId="17"
+        snapshot={{ quantity: 5, remainingQuantity: 0, unitOfMeasure: "mL" }}
+        editable
+        onChanged={() => {}}
+      />,
+    );
+    fireEvent.click(screen.getByTestId("start-disposal"));
+    fireEvent.click(screen.getByTestId("confirm-disposal"));
+    expect(screen.getAllByText("This field is required")).toHaveLength(2);
+
+    fireEvent.click(screen.getByTestId("cancel-disposal"));
+    fireEvent.click(screen.getByTestId("start-disposal"));
+
+    expect(
+      screen.queryByText("This field is required"),
+    ).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Disposal method")).not.toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(postMock).not.toHaveBeenCalled();
+  });
+
   it("disposed sample shows the status with no actions", () => {
     wrap(
       <SampleStatusBlock

@@ -452,26 +452,19 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
-            java.math.BigDecimal baseline = sampleItem.getRemainingQuantity();
-            if (baseline == null && sampleItem.getQuantity() != null) {
-                baseline = java.math.BigDecimal.valueOf(sampleItem.getQuantity());
-            }
-
-            java.math.BigDecimal newRemaining;
             if (markUsedUp) {
-                newRemaining = java.math.BigDecimal.ZERO;
+                sampleItem.setRemainingQuantity(java.math.BigDecimal.ZERO);
             } else {
                 if (amountUsed == null || amountUsed.signum() <= 0) {
                     throw new LIMSRuntimeException("Amount used must be a positive number");
                 }
-                if (baseline == null) {
+                if (sampleItem.getRemainingQuantity() == null && sampleItem.getQuantity() == null) {
                     throw new LIMSRuntimeException("SampleItem does not track a quantity; use mark-used-up instead");
                 }
                 sampleItem.decrementRemainingQuantity(amountUsed);
-                newRemaining = sampleItem.getRemainingQuantity();
             }
+            java.math.BigDecimal newRemaining = sampleItem.getRemainingQuantity();
 
-            sampleItem.setRemainingQuantity(newRemaining);
             sampleItem.setSysUserId(sysUserId);
             sampleItemService.update(sampleItem);
 
