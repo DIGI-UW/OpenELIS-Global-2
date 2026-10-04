@@ -76,7 +76,7 @@ public abstract class ActivityReport extends Report implements IReportCreator {
         }
         return ManagementReportPdf.render(PageSize.A4.rotate(), MessageUtil.getMessage("report.activity"),
                 getActivityLabel(), dateRange, headers,
-                new float[] { 2.4f, 1.1f, 1.1f, 1.8f, 2.4f, 1.4f, 1.6f, 1.7f, 0.9f, 0.9f }, rows);
+                new float[] { 2.4f, 1.1f, 1.1f, 1.8f, 2.2f, 1.2f, 1.5f, 1.7f, 1.3f, 1.3f }, rows);
     }
 
     private static String patientName(ActivityReportBean item) {

@@ -43,6 +43,7 @@ public class ActivityReportTest extends BaseWebContextSensitiveTest {
         assertTrue(text, text.contains("Collection Date"));
         assertTrue(text, text.contains("Patient Name"));
         assertFalse("every header resolves to a message: " + text, text.contains("barcode.label.info"));
+        assertTrue("headers wrap between words: " + text, text.contains("Turnaround"));
         assertTrue(text, text.contains("DEV0126000000000101 30/09/26 01/10/26 NID-1 / REF-1"));
         assertTrue(text, text
                 .contains("DEV0126000000000101 Doe, Jane Glucose Finalized 5.4 mmol/L 02/10/2026 10:00 1.10 26.50"));
