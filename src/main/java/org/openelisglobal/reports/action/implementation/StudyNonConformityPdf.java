@@ -212,7 +212,7 @@ final class StudyNonConformityPdf {
             { "Echantillon pour charge virale de plus de 6h", "Sample_VL_Late" },
             { "Fiche entachée de sang", "bloodstained.form" }, { "Erreur de tube de prélèvement", "Error_Sample" } };
 
-    private static PdfPTable tubeReasons(ChecklistMarks marks) {
+    static PdfPTable tubeReasons(ChecklistMarks marks) {
         PdfPTable table = new PdfPTable(new float[] { 170, 188, 193 });
         table.setWidthPercentage(100);
         addReasonHeader(table, 2);
@@ -252,7 +252,7 @@ final class StudyNonConformityPdf {
      * The request form reasons and the DBS box (tube form only), then the other
      * reasons, described by hand.
      */
-    private static PdfPTable otherReasons(ChecklistMarks marks, boolean earlyInfantDiagnosis) {
+    static PdfPTable otherReasons(ChecklistMarks marks, boolean earlyInfantDiagnosis) {
         PdfPTable table = new PdfPTable(new float[] { 190, 40, 280, 41 });
         table.setWidthPercentage(100);
         table.setSpacingBefore(earlyInfantDiagnosis ? 10 : 0);
@@ -291,7 +291,7 @@ final class StudyNonConformityPdf {
     }
 
     /** The sections the order's non-conformities came from. */
-    private static void addSections(Document document, ARVReportData order) {
+    static void addSections(Document document, ARVReportData order) {
         PdfPTable first = new PdfPTable(new float[] { 52, 40, 18, 62, 18, 58, 18, 100, 18, 72, 18 });
         first.setWidthPercentage(100);
         first.setSpacingBefore(8);
@@ -319,7 +319,7 @@ final class StudyNonConformityPdf {
     }
 
     /** The early infant diagnosis form asks for a new DBS card. */
-    private static PdfPTable conclusion(boolean earlyInfantDiagnosis) {
+    static PdfPTable conclusion(boolean earlyInfantDiagnosis) {
         PdfPTable table = new PdfPTable(1);
         table.setWidthPercentage(100);
         table.setSpacingBefore(10);

@@ -13,14 +13,17 @@
  */
 package org.openelisglobal.reports.action.implementation;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IReportTrackingService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.ReportTrackingService;
@@ -62,8 +65,8 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         data.setBirth_date(reportPatient.getBirthDateForDisplay());
         data.setAge(DateUtil.getCurrentAgeForDate(reportPatient.getBirthDate(), reportSample.getCollectionDate()));
         data.setGender(reportPatient.getGender());
-        data.setCollectiondate(
-                reportSample.getCollectionDateForDisplay() + " " + reportSample.getCollectionTimeForDisplay());
+        data.setCollectiondate(reportSample.getCollectionDate() == null ? null
+                : reportSample.getCollectionDateForDisplay() + " " + reportSample.getCollectionTimeForDisplay());
         data.setReceptiondate(DateUtil.convertTimestampToStringDate(reportSample.getReceivedTimestamp()));
 
         SampleOrganization sampleOrg = new SampleOrganization();
@@ -77,13 +80,42 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         data.getSampleQaEventItems(reportSample);
     }
 
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
+    /**
+     * Whether the report lists each result beside its reference values for men and
+     * women.
+     */
+    protected boolean usesVersionTwoLayout() {
+        return false;
+    }
 
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    @Override
+    protected byte[] renderReport() {
+        StudyArvResultsPdf.Settings settings = new StudyArvResultsPdf.Settings(
+                Objects.toString(reportParameters.get("studyName"), ""), images());
+        return usesVersionTwoLayout() ? StudyArvResultsPdf.versionTwo(reportItems, settings)
+                : StudyArvResultsPdf.versionOne(reportItems, settings);
+    }
+
+    /** The section reference images and signatures the web application ships. */
+    private StudyArvResultsPdf.Images images() {
+        Object imagesPath = reportParameters.get("imagesPath");
+        if (imagesPath == null) {
+            return StudyArvResultsPdf.Images.NONE;
+        }
+        return new StudyArvResultsPdf.Images(image(imagesPath, "HEMATO_LaboRef.jpg"),
+                image(imagesPath, "IMMUNO_LaboRef.jpg"), image(imagesPath, "BIOCH_LaboRef.jpg"),
+                image(imagesPath, "SERO_LaboRef.jpg"), image(imagesPath, "ALLSign.jpg"));
+    }
+
+    private static byte[] image(Object imagesPath, String fileName) {
+        Path file = Path.of(imagesPath.toString(), fileName);
+        try {
+            return Files.isReadable(file) ? Files.readAllBytes(file) : null;
+        } catch (IOException e) {
+            LogEvent.logError(PatientARVReport.class.getSimpleName(), "image",
+                    "Unreadable report image " + file + ": " + e.getMessage());
+            return null;
+        }
     }
 
     @Override
