@@ -57,8 +57,11 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      */
     Integer getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException;
 
+    Double getTotalUsableQuantity(Long itemId) throws LIMSRuntimeException;
+
     /**
      * Get lot by FHIR UUID
      */
     InventoryLot getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
+
 }

@@ -8,6 +8,7 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.service.InventoryManagementService.ConsumptionRecord;
 import org.openelisglobal.inventory.service.InventoryManagementService.InventoryAlerts;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryTransaction;
@@ -150,4 +151,34 @@ public class InventoryManagementServiceIT extends BaseWebContextSensitiveTest {
         boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 200.0);
         assertFalse("Should not have sufficient inventory", available);
     }
+
+    @Test
+    public void isSufficientInventoryAvailable_shouldReturnFalseWhenAllLotsAreQcFailed() {
+        inventoryLotService.updateQCStatus(1L, QCStatus.FAILED, "QC failed", "1");
+        inventoryLotService.updateQCStatus(2L, QCStatus.FAILED, "QC failed", "1");
+
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 10.0);
+        assertFalse("Should not have sufficient inventory when all lots are QC failed", available);
+    }
+
+    @Test
+    public void isSufficientInventoryAvailable_shouldReturnFalseWhenAllLotsHaveZeroQuantity() {
+        inventoryLotService.adjustLotQuantity(1L, 0.0, "Drained to zero", "1");
+        inventoryLotService.adjustLotQuantity(2L, 0.0, "Drained to zero", "1");
+
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 10.0);
+        assertFalse("Should not have sufficient inventory when all lots have zero quantity", available);
+    }
+
+    @Test
+    public void isSufficientInventoryAvailable_shouldExcludeQcFailedLotsFromUsableTotal() {
+        inventoryLotService.updateQCStatus(2L, QCStatus.FAILED, "QC failed", "1");
+
+        boolean available = inventoryManagementService.isSufficientInventoryAvailable(1L, 100.0);
+        assertTrue("Should have sufficient inventory from usable lot only", available);
+
+        boolean notAvailable = inventoryManagementService.isSufficientInventoryAvailable(1L, 150.0);
+        assertFalse("Should not count QC failed lot toward available inventory", notAvailable);
+    }
+
 }
