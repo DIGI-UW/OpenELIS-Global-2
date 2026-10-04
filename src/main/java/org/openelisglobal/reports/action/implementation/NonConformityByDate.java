@@ -123,8 +123,8 @@ public abstract class NonConformityByDate extends Report implements IReportCreat
                 } else {
                     data.setAccessionNumber(sample.getAccessionNumber());
                 }
-                data.setSubjectNumber(patient.getNationalId());
-                data.setSiteSubjectNumber(patient.getExternalId());
+                data.setSubjectNumber(patient == null ? "" : patient.getNationalId());
+                data.setSiteSubjectNumber(patient == null ? "" : patient.getExternalId());
                 data.setStudy((project != null) ? project.getLocalizedName() : "");
                 data.setService(service);
                 data.setReceivedDate(sample.getReceivedDateForDisplay() + " " + sample.getReceivedTimeForDisplay());
