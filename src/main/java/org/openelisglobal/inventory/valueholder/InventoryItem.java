@@ -80,6 +80,16 @@ public class InventoryItem extends BaseObject<Long> {
     @Min(0)
     private Integer lowStockThreshold;
 
+    /**
+     * Days between placing an order for this item and it arriving. Local to this
+     * lab: the same product takes different times to reach different sites, so it
+     * is never seeded from a shared catalog. Null means none has been entered and
+     * the board falls back to a marked placeholder.
+     */
+    @Column(name = "lead_time_days")
+    @Min(value = 0, message = "Lead time cannot be negative")
+    private Integer leadTimeDays;
+
     @Column(name = "expiration_alert_days")
     @Min(1)
     private Integer expirationAlertDays;
