@@ -3,6 +3,7 @@ package org.openelisglobal.reports.action.implementation;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.reports.action.implementation.reportBeans.VLReportData;
 import org.openpdf.text.Document;
@@ -219,6 +220,8 @@ final class StudyVlResultsPdf {
             }
             column.addElement(new Paragraph(String.join("\n", THRESHOLDS), SMALL_FONT));
             column.go();
+            ColumnText.showTextAligned(writer.getDirectContent(), Element.ALIGN_RIGHT,
+                    new Phrase(DateUtil.getCurrentDateAsText(), SMALL_FONT), document.right(), 22, 0);
         }
     }
 }

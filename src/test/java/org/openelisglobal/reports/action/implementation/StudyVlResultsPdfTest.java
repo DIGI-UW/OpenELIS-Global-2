@@ -8,6 +8,7 @@ import java.util.Arrays;
 import java.util.List;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.VLReportData;
 import org.openelisglobal.testsupport.PdfText;
 
@@ -66,7 +67,9 @@ public class StudyVlResultsPdfTest extends BaseWebContextSensitiveTest {
         assertLine(checklist, "Echantillon Hémolysé X");
         assertLine(checklist, "Section: Saisie Réception X Biochimie Immunologie(CD4) Charge virale X");
         for (int number = 1; number <= 2; number++) {
-            assertLine(lines(PdfText.ofPage(pdf, number)), "Seuil de détection de la technique CV/PL : 20 copies /mL");
+            List<String> footer = lines(PdfText.ofPage(pdf, number));
+            assertLine(footer, "Seuil de détection de la technique CV/PL : 20 copies /mL");
+            assertLine(footer, DateUtil.getCurrentDateAsText());
         }
     }
 
