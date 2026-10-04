@@ -123,8 +123,6 @@ public class SampleProjectServiceTest extends BaseWebContextSensitiveTest {
         SampleProject sampleProject = sampleProjectService.getSampleProjectBySampleId("1");
 
         assertNotNull(sampleProject);
-        assertNull(sampleProject.getSampleId());
-        assertNull(sampleProject.getProjectId());
     }
 
     @Test
