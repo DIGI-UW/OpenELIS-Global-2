@@ -14,9 +14,9 @@
         samp_id="201" collection_date="2023-11-15 10:00:00"
         lastupdated="2023-12-01 12:00:00" />
 
-    <type_of_test_result id="201" description="Numeric"
+    <type_of_test_result id="4" description="Numeric"
         test_result_type="N" hl7_value="NM" lastupdated="2023-11-01 12:00:00" />
-    <type_of_test_result id="4" description="Alpha"
+    <type_of_test_result id="201" description="Alpha"
         test_result_type="A" hl7_value="ST" lastupdated="2023-11-01 12:00:00" />
     <type_of_test_result id="203"
         description="Dictionary" test_result_type="D" hl7_value="CE"
@@ -44,14 +44,14 @@
         revision="1" status="A" analysis_type="Medical" />
 
     <result_limits id="1" test_id="7001"
-        test_result_type_id="201" min_age="0" max_age="18" gender="M"
+        test_result_type_id="4" min_age="0" max_age="18" gender="M"
         low_normal="4.0" high_normal="10.0" low_valid="2.0" high_valid="15.0"
         low_reporting_range="2.0" high_reporting_range="15.0"
         lastupdated="2025-06-01 10:00:00" normal_dictionary_id="301"
         always_validate="true" />
 
     <result_limits id="2" test_id="7002"
-        test_result_type_id="4" min_age="19" max_age="60" gender="F"
+        test_result_type_id="201" min_age="19" max_age="60" gender="F"
         low_normal="3.5" high_normal="9.5" low_valid="1.5" high_valid="12.0"
         low_reporting_range="1.5" high_reporting_range="12.0"
         lastupdated="2025-06-02 11:30:00" always_validate="false" />
@@ -61,4 +61,41 @@
         low_normal="2.0" high_normal="8.0" low_valid="1.0" high_valid="10.0"
         low_reporting_range="1.0" high_reporting_range="10.0"
         lastupdated="2025-06-03 09:15:00" always_validate="true" />
+
+    <!-- site_information_domain for result age ranges (id=16, mirrors production
+        seed) -->
+    <site_information_domain id="16"
+        name="resultAgeRange" description="The maximum age range in months" />
+
+    <!-- Predefined age-range entries consumed by ResultLimitServiceImpl.getPredefinedAgeRanges() -->
+    <site_information id="87" name="new born"
+        description="max age of a new born" value="1" encrypted="false"
+        domain_id="16" value_type="text"
+        instruction_key="instrution.result.age"
+        name_key="site.info.result.age.newborn"
+        lastupdated="2023-01-01 00:00:00" />
+    <site_information id="88" name="infant"
+        description="max age of an infant" value="12" encrypted="false"
+        domain_id="16" value_type="text"
+        instruction_key="instrution.result.age"
+        name_key="site.info.result.age.infant"
+        lastupdated="2023-01-01 00:00:00" />
+    <site_information id="89" name="young child"
+        description="max age of a young child" value="60" encrypted="false"
+        domain_id="16" value_type="text"
+        instruction_key="instrution.result.age"
+        name_key="site.info.result.age.youngchild"
+        lastupdated="2023-01-01 00:00:00" />
+    <site_information id="90" name="child"
+        description="max age of a child" value="168" encrypted="false"
+        domain_id="16" value_type="text"
+        instruction_key="instrution.result.age"
+        name_key="site.info.result.age.child"
+        lastupdated="2023-01-01 00:00:00" />
+    <site_information id="91" name="adult"
+        description="max age of an adult" value="Infinity" encrypted="false"
+        domain_id="16" value_type="text"
+        instruction_key="instrution.result.age"
+        name_key="site.info.result.age.adult"
+        lastupdated="2023-01-01 00:00:00" />
 </dataset>
