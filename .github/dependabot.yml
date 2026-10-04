@@ -1,39 +1,67 @@
+# One pull request per ecosystem per month for version updates, and one per
+# ecosystem for security fixes. Major versions are upgrades we plan, so
+# Dependabot does not propose them; security fixes are not held back by the
+# cooldown.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /
     target-branch: develop
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
       maven-minor-and-patch:
         update-types: [minor, patch]
+      maven-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: npm
     directory: /frontend
     target-branch: develop
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
     target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
+        patterns: ["*"]
+      github-actions-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   - package-ecosystem: docker
     directories: [/, /db, /fhir, /frontend, /nginx-proxy]
     target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
       docker-images:
         patterns: ["*"]
@@ -42,4 +70,7 @@ updates:
     directory: /
     target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
+    groups:
+      submodules:
+        patterns: ["*"]
