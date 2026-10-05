@@ -64,6 +64,49 @@ class DockerEndpointTest(unittest.TestCase):
 
 
 class BrowserPlanTest(unittest.TestCase):
+    def test_browser_stack_uses_its_workflows_resource_and_scenario_settings(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            (root / "scripts").mkdir()
+            (root / ".env").touch()
+            runner = root / "scripts/run-e2e-like-ci.sh"
+            runner.write_text((ROOT / "scripts/run-e2e-like-ci.sh").read_text())
+            docker = root / "docker"
+            docker.write_text(
+                '#!/bin/sh\n'
+                'printf "%s\\n" "$@" > "$PARITY_COMMAND_FILE"\n'
+                'printf "%s" "$OE_UAT_SCENARIOS_ENABLED" > "$PARITY_SCENARIO_FILE"\n'
+                'exit 73\n'
+            )
+            docker.chmod(0o755)
+            for suite, memory_limits, scenarios in (
+                ("core", True, "true"),
+                ("cypress-core", False, "false"),
+                ("cypress-independent", False, "false"),
+            ):
+                with self.subTest(suite=suite):
+                    command_file = root / "command.txt"
+                    scenario_file = root / "scenario.txt"
+                    env = os.environ.copy()
+                    env.update(
+                        PATH=directory + os.pathsep + env["PATH"],
+                        PARITY_COMMAND_FILE=str(command_file),
+                        PARITY_SCENARIO_FILE=str(scenario_file),
+                        OE_UAT_SCENARIOS_ENABLED="true",
+                    )
+                    result = subprocess.run(
+                        ["bash", str(runner), "--suite", suite, "--no-build"],
+                        cwd=root, env=env, capture_output=True, text=True,
+                    )
+                    self.assertEqual(result.returncode, 73, result.stderr)
+                    command = command_file.read_text().splitlines()
+                    self.assertIn(str(root / "build.docker-compose.worktree.yml"), command)
+                    self.assertEqual(
+                        str(root / ".github/ci/ci.memory-limits.yml") in command,
+                        memory_limits,
+                    )
+                    self.assertEqual(scenario_file.read_text(), scenarios)
+
     def test_browser_lane_executes_workflow_jobs_and_reports_failure(self):
         with tempfile.TemporaryDirectory() as directory:
             (Path(directory) / "checkouts/e2e").mkdir(parents=True)

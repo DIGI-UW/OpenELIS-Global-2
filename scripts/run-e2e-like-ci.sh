@@ -84,9 +84,16 @@ if [[ -n "${OE_CI_PROJECT_FILE:-}" ]]; then
 fi
 
 COMPOSE=(docker compose -p "$E2E_STACK_PROJECT"
-         -f "$PROJECT_ROOT/build.docker-compose.yml"
-         -f "$PROJECT_ROOT/.github/ci/ci.memory-limits.yml"
-         -f "$PROJECT_ROOT/build.docker-compose.worktree.yml")
+         -f "$PROJECT_ROOT/build.docker-compose.yml")
+# Cypress's workflow uses the base stack; Playwright adds its memory limits and
+# application scenario API. Preserve that distinction in local validation.
+if [[ "$SUITE" == core ]]; then
+  COMPOSE+=(-f "$PROJECT_ROOT/.github/ci/ci.memory-limits.yml")
+  export OE_UAT_SCENARIOS_ENABLED=true
+else
+  export OE_UAT_SCENARIOS_ENABLED=false
+fi
+COMPOSE+=(-f "$PROJECT_ROOT/build.docker-compose.worktree.yml")
 if [[ "$CLEANUP" == true ]]; then
   cleanup_stack() {
     local status=$?
@@ -139,9 +146,6 @@ if [ "$KEEP_DB" = true ]; then
   fi
 else
   echo -e "${YELLOW}[1/4] Recreating stack with a FRESH database (like CI)...${NC}"
-  # Keep the UAT fixture endpoint unavailable in ordinary deployments. The
-  # local CI-parity stack is disposable and needs it for the Playwright setup.
-  export OE_UAT_SCENARIOS_ENABLED=true
   "${COMPOSE[@]}" down -v --remove-orphans
   if [[ "$BUILD_IMAGES" == true ]]; then
     "${COMPOSE[@]}" build
