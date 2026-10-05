@@ -37,6 +37,10 @@ jobs:
       artifact_map_kind: ${{ steps.context.outputs.artifact_map_kind }}
       checkpoint_context: ${{ steps.context.outputs.checkpoint_context }}
       skip: ${{ steps.scope.outputs.skip }}
+      skip_kind: ${{ steps.scope.outputs.skip_kind }}
+      skip_description: ${{ steps.scope.outputs.skip_description }}
+      stack_top: ${{ steps.scope.outputs.stack_top }}
+      stack_number: ${{ steps.scope.outputs.stack_number }}
     steps:
       # workflow_run always runs from the default branch, so this is the
       # default branch's copy of the scope rules, not the pull request's.
@@ -70,7 +74,9 @@ jobs:
           script: |
             const fs = require('fs');
             const scope = require('./.github/scripts/e2e-scope.cjs');
-            let skip = false;
+            let reason = null;
+            let stackTop = false;
+            let stackNumber = '';
             if (process.env.RUN_EVENT === 'pull_request') {
               const owner = context.repo.owner;
               const repo = context.repo.repo;
@@ -84,14 +90,19 @@ jobs:
                 headOwner: process.env.HEAD_OWNER, headBranch: process.env.HEAD_BRANCH,
                 headSha: process.env.HEAD_SHA });
               if (pull) {
-                const files = await scope.listPullRequestFiles({ github, owner, repo, pullNumber: pull.number });
-                skip = !scope.requiresE2E(files);
-                core.info(`PR #${pull.number}: ${files.length} changed file(s); E2E ${skip ? 'skipped: documentation only' : 'required'}`);
+                reason = await scope.skipReason({ github, owner, repo, pull });
+                stackTop = scope.isStackTop(pull);
+                stackNumber = stackTop ? String(pull.stack.number) : '';
+                core.info(`PR #${pull.number}: ${reason ? `E2E skipped: ${reason.description}` : 'E2E required'}${stackTop ? ` (top of stack #${stackNumber})` : ''}`);
               } else {
                 core.info('Triggering pull request not confirmed at this head, or shared with another open pull request; running E2E.');
               }
             }
-            core.setOutput('skip', skip ? 'true' : 'false');
+            core.setOutput('skip', reason ? 'true' : 'false');
+            core.setOutput('skip_kind', reason ? reason.kind : '');
+            core.setOutput('skip_description', reason ? reason.description : '');
+            core.setOutput('stack_top', stackTop ? 'true' : 'false');
+            core.setOutput('stack_number', stackNumber);
 
       - name: Download early build context artifact
         id: download_context
@@ -117,7 +128,7 @@ jobs:
         id: context
         run: |
           if [ "${{ steps.scope.outputs.skip }}" = "true" ]; then
-            echo "Documentation-only pull request; E2E suites are skipped."
+            echo "E2E suites are skipped: ${{ steps.scope.outputs.skip_description }}"
             echo "is_fork=false" >> "$GITHUB_OUTPUT"
             echo "pr_number=" >> "$GITHUB_OUTPUT"
             echo "checkout_ref=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
@@ -407,12 +418,14 @@ jobs:
       contents: read
     steps:
       - name: Enforce E2E results
+        env:
+          SKIP_DESCRIPTION: ${{ needs.setup.outputs.skip_description }}
         run: |
           IS_FORK="${{ needs.setup.outputs.is_fork }}"
           ARTIFACT_MODE="${{ needs.setup.outputs.artifact_source_mode }}"
 
           if [[ "${{ needs.setup.result }}" == "success" && "${{ needs.setup.outputs.skip }}" == "true" ]]; then
-            echo "E2E gate passed: documentation-only pull request, suites skipped."
+            echo "E2E gate passed, suites skipped: $SKIP_DESCRIPTION"
             exit 0
           fi
 
@@ -449,27 +462,50 @@ jobs:
     needs: [setup, set-pending-status, e2e-gate]
     runs-on: ubuntu-latest
     permissions:
+      contents: read
+      pull-requests: read
       statuses: write
     steps:
+      # The default branch's copy, as in E2E Context.
+      - name: Checkout scope script
+        uses: actions/checkout@v6
+        with:
+          sparse-checkout: .github/scripts
+          persist-credentials: false
       - name: Update checkpoint status
         uses: actions/github-script@v8
         with:
           retries: 3
           script: |
+            const scope = require('./.github/scripts/e2e-scope.cjs');
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
             const sha = '${{ needs.setup.outputs.status_sha }}';
             const contexts = ['03 Checkpoint - E2E',
               '03 Checkpoint - E2E / build-${{ github.event.workflow_run.id }}-${{ github.event.workflow_run.run_attempt }}'];
             const gateResult = '${{ needs.e2e-gate.result }}';
             const artifactSourceMode = '${{ needs.setup.outputs.artifact_source_mode }}';
+            const skipKind = '${{ needs.setup.outputs.skip_kind }}';
+            const skipDescription = ${{ toJSON(needs.setup.outputs.skip_description) }};
             const isFork = '${{ needs.setup.outputs.is_fork }}' === 'true';
-            const runUrl = `${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`;
+            const stackTop = '${{ needs.setup.outputs.stack_top }}' === 'true';
+            const stackNumber = Number('${{ needs.setup.outputs.stack_number }}');
+            const runUrl = `${context.serverUrl}/${owner}/${repo}/actions/runs/${context.runId}`;
             let state, description;
+            // A pull request below the top of its stack keeps the required
+            // context pending until the top's run reports; its own build
+            // context is complete.
+            let buildState;
             if (gateResult === 'cancelled') {
               state = 'error';
               description = 'E2E run was cancelled';
+            } else if (artifactSourceMode === 'skipped' && gateResult === 'success' && skipKind === 'stack') {
+              state = 'pending';
+              buildState = 'success';
+              description = skipDescription;
             } else if (artifactSourceMode === 'skipped' && gateResult === 'success') {
               state = 'success';
-              description = 'Documentation-only change; E2E suites skipped';
+              description = skipDescription;
             } else if (artifactSourceMode === 'none' && !isFork) {
               state = 'failure';
               description = 'E2E build failed - no Docker images were produced';
@@ -480,14 +516,34 @@ jobs:
               state = 'failure';
               description = 'One or more E2E suites failed';
             }
-            const outcomes = await Promise.allSettled(contexts.map(contextName => github.rest.repos.createCommitStatus({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              sha,
-              state,
+            const post = (targetSha, contextName, targetState, targetDescription) => github.rest.repos.createCommitStatus({
+              owner,
+              repo,
+              sha: targetSha,
+              state: targetState,
               context: contextName,
-              description,
+              description: targetDescription,
               target_url: runUrl
-            })));
+            });
+            const outcomes = await Promise.allSettled([
+              post(sha, contexts[0], state, description),
+              post(sha, contexts[1], buildState || state, description),
+            ]);
             const failures = outcomes.filter(outcome => outcome.status === 'rejected');
             if (failures.length) throw new AggregateError(failures.map(outcome => outcome.reason), 'Could not post all E2E statuses');
+            // The top of a stack reports for every lower pull request whose
+            // head it contains. One pushed since keeps its pending checkpoint
+            // until the stack is rebuilt.
+            if (stackTop && stackNumber) {
+              const members = await scope.stackMembers({ github, owner, repo, number: stackNumber });
+              for (const member of members) {
+                if (scope.isStackTop(member)) continue;
+                const covered = await scope.containsCommit({ github, owner, repo, sha: member.head.sha, headSha: sha });
+                if (!covered) {
+                  core.info(`PR #${member.number}: head ${member.head.sha} is not in the top's head; its checkpoint stays pending`);
+                  continue;
+                }
+                await post(member.head.sha, contexts[0], state, `Top of stack #${stackNumber}: ${description}`.slice(0, 140));
+                core.info(`PR #${member.number}: posted ${state}`);
+              }
+            }

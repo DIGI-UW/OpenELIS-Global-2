@@ -12141,6 +12141,8 @@
   "eqa.cycle.trigger.fhir_submit_success": "Results submitted to the provider",
   "eqa.cycle.trigger.panel_unblind": "Panel unblinded",
   "eqa.cycle.trigger.v1_backfill": "Carried over from an earlier distribution",
+  "label.results.sampleStatus.markUsedUpConfirm.title": "Mark this sample used up?",
+  "label.results.sampleStatus.markUsedUpConfirm.body": "Its remaining volume is set to zero. The sample stays in storage until it is disposed.",
   "alerts.acknowledge.note": "Acknowledgment Comment",
   "alerts.acknowledge.note.required": "A comment is required to acknowledge a critical alert",
   "alerts.resolve.button": "Resolve",
