@@ -12142,7 +12142,7 @@
   "eqa.cycle.trigger.fhir_submit_success": "Results submitted to the provider",
   "eqa.cycle.trigger.panel_unblind": "Panel unblinded",
   "eqa.cycle.trigger.v1_backfill": "Carried over from an earlier distribution",
-  "sampleAcceptance.banner.resampledFrom.accession": "This is a replacement created by a resample of sample {accession}."
+  "sampleAcceptance.banner.resampledFrom.accession": "This is a replacement created by a resample of sample {accession}.",
   "label.results.sampleStatus.markUsedUpConfirm.title": "Mark this sample used up?",
   "label.results.sampleStatus.markUsedUpConfirm.body": "Its remaining volume is set to zero. The sample stays in storage until it is disposed."
 }
