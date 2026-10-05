@@ -10,6 +10,13 @@ on:
   pull_request_target:
     branches: [develop]
 
+# Every run re-checks all open pull requests, so only the newest matters: a
+# newer event replaces a queued run and cancels a running one. Advisory only,
+# so a cancelled run loses nothing.
+concurrency:
+  group: merge-conflicts
+  cancel-in-progress: true
+
 jobs:
   auto-label:
     name: Run

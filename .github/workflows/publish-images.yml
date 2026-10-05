@@ -14,9 +14,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # A pull request build has nothing to publish. Deciding that here, rather than
+  # inside the job, means no runner is taken for it: each pull request build and
+  # each cancelled one used to start this job and the summary below.
   setup:
     name: Setup Publish Context
-    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')
+    if: github.repository == 'DIGI-UW/OpenELIS-Global-2' && (github.event_name == 'workflow_dispatch' || (github.event.workflow_run.event != 'pull_request' && (github.event.workflow_run.conclusion == 'success' || github.event.workflow_run.conclusion == 'failure' || github.event.workflow_run.conclusion == 'cancelled')))
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -63,10 +66,13 @@ jobs:
             core.setOutput('build_run_attempt', String(run.run_attempt));
             core.info(`Publish context: event=${run.event} sha=${run.head_sha} branch=${run.head_branch}`);
 
+  # A build cancelled by a newer push never gets its E2E checkpoint (E2E /
+  # Tests skips a cancelled build), so waiting for it would hold a runner for
+  # the whole two-hour timeout.
   wait-for-e2e-checkpoint:
     name: Wait For Backend, Frontend And E2E Checkpoints
     needs: setup
-    if: needs.setup.outputs.head_sha != '' && (needs.setup.outputs.event_name == 'push' || needs.setup.outputs.event_name == 'release') && needs.setup.outputs.image_transfer != 'none'
+    if: needs.setup.outputs.head_sha != '' && (needs.setup.outputs.event_name == 'push' || needs.setup.outputs.event_name == 'release') && needs.setup.outputs.image_transfer != 'none' && github.event.workflow_run.conclusion != 'cancelled'
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -413,7 +419,7 @@ jobs:
 
   deployment-summary:
     name: Explain deployment outcome
-    if: always()
+    if: always() && needs.setup.result != 'skipped'
     needs:
       [
         setup,
