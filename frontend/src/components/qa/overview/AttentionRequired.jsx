@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useContext } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
 import { CheckmarkOutline } from "@carbon/icons-react";
@@ -12,7 +12,8 @@ import {
   useNceList,
 } from "./nceOverview";
 import { useCallbackSummary, useOverviewSummary } from "./overviewData";
-import { toLocalIsoDate } from "../../utils/Utils";
+import { toLocalIsoDate, hasQaPermission } from "../../utils/Utils";
+import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { useServerData } from "../../utils/useServerData";
 import { isoDaysFromToday } from "../common/qaDates";
 import { deriveStatus } from "../common/capa";
@@ -58,7 +59,14 @@ const AttentionRequired = () => {
     isoDaysFromToday(-1),
     toLocalIsoDate(labNow()),
   );
-  const capaQuery = useServerData("/rest/nce/capa-register");
+  // /rest/nce/capa-register sits behind qa.view.qms; Results reaches this
+  // overview without it, so the fetch is skipped rather than 403ing.
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const capaQuery = useServerData(
+    hasQaPermission(userSessionDetails, "qa.view.qms")
+      ? "/rest/nce/capa-register"
+      : null,
+  );
   // OGC-711: hide the critical-NCE row when the NCE indicator is disabled.
   const { enabled: nceEnabled } = useQiConfig("NCE");
 

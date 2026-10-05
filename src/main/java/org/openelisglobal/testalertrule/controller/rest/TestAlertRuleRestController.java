@@ -17,7 +17,6 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,7 +40,6 @@ import org.springframework.web.server.ResponseStatusException;
  */
 @RestController
 @RequestMapping("/rest/test-catalog/{testId}/alerts")
-@PreAuthorize("hasRole('ADMIN')")
 public class TestAlertRuleRestController extends BaseRestController {
 
     private static final Set<String> TRIGGER_TYPES = Set.of("ALL", "ABNORMAL", "CRITICAL", "SPECIFIC_VALUE",
@@ -182,7 +180,7 @@ public class TestAlertRuleRestController extends BaseRestController {
     @GetMapping(value = "/roles", produces = MediaType.APPLICATION_JSON_VALUE)
     public List<IdValuePair> roles(@PathVariable String testId) {
         return roleService.getAllActiveRoles().stream().filter(r -> !r.getGroupingRole())
-                .map(r -> new IdValuePair(r.getId(), r.getName())).collect(Collectors.toList());
+                .map(r -> new IdValuePair(String.valueOf(r.getId()), r.getName())).collect(Collectors.toList());
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)

@@ -126,7 +126,51 @@ public class NetworkValidationUtilTest {
     }
 
     @Test
-    public void testAllowsPublicIP_203() {
-        assertFalse("203.0.113.1 (public IP) should be allowed", NetworkValidationUtil.isBlockedAddress("203.0.113.1"));
+    public void testAllowsPublicIP_second() {
+        // Was 203.0.113.1, which is NOT public: RFC 5737 reserves it for
+        // documentation, and it is now blocked with the other special-purpose
+        // ranges. 1.1.1.1 is genuinely routable, which is what this asserts.
+        assertFalse("1.1.1.1 (public IP) should be allowed", NetworkValidationUtil.isBlockedAddress("1.1.1.1"));
+    }
+
+    /**
+     * The special-purpose ranges are blocked. These are never a real analyzer, and
+     * a resolver that hijacks NXDOMAIN commonly answers with one of them - which is
+     * how an unresolvable hostname reached the "allowed" branch instead of failing
+     * closed.
+     */
+    @Test
+    public void testBlocksReservedRanges() {
+        assertTrue("100.64.0.1 (CGNAT, RFC 6598) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("100.64.0.1"));
+        assertTrue("192.0.0.1 (IETF protocol assignments) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("192.0.0.1"));
+        assertTrue("192.0.2.1 (documentation, RFC 5737) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("192.0.2.1"));
+        assertTrue("198.18.0.11 (benchmarking, RFC 2544 - a common NXDOMAIN-hijack answer) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("198.18.0.11"));
+        assertTrue("198.51.100.1 (documentation, RFC 5737) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("198.51.100.1"));
+        assertTrue("203.0.113.1 (documentation, RFC 5737) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("203.0.113.1"));
+        assertTrue("240.0.0.1 (reserved for future use) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("240.0.0.1"));
+        assertTrue("255.255.255.255 (broadcast) should be blocked",
+                NetworkValidationUtil.isBlockedAddress("255.255.255.255"));
+    }
+
+    /** The ranges beside the reserved blocks stay allowed. */
+    @Test
+    public void testAllowsNeighboursOfTheReservedRanges() {
+        assertFalse("100.63.255.255 is below 100.64.0.0/10 and should be allowed",
+                NetworkValidationUtil.isBlockedAddress("100.63.255.255"));
+        assertFalse("100.128.0.1 is above 100.64.0.0/10 and should be allowed",
+                NetworkValidationUtil.isBlockedAddress("100.128.0.1"));
+        assertFalse("198.17.255.255 is below 198.18.0.0/15 and should be allowed",
+                NetworkValidationUtil.isBlockedAddress("198.17.255.255"));
+        assertFalse("198.20.0.1 is above 198.18.0.0/15 and should be allowed",
+                NetworkValidationUtil.isBlockedAddress("198.20.0.1"));
+        assertFalse("239.255.255.255 is below 240.0.0.0/4 (and multicast ends here) ... use 223.x instead",
+                NetworkValidationUtil.isBlockedAddress("223.255.255.255"));
     }
 }

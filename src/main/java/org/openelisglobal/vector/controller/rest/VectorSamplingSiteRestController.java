@@ -41,12 +41,14 @@ public class VectorSamplingSiteRestController {
     @GetMapping(produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<VectorSamplingSite>> getAllSites(@RequestParam(required = false) String type) {
         try {
-            List<VectorSamplingSite> sites;
-            if (type != null && !type.isBlank()) {
-                sites = vectorSamplingSiteService.getByType(type);
-            } else {
-                sites = vectorSamplingSiteService.getAll();
-            }
+            // Picking the site an environmental or vector order was collected at.
+            // The service is gated on sample_type:view, an admin privilege no
+            // order-entry role holds, and the broad catch below turned that denial
+            // into a bare 500 — so the site picker was empty with no explanation.
+            // Reads only; creating or editing a site stays gated below.
+            List<VectorSamplingSite> sites = (type != null && !type.isBlank())
+                    ? vectorSamplingSiteService.getByType(type)
+                    : vectorSamplingSiteService.getAll();
             return ResponseEntity.ok(sites);
         } catch (Exception e) {
             LogEvent.logError(e);

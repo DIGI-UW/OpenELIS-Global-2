@@ -8,7 +8,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.Test;
 import org.openelisglobal.login.dao.UserModuleService;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,20 +38,23 @@ public class InventoryLotStorageAuthorizationSecurityTest extends SecuritySliceM
 
     @Test
     public void listingLotsRefusesARoleThatCannotOpenTheScreen() throws Exception {
-        mockMvc.perform(get("/rest/storage/inventory-lots").with(user("validator").roles("VALIDATION"))
+        mockMvc.perform(get("/rest/storage/inventory-lots")
+                .with(user("validator").authorities(SeededRoleAuthorities.role("VALIDATION")))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
     }
 
     @Test
     public void movingALotRefusesARoleThatCannotOpenTheScreen() throws Exception {
-        mockMvc.perform(post("/rest/storage/inventory-lots/move").with(user("validator").roles("VALIDATION"))
+        mockMvc.perform(post("/rest/storage/inventory-lots/move")
+                .with(user("validator").authorities(SeededRoleAuthorities.role("VALIDATION")))
                 .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isForbidden());
     }
 
     @Test
     public void listingLotsAdmitsTheRolesTheRouteDoes() throws Exception {
         for (String role : new String[] { "RECEPTION", "RESULTS", "ADMIN" }) {
-            mockMvc.perform(get("/rest/storage/inventory-lots").with(user(role.toLowerCase()).roles(role))
+            mockMvc.perform(get("/rest/storage/inventory-lots")
+                    .with(user(role.toLowerCase()).authorities(SeededRoleAuthorities.role(role)))
                     .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
         }
     }
@@ -68,7 +73,11 @@ public class InventoryLotStorageAuthorizationSecurityTest extends SecuritySliceM
 
         @Bean
         SampleStorageService sampleStorageService() {
-            return mock(SampleStorageService.class);
+            // Not a plain mock(): Mockito copies the interface's @PreAuthorize onto
+            // the mock class, so with @EnableMethodSecurity Spring finds the
+            // annotation twice and throws AnnotationConfigurationException, which
+            // the controller's broad catch turned into a 500 for every role.
+            return GatedServiceMocks.stubbableMock(SampleStorageService.class);
         }
 
         @Bean

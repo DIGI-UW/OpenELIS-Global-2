@@ -5,9 +5,11 @@ import java.time.OffsetDateTime;
 import org.openelisglobal.coldstorage.valueholder.Freezer;
 import org.openelisglobal.coldstorage.valueholder.FreezerReading;
 import org.openelisglobal.coldstorage.valueholder.ThresholdProfile;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface ThresholdEvaluationService {
 
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     ThresholdProfile resolveActiveProfile(Freezer freezer, OffsetDateTime timestamp);
 
     /**
@@ -15,12 +17,14 @@ public interface ThresholdEvaluationService {
      * context to look up reading history against). Kept for callers that only need
      * a single-reading classification.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     FreezerReading.Status evaluateStatus(BigDecimal temperature, BigDecimal humidity, ThresholdProfile profile);
 
     /**
      * Classifies {@code temperature} against the profile's band, then gates
      * escalation on {@code minExcursionMinutes} of continuous breach.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     FreezerReading.Status evaluateTemperatureStatus(BigDecimal temperature, ThresholdProfile profile, Freezer freezer,
             OffsetDateTime timestamp);
 
@@ -28,6 +32,7 @@ public interface ThresholdEvaluationService {
      * Measures the excursion streak over humidity alone, so each metric escalates
      * on its own accumulated breach time.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     FreezerReading.Status evaluateHumidityStatus(BigDecimal humidity, ThresholdProfile profile, Freezer freezer,
             OffsetDateTime timestamp);
 
@@ -37,5 +42,6 @@ public interface ThresholdEvaluationService {
      * falling back to whichever single bound is available. Returns {@code null} if
      * no profile (or no usable bounds) is available.
      */
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_VIEW')")
     BigDecimal deriveTargetTemperature(ThresholdProfile profile);
 }

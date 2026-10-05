@@ -66,6 +66,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ResolvableType;
 import org.springframework.http.MediaType;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.oauth2.client.registration.ClientRegistration;
 import org.springframework.security.oauth2.client.registration.ClientRegistrationRepository;
 import org.springframework.stereotype.Controller;
@@ -334,8 +335,7 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX));
         configs.put(Property.ALERT_FOR_INVALID_RESULTS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALERT_FOR_INVALID_RESULTS));
-        configs.put(Property.customCriticalMessage.toString(),
-                StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage()));
+        configs.put(Property.customCriticalMessage.toString(), customCriticalMessageOrBlank());
         configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.UseExternalPatientInfo.toString(),
@@ -399,6 +399,33 @@ public class DisplayListController extends BaseRestController {
     }
 
     // these are fetched before login
+    /**
+     * The custom critical message, or blank when this user may not read it.
+     *
+     * <p>
+     * The message belongs to result entry: it is the text the critical-value
+     * acknowledgement modal shows, so
+     * {@link org.openelisglobal.result.service.ResultEntryAcknowledgementService}
+     * gates it on the three authorities that save a result value. But this
+     * bootstrap endpoint is fetched by every authenticated user on page load, so
+     * letting the denial out answered 403 for the WHOLE configuration map and left
+     * the SPA with no config context at all - Reports, for one, could not render
+     * the patient report form. The field is read by one screen (ResultAlertModal,
+     * via SearchResultForm) and that screen's users hold the privilege, so for
+     * everyone else it is dropped rather than widened. Same reasoning as
+     * rangeNotAppliedTests in SamplePatientEntryRestController; see
+     * PostCommitReadsDoNotFailTheSaveTest.
+     */
+    private String customCriticalMessageOrBlank() {
+        try {
+            return StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage());
+        } catch (AccessDeniedException denied) {
+            // Deliberately NOT rethrown: this is one optional field of a map every
+            // role fetches, not the thing the caller asked for.
+            return "";
+        }
+    }
+
     @GetMapping(value = "open-configuration-properties", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     private Map<String, Object> getOpenConfigurationProperties() {
@@ -425,6 +452,14 @@ public class DisplayListController extends BaseRestController {
         // session — hence the open endpoint rather than the authenticated one.
         configs.put(Property.OVERRIDE_DEFAULT_TRANSLATION.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.OVERRIDE_DEFAULT_TRANSLATION));
+        // Same reason: how a date is written (mm/dd vs dd/mm) is a display format,
+        // not privileged data, and anything rendering or parsing a date before
+        // login needs it. Callers that read only this endpoint - the Playwright
+        // seed helpers among them - otherwise fall back to a different locale and
+        // send day-first dates to a month-first server, which rejects them as
+        // "Date may not be in the past".
+        configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.releaseNumber.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.releaseNumber));
         configs.put(Property.ACCESSION_NUMBER_VALIDATE.toString(),
@@ -522,7 +557,7 @@ public class DisplayListController extends BaseRestController {
             if (role == null) {
                 return new ArrayList<>();
             }
-            String resultsRoleId = role.getId();
+            String resultsRoleId = String.valueOf(role.getId());
             return userService.getUserViewerTestSections(getSysUserId(request), resultsRoleId);
         }
     }
@@ -720,8 +755,8 @@ public class DisplayListController extends BaseRestController {
     @ResponseBody
     public List<LabelValuePair> getRolesWithTestSections() {
         List<LabelValuePair> rolesWithTestSections = new ArrayList<>();
-        String globalParentRoleId = roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId();
-        String labUnitRoleId = roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId();
+        String globalParentRoleId = String.valueOf(roleService.getRoleByName(Constants.GLOBAL_ROLES_GROUP).getId());
+        String labUnitRoleId = String.valueOf(roleService.getRoleByName(Constants.LAB_ROLES_GROUP).getId());
         List<TestSection> testSections = testSectionService.getAllActiveTestSections();
 
         List<Role> roles = roleService.getAllActiveRoles();

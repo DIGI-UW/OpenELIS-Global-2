@@ -2,6 +2,7 @@ package org.openelisglobal.shipment.service;
 
 import java.util.List;
 import org.openelisglobal.shipment.dto.ExpectedSpecimenDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Reception-side resolution between a received shipment box and the referral
@@ -20,5 +21,6 @@ public interface ShipmentReceptionService {
      * @param systemUserId  actor for any created box-sample links
      * @return one entry per declared specimen, with resolution status
      */
+    @PreAuthorize("hasAuthority('PRIV_SHIPMENT_EDIT')")
     List<ExpectedSpecimenDTO> reconcileAndGetExpectedSpecimens(Integer shippingBoxId, Integer systemUserId);
 }

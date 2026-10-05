@@ -110,6 +110,9 @@ public class VectorSpeciesServiceImpl extends AuditableBaseObjectServiceImpl<Vec
 
     private void enrich(VectorSpecies s) {
         if (s.getSampleTypeId() != null) {
+            // Naming the sample type a species belongs to, for the vector order
+            // picker. sample_type:view is admin-scoped and no order-entry role
+            // holds it.
             TypeOfSample tos = typeOfSampleService.getTypeOfSampleById(String.valueOf(s.getSampleTypeId()));
             s.setSampleType(tos);
         }

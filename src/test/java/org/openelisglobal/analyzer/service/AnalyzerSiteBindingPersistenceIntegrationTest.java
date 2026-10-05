@@ -741,7 +741,13 @@ public class AnalyzerSiteBindingPersistenceIntegrationTest extends BaseWebContex
                 }
             };
 
-            ExecutorService executor = Executors.newFixedThreadPool(2);
+            // Worker threads do not inherit the test's SecurityContext, and on this
+            // branch every service call the activation makes is gated, so a bare
+            // pool never reaches the Bridge: the first gated read denies on the
+            // worker. The delegating executor carries the caller's Authentication
+            // onto each submitted task, as the production activation path does.
+            ExecutorService executor = new org.springframework.security.concurrent.DelegatingSecurityContextExecutorService(
+                    Executors.newFixedThreadPool(2));
             String firstOutcome;
             String secondOutcome;
             try {

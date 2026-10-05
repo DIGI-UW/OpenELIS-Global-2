@@ -2,6 +2,7 @@ package org.openelisglobal.analysis.service;
 
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Resolves the Sample (and a representative SampleItem) that owns an Analysis,
@@ -25,11 +26,13 @@ public interface AnalysisAnchorService {
      *         {@link AnalysisAnchor#getSampleItem()} may still be null even when
      *         {@link AnalysisAnchor#getSample()} is non-null.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     AnalysisAnchor resolveAnchor(Analysis analysis);
 
     /**
      * Sample-only resolution — skips the pool-member lookup for callers that don't
      * need a SampleItem.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     Sample resolveSample(Analysis analysis);
 }

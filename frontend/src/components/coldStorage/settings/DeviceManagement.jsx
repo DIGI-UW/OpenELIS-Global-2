@@ -38,7 +38,7 @@ import {
 } from "../../common/CustomNotification";
 import { NotificationContext } from "../../layout/Layout";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
-import { hasRole, Roles } from "../../utils/Utils";
+import { hasPrivilege, Privileges } from "../../utils/Utils";
 import AddDeviceModal from "../shared/AddDeviceModal";
 
 const getDeviceColumns = (intl, canManage) => [
@@ -102,7 +102,10 @@ function DeviceManagement() {
   const { userSessionDetails } = useContext(UserSessionDetailsContext);
   // Device writes on FreezerDeviceController require ADMIN, so a non-admin who
   // clicks one of these controls gets a failed request back.
-  const canManageDevices = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const canManageDevices = hasPrivilege(
+    userSessionDetails,
+    Privileges.COLDSTORAGE_MANAGE,
+  );
   const notify = useCallback(
     ({ kind = NotificationKinds.info, title, subtitle, message }) => {
       setNotificationVisible(true);

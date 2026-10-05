@@ -1,13 +1,19 @@
 package org.openelisglobal.security.login;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.util.regex.Pattern;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.constants.Privileges;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.login.service.LoginUserService;
 import org.openelisglobal.login.valueholder.LoginUser;
+import org.openelisglobal.privilege.service.PrivilegeService;
+import org.openelisglobal.privilege.valueholder.Privilege;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.rolemodule.service.RoleModuleService;
@@ -26,6 +32,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Primary
 public class CustomUserDetailsService implements UserDetailsService {
 
+    private static final Pattern NON_ALNUM = Pattern.compile("[^A-Z0-9]+");
+
     @Autowired
     LoginUserService loginService;
 
@@ -34,6 +42,9 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Autowired
     RoleService roleService;
+
+    @Autowired
+    PrivilegeService privilegeService;
 
     @Autowired
     RoleModuleService roleModuleService;
@@ -56,13 +67,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         Set<String> roleNames = new LinkedHashSet<>();
 
         if (user != null && user.getSystemUserId() > 0) {
-            List<String> roleIds = userRoleService.getRoleIdsForUser(String.valueOf(user.getSystemUserId()));
+            List<Integer> roleIds = userRoleService.getRoleIdsForUser(String.valueOf(user.getSystemUserId()));
             if (roleIds != null) {
-                for (String roleId : roleIds) {
-                    if (roleId == null || roleId.trim().isEmpty()) {
+                for (Integer roleId : roleIds) {
+                    if (roleId == null) {
                         continue;
                     }
-                    Role role = roleService.getRoleById(roleId.trim());
+                    Role role = roleService.getRoleById(roleId);
                     if (role != null && role.getName() != null && !role.getName().trim().isEmpty()) {
                         addAuthoritiesForRole(role.getName(), authorityNames);
                         roleNames.add(role.getName().trim());
@@ -76,10 +87,37 @@ public class CustomUserDetailsService implements UserDetailsService {
             roleNames.add(Constants.ROLE_GLOBAL_ADMIN);
         }
 
+        // Load resolved privileges as PRIV_ authorities
+        if (user != null && user.getSystemUserId() > 0) {
+            Set<String> resolvedPrivileges = privilegeService
+                    .getAllPrivilegesForUser(String.valueOf(user.getSystemUserId()));
+            if (resolvedPrivileges.contains(Privileges.GLOBAL_ADMIN_SENTINEL)) {
+                resolvedPrivileges = new HashSet<>();
+                for (Privilege p : privilegeService.getAllPrivileges()) {
+                    resolvedPrivileges.add(p.getName());
+                }
+            }
+            for (String priv : resolvedPrivileges) {
+                authorityNames.add(toPrivAuthority(priv));
+            }
+        }
         // qa.* permission keys granted to the user's roles become plain
         // authorities so QA REST controllers can gate on hasAuthority
         // ('qa.view.x') per the QA permission model (liquibase/qa/004).
-        authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames, Constants.QA_PERMISSION_PREFIX));
+        //
+        // Read as the system actor. RoleModuleService carries a type-level
+        // PRIV_ROLE_VIEW gate on this branch (develop has none), and this runs
+        // DURING login, before any Authentication exists: gating it makes the
+        // load circular, and the AuthenticationCredentialsNotFoundException it
+        // throws fails every login for every user. Same self-identity pattern as
+        // UserContextHolder.resolveSystemUser, which resolves the caller's own
+        // row through gated services at the same point in the flow.
+        boolean systemWasSet = SystemInitFlag.enter();
+        try {
+            authorityNames.addAll(roleModuleService.getPermittedModuleNames(roleNames, Constants.QA_PERMISSION_PREFIX));
+        } finally {
+            SystemInitFlag.exit(systemWasSet);
+        }
 
         List<GrantedAuthority> authorities = new ArrayList<>();
         for (String authorityName : authorityNames) {
@@ -106,6 +144,12 @@ public class CustomUserDetailsService implements UserDetailsService {
         if (Constants.ROLE_GLOBAL_ADMIN.equalsIgnoreCase(trimmed)) {
             sink.add("ROLE_ADMIN");
         }
+    }
+
+    public static String toPrivAuthority(String privName) {
+        String normalized = NON_ALNUM.matcher(privName.toUpperCase()).replaceAll("_");
+        normalized = normalized.replaceAll("^_+|_+$", "").replaceAll("__+", "_");
+        return "PRIV_" + normalized;
     }
 
     public static String toRoleAuthority(String roleName) {

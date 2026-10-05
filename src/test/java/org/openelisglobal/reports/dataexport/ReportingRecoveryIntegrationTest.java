@@ -69,7 +69,7 @@ public class ReportingRecoveryIntegrationTest extends BaseWebContextSensitiveTes
                 role.setName(Constants.ROLE_GLOBAL_ADMIN);
                 role.setActive(true);
                 entityManager.persist(role);
-                createdRoleId = role.getId();
+                createdRoleId = String.valueOf(role.getId());
             } else {
                 role = roles.get(0);
             }
@@ -142,6 +142,10 @@ public class ReportingRecoveryIntegrationTest extends BaseWebContextSensitiveTes
                         new ExportFilter("2023-11-15", "2023-11-15", List.of(), List.of(), List.of("FINALIZED"))));
     }
 
+    // Worker threads do not inherit the test's SecurityContext, and on this
+    // branch the claim path is gated, so a bare pool fails with
+    // AuthenticationCredentialsNotFoundException on the worker. The delegating
+    // executor carries the caller's Authentication onto each submitted task.
     @Test
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public void returnedSavedReportVersionsCanBeUsedAcrossCommittedRequests() {
@@ -365,7 +369,8 @@ public class ReportingRecoveryIntegrationTest extends BaseWebContextSensitiveTes
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public void twoApplicationWorkersCannotClaimTheSameJob() throws Exception {
         var submitted = submit();
-        var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var executor = new org.springframework.security.concurrent.DelegatingSecurityContextExecutorService(
+                java.util.concurrent.Executors.newFixedThreadPool(2));
         var barrier = new java.util.concurrent.CyclicBarrier(2);
         try {
             var attempts = new java.util.ArrayList<java.util.concurrent.Future<ExportJobView>>();
@@ -393,7 +398,8 @@ public class ReportingRecoveryIntegrationTest extends BaseWebContextSensitiveTes
     @Transactional(propagation = org.springframework.transaction.annotation.Propagation.NOT_SUPPORTED)
     public void cancellationRacingAClaimNeverReportsFalseSuccess() throws Exception {
         var submitted = submit();
-        var executor = java.util.concurrent.Executors.newFixedThreadPool(2);
+        var executor = new org.springframework.security.concurrent.DelegatingSecurityContextExecutorService(
+                java.util.concurrent.Executors.newFixedThreadPool(2));
         var barrier = new java.util.concurrent.CyclicBarrier(2);
         try {
             var claim = executor.submit(() -> {

@@ -7,6 +7,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -52,6 +53,7 @@ public class LoincIntegrityService {
      * scoped.
      */
     @Transactional(readOnly = true)
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     public LoincIntegrity check(Test test) {
         LoincIntegrity integrity = new LoincIntegrity();
         integrity.loinc = test.getLoinc();

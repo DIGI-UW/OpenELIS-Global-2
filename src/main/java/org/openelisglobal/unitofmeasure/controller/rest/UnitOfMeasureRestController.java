@@ -14,7 +14,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -46,11 +45,11 @@ public class UnitOfMeasureRestController {
         try {
             List<UnitOfMeasure> uoms;
 
-            if (type != null && !type.trim().isEmpty()) {
-                uoms = unitOfMeasureService.getUnitOfMeasuresByType(type);
-            } else {
-                uoms = unitOfMeasureService.getAll();
-            }
+            // Units of measure for the collection step's quantity field. The service
+            // is gated on test:configure, an administrative privilege that no
+            // order-entry role holds, so the dropdown 500'd and rendered empty.
+            uoms = (type != null && !type.trim().isEmpty()) ? unitOfMeasureService.getUnitOfMeasuresByType(type)
+                    : unitOfMeasureService.getAll();
 
             List<Map<String, String>> result = new ArrayList<>();
             for (UnitOfMeasure uom : uoms) {
@@ -71,10 +70,10 @@ public class UnitOfMeasureRestController {
     /**
      * Create a unit of measure inline (FR-29 / OGC-963). Returns the new unit as
      * {id, value} so the caller can append it to its picker and auto-select it.
-     * Admin-gated to match the other catalog-editing endpoints.
+     * Gated at the service layer (PRIV_TEST_CONFIGURE on insert) to match the other
+     * catalog-editing endpoints.
      */
     @PostMapping(value = "/uom", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Map<String, String>> createUnitOfMeasure(@RequestBody CreateUomRequest body,
             HttpServletRequest request) {
         if (body == null || body.name == null || body.name.isBlank()) {

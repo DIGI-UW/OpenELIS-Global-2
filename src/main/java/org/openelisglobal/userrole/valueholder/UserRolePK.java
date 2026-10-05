@@ -26,7 +26,7 @@ public class UserRolePK implements Serializable {
     private static final long serialVersionUID = 1L;
 
     private String systemUserId;
-    private String roleId;
+    private Integer roleId;
 
     public String getSystemUserId() {
         return systemUserId;
@@ -36,11 +36,11 @@ public class UserRolePK implements Serializable {
         this.systemUserId = systemUserId;
     }
 
-    public String getRoleId() {
+    public Integer getRoleId() {
         return roleId;
     }
 
-    public void setRoleId(String roleId) {
+    public void setRoleId(Integer roleId) {
         this.roleId = roleId;
     }
 

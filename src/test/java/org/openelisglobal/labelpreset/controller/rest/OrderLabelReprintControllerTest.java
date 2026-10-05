@@ -155,16 +155,17 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
     /**
      * Regression guard for the OGC-285 auth fix: reprint is the {@code order.read}
      * surface (US5 — a laboratory <em>technician</em> reprints). It must NOT be
-     * admin-only. This test drops the {@code ROLE_ADMIN} the base class grants and
-     * runs as a {@code RESULTS}-only user; under the previous
-     * {@code @PreAuthorize("hasRole('ADMIN')")} it returned 403. Inversion check:
-     * reverting the controller to {@code hasRole('ADMIN')} turns this 200 into a
-     * 403 and fails the test.
+     * admin-only. This test drops the admin authorities the base class grants and
+     * runs as a Results-persona user carrying only {@code PRIV_ORDER_VIEW} — the
+     * privilege the seeded Results role holds (012-004) and the gate on
+     * {@code OrderLabelReprintService}. Inversion check: regating the service at an
+     * admin privilege turns this 200 into a 403 and fails the test.
      */
     @Test
     public void getOrderLabels_nonAdminAuthenticatedUser_isAllowed() throws Exception {
         SecurityContextHolder.getContext().setAuthentication(new UsernamePasswordAuthenticationToken("resultsuser",
-                "N/A", List.of(new SimpleGrantedAuthority("ROLE_RESULTS"))));
+                "N/A",
+                List.of(new SimpleGrantedAuthority("ROLE_RESULTS"), new SimpleGrantedAuthority("PRIV_ORDER_VIEW"))));
         mockMvc.perform(get("/api/orders/{id}/labels", sampleId).accept(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk()).andExpect(jsonPath("$").isArray())
                 .andExpect(jsonPath("$[0].preset_id").value(preset.getId()));

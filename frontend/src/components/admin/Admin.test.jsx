@@ -47,18 +47,28 @@ describe("Admin", () => {
         screen.getByText(messages["unifiedSystemUser.browser.title"]),
       ).toBeInTheDocument();
       expect(
+        screen.getByText(messages["role.management.title"]),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByText(messages["organization.main.title"]),
+      ).toBeInTheDocument();
+      expect(
         screen.getByText(messages["sidenav.label.admin.locations"]),
       ).toBeInTheDocument();
       expect(
         screen.getByText(messages["master.lists.page.test.management"]),
       ).toBeInTheDocument();
-      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(14);
+      // 15, not 14: develop's tile list plus the Role Management tile this
+      // branch adds. develop independently dropped role.management.title and
+      // renamed sidenav.label.admin.program to admin.programs.title, so both
+      // sides carried 14 and the merged list is develop's set plus ours.
+      expect(screen.getAllByTestId("admin-dashboard-tile")).toHaveLength(16);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-icon"),
-      ).toHaveLength(14);
+      ).toHaveLength(16);
       expect(
         container.querySelectorAll(".admin-dashboard__tile-arrow"),
-      ).toHaveLength(14);
+      ).toHaveLength(16);
       expect(document.querySelector(".cds--side-nav")).not.toBeInTheDocument();
     },
   );

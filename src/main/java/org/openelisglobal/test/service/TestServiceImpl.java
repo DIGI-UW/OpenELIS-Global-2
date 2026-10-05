@@ -75,6 +75,7 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
 
     @PostConstruct
     private void initialize() {
+        initializeGlobalVariables();
         LocaleResolver localeResolver = SpringContext.getBean(LocaleResolver.class);
         if (localeResolver instanceof GlobalLocaleResolver) {
             ((GlobalLocaleResolver) localeResolver).addLocalChangeListener(this);
@@ -101,7 +102,6 @@ public class TestServiceImpl extends AuditableBaseObjectServiceImpl<Test, String
     public TestServiceImpl() {
         super(Test.class);
         this.auditTrailLog = true;
-        initializeGlobalVariables();
     }
 
     private static TestDAO currentTestDAO() {

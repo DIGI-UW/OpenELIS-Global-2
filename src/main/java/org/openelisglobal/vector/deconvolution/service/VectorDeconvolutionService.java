@@ -6,6 +6,7 @@ import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.Deconvoluti
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionPreview;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.DeconvolutionResult;
 import org.openelisglobal.vector.deconvolution.dto.DeconvolutionDTOs.PanelTestGroup;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface VectorDeconvolutionService {
 
@@ -14,6 +15,7 @@ public interface VectorDeconvolutionService {
      * @throws IllegalStateException    BR gate failure (non-vector, qty&le;1,
      *                                  already IN_PROGRESS)
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
     DeconvolutionResult initiate(DeconvolutionInitiateRequest request, String sysUserId);
 
     /**
@@ -22,6 +24,7 @@ public interface VectorDeconvolutionService {
      * plus any reflex-driven analyses the active rules would emit. Does not persist
      * anything; safe to call repeatedly as the user adjusts the form.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     DeconvolutionPreview previewReflexes(Long vectorPoolId);
 
     /**
@@ -29,6 +32,7 @@ public interface VectorDeconvolutionService {
      * not yet on the pool — populates the "Add from panel" browser in the split
      * modal.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<PanelTestGroup> getAvailablePanelTests(Long poolId);
 
     /**
@@ -39,6 +43,7 @@ public interface VectorDeconvolutionService {
      * with >1 member. Idempotent. Returns the new pool status when changed, null
      * otherwise.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
     String evaluateResultEntered(Long vectorPoolId, String sysUserId);
 
     /**
@@ -48,6 +53,7 @@ public interface VectorDeconvolutionService {
      * the pool's deconvolutionStatus to COMPLETE. Use this when deconvolution is
      * not needed.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
     void confirmResultForAllMembers(Long vectorPoolId, String sysUserId);
 
     /**
@@ -59,6 +65,7 @@ public interface VectorDeconvolutionService {
      * @throws IllegalArgumentException pool or analysis not found, or analysis does
      *                                  not belong to this pool
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
     void confirmAnalysisForAllMembers(Long vectorPoolId, String analysisId, String sysUserId);
 
     /**
@@ -68,6 +75,7 @@ public interface VectorDeconvolutionService {
      * the same transaction. Self-gates on VECTOR-domain + intake-pool currently
      * IN_PROGRESS; safe to invoke on any analysis.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_ENTER')")
     DeconvolutionOutcome evaluateChildResultsForCompletion(Long anyPoolId, String sysUserId);
 
     /**
@@ -80,6 +88,7 @@ public interface VectorDeconvolutionService {
      * @throws IllegalArgumentException pool missing / non-vector domain / nothing
      *                                  to complete
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VALIDATE')")
     void forceComplete(Long vectorPoolId, String sysUserId);
 
     /**
@@ -89,5 +98,6 @@ public interface VectorDeconvolutionService {
      *
      * @throws IllegalArgumentException pool not found or status is NOT_APPLICABLE
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     DeconvolutionResult getDeconvolution(Long poolId);
 }

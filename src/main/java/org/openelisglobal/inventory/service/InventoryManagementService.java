@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.util.List;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface InventoryManagementService {
 
@@ -17,12 +18,14 @@ public interface InventoryManagementService {
      * @param sysUserId      The user performing the action
      * @return List of lots consumed with quantities
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_MANAGE')")
     List<ConsumptionRecord> consumeInventoryFEFO(Long itemId, Double quantityNeeded, Long testResultId, Long analysisId,
             String sysUserId);
 
     /**
      * Revalidates and consumes exactly the selected lot in one transaction.
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_MANAGE')")
     InventoryUsage consumeSelectedLot(Long lotId, Double quantityNeeded, Long testResultId, Long analysisId,
             String sysUserId);
 
@@ -33,6 +36,7 @@ public interface InventoryManagementService {
      * @param sysUserId The user performing the action
      * @return The created lot
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_MANAGE')")
     InventoryLot receiveInventory(InventoryLot lotData, String sysUserId);
 
     /**
@@ -42,6 +46,7 @@ public interface InventoryManagementService {
      * @param quantityNeeded The quantity needed
      * @return true if sufficient inventory is available
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     boolean isSufficientInventoryAvailable(Long itemId, Double quantityNeeded);
 
     /**
@@ -51,6 +56,7 @@ public interface InventoryManagementService {
      *                                 items
      * @return Inventory alerts
      */
+    @PreAuthorize("hasAuthority('PRIV_INVENTORY_VIEW')")
     InventoryAlerts getInventoryAlerts(int daysForExpirationWarning);
 
     /**

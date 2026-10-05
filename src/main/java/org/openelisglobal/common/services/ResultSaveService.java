@@ -26,6 +26,7 @@ import org.json.simple.parser.JSONParser;
 import org.json.simple.parser.ParseException;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.services.serviceBeans.ResultSaveBean;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.referral.service.ReferralResultService;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Scope;
 import org.springframework.stereotype.Service;
 
 @Service
+@CrossDomainService(callers = "Builds Result objects from form items; persistence runs through gated result services. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 @Scope("prototype")
 @DependsOn({ "springContext" })
 public class ResultSaveService {

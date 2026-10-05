@@ -2,6 +2,7 @@ package org.openelisglobal.result.service;
 
 import java.util.List;
 import org.openelisglobal.analysis.valueholder.Analysis;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * OGC-1022 (R3, FR-H1/H2) — this analysis's own event timeline for the unified
@@ -12,6 +13,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 public interface AnalysisTimelineService {
 
     /** Every event for this analysis, newest first. */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<AnalysisTimelineEvent> getTimeline(Analysis analysis);
 
     class AnalysisTimelineEvent {

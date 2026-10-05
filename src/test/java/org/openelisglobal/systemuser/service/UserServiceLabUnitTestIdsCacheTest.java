@@ -62,7 +62,7 @@ public class UserServiceLabUnitTestIdsCacheTest {
     public void setUp() {
         RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(new MockHttpServletRequest()));
         Role role = new Role();
-        role.setId(ROLE_ID);
+        role.setId(Integer.valueOf(ROLE_ID));
         when(roleService.getRoleByName(Constants.ROLE_RESULTS)).thenReturn(role);
         when(testService.getTestsByTestSectionIds(anyList())).thenReturn(tests("11", "12"));
         doReturn(Arrays.asList(new IdValuePair("36", "Hematology"))).when(userService).getUserViewerTestSections(READER,

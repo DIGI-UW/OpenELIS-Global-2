@@ -18,6 +18,8 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.security.SystemContext;
+import org.openelisglobal.common.security.SystemInitFlag;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
 import org.openelisglobal.common.util.ConfigurationProperties;
@@ -152,7 +154,10 @@ public class UserServiceImpl implements UserService {
         if (selectedRoles == null) {
             selectedRoles = new ArrayList<>();
         }
-        List<String> currentUserRoles = userRoleService.getRoleIdsForUser(systemUser.getId());
+        // getRoleIdsForUser returns Integer ids on this branch (DAO through to
+        // service); this method works in String role ids, so convert at the call.
+        List<String> currentUserRoles = userRoleService.getRoleIdsForUser(systemUser.getId()).stream()
+                .map(String::valueOf).collect(Collectors.toList());
         List<UserRole> deletedUserRoles = new ArrayList<>();
         if (isLabRole) {
             for (String role : currentUserRoles) {
@@ -164,7 +169,7 @@ public class UserServiceImpl implements UserService {
             if (!currentUserRoles.contains(selectedRoles.get(i))) {
                 UserRole userRole = new UserRole();
                 userRole.setSystemUserId(systemUser.getId());
-                userRole.setRoleId(selectedRoles.get(i));
+                userRole.setRoleId(Integer.valueOf(selectedRoles.get(i)));
                 userRole.setSysUserId(loggedOnUserId);
                 userRoleService.insert(userRole);
             } else {
@@ -175,7 +180,7 @@ public class UserServiceImpl implements UserService {
         for (String roleId : currentUserRoles) {
             UserRole userRole = new UserRole();
             userRole.setSystemUserId(systemUser.getId());
-            userRole.setRoleId(roleId);
+            userRole.setRoleId(Integer.valueOf(roleId));
             userRole.setSysUserId(loggedOnUserId);
             deletedUserRoles.add(userRole);
         }
@@ -196,7 +201,13 @@ public class UserServiceImpl implements UserService {
         // vanished from the results pages and from reporting the instant it was
         // entered — the guardrail covers viewing historical data too, not only
         // completing pending work.
-        Set<String> pendingSectionIds = analysisService.getTestSectionIdsWithAnyAnalyses();
+        // Self-identity read: the caller is asking which units THEY may view, and
+        // the answer is scoped by their own lab-unit roles below. This helper
+        // carries result:view, which Reception does not hold, so gating it here
+        // denied /rest/user-test-sections/ALL for Reception outright - the same
+        // trap getUserTestSections is exempted from in SELF_IDENTITY_READS. The
+        // scoping, not this count, is what limits what comes back.
+        Set<String> pendingSectionIds = SystemContext.callAsSystem(analysisService::getTestSectionIdsWithAnyAnalyses);
         if (pendingSectionIds.isEmpty()) {
             return active;
         }
@@ -205,8 +216,10 @@ public class UserServiceImpl implements UserService {
         // Which inactive units may this user see? Re-derive from their lab-unit
         // roles rather than trusting the caller: an admin (or ALL_LAB_UNITS)
         // sees every one, anyone else only their assigned units.
-        String adminRoleId = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId();
-        boolean isAdmin = userRoleService.getRoleIdsForUser(systemUserId).contains(adminRoleId);
+        String adminRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId());
+        // Same Integer-vs-String trap as in doGetUserTestSections: compare as strings.
+        boolean isAdmin = userRoleService.getRoleIdsForUser(systemUserId).stream().map(String::valueOf)
+                .anyMatch(adminRoleId::equals);
         List<String> userLabUnits = new ArrayList<>();
         UserLabUnitRoles userLabRoles = getUserLabUnitRoles(systemUserId);
         if (userLabRoles != null) {
@@ -233,6 +246,22 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<IdValuePair> getUserTestSections(String systemUserId, String roleId) {
+        // Self-identity read. This resolves the CALLER's own test sections, a
+        // lookup whose access is already authorized by this method's own
+        // @PreAuthorize gate. Internally it reads the user's own lab-unit roles /
+        // role names / test-section cache, which are gated with ADMIN privileges
+        // (PRIV_USER_ROLE_VIEW, PRIV_ROLE_VIEW, ...) that ordinary
+        // Results/Reports/Validation users do not hold. Run the body in system
+        // context (restore, not clear) so those self-identity reads are not denied.
+        boolean systemWasSet = SystemInitFlag.enter();
+        try {
+            return doGetUserTestSections(systemUserId, roleId);
+        } finally {
+            SystemInitFlag.exit(systemWasSet);
+        }
+    }
+
+    private List<IdValuePair> doGetUserTestSections(String systemUserId, String roleId) {
         Authentication authentication = null;
         // see filter org.openelisglobal.security.AjaxFilter to handle
         // RequestContextHolder for Ajax calls via servlets
@@ -261,8 +290,13 @@ public class UserServiceImpl implements UserService {
                 Boolean requireLabUnitAtLogin = ConfigurationProperties.getInstance()
                         .getPropertyValue(Property.REQUIRE_LAB_UNIT_AT_LOGIN).equals("true");
                 UserSessionData usd = (UserSessionData) session.getAttribute("userSessionData");
-                String adminRoleId = roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId();
-                Boolean isadmin = userRoleService.getRoleIdsForUser(systemUserId).contains(adminRoleId);
+                String adminRoleId = String.valueOf(roleService.getRoleByName(Constants.ROLE_GLOBAL_ADMIN).getId());
+                // Role ids are Integer on this branch while adminRoleId is built as a
+                // String; List.contains compared the two types and was always false,
+                // so an admin fell through to lab units it does not have and got no
+                // sections (ReportingAccess then refused every export).
+                Boolean isadmin = userRoleService.getRoleIdsForUser(systemUserId).stream().map(String::valueOf)
+                        .anyMatch(adminRoleId::equals);
                 TestSection logintestSection = null;
                 if (requireLabUnitAtLogin && !isadmin) {
                     if (usd.getLoginLabUnit() != 0) {
@@ -306,7 +340,8 @@ public class UserServiceImpl implements UserService {
                 for (GrantedAuthority authority : authentication.getAuthorities()) {
                     String[] authorityExplode = authority.getAuthority().split("-");
                     if (authorityExplode.length == 3) {
-                        if (roleId == null || roleService.get(roleId).getName().trim().equals(authorityExplode[1])) {
+                        if (roleId == null || roleService.get(Integer.valueOf(roleId)).getName().trim()
+                                .equals(authorityExplode[1])) {
                             List<IdValuePair> allTestSections = activeTestSections();
                             if (UnifiedSystemUserController.ALL_LAB_UNITS.equals(authorityExplode[2])) {
                                 return allTestSections;
@@ -338,7 +373,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<IdValuePair> getUserSampleTypes(String systemUserId, String roleName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
+        String resultsRoleId = String.valueOf(roleService.getRoleByName(roleName).getId());
         List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {
@@ -371,7 +406,7 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<IdValuePair> getUserSampleTypes(String systemUserId, String roleName, String testSectionName) {
-        String resultsRoleId = roleService.getRoleByName(roleName).getId();
+        String resultsRoleId = String.valueOf(roleService.getRoleByName(roleName).getId());
         List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
         TestSection testSection = testSectionService.getTestSectionByName(testSectionName);
         // List<String> testUnitIds = new ArrayList<>();
@@ -554,7 +589,7 @@ public class UserServiceImpl implements UserService {
         if (cached != null) {
             return cached;
         }
-        String roleId = roleService.getRoleByName(roleName).getId();
+        String roleId = String.valueOf(roleService.getRoleByName(roleName).getId());
         // OGC-189 (M2): viewer semantics here too. Every caller of this set is
         // looking at work that already exists (patient reports, the result tree,
         // the batch workplan, incoming orders, the test filters on Results and
@@ -582,7 +617,7 @@ public class UserServiceImpl implements UserService {
         if (cached != null) {
             return cached;
         }
-        String roleId = roleService.getRoleByName(roleName).getId();
+        String roleId = String.valueOf(roleService.getRoleByName(roleName).getId());
         Set<String> unitIds = new LinkedHashSet<>();
         List<IdValuePair> testSections = getUserViewerTestSections(systemUserId, roleId);
         if (testSections != null) {
@@ -633,14 +668,14 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public boolean hasAllLabUnits(String systemUserId, String roleName) {
-        String roleId = roleService.getRoleByName(roleName).getId();
+        String roleId = String.valueOf(roleService.getRoleByName(roleName).getId());
         List<IdValuePair> testSections = getUserTestSections(systemUserId, roleId);
         return testSections != null && !testSections.isEmpty() && testSections.size() == activeTestSections().size();
     }
 
     @Override
     public List<IdValuePair> getUserPrograms(String systemUserId, String userRole) {
-        String resultsRoleId = roleService.getRoleByName(userRole).getId();
+        String resultsRoleId = String.valueOf(roleService.getRoleByName(userRole).getId());
         List<IdValuePair> testSections = getUserTestSections(systemUserId, resultsRoleId);
         List<String> testUnitIds = new ArrayList<>();
         if (testSections != null) {

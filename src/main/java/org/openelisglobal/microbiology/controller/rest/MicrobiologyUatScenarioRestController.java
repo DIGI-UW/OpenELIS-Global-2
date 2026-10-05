@@ -7,7 +7,6 @@ import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioForm;
 import org.openelisglobal.microbiology.form.MicrobiologyUatScenarioRequestForm;
 import org.openelisglobal.microbiology.service.MicrobiologyUatScenarioService;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +24,6 @@ public class MicrobiologyUatScenarioRestController extends BaseRestController {
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<MicrobiologyUatScenarioForm> provision(HttpServletRequest request,
             @RequestBody MicrobiologyUatScenarioRequestForm scenarioRequest) {
         return ResponseEntity.ok(scenarioService.provision(scenarioRequest, getSysUserId(request)));

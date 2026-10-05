@@ -6,6 +6,7 @@ import org.openelisglobal.qc.dto.BenchQcSummaryRow;
 import org.openelisglobal.qc.dto.InstrumentQCStatus;
 import org.openelisglobal.qc.dto.QCDashboardSummary;
 import org.openelisglobal.qc.valueholder.QCSource;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Service interface for QC Dashboard (T120).
@@ -17,31 +18,37 @@ public interface QCDashboardService {
     /**
      * Get compliance status for all instruments using default 1-month window.
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<InstrumentQCStatus> getAllInstrumentComplianceStatus();
 
     /**
      * Get compliance status for all instruments within a date range.
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     List<InstrumentQCStatus> getAllInstrumentComplianceStatus(Timestamp startDate, Timestamp endDate);
 
     /**
      * Get compliance status for a specific instrument using default 1-month window.
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     InstrumentQCStatus getInstrumentComplianceStatus(String instrumentId);
 
     /**
      * Get compliance status for a specific instrument within a date range.
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     InstrumentQCStatus getInstrumentComplianceStatus(String instrumentId, Timestamp startDate, Timestamp endDate);
 
     /**
      * Get dashboard summary using default 1-month window.
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCDashboardSummary getDashboardSummary();
 
     /**
      * Get dashboard summary within a date range.
      */
+    @PreAuthorize("hasAuthority('PRIV_ANALYZER_CONFIGURE')")
     QCDashboardSummary getDashboardSummary(Timestamp startDate, Timestamp endDate);
 
     /**

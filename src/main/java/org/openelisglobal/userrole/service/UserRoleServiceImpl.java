@@ -35,7 +35,7 @@ public class UserRoleServiceImpl extends AuditableBaseObjectServiceImpl<UserRole
 
     @Override
     @Transactional(readOnly = true)
-    public List<String> getRoleIdsForUser(String userId) {
+    public List<Integer> getRoleIdsForUser(String userId) {
         return baseObjectDAO.getRoleIdsForUser(userId);
     }
 

@@ -2,8 +2,12 @@ package org.openelisglobal.testterminology.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 
+@CrossDomainService(callers = "Test catalog editor (TestAddService/TestModifyService, PRIV_TEST_CONFIGURE context)"
+        + " and the FHIR transform pipeline (FhirTransformServiceImpl LOINC resolution during export), which runs"
+        + " outside an authenticated user context")
 public interface TestTerminologyMappingService extends BaseObjectService<TestTerminologyMapping, String> {
 
     /** Active terminology mappings for a test. */

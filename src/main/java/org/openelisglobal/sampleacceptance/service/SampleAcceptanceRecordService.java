@@ -4,6 +4,7 @@ import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord;
 import org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord.Answer;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Runtime service for the per-specimen Sample Acceptance Record (S-09 /
@@ -19,6 +20,7 @@ public interface SampleAcceptanceRecordService extends BaseObjectService<SampleA
      * against the specimen's currently-resolved checklist and snapshotted on the
      * row.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     SampleAcceptanceRecord recordAssessment(String sampleItemId, List<Answer> answers, Integer userId);
 
     /**
@@ -29,14 +31,17 @@ public interface SampleAcceptanceRecordService extends BaseObjectService<SampleA
      * members skipped), so the existing per-specimen gate evaluates the order
      * correctly with no gate change. Returns one record per member.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     List<SampleAcceptanceRecord> recordAssessmentForPool(Integer vectorPoolId, List<Answer> answers, Integer userId);
 
     /** The current (latest) acceptance record for a specimen, or null. */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     SampleAcceptanceRecord getLatest(String sampleItemId);
 
     /**
      * The append-only history of acceptance records for a specimen, newest first.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<SampleAcceptanceRecord> getHistory(String sampleItemId);
 
     /**
@@ -44,12 +49,14 @@ public interface SampleAcceptanceRecordService extends BaseObjectService<SampleA
      * (mapped from the parent {@code sample.domain} H/E/V), or null = lab-wide /
      * unknown.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     String resolveDomain(String sampleItemId);
 
     /**
      * Combined runtime view for one specimen: resolved checklist, enforcement,
      * latest decision, blocked.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     SampleAcceptanceEvaluation evaluate(String sampleItemId);
 
     /**
@@ -57,6 +64,7 @@ public interface SampleAcceptanceRecordService extends BaseObjectService<SampleA
      * order, in specimen sort order — backs the QA-step intake-acceptance table
      * (one row per specimen with its eligibility status).
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     List<SampleAcceptanceEvaluation> evaluateOrder(String sampleId);
 
     /**
@@ -66,6 +74,7 @@ public interface SampleAcceptanceRecordService extends BaseObjectService<SampleA
      * satisfied (unanswered items, or a FAIL). No-op under OPTIONAL/OFF, or when
      * the checklist is satisfied/empty.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     void enforceAcceptanceGate(String sampleItemId);
 
     /**
@@ -76,11 +85,13 @@ public interface SampleAcceptanceRecordService extends BaseObjectService<SampleA
      * gate cannot be bypassed client-side. Voided/rejected specimens are resolved
      * (rejected, resampled away, or removed) and do not block.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     void enforceAcceptanceGateForOrder(String sampleId);
 
     /**
      * A suggested NCE reason pre-filled from the specimen's latest record's failed
      * items (+ notes), or null when there is no record / no failures.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
     String buildNcePrefillReason(String sampleItemId);
 }

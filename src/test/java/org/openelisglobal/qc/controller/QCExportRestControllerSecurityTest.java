@@ -17,6 +17,7 @@ import org.openelisglobal.qc.service.QCChartDataService;
 import org.openelisglobal.qc.service.QCChartDataService.QCExportModel;
 import org.openelisglobal.qc.service.QCControlLotService;
 import org.openelisglobal.qc.service.QCResultService;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.test.service.TestSectionService;
@@ -131,7 +132,7 @@ public class QCExportRestControllerSecurityTest extends SecuritySliceMockMvcTest
             QCChartDataService service = mock(QCChartDataService.class);
             when(service.getExportModel(any(), any(), any(), any(), any(), anyInt()))
                     .thenReturn(new QCExportModel("Cobas 6000", List.of(), 0, 0, false));
-            return service;
+            return GatedServiceMocks.asGatedBean(service);
         }
 
         /**
@@ -149,27 +150,27 @@ public class QCExportRestControllerSecurityTest extends SecuritySliceMockMvcTest
         QCResultService qcResultService() {
             QCResultService service = mock(QCResultService.class);
             when(service.findBenchResults(any(), any(), any(), anyInt())).thenReturn(List.of());
-            return service;
+            return GatedServiceMocks.asGatedBean(service);
         }
 
         @Bean
         QCControlLotService qcControlLotService() {
-            return mock(QCControlLotService.class);
+            return GatedServiceMocks.stubbableMock(QCControlLotService.class);
         }
 
         @Bean
         TestService testService() {
-            return mock(TestService.class);
+            return GatedServiceMocks.stubbableMock(TestService.class);
         }
 
         @Bean
         TestSectionService testSectionService() {
-            return mock(TestSectionService.class);
+            return GatedServiceMocks.stubbableMock(TestSectionService.class);
         }
 
         @Bean
         SystemUserService systemUserService() {
-            return mock(SystemUserService.class);
+            return GatedServiceMocks.stubbableMock(SystemUserService.class);
         }
 
         /**

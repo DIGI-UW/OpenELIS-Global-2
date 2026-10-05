@@ -22,6 +22,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -181,6 +182,9 @@ public class CriticalCallbackRestController extends BaseRestController {
         ResultLimit limit;
         try {
             limit = resultLimitService.getResultLimitForAnalysis(result.getAnalysis());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (RuntimeException e) {
             // Degenerate analysis chain (no sample item/sample): criticality
             // cannot be established, so the callback is rejected as

@@ -55,6 +55,11 @@ public class SampleAcceptanceChecklistServiceImpl implements SampleAcceptanceChe
     @Override
     @Transactional(readOnly = true)
     public List<Dictionary> listLabWide() {
+        // The acceptance checklist the QA Review step shows. Its items live in the
+        // dictionary, which is gated on dictionary:view — an administrative
+        // privilege no order-entry role holds — so the QA step 500'd and the
+        // checklist could not be answered or saved. Reading the questions is not
+        // dictionary administration; editing them below stays gated.
         return dictionaryService.getActiveSortedEntriesByCategoryName(LAB_WIDE_CATEGORY);
     }
 

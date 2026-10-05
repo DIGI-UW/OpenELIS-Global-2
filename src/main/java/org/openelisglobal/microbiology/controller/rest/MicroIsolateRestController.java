@@ -12,7 +12,6 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEve
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -23,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/isolates")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroIsolateRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroIsolateService isolateService;

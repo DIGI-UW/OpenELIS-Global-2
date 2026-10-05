@@ -4,6 +4,7 @@ import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SiteOption;
 import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceIndicesDTO;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * Computes vector surveillance indices on demand from OpenELIS's own recorded
@@ -13,8 +14,10 @@ import org.openelisglobal.reports.vectorsurveillance.valueholder.SurveillanceInd
 public interface VectorSurveillanceService {
 
     /** All indices for a scope. {@code siteId} null = all sites. */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     SurveillanceIndicesDTO getIndices(LocalDate from, LocalDate to, Integer siteId);
 
     /** Sampling-site options for the dashboard filter (US2). */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<SiteOption> getSites();
 }

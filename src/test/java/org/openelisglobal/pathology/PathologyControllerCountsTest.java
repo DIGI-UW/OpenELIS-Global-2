@@ -20,6 +20,7 @@ import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.program.bean.PathologyDashBoardCount;
 import org.openelisglobal.program.controller.pathology.PathologyController;
 import org.openelisglobal.program.valueholder.pathology.PathologySample.PathologyStatus;
+import org.openelisglobal.security.SeededRoleAuthorities;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -30,6 +31,7 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -133,6 +135,19 @@ public class PathologyControllerCountsTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void count_withAPrincipalLackingResultView_isRefused() throws Exception {
+        // Inversion of count_withAPrincipal_isServed: being logged in is not enough.
+        // Reception holds no result:view in the seed, so the case counts — which say
+        // what the lab is holding — are not readable by it.
+        int status = mockMvc
+                .perform(get(COUNT_ENDPOINT)
+                        .with(user("reception1").authorities(SeededRoleAuthorities.role("RECEPTION"))))
+                .andReturn().getResponse().getStatus();
+
+        assertEquals(HttpStatus.FORBIDDEN.value(), status);
+    }
+
+    @Test
     public void count_withAPrincipal_isServed() throws Exception {
         int status = callCountEndpoint().getStatus();
 
@@ -194,9 +209,14 @@ public class PathologyControllerCountsTest extends BaseWebContextSensitiveTest {
     // helpers
 
     private MockHttpServletResponse callCountEndpoint() throws Exception {
-        // The endpoint asks only for an authenticated principal, so no role is
-        // granted here on purpose.
-        return mockMvc.perform(get(COUNT_ENDPOINT).with(user("technician1"))).andReturn().getResponse();
+        // The tiles are read through PathologySampleService's count methods, which
+        // are gated on result:view under privilege-based RBAC. A bare authenticated
+        // principal therefore gets 403; the persona this dashboard is for is a
+        // Pathologist, so the caller carries exactly what the seed grants that role.
+        return mockMvc
+                .perform(get(COUNT_ENDPOINT)
+                        .with(user("technician1").authorities(SeededRoleAuthorities.role("PATHOLOGIST"))))
+                .andReturn().getResponse();
     }
 
     private PathologyDashBoardCount counts() throws Exception {
@@ -267,7 +287,9 @@ public class PathologyControllerCountsTest extends BaseWebContextSensitiveTest {
     }
 
     private JsonNode dashboardPage(MockHttpSession session, MockHttpServletRequestBuilder request) throws Exception {
-        MockHttpServletResponse response = mockMvc.perform(request.session(session).with(user("technician1")))
+        MockHttpServletResponse response = mockMvc
+                .perform(request.session(session).with(
+                        user("technician1").authorities(fullTestAuthorities().toArray(new SimpleGrantedAuthority[0]))))
                 .andReturn().getResponse();
         assertEquals(200, response.getStatus());
         return objectMapper.readTree(response.getContentAsString());

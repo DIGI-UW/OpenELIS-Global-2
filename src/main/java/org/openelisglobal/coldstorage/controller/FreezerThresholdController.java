@@ -14,7 +14,6 @@ import org.openelisglobal.coldstorage.service.ThresholdProfileService;
 import org.openelisglobal.coldstorage.valueholder.ThresholdProfile;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,14 +34,12 @@ public class FreezerThresholdController extends BaseRestController {
         this.thresholdProfileService = thresholdProfileService;
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/thresholds")
     public List<ThresholdProfileResponse> listThresholds() {
         return thresholdProfileService.listProfiles().stream().map(ThresholdProfileResponse::from)
                 .collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/thresholds")
     public ThresholdProfileResponse createThreshold(@RequestBody @Valid CreateThresholdProfileRequest request) {
         ThresholdProfile profile = request.toEntity();
@@ -51,7 +48,6 @@ public class FreezerThresholdController extends BaseRestController {
         return ThresholdProfileResponse.from(created);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/{freezerId}/thresholds/{profileId}/assign")
     public ResponseEntity<FreezerThresholdAssignmentResponse> assignThreshold(@PathVariable Long freezerId,
             @PathVariable Long profileId, @RequestBody(required = false) AssignThresholdRequest request) {

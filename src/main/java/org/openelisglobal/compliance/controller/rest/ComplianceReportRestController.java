@@ -58,7 +58,10 @@ import org.springframework.web.bind.annotation.RestController;
  */
 @RestController
 @RequestMapping("/rest/complianceReport")
-@PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN')")
+// REPORTS added: /LaporanHasil, the environmental results report, is routed to
+// Reports on report:run and reads these two controllers on load. The service
+// gates beneath still apply.
+@PreAuthorize("hasAnyRole('RESULTS', 'VALIDATION', 'ADMIN', 'REPORTS')")
 public class ComplianceReportRestController {
 
     private static final DateTimeFormatter DISPLAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");

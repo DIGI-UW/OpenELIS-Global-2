@@ -25,9 +25,20 @@ import org.openelisglobal.reports.dataexport.form.SavedReportDefinition;
 import org.openelisglobal.reports.dataexport.form.SavedReportFilters;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.io.support.PathMatchingResourcePatternResolver;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Gated on report:export at the class level. Every public method here backs
+ * /rest/reports/data-export (report types, saved configs, export jobs and their
+ * downloads), which arrived from develop with no authorization at any layer:
+ * the controller carries no @PreAuthorize and ModuleAuthenticationInterceptor
+ * auto-allows /rest paths without a system_module_url row, so any authenticated
+ * user could run and download a data export. report:export is the privilege
+ * seeded for exactly this and is held by the Reports role.
+ */
+@PreAuthorize("hasAuthority('PRIV_REPORT_EXPORT')")
 @Service
 @Transactional(readOnly = true)
 public class ReportingCatalogService {

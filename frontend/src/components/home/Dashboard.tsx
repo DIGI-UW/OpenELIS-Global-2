@@ -64,6 +64,7 @@ import {
   getFromOpenElisServer,
   convertAlphaNumLabNumForDisplay,
   hasRole,
+  Roles,
 } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 import UserSessionDetailsContext from "../../UserSessionDetailsContext";
@@ -231,11 +232,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
       const sections = Array.isArray(res) ? res : [];
       setTestSections(sections);
-      setSelectedTestSection(
-        hasRole(userSessionDetails, "Global Administrator")
-          ? ALL_SECTIONS
-          : sections[0]?.id,
-      );
+      // Every tile opens on the whole of the reader's scope, not on one
+      // section. A tile is a work queue - "In Progress" is the work waiting
+      // for results entry - and its number is counted across every section
+      // the reader can see. Opening on sections[0] asked a different
+      // question from the one the tile answered: the first section returned
+      // is simply the first of the list (Hematology here), so a user whose
+      // work sat in any other section read a non-zero tile and then an empty
+      // table. The server still narrows an unscoped request to the reader's
+      // own lab units, so this widens nothing they could not already see.
+      setSelectedTestSection(ALL_SECTIONS);
     });
   }, [userSessionDetails]);
 
@@ -254,6 +260,20 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     );
   };
 
+  const loadCount = (data) => {
+    if (componentMounted.current) {
+      // Keep the initialised shape when the request fails or is denied. The
+      // helper invokes this callback with undefined on a non-2xx response, and
+      // overwriting state with it crashed the whole landing page on the first
+      // tile read (`counts.ordersInProgress` of undefined) rather than showing
+      // an empty dashboard. A role without access to a metric should see a
+      // blank tile, not a white screen.
+      if (data) {
+        setCounts((current) => ({ ...current, ...data }));
+      }
+      setLoading(false);
+    }
+  };
   const arrows = serverPageArrowsProps({
     paging,
     onPageRequest: loadResultsPage,
@@ -384,16 +404,17 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       setSelectedTile(tile);
     } else {
       setSelectedTile(null);
-      hasRole(userSessionDetails, "Global Administrator")
-        ? setSelectedTestSection(ALL_SECTIONS)
-        : setSelectedTestSection(testSections[0]?.id);
+      // Closing a tile returns to the scope it opened on, for the same
+      // reason: reverting to sections[0] would have left the next tile
+      // opened on a section the reader never chose.
+      setSelectedTestSection(ALL_SECTIONS);
     }
   };
 
   const handleMaximizeClick = (tile) => {
     if (
       testSections?.length > 0 ||
-      hasRole(userSessionDetails, "Global Administrator")
+      hasRole(userSessionDetails, Roles.GLOBAL_ADMIN)
     ) {
       setSelectedTile(tile);
     } else {

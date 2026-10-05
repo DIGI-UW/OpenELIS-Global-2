@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+      http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet author="openelis" id="012-002-create-system-role-privilege">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_privilege" schemaName="clinlims"/>
+            <tableExists tableName="system_role" schemaName="clinlims"/>
+            <not>
+                <tableExists tableName="system_role_privilege" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+        <comment>Create system_role_privilege join table mapping roles to their directly-owned privileges (not inherited)</comment>
+        <createTable tableName="system_role_privilege" schemaName="clinlims">
+            <column name="id" type="SERIAL">
+                <constraints primaryKey="true" primaryKeyName="system_role_privilege_pk"/>
+            </column>
+            <column name="system_role_id" type="NUMERIC(10)">
+                <constraints nullable="false"
+                             foreignKeyName="srp_role_fk"
+                             references="clinlims.system_role(id)"/>
+            </column>
+            <column name="privilege_id" type="INTEGER">
+                <constraints nullable="false"
+                             foreignKeyName="srp_privilege_fk"
+                             references="clinlims.system_privilege(id)"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="VARCHAR(255)"/>
+        </createTable>
+        <addUniqueConstraint
+            tableName="system_role_privilege"
+            schemaName="clinlims"
+            columnNames="system_role_id, privilege_id"
+            constraintName="system_role_privilege_uq"/>
+        <rollback>
+            <dropTable tableName="system_role_privilege" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -2,7 +2,7 @@ package org.openelisglobal.qc.controller;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.when;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,6 +15,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.qc.service.QCResultService;
 import org.openelisglobal.qc.valueholder.QCResult;
+import org.openelisglobal.security.GatedServiceMocks;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
 import org.openelisglobal.testsupport.SliceSecurityConfig;
 import org.springframework.context.annotation.Bean;
@@ -44,7 +45,7 @@ public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMv
     @Before
     public void resetStub() {
         QCResultService service = webApplicationContext.getBean(QCResultService.class);
-        org.mockito.Mockito.reset(service);
+        reset(GatedServiceMocks.mockBehind(service));
         when(service.createBenchQCResult(any(), anyInt())).thenReturn(new QCResult());
     }
 
@@ -114,7 +115,7 @@ public class BenchQCResultRestControllerSecurityTest extends SecuritySliceMockMv
         @Bean
         QCResultService qcResultService() {
             // resetStub sets the return value before every test.
-            return mock(QCResultService.class);
+            return GatedServiceMocks.stubbableMock(QCResultService.class);
         }
 
         @Bean

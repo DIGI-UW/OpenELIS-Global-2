@@ -28,7 +28,6 @@ import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.WebDataBinder;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,7 +39,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest")
-@PreAuthorize("hasRole('ADMIN')")
 public class TestActivationRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "jsonChangeList", "activeTestList*.sampleType.id",

@@ -8,7 +8,6 @@ import org.openelisglobal.microbiology.service.MicroCultureAnalyzerEventCommand;
 import org.openelisglobal.microbiology.service.MicroCultureAnalyzerEventService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +24,6 @@ public class MicroCultureAnalyzerEventRestController extends MicrobiologyRestCon
     }
 
     @PostMapping
-    @PreAuthorize("hasRole('ANALYSER_IMPORT')")
     public ResponseEntity<MicroAnalyzerEventForm> receive(@RequestBody MicroCultureAnalyzerEventRequestForm request,
             HttpServletRequest httpRequest) {
         AnalyzerEvent event = eventService

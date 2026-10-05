@@ -6,7 +6,9 @@ import org.openelisglobal.coldstorage.event.FreezerHumidityThresholdViolatedEven
 import org.openelisglobal.coldstorage.event.FreezerTemperatureThresholdViolatedEvent;
 import org.openelisglobal.coldstorage.event.FreezerTransmissionFailedEvent;
 import org.openelisglobal.coldstorage.event.FreezerTransmissionRecoveredEvent;
+import org.springframework.security.access.prepost.PreAuthorize;
 
+@PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
 public interface FreezerAlertService {
 
     /**

@@ -80,6 +80,8 @@ public class VectorTrapTypeServiceImpl extends AuditableBaseObjectServiceImpl<Ve
         if (t.getSampleTypeIds() != null && !t.getSampleTypeIds().isEmpty()) {
             List<TypeOfSample> resolved = new ArrayList<>();
             for (Long stId : t.getSampleTypeIds()) {
+                // Same as VectorSpeciesServiceImpl: naming the sample types a trap
+                // type applies to, for the vector order picker.
                 TypeOfSample tos = typeOfSampleService.getTypeOfSampleById(String.valueOf(stId));
                 if (tos != null) {
                     resolved.add(tos);

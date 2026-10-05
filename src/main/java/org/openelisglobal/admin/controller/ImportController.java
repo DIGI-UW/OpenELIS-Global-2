@@ -13,7 +13,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/import")
-@PreAuthorize("hasRole('ADMIN')")
+// Admin-only FHIR import endpoints. The interceptor now fails open on unmapped
+// /rest paths and these are not mapped, so this controller guard (restored from
+// maintainer commit 0a3a335a1, lost in a rebase) is the real boundary — the
+// service methods it calls are additionally gated (PRIV_ORGANIZATION_MANAGE /
+// PRIV_PROVIDER_MANAGE).
+@PreAuthorize("hasAuthority('PRIV_SYSTEM_CONFIGURE')")
 public class ImportController {
 
     private enum ResourceType {

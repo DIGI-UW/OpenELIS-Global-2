@@ -15,6 +15,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.scheduling.annotation.Scheduled;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
 /**
@@ -65,6 +66,7 @@ public class ModbusPollingService {
      * cycles.
      */
     @Scheduled(initialDelayString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.initial-delay:PT15S}').toMillis()}", fixedDelayString = "#{T(java.time.Duration).parse('${org.openelisglobal.freezermonitoring.modbus.poll-interval:PT5M}').toMillis()}")
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     public void pollDevices() {
         if (!systemConfigService.isMonitoringEnabled()) {
             LOGGER.debug("Skipping freezer polling run - monitoring disabled");
@@ -130,6 +132,7 @@ public class ModbusPollingService {
      * deleting old readings.
      */
     @Scheduled(cron = "${org.openelisglobal.freezermonitoring.retention-cron:0 30 2 * * ?}")
+    @PreAuthorize("hasAuthority('PRIV_COLDSTORAGE_MANAGE')")
     public void cleanupOldReadings() {
         if (!systemConfigService.isMonitoringEnabled()) {
             LOGGER.debug("Skipping freezer reading retention cleanup - monitoring disabled");

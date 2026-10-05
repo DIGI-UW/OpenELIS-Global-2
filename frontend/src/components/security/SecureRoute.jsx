@@ -7,7 +7,7 @@ import { confirmAlert } from "react-confirm-alert";
 import "react-confirm-alert/src/react-confirm-alert.css"; // Import css
 import { Loading, Modal } from "@carbon/react/";
 import config from "../../config.json";
-import { Roles, hasPermission } from "../utils/Utils";
+import { Roles, computeRouteAccess } from "../utils/Utils";
 import { FormattedMessage, useIntl } from "react-intl";
 
 const idleTimeout = 1000 * 60 * 30; // milliseconds until idle warning will appear
@@ -77,34 +77,17 @@ function SecureRoute(props) {
     }
   }, [userSessionDetails, errorLoadingSessionDetails, location.pathname]);
 
-  const routeAccessAllowed = (userDetails = userSessionDetails) => {
-    // role and permission are OR'd: either grants access. With neither prop,
-    // any authenticated user passes (existing behavior).
-    var roleMatches = props.role
-      ? []
-          .concat(props.role)
-          .some((role) => userDetails.roles && userDetails.roles.includes(role))
-      : !props.permission;
-    var hasRole = roleMatches || hasPermission(userDetails, props.permission);
-    var containsLabUnitRole = false;
-    if (props.labUnitRole) {
-      Object.keys(props.labUnitRole).forEach((labunit) => {
-        if (userDetails.userLabRolesMap) {
-          const userRoles = userDetails.userLabRolesMap["AllLabUnits"]
-            ? userDetails.userLabRolesMap["AllLabUnits"]
-            : userDetails.userLabRolesMap[labunit] || [];
-          const roles = props.labUnitRole[labunit];
-          roles.forEach((r) => {
-            if (userRoles.includes(r)) {
-              containsLabUnitRole = true;
-            }
-          });
-        }
-      });
-    }
-    var hasLabUnitRole = !props.labUnitRole || containsLabUnitRole;
-    return hasRole && hasLabUnitRole;
-  };
+  // One decision function for both models: computeRouteAccess understands
+  // role=, privilege= (PRIV_*, OGC-384) and permission= (qa.* keys, EQA V2),
+  // plus labUnitRole. Kept in Utils so the menu filter and SecureRoute cannot
+  // drift: a menu row is shown exactly when this would admit the route.
+  const routeAccessAllowed = (userDetails = userSessionDetails) =>
+    computeRouteAccess(userDetails, {
+      role: props.role,
+      privilege: props.privilege,
+      permission: props.permission,
+      labUnitRole: props.labUnitRole,
+    });
 
   const onIdle = () => {
     setStillThereOpen(false);

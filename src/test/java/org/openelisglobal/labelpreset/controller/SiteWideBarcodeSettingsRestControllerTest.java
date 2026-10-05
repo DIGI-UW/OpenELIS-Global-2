@@ -42,6 +42,12 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
     @Before
     public void setUp() throws Exception {
         super.setUp();
+        // Rebuild WITHOUT the springSecurity() configurer: the app's filter chain is
+        // path-scoped and never populates the SecurityContext for /api/siteSettings,
+        // so the service-layer @PreAuthorize gates (PRIV_SITE_INFO_VIEW /
+        // PRIV_SYSTEM_CONFIGURE) must see the @Before thread-local authentication.
+        mockMvc = org.springframework.test.web.servlet.setup.MockMvcBuilders
+                .webAppContextSetup(this.webApplicationContext).build();
         ensureLabelsDomainAndBarcodeRows();
         executeDataSetWithStateManagement("testdata/system-user.xml");
     }

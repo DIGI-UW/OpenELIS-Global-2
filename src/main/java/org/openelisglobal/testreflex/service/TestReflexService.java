@@ -7,32 +7,46 @@ import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testreflex.action.bean.ReflexRule;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 public interface TestReflexService extends BaseObjectService<TestReflex, String> {
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     void getData(TestReflex testReflex);
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<TestReflex> getPageOfTestReflexs(int startingRecNo);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexesByTestResult(TestResult testResult);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexsByTestAndFlag(String testId, String flag);
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     Integer getTotalTestReflexCount();
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<TestReflex> getAllTestReflexs();
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     boolean isReflexedTest(Analysis analysis);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getFlaggedTestReflexesByTestResult(TestResult testResult, String flag);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexesByTestResultAndTestAnalyte(TestResult testResult, TestAnalyte testAnalyte);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexsByTestResultAnalyteTest(String testResultId, String analyteId, String testId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexsByAnalyteAndTest(String analyteId, String testId);
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     void saveOrUpdateReflexRule(ReflexRule reflexRule);
 
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     List<ReflexRule> getAllReflexRules();
 
     /**
@@ -40,6 +54,7 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
      * rule with the given id existed and was updated; {@code false} when no such
      * rule was found.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     boolean deactivateReflexRule(String id);
 
     /**
@@ -47,8 +62,10 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
      * with the given id existed and was updated; {@code false} when no such rule
      * was found.
      */
+    @PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
     boolean activateReflexRule(String id);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     ReflexRule getReflexRuleByAnalyteId(String analyteId);
 
     /**
@@ -67,9 +84,12 @@ public interface TestReflexService extends BaseObjectService<TestReflex, String>
      * existed, or one the user-choice path constructs in memory — has no flag to
      * consult and is treated as active, which is how it behaves today.
      */
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     boolean isReflexRuleActive(TestReflex reflex);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexsByTestAnalyteId(String testAnalyteId);
 
+    @PreAuthorize("hasAuthority('PRIV_RESULT_VIEW')")
     List<TestReflex> getTestReflexsByTestId(String testId);
 }

@@ -28,6 +28,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -86,6 +87,9 @@ public class ShippingBoxRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(forms);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -106,6 +110,9 @@ public class ShippingBoxRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(forms);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -142,6 +149,9 @@ public class ShippingBoxRestController extends BaseRestController {
             form.setSamples(sampleInfos);
 
             return ResponseEntity.ok(form);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -165,6 +175,9 @@ public class ShippingBoxRestController extends BaseRestController {
             return ResponseEntity.ok(forms);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -185,6 +198,9 @@ public class ShippingBoxRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(forms);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -241,6 +257,9 @@ public class ShippingBoxRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(trimmedPrefix);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -267,6 +286,9 @@ public class ShippingBoxRestController extends BaseRestController {
                         break;
                     }
                 }
+            } catch (AccessDeniedException denied) {
+                // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                throw denied;
             } catch (Exception e) {
                 // Invalid UUID stored — ignore
             }
@@ -317,6 +339,9 @@ public class ShippingBoxRestController extends BaseRestController {
             result.put("fhirUuid", fhirUuid);
             result.put("orgId", trimmed);
             return ResponseEntity.ok(result);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -432,6 +457,9 @@ public class ShippingBoxRestController extends BaseRestController {
             }
 
             return ResponseEntity.ok(convertToForm(box));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -471,6 +499,9 @@ public class ShippingBoxRestController extends BaseRestController {
             return ResponseEntity.status(HttpStatus.CREATED).body(responseForm);
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -513,6 +544,9 @@ public class ShippingBoxRestController extends BaseRestController {
             return ResponseEntity.ok(responseForm);
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -549,6 +583,9 @@ public class ShippingBoxRestController extends BaseRestController {
                 return ResponseEntity.badRequest().body(body);
             }
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -568,6 +605,9 @@ public class ShippingBoxRestController extends BaseRestController {
             return ResponseEntity.ok().build();
         } catch (IllegalStateException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -596,6 +636,9 @@ public class ShippingBoxRestController extends BaseRestController {
             return new ResponseEntity<>(pdfStream.toByteArray(), headers, HttpStatus.OK);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -667,6 +710,9 @@ public class ShippingBoxRestController extends BaseRestController {
             return ResponseEntity.ok(manifestData);
         } catch (IllegalArgumentException e) {
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -696,6 +742,9 @@ public class ShippingBoxRestController extends BaseRestController {
         } catch (IllegalArgumentException e) {
             LogEvent.logError("Box not found", e);
             return ResponseEntity.notFound().build();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("Error generating manifest PDF", e);
             LogEvent.logError(e);
@@ -739,6 +788,9 @@ public class ShippingBoxRestController extends BaseRestController {
             statistics.put("totalSamples", totalSamples);
 
             return ResponseEntity.ok(statistics);
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
@@ -861,6 +913,9 @@ public class ShippingBoxRestController extends BaseRestController {
         try {
             int imported = shipmentFhirImportService.importShipments();
             return ResponseEntity.ok(java.util.Collections.singletonMap("imported", imported));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)

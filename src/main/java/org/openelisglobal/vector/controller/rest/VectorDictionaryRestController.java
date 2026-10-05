@@ -18,6 +18,25 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * Dictionary lookups backing the environmental and vector order-entry dropdowns
+ * (sampling site types, weather, collection methods, containers, pathogens,
+ * lifecycle stages).
+ *
+ * <p>
+ * Every read here goes through {@link DictionaryService} or
+ * {@link DictionaryCategoryService}, both gated on PRIV_DICTIONARY_VIEW — an
+ * administrative privilege that no order-entry role holds. That made the whole
+ * environmental entry form unusable for Reception: each lookup threw
+ * AccessDenied, the broad {@code catch (Exception)} in each handler turned it
+ * into a 500, and the form rendered with empty dropdowns and no indication why.
+ *
+ * <p>
+ * These are reference-data lists for dropdowns, not privileged records, so the
+ * reads run in system context — the same treatment as DisplayListService's
+ * caches. The caller's own access is still gated at the endpoints that create
+ * or modify orders; this only assembles the options the form displays.
+ */
 @RestController
 @RequestMapping("/rest/vector/dictionary")
 public class VectorDictionaryRestController {

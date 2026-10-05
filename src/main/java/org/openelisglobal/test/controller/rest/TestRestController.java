@@ -35,6 +35,12 @@ public class TestRestController {
     @Autowired
     private TypeOfSampleTestService typeOfSampleTestService;
 
+    /**
+     * Which specimen types a chosen test can be collected into, the collection step
+     * asks this to offer the right containers. Gated as the caller: the test
+     * catalogue and sample-type reads it crosses both accept
+     * {@code PRIV_CATALOGUE_VIEW}, which every order-entry role holds.
+     */
     @Autowired
     private TypeOfSamplePanelService typeOfSamplePanelService;
 

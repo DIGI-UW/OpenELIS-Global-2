@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<dataset>
+    <system_user id="901" external_id="RBAC-TEST-PRIV"
+        login_name="rbac_priv_user" last_name="Test" first_name="Privileged"
+        initials="PT" is_active="Y" is_employee="Y"
+        lastupdated="2026-01-01 00:00:00" />
+    <system_user id="902" external_id="RBAC-TEST-NOPRIV"
+        login_name="rbac_nopriv_user" last_name="Test"
+        first_name="Unprivileged" initials="UT" is_active="Y" is_employee="Y"
+        lastupdated="2026-01-01 00:00:00" />
+
+    <login_user id="901" login_name="rbac_priv_user"
+        password="$2a$10$uhFDEbHodC1Fv/nFQ3pCe.AbPxJqThyanWtC117EvdFrwEAQry0Wa"
+        password_expired_dt="2099-01-01" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2026-01-01 00:00:00" />
+    <login_user id="902" login_name="rbac_nopriv_user"
+        password="$2a$10$uhFDEbHodC1Fv/nFQ3pCe.AbPxJqThyanWtC117EvdFrwEAQry0Wa"
+        password_expired_dt="2099-01-01" account_locked="N"
+        account_disabled="N" is_admin="N" user_time_out="220"
+        last_updated="2026-01-01 00:00:00" />
+
+    <system_privilege id="901" name="patient:view"
+        description="Test: view patient" category="patients" active="true"
+        lastupdated="2026-01-01 00:00:00" />
+
+    <system_role id="901" name="RBAC_TEST_VIEWER"
+        description="Has patient:view" is_grouping_role="false"
+        display_key="rbacTestKey" active="true" editable="true" />
+    <system_role id="902" name="RBAC_TEST_EMPTY"
+        description="No privileges" is_grouping_role="false"
+        display_key="rbacEmptyKey" active="true" editable="true" />
+
+    <system_role_privilege id="901"
+        system_role_id="901" privilege_id="901" />
+
+    <system_user_role system_user_id="901" role_id="901" />
+    <system_user_role system_user_id="902" role_id="902" />
+
+    <person id="901" last_name="RbacTest" first_name="Patient"
+        lastupdated="2026-01-01 00:00:00" />
+    <patient id="901" person_id="901"
+        fhir_uuid="00000000-0000-0000-0000-000000000901"
+        lastupdated="2026-01-01 00:00:00" />
+</dataset>

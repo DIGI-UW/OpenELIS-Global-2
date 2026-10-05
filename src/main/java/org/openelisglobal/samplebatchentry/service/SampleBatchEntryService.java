@@ -26,11 +26,19 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.validation.BindingResult;
 
+/**
+ * Batch sample entry: the same order-creation workflow as Sample Entry, over a
+ * batch of samples. {@code save} validates the form and persists through
+ * {@link SamplePatientEntryService#persistData}, which requires
+ * PRIV_ORDER_CREATE, so the entry point takes the same privilege rather than
+ * leaving a controller-reachable @Service class ungated.
+ */
 @Service
 public class SampleBatchEntryService {
     @Autowired
@@ -46,6 +54,7 @@ public class SampleBatchEntryService {
     @Autowired
     private FhirTransformService fhirTransformService;
 
+    @PreAuthorize("hasAuthority('PRIV_ORDER_CREATE')")
     @Transactional(rollbackFor = Exception.class)
     public boolean save(SampleBatchEntrySaveForm form, BindingResult result, HttpServletRequest request,
             String sysUserId) throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {

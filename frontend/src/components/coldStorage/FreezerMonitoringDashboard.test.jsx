@@ -79,7 +79,12 @@ const renderDashboard = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
       <UserSessionDetailsContext.Provider
-        value={{ userSessionDetails: { roles: ["Global Administrator"] } }}
+        value={{
+          userSessionDetails: {
+            roles: ["Global Administrator"],
+            privileges: ["coldstorage:manage"],
+          },
+        }}
       >
         <NotificationContext.Provider
           value={{

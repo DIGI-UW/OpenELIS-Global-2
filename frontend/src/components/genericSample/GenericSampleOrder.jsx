@@ -134,8 +134,15 @@ export default function GenericSampleOrder({
       });
     }
     if (showUom) {
-      getFromOpenElisServer("/rest/UomCreate", (res) => {
-        setUoms(res.existingUomList || []);
+      // /rest/uom, not /rest/UomCreate: the latter is the unit-of-measure
+      // ADMIN screen, permitted only to the UomCreate module (Global
+      // Administrator and Test Management), so it 403s for the order-entry
+      // roles this page is routed to. /rest/uom is the read-only list and
+      // returns the same {id, value} rows the dropdown below consumes.
+      getFromOpenElisServer("/rest/uom", (res) => {
+        // res is undefined when the lookup fails; the page keeps working with
+        // an empty unit list rather than throwing out of the whole form.
+        setUoms(Array.isArray(res) ? res : []);
       });
     }
     if (showNotebookSelection) {

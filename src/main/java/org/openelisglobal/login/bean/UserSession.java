@@ -17,7 +17,24 @@ public class UserSession {
     private String firstName;
     private String lastName;
     private Set<String> roles;
+
+    /**
+     * Resolved privilege names (e.g. {@code result:validate}) — direct plus
+     * inherited via role grouping, expanded to the full catalog for Global
+     * Administrator. The frontend gates UI with {@code hasPrivilege()} against this
+     * set instead of role-name strings (spec 012, US3/T033).
+     */
+    private Set<String> privileges;
     private Set<String> permissions;
+
+    /**
+     * Names of the SystemModules the caller's roles grant, i.e. what
+     * ModuleAuthenticationInterceptor checks a URL against. Sent so the sidebar can
+     * hide menu rows that layer would refuse; without it the frontend can only see
+     * the SecureRoute guards and keeps offering pages that redirect to
+     * /Home?access=denied or load and then 403 their data calls.
+     */
+    private Set<String> modules;
     private Map<String, List<String>> userLabRolesMap;
     private String CSRF;
     private String loginLabUnit;
@@ -84,6 +101,22 @@ public class UserSession {
 
     public void setRoles(Set<String> roles) {
         this.roles = roles;
+    }
+
+    public Set<String> getPrivileges() {
+        return privileges;
+    }
+
+    public void setPrivileges(Set<String> privileges) {
+        this.privileges = privileges;
+    }
+
+    public Set<String> getModules() {
+        return modules;
+    }
+
+    public void setModules(Set<String> modules) {
+        this.modules = modules;
     }
 
     public Set<String> getPermissions() {

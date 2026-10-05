@@ -20,7 +20,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstRunAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -32,7 +31,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/ast")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroAstRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroAstService astService;
@@ -81,7 +79,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs/{runId}/analyzer-flags/acknowledge")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
     public ResponseEntity<MicroAstRunForm> acknowledgeAnalyzerFlags(@PathVariable String runId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunFormWithReadings(
@@ -89,7 +86,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/runs/{runId}/qc/override")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
     public ResponseEntity<MicroAstRunForm> overrideQcFailure(@PathVariable String runId,
             @RequestBody MicroAstRunRequestForm request, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(toRunFormWithReadings(
@@ -130,7 +126,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PutMapping("/readings/{readingId}/override")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
     public ResponseEntity<MicroAstReadingForm> overrideReading(@PathVariable String readingId,
             @RequestBody MicroAstOverrideRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.overrideReading(readingId,
@@ -140,7 +135,6 @@ public class MicroAstRestController extends MicrobiologyRestControllerSupport {
     }
 
     @PostMapping("/readings/{readingId}/override/revert")
-    @PreAuthorize("hasAnyRole('ADMIN', 'VALIDATION')")
     public ResponseEntity<MicroAstReadingForm> revertOverride(@PathVariable String readingId,
             @RequestBody MicroAstOverrideRequestForm request, HttpServletRequest httpRequest) {
         MicroAstReading reading = astService.revertOverride(readingId, request.overrideReason,

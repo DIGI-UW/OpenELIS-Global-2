@@ -36,8 +36,12 @@ public class CatalogImportServiceImpl implements CatalogImportService {
     @Autowired
     private List<DomainConfigurationHandler> domainHandlers;
 
+    // Injected by its gated interface, not the class. ConfigurationReloadService
+    // carries @PreAuthorize, so method security wraps the bean in a JDK proxy that
+    // implements the interface only; a field typed as the concrete class fails at
+    // boot with BeanNotOfRequiredTypeException. See ProxiedBeanInjectionTest.
     @Autowired
-    private ConfigurationInitializationService initializationService;
+    private ConfigurationReloadService initializationService;
 
     @Autowired
     private ConfigurationImportRunService importRunService;

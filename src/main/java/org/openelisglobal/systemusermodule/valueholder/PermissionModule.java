@@ -1,26 +1,50 @@
 package org.openelisglobal.systemusermodule.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.MappedSuperclass;
+import jakarta.persistence.Transient;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.systemmodule.valueholder.SystemModule;
 
+@MappedSuperclass
 public abstract class PermissionModule extends BaseObject<String> {
 
     private static final long serialVersionUID = 1L;
 
+    @Id
+    @GeneratedValue(generator = "permission_module_id_gen")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "id", precision = 10, scale = 0)
     private String id;
-    private String hasSelect;
-    private String hasAdd;
-    private String hasUpdate;
-    private String hasDelete;
-    private String systemModuleId;
 
-    private ValueHolderInterface systemModule;
+    @Column(name = "has_select", length = 1)
+    private String hasSelect;
+
+    @Column(name = "has_add", length = 1)
+    private String hasAdd;
+
+    @Column(name = "has_update", length = 1)
+    private String hasUpdate;
+
+    @Column(name = "has_delete", length = 1)
+    private String hasDelete;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "system_module_id")
+    private SystemModule systemModule;
+
+    // kept for backward-compat; delegates to the JPA association
+    @Transient
+    private String systemModuleId;
 
     public PermissionModule() {
         super();
-        this.systemModule = new ValueHolder();
     }
 
     public void setId(String id) {
@@ -63,20 +87,12 @@ public abstract class PermissionModule extends BaseObject<String> {
         return hasDelete;
     }
 
-    protected void setSystemModuleHolder(ValueHolderInterface systemModule) {
+    public void setSystemModule(SystemModule systemModule) {
         this.systemModule = systemModule;
     }
 
-    protected ValueHolderInterface getSystemModuleHolder() {
-        return this.systemModule;
-    }
-
-    public void setSystemModule(SystemModule systemModule) {
-        this.systemModule.setValue(systemModule);
-    }
-
     public SystemModule getSystemModule() {
-        return (SystemModule) this.systemModule.getValue();
+        return systemModule;
     }
 
     public void setSystemModuleId(String systemModuleId) {
@@ -84,7 +100,10 @@ public abstract class PermissionModule extends BaseObject<String> {
     }
 
     public String getSystemModuleId() {
-        return systemModuleId;
+        if (systemModuleId != null) {
+            return systemModuleId;
+        }
+        return systemModule != null ? systemModule.getId() : null;
     }
 
     public abstract String getPermissionAgentId();

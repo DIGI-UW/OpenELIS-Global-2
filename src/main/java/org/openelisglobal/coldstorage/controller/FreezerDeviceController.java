@@ -25,7 +25,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -69,7 +68,6 @@ public class FreezerDeviceController extends BaseRestController {
         this.systemUserService = systemUserService;
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/status")
     public List<FreezerStatusResponse> getCurrentStatus(
             @RequestParam(name = "roomId", required = false) Long roomFilter,
@@ -82,7 +80,6 @@ public class FreezerDeviceController extends BaseRestController {
                 .collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/id/{freezerId}/readings")
     public List<SensorReadingResponse> getReadings(@PathVariable Long freezerId, @RequestParam OffsetDateTime start,
             @RequestParam OffsetDateTime end) {
@@ -91,7 +88,6 @@ public class FreezerDeviceController extends BaseRestController {
                 .collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{name}/latest")
     public ResponseEntity<SensorReadingResponse> getLatestByName(@PathVariable String name) {
         return freezerService.findByName(name)
@@ -99,7 +95,6 @@ public class FreezerDeviceController extends BaseRestController {
                 .map(SensorReadingResponse::from).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/{name}/recent")
     public ResponseEntity<List<SensorReadingResponse>> getRecentByName(@PathVariable String name,
             @RequestParam(defaultValue = "10") @Min(1) @Max(250) int limit) {
@@ -109,32 +104,27 @@ public class FreezerDeviceController extends BaseRestController {
                 .orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/devices")
     public List<Freezer> listDevices(@RequestParam(name = "search", required = false) String search) {
         return freezerService.getAllFreezers(search);
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/devices/{id}")
     public ResponseEntity<Freezer> getDevice(@PathVariable Long id) {
         return freezerService.findById(id).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/devices/name/{name}")
     public ResponseEntity<Freezer> getDeviceByName(@PathVariable String name) {
         return freezerService.findByName(name).map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/storage-devices")
     public List<StorageDeviceResponse> listStorageDevices() {
         return storageLocationService.getAllDevices().stream().filter(StorageDevice::getActive)
                 .map(StorageDeviceResponse::from).collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasAnyRole('RECEPTION', 'ADMIN')")
     @GetMapping("/users")
     public List<IdValuePair> listUsers() {
         return systemUserService.getAll().stream()
@@ -142,7 +132,6 @@ public class FreezerDeviceController extends BaseRestController {
                 .map(user -> new IdValuePair(user.getId(), user.getDisplayName())).collect(Collectors.toList());
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices")
     public ResponseEntity<Freezer> createDevice(@RequestBody @Valid Freezer freezer,
             @RequestParam(name = "roomId", required = true) Long roomId,
@@ -151,7 +140,6 @@ public class FreezerDeviceController extends BaseRestController {
         return ResponseEntity.ok(created);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/devices/{id}")
     public ResponseEntity<Freezer> updateDevice(@PathVariable Long id, @RequestBody @Valid Freezer freezer,
             @RequestParam(name = "roomId", required = true) Long roomId,
@@ -160,21 +148,18 @@ public class FreezerDeviceController extends BaseRestController {
         return ResponseEntity.ok(updated);
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/toggle-status")
     public ResponseEntity<Void> toggleDeviceStatus(@PathVariable Long id, @RequestBody ToggleStatusRequest request) {
         freezerService.setDeviceStatus(id, request.getActive());
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/devices/{id}/delete")
     public ResponseEntity<Void> deleteDevice(@PathVariable Long id) {
         freezerService.deleteFreezer(id);
         return ResponseEntity.ok().build();
     }
 
-    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping("/devices/{id}/thresholds")
     public ResponseEntity<Freezer> updateDeviceThresholds(@PathVariable Long id,
             @RequestBody @Valid UpdateThresholdsRequest request, jakarta.servlet.http.HttpServletRequest httpRequest) {

@@ -10,7 +10,6 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -29,20 +28,17 @@ public class MicroWhonetExportRestController extends MicrobiologyRestControllerS
     }
 
     @GetMapping("/preview")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
     public ResponseEntity<MicroWhonetPreviewForm> preview(@ModelAttribute MicroWhonetExportQueryForm query) {
         return ResponseEntity.ok(reportService.previewMicrobiologyExport(query));
     }
 
     @GetMapping("/filter-options")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
     public ResponseEntity<MicroWhonetFilterOptionsForm> filterOptions(
             @ModelAttribute MicroWhonetExportQueryForm query) {
         return ResponseEntity.ok(reportService.getMicrobiologyExportFilterOptions(query));
     }
 
     @PostMapping("/exports")
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'REPORTS')")
     public ResponseEntity<byte[]> generate(@RequestBody MicroWhonetExportQueryForm query, HttpServletRequest request) {
         MicroWhonetExportResult result = reportService.generateMicrobiologyExport(query, authenticatedUserId(request));
         HttpHeaders headers = new HttpHeaders();

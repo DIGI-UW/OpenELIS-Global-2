@@ -7,7 +7,6 @@ import org.openelisglobal.microbiology.form.MicroCaseInoculationRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseInoculationService;
 import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -17,7 +16,6 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}/inoculations")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
 public class MicroCaseInoculationRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseInoculationService inoculationService;

@@ -43,7 +43,12 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/rest")
 @SessionAttributes("form")
 @SuppressWarnings("unused")
-@PreAuthorize("hasRole('ADMIN')")
+// No class-level @PreAuthorize: a class-level gate is applied even to a handler
+// that carries its own, so hasRole('ADMIN') here denied the one read that is
+// deliberately open to the workbench roles
+// (getDictionaryEntriesByCategoryName), despite its own hasAnyRole listing
+// them. The four administration handlers below each carry hasRole('ADMIN')
+// explicitly instead, so dropping it from the class widens nothing.
 public class DictionaryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "dirtyFormFields", "id",
@@ -87,6 +92,7 @@ public class DictionaryRestController extends BaseController {
         }
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @RequestMapping(value = "/Dictionary", method = RequestMethod.GET)
     public DictionaryForm showDictionary(HttpServletRequest request, @ModelAttribute("dictform") BaseForm oldForm)
             throws IllegalAccessException, InvocationTargetException, NoSuchMethodException {
@@ -145,6 +151,7 @@ public class DictionaryRestController extends BaseController {
         request.setAttribute(NEXT_DISABLED, "true");
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @RequestMapping(value = "/NextPreviousDictionary", method = RequestMethod.GET)
     public ResponseEntity<?> showNextPreviousDictionary(HttpServletRequest request) {
         String id = request.getParameter(ID);
@@ -178,6 +185,7 @@ public class DictionaryRestController extends BaseController {
      * @throws InvocationTargetException
      * @throws NoSuchMethodException
      */
+    @PreAuthorize("hasRole('ADMIN')")
     @RequestMapping(value = "/Dictionary", method = RequestMethod.POST)
     public ResponseEntity<?> showUpdateDictionary(HttpServletRequest request, @RequestBody @Valid DictionaryForm form,
             BindingResult result, SessionStatus status, RedirectAttributes redirectAttributes)
@@ -314,6 +322,7 @@ public class DictionaryRestController extends BaseController {
         return isDictionaryFrozenCheckRequired;
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @RequestMapping(value = "/CancelDictionary", method = RequestMethod.GET)
     public ResponseEntity<?> cancelDictionary(HttpServletRequest request, SessionStatus status) {
         status.setComplete();

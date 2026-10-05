@@ -26,6 +26,8 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.address.service.AddressHierarchyConfigurationHandler;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.common.security.SystemInitFlag;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.IdValuePair;
@@ -84,6 +86,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.servlet.LocaleResolver;
 
 @Service
+@CrossDomainService(callers = "Shared reference-list cache; already runs its builds in system context and is consumed by every screen. Reached from a controller but not itself a privileged operation; the endpoint and the services it delegates to carry the gates.")
 public class DisplayListService implements LocaleChangeListener {
 
     private static DisplayListService instance;
@@ -197,6 +200,23 @@ public class DisplayListService implements LocaleChangeListener {
             }
         });
         return testResults;
+    }
+
+    // Assembling a test reference list is infrastructure that reads across
+    // several gated services — refreshTestNames() (PRIV_TEST_CONFIGURE),
+    // per-test sample-type augmentation (PRIV_SAMPLE_TYPE_VIEW), etc. Ordinary
+    // users who legitimately need the list (e.g. order:view listing orderable
+    // tests) hold none of those, so a cold-cache build would 500 and crash the
+    // calling screen. Run the whole build in system context (restore, not clear)
+    // so reference-data assembly is never blocked by the admin-scoped reads it
+    // makes internally — the CALLER's own access is already gated at its endpoint.
+    private void buildTestListAsSystem(Runnable build) {
+        boolean wasSet = SystemInitFlag.enter();
+        try {
+            build.run();
+        } finally {
+            SystemInitFlag.exit(wasSet);
+        }
     }
 
     @Override
@@ -480,7 +500,31 @@ public class DisplayListService implements LocaleChangeListener {
         return typeToListMap.get(listType);
     }
 
+    /**
+     * Rebuilds every cached display list. This is reference-data assembly, not a
+     * user-facing read: the 52 builders below reach across ~13 services whose gates
+     * are admin-scoped (dictionary:view, sample_type:view, panel:view,
+     * provider:view, program:view, nce:view, patient:view, test:configure, …). No
+     * operational role holds that whole set, so running it under the caller's
+     * authentication denies whoever happens to trigger the rebuild.
+     *
+     * <p>
+     * That is not hypothetical: after a cache miss this ran on a Results user's
+     * request thread and 403'd GET /rest/displayList/METHODS, so the result-entry
+     * screen never rendered (E2E, rbac_results persona). The individual ALL_TESTS /
+     * ORDERABLE_TESTS cases in {@link #refreshList} already scope system context
+     * for the same reason; this does it for the whole rebuild.
+     *
+     * <p>
+     * Safe because the CALLER's own access is gated at its endpoint — this only
+     * assembles reference data the caller is already entitled to see. Reads only;
+     * no builder writes.
+     */
     public synchronized void refreshLists() {
+        buildTestListAsSystem(() -> refreshAllListsInternal());
+    }
+
+    private void refreshAllListsInternal() {
         typeToListMap = new HashMap<>();
         typeToListMap.put(ListType.NOTEBOOK_STATUS, createNoteBookStatusList());
         typeToListMap.put(ListType.CYTOLOGY_STATUS, createCytologyStatusList());
@@ -586,7 +630,20 @@ public class DisplayListService implements LocaleChangeListener {
         typeToListMap.put(ListType.ACTIVE_ORG_LIST, createActiveOrganizationsList());
     }
 
+    /**
+     * Rebuilds one cached display list. Scoped to system context for the same
+     * reason as {@link #refreshLists()}: 16 of the 29 cases below call a builder
+     * whose service gate is admin-scoped (sample_type:view, panel:view,
+     * dictionary:view, provider:view, program:view, test:configure), so a cache
+     * miss on an operational user's request thread would deny them. Three cases
+     * already did this individually; hoisting it to the method covers the rest and
+     * keeps one rule instead of 29.
+     */
     public void refreshList(ListType listType) {
+        buildTestListAsSystem(() -> refreshListInternal(listType));
+    }
+
+    private void refreshListInternal(ListType listType) {
 
         switch (listType) {
         case ORDER_PRIORITY: {
@@ -602,18 +659,24 @@ public class DisplayListService implements LocaleChangeListener {
             break;
         }
         case ALL_TESTS: {
-            testService.refreshTestNames();
-            typeToListMap.put(ListType.ALL_TESTS, createTestList());
+            buildTestListAsSystem(() -> {
+                testService.refreshTestNames();
+                typeToListMap.put(ListType.ALL_TESTS, createTestList());
+            });
             break;
         }
         case IMMUNOHISTOCHEMISTRY_MARKERS_TESTS: {
-            testService.refreshTestNames();
-            typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, createImmunoHistoChemistryTestList());
+            buildTestListAsSystem(() -> {
+                testService.refreshTestNames();
+                typeToListMap.put(ListType.IMMUNOHISTOCHEMISTRY_MARKERS_TESTS, createImmunoHistoChemistryTestList());
+            });
             break;
         }
         case ORDERABLE_TESTS: {
-            testService.refreshTestNames();
-            typeToListMap.put(ListType.ORDERABLE_TESTS, createOrderableTestList());
+            buildTestListAsSystem(() -> {
+                testService.refreshTestNames();
+                typeToListMap.put(ListType.ORDERABLE_TESTS, createOrderableTestList());
+            });
             break;
         }
         case SAMPLE_TYPE: {

@@ -34,6 +34,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -245,6 +246,9 @@ public class LabUnitManagementRestController extends BaseRestController {
                 dtos.add(dto);
             }
             return ResponseEntity.ok(new ApiResponse<>(true, "Lab units retrieved successfully", dtos));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("LabUnitManagementRestController", "getAllLabUnits", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -338,6 +342,9 @@ public class LabUnitManagementRestController extends BaseRestController {
         } catch (LIMSDuplicateRecordException e) {
             return ResponseEntity.unprocessableEntity()
                     .body(new ApiResponse<>(false, "A lab unit with this name already exists", null));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("LabUnitManagementRestController", "createLabUnit", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -441,6 +448,9 @@ public class LabUnitManagementRestController extends BaseRestController {
             LabUnitManagementDTO responseDTO = new LabUnitManagementDTO(section);
             responseDTO.setTestCount(countTestsInSection(labUnitId));
             return ResponseEntity.ok(new ApiResponse<>(true, "Lab unit updated successfully", responseDTO));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("LabUnitManagementRestController", "updateLabUnit", e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -563,6 +573,9 @@ public class LabUnitManagementRestController extends BaseRestController {
         }
         try {
             testSectionTestAssignService.assignTestsToSection(body.testIds, labUnitId, getSysUserId(request));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("LabUnitManagementRestController", "assignTests", e.getMessage());
             return ResponseEntity.unprocessableEntity()
@@ -605,6 +618,9 @@ public class LabUnitManagementRestController extends BaseRestController {
         try {
             testSectionTestAssignService.assignTestsToSection(body.testIds, body.destinationLabUnitId,
                     getSysUserId(request));
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logError("LabUnitManagementRestController", "reassignTests", e.getMessage());
             return ResponseEntity.unprocessableEntity()
@@ -729,6 +745,9 @@ public class LabUnitManagementRestController extends BaseRestController {
                 }
                 try {
                     testSectionTestAssignService.assignTestsToSection(testIds, body.destinationLabUnitId, userId);
+                } catch (AccessDeniedException denied) {
+                    // A gate denial is a 403, not whatever the broad catch below relabels it as.
+                    throw denied;
                 } catch (Exception e) {
                     LogEvent.logError("LabUnitManagementRestController", "deactivateLabUnit", e.getMessage());
                     return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
@@ -787,6 +806,9 @@ public class LabUnitManagementRestController extends BaseRestController {
     private int countTestsInSection(String testSectionId) {
         try {
             return testSectionService.getTestsInSection(testSectionId).size();
+        } catch (AccessDeniedException denied) {
+            // A gate denial is a 403, not whatever the broad catch below relabels it as.
+            throw denied;
         } catch (Exception e) {
             LogEvent.logWarn("LabUnitManagementRestController", "countTestsInSection",
                     "Failed to get test count for lab unit " + testSectionId + ": " + e.getMessage());

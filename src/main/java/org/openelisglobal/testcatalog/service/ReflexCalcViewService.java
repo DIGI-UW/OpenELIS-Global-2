@@ -2,6 +2,7 @@ package org.openelisglobal.testcatalog.service;
 
 import java.util.ArrayList;
 import java.util.List;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * OGC-949 / OGC-764 — read-only cross-link view for the Reflex &amp; Calc
@@ -9,6 +10,7 @@ import java.util.List;
  * into a fully-materialized DTO inside a single transaction (lazy associations
  * are resolved here, never in the controller).
  */
+@PreAuthorize("hasAuthority('PRIV_TEST_CONFIGURE')")
 public interface ReflexCalcViewService {
 
     ReflexCalcView getForTest(String testId);

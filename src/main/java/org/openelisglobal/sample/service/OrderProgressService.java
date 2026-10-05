@@ -2,12 +2,14 @@ package org.openelisglobal.sample.service;
 
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 /**
  * The order's progress through order entry (OGC-1266, FR-F5, FR-A4, FR-F3,
  * FR-F4): an explicit status the steps' saves advance, the release through the
  * optional Sample check, and cancellation with a reason.
  */
+@PreAuthorize("hasAuthority('PRIV_ORDER_VIEW')")
 public interface OrderProgressService {
 
     /**
@@ -17,6 +19,7 @@ public interface OrderProgressService {
      * refuses the save. The step's storage decision (skip storage for the
      * unassigned samples) is stored with it when the save carries one.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     void recordStepSave(Sample sample, String progressStep, Boolean storageSkipped);
 
     /**
@@ -42,11 +45,13 @@ public interface OrderProgressService {
      * acceptance the gate must be satisfied; under Optional a release with items
      * unanswered needs a note, which is recorded with who released and when.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     Sample release(String sampleId, String releaseNote, String sysUserId);
 
     /**
      * Cancels an order that is not yet complete, with a reason: its tests are
      * cancelled and the order is marked Cancelled. Nothing is deleted.
      */
+    @PreAuthorize("hasAuthority('PRIV_ORDER_EDIT')")
     Sample cancel(String sampleId, String reason, String sysUserId);
 }

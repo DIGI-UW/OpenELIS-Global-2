@@ -121,6 +121,12 @@ public class VectorPoolFanOutServiceImpl implements VectorPoolFanOutService {
                     rekeyedIds.add(analysis.getId());
                 }
             }
+            // Re-keying the order's own analyses onto the pool rows. This reads which
+            // tests are on the order being placed, not their results, so the gate
+            // accepts PRIV_ORDER_VIEW and it runs as the caller. The update calls
+            // below were always reachable; only this read denied, which is why a
+            // vector order naming a trap type or lifecycle stage failed at fan-out
+            // while one without those fields saved fine.
             for (Analysis analysis : analysisService.getAnalysesBySampleItem(original)) {
                 if (analysis == null || analysis.getId() == null || rekeyedIds.contains(analysis.getId())) {
                     continue;

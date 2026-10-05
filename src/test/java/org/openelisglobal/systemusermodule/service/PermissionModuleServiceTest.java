@@ -59,7 +59,7 @@ public class PermissionModuleServiceTest extends BaseWebContextSensitiveTest {
         assertEquals("Y", first.getHasAdd());
         assertEquals("N", first.getHasUpdate());
         assertEquals("N", first.getHasDelete());
-        assertEquals("3001", first.getRole().getId());
+        assertEquals(Integer.valueOf(3001), first.getRole().getId());
     }
 
     @Test
@@ -144,7 +144,7 @@ public class PermissionModuleServiceTest extends BaseWebContextSensitiveTest {
         setPermissionsAgent("Role");
         List<PermissionModule> modules = permissionModuleService.getAllPermissionModulesByAgentId(3001);
         assertEquals(2, modules.size());
-        assertTrue(modules.stream().allMatch(m -> "3001".equals(((RoleModule) m).getRole().getId())));
+        assertTrue(modules.stream().allMatch(m -> Integer.valueOf(3001).equals(((RoleModule) m).getRole().getId())));
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -182,7 +182,7 @@ public class PermissionModuleServiceTest extends BaseWebContextSensitiveTest {
         setPermissionsAgent("Role");
         PermissionModule module = permissionModuleService.get("4003");
         assertEquals("4003", module.getId());
-        assertEquals("3002", ((RoleModule) module).getRole().getId());
+        assertEquals(Integer.valueOf(3002), ((RoleModule) module).getRole().getId());
         assertEquals("N", module.getHasSelect());
         assertEquals("Y", module.getHasAdd());
     }

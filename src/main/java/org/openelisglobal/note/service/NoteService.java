@@ -3,10 +3,12 @@ package org.openelisglobal.note.service;
 import java.sql.Date;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.common.service.CrossDomainService;
 import org.openelisglobal.common.util.StringUtil.EncodeContext;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
 
+@CrossDomainService(callers = "notes on samples, analyses, patients — cross-domain")
 public interface NoteService extends BaseObjectService<Note, String> {
 
     Note getData(String noteId);

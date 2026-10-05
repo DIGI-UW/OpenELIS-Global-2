@@ -10,10 +10,19 @@ import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
-/** Shared authenticated-actor lookup for microbiology write endpoints. */
+/**
+ * Shared authenticated-actor lookup for microbiology write endpoints.
+ *
+ * <p>
+ * The BENCH_ACCESS and SUPERVISOR_ACCESS role expressions that used to live
+ * here are gone: authorization moved to the service layer as privilege gates,
+ * which is what the S011c build check enforces. Their reach was preserved
+ * exactly — BENCH_ACCESS (ADMIN/RESULTS/VALIDATION) became micro:view +
+ * micro:bench and SUPERVISOR_ACCESS (ADMIN/VALIDATION) became micro:supervise,
+ * granted to those same roles in Liquibase 012-004d. Add gates to the service
+ * interface, not here.
+ */
 abstract class MicrobiologyRestControllerSupport extends BaseRestController {
-    static final String BENCH_ACCESS = "hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')";
-    static final String SUPERVISOR_ACCESS = "hasAnyRole('ADMIN', 'VALIDATION')";
 
     protected String authenticatedUserId(HttpServletRequest request) {
         String userId = getSysUserId(request);
