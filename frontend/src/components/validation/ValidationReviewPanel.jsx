@@ -75,9 +75,7 @@ const PANEL_STYLE = { maxWidth: "1200px" };
 const LABEL_STYLE = { display: "block" };
 
 const resultsEntryLink = (accessionNumber) =>
-  `/result?type=order&doRange=false&accessionNumber=${encodeURIComponent(
-    accessionNumber || "",
-  )}`;
+  `/Results?accessionNumber=${encodeURIComponent(accessionNumber || "")}`;
 
 const Field = ({ labelKey, value, testId }) => (
   <div data-testid={testId}>

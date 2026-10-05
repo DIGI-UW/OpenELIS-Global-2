@@ -38,10 +38,27 @@ calling a PR green.
 Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
 a `workflow_run` follow-up stage, so the underlying run's own conclusion does
 not tell you whether the checkpoint passed, and `gh run watch` exits 0 on
-failure for this pipeline. Do not hand-parse `--json statusCheckRollup` either:
-it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes (`.state`),
-and an in-flight check reports an empty conclusion rather than null, so naive
-`jq` reports passing checks as queued and single checks as "all green".
+failure for this pipeline. Do not write ad hoc `jq` over `statusCheckRollup`
+either: it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes
+(`.state`), an in-flight check reports an empty conclusion rather than null, and
+a re-run leaves the earlier run of a check in the list. Naive `jq` reports
+passing checks as queued and single checks as "all green";
+`scripts/download-ci-logs.sh` handles all three.
+
+For a commit or branch tip with no PR (develop after a merge), read the same
+checks GitHub shows on that commit:
+`./scripts/download-ci-logs.sh --branch develop --list`. Never list runs by
+branch or commit (`gh run list --branch`/`--commit`,
+`gh api .../actions/runs?head_sha=`), and never read `check-runs`,
+`check-suites` or `commits/<sha>/status`. `workflow_run` runs execute on the
+default branch, so GitHub files every PR's `E2E / Tests` run and every
+Dependabot run under develop's newest commit; those queries show other PRs'
+failures as develop's. The combined status endpoint leaves out check runs.
+
+`03 Checkpoint - E2E` stays pending until every suite has finished. Open the run
+it links (`gh run view <run-id>`) to see shards that have already failed. When
+someone links a run or job, diagnose that job first
+(`gh run view <run-id> --job <job-id> --log`).
 
 `/fix-ci` automates the whole diagnose-fix-push-recheck loop.
 `specs/plans/ci-e2e-architecture-spec.md` is the authority on checkpoint
@@ -762,8 +779,8 @@ convention. Relocate one with `git worktree move <old> .worktrees/<short-name>`,
 which preserves commits, and clear dead entries with `git worktree prune`.
 
 **Do not skip the setup step.** `git worktree add` does not initialize
-submodules, so a fresh worktree has all 11 of them empty. Several are build
-inputs rather than optional extras: `./Dockerfile` does
+submodules, so a fresh worktree has all of them empty. Several are build inputs
+rather than optional extras: `./Dockerfile` does
 `WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
 out with `submodules: recursive`. Skip it and a Docker build fails roughly
 twenty minutes in with `there is no POM in this directory`, which reads like a
@@ -1746,7 +1763,7 @@ npm run cy:run
 npm run cy:failfast
 
 # Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 
 # Open Cypress UI (interactive mode)
 npm run cy:open
@@ -2548,6 +2565,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-09-25 **Constitution Version:** 1.11.2 **Maintained By:**
+**Last Updated:** 2026-09-29 **Constitution Version:** 1.12.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

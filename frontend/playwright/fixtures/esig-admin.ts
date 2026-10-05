@@ -119,12 +119,10 @@ export class SiteInformationPage {
 }
 
 /**
- * Which admin menu each boolean setting is edited on: the unified-route flag
- * lives in the result configuration domain, the e-signature flag in site
- * identity.
+ * Which admin menu each boolean setting is edited on: the e-signature flag
+ * lives in site identity, the patient sex and age rules in sample entry.
  */
 const SETTING_MENU: Record<string, SettingsMenu> = {
-  resultsEntryUnifiedRoute: "ResultConfigurationMenu",
   electronicSignatureEnabled: "SiteInformationMenu",
   "Patient sex required": "SampleEntryConfigurationMenu",
   "Patient age required": "SampleEntryConfigurationMenu",

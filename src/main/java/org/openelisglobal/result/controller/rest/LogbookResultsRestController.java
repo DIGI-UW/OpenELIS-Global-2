@@ -261,14 +261,16 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 tests.clear();
                 LogbookStatusResults sectionStatusResults = new LogbookStatusResults(analysisService, sampleService,
                         sampleItemService);
-                tests = sectionStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility,
-                        form.getTestSectionId());
+                tests = keepAccession(sectionStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility,
+                        form.getTestSectionId()), labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
                 request.setAttribute("pageSize", filteredTests.size());
                 form.setSearchFinished(true);
             } else if (!GenericValidator.isBlankOrNull(form.getTestSectionId())) {
-                tests = resultsLoadUtility.getUnfinishedTestResultItemsInTestSection(form.getTestSectionId());
+                tests = keepAccession(
+                        resultsLoadUtility.getUnfinishedTestResultItemsInTestSection(form.getTestSectionId()),
+                        labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
                 int count = resultsLoadUtility.getTotalCountAnalysisByTestSectionAndStatus(form.getTestSectionId());
@@ -305,7 +307,8 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
                 LogbookStatusResults reactLogbookStatusResults = new LogbookStatusResults(analysisService,
                         sampleService, sampleItemService);
 
-                tests = reactLogbookStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility);
+                tests = keepAccession(reactLogbookStatusResults.setSearchResults(statusResultsForm, resultsLoadUtility),
+                        labNumber);
                 filteredTests = userService.filterResultsByLabUnitRoles(getSysUserId(request), tests,
                         Constants.ROLE_RESULTS);
 
@@ -411,6 +414,18 @@ public class LogbookResultsRestController extends LogbookResultsBaseController {
         }
 
         return (form);
+    }
+
+    /**
+     * The Results page sends a typed lab number together with the Lab Unit or date
+     * filters; those branches load by unit or date, so the lab number narrows what
+     * they found instead of being ignored.
+     */
+    private List<TestResultItem> keepAccession(List<TestResultItem> tests, String labNumber) {
+        if (GenericValidator.isBlankOrNull(labNumber)) {
+            return tests;
+        }
+        return tests.stream().filter(test -> labNumber.equals(test.getAccessionNumber())).collect(Collectors.toList());
     }
 
     private void AddPatientIdToResult(Patient patient, TestResultItem resultItem) {

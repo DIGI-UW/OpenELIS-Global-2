@@ -5,18 +5,23 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Map;
 import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MvcResult;
@@ -256,5 +261,221 @@ public class LocationsImportRestControllerTest extends BaseWebContextSensitiveTe
         mockMvc.perform(get("/rest/locations/export").param("view", "areas")).andExpect(status().isOk())
                 .andExpect(content().string(containsString("Province,District")))
                 .andExpect(content().string(containsString("Morobe Province%P-MOR,Lae%MOR-LAE")));
+    }
+
+    private MvcResult preview(String fileName, byte[] content, String mode) throws Exception {
+        return mockMvc.perform(multipart("/rest/locations/import/preview")
+                .file(new MockMultipartFile("files", fileName, "text/csv", content)).param("areas", "organizations")
+                .param("mode", mode)).andExpect(status().isOk()).andReturn();
+    }
+
+    private void organization(int id, String name, String code, Integer parentId, int... typeIds) {
+        jdbc.update("INSERT INTO clinlims.organization (id, name, code, short_name, org_id, is_active,"
+                + " mls_sentinel_lab_flag, lastupdated, fhir_uuid) VALUES (?, ?, ?, ?, ?, 'Y', 'N', now(),"
+                + " gen_random_uuid())", id, name, code, code, parentId);
+        for (int typeId : typeIds) {
+            jdbc.update("INSERT INTO clinlims.organization_organization_type (org_id, org_type_id) VALUES (?, ?)", id,
+                    typeId);
+        }
+        if (code != null) {
+            jdbc.update("INSERT INTO clinlims.organization_identifier (id, organization_id, label, value,"
+                    + " is_reporting, lastupdated) VALUES (nextval('clinlims.organization_identifier_seq'), ?,"
+                    + " 'Code', ?, true, now())", id, code);
+        }
+        resyncSequence("clinlims.organization_seq", "clinlims.organization");
+    }
+
+    /**
+     * OGC-1420 (1a): sharing "Health Centre" does not make two centres a rename.
+     */
+    @Test
+    public void possibleRename_isOfferedOnlyForCloseNames() throws Exception {
+        organization(9120, "Kaugere Health Centre", null, null, 2);
+
+        JsonNode different = json(preview("organizations-ncd.csv",
+                (HEADER + "referingClinic,,Gerehu Health Centre,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        assertEquals("new", different.get("rows").get(0).get("outcome").asText());
+
+        JsonNode respelled = json(preview("organizations-ncd.csv",
+                (HEADER + "referingClinic,,Kaugere Health Center,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        assertEquals("rename", respelled.get("rows").get(0).get("outcome").asText());
+        assertEquals("9120", respelled.get("rows").get(0).get("pair").get("id").asText());
+
+        organization(9121, "Tokarara Clinic", null, null, 2);
+        JsonNode widened = json(preview("organizations-ncd.csv",
+                (HEADER + "referingClinic,,Tokarara Urban Clinic,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        assertEquals("a word added to the same place's name is a rename", "rename",
+                widened.get("rows").get(0).get("outcome").asText());
+        assertEquals("9121", widened.get("rows").get(0).get("pair").get("id").asText());
+
+        organization(9122, "Walk-in Clinic Kila", null, null, 2);
+        JsonNode sharedPlace = json(preview("organizations-ncd.csv",
+                (HEADER + "referingClinic,,Kila Aid Post,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8), "merge"));
+        assertEquals("sharing only a place name is not a rename", "new",
+                sharedPlace.get("rows").get(0).get("outcome").asText());
+    }
+
+    /** OGC-1420 (1b): Excel's "CSV UTF-8" and plain "CSV" both import as typed. */
+    @Test
+    public void excelFiles_importAsTyped_withAByteOrderMarkOrInWindows1252() throws Exception {
+        String file = HEADER + "referingClinic,,Clinique Sainte-Thérèse,,,,,Y,,,,,,\n";
+        byte[] body = file.getBytes(StandardCharsets.UTF_8);
+        byte[] withBom = new byte[body.length + 3];
+        withBom[0] = (byte) 0xEF;
+        withBom[1] = (byte) 0xBB;
+        withBom[2] = (byte) 0xBF;
+        System.arraycopy(body, 0, withBom, 3, body.length);
+
+        JsonNode utf8 = json(preview("organizations-utf8.csv", withBom, "merge"));
+        assertEquals(0, utf8.get("errors").size());
+        assertEquals("Clinique Sainte-Thérèse", utf8.get("rows").get(0).get("name").asText());
+
+        JsonNode ansi = json(
+                preview("organizations-ansi.csv", file.getBytes(Charset.forName("windows-1252")), "merge"));
+        assertEquals("Clinique Sainte-Thérèse", ansi.get("rows").get(0).get("name").asText());
+    }
+
+    /** OGC-1420 (1c): an identifier repeated inside one file is a row error. */
+    @Test
+    public void anIdentifierRepeatedInOneFile_isRejectedOnTheLaterRow() throws Exception {
+        JsonNode plan = json(preview("organizations-dup-code.csv",
+                (HEADER + "referingClinic,NEW-01,First Clinic,,,,,Y,,,,,,\n"
+                        + "referingClinic,NEW-01,Second Clinic,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        assertEquals("new", plan.get("rows").get(0).get("outcome").asText());
+        assertEquals("rejected", plan.get("rows").get(1).get("outcome").asText());
+        assertTrue(plan.get("rows").get(1).get("reason").asText().contains("line 2"));
+    }
+
+    /**
+     * OGC-1420: Excel users name files freely. An organizations file whose name the
+     * loader would not pick up is still written on Apply, and Apply never reports a
+     * preview's plan as done.
+     */
+    @Test
+    public void apply_writesAFileWhateverItIsCalled() throws Exception {
+        mockMvc.perform(multipart("/rest/locations/import/apply")
+                .file(csv("cp1252.csv", HEADER + "referingClinic,,Freely Named Clinic,,,,,Y,,,,,,\n"))
+                .param("areas", "organizations").param("mode", "merge")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.counts.new").value(1)).andExpect(jsonPath("$.errors.length()").value(0));
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.organization WHERE name = 'Freely Named Clinic'", Integer.class));
+    }
+
+    /**
+     * OGC-1420 (1c): two rows that name the same record by its identifier both
+     * match it.
+     */
+    @Test
+    public void rowsNamingTheSameRecordByItsIdentifier_bothMatchIt() throws Exception {
+        jdbc.update("INSERT INTO clinlims.organization_identifier (id, organization_id, label, value, is_reporting,"
+                + " lastupdated) VALUES (nextval('clinlims.organization_identifier_seq'), 4, 'DHIS2 ID',"
+                + " 'Qw8LmZa21Ks', false, now())");
+        JsonNode plan = json(
+                preview("organizations-same-id.csv",
+                        ("type,name,identifier:DHIS2 ID\nHealthcare,Health Services Inc,Qw8LmZa21Ks\n"
+                                + "Healthcare,Some Other Name,Qw8LmZa21Ks\n").getBytes(StandardCharsets.UTF_8),
+                        "merge"));
+        assertEquals("4", plan.get("rows").get(0).get("targetId").asText());
+        assertEquals("the identifier wins over a different name", "4",
+                plan.get("rows").get(1).get("targetId").asText());
+    }
+
+    /** OGC-1420 (1d): a column the importer does not know is listed as ignored. */
+    @Test
+    public void anUnknownColumn_isListedAsIgnored() throws Exception {
+        JsonNode plan = json(preview("organizations-extra.csv",
+                ("type,name,Notes\nreferingClinic,Notes Clinic,call first\n").getBytes(StandardCharsets.UTF_8),
+                "merge"));
+        assertEquals("new", plan.get("rows").get(0).get("outcome").asText());
+        assertEquals(1, plan.get("ignoredColumns").size());
+        assertEquals("Notes", plan.get("ignoredColumns").get(0).asText());
+    }
+
+    /**
+     * OGC-1420 (2a): a referral lab that is also a referring clinic does not put
+     * every referring clinic in a referral-lab file's scope.
+     */
+    @Test
+    public void replace_scopesToTheTypesTheFileIsAbout_notEveryTypeOnItsRows() throws Exception {
+        organization(9130, "Dual Reference Lab", "REF-DUAL", null, 915, 2);
+        organization(9131, "Plain Referring Clinic", "RC-PLAIN", null, 2);
+        organization(9132, "Lone Reference Lab", "REF-LONE", null, 915);
+        String file = "type,code,name\nreferralLab;referingClinic,REF-DUAL,Dual Reference Lab\n"
+                + "referralLab,REF-LONE,Lone Reference Lab\n";
+
+        JsonNode plan = json(preview("organizations-referral.csv", file.getBytes(StandardCharsets.UTF_8), "replace"));
+        assertEquals(0, plan.get("counts").get("deactivated").asInt());
+        assertEquals(0, plan.get("deactivations").size());
+        assertTrue(plan.get("scope").get("text").asText().contains("referralLab"));
+
+        organization(9133, "Retired Reference Lab", "REF-OLD", null, 915);
+        JsonNode withOld = json(
+                preview("organizations-referral.csv", file.getBytes(StandardCharsets.UTF_8), "replace"));
+        assertEquals("a referral lab missing from the file is still replaced", 1,
+                withOld.get("counts").get("deactivated").asInt());
+        assertEquals("Retired Reference Lab", withOld.get("deactivations").get(0).get("name").asText());
+    }
+
+    /**
+     * OGC-1420 (2b): Replace shows a sampling site's open orders as the list does.
+     */
+    @Test
+    public void replacePreview_countsASamplingSitesOpenOrders() throws Exception {
+        Map<String, Object> site = Map.of("kind", "site", "name", "Bumbu light trap", "parentId", "9101", "identifiers",
+                List.of(Map.of("label", "Code", "value", "VT-BUMBU", "reporting", true)), "site",
+                Map.of("siteType", "Vector trap"));
+        mockMvc.perform(post("/rest/locations/organizations").contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(site))).andExpect(status().isCreated());
+        Integer siteId = jdbc.queryForObject(
+                "SELECT s.id FROM clinlims.vector_sampling_site s JOIN"
+                        + " clinlims.organization o ON o.id = s.organization_id WHERE o.name = 'Bumbu light trap'",
+                Integer.class);
+        for (int i = 0; i < 2; i++) {
+            Long sampleId = jdbc.queryForObject("INSERT INTO clinlims.sample (id, accession_number, entered_date,"
+                    + " received_date, is_confirmation, lastupdated) VALUES (nextval('clinlims.sample_seq'), ?, now(),"
+                    + " now(), false, now()) RETURNING id", Long.class, "LORG-24T-" + i);
+            jdbc.update(
+                    "INSERT INTO clinlims.sample_item (id, samp_id, sort_order, status_id, collection_location_id,"
+                            + " lastupdated) VALUES (nextval('clinlims.sample_item_seq'), ?, 1, 1, ?, now())",
+                    sampleId, siteId);
+        }
+
+        JsonNode plan = json(preview("organizations-sites.csv",
+                "type,code,name,parentCode\nsampling site,VT-OTHER,Other trap,MOR-LAE\n"
+                        .getBytes(StandardCharsets.UTF_8),
+                "replace"));
+        JsonNode deactivation = null;
+        for (JsonNode row : plan.get("deactivations")) {
+            if ("Bumbu light trap".equals(row.get("name").asText())) {
+                deactivation = row;
+            }
+        }
+        assertTrue("the site missing from the file is replaced", deactivation != null);
+        assertEquals(2, deactivation.get("inUse").get("open").asInt());
+    }
+
+    /**
+     * OGC-1420 (9b): Recent imports names each run's files and tells a preview from
+     * an apply.
+     */
+    @Test
+    public void recentImports_nameTheFiles_andTellAPreviewFromAnApply() throws Exception {
+        preview("organizations-preview-only.csv",
+                (HEADER + "referingClinic,,Recent Preview Clinic,,,,,Y,,,,,,\n").getBytes(StandardCharsets.UTF_8),
+                "merge");
+        mockMvc.perform(multipart("/rest/locations/import/apply")
+                .file(csv("organizations-applied.csv", HEADER + "referingClinic,,Recent Applied Clinic,,,,,Y,,,,,,\n"))
+                .param("areas", "organizations").param("mode", "merge")).andExpect(status().isOk());
+
+        JsonNode runs = json(
+                mockMvc.perform(get("/rest/locations/import/recent")).andExpect(status().isOk()).andReturn());
+        assertEquals("organizations-applied.csv", runs.get(0).get("files").get(0).asText());
+        assertEquals("apply", runs.get(0).get("action").asText());
+        assertEquals("organizations-preview-only.csv", runs.get(1).get("files").get(0).asText());
+        assertEquals("preview", runs.get(1).get("action").asText());
     }
 }

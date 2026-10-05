@@ -239,7 +239,7 @@ export default function Workplan(props) {
                   size="md"
                   type="button"
                   name="print"
-                  id="print"
+                  id="print-top"
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />
@@ -347,8 +347,8 @@ export default function Workplan(props) {
                                   <Link
                                     style={{ color: "blue" }}
                                     href={
-                                      `/result?type=order&doRange=false&source=${sourceTitle}&accessionNumber=` +
-                                      row.accessionNumber
+                                      `/Results?accessionNumber=` +
+                                      encodeURIComponent(row.accessionNumber)
                                     }
                                   >
                                     <u>
@@ -412,7 +412,7 @@ export default function Workplan(props) {
                   size="md"
                   type="button"
                   name="print"
-                  id="print"
+                  id="print-bottom"
                   onClick={printWorkplan}
                 >
                   <FormattedMessage id="workplan.print" />

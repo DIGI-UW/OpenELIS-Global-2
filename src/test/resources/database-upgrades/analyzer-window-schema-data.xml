@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+    <!-- The drops of the six cleanup changesets develop carried from 8 to 24
+        September 2026 (removed again by #4431), in changelog order: 086's direct
+        profile reference, 088's QC rules, 093's activation candidates and transport
+        columns, 094's connection and file settings, 097's error queue and discovery
+        source, 098's superseded schema. -->
+    <changeSet id="fixture-analyzer-window-schema"
+        author="openelis">
+        <sql splitStatements="false"><![CDATA[
+            ALTER TABLE analyzer DROP CONSTRAINT IF EXISTS fk_analyzer_profile_binding;
+            DROP INDEX IF EXISTS idx_analyzer_profile_binding;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS profile_binding_id;
+
+            DROP TABLE IF EXISTS analyzer_qc_rule CASCADE;
+
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS active_candidate_id CASCADE;
+            DROP TABLE IF EXISTS analyzer_activation_candidate CASCADE;
+            DROP SEQUENCE IF EXISTS analyzer_activation_candidate_seq;
+            DELETE FROM reference_tables WHERE LOWER(name) = 'analyzer_activation_candidate';
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS connection_role,
+                DROP COLUMN IF EXISTS transport_mode;
+
+            DROP TABLE IF EXISTS serial_port_configuration;
+            DROP TABLE IF EXISTS file_import_configuration;
+            ALTER TABLE analyzer DROP COLUMN ip_address, DROP COLUMN port,
+                DROP COLUMN protocol_version, DROP COLUMN communication_mode,
+                DROP COLUMN import_directory, DROP COLUMN file_pattern,
+                DROP COLUMN column_mappings_json, DROP COLUMN file_format,
+                DROP COLUMN delimiter, DROP COLUMN has_header, DROP COLUMN skip_rows;
+
+            DELETE FROM menu WHERE element_id = 'menu_analyzers_errors';
+            DROP TABLE IF EXISTS analyzer_error CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS discovered_source_id;
+
+            DROP TABLE IF EXISTS analyzer_run CASCADE;
+            DROP TABLE IF EXISTS analyzer_file_upload CASCADE;
+            DROP TABLE IF EXISTS analyzer_experiment CASCADE;
+            DROP TABLE IF EXISTS analyzer_pending_code CASCADE;
+            DROP TABLE IF EXISTS analyzer_plugin_config CASCADE;
+            DROP TABLE IF EXISTS qualitative_result_mapping CASCADE;
+            DROP TABLE IF EXISTS unit_mapping CASCADE;
+            DROP TABLE IF EXISTS analyzer_field_mapping CASCADE;
+            DROP TABLE IF EXISTS analyzer_field CASCADE;
+            DROP TABLE IF EXISTS validation_rule_configuration CASCADE;
+            DROP TABLE IF EXISTS custom_field_type CASCADE;
+            DROP TABLE IF EXISTS analyzer_test_map CASCADE;
+            DROP TABLE IF EXISTS analyzer_type CASCADE;
+            DROP SEQUENCE IF EXISTS analyzer_type_seq CASCADE;
+            DROP SEQUENCE IF EXISTS analyzer_experiment_seq CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS scrip_id CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS machine_id CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS analyzer_type CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS description CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS location CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS has_setup_page CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS analyzer_type_id CASCADE;
+            ALTER TABLE analyzer DROP COLUMN IF EXISTS identifier_pattern CASCADE;
+
+            INSERT INTO analyzer (id, name, is_active, status, last_updated)
+            VALUES (900021, 'Window fixture', FALSE, 'SETUP', NOW());
+        ]]></sql>
+    </changeSet>
+</databaseChangeLog>

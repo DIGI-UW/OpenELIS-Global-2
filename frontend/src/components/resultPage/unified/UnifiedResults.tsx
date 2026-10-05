@@ -111,11 +111,9 @@ const patientDisplayName = (patient: PatientRecord) =>
   (patient.subjectNumber ? ` (${patient.subjectNumber})` : "");
 
 /**
- * OGC-1020 (R1 of OGC-811) — unified /Results worklist.
- *
- * Consolidates the legacy result-entry routes behind the
- * `results.entry.unifiedRoute` site flag: one toolbar (search, Lab Unit,
- * date, status chips), a polymorphic result cell (FR-A1), a per-row
+ * OGC-1020 (R1 of OGC-811) — the /Results worklist, the one results-entry
+ * page: one toolbar (search, Lab Unit, date, status chips), a polymorphic
+ * result cell (FR-A1), a per-row
  * read-only→Edit→Save edit-state machine (FR-A2/A3), e-signature on Save
  * (FR-A4), per-analysis save scoping + optimistic version check + soft
  * presence (FR-O1–O3), and cross-domain rendering driven by the selected Lab
@@ -185,8 +183,29 @@ interface SaveResponse {
   calculated?: string[];
 }
 
-const UnifiedResults: React.FC = () => {
+/**
+ * Embedded in another screen (the Notebook's results modal, an
+ * Immunohistochemistry case), the worklist shows one order's rows and
+ * nothing else: no breadcrumb, heading or toolbar, and the address is left
+ * alone. {@code includeFinished} also lists finalized results.
+ */
+export interface UnifiedResultsProps {
+  accessionNumber?: string;
+  embedded?: boolean;
+  includeFinished?: boolean;
+}
+
+const UnifiedResults: React.FC<UnifiedResultsProps> = ({
+  accessionNumber: embeddedAccession,
+  embedded = false,
+  includeFinished = false,
+}) => {
   const intl = useIntl();
+  const syncUrl = (urlState: URLSearchParams) => {
+    if (!embedded) {
+      replaceResultsUrl(urlState);
+    }
+  };
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
@@ -464,7 +483,7 @@ const UnifiedResults: React.FC = () => {
         }
       }
       params.set("doRange", "false");
-      params.set("finished", "false");
+      params.set("finished", includeFinished ? "true" : "false");
       worklistUrl.current = "/rest/LogbookResults?" + params.toString();
       getFromOpenElisServer(worklistUrl.current, (results?: WorklistResponse) =>
         applyLoadedRows(results, savedRowKey),
@@ -479,7 +498,7 @@ const UnifiedResults: React.FC = () => {
       setOrDrop("accessionNumber", patientPK ? "" : labNumber);
       setOrDrop("testSectionId", patientPK ? "" : selectedLabUnit);
       setOrDrop("collectionDate", patientPK ? "" : collectionDate);
-      replaceResultsUrl(urlState);
+      syncUrl(urlState);
     },
     [
       searchText,
@@ -487,6 +506,8 @@ const UnifiedResults: React.FC = () => {
       collectionDate,
       selectedPatient,
       applyLoadedRows,
+      embedded,
+      includeFinished,
     ],
   );
 
@@ -494,7 +515,7 @@ const UnifiedResults: React.FC = () => {
   const openPatientSearch = () => {
     const urlState = new URLSearchParams(window.location.search);
     urlState.delete("patientId");
-    replaceResultsUrl(urlState);
+    syncUrl(urlState);
     setShowPatientSearch(true);
   };
 
@@ -515,7 +536,7 @@ const UnifiedResults: React.FC = () => {
     setRowStates({});
     const urlState = new URLSearchParams(window.location.search);
     urlState.delete("patientId");
-    replaceResultsUrl(urlState);
+    syncUrl(urlState);
   };
 
   useEffect(() => {
@@ -528,6 +549,13 @@ const UnifiedResults: React.FC = () => {
   // dashboard (?accessionNumber=) and refreshes of a loaded page
   // (?testSectionId=&collectionDate=&status=) reproduce the same view
   useEffect(() => {
+    if (embedded) {
+      if (embeddedAccession) {
+        setSearchText(embeddedAccession);
+        loadWorklist(embeddedAccession);
+      }
+      return;
+    }
     const urlState = new URLSearchParams(window.location.search);
     const accession = urlState.get("accessionNumber");
     const unit = urlState.get("testSectionId");
@@ -564,6 +592,9 @@ const UnifiedResults: React.FC = () => {
 
   // Keep the status chip in the URL too (client-side filter, no refetch)
   useEffect(() => {
+    if (embedded) {
+      return;
+    }
     const urlState = new URLSearchParams(window.location.search);
     if (statusFilter === "ALL") {
       urlState.delete("status");
@@ -1293,125 +1324,155 @@ const UnifiedResults: React.FC = () => {
   return (
     <>
       <AlertDialog />
-      <PageBreadCrumb breadcrumbs={breadcrumbs} />
+      {!embedded && <PageBreadCrumb breadcrumbs={breadcrumbs} />}
       {loading && (
         <Loading
           description={intl.formatMessage({ id: "label.results.loading" })}
+          withOverlay={!embedded}
         />
       )}
-      <Grid fullWidth className="unifiedResultsPage">
-        <Column lg={16} md={8} sm={4}>
-          <Section>
-            <Heading>
-              <FormattedMessage id="sidenav.label.results" />
-              {domain !== "CLINICAL" && (
-                <Tag type="cyan" className="unifiedResultsDomainTag">
-                  {formatDomainMessage(intl, "label.results.domain", domain)}
-                </Tag>
-              )}
-            </Heading>
-          </Section>
-        </Column>
+      <Grid
+        fullWidth
+        className={`unifiedResultsPage${embedded ? " unifiedResultsEmbedded" : ""}`}
+        data-testid={embedded ? "unified-results-embedded" : undefined}
+      >
+        {!embedded && (
+          <Column lg={16} md={8} sm={4}>
+            <Section>
+              <Heading>
+                <FormattedMessage id="sidenav.label.results" />
+                {domain !== "CLINICAL" && (
+                  <Tag type="cyan" className="unifiedResultsDomainTag">
+                    {formatDomainMessage(intl, "label.results.domain", domain)}
+                  </Tag>
+                )}
+              </Heading>
+            </Section>
+          </Column>
+        )}
 
         {/* Toolbar: search + Lab Unit + date + patient (FR worklist toolbar) */}
-        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
-          {/* Carbon Search's labelText is visually hidden; render an explicit
+        {!embedded && (
+          <>
+            <Column
+              lg={3}
+              md={4}
+              sm={4}
+              className="unifiedResultsToolbarColumn"
+            >
+              {/* Carbon Search's labelText is visually hidden; render an explicit
               label so the toolbar fields align on one horizontal level */}
-          <div className="cds--label">
-            <FormattedMessage id="label.button.search" />
-          </div>
-          <Search
-            id="unifiedResultsSearch"
-            labelText={intl.formatMessage({ id: "label.results.search" })}
-            placeholder={intl.formatMessage({ id: "label.results.search" })}
-            value={searchText}
-            disabled={Boolean(selectedPatient)}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setSearchText(e.target.value)
-            }
-            onKeyDown={(e: React.KeyboardEvent) => {
-              if (e.key === "Enter") {
-                loadWorklist();
-              }
-            }}
-          />
-        </Column>
-        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
-          <Select
-            id="unifiedResultsLabUnit"
-            labelText={intl.formatMessage({ id: "label.results.labUnit" })}
-            value={selectedLabUnit}
-            disabled={Boolean(selectedPatient)}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
-              setSelectedLabUnit(e.target.value)
-            }
-          >
-            <SelectItem text="" value="" />
-            {labUnits.map((unit) => (
-              <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-            ))}
-          </Select>
-        </Column>
-        <Column lg={3} md={4} sm={4} className="unifiedResultsToolbarColumn">
-          <DatePicker
-            datePickerType="single"
-            dateFormat="d/m/Y"
-            onChange={(dates: Date[]) => {
-              if (dates && dates.length) {
-                const d = dates[0];
-                setCollectionDate(
-                  `${String(d.getDate()).padStart(2, "0")}/${String(
-                    d.getMonth() + 1,
-                  ).padStart(2, "0")}/${d.getFullYear()}`,
-                );
-              } else {
-                setCollectionDate("");
-              }
-            }}
-          >
-            <DatePickerInput
-              id="unifiedResultsDate"
-              labelText={intl.formatMessage({ id: "label.results.date" })}
-              placeholder="dd/mm/yyyy"
-              disabled={Boolean(selectedPatient)}
-            />
-          </DatePicker>
-        </Column>
-        <Column
-          lg={3}
-          md={2}
-          sm={4}
-          className="unifiedResultsToolbarColumn unifiedResultsPatientColumn"
-        >
-          <div className="cds--label">&nbsp;</div>
-          <Button
-            kind="tertiary"
-            size="md"
-            data-testid="search-by-patient"
-            onClick={() =>
-              showPatientSearch
-                ? setShowPatientSearch(false)
-                : openPatientSearch()
-            }
-            disabled={loading}
-          >
-            <FormattedMessage id="label.results.searchByPatient" />
-          </Button>
-        </Column>
-        <Column
-          lg={4}
-          md={2}
-          sm={4}
-          className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
-        >
-          {/* spacer keeps the button on the same level as the labeled fields */}
-          <div className="cds--label">&nbsp;</div>
-          <Button size="md" onClick={() => loadWorklist()} disabled={loading}>
-            <FormattedMessage id="label.results.load" />
-          </Button>
-        </Column>
+              <div className="cds--label">
+                <FormattedMessage id="label.button.search" />
+              </div>
+              <Search
+                id="unifiedResultsSearch"
+                labelText={intl.formatMessage({ id: "label.results.search" })}
+                placeholder={intl.formatMessage({ id: "label.results.search" })}
+                value={searchText}
+                disabled={Boolean(selectedPatient)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setSearchText(e.target.value)
+                }
+                onKeyDown={(e: React.KeyboardEvent) => {
+                  if (e.key === "Enter") {
+                    loadWorklist();
+                  }
+                }}
+              />
+            </Column>
+            <Column
+              lg={3}
+              md={4}
+              sm={4}
+              className="unifiedResultsToolbarColumn"
+            >
+              <Select
+                id="unifiedResultsLabUnit"
+                labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                value={selectedLabUnit}
+                disabled={Boolean(selectedPatient)}
+                onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
+                  setSelectedLabUnit(e.target.value)
+                }
+              >
+                <SelectItem text="" value="" />
+                {labUnits.map((unit) => (
+                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
+                ))}
+              </Select>
+            </Column>
+            <Column
+              lg={3}
+              md={4}
+              sm={4}
+              className="unifiedResultsToolbarColumn"
+            >
+              <DatePicker
+                datePickerType="single"
+                dateFormat="d/m/Y"
+                onChange={(dates: Date[]) => {
+                  if (dates && dates.length) {
+                    const d = dates[0];
+                    setCollectionDate(
+                      `${String(d.getDate()).padStart(2, "0")}/${String(
+                        d.getMonth() + 1,
+                      ).padStart(2, "0")}/${d.getFullYear()}`,
+                    );
+                  } else {
+                    setCollectionDate("");
+                  }
+                }}
+              >
+                <DatePickerInput
+                  id="unifiedResultsDate"
+                  labelText={intl.formatMessage({ id: "label.results.date" })}
+                  placeholder="dd/mm/yyyy"
+                  disabled={Boolean(selectedPatient)}
+                />
+              </DatePicker>
+            </Column>
+            <Column
+              lg={3}
+              md={2}
+              sm={4}
+              className="unifiedResultsToolbarColumn unifiedResultsPatientColumn"
+            >
+              <div className="cds--label">&nbsp;</div>
+              <Button
+                kind="tertiary"
+                size="md"
+                data-testid="search-by-patient"
+                onClick={() =>
+                  showPatientSearch
+                    ? setShowPatientSearch(false)
+                    : openPatientSearch()
+                }
+                disabled={loading}
+              >
+                <FormattedMessage id="label.results.searchByPatient" />
+              </Button>
+            </Column>
+            <Column
+              lg={4}
+              md={2}
+              sm={4}
+              className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
+            >
+              {/* spacer keeps the button on the same level as the labeled fields */}
+              <div className="cds--label">&nbsp;</div>
+              <Button
+                size="md"
+                onClick={() => loadWorklist()}
+                disabled={loading}
+              >
+                <FormattedMessage id="label.results.load" />
+              </Button>
+            </Column>
+          </>
+        )}
 
-        {(showPatientSearch || selectedPatient) && (
+        {!embedded && (showPatientSearch || selectedPatient) && (
           <Column lg={16} md={8} sm={4}>
             <div
               className="bordered-section-panel unifiedResultsPatientPanel"

@@ -450,7 +450,7 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     renderPanel(row());
     expect(screen.getByTestId("review-refer")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=ACC0",
+      "/Results?accessionNumber=ACC0",
     );
   });
 

@@ -17,6 +17,7 @@ import {
   getFromOpenElisServer,
   postToOpenElisServerFullResponse,
 } from "../../utils/Utils";
+import { labNow } from "../../utils/labClock";
 
 const VIEW_URL = "/rest/reports/vector-surveillance/manual-entry";
 const SUBMIT_URL = "/rest/reports/vector-surveillance/manual-entry/submit";
@@ -46,7 +47,7 @@ function isoWeekToRange(isoWeek) {
 
 /** Current ISO week as "YYYY-Www". */
 function currentIsoWeek() {
-  const now = new Date();
+  const now = labNow();
   const target = new Date(
     Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()),
   );

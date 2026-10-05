@@ -24,7 +24,6 @@ const CUSTOM_MESSAGE =
   "OGC-1417 check: call the clinician now and record who you told";
 
 const SETTING_MENU: Record<string, SettingsMenu> = {
-  resultsEntryUnifiedRoute: "ResultConfigurationMenu",
   alertWhenInvalidResult: "ResultConfigurationMenu",
   customCriticalMessage: "ResultConfigurationMenu",
   electronicSignatureEnabled: "SiteInformationMenu",
@@ -173,9 +172,6 @@ test.describe("OGC-1417 — critical and invalid results on the unified page", (
     for (const setting of Object.keys(SETTING_MENU)) {
       before[setting] = await settingValue(page, setting);
     }
-    if (!/true/i.test(before.resultsEntryUnifiedRoute)) {
-      await setBoolean(page, "resultsEntryUnifiedRoute", true);
-    }
     if (/true/i.test(before.electronicSignatureEnabled)) {
       await setBoolean(page, "electronicSignatureEnabled", false);
     }
@@ -192,9 +188,6 @@ test.describe("OGC-1417 — critical and invalid results on the unified page", (
     );
     if (/true/i.test(before.electronicSignatureEnabled)) {
       await setBoolean(page, "electronicSignatureEnabled", true);
-    }
-    if (!/true/i.test(before.resultsEntryUnifiedRoute)) {
-      await setBoolean(page, "resultsEntryUnifiedRoute", false);
     }
   });
 

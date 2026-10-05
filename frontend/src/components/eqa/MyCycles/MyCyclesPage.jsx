@@ -86,7 +86,7 @@ const ENTRY_TAG = {
 };
 
 const resultEntryUrl = (labNo) =>
-  `/result?type=order&doRange=false&accessionNumber=${encodeURIComponent(labNo)}`;
+  `/Results?accessionNumber=${encodeURIComponent(labNo)}`;
 
 // The pre-submission summary and its Submit action appear together,
 // only while a review-gated scheme sits at ready_to_submit.

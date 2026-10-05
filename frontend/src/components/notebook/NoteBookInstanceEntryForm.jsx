@@ -56,7 +56,7 @@ import {
   samplesWithTests,
 } from "../addOrder/orderSamples";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
-import { SearchResults } from "../resultPage/SearchResultForm";
+import UnifiedResults from "../resultPage/unified/UnifiedResults";
 import CustomLabNumberInput from "../common/CustomLabNumberInput";
 import LocationPickerInline from "../storage/LocationPicker/LocationPickerInline";
 import {
@@ -135,8 +135,6 @@ const NoteBookInstanceEntryForm = () => {
   const [resultsModalOpen, setResultsModalOpen] = useState(false);
   const [resultsModalAccession, setResultsModalAccession] = useState("");
   const [resultsModalData, setResultsModalData] = useState({ testResult: [] });
-  const [searchBy, setSearchBy] = useState({ type: "oder", doRange: false });
-  const [param, setParam] = useState("&accessionNumber=");
   const [projectTags, setProjectTags] = useState([]); // Template tags (for display only)
   const [projectFiles, setProjectFiles] = useState([]); // Template files (for display only)
   const [showSampleCreationForm, setShowSampleCreationForm] = useState(false); // Toggle sample creation form
@@ -713,16 +711,12 @@ const NoteBookInstanceEntryForm = () => {
                 hour12: false,
               });
             }
-            return { ...item, id: index + 1, time: formattedTime };
+            return { ...item, id: String(index + 1), time: formattedTime };
           });
           setAuditTrailItems(updatedAuditTrailItems);
         } else {
           setAuditTrailItems([]);
         }
-        setAuditTrailLoading(false);
-      },
-      () => {
-        setAuditTrailItems([]);
         setAuditTrailLoading(false);
       },
     );
@@ -749,7 +743,6 @@ const NoteBookInstanceEntryForm = () => {
       return;
     }
 
-    setParam("&accessionNumber=" + accession);
     setResultsModalAccession(accession);
     setResultsModalData({ testResult: [] });
     setResultsModalOpen(true);
@@ -771,14 +764,7 @@ const NoteBookInstanceEntryForm = () => {
       "&selectedSampleStatus=" +
       "&selectedAnalysisStatus=";
     getFromOpenElisServer(searchEndPoint, (data) => {
-      if (data && data.testResult) {
-        // Add IDs to results for SearchResults component
-        var i = 0;
-        data.testResult.forEach((item) => (item.id = "" + i++));
-        setResultsModalData(data);
-      } else {
-        setResultsModalData({ testResult: [] });
-      }
+      setResultsModalData(data && data.testResult ? data : { testResult: [] });
     });
   };
 
@@ -895,27 +881,15 @@ const NoteBookInstanceEntryForm = () => {
     getFromOpenElisServer(
       `/rest/storage/sample-items/${encodeURIComponent(sampleItemId)}`,
       (response) => {
-        if (response) {
-          const locationPath =
-            response.hierarchicalPath || response.location || "";
-          setSampleLocations((prev) => ({
-            ...prev,
-            [sampleItemId]: {
-              locationPath,
-              sampleItemId: sampleItemId,
-              sampleItemExternalId: response.sampleItemExternalId || null,
-              sampleAccessionNumber: response.sampleAccessionNumber || "",
-            },
-          }));
-        }
-      },
-      (error) => {
-        // SampleItem may not have location assigned yet
-        console.debug("No location found for SampleItem:", sampleItemId);
-        // Store empty location to prevent repeated calls
+        const location = response || {};
         setSampleLocations((prev) => ({
           ...prev,
-          [sampleItemId]: { locationPath: "", sampleItemId: sampleItemId },
+          [sampleItemId]: {
+            locationPath: location.hierarchicalPath || location.location || "",
+            sampleItemId: sampleItemId,
+            sampleItemExternalId: location.sampleItemExternalId || null,
+            sampleAccessionNumber: location.sampleAccessionNumber || "",
+          },
         }));
       },
     );
@@ -2621,12 +2595,10 @@ const NoteBookInstanceEntryForm = () => {
       >
         {resultsModalData.testResult &&
         resultsModalData.testResult.length > 0 ? (
-          <SearchResults
-            results={resultsModalData}
-            setResultForm={setResultsModalData}
-            extraParams={param}
-            searchBy={searchBy}
-            refreshOnSubmit={false}
+          <UnifiedResults
+            key={resultsModalAccession}
+            accessionNumber={resultsModalAccession.split("-")[0]}
+            embedded
           />
         ) : (
           <InlineNotification

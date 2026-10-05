@@ -121,7 +121,7 @@ const recordedNotifications = (page: Page) =>
 const openQueueFor = async (page: Page, accessionNumber: string) => {
   await page.goto("/validation?type=order", { waitUntil: "domcontentloaded" });
   const main = page.getByRole("main");
-  const search = main.getByPlaceholder(/accession|lab no/i);
+  const search = main.locator("#validationSearch");
   await expect(search).toBeVisible({ timeout: NAV_TIMEOUT });
   await search.fill(accessionNumber);
   const loaded = page.waitForResponse(
@@ -130,7 +130,7 @@ const openQueueFor = async (page: Page, accessionNumber: string) => {
       response.request().method() === "GET",
     { timeout: LONG_TIMEOUT },
   );
-  await main.getByRole("button", { name: /search/i }).click();
+  await main.getByTestId("validation-load").click();
   await loaded;
   await expect(page.getByTestId("release-all-clear")).toBeVisible({
     timeout: LONG_TIMEOUT,

@@ -10,7 +10,7 @@
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.11.2, 10 core principles)
+   governance (v1.12.0, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -119,9 +119,9 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 
 > Worktrees go in `.worktrees/<short-name>`, never `/tmp` or `/private/tmp`, and
 > every new one needs `scripts/setup-workspace.sh` run inside it
-> (`git worktree add` does not initialize the 11 submodules, several of which
-> are build inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) §
-> "Git Worktrees".
+> (`git worktree add` does not initialize the submodules, several of which are
+> build inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) § "Git
+> Worktrees".
 
 ### Post-Compaction Context Recovery (MANDATORY)
 
@@ -198,7 +198,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-04-06 **Constitution Version:** 1.11.2
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.12.0
 
 ## Recent Changes
 
