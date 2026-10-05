@@ -1,7 +1,8 @@
 # One pull request per ecosystem per month for version updates, and one per
-# ecosystem for security fixes. Major versions are upgrades we plan, so
-# Dependabot does not propose them; security fixes are not held back by the
-# cooldown. No target-branch: develop is the default branch, and a block that
+# ecosystem for security fixes. Major versions of Maven, npm and Docker
+# dependencies are migrations we plan, so Dependabot does not propose them.
+# GitHub Actions majors stay in: they mostly follow runner Node retirements and
+# are cheap to take. Security fixes are not held back by the cooldown. No target-branch: develop is the default branch, and a block that
 # names a target-branch no longer applies to security updates at all.
 version: 2
 updates:
