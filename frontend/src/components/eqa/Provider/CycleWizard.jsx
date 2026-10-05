@@ -35,9 +35,6 @@ import {
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { calendarOnlyInput, hintStyle } from "../eqaCommon";
 import { createProviderCycle } from "./Workbench/workbenchApi";
-// The same test list the in-house wizard picks from: the standard catalog
-// narrowed to tests that carry an analyte, since a panel target is stored
-// against one. One seam for both wizards rather than a second copy.
 import { asList, fetchTests } from "../eqaApi";
 
 /** Panel vocabularies, as the server spells them. */
@@ -109,7 +106,7 @@ const CycleWizard = () => {
       setScheme(data || null);
       setLoading(false);
     });
-    fetchTests(setTests);
+    fetchTests(schemeId, setTests);
     getFromOpenElisServer(
       `/rest/eqa/programs/${schemeId}/enrollments`,
       (data) => {
@@ -443,6 +440,17 @@ const CycleWizard = () => {
                 )}
               </Grid>
 
+              {tests.length === 0 && (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={t(
+                    "eqa.wizard.noSchemeTests",
+                    "This scheme has no tests a panel can use.",
+                  )}
+                />
+              )}
               <Table size="sm" style={{ marginTop: "1rem" }}>
                 <TableHead>
                   <TableRow>

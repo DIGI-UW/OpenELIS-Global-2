@@ -617,5 +617,7 @@
   <include relativeToChangelogFile="true" file="117-retire-legacy-results-entry.xml"/>
   <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
   <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
+  <!-- OGC-1151: privilege data for the navigation menu filter -->
+  <include relativeToChangelogFile="true" file="111-menu-privilege-urls.xml"/>
 
 </databaseChangeLog>

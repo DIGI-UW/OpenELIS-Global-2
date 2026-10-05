@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Button, Select, SelectItem, TextInput } from "@carbon/react";
+import { Button, Modal, Select, SelectItem, TextInput } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
 import { requestFailed, serverMessage } from "../../utils/requestOutcome";
@@ -56,10 +56,12 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
 }) => {
   const intl = useIntl();
   const [recording, setRecording] = useState(false);
+  const [confirmingUsedUp, setConfirmingUsedUp] = useState(false);
   const [amount, setAmount] = useState("");
   const [disposing, setDisposing] = useState(false);
   const [reason, setReason] = useState("");
   const [method, setMethod] = useState("");
+  const [disposalSubmitted, setDisposalSubmitted] = useState(false);
   const [notes, setNotes] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
@@ -69,6 +71,8 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
   const unit = snapshot.unitOfMeasure || "";
   const disposed = Boolean(snapshot.disposed);
   const exhausted = remaining !== null && remaining <= 0;
+  const amountExceedsRemaining =
+    remaining !== null && Number(amount) > remaining;
 
   const statusKey = disposed
     ? "label.results.sampleStatus.disposed"
@@ -111,13 +115,19 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
       sampleItemId,
       markUsedUp: true,
     });
-  const startDisposal = () =>
+  const startDisposal = () => {
+    setDisposalSubmitted(true);
+    if (!reason || !method) {
+      return;
+    }
     post("/rest/storage/sample-items/dispose", {
       sampleItemId,
       reason,
       method,
       notes,
     });
+  };
+  const requiredText = intl.formatMessage({ id: "error.field.required" });
 
   return (
     <div className="unifiedSampleStatus" data-testid="sample-status-block">
@@ -172,7 +182,7 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             kind="secondary"
             size="sm"
             disabled={busy}
-            onClick={markUsedUp}
+            onClick={() => setConfirmingUsedUp(true)}
             data-testid="mark-used-up"
           >
             <FormattedMessage id="label.results.sampleStatus.markUsedUp" />
@@ -183,7 +193,10 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             kind="danger"
             size="sm"
             disabled={busy}
-            onClick={() => setDisposing(true)}
+            onClick={() => {
+              setDisposing(true);
+              setDisposalSubmitted(false);
+            }}
             data-testid="start-disposal"
           >
             <FormattedMessage id="label.results.sampleStatus.startDisposal" />
@@ -203,12 +216,19 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setAmount(e.target.value)
             }
+            invalid={amountExceedsRemaining}
+            invalidText={intl.formatMessage(
+              {
+                id: "sample.management.aliquot.error.quantityExceedsRemaining",
+              },
+              { requested: amount, remaining: `${remaining} ${unit}`.trim() },
+            )}
           />
           {unit && <span className="unifiedHistoryFootnote">{unit}</span>}
           <Button
             kind="primary"
             size="sm"
-            disabled={busy || !amount}
+            disabled={busy || !amount || amountExceedsRemaining}
             onClick={recordUsage}
             data-testid="record-usage-apply"
           >
@@ -244,6 +264,8 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setReason(e.target.value)
             }
+            invalid={disposalSubmitted && !reason}
+            invalidText={requiredText}
           >
             <SelectItem value="" text="" />
             {DISPOSAL_REASONS.map((id) => (
@@ -266,6 +288,8 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             onChange={(e: React.ChangeEvent<HTMLSelectElement>) =>
               setMethod(e.target.value)
             }
+            invalid={disposalSubmitted && !method}
+            invalidText={requiredText}
           >
             <SelectItem value="" text="" />
             {DISPOSAL_METHODS.map((id) => (
@@ -292,7 +316,7 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
           <Button
             kind="danger"
             size="sm"
-            disabled={busy || !reason || !method}
+            disabled={busy}
             onClick={startDisposal}
             data-testid="confirm-disposal"
           >
@@ -303,11 +327,34 @@ const SampleStatusBlock: React.FC<SampleStatusBlockProps> = ({
             size="sm"
             disabled={busy}
             onClick={() => setDisposing(false)}
+            data-testid="cancel-disposal"
           >
             <FormattedMessage id="label.button.cancel" />
           </Button>
         </div>
       )}
+      <Modal
+        open={confirmingUsedUp}
+        danger
+        size="xs"
+        modalHeading={intl.formatMessage({
+          id: "label.results.sampleStatus.markUsedUpConfirm.title",
+        })}
+        primaryButtonText={intl.formatMessage({
+          id: "label.results.sampleStatus.markUsedUp",
+        })}
+        secondaryButtonText={intl.formatMessage({ id: "label.button.cancel" })}
+        onRequestClose={() => setConfirmingUsedUp(false)}
+        onRequestSubmit={() => {
+          setConfirmingUsedUp(false);
+          markUsedUp();
+        }}
+        data-testid="mark-used-up-confirm"
+      >
+        <p>
+          <FormattedMessage id="label.results.sampleStatus.markUsedUpConfirm.body" />
+        </p>
+      </Modal>
       {error && <div className="unifiedSampleStatusError">{error}</div>}
       <div className="unifiedHistoryFootnote">
         <FormattedMessage id="label.results.sampleStatus.footnote" />
