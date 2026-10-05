@@ -14,15 +14,15 @@
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <liquibase.propertyFile>${project.basedir}/liquibase/liquibase.properties</liquibase.propertyFile>
         <castor.version>1.4.1</castor.version>
-        <hapi.version>2.5.1</hapi.version>
+        <hapi.version>2.6.0</hapi.version>
         <hibernate.version>5.6.15.Final</hibernate.version>
-        <hibernate-validator.version>8.0.2.Final</hibernate-validator.version>
-        <hibernate-search.version>6.1.8.Final</hibernate-search.version>
-        <postgresql.version>42.7.12</postgresql.version>
-        <log4j.version>2.17.1</log4j.version>
+        <hibernate-validator.version>8.0.5.Final</hibernate-validator.version>
+        <hibernate-search.version>6.2.5.Final</hibernate-search.version>
+        <postgresql.version>42.7.13</postgresql.version>
+        <log4j.version>2.19.0</log4j.version>
         <springframework.version>6.2.19</springframework.version>
         <springsecurity.version>6.5.11</springsecurity.version>
-        <testContainersVersion>1.19.8</testContainersVersion>
+        <testContainersVersion>1.21.4</testContainersVersion>
     </properties>
 
     <dependencyManagement>
@@ -30,7 +30,7 @@
             <dependency>
                 <groupId>io.netty</groupId>
                 <artifactId>netty-bom</artifactId>
-                <version>4.1.138.Final</version>
+                <version>4.2.18.Final</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
@@ -43,13 +43,13 @@
             <dependency>
                 <groupId>jakarta.activation</groupId>
                 <artifactId>jakarta.activation-api</artifactId>
-                <version>2.1.3</version>
+                <version>2.1.4</version>
             </dependency>
             <!-- Exclude old jakarta activation impl that conflicts with angus-activation -->
             <dependency>
                 <groupId>com.sun.activation</groupId>
                 <artifactId>jakarta.activation</artifactId>
-                <version>2.0.0</version>
+                <version>2.0.1</version>
                 <scope>provided</scope>
             </dependency>
             <!-- Exclude old Jakarta Mail 1.x impl from simple-java-mail/hapi-fhir
@@ -57,7 +57,7 @@
             <dependency>
                 <groupId>com.sun.mail</groupId>
                 <artifactId>jakarta.mail</artifactId>
-                <version>1.6.5</version>
+                <version>1.6.8</version>
                 <scope>provided</scope>
             </dependency>
             <!-- Transitive via org.hl7.fhir.utilities -> Saxon-HE -> xmlresolver,
@@ -90,12 +90,12 @@
         <dependency>
             <groupId>org.yaml</groupId>
             <artifactId>snakeyaml</artifactId>
-            <version>2.2</version>
+            <version>2.7</version>
         </dependency>
         <dependency>
             <groupId>org.jsmpp</groupId>
             <artifactId>jsmpp</artifactId>
-            <version>2.3.5</version>
+            <version>2.3.11</version>
         </dependency>
         <dependency>
             <groupId>org.itech</groupId>
@@ -110,7 +110,7 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-structures-r4</artifactId>
-            <version>7.0.2</version>
+            <version>7.6.1</version>
             <exclusions>
                 <exclusion>
                     <groupId>xpp3</groupId>
@@ -121,69 +121,69 @@
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-client</artifactId>
-            <version>7.0.2</version>
+            <version>7.6.1</version>
         </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-server</artifactId>
-            <version>7.0.2</version>
+            <version>7.6.1</version>
             <scope>compile</scope>
         </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>org.hl7.fhir.r4</artifactId>
-            <version>6.9.11</version>
+            <version>6.10.4</version>
         </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>org.hl7.fhir.utilities</artifactId>
-            <version>6.9.11</version>
+            <version>6.10.4</version>
         </dependency>
         <dependency>
             <groupId>ca.uhn.hapi.fhir</groupId>
             <artifactId>hapi-fhir-base</artifactId>
-            <version>7.0.2</version>
+            <version>7.6.1</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
-            <version>2.18.11</version>
+            <version>2.22.3</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-annotations</artifactId>
-            <version>2.18.11</version>
+            <version>2.22</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-core</artifactId>
-            <version>2.18.11</version>
+            <version>2.22.3</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-hibernate5-jakarta</artifactId>
-            <version>2.18.11</version>
+            <version>2.22.3</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jdk8</artifactId>
-            <version>2.18.6</version>
+            <version>2.22.3</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
-            <version>2.18.6</version>
+            <version>2.22.3</version>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.dataformat</groupId>
             <artifactId>jackson-dataformat-csv</artifactId>
-            <version>2.18.6</version>
+            <version>2.22.3</version>
         </dependency>
         <!-- APACHE ASSORTED DEPENDENCIES -->
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
             <artifactId>httpclient</artifactId>
-            <version>4.5.13</version>
+            <version>4.5.14</version>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -193,12 +193,12 @@
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi</artifactId>
-            <version>5.4.0</version>
+            <version>5.5.1</version>
         </dependency>
         <dependency>
             <groupId>org.apache.poi</groupId>
             <artifactId>poi-ooxml</artifactId>
-            <version>5.4.0</version>
+            <version>5.5.1</version>
         </dependency>
         <dependency>
             <groupId>com.itextpdf</groupId>
@@ -209,12 +209,12 @@
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-collections4</artifactId>
-            <version>4.4</version>
+            <version>4.6.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-lang3</artifactId>
-            <version>3.18.0</version>
+            <version>3.21.0</version>
         </dependency>
         <dependency>
             <groupId>commons-beanutils</groupId>
@@ -224,12 +224,12 @@
         <dependency>
             <groupId>commons-io</groupId>
             <artifactId>commons-io</artifactId>
-            <version>2.18.0</version>
+            <version>2.22.0</version>
         </dependency>
         <dependency>
             <groupId>commons-validator</groupId>
             <artifactId>commons-validator</artifactId>
-            <version>1.6</version>
+            <version>1.11.0</version>
         </dependency>
         <!-- CASTOR DEPENDENCIES -->
         <dependency>
@@ -267,7 +267,7 @@
         <dependency>
             <groupId>com.jcabi</groupId>
             <artifactId>jcabi-xml</artifactId>
-            <version>0.14</version>
+            <version>0.37.1</version>
         </dependency>
         <dependency>
             <groupId>org.opensaml</groupId>
@@ -325,7 +325,7 @@
         <dependency>
             <groupId>nl.martijndwars</groupId>
             <artifactId>web-push</artifactId>
-            <version>5.1.1</version>
+            <version>5.1.2</version>
             <exclusions>
                 <!-- Only PushAsyncService uses it; OpenELIS sends through the synchronous
                     PushService, which runs on Apache HttpClient 4. -->
@@ -354,24 +354,24 @@
         <dependency>
             <groupId>jakarta.mail</groupId>
             <artifactId>jakarta.mail-api</artifactId>
-            <version>2.1.3</version>
+            <version>2.1.5</version>
         </dependency>
         <dependency>
             <groupId>org.eclipse.angus</groupId>
             <artifactId>angus-mail</artifactId>
-            <version>2.0.3</version>
+            <version>2.0.5</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>org.eclipse.angus</groupId>
             <artifactId>angus-activation</artifactId>
-            <version>2.0.2</version>
+            <version>2.0.3</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
-            <version>6.0.0</version>
+            <version>6.1.0</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
@@ -388,12 +388,12 @@
         <dependency>
             <groupId>jakarta.xml.bind</groupId>
             <artifactId>jakarta.xml.bind-api</artifactId>
-            <version>4.0.2</version>
+            <version>4.0.5</version>
         </dependency>
         <dependency>
             <groupId>jakarta.xml.ws</groupId>
             <artifactId>jakarta.xml.ws-api</artifactId>
-            <version>4.0.2</version>
+            <version>4.0.3</version>
         </dependency>
         <dependency>
             <groupId>com.digitalpetri.modbus</groupId>
@@ -413,7 +413,7 @@
         <dependency>
             <groupId>jakarta.validation</groupId>
             <artifactId>jakarta.validation-api</artifactId>
-            <version>3.1.0</version>
+            <version>3.1.1</version>
         </dependency>
         <dependency>
             <groupId>jakarta.transaction</groupId>
@@ -443,7 +443,7 @@
         <dependency>
             <groupId>org.liquibase</groupId>
             <artifactId>liquibase-core</artifactId>
-            <version>4.8.0</version>
+            <version>4.33.0</version>
             <!-- remove logback so our logging continues under log4j2 -->
             <exclusions>
                 <exclusion>
@@ -601,25 +601,25 @@
         <dependency>
             <groupId>com.jayway.jsonpath</groupId>
             <artifactId>json-path</artifactId>
-            <version>2.9.0</version>
+            <version>2.10.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
-            <version>1.5.6</version>
+            <version>1.5.9</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.dbunit</groupId>
             <artifactId>dbunit</artifactId>
-            <version>2.7.3</version>
+            <version>2.8.0</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.mockito</groupId>
             <artifactId>mockito-core</artifactId>
-            <version>2.21.0</version>
+            <version>2.28.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -638,7 +638,7 @@
         <dependency>
             <groupId>org.aspectj</groupId>
             <artifactId>aspectjweaver</artifactId>
-            <version>1.8.10</version>
+            <version>1.9.25.1</version>
         </dependency>
         <dependency>
             <groupId>net.sourceforge.barbecue</groupId>
@@ -648,17 +648,17 @@
         <dependency>
             <groupId>cglib</groupId>
             <artifactId>cglib</artifactId>
-            <version>3.2.12</version>
+            <version>3.3.0</version>
         </dependency>
         <dependency>
             <groupId>org.owasp.encoder</groupId>
             <artifactId>encoder</artifactId>
-            <version>1.2.2</version>
+            <version>1.4.1</version>
         </dependency>
         <dependency>
             <groupId>net.sf.jasperreports</groupId>
             <artifactId>jasperreports</artifactId>
-            <version>6.15.0</version>
+            <version>6.21.5</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
@@ -672,12 +672,12 @@
         <dependency>
             <groupId>net.sf.jasperreports</groupId>
             <artifactId>jasperreports-fonts</artifactId>
-            <version>6.15.0</version>
+            <version>6.21.5</version>
         </dependency>
         <dependency>
             <groupId>org.dom4j</groupId>
             <artifactId>dom4j</artifactId>
-            <version>2.1.3</version>
+            <version>2.2.0</version>
         </dependency>
         <dependency>
             <groupId>org.mindrot</groupId>
@@ -697,7 +697,7 @@
                 which 1.5.x renamed to setDefaultItemLabelsVisible. On 1.5.0 every charted
                 report died with NoSuchMethodError at fill time (Section Performance Indicator,
                 the app's only charted template). Raise this only together with JasperReports. -->
-            <version>1.0.19</version>
+            <version>1.5.6</version>
         </dependency>
         <dependency>
             <groupId>com.googlecode.json-simple</groupId>
@@ -712,12 +712,12 @@
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
-            <version>1.15.3</version>
+            <version>1.23.2</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.1</version>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -729,13 +729,13 @@
         <dependency>
             <groupId>pl.pragmatists</groupId>
             <artifactId>JUnitParams</artifactId>
-            <version>1.1.0</version>
+            <version>1.1.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-text</artifactId>
-            <version>1.10.0</version>
+            <version>1.15.0</version>
         </dependency>
         <dependency>
             <groupId>org.postgresql</groupId>
@@ -747,7 +747,7 @@
         <dependency>
             <groupId>org.quartz-scheduler</groupId>
             <artifactId>quartz</artifactId>
-            <version>2.3.2</version>
+            <version>2.5.2</version>
             <exclusions>
                 <!-- Pooling for Quartz JDBC job stores; quartz.properties uses RAMJobStore. -->
                 <exclusion>
@@ -768,7 +768,7 @@
         <dependency>
             <groupId>com.sun.xml.messaging.saaj</groupId>
             <artifactId>saaj-impl</artifactId>
-            <version>3.0.4</version>
+            <version>3.0.6</version>
         </dependency>
         <dependency>
             <groupId>com.ibm.icu</groupId>
@@ -780,40 +780,40 @@
         <dependency>
             <groupId>net.java.dev.jna</groupId>
             <artifactId>jna</artifactId>
-            <version>5.7.0</version>
+            <version>5.19.1</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.opencsv</groupId>
             <artifactId>opencsv</artifactId>
-            <version>5.7.1</version>
+            <version>5.12.0</version>
         </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.36</version>
+            <version>1.18.48</version>
             <scope>provided</scope>
         </dependency>
         <!-- ZXing QR Code Generation -->
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>core</artifactId>
-            <version>3.5.2</version>
+            <version>3.5.4</version>
         </dependency>
         <dependency>
             <groupId>com.google.zxing</groupId>
             <artifactId>javase</artifactId>
-            <version>3.5.2</version>
+            <version>3.5.4</version>
         </dependency>
         <dependency>
             <groupId>org.openjdk.nashorn</groupId>
             <artifactId>nashorn-core</artifactId>
-            <version>15.4</version>
+            <version>15.7</version>
         </dependency>
         <dependency>
             <groupId>org.apache.commons</groupId>
             <artifactId>commons-csv</artifactId>
-            <version>1.10.0</version>
+            <version>1.14.1</version>
         </dependency>
         <!-- Add XML-RPC client dependency -->
         <dependency>
@@ -861,11 +861,11 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-war-plugin</artifactId>
-                <version>3.3.1</version>
+                <version>3.5.1</version>
             </plugin>
             <plugin>
                 <artifactId>maven-compiler-plugin</artifactId>
-                <version>3.13.0</version>
+                <version>3.16.0</version>
                 <configuration>
                     <!-- move to release when we compile in java versions >= 9 -->
                     <release>${maven.java.release}</release>
@@ -878,7 +878,7 @@
             <plugin>
                 <groupId>com.spotify</groupId>
                 <artifactId>dockerfile-maven-plugin</artifactId>
-                <version>1.4.9</version>
+                <version>1.4.13</version>
                 <configuration>
                     <repository>${project.artifactId}</repository>
                 </configuration>
@@ -912,13 +912,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-help-plugin</artifactId>
-                <version>3.2.0</version>
+                <version>3.5.2</version>
             </plugin>
             <!-- Code formatter -->
             <plugin>
                 <groupId>com.diffplug.spotless</groupId>
                 <artifactId>spotless-maven-plugin</artifactId>
-                <version>2.43.0</version>
+                <version>2.46.1</version>
                 <configuration>
                     <pom>
                         <includes>
@@ -1048,7 +1048,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-surefire-plugin</artifactId>
-                <version>3.2.5</version>
+                <version>3.6.0</version>
                 <configuration>
                     <skipTests>${skipTests}</skipTests>
                     <!-- The integration suite shares one static PostgreSQL container and
@@ -1062,7 +1062,7 @@
             <plugin>
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
-                <version>0.8.12</version>
+                <version>0.8.15</version>
                 <configuration>
                     <excludes>
                         <exclude>**/*.jar</exclude>
@@ -1101,7 +1101,7 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-dependency-plugin</artifactId>
-                <version>3.8.1</version>
+                <version>3.11.0</version>
                 <configuration>
                     <artifactItems>
                         <artifactItem>
