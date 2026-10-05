@@ -188,36 +188,6 @@ class DevStackContractTest(unittest.TestCase):
 
             run.assert_called_once()
 
-    def test_frontend_build_override_is_deterministic(self):
-        context = self.dev_stack.make_context(REPO_ROOT)
-
-        self.assertTrue(
-            self.dev_stack.frontend_dependencies_changed(
-                context, {"DEV_STACK_BUILD_FRONTEND": "true"}
-            )
-        )
-        self.assertFalse(
-            self.dev_stack.frontend_dependencies_changed(
-                context, {"DEV_STACK_BUILD_FRONTEND": "false"}
-            )
-        )
-
-    def test_frontend_build_detects_non_mounted_runtime_inputs(self):
-        context = self.dev_stack.make_context(REPO_ROOT)
-
-        with patch.object(
-            self.dev_stack.subprocess,
-            "run",
-            return_value=subprocess.CompletedProcess([], 0),
-        ) as run:
-            self.dev_stack.frontend_dependencies_changed(context, {})
-
-        command = run.call_args.args[0]
-        self.assertIn("frontend/vite.config.ts", command)
-        self.assertIn("frontend/index.html", command)
-        self.assertIn("frontend/tsconfig.json", command)
-        self.assertIn("frontend/.npmrc", command)
-
     def test_run_java21_honors_selected_java_21_home(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
@@ -350,12 +320,12 @@ class DevStackContractTest(unittest.TestCase):
 
     def test_image_build_refreshes_backend_runtime_without_rebuilding_the_mounted_war(self):
         context = self.dev_stack.make_context(REPO_ROOT)
-        environment = {"DEV_STACK_BUILD_FRONTEND": "false"}
+        environment = {}
         with patch.object(self.dev_stack, "run") as run:
             self.dev_stack.build_images(context, environment)
         command = run.call_args.args[0]
-        self.assertEqual(command[-4:],
-                         ["build", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"])
+        self.assertEqual(command[-5:],
+                         ["build", "frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"])
         compose = (context.project_dir / "docker-compose.dev.yml").read_text()
         self.assertIn("target: dev-runtime", compose)
         self.assertIn("../../target/OpenELIS-Global.war:", compose)

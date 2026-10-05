@@ -126,11 +126,11 @@ the proxy binds random loopback ports, and `scripts/dev-stack url` prints the
 browser URL. Frontend source remains hot-reloaded. Re-run `scripts/dev-stack up`
 after backend or analyzer component changes.
 
-The published development frontend dependency image is reused when
-`package.json`, `package-lock.json`, and `frontend/Dockerfile` match `develop`;
-worktree source is still mounted for hot reload. If any of those inputs differ,
-the command automatically builds an isolated frontend image. Set
-`DEV_STACK_BUILD_FRONTEND=true` only to force that rebuild.
+The command builds the backend, frontend, Bridge, and analyzer mock from this
+checkout and its pinned submodules, using local image names for this worktree.
+Docker and Maven reuse their dependency caches. Frontend source is mounted for
+hot reload; changes to dependencies or build configuration are picked up on the
+next `scripts/dev-stack up`.
 
 For a domain-enabled development server, set a real `LETSENCRYPT_DOMAIN` and
 `LETSENCRYPT_EMAIL` in `.env`, then run the same `scripts/dev-stack up` command.

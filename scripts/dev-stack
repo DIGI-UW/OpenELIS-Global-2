@@ -91,44 +91,7 @@ def build_environment(context: StackContext) -> dict[str, str]:
     digest = int(hashlib.sha256(str(context.repo_root).encode("utf-8")).hexdigest()[:8], 16)
     environment["ANALYZER_NETWORK_NAMESPACE"] = context.project
     environment["ANALYZER_SUBNET_PREFIX"] = f"10.{64 + digest % 160}"
-    if frontend_dependencies_changed(context, environment):
-        environment["DEV_STACK_FRONTEND_IMAGE"] = f"{context.project}-frontend:dev"
-        environment["DEV_STACK_BUILD_FRONTEND"] = "true"
-    else:
-        environment.setdefault(
-            "DEV_STACK_FRONTEND_IMAGE",
-            "itechuw/openelis-global-2-frontend-dev:develop",
-        )
-        environment.setdefault("DEV_STACK_BUILD_FRONTEND", "false")
     return environment
-
-
-def frontend_dependencies_changed(
-    context: StackContext, environment: dict[str, str]
-) -> bool:
-    override = environment.get("DEV_STACK_BUILD_FRONTEND")
-    if override is not None:
-        return override.lower() == "true"
-    paths = (
-        "frontend/.dockerignore",
-        "frontend/.npmrc",
-        "frontend/Dockerfile",
-        "frontend/index.html",
-        "frontend/package-lock.json",
-        "frontend/package.json",
-        "frontend/tsconfig.json",
-        "frontend/vite.config.ts",
-    )
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--quiet", "origin/develop", "--", *paths],
-            cwd=context.repo_root,
-            env=environment,
-            check=False,
-        )
-        return result.returncode != 0
-    except OSError:
-        return True
 
 
 def compose_command(context: StackContext, *arguments: str) -> list[str]:
@@ -368,9 +331,7 @@ def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    services = ["oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"]
-    if environment["DEV_STACK_BUILD_FRONTEND"] == "true":
-        services.insert(0, "frontend.openelis.org")
+    services = ["frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"]
     run(
         compose_command(context, "build", *services),
         cwd=context.project_dir,
