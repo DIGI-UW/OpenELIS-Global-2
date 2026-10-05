@@ -205,6 +205,141 @@ describe("LabelPresetEditor", () => {
     });
   });
 
+  // ── Payload shape and feedback (OGC-1227) ────────────────────────────────
+
+  const presetWithServerFields = {
+    id: 1,
+    name: "Order Label",
+    barcodeType: "CODE_128",
+    heightMm: 25,
+    widthMm: 76,
+    printsPerSample: false,
+    printsPerOrder: true,
+    defaultPerSample: 0,
+    maxPerSample: 10,
+    defaultPerOrder: 1,
+    maxPerOrder: 10,
+    isActive: true,
+    isSystem: true,
+    fields: [
+      {
+        id: 11,
+        lastupdated: 1789153178046,
+        fieldKey: "LAB_NUMBER",
+        sourceType: "SYSTEM",
+        isRequired: true,
+        displayOrder: 1,
+      },
+    ],
+  };
+
+  test("sends the name as stored and strips field entries to the form shape", async () => {
+    putToOpenElisServerFullResponse.mockImplementation(
+      (url, payload, callback) => {
+        callback({ status: 200 });
+      },
+    );
+    renderEditor(presetWithServerFields);
+
+    fireEvent.click(screen.getByText(messages["label.button.save"]));
+
+    await waitFor(() => {
+      expect(putToOpenElisServerFullResponse).toHaveBeenCalled();
+    });
+    const payload = JSON.parse(
+      putToOpenElisServerFullResponse.mock.calls[0][1],
+    );
+    expect(payload.name).toBe("Order Label");
+    expect(payload.fields).toEqual([
+      { fieldKey: "LAB_NUMBER", isRequired: true, displayOrder: 1 },
+    ]);
+  });
+
+  test("sends a new preset's name as typed, trimmed and case preserved", async () => {
+    postToOpenElisServerFullResponse.mockImplementation(
+      (url, payload, callback) => {
+        callback({ status: 201 });
+      },
+    );
+    renderEditor();
+
+    fireEvent.change(
+      screen.getByLabelText(messages["admin.labelPresets.field.name"]),
+      { target: { value: "  Mixed Case Preset  " } },
+    );
+    fireEvent.click(screen.getByText(messages["label.button.save"]));
+
+    await waitFor(() => {
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled();
+    });
+    const payload = JSON.parse(
+      postToOpenElisServerFullResponse.mock.calls[0][1],
+    );
+    expect(payload.name).toBe("Mixed Case Preset");
+    expect(payload.fields).toEqual([]);
+  });
+
+  test("names the server's status and reason when the save is rejected, and stays open", async () => {
+    putToOpenElisServerFullResponse.mockImplementation(
+      (url, payload, callback) => {
+        callback({
+          status: 400,
+          text: () =>
+            Promise.resolve('{"messageKey":"error.request.unreadable"}'),
+        });
+      },
+    );
+    const onClose = vi.fn();
+    renderEditor(presetWithServerFields, onClose);
+
+    fireEvent.click(screen.getByText(messages["label.button.save"]));
+
+    const notice = await screen.findByTestId("label-preset-editor-error");
+    expect(notice).toHaveTextContent(messages["admin.labelPresets.saveFailed"]);
+    expect(notice).toHaveTextContent("400");
+    expect(notice).toHaveTextContent(messages["error.request.unreadable"]);
+    expect(onClose).not.toHaveBeenCalled();
+  });
+
+  test("shows a translated validation rule from a 422 response", async () => {
+    putToOpenElisServerFullResponse.mockImplementation(
+      (url, payload, callback) => {
+        callback({
+          status: 422,
+          text: () =>
+            Promise.resolve(
+              '{"fieldErrors":[],"globalErrors":["{error.labelpreset.fields.unique}"]}',
+            ),
+        });
+      },
+    );
+    renderEditor(presetWithServerFields);
+
+    fireEvent.click(screen.getByText(messages["label.button.save"]));
+
+    const notice = await screen.findByTestId("label-preset-editor-error");
+    expect(notice).toHaveTextContent("422");
+    expect(notice).toHaveTextContent(
+      messages["error.labelpreset.fields.unique"],
+    );
+  });
+
+  test("explains a request that got no response", async () => {
+    putToOpenElisServerFullResponse.mockImplementation(
+      (url, payload, callback) => {
+        callback(undefined);
+      },
+    );
+    renderEditor(presetWithServerFields);
+
+    fireEvent.click(screen.getByText(messages["label.button.save"]));
+
+    const notice = await screen.findByTestId("label-preset-editor-error");
+    expect(notice).toHaveTextContent(
+      messages["admin.labelPresets.saveFailed.noResponse"],
+    );
+  });
+
   // ── Sections rendered ────────────────────────────────────────────────────
 
   test("renders all four sections", () => {

@@ -1,5 +1,6 @@
 package org.openelisglobal.labelpreset.form;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.Max;
@@ -7,16 +8,23 @@ import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
-import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 
 /**
  * Spring form bean for creating/updating a LabelPreset. Carries @Valid
  * annotations for: name required/120-char, heightMm/widthMm 5-200, barcodeType
- * not-null, at least one scope flag (order or sample), and max >= default per
- * scope.
+ * not-null, at least one scope flag (order or sample), max >= default per
+ * scope, and unique field keys / display orders.
+ *
+ * <p>
+ * Unknown JSON properties are ignored so a client may echo a preset read from
+ * GET (which carries {@code id}, {@code isSystem}, {@code lastupdated} and, on
+ * each field, {@code sourceType}) straight back into PUT (OGC-1227).
  */
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class LabelPresetForm {
 
     @NotBlank(message = "{error.labelpreset.name.required}")
@@ -54,8 +62,13 @@ public class LabelPresetForm {
 
     private Boolean isActive = true;
 
+    /**
+     * Content fields of the preset. {@code null} (the key is absent from the
+     * request) leaves the stored fields untouched on update; an explicit empty list
+     * clears them. A partial update must never be destructive (OGC-1227).
+     */
     @Valid
-    private List<FieldEntry> fields = new ArrayList<>();
+    private List<FieldEntry> fields;
 
     /** At least one scope flag must be true. */
     @AssertTrue(message = "{error.labelpreset.scope.required}")
@@ -85,6 +98,32 @@ public class LabelPresetForm {
             return true;
         }
         return maxPerSample >= defaultPerSample;
+    }
+
+    /**
+     * Field keys and display orders must each be unique within one preset; the
+     * database enforces both with unique indexes, so rejecting them here turns a
+     * 500 into a 422 that names the problem.
+     */
+    @AssertTrue(message = "{error.labelpreset.fields.unique}")
+    public boolean isFieldKeysAndOrdersUnique() {
+        if (fields == null) {
+            return true;
+        }
+        Set<String> keys = new HashSet<>();
+        Set<Integer> orders = new HashSet<>();
+        for (FieldEntry entry : fields) {
+            if (entry == null) {
+                continue;
+            }
+            if (entry.getFieldKey() != null && !keys.add(entry.getFieldKey().trim())) {
+                return false;
+            }
+            if (entry.getDisplayOrder() != null && !orders.add(entry.getDisplayOrder())) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // ── Getters / Setters ────────────────────────────────────────────────────
@@ -187,7 +226,10 @@ public class LabelPresetForm {
 
     /**
      * Nested DTO for content field entries within a label preset write request.
+     * Unknown properties ({@code id}, {@code sourceType}, {@code lastupdated}
+     * echoed from a GET) are ignored.
      */
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class FieldEntry {
 
         @NotBlank(message = "{error.labelpreset.field.key.required}")

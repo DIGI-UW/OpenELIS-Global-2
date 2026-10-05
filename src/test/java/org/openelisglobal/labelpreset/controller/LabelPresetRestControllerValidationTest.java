@@ -289,7 +289,111 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
                 .content(JSON.writeValueAsString(form))).andExpect(status().isNotFound());
     }
 
+    // ── OGC-1227: the editor's payload, re-saves and partial updates ─────────
+
+    @Test
+    public void put_fieldsEchoedFromGet_withUnknownProperties_returns200() throws Exception {
+        LabelPreset created = createWithLabNumber(TEST_PREFIX + "echo_fields");
+        String body = "{\"name\":\"" + TEST_PREFIX + "echo_fields\",\"heightMm\":30,\"widthMm\":40,"
+                + "\"barcodeType\":\"CODE_128\",\"printsPerOrder\":false,\"printsPerSample\":true,"
+                + "\"defaultPerOrder\":0,\"maxPerOrder\":10,\"defaultPerSample\":1,\"maxPerSample\":5,"
+                + "\"isActive\":true,\"isSystem\":false,\"isUniversal\":false,\"lastupdated\":1789153178046,"
+                + "\"fields\":[{\"lastupdated\":1789153178046,\"id\":" + created.getFields().get(0).getId()
+                + ",\"fieldKey\":\"LAB_NUMBER\",\"sourceType\":\"SYSTEM\",\"isRequired\":true,\"displayOrder\":1}]}";
+
+        MvcResult result = mockMvc
+                .perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk()).andReturn();
+
+        LabelPreset updated = JSON.readValue(result.getResponse().getContentAsString(), LabelPreset.class);
+        assertEquals(Integer.valueOf(30), updated.getHeightMm());
+        assertEquals(1, updated.getFields().size());
+        assertEquals("LAB_NUMBER", updated.getFields().get(0).getFieldKey());
+    }
+
+    @Test
+    public void put_secondSaveWithSameFields_returns200() throws Exception {
+        LabelPreset created = createWithLabNumber(TEST_PREFIX + "resave");
+        LabelPresetForm form = buildValidForm(TEST_PREFIX + "resave");
+        form.setFields(List.of(fieldEntry("LAB_NUMBER", true, 1)));
+
+        form.setHeightMm(31);
+        mockMvc.perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(form))).andExpect(status().isOk());
+        form.setHeightMm(32);
+        mockMvc.perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(form))).andExpect(status().isOk());
+
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.label_preset_field WHERE preset_id = ?",
+                        Integer.class, created.getId()));
+        assertEquals(Integer.valueOf(32), jdbc.queryForObject(
+                "SELECT height_mm FROM clinlims.label_preset WHERE id = ?", Integer.class, created.getId()));
+    }
+
+    @Test
+    public void put_withoutFieldsKey_keepsStoredFields() throws Exception {
+        LabelPreset created = createWithLabNumber(TEST_PREFIX + "partial");
+        String body = "{\"name\":\"" + TEST_PREFIX + "partial\",\"heightMm\":30,\"widthMm\":40,"
+                + "\"barcodeType\":\"CODE_128\",\"printsPerOrder\":false,\"printsPerSample\":true,"
+                + "\"defaultPerOrder\":0,\"maxPerOrder\":10,\"defaultPerSample\":1,\"maxPerSample\":5,\"isActive\":true}";
+
+        mockMvc.perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isOk());
+
+        MvcResult getResult = mockMvc.perform(get(BASE_URL + "/" + created.getId())).andExpect(status().isOk())
+                .andReturn();
+        LabelPreset after = JSON.readValue(getResult.getResponse().getContentAsString(), LabelPreset.class);
+        assertEquals(Integer.valueOf(30), after.getHeightMm());
+        assertEquals(1, after.getFields().size());
+        assertEquals("LAB_NUMBER", after.getFields().get(0).getFieldKey());
+    }
+
+    @Test
+    public void put_duplicateFieldKey_returns422() throws Exception {
+        LabelPreset created = createWithLabNumber(TEST_PREFIX + "dup_key");
+        LabelPresetForm form = buildValidForm(TEST_PREFIX + "dup_key");
+        form.setFields(List.of(fieldEntry("LAB_NUMBER", true, 1), fieldEntry("LAB_NUMBER", false, 2)));
+
+        MvcResult result = mockMvc
+                .perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON)
+                        .content(JSON.writeValueAsString(form)))
+                .andExpect(status().isUnprocessableEntity()).andReturn();
+
+        assertTrue("422 names the rule", result.getResponse().getContentAsString().contains("fields.unique"));
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.label_preset_field WHERE preset_id = ?",
+                        Integer.class, created.getId()));
+    }
+
+    @Test
+    public void put_duplicateDisplayOrder_returns422() throws Exception {
+        LabelPreset created = createWithLabNumber(TEST_PREFIX + "dup_order");
+        LabelPresetForm form = buildValidForm(TEST_PREFIX + "dup_order");
+        form.setFields(List.of(fieldEntry("LAB_NUMBER", true, 1), fieldEntry("PATIENT_NAME", false, 1)));
+
+        mockMvc.perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON)
+                .content(JSON.writeValueAsString(form))).andExpect(status().isUnprocessableEntity());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private LabelPreset createWithLabNumber(String name) throws Exception {
+        LabelPresetForm form = buildValidForm(name);
+        form.setFields(List.of(fieldEntry("LAB_NUMBER", true, 1)));
+        MvcResult result = mockMvc
+                .perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(form)))
+                .andExpect(status().isCreated()).andReturn();
+        return JSON.readValue(result.getResponse().getContentAsString(), LabelPreset.class);
+    }
+
+    private LabelPresetForm.FieldEntry fieldEntry(String key, boolean required, int order) {
+        LabelPresetForm.FieldEntry entry = new LabelPresetForm.FieldEntry();
+        entry.setFieldKey(key);
+        entry.setIsRequired(required);
+        entry.setDisplayOrder(order);
+        return entry;
+    }
 
     private LabelPresetForm buildValidForm(String name) {
         LabelPresetForm form = new LabelPresetForm();
