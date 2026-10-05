@@ -135,6 +135,7 @@ public class InventoryLot extends BaseObject<Long> {
     /**
      * Stock a reorder decision can count on: usable now or only awaiting QC. Wider
      * than {@link #isAvailableForUse()}, which gates consumption.
+     * InventoryLotDAOImpl#getAvailableQuantityByItem restates this rule in HQL.
      */
     public boolean countsAsAvailableStock() {
         return !isExpired() && currentQuantity != null && currentQuantity > 0

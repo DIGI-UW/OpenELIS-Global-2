@@ -6,19 +6,22 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -37,7 +40,7 @@ public class InventoryProjectionServiceQueryCountTest {
     private InventoryItemService inventoryItemService;
 
     @Mock
-    private InventoryLotService inventoryLotService;
+    private InventoryLotDAO inventoryLotDAO;
 
     @Mock
     private InventoryUsageService inventoryUsageService;
@@ -79,29 +82,28 @@ public class InventoryProjectionServiceQueryCountTest {
     @Test
     public void theBoardCostsThreeReadsWhateverTheCatalogSize() {
         List<InventoryItem> items = new ArrayList<>();
-        List<InventoryLot> lots = new ArrayList<>();
+        Map<Long, Double> onHand = new HashMap<>();
         List<InventoryUsage> usages = new ArrayList<>();
         for (long id = 1; id <= ITEM_COUNT; id++) {
             InventoryItem item = item(id);
             InventoryLot lot = usableLot(item);
             items.add(item);
-            lots.add(lot);
+            onHand.put(id, lot.getCurrentQuantity());
             for (int daysAgo = 1; daysAgo <= 20; daysAgo++) {
                 usages.add(usage(item, lot, daysAgo));
             }
         }
         when(inventoryItemService.getAllActive()).thenReturn(items);
-        when(inventoryLotService.getAll()).thenReturn(lots);
+        when(inventoryLotDAO.getAvailableQuantityByItem()).thenReturn(onHand);
         when(inventoryUsageService.getByDateRange(any(), any())).thenReturn(usages);
 
         List<InventoryProjection> board = service.getBoard();
 
         assertEquals(ITEM_COUNT, board.size());
         verify(inventoryItemService, times(1)).getAllActive();
-        verify(inventoryLotService, times(1)).getAll();
+        verify(inventoryLotDAO, times(1)).getAvailableQuantityByItem();
         verify(inventoryUsageService, times(1)).getByDateRange(any(), any());
-        verify(inventoryLotService, never()).getByInventoryItemId(anyLong());
-        verify(inventoryLotService, never()).getAvailableLotsByItemFEFO(anyLong());
+        verifyNoMoreInteractions(inventoryLotDAO);
         verify(inventoryUsageService, never()).getByInventoryItemId(anyLong());
     }
 
@@ -110,14 +112,13 @@ public class InventoryProjectionServiceQueryCountTest {
         InventoryItem busy = item(1);
         InventoryItem quiet = item(2);
         InventoryLot busyLot = usableLot(busy);
-        InventoryLot quietLot = usableLot(quiet);
 
         List<InventoryUsage> usages = new ArrayList<>();
         for (int daysAgo = 1; daysAgo <= 28; daysAgo++) {
             usages.add(usage(busy, busyLot, daysAgo));
         }
         when(inventoryItemService.getAllActive()).thenReturn(List.of(busy, quiet));
-        when(inventoryLotService.getAll()).thenReturn(List.of(busyLot, quietLot));
+        when(inventoryLotDAO.getAvailableQuantityByItem()).thenReturn(Map.of(1L, 40.0, 2L, 40.0));
         when(inventoryUsageService.getByDateRange(any(), any())).thenReturn(usages);
 
         List<InventoryProjection> board = service.getBoard();

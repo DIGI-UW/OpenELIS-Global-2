@@ -4,12 +4,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.persistence.EntityManagerFactory;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
+import org.hibernate.SessionFactory;
+import org.hibernate.stat.Statistics;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -24,9 +27,11 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
 
     private static final long REAGENT_ITEM_ID = 1000L;
     private static final long RDT_ITEM_ID = 1001L;
+    private static final long RETIRED_ITEM_ID = 1002L;
     private static final long USABLE_LOT_ID = 9000L;
     private static final long PENDING_LOT_ID = 9001L;
     private static final long FAILED_LOT_ID = 9002L;
+    private static final long RETIRED_LOT_ID = 9003L;
     private static final double DAILY_USE = 2.0;
     private static final double USABLE_QUANTITY = 60.0;
     private static final double PENDING_QUANTITY = 25.0;
@@ -37,6 +42,9 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private EntityManagerFactory entityManagerFactory;
+
     private JdbcTemplate jdbc;
 
     @Before
@@ -46,8 +54,9 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
 
         // All shared-fixture lots have expired; this lot is the only stock.
         jdbc.update("DELETE FROM clinlims.inventory_usage WHERE id >= 9000");
-        jdbc.update("DELETE FROM clinlims.inventory_lot WHERE id IN (?, ?, ?)", USABLE_LOT_ID, PENDING_LOT_ID,
-                FAILED_LOT_ID);
+        jdbc.update("DELETE FROM clinlims.inventory_lot WHERE id IN (?, ?, ?, ?)", USABLE_LOT_ID, PENDING_LOT_ID,
+                FAILED_LOT_ID, RETIRED_LOT_ID);
+        jdbc.update("DELETE FROM clinlims.inventory_item WHERE id = ?", RETIRED_ITEM_ID);
 
         jdbc.update("INSERT INTO clinlims.inventory_lot (id, fhir_uuid, inventory_item_id, lot_number,"
                 + " expiration_date, receipt_date, initial_quantity, current_quantity, qc_status, status, version,"
@@ -110,6 +119,47 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
 
         assertEquals("quarantined stock is excluded however its QC reads", USABLE_QUANTITY, reagent.getOnHand(),
                 0.0001);
+    }
+
+    @Test
+    public void onHandExcludesALotPastItsExpiryAfterOpening() {
+        jdbc.update("INSERT INTO clinlims.inventory_lot (id, fhir_uuid, inventory_item_id, lot_number,"
+                + " expiration_date, date_opened, calculated_expiry_after_opening, receipt_date, initial_quantity,"
+                + " current_quantity, qc_status, status, version, last_updated) VALUES (?, gen_random_uuid(), ?,"
+                + " 'PROJ-LOT-OPENED', NOW() + INTERVAL '1 year', NOW() - INTERVAL '31 days',"
+                + " NOW() - INTERVAL '1 day', NOW(), 30, 30, 'PASSED', 'IN_USE', 0, NOW())", PENDING_LOT_ID,
+                REAGENT_ITEM_ID);
+
+        InventoryProjection reagent = board().get(REAGENT_ITEM_ID);
+
+        assertEquals("an opened lot past its stability window is not stock", USABLE_QUANTITY, reagent.getOnHand(),
+                0.0001);
+    }
+
+    @Test
+    public void theBoardReadCostDoesNotGrowWithLotsOrRetiredItems() {
+        jdbc.update("INSERT INTO clinlims.inventory_item (id, fhir_uuid, code, name, item_type, units, is_active,"
+                + " last_updated) VALUES (?, gen_random_uuid(), 'PROJ_RETIRED', 'Retired item', 'REAGENT', 'mL',"
+                + " 'N', NOW())", RETIRED_ITEM_ID);
+        jdbc.update("INSERT INTO clinlims.inventory_lot (id, fhir_uuid, inventory_item_id, lot_number,"
+                + " expiration_date, receipt_date, initial_quantity, current_quantity, qc_status, status, version,"
+                + " last_updated) VALUES (?, gen_random_uuid(), ?, 'PROJ-LOT-RETIRED', NOW() + INTERVAL '1 year',"
+                + " NOW(), 10, 10, 'PASSED', 'ACTIVE', 0, NOW())", RETIRED_LOT_ID, RETIRED_ITEM_ID);
+        resyncSequence("clinlims.inventory_lot_seq", "clinlims.inventory_lot");
+
+        Statistics statistics = entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
+        boolean wasEnabled = statistics.isStatisticsEnabled();
+        statistics.clear();
+        statistics.setStatisticsEnabled(true);
+        try {
+            Map<Long, InventoryProjection> rows = board();
+
+            assertEquals("items, stock, and usage: one statement each", 3, statistics.getPrepareStatementCount());
+            assertEquals(USABLE_QUANTITY, rows.get(REAGENT_ITEM_ID).getOnHand(), 0.0001);
+            assertNull("a retired item gets no row", rows.get(RETIRED_ITEM_ID));
+        } finally {
+            statistics.setStatisticsEnabled(wasEnabled);
+        }
     }
 
     @Test

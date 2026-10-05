@@ -2,7 +2,9 @@ package org.openelisglobal.inventory.daoimpl;
 
 import jakarta.persistence.LockModeType;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -182,6 +184,31 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             return result != null ? result.intValue() : 0;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting total current quantity", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, Double> getAvailableQuantityByItem() throws LIMSRuntimeException {
+        try {
+            // Restates InventoryLot#countsAsAvailableStock(); change the two together.
+            String hql = "SELECT l.inventoryItem.id, SUM(l.currentQuantity) FROM InventoryLot l"
+                    + " WHERE l.status IN (:statuses) AND l.qcStatus IN (:qcStatuses) AND l.currentQuantity > 0"
+                    + " AND (l.expirationDate IS NULL OR l.expirationDate >= :now)"
+                    + " AND (l.calculatedExpiryAfterOpening IS NULL OR l.calculatedExpiryAfterOpening >= :now)"
+                    + " GROUP BY l.inventoryItem.id";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameterList("statuses", List.of(LotStatus.ACTIVE, LotStatus.IN_USE));
+            query.setParameterList("qcStatuses", List.of(QCStatus.PASSED, QCStatus.PENDING));
+            query.setParameter("now", new Timestamp(System.currentTimeMillis()));
+
+            Map<Long, Double> quantities = new HashMap<>();
+            for (Object[] row : query.list()) {
+                quantities.put((Long) row[0], (Double) row[1]);
+            }
+            return quantities;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting available quantity by item", e);
         }
     }
 

@@ -8,11 +8,10 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import org.openelisglobal.inventory.dao.InventoryLotDAO;
 import org.openelisglobal.inventory.service.InventoryItemService;
-import org.openelisglobal.inventory.service.InventoryLotService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
-import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -25,7 +24,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
     private InventoryItemService inventoryItemService;
 
     @Autowired
-    private InventoryLotService inventoryLotService;
+    private InventoryLotDAO inventoryLotDAO;
 
     @Autowired
     private InventoryUsageService inventoryUsageService;
@@ -37,7 +36,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
         LocalDate windowStart = today.minusDays(InventoryProjectionCalculator.WINDOW_DAYS - 1L);
 
         List<InventoryItem> items = inventoryItemService.getAllActive();
-        Map<Long, Double> usableByItem = usableQuantityByItem();
+        Map<Long, Double> usableByItem = inventoryLotDAO.getAvailableQuantityByItem();
         Map<Long, List<InventoryUsage>> usageByItem = usageByItem(windowStart, today);
 
         List<InventoryProjection> board = new ArrayList<>(items.size());
@@ -63,17 +62,6 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
                 .thenComparing(InventoryProjection::getRunOutEarly, Comparator.nullsLast(Comparator.naturalOrder()))
                 .thenComparing(InventoryProjection::getName, Comparator.nullsLast(Comparator.naturalOrder())));
         return board;
-    }
-
-    /** Includes QC-pending lots, unlike isAvailableForUse(), as reports do. */
-    private Map<Long, Double> usableQuantityByItem() {
-        Map<Long, Double> usable = new HashMap<>();
-        for (InventoryLot lot : inventoryLotService.getAll()) {
-            if (lot.countsAsAvailableStock() && lot.getInventoryItem() != null) {
-                usable.merge(lot.getInventoryItem().getId(), lot.getCurrentQuantity(), Double::sum);
-            }
-        }
-        return usable;
     }
 
     private Map<Long, List<InventoryUsage>> usageByItem(LocalDate windowStart, LocalDate today) {
