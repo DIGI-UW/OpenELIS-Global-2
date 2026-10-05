@@ -117,6 +117,7 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
                 match.setValue(d.getValue());
                 match.setSortOrder(d.getSortOrder());
                 match.setIsNormal(d.getIsNormal());
+                match.setIsQuantifiable(d.getIsQuantifiable());
                 match.setTestResultType(d.getTestResultType());
                 match.setSysUserId(sysUserId);
                 update(match);

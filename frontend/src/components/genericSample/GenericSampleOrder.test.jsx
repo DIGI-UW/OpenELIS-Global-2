@@ -19,8 +19,11 @@ vi.mock("../utils/Utils", async (importOriginal) => {
     getFromOpenElisServer: vi.fn((url, callback) => {
       if (url === "/rest/notebook/list") {
         callback([{ id: "7", title: "Water survey" }]);
-      } else if (url === "/rest/UomCreate") {
-        callback({ existingUomList: [] });
+      } else if (url === "/rest/uom") {
+        callback([
+          { id: "1", value: "mL" },
+          { id: "2", value: "uL" },
+        ]);
       } else {
         callback([]);
       }
@@ -60,5 +63,37 @@ describe("GenericSampleOrder — notebook picker", () => {
 
     fireEvent.change(select, { target: { value: "7" } });
     expect(select.value).toBe("7");
+  });
+});
+
+/**
+ * The unit list comes from /rest/uom, which every signed-in user may read;
+ * the admin-only /rest/UomCreate left non-admin users with no units.
+ */
+describe("GenericSampleOrder — sample unit of measure", () => {
+  it("offers the units /rest/uom lists", () => {
+    const { container } = render(
+      <MemoryRouter>
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <NotificationContext.Provider
+            value={{
+              setNotificationVisible: vi.fn(),
+              addNotification: vi.fn(),
+            }}
+          >
+            <IntlProvider locale="en" messages={messages}>
+              <GenericSampleOrder />
+            </IntlProvider>
+          </NotificationContext.Provider>
+        </ConfigurationContext.Provider>
+      </MemoryRouter>,
+    );
+
+    const select = container.querySelector("#sampleUnitOfMeasure");
+    expect(select).not.toBeNull();
+    const units = Array.from(select.options).map((o) => o.text);
+    expect(units).toEqual(expect.arrayContaining(["mL", "uL"]));
   });
 });

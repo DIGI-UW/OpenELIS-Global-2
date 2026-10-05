@@ -21,6 +21,7 @@ import {
 } from "@carbon/react";
 import { useIntl } from "react-intl";
 import { useHistory } from "react-router-dom";
+import useInAppNavigation from "../../common/useInAppNavigation";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import { formatDateOnly } from "../../utils/Utils";
 import { Download } from "@carbon/icons-react";
@@ -197,6 +198,7 @@ const LabPerformancePage = ({ view = "coverage" }) => {
   const t = (id, defaultMessage, values) =>
     intl.formatMessage({ id, defaultMessage }, values);
   const history = useHistory();
+  const navigate = useInAppNavigation();
 
   const [data, setData] = useState(null);
   const [filter, setFilter] = useState("");
@@ -330,6 +332,7 @@ const LabPerformancePage = ({ view = "coverage" }) => {
               <ClickableTile
                 data-testid="kpi-nce"
                 href={NCE_REGISTER_EQA_LINK}
+                onClick={navigate(NCE_REGISTER_EQA_LINK)}
                 title={t(
                   "eqa.labperf.openNceRegister",
                   "Open the NCE register filtered to EQA-triggered events",

@@ -174,18 +174,149 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
                 }
             }
         }
+        Map<String, Map<String, String>> storedValueByTypedValue = new HashMap<>();
         if (optionsByComponentCode != null && !optionsByComponentCode.isEmpty()) {
             Test test = testService.getTestById(testId);
             for (Map.Entry<String, List<TestResult>> entry : optionsByComponentCode.entrySet()) {
                 String componentId = codeToId.get(entry.getKey());
                 if (componentId != null) {
+                    List<String> typed = new ArrayList<>();
+                    for (TestResult option : entry.getValue()) {
+                        typed.add(option.getValue());
+                    }
                     testResultService.saveOptionsForComponent(test, componentId, entry.getValue(), sysUserId);
+                    Map<String, String> stored = new HashMap<>();
+                    for (int i = 0; i < typed.size(); i++) {
+                        if (typed.get(i) != null) {
+                            stored.put(typed.get(i).trim(), entry.getValue().get(i).getValue());
+                        }
+                    }
+                    storedValueByTypedValue.put(componentId, stored);
                 }
             }
         }
         syncLegacyTestFields(testId, sysUserId);
+        if (optionsByComponentCode != null) {
+            syncDefaultTestResult(testId, storedValueByTypedValue, sysUserId);
+            syncDictionaryNormals(testId, storedValueByTypedValue.keySet(), sysUserId);
+        }
         dropUnreachableDictionaryRanges(testId, sysUserId);
         return baseObjectDAO.getActiveComponentsByTestId(testId);
+    }
+
+    /**
+     * Result entry pre-selects {@code test.default_test_result_id}, so the primary
+     * select-list component's default is mirrored onto it as the option row holding
+     * that value. A default typed as a new free-text option is first repointed at
+     * the dictionary entry the option was stored as. Any other primary type, or a
+     * default no option offers, clears it.
+     */
+    private void syncDefaultTestResult(String testId, Map<String, Map<String, String>> storedValueByTypedValue,
+            String sysUserId) {
+        TestResultComponent primary = findPrimaryComponent(testId);
+        Test test = testService.getTestById(testId);
+        if (primary == null || test == null) {
+            return;
+        }
+        TestResult defaultOption = null;
+        String defaultValue = primary.getDefaultResult() == null ? "" : primary.getDefaultResult().trim();
+        if (!defaultValue.isEmpty() && primary.getResultType() != null
+                && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(primary.getResultType())) {
+            String stored = storedValueByTypedValue.getOrDefault(primary.getId(), Map.of()).get(defaultValue);
+            if (stored != null && !stored.equals(primary.getDefaultResult())) {
+                primary.setDefaultResult(stored);
+                primary.setSysUserId(sysUserId);
+                update(primary);
+                defaultValue = stored;
+            }
+            for (TestResult option : testResultService.getActiveOptionsByComponentId(primary.getId())) {
+                if (defaultValue.equals(option.getValue())) {
+                    defaultOption = option;
+                    break;
+                }
+            }
+        }
+        TestResult current = test.getDefaultTestResult();
+        String currentId = current == null ? null : current.getId();
+        String wantedId = defaultOption == null ? null : defaultOption.getId();
+        if (java.util.Objects.equals(currentId, wantedId)) {
+            return;
+        }
+        test.setDefaultTestResult(defaultOption);
+        test.setSysUserId(sysUserId);
+        testService.update(test);
+    }
+
+    /**
+     * Result flagging, validation and reflex rules judge a select-list result
+     * normal when it equals the reference limit's {@code dictionaryNormalId}; the
+     * option marked Normal is that value. For each saved select-list component, a
+     * limit on a value the component still offers but no longer marks Normal is
+     * pointed at the Normal option, one is created when no limit holds it, and all
+     * are removed when no option is marked Normal. Limits on values the component
+     * stopped offering are left to {@link #dropUnreachableDictionaryRanges}. Legacy
+     * limits without a component id belong to the primary.
+     */
+    private void syncDictionaryNormals(String testId, Set<String> savedComponentIds, String sysUserId) {
+        List<TestResultComponent> components = baseObjectDAO.getActiveComponentsByTestId(testId);
+        TestResultComponent primary = pickPrimary(components);
+        List<ResultLimit> limits = resultLimitService.getAllResultLimitsForTest(testId);
+        for (TestResultComponent component : components) {
+            String type = component.getResultType();
+            if (!savedComponentIds.contains(component.getId()) || type == null
+                    || !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(type)) {
+                continue;
+            }
+            String normalValue = null;
+            Set<String> offered = new HashSet<>();
+            for (TestResult option : testResultService.getActiveOptionsByComponentId(component.getId())) {
+                if (option.getValue() == null || option.getValue().isBlank()) {
+                    continue;
+                }
+                offered.add(option.getValue().trim());
+                if (normalValue == null && Boolean.TRUE.equals(option.getIsNormal())) {
+                    normalValue = option.getValue().trim();
+                }
+            }
+            boolean isPrimary = primary != null && primary.getId().equals(component.getId());
+            boolean normalHeld = false;
+            for (ResultLimit limit : limits) {
+                boolean owned = component.getId().equals(limit.getComponentId())
+                        || (isPrimary && limit.getComponentId() == null);
+                if (!owned || limit.getDictionaryNormalId() == null || limit.getDictionaryNormalId().isBlank()) {
+                    continue;
+                }
+                String held = limit.getDictionaryNormalId().trim();
+                if (normalValue == null) {
+                    resultLimitService.delete(limit.getId(), sysUserId);
+                } else if (normalValue.equals(held)) {
+                    normalHeld = true;
+                } else if (offered.contains(held)) {
+                    limit.setDictionaryNormalId(normalValue);
+                    limit.setSysUserId(sysUserId);
+                    resultLimitService.update(limit);
+                    normalHeld = true;
+                }
+            }
+            if (normalValue != null && !normalHeld) {
+                ResultLimit limit = new ResultLimit();
+                limit.setTestId(testId);
+                limit.setComponentId(component.getId());
+                limit.setResultTypeId(resultTypeId(type));
+                limit.setDictionaryNormalId(normalValue);
+                limit.setSysUserId(sysUserId);
+                resultLimitService.insert(limit);
+            }
+        }
+    }
+
+    private static String resultTypeId(String type) {
+        for (TypeOfTestResultServiceImpl.ResultType resultType : TypeOfTestResultServiceImpl.ResultType.values()) {
+            if (resultType.matches(type)) {
+                return resultType.getId();
+            }
+        }
+        return TypeOfTestResultServiceImpl.ResultType.DICTIONARY.getId();
     }
 
     /**

@@ -27,7 +27,7 @@ vi.mock("../../../layout/Layout", async () => {
 
 // ========== IMPORTS ==========
 import React from "react";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import SampleResultsSection from "./SampleResultsSection";
@@ -217,6 +217,76 @@ describe("SampleResultsSection", () => {
     ).toBeGreaterThan(0);
     fireEvent.click(saveButton());
     expect(putToOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  it("marks an option qualifiable and sends it", async () => {
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(document.getElementById("opt-qualifiable-0-0"));
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].options[0].qualifiable).toBe(true);
+  });
+
+  it("keeps one Normal option per select list", async () => {
+    const twoOptions = clone(SAMPLE_RESULTS);
+    twoOptions.components[0].options.push({
+      id: "O2",
+      value: "Female",
+      sortOrder: 2,
+      normal: false,
+    });
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(twoOptions) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(document.getElementById("opt-normal-0-1"));
+    fireEvent.click(saveButton());
+
+    const options = savedPayload().components[0].options;
+    expect(options.map((o) => o.normal)).toEqual([false, true]);
+  });
+
+  it("refuses to save a select list that offers the same option twice", async () => {
+    const repeated = clone(SAMPLE_RESULTS);
+    repeated.components[0].options.push({
+      id: "O2",
+      value: "Male",
+      sortOrder: 2,
+      normal: false,
+    });
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(repeated) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    expect(screen.getByTestId("duplicate-options-0")).toHaveTextContent(
+      "Systolic lists Male more than once",
+    );
+    fireEvent.click(saveButton());
+    expect(putToOpenElisServer).not.toHaveBeenCalled();
+  });
+
+  it("picks a select list's default result from its options", async () => {
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+    const defaultSelect = screen.getByLabelText(
+      messages["label.testCatalog.sampleResults.defaultResult"],
+    );
+    expect(
+      within(defaultSelect).getByRole("option", {
+        name: messages["label.testCatalog.sampleResults.defaultResult.none"],
+      }),
+    ).toBeInTheDocument();
+
+    fireEvent.change(defaultSelect, { target: { value: "Male" } });
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].defaultResult).toBe("Male");
   });
 
   it("saves the full component tree to the section endpoint, coercing numeric fields", async () => {

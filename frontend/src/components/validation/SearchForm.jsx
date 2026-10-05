@@ -245,140 +245,109 @@ const SearchForm = (props) => {
         className="unifiedResultsPage validationSearchArea"
         data-testid="validation-search-area"
       >
-        <Column
-          max={3}
-          xlg={3}
-          lg={4}
-          md={4}
-          sm={4}
-          className="unifiedResultsToolbarColumn"
-        >
-          <div className="cds--label">
-            <FormattedMessage id="label.button.search" />
+        <Column lg={16} md={8} sm={4}>
+          <div className="validationToolbar">
+            <div className="unifiedResultsToolbarColumn validationToolbarSearch">
+              <div className="cds--label">
+                <FormattedMessage id="label.button.search" />
+              </div>
+              <Search
+                id="validationSearch"
+                labelText={intl.formatMessage({
+                  id: "label.validation.search.box",
+                })}
+                placeholder={intl.formatMessage({
+                  id: "label.validation.search.box",
+                })}
+                value={search.labNumber}
+                onChange={(e) => updateSearch({ labNumber: e.target.value })}
+                onClear={() => updateSearch({ labNumber: "" }, true)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    loadQueue();
+                  }
+                }}
+              />
+              <div className="cds--form__helper-text">
+                <FormattedMessage id="label.validation.search.rangeHint" />
+              </div>
+            </div>
+            <div className="unifiedResultsToolbarColumn validationToolbarLabUnit">
+              <Select
+                id="validationLabUnit"
+                labelText={intl.formatMessage({ id: "label.results.labUnit" })}
+                value={search.testSectionId}
+                onChange={(e) =>
+                  updateSearch({ testSectionId: e.target.value }, true)
+                }
+              >
+                <SelectItem text="" value="" />
+                {testSections.map((unit) => (
+                  <SelectItem text={unit.value} value={unit.id} key={unit.id} />
+                ))}
+              </Select>
+            </div>
+            <div className="unifiedResultsToolbarColumn validationToolbarDates">
+              <DatePicker
+                key={dayFirst ? "day-first" : "month-first"}
+                datePickerType="range"
+                dateFormat={dayFirst ? "d/m/Y" : "m/d/Y"}
+                parseDate={parseDisplayDate}
+                value={[
+                  parseDisplayDate(search.fromDate),
+                  parseDisplayDate(search.toDate),
+                ].filter(Boolean)}
+                onChange={(dates) =>
+                  updateSearch({
+                    fromDate: formatDate(dates?.[0]),
+                    toDate: formatDate(dates?.[1]),
+                  })
+                }
+              >
+                <DatePickerInput
+                  id="validationFromDate"
+                  labelText={intl.formatMessage({
+                    id: "label.validation.search.fromDate",
+                  })}
+                  placeholder={dayFirst ? "dd/mm/yyyy" : "mm/dd/yyyy"}
+                />
+                <DatePickerInput
+                  id="validationToDate"
+                  labelText={intl.formatMessage({
+                    id: "label.validation.search.toDate",
+                  })}
+                  placeholder={dayFirst ? "dd/mm/yyyy" : "mm/dd/yyyy"}
+                />
+              </DatePicker>
+            </div>
+            <div className="unifiedResultsToolbarColumn unifiedResultsPatientColumn validationToolbarPatient">
+              <div className="cds--label">&nbsp;</div>
+              <Button
+                kind="tertiary"
+                size="md"
+                data-testid="validation-search-by-patient"
+                onClick={() =>
+                  showPatientSearch
+                    ? setShowPatientSearch(false)
+                    : openPatientSearch()
+                }
+                disabled={isLoading}
+              >
+                <FormattedMessage id="label.results.searchByPatient" />
+              </Button>
+            </div>
+            <div className="unifiedResultsToolbarColumn unifiedResultsLoadColumn validationToolbarLoad">
+              <div className="cds--label">&nbsp;</div>
+              <Button
+                size="md"
+                data-testid="validation-load"
+                onClick={() => loadQueue()}
+                disabled={isLoading}
+              >
+                <FormattedMessage id="label.results.load" />
+              </Button>
+            </div>
           </div>
-          <Search
-            id="validationSearch"
-            labelText={intl.formatMessage({
-              id: "label.validation.search.box",
-            })}
-            placeholder={intl.formatMessage({
-              id: "label.validation.search.box",
-            })}
-            value={search.labNumber}
-            onChange={(e) => updateSearch({ labNumber: e.target.value })}
-            onClear={() => updateSearch({ labNumber: "" }, true)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                loadQueue();
-              }
-            }}
-          />
-          <div className="cds--form__helper-text">
-            <FormattedMessage id="label.validation.search.rangeHint" />
-          </div>
-        </Column>
-        <Column
-          max={3}
-          xlg={3}
-          lg={4}
-          md={4}
-          sm={4}
-          className="unifiedResultsToolbarColumn"
-        >
-          <Select
-            id="validationLabUnit"
-            labelText={intl.formatMessage({ id: "label.results.labUnit" })}
-            value={search.testSectionId}
-            onChange={(e) =>
-              updateSearch({ testSectionId: e.target.value }, true)
-            }
-          >
-            <SelectItem text="" value="" />
-            {testSections.map((unit) => (
-              <SelectItem text={unit.value} value={unit.id} key={unit.id} />
-            ))}
-          </Select>
-        </Column>
-        <Column
-          max={4}
-          xlg={4}
-          lg={8}
-          md={8}
-          sm={4}
-          className="unifiedResultsToolbarColumn"
-        >
-          <DatePicker
-            key={dayFirst ? "day-first" : "month-first"}
-            datePickerType="range"
-            dateFormat={dayFirst ? "d/m/Y" : "m/d/Y"}
-            parseDate={parseDisplayDate}
-            value={[
-              parseDisplayDate(search.fromDate),
-              parseDisplayDate(search.toDate),
-            ].filter(Boolean)}
-            onChange={(dates) =>
-              updateSearch({
-                fromDate: formatDate(dates?.[0]),
-                toDate: formatDate(dates?.[1]),
-              })
-            }
-          >
-            <DatePickerInput
-              id="validationFromDate"
-              labelText={intl.formatMessage({
-                id: "label.validation.search.fromDate",
-              })}
-              placeholder={dayFirst ? "dd/mm/yyyy" : "mm/dd/yyyy"}
-            />
-            <DatePickerInput
-              id="validationToDate"
-              labelText={intl.formatMessage({
-                id: "label.validation.search.toDate",
-              })}
-              placeholder={dayFirst ? "dd/mm/yyyy" : "mm/dd/yyyy"}
-            />
-          </DatePicker>
-        </Column>
-        <Column
-          max={3}
-          xlg={3}
-          lg={4}
-          md={4}
-          sm={4}
-          className="unifiedResultsToolbarColumn unifiedResultsPatientColumn"
-        >
-          <div className="cds--label">&nbsp;</div>
-          <Button
-            kind="tertiary"
-            size="md"
-            data-testid="validation-search-by-patient"
-            onClick={() =>
-              showPatientSearch
-                ? setShowPatientSearch(false)
-                : openPatientSearch()
-            }
-            disabled={isLoading}
-          >
-            <FormattedMessage id="label.results.searchByPatient" />
-          </Button>
-        </Column>
-        <Column
-          max={3}
-          xlg={3}
-          lg={4}
-          md={4}
-          sm={4}
-          className="unifiedResultsToolbarColumn unifiedResultsLoadColumn"
-        >
-          <div className="cds--label">&nbsp;</div>
-          <Button
-            size="md"
-            data-testid="validation-load"
-            onClick={() => loadQueue()}
-            disabled={isLoading}
-          >
-            <FormattedMessage id="label.results.load" />
-          </Button>
         </Column>
 
         {(showPatientSearch || selectedPatient || search.patientId) && (

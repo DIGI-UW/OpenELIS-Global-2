@@ -197,6 +197,8 @@ const CombinedTestEditor = () => {
         highCritical: r.highCritical,
         lowValid: r.lowValid,
         highValid: r.highValid,
+        lowReporting: r.lowReporting ?? null,
+        highReporting: r.highReporting ?? null,
       })),
     };
     putToOpenElisServer(
