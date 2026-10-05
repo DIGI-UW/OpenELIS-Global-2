@@ -2275,6 +2275,7 @@
   "coldStorage.correctiveAction.type.temperatureAdjustment.description": "Adjusting temperature settings",
   "coldStorage.criticalThreshold": "Critical Threshold (°C)",
   "coldStorage.dashboard.acknowledge": "Acknowledge",
+  "coldStorage.dashboard.clear": "Clear",
   "coldStorage.dashboard.activeAlerts": "Active Alerts ({count})",
   "coldStorage.dashboard.column.currentTemp": "Current Temp",
   "coldStorage.dashboard.column.currentTemp2": "Probe 2 Temp",
