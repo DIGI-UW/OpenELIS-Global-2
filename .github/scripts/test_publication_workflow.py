@@ -58,6 +58,18 @@ class PublicationWorkflowTest(unittest.TestCase):
                     self.assertTrue(job["uses"].startswith("./.github/workflows/"),
                                     "External workflow inputs must not prevent publication from loading")
 
+    def test_publication_takes_no_runner_for_builds_it_cannot_publish(self):
+        # A pull request build has nothing to publish, and a cancelled build
+        # never gets its E2E checkpoint. Both are decided in job conditions, so
+        # no runner is taken; a regression here would queue two jobs per pull
+        # request build again.
+        workflow = yaml.load((ROOT / ".github/workflows/publish-images.yml").read_text(), Loader=yaml.BaseLoader)
+        jobs = workflow["jobs"]
+        self.assertIn("github.event.workflow_run.event != 'pull_request'", jobs["setup"]["if"])
+        self.assertIn("github.event_name == 'workflow_dispatch'", jobs["setup"]["if"])
+        self.assertIn("github.event.workflow_run.conclusion != 'cancelled'", jobs["wait-for-e2e-checkpoint"]["if"])
+        self.assertIn("needs.setup.result != 'skipped'", jobs["deployment-summary"]["if"])
+
     def test_reporter_posts_the_build_status_consumed_by_publication(self):
         workflow = yaml.load((ROOT / ".github/workflows/e2e-tests.yml").read_text(), Loader=yaml.BaseLoader)
         for job in ("set-pending-status", "report-status"):
