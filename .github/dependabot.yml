@@ -2,8 +2,8 @@
 # ecosystem for security fixes. Major versions of Maven, npm and Docker
 # dependencies are migrations we plan, so Dependabot does not propose them.
 # GitHub Actions majors stay in: they mostly follow runner Node retirements and
-# are cheap to take. Security fixes are not held back by the cooldown. No target-branch: develop is the default branch, and a block that
-# names a target-branch no longer applies to security updates at all.
+# Security fixes are not held back by the cooldown. The repository default branch is
+# develop, so target-branch is omitted; specifying it disables security-update groups.
 version: 2
 updates:
   - package-ecosystem: maven
