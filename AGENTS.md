@@ -1202,42 +1202,26 @@ detailed guidance, see the Testing Roadmap.
 
 ### Test Data Management
 
-**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
-fixture loading system.
-
 **Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
 for comprehensive guide.
 
-**Key Principles:**
+Test data belongs to its environment:
 
-- Single source of truth: `storage-test-data.sql` contains all test fixtures
-- Unified loader: `load-test-fixtures.sh` used by all test types
-- Dependency validation: Scripts verify required tables exist before loading
-- Comprehensive verification: Automatic verification after loading
-- Safe cleanup: Only removes test-created data, preserves fixtures
+- **Interactive and manual development**: `scripts/dev-stack` creates
+  property-gated application scenarios. Do not load SQL fixtures or reset this
+  database to reproduce CI.
+- **Full local CI**: `scripts/run-ci-checks.sh` owns fresh isolated databases.
+  Its internal lane runners load the same baseline as their GitHub workflows
+  through `load-test-fixtures.sh`. This loader is not a development launcher.
+- **Analyzer workflows**: Create connections, mappings and per-test clinical
+  data through the application APIs; fixture setup must not manufacture the
+  behavior under test.
+- **Backend integration**: Tests own their DBUnit datasets and cleanup.
+  `BaseStorageTest` uses `executeDataSetWithStateManagement`, not the shell
+  fixture loader.
 
-**Quick Start:**
-
-```bash
-# Load test fixtures (basic usage)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness profile: core fixtures; analyzer orders are created through the API
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Fixture Loading:**
-
-- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
-  `load-test-fixtures.sh`
-- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
-- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+For an isolated Cypress CI job, `cy.loadStorageFixtures()` delegates to the
+internal baseline loader. Keep this CI-only setup inside the owning runner.
 
 **DBUnit datasets (MANDATORY for DB-backed tests):**
 
