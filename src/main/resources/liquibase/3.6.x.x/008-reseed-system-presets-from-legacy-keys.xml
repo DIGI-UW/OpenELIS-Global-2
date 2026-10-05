@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1219: sites upgraded before the key names in 3.3.x.x/030-seed-system-presets.xml were
+         corrected got their five system presets from the hardcoded fallbacks (25 x 76 mm, default 1,
+         max 10) while their real dimensions and quantities stayed untouched in site_information.
+
+         This re-reads the legacy keys for every system preset that STILL carries the complete fallback
+         set in its scope. A preset whose dimensions or quantities differ from the fallback set was
+         changed by an administrator after the seed and is left alone. Keys that are absent or not
+         numeric keep the current value. Values are clamped the way 030 clamps them. -->
+
+    <changeSet id="label-preset-seed-003-reseed-from-legacy-keys" author="ogc-1219">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="t">
+                SELECT EXISTS (SELECT 1 FROM clinlims.label_preset WHERE is_system = true)
+            </sqlCheck>
+        </preConditions>
+
+        <comment>Re-seed system label presets still at the fallback set from the real legacy site_information keys (OGC-1219)</comment>
+
+        <sql splitStatements="false">
+            WITH normalized AS (
+                SELECT
+                    name,
+                    CASE WHEN value ~ '^[0-9]+$' THEN value::INTEGER ELSE NULL END AS num
+                FROM clinlims.site_information
+                WHERE name ~ '^(height|width|numDefault|numMax)(Order|Specimen|Block|Slide|Freezer)Labels$'
+            ),
+            legacy AS (
+                SELECT
+                    seed.preset_name,
+                    (SELECT num FROM normalized WHERE name = 'height'     || seed.legacy_type || 'Labels') AS height_mm,
+                    (SELECT num FROM normalized WHERE name = 'width'      || seed.legacy_type || 'Labels') AS width_mm,
+                    (SELECT num FROM normalized WHERE name = 'numDefault' || seed.legacy_type || 'Labels') AS default_qty,
+                    (SELECT num FROM normalized WHERE name = 'numMax'     || seed.legacy_type || 'Labels') AS max_qty
+                FROM (VALUES
+                    ('Order',    'Order Label'),
+                    ('Specimen', 'Specimen Label'),
+                    ('Block',    'Block Label'),
+                    ('Slide',    'Slide Label'),
+                    ('Freezer',  'Freezer Label')
+                ) AS seed(legacy_type, preset_name)
+            )
+            UPDATE clinlims.label_preset p
+            SET height_mm = LEAST(200, GREATEST(5, COALESCE(l.height_mm, p.height_mm))),
+                width_mm  = LEAST(200, GREATEST(5, COALESCE(l.width_mm, p.width_mm))),
+                default_per_order = CASE WHEN p.prints_per_order
+                                         THEN COALESCE(l.default_qty, p.default_per_order)
+                                         ELSE p.default_per_order END,
+                max_per_order = CASE WHEN p.prints_per_order
+                                     THEN GREATEST(COALESCE(l.max_qty, p.max_per_order), COALESCE(l.default_qty, p.default_per_order))
+                                     ELSE p.max_per_order END,
+                default_per_sample = CASE WHEN p.prints_per_order
+                                          THEN p.default_per_sample
+                                          ELSE COALESCE(l.default_qty, p.default_per_sample) END,
+                max_per_sample = CASE WHEN p.prints_per_order
+                                      THEN p.max_per_sample
+                                      ELSE GREATEST(COALESCE(l.max_qty, p.max_per_sample), COALESCE(l.default_qty, p.default_per_sample)) END,
+                last_updated = CURRENT_TIMESTAMP
+            FROM legacy l
+            WHERE p.is_system = true
+              AND p.name = l.preset_name
+              AND p.height_mm = 25
+              AND p.width_mm = 76
+              AND (
+                    (p.prints_per_order AND p.default_per_order = 1 AND p.max_per_order = 10)
+                 OR (NOT p.prints_per_order AND p.default_per_sample = 1 AND p.max_per_sample = 10)
+              )
+              AND (l.height_mm IS NOT NULL OR l.width_mm IS NOT NULL
+                   OR l.default_qty IS NOT NULL OR l.max_qty IS NOT NULL);
+        </sql>
+
+        <rollback/>
+    </changeSet>
+
+</databaseChangeLog>

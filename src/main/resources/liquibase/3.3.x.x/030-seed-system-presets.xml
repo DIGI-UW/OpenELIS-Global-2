@@ -4,30 +4,57 @@
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
 
-    <!-- OGC-285 M2: seed 5 system label presets from legacy site_information.barcode.* keys (FRS §2.7).
-         Presets only - field rows are seeded in 031 (needs the preset PKs generated here). -->
+    <!-- OGC-285 M2: seed 5 system label presets from the legacy per-type site_information keys
+         (FRS §2.7 step 1). Presets only - field rows are seeded in 031 (needs the preset PKs
+         generated here).
+
+         OGC-1219: the first release of this changeset read a 'barcode.<type>.<field>' namespace that
+         never existed in OpenELIS, so every site was seeded from the hardcoded fallbacks. The real
+         keys are the ConfigurationProperties.Property names: height{Type}Labels, width{Type}Labels,
+         numDefault{Type}Labels and numMax{Type}Labels with Type in Order, Specimen, Block, Slide,
+         Freezer. validCheckSum keeps databases that already ran the old text validating; those sites
+         are repaired by 3.6.x.x/008-reseed-system-presets-from-legacy-keys.xml.
+
+         Values outside the label_preset CHECK constraints are clamped (dimensions into 5..200 mm, max
+         raised to the default when a site configured max below default) instead of failing the whole
+         upgrade on one odd legacy value. -->
 
     <changeSet id="label-preset-seed-001-system-presets" author="ogc-285">
+        <validCheckSum>ANY</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">
                 SELECT COUNT(*) FROM clinlims.label_preset WHERE is_system = true
             </sqlCheck>
         </preConditions>
 
-        <comment>Seed 5 system label presets from legacy site_information.barcode.* keys per FRS §2.7</comment>
+        <comment>Seed 5 system label presets from the legacy per-type site_information label keys per FRS §2.7</comment>
 
         <sql>
             WITH si AS (
                 SELECT name, value FROM clinlims.site_information
-                WHERE name LIKE 'barcode.order.%' OR name LIKE 'barcode.specimen.%'
-                   OR name LIKE 'barcode.block.%' OR name LIKE 'barcode.slide.%'
-                   OR name LIKE 'barcode.freezer.%'
+                WHERE name ~ '^(height|width|numDefault|numMax)(Order|Specimen|Block|Slide|Freezer)Labels$'
             ),
             normalized AS (
                 SELECT
                     CASE WHEN value ~ '^[0-9]+$' THEN value::INTEGER ELSE NULL END AS num,
                     name
                 FROM si
+            ),
+            legacy AS (
+                SELECT
+                    seed.legacy_type,
+                    seed.preset_name,
+                    (SELECT num FROM normalized WHERE name = 'height'     || seed.legacy_type || 'Labels') AS height_mm,
+                    (SELECT num FROM normalized WHERE name = 'width'      || seed.legacy_type || 'Labels') AS width_mm,
+                    (SELECT num FROM normalized WHERE name = 'numDefault' || seed.legacy_type || 'Labels') AS default_qty,
+                    (SELECT num FROM normalized WHERE name = 'numMax'     || seed.legacy_type || 'Labels') AS max_qty
+                FROM (VALUES
+                    ('Order',    'Order Label'),
+                    ('Specimen', 'Specimen Label'),
+                    ('Block',    'Block Label'),
+                    ('Slide',    'Slide Label'),
+                    ('Freezer',  'Freezer Label')
+                ) AS seed(legacy_type, preset_name)
             )
             INSERT INTO clinlims.label_preset
                 (id, name, height_mm, width_mm, barcode_type,
@@ -38,25 +65,65 @@
             SELECT
                 nextval('clinlims.label_preset_seq'),
                 preset_name,
-                COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.height'), 25)  AS height_mm,
-                COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.width'),  76)  AS width_mm,
+                LEAST(200, GREATEST(5, COALESCE(height_mm, 25))),
+                LEAST(200, GREATEST(5, COALESCE(width_mm, 76))),
                 'CODE_128',
-                (legacy_key = 'order')      AS prints_per_order,
-                (legacy_key &lt;&gt; 'order') AS prints_per_sample,
-                CASE WHEN legacy_key = 'order'      THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.order.default'), 1) ELSE 0 END,
-                CASE WHEN legacy_key = 'order'      THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.order.max'),    10) ELSE 10 END,
-                CASE WHEN legacy_key &lt;&gt; 'order' THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.default'), 1) ELSE 0 END,
-                CASE WHEN legacy_key &lt;&gt; 'order' THEN COALESCE((SELECT num FROM normalized WHERE name = 'barcode.' || legacy_key || '.max'),    10) ELSE 10 END,
+                (legacy_type = 'Order')      AS prints_per_order,
+                (legacy_type &lt;&gt; 'Order') AS prints_per_sample,
+                CASE WHEN legacy_type = 'Order'      THEN COALESCE(default_qty, 1) ELSE 0 END,
+                CASE WHEN legacy_type = 'Order'      THEN GREATEST(COALESCE(max_qty, 10), COALESCE(default_qty, 1)) ELSE 10 END,
+                CASE WHEN legacy_type &lt;&gt; 'Order' THEN COALESCE(default_qty, 1) ELSE 0 END,
+                CASE WHEN legacy_type &lt;&gt; 'Order' THEN GREATEST(COALESCE(max_qty, 10), COALESCE(default_qty, 1)) ELSE 10 END,
                 true,
                 true,
                 CURRENT_TIMESTAMP
-            FROM (VALUES
-                ('order',    'Order Label'),
-                ('specimen', 'Specimen Label'),
-                ('block',    'Block Label'),
-                ('slide',    'Slide Label'),
-                ('freezer',  'Freezer Label')
-            ) AS seed(legacy_key, preset_name);
+            FROM legacy;
+        </sql>
+
+        <!-- MG-6 (FRS v2.6): the seed must fail loudly, not fall back silently, when the database carries
+             v1 barcode configuration that the insert above did not honour. -->
+        <sql splitStatements="false">
+            DO $$
+            DECLARE
+                problems TEXT;
+            BEGIN
+                WITH legacy AS (
+                    SELECT
+                        substring(name from '(Order|Specimen|Block|Slide|Freezer)Labels$') AS legacy_type,
+                        substring(name from '^(height|width|numDefault|numMax)') AS field,
+                        value::INTEGER AS num
+                    FROM clinlims.site_information
+                    WHERE name ~ '^(height|width|numDefault|numMax)(Order|Specimen|Block|Slide|Freezer)Labels$'
+                      AND value ~ '^[0-9]+$'
+                ),
+                seeded AS (
+                    SELECT
+                        CASE name
+                            WHEN 'Order Label'    THEN 'Order'
+                            WHEN 'Specimen Label' THEN 'Specimen'
+                            WHEN 'Block Label'    THEN 'Block'
+                            WHEN 'Slide Label'    THEN 'Slide'
+                            WHEN 'Freezer Label'  THEN 'Freezer'
+                        END AS legacy_type,
+                        height_mm,
+                        width_mm,
+                        CASE WHEN prints_per_order THEN default_per_order ELSE default_per_sample END AS default_qty,
+                        CASE WHEN prints_per_order THEN max_per_order     ELSE max_per_sample     END AS max_qty
+                    FROM clinlims.label_preset
+                    WHERE is_system = true
+                )
+                SELECT string_agg(l.field || l.legacy_type || 'Labels=' || l.num, ', ')
+                INTO problems
+                FROM legacy l
+                JOIN seeded s ON s.legacy_type = l.legacy_type
+                WHERE (l.field = 'height'     AND s.height_mm   IS DISTINCT FROM LEAST(200, GREATEST(5, l.num)))
+                   OR (l.field = 'width'      AND s.width_mm    IS DISTINCT FROM LEAST(200, GREATEST(5, l.num)))
+                   OR (l.field = 'numDefault' AND s.default_qty IS DISTINCT FROM l.num)
+                   OR (l.field = 'numMax'     AND s.max_qty &lt; l.num);
+                IF problems IS NOT NULL THEN
+                    RAISE EXCEPTION 'OGC-1219: system label presets were seeded from fallbacks although v1 barcode configuration exists (%)', problems;
+                END IF;
+            END $$;
         </sql>
 
         <rollback>
