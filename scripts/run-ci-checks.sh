@@ -203,7 +203,8 @@ run_e2e() {
   run_e2e_step shared-build run_shared_build || return 1
   run_e2e_step e2e-frontend-deps bash -c "cd frontend && npm ci --legacy-peer-deps && npx playwright install --only-shell chromium" || return 1
   export OE_CI_PROJECT_FILE="$ARTIFACT_DIR/core-compose-project.txt"
-  while IFS=$'\t' read -r name suite projects shard; do
+  # Give the inventory its own descriptor; child tools may consume stdin.
+  while IFS=$'\t' read -r name suite projects shard <&3; do
     if [[ "$suite" == analyzer ]]; then
       local project_args=()
       IFS=',' read -ra selected_projects <<< "$projects"
@@ -216,7 +217,7 @@ run_e2e() {
     else
       run_e2e_step "$name" scripts/run-e2e-like-ci.sh --no-build --suite "$suite" --cleanup || failed=1
     fi
-  done < "$ARTIFACT_DIR/e2e-jobs.tsv"
+  done 3< "$ARTIFACT_DIR/e2e-jobs.tsv"
   return "$failed"
 }
 
