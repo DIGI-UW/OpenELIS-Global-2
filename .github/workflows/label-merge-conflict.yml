@@ -10,12 +10,13 @@ on:
   pull_request_target:
     branches: [develop]
 
-# Every run re-checks all open pull requests, so only the newest matters: a
-# newer event replaces a queued run and cancels a running one. Advisory only,
-# so a cancelled run loses nothing.
+# Every run re-checks all open pull requests, so among pull request events only
+# the newest matters: a newer one replaces a queued run and cancels a running
+# one. A push to develop gets a group of its own, so it is never cancelled and
+# never shows a cancelled check on develop.
 concurrency:
-  group: merge-conflicts
-  cancel-in-progress: true
+  group: merge-conflicts-${{ github.event_name == 'push' && github.run_id || 'pull-requests' }}
+  cancel-in-progress: ${{ github.event_name != 'push' }}
 
 jobs:
   auto-label:
