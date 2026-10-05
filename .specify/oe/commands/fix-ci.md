@@ -472,18 +472,18 @@ These tools own their fresh databases, Compose layering and discovered URLs.
 Never reload fixtures into an interactive development stack or invoke raw
 Compose commands to reproduce CI. For interactive work, use `scripts/dev-stack`.
 
-**Step 2 — Run the specific failing E2E test locally:**
+**Step 2 — Select the failing workflow through its owning runner:**
 
 ```bash
-# Cypress (MUST use npm scripts, never raw npx — see CLAUDE.md)
-cd frontend && npm run cy:spec "cypress/e2e/<failing-test>.cy.js"
-
-# Playwright
-cd frontend && npm run pw:test -- <failing-test>.spec.ts
-
-# For broader validation: run full Cypress suite with fail-fast
-cd frontend && npm run cy:failfast
+scripts/run-e2e-like-ci.sh --cleanup -- <failing-playwright-spec>
+scripts/run-e2e-like-ci.sh --suite cypress-core --cleanup
+projects/analyzer-harness/ci-parity-test.sh --build --project harness-demo --test-file <spec>
 ```
+
+The core runner accepts Cypress groups defined by the GitHub workflow. Inspect
+failure screenshots and logs before deciding whether setup, the test, or the
+application is defective. Do not run raw browser commands against a shared
+development database to claim CI reproduction.
 
 **Step 3 — Interpret local E2E result:**
 

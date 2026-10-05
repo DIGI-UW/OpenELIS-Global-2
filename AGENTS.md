@@ -1756,8 +1756,9 @@ the npm scripts.**
 **Execution Strategy (Constitution V.5):**
 
 1. **During Development:** Run individual tests for fast feedback
-2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
-3. **In CI/CD:** Automatic via GitHub Actions
+2. **Before Pushing:** Run focused checks for the affected change
+3. **After Each Push:** Run `scripts/run-ci-checks.sh` while GitHub CI runs; it
+   owns the isolated Cypress stacks and the full test package
 
 **Available npm Scripts (use these, NOT direct cypress commands):**
 
@@ -1771,7 +1772,7 @@ npm run cy:admin
 # Run full suite (development)
 npm run cy:run
 
-# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
+# Focused debugging with fail-fast (not full CI parity)
 npm run cy:failfast
 
 # Run specific test with fail-fast
@@ -1781,24 +1782,12 @@ npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 npm run cy:open
 ```
 
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
+**Anti-Pattern:** Reporting a targeted browser run as full CI parity. Use the
+aggregate runner after each push and inspect every lane outcome.
 
-**Configuration (`cypress.config.js`):**
-
-```javascript
-module.exports = defineConfig({
-  video: false, // MUST be disabled by default (Constitution V.5)
-  screenshotOnRunFailure: true, // MUST be enabled (Constitution V.5)
-  defaultCommandTimeout: 10000,
-  e2e: {
-    baseUrl: "https://localhost",
-    testIsolation: true, // Default: true (cy.session() handles caching)
-  },
-  viewportWidth: 1025, // Desktop default
-  viewportHeight: 900,
-});
-```
+Cypress configuration is maintained in `frontend/cypress.config.js`; do not copy
+its timeouts, URLs or viewport settings into this guide. Isolated runners supply
+the URL of their own stack.
 
 **Post-Run Review (MANDATORY - Constitution V.5):**
 
@@ -1881,9 +1870,9 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - The `harness-*` projects need the analyzer stack (`scripts/dev-stack up`,
->   then `eval "$(scripts/dev-stack env)"`). `core-demo` / `core-demo-video` run
->   on the build stack only.
+> - For interactive development, use `scripts/dev-stack playwright`, which
+>   supplies this worktree's endpoints. For CI validation, the full runner owns
+>   fresh stacks for the core and analyzer projects.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -2031,49 +2020,20 @@ npm run pw:test:ui
 
 #### Local Execution
 
-**Prerequisites:**
-
-1. App running through `scripts/dev-stack up`
-2. Auth env vars: `TEST_USER` and `TEST_PASS`
-3. Run `eval "$(scripts/dev-stack env)"` from the repo root
-
-**Core-app tests (build stack):**
+For interactive checks, the development launcher owns setup and endpoints:
 
 ```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+scripts/dev-stack up
+scripts/dev-stack playwright --project=core-app <spec-path>
+scripts/dev-stack playwright --project=harness-demo <spec-path>
+scripts/dev-stack playwright --project=core-demo-video <spec-path>
 ```
 
-**Harness tests (analyzer harness stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-foundational
-```
-
-**Harness demos:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
-```
-
-**Core demos (build stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
-```
-
-**Demo video recording:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
-# or full harness demos:
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
-# Videos saved to frontend/test-results/
-```
+For full CI, run `scripts/run-ci-checks.sh` on the committed candidate. For a
+focused CI reproduction or analyzer recording, follow the internal runner
+instructions in `frontend/playwright/README.md`. A development database and a CI
+fixture database are different environments; do not reset one to imitate the
+other.
 
 #### Adding New Tests
 

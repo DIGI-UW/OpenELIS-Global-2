@@ -7,8 +7,8 @@
 # failures when it diverged):
 #   1. A FRESH database every run (CI never reuses a volume; dirty-volume
 #      reloads are the only place fixture cleanup FK errors can happen).
-#   2. The workflow's exact fixture command (load-test-fixtures.sh, NOT the
-#      with the fixture profile owned by that CI job).
+#   2. The workflow's exact fixture command (load-test-fixtures.sh), with
+#      the fixture profile owned by that CI job.
 #   3. The workflow's exact Playwright invocation (core-app + core-demo
 #      projects; workers=1 comes from playwright.config.ts, same as CI).
 #
@@ -68,7 +68,7 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 case "$SUITE" in
-  core|cypress-core|cypress-independent) ;;
+  core|cypress-*) ;;
   *) echo "Unsupported suite: $SUITE" >&2; exit 2 ;;
 esac
 

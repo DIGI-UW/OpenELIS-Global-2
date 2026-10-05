@@ -230,7 +230,7 @@ npm run pw:test:ui
 
 ### Examples
 
-**Core-app tests** (build stack — `docker compose -f build.docker-compose.yml`):
+**Core-app tests** (interactive stack started by `scripts/dev-stack up`):
 
 ```bash
 cd frontend
@@ -272,7 +272,8 @@ GENEXPERT_HOST='<ip-or-dns>' GENEXPERT_PORT='1200' TEST_USER=admin TEST_PASS='ad
 When remediating an analyzer story, reproduce it locally before using CI as the
 diagnostic loop.
 
-1. Run the authoritative local CI parity path from the repo root:
+1. For a focused analyzer-lane reproduction, use its internal runner from the
+   repo root. This lane result alone is not full CI parity:
 
 ```bash
 ./projects/analyzer-harness/ci-parity-test.sh --preflight-only

@@ -24,7 +24,7 @@ if grep -r '\.specify/\.specify/' .cursor/commands/ .claude/commands/; then
   echo "Invalid rewritten command paths" >&2; exit 1
 fi
 if grep -rE '(^|[^.])templates/' .cursor/commands/ .claude/commands/ |
-  grep -Ev '\.specify/templates/|\.specify/oe/skills/.*/templates/|\.ai/skills/.*/templates/' | grep -q .; then
+  grep -Ev '\.specify/templates/|\.specify/oe/skills/.*/templates/|\.ai/skills/.*/templates/'; then
   echo "Invalid bare template paths" >&2; exit 1
 fi
 echo 'Agent command compilation, required outputs and paths passed'

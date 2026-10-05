@@ -6,7 +6,7 @@ integration, and E2E tests in OpenELIS Global 2.
 
 ## Canonical sources of truth
 
-- **Unified fixture loader (canonical entry point)**:
+- **CI baseline loader (internal, owned by isolated runners)**:
   - Script: `src/test/resources/load-test-fixtures.sh`
     (`--profile=core|harness`)
   - Overview: `src/test/resources/FIXTURE_LOADER_README.md`
@@ -24,9 +24,14 @@ integration, and E2E tests in OpenELIS Global 2.
   - Fixtures: stable baseline rows required for many tests.
   - Test-created: rows created during a test run; must be cleaned up (or created
     with safe prefixes/ID ranges).
-- **Use the same baseline across test types**:
-  - Manual testing, Cypress E2E, and backend integration tests should share the
-    same fixture loader where possible.
+- **Respect environment ownership**:
+  - Interactive development uses `scripts/dev-stack` and property-gated
+    application scenario services. Never load SQL fixtures or reset this
+    database to reproduce CI.
+  - `scripts/run-ci-checks.sh` prepares the workflow baseline in fresh isolated
+    databases. Backend integration tests own their datasets and cleanup.
+  - Analyzer workflow setup and per-test clinical data must go through the
+    application APIs; the harness must not manufacture bindings or activation.
 
 ## When to use what
 

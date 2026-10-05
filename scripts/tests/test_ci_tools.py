@@ -63,5 +63,28 @@ class DockerEndpointTest(unittest.TestCase):
                 self.assertEqual((checkout / "hook-used.txt").read_text(), str(checkout.resolve()))
 
 
+class BrowserPlanTest(unittest.TestCase):
+    def test_browser_lane_executes_workflow_jobs_and_reports_failure(self):
+        with tempfile.TemporaryDirectory() as directory:
+            subprocess.run(["python3", str(ROOT / "scripts/ci/e2e-plan.py"), directory],
+                           check=True, cwd=ROOT)
+            rows = [line.split("\t") for line in
+                    (Path(directory) / "e2e-jobs.tsv").read_text().splitlines()]
+            runner = (ROOT / "scripts/run-ci-checks.sh").read_text()
+            body = runner[runner.index("run_e2e() {"):runner.index("\npids=()")]
+            # Exercise the real shell loop without building images or starting stacks.
+            script = '''run_e2e_step() { printf '%s\n' "$*"; [[ "$1" != analyzer-2 ]]; }
+ARTIFACT_DIR="$1"
+''' + body + "\nrun_e2e\n"
+            result = subprocess.run(["bash", "-c", script, "test", directory],
+                                    cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(result.returncode, 1, result.stderr)
+            commands = result.stdout.splitlines()[3:]
+            self.assertEqual([line.split()[0] for line in commands], [row[0] for row in rows])
+            analyzer = next(line for line in commands if line.startswith("analyzer-1 "))
+            self.assertIn("--project harness-foundational --project harness-demo", analyzer)
+            self.assertIn("--shard 1/2", analyzer)
+
+
 if __name__ == "__main__":
     unittest.main()

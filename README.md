@@ -193,35 +193,10 @@ remain available for debugging a single lane; their passing result alone is not
 full CI parity. GitHub-only publication, security upload, and checkpoint jobs
 still need their GitHub checks.
 
-**Manual commands** (if you prefer to run steps individually):
-
-1.  Run Code Formatting Check (Backend). This command checks code formatting and
-    performs validation similar to the CI
-
-        mvn spotless:check
-
-1.  Run Build Check (Backend). This command builds the project similar to CI
-
-        mvn clean install -Dspotless.check.skip=true
-
-1.  To run Individual Integration Test
-
-         mvn verify -Dit.test=<packageName>.<TestClassName>
-
-    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
-    Flat XML datasets from `src/test/resources/testdata/` via
-    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
-    over inline SQL setup/cleanup to avoid test data pollution.
-
-1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
-
-    > **Note:** Frontend checks will only pass successfully if your development
-    > environment is properly set up and running without issues.
-
-        cd frontend/ # from project directory
-        npm install
-        npm run build
-        npm run cy:run # this will run e2e testing same CI
+For focused development checks and native builds, use
+[the development guide](docs/dev_setup.md). Browser-test runners own the test
+stack and its baseline; running browser tests against an arbitrary development
+database is not CI parity.
 
 ### Environmental & Compliance-Scoped Result Evaluation
 
@@ -293,25 +268,11 @@ For comprehensive testing guidance, see:
 
 ### Test Data Setup
 
-For E2E testing, integration testing, and manual testing, load test fixtures:
-
-```bash
-# Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness profile: core fixtures; analyzer orders are created through the API
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Note**: The unified loader script provides dependency checks, verification,
-and reset capabilities. See
-[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
+`scripts/dev-stack up` creates development scenarios through application
+services. The local CI runner prepares the workflow's fixtures in fresh,
+isolated test databases. Do not run fixture resets against the interactive
+development stack. For fixture maintenance and backend integration datasets, see
+[the test data guide](.specify/guides/test-data-strategy.md).
 
 ### Pull request guidelines
 

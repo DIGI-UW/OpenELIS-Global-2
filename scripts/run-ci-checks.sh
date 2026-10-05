@@ -16,7 +16,14 @@ while [[ $# -gt 0 ]]; do
     --keep-checkouts) KEEP_CHECKOUTS=true; shift ;;
     --base) BASE_REF="${2:?--base needs a Git ref}"; shift 2 ;;
     --help|-h)
-      sed -n '1,34p' "$0"
+      cat <<'HELP'
+Usage: scripts/run-ci-checks.sh [options]
+Run the full local CI package for HEAD, using isolated committed checkouts.
+  --plan                 Describe checks without running them
+  --base REF             PR base for change-sensitive checks (origin/develop)
+  --artifact-dir PATH    Save logs, reports, image identity and aggregate result
+  --keep-checkouts       Retain the owned checkouts for debugging
+HELP
       exit 0 ;;
     *) echo "Unknown option: $1" >&2; exit 2 ;;
   esac
@@ -77,6 +84,7 @@ printf 'Full local CI: %s\nLogs: %s\n' "$HEAD_SHA" "$ARTIFACT_DIR"
 python3 -m venv "$ARTIFACT_DIR/python"
 "$ARTIFACT_DIR/python/bin/python" -m pip install --disable-pip-version-check PyYAML==6.0.2 > "$ARTIFACT_DIR/python-dependencies.log" 2>&1
 export PATH="$ARTIFACT_DIR/python/bin:$PATH"
+python3 "$REPO_ROOT/scripts/ci/e2e-plan.py" "$ARTIFACT_DIR"
 
 cleanup() {
   local original_status=$?
@@ -194,38 +202,21 @@ run_e2e() {
   run_e2e_step e2e-scope node --test .github/scripts/e2e-scope.test.cjs || failed=1
   run_e2e_step shared-build run_shared_build || return 1
   run_e2e_step e2e-frontend-deps bash -c "cd frontend && npm ci --legacy-peer-deps && npx playwright install --only-shell chromium" || return 1
-  local core_count harness_count harness_projects
-  read -r OE_CI_CORE_PROJECTS core_count harness_projects harness_count < <(python3 - "$ARTIFACT_DIR" <<'PY'
-import json, pathlib, sys, yaml
-root = pathlib.Path('.github/workflows')
-jobs = yaml.safe_load((root / 'e2e-authoritative-reusable.yml').read_text())['jobs']
-reusable = yaml.safe_load((root / 'e2e-playwright-reusable.yml').read_text())
-default = reusable.get('on', reusable.get(True))['workflow_call']['inputs']['shard_indices']['default']
-resolved = {}
-for name in ('playwright-core', 'playwright-harness'):
-    config = jobs[name]['with']
-    resolved[name] = {'projects': config['projects'], 'shards': json.loads(config.get('shard_indices', default))}
-pathlib.Path(sys.argv[1], 'resolved-e2e-plan.json').write_text(json.dumps(resolved, indent=2))
-core, harness = resolved.values()
-print(core['projects'], len(core['shards']), harness['projects'], len(harness['shards']))
-PY
-  ) || return 1
-  export OE_CI_CORE_PROJECTS
   export OE_CI_PROJECT_FILE="$ARTIFACT_DIR/core-compose-project.txt"
-  for ((shard=1; shard<=core_count; shard++)); do
-    run_e2e_step "core-playwright-$shard" scripts/run-e2e-like-ci.sh --no-build --cleanup -- --shard="$shard/$core_count" || failed=1
-  done
-  local project_args=()
-  IFS=',' read -ra projects <<< "$harness_projects"
-  for project in "${projects[@]}"; do project_args+=(--project "$project"); done
-  for ((shard=1; shard<=harness_count; shard++)); do
-    run_e2e_step "analyzer-$shard" projects/analyzer-harness/ci-parity-test.sh \
-      "${project_args[@]}" --shard "$shard/$harness_count" \
-      --artifact-dir "$ARTIFACT_DIR/analyzer-$shard" || failed=1
-  done
-  for shard in core independent; do
-    run_e2e_step "cypress-$shard" scripts/run-e2e-like-ci.sh --no-build --suite "cypress-$shard" --cleanup || failed=1
-  done
+  while IFS=$'\t' read -r name suite projects shard; do
+    if [[ "$suite" == analyzer ]]; then
+      local project_args=()
+      IFS=',' read -ra selected_projects <<< "$projects"
+      for project in "${selected_projects[@]}"; do project_args+=(--project "$project"); done
+      run_e2e_step "$name" projects/analyzer-harness/ci-parity-test.sh \
+        "${project_args[@]}" --shard "$shard" --artifact-dir "$ARTIFACT_DIR/$name" || failed=1
+    elif [[ "$suite" == core ]]; then
+      OE_CI_CORE_PROJECTS="$projects" run_e2e_step "$name" scripts/run-e2e-like-ci.sh \
+        --no-build --cleanup -- --shard="$shard" || failed=1
+    else
+      run_e2e_step "$name" scripts/run-e2e-like-ci.sh --no-build --suite "$suite" --cleanup || failed=1
+    fi
+  done < "$ARTIFACT_DIR/e2e-jobs.tsv"
   return "$failed"
 }
 
@@ -233,14 +224,14 @@ pids=()
 cleanup_owned_stacks() {
   local root="$ARTIFACT_DIR/checkouts/e2e"
   local project
+  local failed=0
   if [[ -f "$ARTIFACT_DIR/core-compose-project.txt" ]]; then
     project="$(cat "$ARTIFACT_DIR/core-compose-project.txt")"
     (cd "$root" && E2E_STACK_PROJECT="$project" docker compose -p "$project" \
       -f build.docker-compose.yml -f build.docker-compose.worktree.yml \
-      down -v --remove-orphans) >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
+      down -v --remove-orphans) >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || failed=1
   fi
-  for lane in analyzer-1 analyzer-2; do
-    local project_file="$ARTIFACT_DIR/$lane/compose-project.txt"
+  for project_file in "$ARTIFACT_DIR"/analyzer-*/compose-project.txt; do
     [[ -f "$project_file" ]] || continue
     project="$(cat "$project_file")"
     (cd "$root" && CI_PARITY_COMPOSE_PROJECT="$project" \
@@ -249,15 +240,16 @@ cleanup_owned_stacks() {
       -f projects/analyzer-harness/docker-compose.base.yml \
       -f .github/ci/ci.analyzer-harness.yml \
       -f projects/analyzer-harness/docker-compose.ci-parity-isolated.yml \
-      down -v --remove-orphans) >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
+      down -v --remove-orphans) >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || failed=1
   done
+  return "$failed"
 }
 interrupt_lanes() {
   trap - INT TERM
   for pid in "${pids[@]}"; do kill -TERM -- "-$pid" 2>/dev/null || true; done
   for pid in "${pids[@]}"; do wait "$pid" 2>/dev/null || true; done
   for pid in "${pids[@]}"; do kill -KILL -- "-$pid" 2>/dev/null || true; done
-  cleanup_owned_stacks
+  cleanup_owned_stacks || echo "Owned stack cleanup failed; see $ARTIFACT_DIR/cleanup.log" >&2
   exit 130
 }
 trap interrupt_lanes INT TERM
@@ -278,7 +270,7 @@ set -e
 
 failed=0
 printf '\nLocal CI result for %s\n' "$HEAD_SHA"
-for lane in backend frontend e2e e2e-scope shared-build e2e-frontend-deps core-playwright-1 core-playwright-2 core-playwright-3 core-playwright-4 analyzer-1 analyzer-2 cypress-core cypress-independent; do
+while IFS= read -r lane; do
   if [[ -f "$ARTIFACT_DIR/$lane.status" ]]; then
     result="$(cat "$ARTIFACT_DIR/$lane.status")"
   elif [[ -f "$ARTIFACT_DIR/$lane.exit" ]]; then
@@ -289,6 +281,6 @@ for lane in backend frontend e2e e2e-scope shared-build e2e-frontend-deps core-p
   fi
   printf '%-24s %s\n' "$lane" "$result"
   [[ "$result" == PASS ]] || failed=1
-done
+done < "$ARTIFACT_DIR/expected-lanes.txt"
 printf 'Logs: %s\n' "$ARTIFACT_DIR"
 exit "$failed"
