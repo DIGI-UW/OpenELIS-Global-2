@@ -43,6 +43,7 @@ import {
   List,
 } from "@carbon/react/icons";
 import "./NoteBook.css";
+import { labNow } from "../utils/labClock";
 
 function NoteBookDashBoard() {
   const componentMounted = useRef(false);
@@ -214,7 +215,7 @@ function NoteBookDashBoard() {
   }
 
   const getPastWeek = () => {
-    var currentDate = new Date();
+    var currentDate = labNow();
 
     var pastWeekDate = new Date(currentDate);
     pastWeekDate.setDate(currentDate.getDate() - 7);

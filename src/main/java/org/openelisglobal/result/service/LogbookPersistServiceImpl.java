@@ -20,6 +20,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.dataexchange.orderresult.OrderResponseWorker.Event;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.valueholder.Note;
+import org.openelisglobal.qaevent.service.TestRejectionNceService;
 import org.openelisglobal.referral.service.ReferralResultService;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.service.ReferralSetService;
@@ -28,6 +29,7 @@ import org.openelisglobal.referral.valueholder.ReferralResult;
 import org.openelisglobal.referral.valueholder.ReferralSet;
 import org.openelisglobal.result.action.util.ResultSet;
 import org.openelisglobal.result.action.util.ResultsUpdateDataSet;
+import org.openelisglobal.resultvalidation.event.ResultsValidatedEvent;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -37,6 +39,7 @@ import org.openelisglobal.testreflex.action.util.TestReflexBean;
 import org.openelisglobal.testreflex.action.util.TestReflexUtil;
 import org.openelisglobal.vector.deconvolution.service.VectorDeconvolutionService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -54,6 +57,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     @Autowired
     private NoteService noteService;
     @Autowired
+    private TestRejectionNceService testRejectionNceService;
+    @Autowired
     private SampleService sampleService;
     @Autowired
     private ReferralService referralService;
@@ -65,6 +70,8 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
     private QcEvaluationService qcEvaluationService;
     @Autowired
     private VectorDeconvolutionService vectorDeconvolutionService;
+    @Autowired
+    private ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -72,6 +79,19 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
             String sysUserId) {
         for (Note note : actionDataSet.getNoteList()) {
             noteService.insert(note);
+            // Every rejection opens its NCE (trigger: TEST_REJECTION). All
+            // rejection paths funnel through this persist, so the hook lives
+            // here, not in each controller. A failed NCE must never block a
+            // tech saving results — log and move on.
+            if (Note.REJECT_REASON.equals(note.getNoteType())) {
+                try {
+                    testRejectionNceService.createForRejection(note);
+                } catch (RuntimeException e) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "persistDataSet",
+                            "NCE creation for rejected analysis " + note.getReferenceId() + " failed: "
+                                    + e.getMessage());
+                }
+            }
         }
 
         for (ResultSet resultSet : actionDataSet.getNewResults()) {
@@ -152,6 +172,10 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
         for (IResultUpdate updater : updaters) {
             updater.transactionalUpdate(actionDataSet);
         }
+
+        // Results finalized at entry skip validation, so announce them here too.
+        eventPublisher.publishEvent(
+                new ResultsValidatedEvent(ResultsValidatedEvent.finalizedSamples(actionDataSet.getModifiedAnalysis())));
         return reflexAnalysises;
     }
 
@@ -316,6 +340,7 @@ public class LogbookPersistServiceImpl implements LogbookResultsPersistService {
                 sysUserId);
         List<Analysis> caclculatedAnalyses = testCaliculatedUtil.addNewTestsToDBForCalculatedTests(allResults,
                 sysUserId);
+        actionDataSet.getCalculatedResults().addAll(testCaliculatedUtil.getCalculatedResults());
         reflexAnalysises.addAll(caclculatedAnalyses);
         return reflexAnalysises;
     }

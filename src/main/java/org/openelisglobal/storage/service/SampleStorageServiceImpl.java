@@ -238,6 +238,8 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         Map<String, Object> result = new HashMap<>();
         result.put("sampleItemId", sampleItemId);
         putQuantitySnapshot(result, sampleItemId);
+        result.put("locationId", assignment.getLocationId() != null ? String.valueOf(assignment.getLocationId()) : "");
+        result.put("locationType", assignment.getLocationType() != null ? assignment.getLocationType() : "");
 
         String hierarchicalPath = buildHierarchicalPathForAssignment(assignment);
         result.put("location", hierarchicalPath != null ? hierarchicalPath : "");
@@ -450,25 +452,19 @@ public class SampleStorageServiceImpl implements SampleStorageService {
                 throw new LIMSRuntimeException("SampleItem is already disposed");
             }
 
-            java.math.BigDecimal baseline = sampleItem.getRemainingQuantity();
-            if (baseline == null && sampleItem.getQuantity() != null) {
-                baseline = java.math.BigDecimal.valueOf(sampleItem.getQuantity());
-            }
-
-            java.math.BigDecimal newRemaining;
             if (markUsedUp) {
-                newRemaining = java.math.BigDecimal.ZERO;
+                sampleItem.setRemainingQuantity(java.math.BigDecimal.ZERO);
             } else {
                 if (amountUsed == null || amountUsed.signum() <= 0) {
                     throw new LIMSRuntimeException("Amount used must be a positive number");
                 }
-                if (baseline == null) {
+                if (sampleItem.getRemainingQuantity() == null && sampleItem.getQuantity() == null) {
                     throw new LIMSRuntimeException("SampleItem does not track a quantity; use mark-used-up instead");
                 }
-                newRemaining = baseline.subtract(amountUsed).max(java.math.BigDecimal.ZERO);
+                sampleItem.decrementRemainingQuantity(amountUsed);
             }
+            java.math.BigDecimal newRemaining = sampleItem.getRemainingQuantity();
 
-            sampleItem.setRemainingQuantity(newRemaining);
             sampleItem.setSysUserId(sysUserId);
             sampleItemService.update(sampleItem);
 

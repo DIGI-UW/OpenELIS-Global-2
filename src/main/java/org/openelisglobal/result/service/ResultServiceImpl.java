@@ -1,6 +1,5 @@
 package org.openelisglobal.result.service;
 
-import jakarta.annotation.PostConstruct;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -13,6 +12,7 @@ import org.json.simple.JSONObject;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.common.util.DateUtil;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.referencetables.service.ReferenceTablesService;
@@ -39,25 +39,20 @@ import org.springframework.transaction.annotation.Transactional;
 @DependsOn({ "springContext" })
 public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, String> implements ResultService {
 
-    private static String TABLE_REFERENCE_ID;
-
-    private static ResultDAO baseObjectDAO = SpringContext.getBean(ResultDAO.class);
-    private static DictionaryService dictionaryService = SpringContext.getBean(DictionaryService.class);
-    private static ResultSignatureService signatureService = SpringContext.getBean(ResultSignatureService.class);
+    @Autowired
+    private ResultDAO baseObjectDAO;
 
     @Autowired
-    private ReferenceTablesService referenceTablesService = SpringContext.getBean(ReferenceTablesService.class);
+    private DictionaryService dictionaryService;
 
     @Autowired
-    private TypeOfSampleService typeOfSampleService = SpringContext.getBean(TypeOfSampleService.class);
+    private ResultSignatureService signatureService;
 
     @Autowired
-    private ResultLimitService resultLimitService = SpringContext.getBean(ResultLimitService.class);
+    private TypeOfSampleService typeOfSampleService;
 
-    @PostConstruct
-    private void initializeGlobalVariables() {
-        TABLE_REFERENCE_ID = referenceTablesService.getReferenceTableByName("RESULT").getId();
-    }
+    @Autowired
+    private ResultLimitService resultLimitService;
 
     ResultServiceImpl() {
         super(Result.class);
@@ -78,7 +73,7 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
     }
 
     public static String getTableReferenceId() {
-        return TABLE_REFERENCE_ID;
+        return SpringContext.getBean(ReferenceTablesService.class).getReferenceTableByName("RESULT").getId();
     }
 
     @Override
@@ -149,6 +144,9 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return getDictEntry(result);
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces);
+            }
             if (significantPlaces == 0) {
                 return result.getValue().split("\\.")[0];
             }
@@ -261,6 +259,10 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
+                        + appendUOM(result, includeUOM);
+            }
             if (significantPlaces == -1) {
                 return result.getValue() + appendUOM(result, includeUOM);
             }
@@ -360,6 +362,10 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
             return buffer.toString();
         } else if (TypeOfTestResultServiceImpl.ResultType.NUMERIC.matches(getTestType(result))) {
             int significantPlaces = result.getSignificantDigits();
+            if (StringUtil.isScientificNotation(result.getEnteredValue())) {
+                return StringUtil.padMantissa(result.getEnteredValue(), significantPlaces)
+                        + appendUOM(result, includeUOM);
+            }
             if (significantPlaces == -1) {
                 return result.getValue() + appendUOM(result, includeUOM);
             }
@@ -539,16 +545,22 @@ public class ResultServiceImpl extends AuditableBaseObjectServiceImpl<Result, St
     }
 
     public static List<Result> getResultsInTimePeriodWithTest(Date startDate, Date endDate, String testId) {
-        return baseObjectDAO.getResultsForTestInDateRange(testId, startDate, DateUtil.addDaysToSQLDate(endDate, 1));
+        return currentResultDAO().getResultsForTestInDateRange(testId, startDate,
+                DateUtil.addDaysToSQLDate(endDate, 1));
     }
 
     public static List<Result> getResultsInTimePeriodInPanel(Date lowDate, Date highDate, String panelId) {
-        return baseObjectDAO.getResultsForPanelInDateRange(panelId, lowDate, DateUtil.addDaysToSQLDate(highDate, 1));
+        return currentResultDAO().getResultsForPanelInDateRange(panelId, lowDate,
+                DateUtil.addDaysToSQLDate(highDate, 1));
     }
 
     public static List<Result> getResultsInTimePeriodInTestSection(Date lowDate, Date highDate, String testSectionId) {
-        return baseObjectDAO.getResultsForTestSectionInDateRange(testSectionId, lowDate,
+        return currentResultDAO().getResultsForTestSectionInDateRange(testSectionId, lowDate,
                 DateUtil.addDaysToSQLDate(highDate, 1));
+    }
+
+    private static ResultDAO currentResultDAO() {
+        return SpringContext.getBean(ResultDAO.class);
     }
 
     public static String getJSONStringForMultiSelect(List<Result> resultList) {

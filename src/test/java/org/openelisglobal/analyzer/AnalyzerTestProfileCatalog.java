@@ -18,7 +18,18 @@ public final class AnalyzerTestProfileCatalog {
     }
 
     public static BridgeProfileCatalog catalog() {
-        return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT, List.of(astmProfile(), hl7Profile()));
+        return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT,
+                List.of(astmProfile(), hl7Profile(), unknownCapableProfile()));
+    }
+
+    private static BridgeProfileCatalog.ProfileRevision unknownCapableProfile() {
+        ObjectNode profile = ((ObjectNode) astmProfile().profile()).deepCopy();
+        ((ObjectNode) profile.path("profileMeta")).put("id", "site.unknown-capable");
+        ((ObjectNode) profile.path("catalog")).put("revision", 3).put("revisionFingerprint",
+                "sha256:" + "1".repeat(64));
+        return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(),
+                new BridgeProfileCatalog.ControlRecognitionSummary("sha256:" + "2".repeat(64), "RULES", null, false,
+                        List.of()));
     }
 
     private static BridgeProfileCatalog.ProfileRevision astmProfile() {

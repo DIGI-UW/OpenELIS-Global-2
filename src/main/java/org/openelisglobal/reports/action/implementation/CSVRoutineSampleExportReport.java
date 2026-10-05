@@ -64,13 +64,15 @@ public abstract class CSVRoutineSampleExportReport extends CSVRoutineExportRepor
             return super.runReport();
         }
 
-        ByteArrayOutputStream buffer = new ByteArrayOutputStream(100000);
-        buffer.write(csvRoutineColumnBuilder.getColumnNamesLine().getBytes("windows-1252"));
+        try {
+            ByteArrayOutputStream buffer = new ByteArrayOutputStream(100000);
+            buffer.write(csvRoutineColumnBuilder.getColumnNamesLine().getBytes("windows-1252"));
 
-        writeResultsToBuffer(buffer);
-        csvRoutineColumnBuilder.closeResultSet();
-
-        return buffer.toByteArray();
+            writeResultsToBuffer(buffer);
+            return buffer.toByteArray();
+        } finally {
+            csvRoutineColumnBuilder.closeResultSet();
+        }
     }
 
     protected void writeResultsToBuffer(ByteArrayOutputStream buffer)

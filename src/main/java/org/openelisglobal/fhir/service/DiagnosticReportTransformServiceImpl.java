@@ -5,6 +5,7 @@ import org.hl7.fhir.r4.model.DiagnosticReport;
 import org.hl7.fhir.r4.model.DiagnosticReport.DiagnosticReportStatus;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.ResourceType;
+import org.openelisglobal.analysis.service.AnalysisAnchor;
 import org.openelisglobal.analysis.service.AnalysisAnchorService;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -53,8 +54,10 @@ public class DiagnosticReportTransformServiceImpl implements DiagnosticReportTra
                 "transformResultToDiagnosticReport called");
 
         List<Result> allResults = resultService.getResultsByAnalysis(analysis);
-        SampleItem sampleItem = analysis.getSampleItem();
-        Sample sampleForAnalysis = analysisAnchorService.resolveSample(analysis);
+        AnalysisAnchor anchor = analysisAnchorService.resolveAnchor(analysis);
+        SampleItem sampleItem = analysis.getSampleItem() != null ? analysis.getSampleItem()
+                : (anchor != null ? anchor.getSampleItem() : null);
+        Sample sampleForAnalysis = anchor != null ? anchor.getSample() : null;
         Patient patient = sampleForAnalysis != null ? sampleHumanService.getPatientForSample(sampleForAnalysis) : null;
 
         DiagnosticReport diagnosticReport = genNewDiagnosticReport(analysis);
@@ -74,8 +77,10 @@ public class DiagnosticReportTransformServiceImpl implements DiagnosticReportTra
 
         diagnosticReport
                 .addBasedOn(common.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
-        diagnosticReport
-                .addSpecimen(common.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
+        if (sampleItem != null) {
+            diagnosticReport
+                    .addSpecimen(common.createReferenceFor(ResourceType.Specimen, sampleItem.getFhirUuidAsString()));
+        }
         // OGC-356: Environmental samples don't have a patient
         if (patient != null) {
             diagnosticReport.setSubject(common.createReferenceFor(ResourceType.Patient, patient.getFhirUuidAsString()));
@@ -85,7 +90,7 @@ public class DiagnosticReportTransformServiceImpl implements DiagnosticReportTra
                     .addResult(common.createReferenceFor(ResourceType.Observation, curResult.getFhirUuidAsString()));
         }
         diagnosticReport.setCode(terminologyTransformService.transformTestToCodeableConcept(test.getId(),
-                sampleItem.getTypeOfSampleId()));
+                sampleItem != null ? sampleItem.getTypeOfSampleId() : null));
 
         return diagnosticReport;
     }

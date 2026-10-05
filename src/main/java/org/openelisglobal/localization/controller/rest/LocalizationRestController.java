@@ -23,11 +23,14 @@ import java.util.Map;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationValueService;
 import org.openelisglobal.localization.service.SupportedLocaleService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.localization.valueholder.LocalizationValue;
+import org.openelisglobal.test.service.TestService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -56,6 +59,32 @@ public class LocalizationRestController extends BaseController {
 
     @Autowired
     private SupportedLocaleService supportedLocaleService;
+
+    @Autowired
+    private TestService testService;
+
+    @Autowired
+    private TypeOfSampleService typeOfSampleService;
+
+    /**
+     * A test's name and reporting name are cached for the pickers, results search
+     * and reports; rebuild those caches when one of them is retranslated, the same
+     * way a Basic Info save does, so the new name shows everywhere at once.
+     */
+    private void refreshTestNamesIfTestLocalization(String localizationId) {
+        if (testService.isNameLocalization(localizationId)) {
+            refreshTestNameCaches();
+        }
+    }
+
+    private void refreshTestNameCaches() {
+        testService.refreshTestNames();
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ALL_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.ORDERABLE_TESTS);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_ACTIVE);
+        DisplayListService.getInstance().refreshList(DisplayListService.ListType.TEST_SECTION_INACTIVE);
+        typeOfSampleService.clearCache();
+    }
 
     /**
      * Get all localizations with their translations.
@@ -162,6 +191,7 @@ public class LocalizationRestController extends BaseController {
                 String value = entry.getValue();
                 localizationValueService.setTranslation(id, locale, value, sysUserId);
             }
+            refreshTestNamesIfTestLocalization(id);
 
             // Refresh the localization to get updated values
             localization = localizationService.get(id);
@@ -195,6 +225,7 @@ public class LocalizationRestController extends BaseController {
             }
 
             localizationValueService.setTranslation(id, locale, request.getValue(), getSysUserId(this.request));
+            refreshTestNamesIfTestLocalization(id);
 
             // Refresh the localization to get updated values
             localization = localizationService.get(id);
@@ -241,6 +272,10 @@ public class LocalizationRestController extends BaseController {
                     failed++;
                     errors.add("Error updating " + item.getId() + ": " + e.getMessage());
                 }
+            }
+
+            if (updated > 0) {
+                refreshTestNameCaches();
             }
 
             ImportResultDTO result = new ImportResultDTO();

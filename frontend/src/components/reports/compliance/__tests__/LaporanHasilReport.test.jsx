@@ -87,7 +87,9 @@ const MOCK_STATUSES = [
   { id: "BORDERLINE", text: "Borderline" },
 ];
 
-vi.mock("../../../utils/Utils", () => ({
+vi.mock("../../../utils/Utils", async (importOriginal) => ({
+  toLocalIsoDate: (await importOriginal()).toLocalIsoDate,
+  parseIsoDate: (await importOriginal()).parseIsoDate,
   getFromOpenElisServer: vi.fn((url, callback) => {
     if (url.includes("compliance-statuses")) {
       callback(MOCK_STATUSES);

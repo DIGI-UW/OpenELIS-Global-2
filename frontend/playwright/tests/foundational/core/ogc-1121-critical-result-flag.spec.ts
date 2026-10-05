@@ -1,8 +1,6 @@
-import { test, expect, Page } from "../../../helpers/test-base";
-import {
-  SettingsMenu,
-  SiteInformationPage,
-} from "../../../fixtures/esig-admin";
+import { Page } from "@playwright/test";
+import { test, expect } from "../../../helpers/test-base";
+import { isSettingOn, setSetting } from "../../../fixtures/esig-admin";
 import { createSampleOrder } from "../../../helpers/seed-tat-data";
 import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
@@ -18,7 +16,6 @@ import { NAV_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 const API = "/api/OpenELIS-Global";
 const CATALOG = `${API}/rest/test-catalog`;
 const SERUM_SAMPLE_TYPE_ID = "2";
-const UNIFIED_ROUTE_SETTING = "resultsEntryUnifiedRoute";
 const ESIG_SETTING = "electronicSignatureEnabled";
 
 interface CriticalTest {
@@ -136,26 +133,6 @@ async function createTestWithCriticalRange(page: Page): Promise<CriticalTest> {
   return { testId: result.testId as string, name };
 }
 
-// The unified-route flag lives in the result configuration domain, the
-// e-signature flag in site identity; each is edited on its own admin menu.
-const SETTING_MENU: Record<string, SettingsMenu> = {
-  [UNIFIED_ROUTE_SETTING]: "ResultConfigurationMenu",
-  [ESIG_SETTING]: "SiteInformationMenu",
-};
-
-async function isSettingOn(page: Page, setting: string): Promise<boolean> {
-  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
-  await menu.goto();
-  const value = await menu.getSettingValue(setting);
-  return /true/i.test(value);
-}
-
-async function setSetting(page: Page, setting: string, on: boolean) {
-  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
-  await menu.goto();
-  await menu.setBooleanSetting(setting, on);
-}
-
 async function orderTest(page: Page, testId: string): Promise<string> {
   const now = new Date();
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -169,16 +146,10 @@ async function orderTest(page: Page, testId: string): Promise<string> {
 }
 
 test.describe("OGC-1121 critical results look critical", () => {
-  let unifiedWasOn = false;
   let esigWasOn = false;
 
   test.beforeEach(async ({ page }) => {
-    // The legacy entry screen is only reachable with the unified route off,
-    // and a signing ceremony is another spec's concern.
-    unifiedWasOn = await isSettingOn(page, UNIFIED_ROUTE_SETTING);
-    if (unifiedWasOn) {
-      await setSetting(page, UNIFIED_ROUTE_SETTING, false);
-    }
+    // A signing ceremony is another spec's concern.
     esigWasOn = await isSettingOn(page, ESIG_SETTING);
     if (esigWasOn) {
       await setSetting(page, ESIG_SETTING, false);
@@ -188,9 +159,6 @@ test.describe("OGC-1121 critical results look critical", () => {
   test.afterEach(async ({ page }) => {
     if (esigWasOn) {
       await setSetting(page, ESIG_SETTING, true);
-    }
-    if (unifiedWasOn) {
-      await setSetting(page, UNIFIED_ROUTE_SETTING, true);
     }
   });
 
@@ -206,9 +174,13 @@ test.describe("OGC-1121 critical results look critical", () => {
       "orders must exist",
     ).toBeTruthy();
 
-    const enterAndSave = async (accession: string, value: string) => {
+    const enterAndSave = async (
+      accession: string,
+      value: string,
+      isCritical: boolean,
+    ) => {
       await page.goto(
-        `/result?type=order&accessionNumber=${encodeURIComponent(accession)}`,
+        `/Results?accessionNumber=${encodeURIComponent(accession)}`,
         { waitUntil: "domcontentloaded" },
       );
       const row = page
@@ -217,30 +189,34 @@ test.describe("OGC-1121 critical results look critical", () => {
         .filter({ hasText: critical.name })
         .first();
       await expect(row).toBeVisible({ timeout: NAV_TIMEOUT });
-      const input = row.locator('input[id^="ResultValue"]');
+      const input = row.locator('input[id^="unifiedResultValue-"]');
       await input.fill(value);
-      await page
-        .getByRole("main")
-        .getByRole("button", { name: /^save$/i })
-        .first()
-        .click();
-      await expect(page.getByText(/saved/i).first()).toBeAttached({
+      await row.getByRole("button", { name: /^save$/i }).click();
+      // OGC-1417: a critical value is acknowledged before it is saved; an
+      // abnormal one goes straight through.
+      if (isCritical) {
+        await page
+          .locator(".cds--modal.is-visible")
+          .getByRole("button", { name: /Acknowledge and save/ })
+          .click();
+      }
+      await expect(row.getByRole("button", { name: /^edit$/i })).toBeVisible({
         timeout: UI_TIMEOUT,
       });
     };
 
-    await test.step("Enter 200 (critical) and 120 (abnormal) on the legacy screen", async () => {
-      await enterAndSave(criticalAccession, "200");
-      await enterAndSave(abnormalAccession, "120");
+    await test.step("Enter 200 (critical) and 120 (abnormal) on the Results page", async () => {
+      await enterAndSave(criticalAccession, "200", true);
+      await enterAndSave(abnormalAccession, "120", false);
     });
 
-    await test.step("Entry: the critical row carries a Critical tag and a red tint, the abnormal row stays yellow", async () => {
+    await test.step("Entry: the critical row carries a red Critical tag, the abnormal row a yellow Abnormal one", async () => {
       for (const [accession, expectation] of [
         [criticalAccession, "critical"],
         [abnormalAccession, "abnormal"],
       ] as const) {
         await page.goto(
-          `/result?type=order&accessionNumber=${encodeURIComponent(accession)}`,
+          `/Results?accessionNumber=${encodeURIComponent(accession)}`,
           { waitUntil: "domcontentloaded" },
         );
         const row = page
@@ -249,33 +225,27 @@ test.describe("OGC-1121 critical results look critical", () => {
           .filter({ hasText: critical.name })
           .first();
         await expect(row).toBeVisible({ timeout: NAV_TIMEOUT });
-        const input = row.locator('input[id^="ResultValue"]');
-        await expect(input).toHaveValue(
+        await expect(row).toContainText(
           expectation === "critical" ? "200" : "120",
         );
-        // Polled, not sampled once. Carbon transitions the field background, so a
-        // single read can land mid-transition: an interpolation from the default
-        // field colour to the abnormal yellow reads rgb(255, 255, 161) at 98.8%
-        // of the way through, one unit short of the value asserted below.
-        const background = () =>
-          input.evaluate((el) => getComputedStyle(el).backgroundColor);
+        const criticalTag = row.locator('[data-testid="flag-CRITICAL"]');
+        const abnormalTag = row.locator('[data-testid="flag-ABNORMAL"]');
+        // Polled, not sampled once: Carbon transitions the tag background.
+        const background = (tag: typeof criticalTag) => () =>
+          tag.evaluate((el) => getComputedStyle(el).backgroundColor);
         if (expectation === "critical") {
-          await expect(
-            row.locator('[data-testid^="critical-flag-"]'),
-          ).toBeVisible({
-            timeout: UI_TIMEOUT,
-          });
-          await expect(row).toContainText("Critical");
+          await expect(criticalTag).toBeVisible({ timeout: UI_TIMEOUT });
+          await expect(criticalTag).toContainText("Critical");
+          await expect(abnormalTag).toHaveCount(0);
           await expect
-            .poll(background, { timeout: UI_TIMEOUT })
-            .toBe("rgb(255, 215, 217)");
+            .poll(background(criticalTag), { timeout: UI_TIMEOUT })
+            .toBe("rgb(255, 241, 241)");
         } else {
-          await expect(
-            row.locator('[data-testid^="critical-flag-"]'),
-          ).toHaveCount(0);
+          await expect(abnormalTag).toBeVisible({ timeout: UI_TIMEOUT });
+          await expect(criticalTag).toHaveCount(0);
           await expect
-            .poll(background, { timeout: UI_TIMEOUT })
-            .toBe("rgb(255, 255, 160)");
+            .poll(background(abnormalTag), { timeout: UI_TIMEOUT })
+            .toBe("rgb(252, 244, 214)");
         }
       }
     });
@@ -289,10 +259,10 @@ test.describe("OGC-1121 critical results look critical", () => {
           waitUntil: "domcontentloaded",
         });
         const main = page.getByRole("main");
-        const searchInput = main.getByPlaceholder(/accession|lab no/i);
+        const searchInput = main.locator("#validationSearch");
         await expect(searchInput).toBeVisible({ timeout: NAV_TIMEOUT });
         await searchInput.fill(accession);
-        await main.getByRole("button", { name: /search/i }).click();
+        await main.getByTestId("validation-load").click();
 
         const cell = main
           .locator('[data-testid^="validation-result-"]')

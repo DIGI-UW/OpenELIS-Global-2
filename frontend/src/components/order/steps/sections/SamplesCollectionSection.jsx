@@ -1,10 +1,10 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { Tile, Button, Stack, Tag } from "@carbon/react";
 import { Add, Printer } from "@carbon/icons-react";
 import SampleCollectionCard from "./SampleCollectionCard";
-import { getFromOpenElisServer } from "../../../utils/Utils";
 import { sampleObject } from "../../OrderContext";
+import { currentLocalTime, todayLocalIso } from "../../dateUtils";
 
 /**
  * SamplesCollectionSection - Container for all sample collection cards
@@ -13,7 +13,7 @@ import { sampleObject } from "../../OrderContext";
  * - Displays all samples with collection details
  * - Add new sample button
  * - Print more labels button
- * - Auto-populates received date/time from server
+ * - Auto-populates received date/time from the lab's clock
  */
 
 const SamplesCollectionSection = ({
@@ -26,44 +26,10 @@ const SamplesCollectionSection = ({
   admissionDate,
 }) => {
   const intl = useIntl();
-  const componentMounted = useRef(true);
-
-  // Get current date/time as fallback
-  const getClientDate = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const getClientTime = () => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
-  };
-
-  // Current server time for "Received at Lab" - always shows current time when page opens
-  // Initialize with client time as fallback, then update with server time
-  const [serverReceivedDate, setServerReceivedDate] = useState(getClientDate());
-  const [serverReceivedTime, setServerReceivedTime] = useState(getClientTime());
-
-  // Fetch current server time on mount - this is "now" for receiving samples
-  useEffect(() => {
-    componentMounted.current = true;
-
-    getFromOpenElisServer("/rest/server-time", (response) => {
-      if (componentMounted.current && response) {
-        setServerReceivedDate(response.date || getClientDate());
-        setServerReceivedTime(response.time || getClientTime());
-      }
-    });
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
+  // The laboratory's "now" when the page opens: the default collection and
+  // receipt date and time of a new sample.
+  const [serverReceivedDate] = useState(() => todayLocalIso());
+  const [serverReceivedTime] = useState(() => currentLocalTime());
 
   // Handle sample update
   const handleSampleUpdate = (sampleIndex, updates) => {
@@ -85,16 +51,13 @@ const SamplesCollectionSection = ({
 
   // Handle add new sample
   const handleAddSample = () => {
-    // Get current server time for new sample
-    getFromOpenElisServer("/rest/server-time", (response) => {
-      const newSample = {
-        ...sampleObject,
-        index: samples.length,
-        receivedDate: response?.date || "",
-        receivedTime: response?.time || "",
-      };
-      setSamples([...samples, newSample]);
-    });
+    const newSample = {
+      ...sampleObject,
+      index: samples.length,
+      receivedDate: todayLocalIso(),
+      receivedTime: currentLocalTime(),
+    };
+    setSamples([...samples, newSample]);
   };
 
   // Handle print more sample labels

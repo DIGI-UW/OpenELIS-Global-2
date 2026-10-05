@@ -28,6 +28,7 @@ import {
   Sprout,
   ListChecked,
   Chemistry,
+  WarningAlt,
 } from "@carbon/icons-react";
 import {
   SideNavItems,
@@ -64,17 +65,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
    * reader no way to know what to do next.
    */
   const sectionsCaption = (id, dataCy, messageId, values) => (
-    <li
-      id={id}
-      data-cy={dataCy}
-      className="adminSideNav__sectionsContext"
-      style={{
-        padding: "0.25rem 1rem 0.5rem",
-        fontSize: "0.75rem",
-        lineHeight: 1.3,
-        color: "var(--cds-text-secondary, #6f6f6f)",
-      }}
-    >
+    <li id={id} data-cy={dataCy} className="adminSideNav__sectionsContext">
       <FormattedMessage id={messageId} values={values} />
     </li>
   );
@@ -88,7 +79,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       aria-describedby={describedBy}
       tabIndex={-1}
       onClick={(e) => e.preventDefault()}
-      style={{ opacity: 0.5, cursor: "not-allowed" }}
     >
       {label}
     </SideNavMenuItem>
@@ -139,6 +129,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
   // lab-unit sections instead of falling through to the test sections.
   const inLabUnitsContext =
     !!editorLabUnitId || /\/LabUnitManagement(\/|$)/.test(location.pathname);
+
+  // Importing a catalog file edits no single record, so the menu offers its
+  // entity links and nothing else: a greyed list of test sections under
+  // "Click a test to edit its sections" would be an instruction the page
+  // cannot honour. The menu itself stays as the reader left it.
+  const inCatalogImport = /\/CatalogImport(\/|$)/.test(location.pathname);
+  const inLocationsArea = /\/locations(\/|$)/.test(location.pathname);
 
   // Keyed by id so the label never shows a prior test's name while the next loads.
   const [editorTest, setEditorTest] = useState({ id: null, name: null });
@@ -241,7 +238,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
     !!editorSampleTypeId ||
     !!editorPanelId ||
     !!editorLabUnitId ||
-    /\/(TestCatalogList|SampleTypeEditor|LabUnitManagement)(\/|$)/.test(
+    /\/(TestCatalogList|SampleTypeEditor|LabUnitManagement|CatalogImport)(\/|$)/.test(
       location.pathname,
     );
 
@@ -348,7 +345,9 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
       {/* key flips on entering/leaving the Test Catalog area to force a
           remount — Carbon SideNavMenu reads defaultExpanded only at mount.
           Within the area the key is stable, so navigating between the lists
-          and either editor never collapses the menu. */}
+          and either editor never collapses the menu, catalog import included:
+          opening it hides the sections but leaves the menu as the reader had
+          it. */}
       <SideNavMenu
         key={inTestCatalogArea ? "testcatalog-area" : "testcatalog"}
         data-cy="testCatalogManagement"
@@ -410,7 +409,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         >
           <FormattedMessage id="sidenav.label.admin.catalogImport" />
         </SideNavMenuItem>
-        {editorLabUnitId ? (
+        {inCatalogImport ? null : editorLabUnitId ? (
           <>
             {editorLabUnitId === "new"
               ? sectionsCaption(
@@ -560,12 +559,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
               id="testCatalogSectionsHelp"
               data-cy="testCatalogSectionsContext"
               className="adminSideNav__sectionsContext"
-              style={{
-                padding: "0.25rem 1rem 0.5rem",
-                fontSize: "0.75rem",
-                lineHeight: 1.3,
-                color: "var(--cds-text-secondary, #6f6f6f)",
-              }}
             >
               {editorTestId ? (
                 editorTestName ? (
@@ -604,7 +597,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
                   aria-describedby="testCatalogSectionsHelp"
                   tabIndex={-1}
                   onClick={(e) => e.preventDefault()}
-                  style={{ opacity: 0.5, cursor: "not-allowed" }}
                 >
                   {label}
                 </SideNavMenuItem>
@@ -625,7 +617,7 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         renderIcon={ChartBubble}
         {...navProps(`${path}/program`)}
       >
-        <FormattedMessage id="sidenav.label.admin.program" />
+        <FormattedMessage id="admin.programs.title" />
       </SideNavLink>
       <SideNavMenu
         renderIcon={CicsSystemGroup}
@@ -678,15 +670,6 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           />
         </SideNavMenuItem>
         <SideNavMenuItem
-          data-cy="vectorSamplingSites"
-          {...navProps(`${path}/vectorSurveillanceSetup/sampling-sites`)}
-        >
-          <FormattedMessage
-            id="vector.admin.samplingSites"
-            defaultMessage="Sampling Sites"
-          />
-        </SideNavMenuItem>
-        <SideNavMenuItem
           data-cy="vectorManualEntryFields"
           {...navProps(`${path}/vectorSurveillanceSetup/manual-entry-fields`)}
         >
@@ -696,13 +679,39 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
           />
         </SideNavMenuItem>
       </SideNavMenu>
-      <SideNavLink
+      <SideNavMenu
         data-cy="orgMgmnt"
         renderIcon={ContainerSoftware}
-        {...navProps(`${path}/organizationManagement`)}
+        key={inLocationsArea ? "locations-area" : "locations"}
+        isActive={inLocationsArea}
+        defaultExpanded={inLocationsArea}
+        title={intl.formatMessage({ id: "sidenav.label.admin.locations" })}
       >
-        <FormattedMessage id="organization.main.title" />
-      </SideNavLink>
+        <SideNavMenuItem
+          data-cy="locationsOrganizations"
+          {...navProps(`${path}/locations`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.organizations" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="locationsSites"
+          {...navProps(`${path}/locations/sites`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.sites" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="locationsAreas"
+          {...navProps(`${path}/locations/areas`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.areas" />
+        </SideNavMenuItem>
+        <SideNavMenuItem
+          data-cy="locationsImport"
+          {...navProps(`${path}/locations/import`)}
+        >
+          <FormattedMessage id="sidenav.label.admin.locations.import" />
+        </SideNavMenuItem>
+      </SideNavMenu>
       <SideNavLink
         data-cy="resultReportingConfiguration"
         renderIcon={Report}
@@ -965,6 +974,13 @@ export default function AdminSideNav({ isTrainingInstallation = false }) {
         {...navProps(`${path}/dataExportStatus`)}
       >
         <FormattedMessage id="dataexport.status.title" />
+      </SideNavLink>
+      <SideNavLink
+        data-cy="stuckAnalyzerEvents"
+        renderIcon={WarningAlt}
+        {...navProps(`${path}/stuckAnalyzerEvents`)}
+      >
+        <FormattedMessage id="analyzer.importIssues.events.title" />
       </SideNavLink>
       <SideNavLink
         data-cy="calendarMgmnt"

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Finalizing an Immunohistochemistry or Cytology case stores "see the
+         report" as the text result of its tests. The message keys were missing
+         (and the cytology one misspelled), so the raw key was stored as the
+         result. The keys now exist; results already stored are given the text
+         they should have had. -->
+    <changeSet id="repair-see-report-results" author="mozzy11">
+        <comment>Replace stored raw see-report message keys with their English text</comment>
+        <update schemaName="clinlims" tableName="result">
+            <column name="value" value="See Immunohistochemistry Report"/>
+            <where>value = 'result.immunochemistry.seereport'</where>
+        </update>
+        <update schemaName="clinlims" tableName="result">
+            <column name="value" value="See Cytology Report"/>
+            <where>value = 'result.cytoology.seereport'</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

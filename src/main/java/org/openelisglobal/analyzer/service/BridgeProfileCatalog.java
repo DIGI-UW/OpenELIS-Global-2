@@ -26,7 +26,7 @@ public record BridgeProfileCatalog(String schemaVersion, String catalogFingerpri
         }
 
         public ControlRecognitionSummary {
-            conditions = conditions == null ? List.of() : List.copyOf(conditions);
+            conditions = conditions == null ? null : List.copyOf(conditions);
         }
 
         public record Condition(String key, String kind, String sourceLabel, String value, String description,

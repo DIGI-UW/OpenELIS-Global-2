@@ -12,7 +12,9 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.qaevent.service.NCEventService;
 import org.openelisglobal.qaevent.valueholder.NcEvent;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class NcEventServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -21,7 +23,6 @@ public class NcEventServiceTest extends BaseWebContextSensitiveTest {
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/nc-event.xml");
-        executeDataSetWithStateManagement("testdata/system-user.xml");
     }
 
     @Test

@@ -77,13 +77,37 @@ describe("the state after the entry step saves", () => {
   it("names the saved order and offers the next step", async () => {
     renderLayout();
 
-    const collect = messages["order.step.collect"];
+    const collect = messages["order.step.prepare"];
     expect(screen.getByText("Order LAB-42 saved")).toBeInTheDocument();
     expect(screen.getByText(`Next: ${collect}`)).toBeInTheDocument();
     await userEvent
       .setup()
       .click(screen.getByRole("button", { name: collect }));
     expect(push).toHaveBeenCalledWith("/order/clinical/collect");
+  });
+
+  it("leaves focus and typing with the form of a reopened saved order", async () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <OrderWorkflowLayout title="order.step.enter">
+          <label>
+            Collection Date
+            <input />
+          </label>
+        </OrderWorkflowLayout>
+      </IntlProvider>,
+    );
+    const collect = messages["order.step.prepare"];
+    expect(screen.getByRole("button", { name: collect })).not.toHaveFocus();
+
+    const user = userEvent.setup();
+    const date = screen.getByRole("textbox", { name: "Collection Date" });
+    await user.click(date);
+    await user.keyboard("2026-09-28{Enter}");
+
+    expect(date).toHaveFocus();
+    expect(date).toHaveValue("2026-09-28");
+    expect(push).not.toHaveBeenCalled();
   });
 
   it("says nothing while the order is unsaved or has changed since", () => {
@@ -96,6 +120,31 @@ describe("the state after the entry step saves", () => {
     orderContextValue.isDirty = true;
     renderLayout();
     expect(screen.queryByText("Order LAB-42 saved")).not.toBeInTheDocument();
+  });
+});
+
+// OGC-1266 FR-A4: a cancelled order is read-only and offers no Edit.
+describe("a cancelled order", () => {
+  beforeEach(() => {
+    orderContextValue.isReadOnly = true;
+    orderContextValue.progress = {
+      status: "CANCELLED",
+      cancelReason: "Duplicate order",
+    };
+  });
+
+  afterEach(() => {
+    orderContextValue.isReadOnly = false;
+    orderContextValue.progress = undefined;
+  });
+
+  it("says why it was cancelled and offers no Edit", () => {
+    renderLayout();
+
+    expect(
+      screen.getByText("This order was cancelled: Duplicate order"),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
   });
 });
 

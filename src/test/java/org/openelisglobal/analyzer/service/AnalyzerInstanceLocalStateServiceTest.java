@@ -3,8 +3,11 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,6 +18,7 @@ import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
@@ -39,6 +43,9 @@ public class AnalyzerInstanceLocalStateServiceTest {
     private AnalyzerSiteBindingService siteBindingService;
 
     @Mock
+    private AnalyzerTypeMappingService typeMappingService;
+
+    @Mock
     private AnalyzerResultsService analyzerResultsService;
 
     private AnalyzerInstanceLocalStateService service;
@@ -52,7 +59,8 @@ public class AnalyzerInstanceLocalStateServiceTest {
         request.setProfileRevision(3);
         request.setTestUnitIds(List.of("7", " 8 "));
         service = new AnalyzerInstanceLocalStateServiceImpl(analyzerService, profileBindingService, siteBindingService,
-                analyzerResultsService);
+                typeMappingService, analyzerResultsService, org.mockito.Mockito
+                        .mock(org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService.class));
     }
 
     @Test
@@ -96,8 +104,10 @@ public class AnalyzerInstanceLocalStateServiceTest {
         AnalyzerInstanceState result = service.attachBridgeConnection("42", "bridge-connection-42", "17");
 
         assertEquals("bridge-connection-42", result.bridgeConnectionId());
-        assertEquals("bridge-connection-42", analyzer.getBridgeConnectionId());
-        verify(analyzerService).update(analyzer);
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertEquals("bridge-connection-42", updated.getValue().getBridgeConnectionId());
+        assertNull("Preserve the previous value for auditing", analyzer.getBridgeConnectionId());
     }
 
     @Test
@@ -120,17 +130,40 @@ public class AnalyzerInstanceLocalStateServiceTest {
         profile.setId("11");
         AnalyzerSiteBindingRevision reviewedRevision = siteBindingRevision(profile, "12", "13", 2,
                 "sha256:" + "2".repeat(64));
+        AnalyzerSiteBindingRevision previousRevision = analyzer.getSiteBindingRevision();
         when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
         when(siteBindingService.findCurrentByProfileBindingId("11"))
                 .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(reviewedRevision.getSiteBinding(),
                         reviewedRevision, List.of(), List.of())));
+        when(typeMappingService.getMapping("fixture.synthetic-connection", 3))
+                .thenReturn(mapping(reviewedRevision, AnalyzerSiteBindingConfirmationView.State.CURRENT));
 
         AnalyzerInstanceState result = service.selectSiteBindingRevision("42", "12", 2,
                 reviewedRevision.getBindingFingerprint(), "17");
 
-        assertEquals(reviewedRevision, analyzer.getSiteBindingRevision());
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertEquals(reviewedRevision, updated.getValue().getSiteBindingRevision());
+        assertSame("Preserve the previous selection for auditing", previousRevision, analyzer.getSiteBindingRevision());
         assertEquals("fixture.synthetic-connection", result.profileId());
-        verify(analyzerService).update(analyzer);
+    }
+
+    @Test
+    public void rejectsApplyingAnUnconfirmedBindingRevision() {
+        Analyzer analyzer = analyzer("42");
+        AnalyzerProfileBinding profile = bind(analyzer);
+        profile.setId("11");
+        AnalyzerSiteBindingRevision revision = siteBindingRevision(profile, "12", "13", 2, "sha256:" + "2".repeat(64));
+        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+        when(siteBindingService.findCurrentByProfileBindingId("11")).thenReturn(Optional
+                .of(new AnalyzerSiteBindingSnapshot(revision.getSiteBinding(), revision, List.of(), List.of())));
+        when(typeMappingService.getMapping("fixture.synthetic-connection", 3))
+                .thenReturn(mapping(revision, AnalyzerSiteBindingConfirmationView.State.UNCONFIRMED));
+
+        assertThrows(IllegalArgumentException.class,
+                () -> service.selectSiteBindingRevision("42", "12", 2, revision.getBindingFingerprint(), "17"));
+
+        verify(analyzerService, never()).update(any(Analyzer.class));
     }
 
     @Test
@@ -195,8 +228,8 @@ public class AnalyzerInstanceLocalStateServiceTest {
         draft.setBridgeConnectionId(" ");
         draft.setTestUnitIds(List.of());
         when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(draft));
-        when(profileBindingService.assignProfile(draft, "fixture.synthetic-connection", 3, "17"))
-                .thenAnswer(invocation -> bind(invocation.getArgument(0)));
+        when(profileBindingService.assignProfile(any(Analyzer.class), eq("fixture.synthetic-connection"), eq(3),
+                eq("17"))).thenAnswer(invocation -> bind(invocation.getArgument(0)));
 
         AnalyzerInstanceState result = service.update("42", request, "17");
 
@@ -206,8 +239,10 @@ public class AnalyzerInstanceLocalStateServiceTest {
         assertEquals(List.of("7", "8"), result.labUnitIds());
         assertEquals(Analyzer.AnalyzerStatus.SETUP, result.status());
         assertNull(result.bridgeConnectionId());
-        assertFalse(draft.isActive());
-        verify(analyzerService).update(draft);
+        ArgumentCaptor<Analyzer> updated = ArgumentCaptor.forClass(Analyzer.class);
+        verify(analyzerService).update(updated.capture());
+        assertFalse(updated.getValue().isActive());
+        assertTrue("Preserve the previous state for auditing", draft.isActive());
         verify(analyzerService, never()).insert(any(Analyzer.class));
     }
 
@@ -270,5 +305,14 @@ public class AnalyzerInstanceLocalStateServiceTest {
         revision.setRevisionNumber(revisionNumber);
         revision.setBindingFingerprint(fingerprint);
         return revision;
+    }
+
+    private static AnalyzerTypeMappingView mapping(AnalyzerSiteBindingRevision revision,
+            AnalyzerSiteBindingConfirmationView.State confirmationState) {
+        return new AnalyzerTypeMappingView("fixture.synthetic-connection", 3, FINGERPRINT, "Fixture", "ASTM",
+                revision.getSiteBinding().getId(), revision.getRevisionNumber(), revision.getBindingFingerprint(),
+                List.of(), null,
+                new AnalyzerSiteBindingConfirmationView(confirmationState, "fixture.synthetic-connection", 3,
+                        revision.getBindingFingerprint(), null, null, null, null, List.of(), List.of()));
     }
 }

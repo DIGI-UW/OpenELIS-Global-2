@@ -8,6 +8,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.test.valueholder.Test;
 
@@ -20,6 +21,13 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
     void getData(ResultLimit resultLimit) throws LIMSRuntimeException;
 
     List<ResultLimit> getAllResultLimitsForTest(String testId) throws LIMSRuntimeException;
+
+    /**
+     * The test's numeric reference ranges: the rows the Ranges editor lists and
+     * {@link #saveRangesForTest} manages. Dictionary (select-list) limits are left
+     * out, as that save never changes them.
+     */
+    List<ResultLimit> getNumericRangesForTest(String testId);
 
     /** OGC-949 M7: reference ranges scoped to a result component. */
     List<ResultLimit> getResultLimitsByComponentId(String componentId);
@@ -101,4 +109,23 @@ public interface ResultLimitService extends BaseObjectService<ResultLimit, Strin
      * the result.
      */
     ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient, String componentId);
+
+    /**
+     * As {@link #getResultLimitForResult(Analysis, Result, Patient, String)}, and
+     * also says why no range was applied when the patient's sex or birth date is
+     * missing and the test has a range that depends on it.
+     */
+    ResultLimitSelection selectResultLimitForResult(Analysis analysis, Result result, Patient patient,
+            String componentId);
+
+    /** A test ordered on a specimen, before or after its analysis exists. */
+    record OrderedTest(String testId, String sampleTypeId) {
+    }
+
+    /**
+     * The ordered tests whose reference range will not be applied for the patient
+     * because the patient's sex or birth date is missing, by display name and
+     * without repeats; empty when every range applies.
+     */
+    List<String> getTestNamesWithRangeNotApplied(List<OrderedTest> orderedTests, Patient patient);
 }

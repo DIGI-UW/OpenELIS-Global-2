@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -70,7 +70,7 @@ const noneDraft = {
 const renderEditor = (props = {}) => {
   const onStateChange = vi.fn();
   const onError = vi.fn();
-  render(
+  const view = render(
     <IntlProvider locale="en" messages={messages}>
       <ControlRecognitionDraftEditor
         draftId="draft-1"
@@ -80,7 +80,7 @@ const renderEditor = (props = {}) => {
       />
     </IntlProvider>,
   );
-  return { onError, onStateChange };
+  return { ...view, onError, onStateChange };
 };
 
 describe("ControlRecognitionDraftEditor", () => {
@@ -280,4 +280,54 @@ describe("ControlRecognitionDraftEditor", () => {
       "SERVER NONE SUMMARY MUST NOT RENDER",
     );
   });
+});
+
+it("ignores an older draft load after navigating to another draft", async () => {
+  let finishFirst;
+  getAnalyzerTypeControlRecognition.mockImplementation((id, callback) => {
+    if (id === "draft-1") finishFirst = callback;
+    else callback({ ...noneDraft, draftId: "draft-2" });
+  });
+  const { rerender } = renderEditor();
+  rerender(
+    <IntlProvider locale="en" messages={messages}>
+      <ControlRecognitionDraftEditor draftId="draft-2" />
+    </IntlProvider>,
+  );
+  expect(
+    await screen.findByRole("checkbox", {
+      name: messages["analyzerType.recognition.none.affirmation"],
+    }),
+  ).toBeChecked();
+  act(() => finishFirst(rulesDraft));
+  expect(
+    screen.getByRole("checkbox", {
+      name: messages["analyzerType.recognition.none.affirmation"],
+    }),
+  ).toBeChecked();
+  expect(screen.queryByText("Order field 12 equals Q")).not.toBeInTheDocument();
+});
+
+it("does not notify a closed editor when its pending save completes", async () => {
+  getAnalyzerTypeControlRecognition.mockImplementation((id, callback) =>
+    callback(rulesDraft),
+  );
+  let finishSave;
+  updateAnalyzerTypeControlRecognition.mockImplementation(
+    (id, update, callback) => {
+      finishSave = callback;
+    },
+  );
+  const onSaved = vi.fn();
+  const { unmount } = renderEditor({ onSaved });
+  await userEvent.type(
+    await screen.findByRole("textbox", { name: "Order field 12 value" }),
+    "X",
+  );
+  await userEvent.click(
+    screen.getByRole("button", { name: "Save control recognition" }),
+  );
+  unmount();
+  act(() => finishSave(rulesDraft));
+  expect(onSaved).not.toHaveBeenCalled();
 });

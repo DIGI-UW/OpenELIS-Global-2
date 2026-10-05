@@ -5,6 +5,7 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import ca.uhn.fhir.context.FhirContext;
+import ca.uhn.fhir.rest.client.apache.ApacheRestfulClientFactory;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import java.util.ArrayList;
 import java.util.List;
@@ -17,7 +18,6 @@ import org.jasypt.util.text.TextEncryptor;
 import org.mockito.Mockito;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
-import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.barcode.controller.PrintBarcodeController;
 import org.openelisglobal.common.paging.PagingProperties;
 import org.openelisglobal.common.provider.validation.AccessionNumberValidatorFactory;
@@ -47,6 +47,7 @@ import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.security.certs.service.TruststoreService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.ozeki.sms.service.OzekiMessageOutService;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.UnsatisfiedDependencyException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.annotation.Bean;
@@ -71,23 +72,24 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 @Configuration
 @Import(org.openelisglobal.common.rest.provider.SampleEntryTestsForTypeProviderRestController.class)
 @ComponentScan(basePackages = { "org.openelisglobal.spring", "org.openelisglobal.common.services",
-        "org.openelisglobal.patient", "org.openelisglobal.patientidentity", "org.openelisglobal.gender",
-        "org.openelisglobal.patientidentitytype", "org.openelisglobal.patienttype", "org.openelisglobal.address",
-        "org.openelisglobal.dictionary", "org.openelisglobal.person", "org.openelisglobal.audittrail",
-        "org.openelisglobal.referencetables", "org.openelisglobal.history", "org.openelisglobal.menu",
-        "org.openelisglobal.login", "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule",
-        "org.openelisglobal.view", "org.openelisglobal.search", "org.openelisglobal.common.util",
-        "org.openelisglobal.sample", "org.openelisglobal.sampleitem", "org.openelisglobal.sampletyperequest",
-        "org.openelisglobal.analysis", "org.openelisglobal.result", "org.openelisglobal.resultlimit",
-        "org.openelisglobal.resultlimits", "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman",
-        "org.openelisglobal.provider", "org.openelisglobal.role", "org.openelisglobal.organization",
-        "org.openelisglobal.region", "org.openelisglobal.program", "org.openelisglobal.note",
-        "org.openelisglobal.requester", "org.openelisglobal.method", "org.openelisglobal.sampleorganization",
-        "org.openelisglobal.analyte", "org.openelisglobal.panel", "org.openelisglobal.panelitem",
-        "org.openelisglobal.reports", "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure",
-        "org.openelisglobal.testtrailer", "org.openelisglobal.scriptlet", "org.openelisglobal.localization",
-        "org.openelisglobal.systemuser", "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary",
-        "org.openelisglobal.dictionarycategory", "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
+        "org.openelisglobal.samplebatchentry.service", "org.openelisglobal.patient",
+        "org.openelisglobal.patientidentity", "org.openelisglobal.gender", "org.openelisglobal.patientidentitytype",
+        "org.openelisglobal.patienttype", "org.openelisglobal.address", "org.openelisglobal.dictionary",
+        "org.openelisglobal.person", "org.openelisglobal.audittrail", "org.openelisglobal.referencetables",
+        "org.openelisglobal.history", "org.openelisglobal.menu", "org.openelisglobal.login",
+        "org.openelisglobal.systemusermodule", "org.openelisglobal.rolemodule", "org.openelisglobal.view",
+        "org.openelisglobal.search", "org.openelisglobal.common.util", "org.openelisglobal.sample",
+        "org.openelisglobal.sampleitem", "org.openelisglobal.sampletyperequest", "org.openelisglobal.analysis",
+        "org.openelisglobal.result", "org.openelisglobal.resultlimit", "org.openelisglobal.resultlimits",
+        "org.openelisglobal.typeoftestresult", "org.openelisglobal.samplehuman", "org.openelisglobal.provider",
+        "org.openelisglobal.role", "org.openelisglobal.organization", "org.openelisglobal.region",
+        "org.openelisglobal.program", "org.openelisglobal.note", "org.openelisglobal.requester",
+        "org.openelisglobal.method", "org.openelisglobal.sampleorganization", "org.openelisglobal.analyte",
+        "org.openelisglobal.panel", "org.openelisglobal.panelitem", "org.openelisglobal.reports",
+        "org.openelisglobal.userrole", "org.openelisglobal.unitofmeasure", "org.openelisglobal.testtrailer",
+        "org.openelisglobal.scriptlet", "org.openelisglobal.localization", "org.openelisglobal.systemuser",
+        "org.openelisglobal.systemmodule", "org.openelisglobal.testdictionary", "org.openelisglobal.dictionarycategory",
+        "org.openelisglobal.sampledomain", "org.openelisglobal.sampleproject",
         "org.openelisglobal.observationhistorytype", "org.openelisglobal.statusofsample", "org.openelisglobal.test",
         "org.openelisglobal.testmethod.service", "org.openelisglobal.testmethod.daoimpl",
         "org.openelisglobal.configuration.service", "org.openelisglobal.configuration.dao",
@@ -101,7 +103,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testreagentlink.service", "org.openelisglobal.testreagentlink.daoimpl",
         "org.openelisglobal.testalertrule", "org.openelisglobal.testcatalog.service",
         "org.openelisglobal.testcatalog.dao", "org.openelisglobal.analyzerimport", "org.openelisglobal.analyzer",
-        "org.openelisglobal.plugin", "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
+        "org.openelisglobal.testanalyte", "org.openelisglobal.observationhistory",
         "org.openelisglobal.systemusersection", "org.openelisglobal.citystatezip", "org.openelisglobal.typeofsample",
         "org.openelisglobal.siteinformation", "org.openelisglobal.config", "org.openelisglobal.image",
         "org.openelisglobal.testresult", "org.openelisglobal.barcode", "org.openelisglobal.referral",
@@ -116,16 +118,18 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
         "org.openelisglobal.testconfiguration", "org.openelisglobal.usertestsection",
         "org.openelisglobal.testcalculated", "org.openelisglobal.odoo", "org.openelisglobal.ocl",
         "org.openelisglobal.storage", "org.openelisglobal.notebook", "org.openelisglobal.coldstorage",
-        "org.openelisglobal.labelpreset", "org.openelisglobal.alert", "org.openelisglobal.notification",
+        "org.openelisglobal.labelpreset", "org.openelisglobal.accreditation.service",
+        "org.openelisglobal.accreditation.daoimpl", "org.openelisglobal.alert", "org.openelisglobal.notification",
         "org.openelisglobal.shipment", "org.openelisglobal.reportdefinition", "org.openelisglobal.scheduler",
-        "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.plugin",
-        "org.openelisglobal.fhir.providers", "org.openelisglobal.fhir.service", "org.openelisglobal.common.dao",
-        "org.openelisglobal.report", "org.openelisglobal.eqa", "org.openelisglobal.qc",
-        "org.openelisglobal.externalconnections", "org.openelisglobal.notifications", "org.openelisglobal.calendar",
-        "org.openelisglobal.qachecklist", "org.openelisglobal.esig", "org.openelisglobal.compliance",
-        "org.openelisglobal.vector", "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
+        "org.openelisglobal.sitebranding", "org.openelisglobal.resultvalidation", "org.openelisglobal.fhir.providers",
+        "org.openelisglobal.fhir.service", "org.openelisglobal.common.dao", "org.openelisglobal.report",
+        "org.openelisglobal.eqa", "org.openelisglobal.qc", "org.openelisglobal.externalconnections",
+        "org.openelisglobal.notifications", "org.openelisglobal.calendar", "org.openelisglobal.qachecklist",
+        "org.openelisglobal.esig", "org.openelisglobal.compliance", "org.openelisglobal.vector",
+        "org.openelisglobal.sampleacceptance", "org.openelisglobal.sampletyperequest",
         "org.openelisglobal.resultreporting.service", "org.openelisglobal.security", "org.openelisglobal.genericsample",
-        "org.openelisglobal.questionnaire", "org.openelisglobal.microbiology" }, excludeFilters = {
+        "org.openelisglobal.questionnaire", "org.openelisglobal.qa", "org.openelisglobal.microbiology",
+        "org.openelisglobal.batchworkplan" }, excludeFilters = {
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.patient.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.organization.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.sample.controller.[BS].*"),
@@ -150,6 +154,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org\\.openelisglobal\\..*Test\\$TestConfig"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qc.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.qa.controller.*"),
+                @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.esig.controller.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerTypeRestControllerSecurityTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.analyzer.controller.AnalyzerWorkflowAuthorizationSecurityTest.*"),
                 @ComponentScan.Filter(type = FilterType.REGEX, pattern = "org.openelisglobal.eqa.scheduler.*"),
@@ -236,8 +242,13 @@ public class AppTestConfig implements WebMvcConfigurer {
 
     @Bean()
     @Profile("test")
-    public FhirContext fhirContext() {
-        return mock(FhirContext.class);
+    public FhirContext fhirContext(CloseableHttpClient httpClient) {
+        FhirContext context = FhirContext.forR4();
+        // Parse real messages; only the external HTTP transport is substituted.
+        ApacheRestfulClientFactory clientFactory = new ApacheRestfulClientFactory(context);
+        clientFactory.setHttpClient(httpClient);
+        context.setRestfulClientFactory(clientFactory);
+        return context;
     }
 
     @Bean()
@@ -270,11 +281,8 @@ public class AppTestConfig implements WebMvcConfigurer {
         return mock(NotificationDAO.class);
     }
 
-    @Bean()
-    @Profile("test")
-    public AuditTrailService auditTrailService() {
-        return mock(AuditTrailService.class);
-    }
+    // AuditTrailServiceImpl is component-scanned with its real history and
+    // reference-table services. Database tests must exercise persisted history.
 
     @Bean()
     @Profile("test")
@@ -409,6 +417,16 @@ public class AppTestConfig implements WebMvcConfigurer {
         return new org.openelisglobal.result.controller.rest.ResultEntryRestController();
     }
 
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsRestController locationsRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsRestController();
+    }
+
+    @Bean
+    public org.openelisglobal.organization.controller.rest.LocationsImportRestController locationsImportRestController() {
+        return new org.openelisglobal.organization.controller.rest.LocationsImportRestController();
+    }
+
     /**
      * Explicit bean (the testcatalog.controller package is not scanned — a sibling
      * controller's class init breaks the test context) so MockMvc can exercise the
@@ -480,6 +498,18 @@ public class AppTestConfig implements WebMvcConfigurer {
     @Profile("test")
     public String daemonSysUserId() {
         return "1";
+    }
+
+    /**
+     * The catalog loader is kept out of the component scan because it loads every
+     * domain on context refresh; tests that exercise a reload (the Locations import
+     * apply) still need the real bean, so it is registered here with auto-loading
+     * switched off in common.properties.
+     */
+    @Bean
+    @Profile("test")
+    public ConfigurationInitializationService configurationInitializationService() {
+        return BeanUtils.instantiateClass(ConfigurationInitializationService.class);
     }
 
     @Bean

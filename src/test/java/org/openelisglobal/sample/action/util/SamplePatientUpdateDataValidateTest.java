@@ -10,11 +10,13 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.services.SampleAddService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
+import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.springframework.validation.BeanPropertyBindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 
 /**
  * OGC-743 — service-layer validation errors must surface as field-tagged
@@ -183,6 +185,42 @@ public class SamplePatientUpdateDataValidateTest extends BaseWebContextSensitive
 
         assertFalse("the org-or-requestor check is env/vector-only and must not fire for clinical orders",
                 result.hasErrors());
+    }
+
+    /**
+     * OGC-1407: the patient validator collects its errors on a holder of its own
+     * (BaseErrors, object name "Non bound errors"). Merging that holder into the
+     * order's binding result as a whole threw "Errors object needs to have same
+     * object name", so a refused duplicate national id reached the user as a 500.
+     * Each patient error is carried over on its own instead.
+     */
+    @Test
+    public void aRefusedPatientReachesTheOrdersErrorsWithItsMessage() {
+        SamplePatientUpdateData updateData = new SamplePatientUpdateData("1");
+        Sample sample = new Sample();
+        sample.setId("1");
+        updateData.setSample(sample);
+        updateData.setSampleItemsTests(Collections.singletonList(nonEmptySampleTestCollection()));
+        BaseErrors patientErrors = new BaseErrors();
+        patientErrors.reject("error.duplicate.nationalId", null,
+                "National ID QA1407F1 already belongs to patient Qadup, Fone (ID 118)");
+        patientErrors.addError(new FieldError("Non bound errors", "birthDateForDisplay", "31/31/1988", false,
+                new String[] { "error.birthdate.format" }, null, "error.birthdate.format"));
+        updateData.setPatientErrors(patientErrors);
+
+        BeanPropertyBindingResult result = new BeanPropertyBindingResult(new SamplePatientEntryForm(),
+                "samplePatientEntryForm");
+
+        updateData.validateSample(result, true, new SampleOrderItem(), "clinical");
+
+        ObjectError duplicate = result.getGlobalError();
+        assertNotNull("the duplicate national id must reach the order's errors", duplicate);
+        assertEquals("error.duplicate.nationalId", duplicate.getCode());
+        assertEquals("National ID QA1407F1 already belongs to patient Qadup, Fone (ID 118)",
+                duplicate.getDefaultMessage());
+        FieldError birthDate = result.getFieldError("patientProperties.birthDateForDisplay");
+        assertNotNull("a patient field error must land under the form's patientProperties path", birthDate);
+        assertEquals("error.birthdate.format", birthDate.getCode());
     }
 
     private SampleTestCollection nonEmptySampleTestCollection() {

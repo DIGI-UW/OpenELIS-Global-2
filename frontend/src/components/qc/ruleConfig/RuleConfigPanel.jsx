@@ -224,7 +224,7 @@ const RuleConfigPanel = () => {
             },
             {
               label: intl.formatMessage({ id: "qc.dashboard.title" }),
-              link: "/analyzers/qc/db",
+              link: "/qa/qc/dashboard",
             },
             {
               label: intl.formatMessage({ id: "qc.ruleConfig.title" }),

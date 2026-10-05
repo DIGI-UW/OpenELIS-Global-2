@@ -14,6 +14,7 @@ import {
   getAnalyzerTypeMapping,
   getAnalyzerTypeRevision,
   saveAnalyzerTypeMapping,
+  selectAnalyzerSiteBinding,
 } from "../../../services/analyzerService";
 import AnalyzerTypeMappingEditor from "./AnalyzerTypeMappingEditor";
 
@@ -24,6 +25,7 @@ vi.mock("../../../services/analyzerService", () => ({
   getAnalyzerTypeMapping: vi.fn(),
   getAnalyzerTypeRevision: vi.fn(),
   saveAnalyzerTypeMapping: vi.fn(),
+  selectAnalyzerSiteBinding: vi.fn(),
 }));
 
 const recognition = {
@@ -187,6 +189,13 @@ const LocationProbe = () => {
   );
 };
 
+const ReturnStateProbe = () => {
+  const location = useLocation();
+  return (
+    <output data-testid="return-state">{JSON.stringify(location.state)}</output>
+  );
+};
+
 const renderEditor = (
   entry = "/analyzers/types/shipped.genexpert/mapping?revision=2&returnTo=%2Fanalyzers%2Ftypes%3Fmapping%3DINCOMPLETE",
 ) =>
@@ -196,6 +205,9 @@ const renderEditor = (
         <Route path="/analyzers/types/:profileId/mapping">
           <AnalyzerTypeMappingEditor />
           <LocationProbe />
+        </Route>
+        <Route path="/AnalyzerResults">
+          <ReturnStateProbe />
         </Route>
       </IntlProvider>
     </MemoryRouter>,
@@ -250,6 +262,84 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
   });
 
+  it("returns to the worklist with its unsaved review choices", async () => {
+    const worklistDraft = {
+      analyzerId: "501",
+      page: 2,
+      edits: { 1005: { isAccepted: true, note: "Reviewed" } },
+    };
+    renderEditor({
+      pathname: "/analyzers/types/shipped.genexpert/mapping",
+      search: "?revision=2&returnTo=%2FAnalyzerResults%3Fid%3D501",
+      state: { worklistDraft },
+    });
+
+    await userEvent.click(
+      (await screen.findAllByRole("link", { name: "Analyzer Types" }))[1],
+    );
+
+    expect(screen.getByTestId("return-state")).toHaveTextContent(
+      JSON.stringify({ worklistDraft }),
+    );
+  });
+
+  it("applies the current mapping only to the named analyzer and retries its holds", async () => {
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...mapping,
+          confirmation: { ...unconfirmed, state: "CURRENT" },
+        }),
+    );
+    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+      callback({ id: "501" }),
+    );
+    renderEditor(
+      "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501&returnTo=%2FAnalyzerResults%3Fid%3D501",
+    );
+
+    await userEvent.click(
+      await screen.findByRole("button", {
+        name: "Apply mappings and retry held results",
+      }),
+    );
+
+    expect(selectAnalyzerSiteBinding).toHaveBeenCalledWith(
+      "501",
+      {
+        siteBindingId: mapping.siteBindingId,
+        revision: mapping.siteBindingRevision,
+        bindingFingerprint: mapping.bindingFingerprint,
+      },
+      expect.any(Function),
+    );
+    expect(
+      screen.getByText(
+        "Current mappings applied to this analyzer. Eligible held results were retried.",
+      ),
+    ).toBeVisible();
+  });
+
+  it.each(["UNCONFIRMED", "STALE"])(
+    "does not apply a %s mapping to held results",
+    async (state) => {
+      getAnalyzerTypeMapping.mockImplementation(
+        (_profileId, _revision, callback) =>
+          callback({ ...mapping, confirmation: { ...unconfirmed, state } }),
+      );
+      renderEditor(
+        "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501",
+      );
+
+      expect(
+        await screen.findByRole("button", {
+          name: "Apply mappings and retry held results",
+        }),
+      ).toBeDisabled();
+      expect(selectAnalyzerSiteBinding).not.toHaveBeenCalled();
+    },
+  );
+
   it("restores a bookmarkable shared-type editor with breadcrumbs and every independent source row", async () => {
     renderEditor();
 
@@ -303,6 +393,35 @@ describe("AnalyzerTypeMappingEditor", () => {
     );
   });
 
+  it("confirms partial mappings without excluding unresolved rows", async () => {
+    renderEditor();
+    const button = await screen.findByRole("button", {
+      name: "Confirm mappings and control recognition",
+    });
+    expect(button).toBeEnabled();
+    expect(
+      screen.getByText(/unresolved mappings.*saved for correction/),
+    ).toBeVisible();
+    await userEvent.click(button);
+    const request = confirmAnalyzerTypeMapping.mock.calls[0][2];
+    expect(request.confirmedRows).toContainEqual({
+      sourceRowKey: "RAW-A",
+      rawValue: "DETECTED",
+    });
+    expect(request.confirmedRows).not.toContainEqual({
+      sourceRowKey: "RAW-A",
+      rawValue: "NOT DETECTED",
+    });
+    expect(request.excludedRows).not.toContainEqual({
+      sourceRowKey: "RAW-A",
+      rawValue: "NOT DETECTED",
+    });
+    expect(request.excludedRows).not.toContainEqual({
+      sourceRowKey: "RAW-B",
+      rawValue: null,
+    });
+  });
+
   it("renders explicit NONE recognition without server-authored technical details", async () => {
     getAnalyzerTypeMapping.mockImplementation(
       (_profileId, _revision, callback) =>
@@ -329,6 +448,37 @@ describe("AnalyzerTypeMappingEditor", () => {
       screen.queryByText("SERVER NONE DESCRIPTION MUST NOT RENDER"),
     ).not.toBeInTheDocument();
     expect(screen.queryByText(/regex/i)).not.toBeInTheDocument();
+  });
+
+  it("shows unconfigured rules without claiming the interface sends no controls", async () => {
+    getAnalyzerTypeMapping.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({
+          ...mapping,
+          controlRecognition: {
+            ...recognition,
+            description: "SERVER DESCRIPTION MUST NOT RENDER",
+            conditions: [],
+          },
+        }),
+    );
+
+    renderEditor();
+
+    expect(
+      await screen.findAllByText("Control recognition not configured"),
+    ).toHaveLength(2);
+    expect(
+      screen.getByText(
+        "No control recognition rules are configured. Control results may not be identified automatically.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByText("This interface does not transmit control results"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByText("SERVER DESCRIPTION MUST NOT RENDER"),
+    ).not.toBeInTheDocument();
   });
 
   it("opens and focuses the held analyzer value named in the bookmark", async () => {
@@ -406,6 +556,7 @@ describe("AnalyzerTypeMappingEditor", () => {
         "/TestCatalogEditor/9703/sample-results?returnTo=",
       ),
     );
+    expect(within(rawC).getByText("HIGH")).toBeVisible();
     const rawB = screen
       .getAllByTestId("analyzer-type-mapping-row")
       .find((row) => within(row).queryByText("RAW-B"));

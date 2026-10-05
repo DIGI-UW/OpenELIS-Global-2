@@ -256,4 +256,27 @@ public class SampleStorageRestControllerDisposalTest extends BaseWebContextSensi
         }
         assertTrue("Disposed sample should be searchable per FR-056", found);
     }
+
+    @Test
+    public void recordSampleUsage_ShouldReturn400AndKeepRemaining_WhenAmountExceedsRemaining() throws Exception {
+        MvcResult result = this.mockMvc
+                .perform(post("/rest/storage/sample-items/record-usage").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleItemId\":\"EXT-1000\",\"amountUsed\":\"5\"}"))
+                .andExpect(status().isBadRequest()).andReturn();
+
+        assertTrue(result.getResponse().getContentAsString().contains("remaining quantity 1"));
+        assertEquals(0, new java.math.BigDecimal("1").compareTo(jdbcTemplate.queryForObject(
+                "SELECT remaining_quantity FROM sample_item WHERE id = 1000", java.math.BigDecimal.class)));
+    }
+
+    @Test
+    public void recordSampleUsage_ShouldExhaust_WhenAmountEqualsRemaining() throws Exception {
+        this.mockMvc
+                .perform(post("/rest/storage/sample-items/record-usage").session(mockSession)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sampleItemId\":\"EXT-1000\",\"amountUsed\":\"1\"}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.remainingQuantity").value(0))
+                .andExpect(jsonPath("$.exhausted").value(true));
+    }
 }

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
+import { labNow } from "../../utils/labClock";
 import {
   Button,
   DatePicker,
@@ -55,10 +56,12 @@ const InlineNceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const today = format(labNow(), "MM/dd/yyyy");
+
   const [nceForm, setNceForm] = useState({
     nceNumber: "",
     reporterName: "",
-    dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+    dateOfEvent: today,
     reportingUnit: "",
     title: "",
     description: initialDescription || "",
@@ -353,7 +356,7 @@ const InlineNceForm = ({
           datePickerType="single"
           dateFormat="m/d/Y"
           value={nceForm.dateOfEvent}
-          maxDate={format(new Date(), "MM/dd/yyyy")}
+          maxDate={today}
           onChange={(dates) => {
             if (dates && dates[0]) {
               const formatted = format(new Date(dates[0]), "MM/dd/yyyy");

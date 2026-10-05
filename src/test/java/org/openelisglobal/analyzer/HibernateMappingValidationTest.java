@@ -51,6 +51,7 @@ public class HibernateMappingValidationTest {
 
         // Annotation-based entities (no XML entity references)
         configuration.addAnnotatedClass(Analyzer.class);
+
         configuration.addAnnotatedClass(AnalyzerEvent.class);
         configuration.addAnnotatedClass(AnalyzerActivationRecord.class);
         configuration.addAnnotatedClass(AnalyzerProfileBinding.class);

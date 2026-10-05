@@ -3,13 +3,9 @@ import type { Page, TestInfo } from "@playwright/test";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import {
-  LONG_TIMEOUT,
-  NAV_TIMEOUT,
-  TIMEOUT_SCALE,
-} from "../../../helpers/timeouts";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
-const PROFILE_NAME = "Cepheid GeneXpert (ASTM Mode)";
+const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
 function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -28,7 +24,29 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     test.setTimeout(180_000 * TIMEOUT_SCALE);
     const runId = Date.now().toString().slice(-8);
     const analyzerName = `M3 GeneXpert ${runId}`;
-    const listenerPort = String(45_000 + (Number(runId) % 1_000));
+    const senderId = `GX-GUIDED-${runId}`;
+    const profileName = `Guided GeneXpert ${runId}`;
+    // A new profile exercises first-time confirmation on every run, through the
+    // same duplication/publish workflow an operator uses. No mapping is seeded.
+    await page.goto("/analyzers/types", { waitUntil: "domcontentloaded" });
+    await page
+      .getByRole("button", { name: "Duplicate Profile", exact: true })
+      .click();
+    const duplicate = page.getByRole("dialog", { name: "Duplicate Profile" });
+    await duplicate
+      .getByRole("combobox", { name: "Source analyzer type" })
+      .selectOption({ label: `${SOURCE_PROFILE} · ASTM` });
+    await duplicate
+      .getByRole("textbox", { name: "New profile name" })
+      .fill(profileName);
+    await duplicate
+      .getByRole("button", { name: "Duplicate Profile", exact: true })
+      .click();
+    await expect(duplicate.getByText("Ready to publish")).toBeVisible();
+    await duplicate
+      .getByRole("button", { name: "Publish Profile", exact: true })
+      .click();
+    await expect(page.getByText("Profile duplicated")).toBeVisible();
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
 
@@ -45,7 +63,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await list.clickAdd();
     await setup.expectOpen();
     await expect(page).toHaveURL(/\/analyzers\?setup=instrument$/);
-    await setup.selectProfile(PROFILE_NAME);
+    await setup.selectProfile(profileName);
     await setup.fillName(analyzerName);
     await setup.selectLabUnit("Molecular Biology");
     await setup.continueToVerify();
@@ -53,9 +71,27 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(
       page.getByRole("button", { name: "Edit Instrument" }),
     ).toBeVisible();
-    await expect(page.getByText("Current", { exact: true })).toBeVisible({
-      timeout: LONG_TIMEOUT,
+    await expect(
+      page.getByText("Not confirmed", { exact: true }),
+    ).toBeVisible();
+    await page
+      .getByRole("link", { name: "Review mappings in Analyzer Types" })
+      .click();
+    await expect(page).toHaveURL(/\/analyzers\/types\/[^/]+\/mapping/);
+    await expect(
+      page.getByRole("button", { name: "Update shared mappings" }),
+    ).toBeDisabled();
+    const confirm = page.getByRole("button", {
+      name: "Confirm mappings and control recognition",
     });
+    await expect(confirm).toBeVisible();
+    await expect(confirm).toBeEnabled();
+    await confirm.click();
+    await expect(
+      page.getByText("Mappings and control recognition confirmed"),
+    ).toBeVisible();
+    await page.goBack({ waitUntil: "domcontentloaded" });
+    await expect(page.getByText("Current", { exact: true })).toBeVisible();
     await expect(page.getByText("Current confirmation")).toBeVisible();
     await expect(
       page.getByRole("button", { name: "Continue to Connect" }),
@@ -63,13 +99,11 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     const verifyUrl = page.url();
     await capture(page, testInfo, "m3-verify");
 
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
+    await page.reload({ waitUntil: "domcontentloaded" });
     await expect(page).toHaveURL(verifyUrl);
     await expect(
       page.getByRole("button", { name: "Continue to Connect" }),
-    ).toBeEnabled({
-      timeout: LONG_TIMEOUT,
-    });
+    ).toBeEnabled();
     await setup.continueToConnect();
     await expect(
       page.getByRole("button", { name: "Edit Verify" }),
@@ -78,17 +112,21 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("setup") === "connect",
     );
 
-    await setup.fillPort(listenerPort);
+    await setup.fillSenderId(senderId);
     await page.getByRole("button", { name: "Save and finish later" }).click();
-    await expect(setup.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(setup.surface).not.toBeVisible();
 
     let analyzerRow = page.getByRole("row", {
       name: new RegExp(escapeRegExp(analyzerName), "i"),
     });
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
     await list.search(analyzerName);
-    await expect(page.getByTestId("stat-total")).toContainText("1");
-    await expect(page.getByTestId("stat-setup")).toContainText("1");
+    await expect(
+      page.getByTestId("stat-total").locator(".stat-value"),
+    ).toHaveText("1");
+    await expect(
+      page.getByTestId("stat-setup").locator(".stat-value"),
+    ).toHaveText("1");
     await expect(analyzerRow).toContainText("Setup");
     await capture(page, testInfo, "m3-in-setup-dashboard");
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
@@ -97,22 +135,23 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("setup") === "connect",
     );
     await expect(
-      setup.surface.getByRole("spinbutton", { name: /port/i }),
-    ).toHaveValue(listenerPort);
-    await expect(page.getByText("Analyzer is ready to activate")).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+      setup.surface.getByRole("textbox", {
+        name: "Instrument system name",
+        exact: true,
+      }),
+    ).toHaveValue(senderId);
+    await expect(page.getByText("Analyzer is ready to activate")).toBeVisible();
     await capture(page, testInfo, "m3-ready-to-activate");
 
     await page.getByRole("button", { name: "Finish and activate" }).click();
-    await expect(setup.surface).not.toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(setup.surface).not.toBeVisible();
 
     analyzerRow = page.getByRole("row", {
       name: new RegExp(escapeRegExp(analyzerName), "i"),
     });
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
     await expect(analyzerRow).toContainText("Active");
-    await expect(analyzerRow).toContainText(PROFILE_NAME);
+    await expect(analyzerRow).toContainText(profileName);
     await expect(analyzerRow).not.toContainText(/\b\d+ units?\b/);
     await list.search(analyzerName);
     await expect(page).toHaveURL(
@@ -141,7 +180,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       .scrollIntoViewIfNeeded();
     await capture(page, testInfo, "m3-connection-evidence");
     await setup.close();
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
 
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
     await page.getByRole("menuitem", { name: "Quality Control" }).click();
@@ -151,9 +190,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     expect(await page.evaluate(() => window.scrollY)).toBe(0);
     await expect(
       page.getByRole("heading", { level: 1, name: analyzerName }),
-    ).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    ).toBeVisible();
     const qcBreadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
     const analyzerReturnLink = qcBreadcrumb.getByRole("link", {
       name: "Analyzers",
@@ -170,7 +207,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("search") === analyzerName,
     );
     await list.expectLoaded();
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
+    await expect(analyzerRow).toBeVisible();
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
     await page.getByRole("menuitem", { name: "Deactivate" }).click();
     await expect(page).toHaveURL(/lifecycle=deactivate/);
@@ -178,16 +215,12 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       page.getByRole("heading", { name: "Deactivate analyzer" }),
     ).toBeVisible();
     await page.getByRole("button", { name: "Deactivate analyzer" }).click();
-    await expect(analyzerRow).toContainText("Inactive", {
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(analyzerRow).toContainText("Inactive");
 
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.reload({ waitUntil: "domcontentloaded", timeout: NAV_TIMEOUT });
-    await expect(analyzerRow).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(analyzerRow).toContainText(PROFILE_NAME, {
-      timeout: LONG_TIMEOUT,
-    });
+    await page.reload({ waitUntil: "domcontentloaded" });
+    await expect(analyzerRow).toBeVisible();
+    await expect(analyzerRow).toContainText(profileName);
     await expect(page.getByTestId("content-wrapper")).toHaveCSS(
       "margin-left",
       "0px",

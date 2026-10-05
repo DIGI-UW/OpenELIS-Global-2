@@ -77,10 +77,19 @@ public class CatalogAttributeCsvLoaderIntegrationTest extends BaseWebContextSens
 
     private JdbcTemplate jdbc;
 
+    /**
+     * Reflex rules, conditions and actions take their ids from sequences that
+     * sibling classes' fixtures leave behind their tables (rows seeded with
+     * explicit ids), so depending on class order the loader's insert collided with
+     * a seeded rule. Resync the three before loading.
+     */
     @Before
     public void setUp() throws Exception {
         jdbc = new JdbcTemplate(dataSource);
         cleanup();
+        resyncSequence("reflex_rule_seq", "clinlims.reflex_rule");
+        resyncSequence("reflex_rule_condition_seq", "clinlims.reflex_rule_condition");
+        resyncSequence("reflex_rule_action_seq", "clinlims.reflex_rule_action");
         load(sectionHandler, "testSectionName,isActive,sortOrder,isExternal,localization:en\n" + SECTION + ",Y,94,N,"
                 + SECTION + "\n", "sections.csv");
         load(sampleTypeHandler, "description,localAbbreviation,domain,isActive,sortOrder\n" + PREFIX

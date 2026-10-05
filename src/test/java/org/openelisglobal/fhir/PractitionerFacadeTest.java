@@ -11,6 +11,9 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import org.junit.Before;
@@ -796,6 +799,17 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    /**
+     * provider.lastupdated is a timestamp without time zone, and the JDBC driver
+     * converts a search instant to that column in the JVM's default zone. The
+     * fixture's wall-clock time is therefore this instant only when expressed in
+     * that zone; a hard-coded UTC instant matches only on a server running in UTC.
+     */
+    private static String fixtureLastUpdatedInstant() {
+        return LocalDateTime.of(2025, 2, 15, 12, 0).atZone(ZoneId.systemDefault())
+                .format(DateTimeFormatter.ISO_OFFSET_DATE_TIME);
+    }
+
     @Test
     public void searchPractitioner_byLastUpdatedGreaterThanOrEqual_shouldReturnBothPractitioners() throws Exception {
 
@@ -821,7 +835,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
 
-        request.addParameter("_lastUpdated", "gt2025-02-15T12:00:00Z");
+        request.addParameter("_lastUpdated", "gt" + fixtureLastUpdatedInstant());
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -843,7 +857,7 @@ public class PractitionerFacadeTest extends BaseWebContextSensitiveTest {
 
         MockHttpServletRequest request = buildFhirRequest("GET", "/Practitioner");
 
-        request.addParameter("_lastUpdated", "le2025-02-15T12:00:00Z");
+        request.addParameter("_lastUpdated", "le" + fixtureLastUpdatedInstant());
 
         MockHttpServletResponse response = new MockHttpServletResponse();
 

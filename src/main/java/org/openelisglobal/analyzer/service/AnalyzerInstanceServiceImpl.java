@@ -101,6 +101,16 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         }
     }
 
+    @Override
+    public AnalyzerInstanceView ensureConnection(String analyzerId, ObjectNode values, String actor) {
+        AnalyzerInstanceState state = localStateService.get(analyzerId);
+        if (state.bridgeConnectionId() != null)
+            return compose(state);
+        AnalyzerInstanceRequest request = new AnalyzerInstanceRequest();
+        request.setConnectionValues(values);
+        return createMissingConnection(state, request, actor);
+    }
+
     private AnalyzerInstanceView createMissingConnection(AnalyzerInstanceState state, AnalyzerInstanceRequest request,
             String actor) {
         try {

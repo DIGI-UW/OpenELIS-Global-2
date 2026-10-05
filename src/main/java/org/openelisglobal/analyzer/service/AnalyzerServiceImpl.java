@@ -96,6 +96,12 @@ public class AnalyzerServiceImpl extends AuditableBaseObjectServiceImpl<Analyzer
     }
 
     @Override
+    @Transactional
+    public Optional<Analyzer> findByIdForUpdate(String id) {
+        return baseObjectDAO.findByIdForUpdate(id);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<AnalyzerTestCapability> getCapabilitiesForTest(String testId) {
         return baseObjectDAO.findCapabilitiesByTestId(testId);

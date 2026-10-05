@@ -1,15 +1,7 @@
 name: Validate publication and deployment
 
 on:
-  pull_request:
-    paths:
-      - ".github/scripts/**"
-      - ".github/workflows/**"
-  push:
-    branches: [develop]
-    paths:
-      - ".github/scripts/**"
-      - ".github/workflows/**"
+  workflow_call:
 
 permissions:
   contents: read

@@ -286,6 +286,40 @@ describe("Layout", () => {
         "has-add",
       );
     });
+
+    test("testLayout_NotificationContext_KeepsNotificationsRaisedTogether", () => {
+      const NotificationConsumer = () => {
+        const { addNotification, notifications } =
+          useContext(NotificationContext);
+        return (
+          <div>
+            <button
+              type="button"
+              onClick={() => {
+                addNotification({ kind: "success", message: "first" });
+                addNotification({ kind: "warning", message: "second" });
+              }}
+            >
+              raise
+            </button>
+            <span data-testid="notification-messages">
+              {notifications.map((n) => n.message).join(",")}
+            </span>
+          </div>
+        );
+      };
+
+      renderWithProviders(
+        <Layout>
+          <NotificationConsumer />
+        </Layout>,
+      );
+      fireEvent.click(screen.getByRole("button", { name: "raise" }));
+
+      expect(screen.getByTestId("notification-messages").textContent).toBe(
+        "first,second",
+      );
+    });
   });
 
   describe("route-based configuration", () => {

@@ -29,6 +29,7 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../../layout/Layout";
 import { jpSet } from "../../utils/JsonPath";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { labNow } from "../../utils/labClock";
 
 // eslint-disable-next-line prefer-const -- preserve the original JavaScript runtime declaration
 let breadcrumbs = [
@@ -151,7 +152,7 @@ function LabNumberManagement() {
 
   const generateSampleLabNum = () => {
     // eslint-disable-next-line prefer-const -- preserve the original JavaScript declaration
-    let dateDigits = new Date().getFullYear() % 100;
+    let dateDigits = labNow().getFullYear() % 100;
     let labNumber = "" + dateDigits;
     if (labNumberValues.usePrefix && labNumberValues.alphanumPrefix) {
       labNumber = labNumber + labNumberValues.alphanumPrefix;

@@ -36,6 +36,7 @@ import {
   NotificationKinds,
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import "../ruleBuilderAccordion.css";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -551,7 +552,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                 labelText={
                   <FormattedMessage id="rulebuilder.label.selectSample" />
                 }
-                value={operation.sampleId}
+                value={operation.sampleId ?? ""}
                 onChange={(e) => {
                   handleSampleSelected(e, "TEST_RESULT", index, operationIndex);
                   handleOperationFieldChange(
@@ -831,7 +832,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         labelText={
                           <FormattedMessage id="testcalculation.label.name" />
                         }
-                        value={calculation.name}
+                        value={calculation.name ?? ""}
                         onChange={(e) => handleCalculationFieldChange(e, index)}
                       />
                     </div>
@@ -841,9 +842,9 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                         toggled={!!calculation.active}
                         aria-label="toggle button"
                         id={index + "_toggle"}
-                        labelText={
-                          <FormattedMessage id="rulebuilder.label.toggleRule" />
-                        }
+                        labelText={intl.formatMessage({
+                          id: "rulebuilder.label.toggleRule",
+                        })}
                         onToggle={(e) => toggleCalculation(e, index)}
                       />
                     </div>
@@ -860,7 +861,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                     </div>
                   </div>
                   <div style={{ marginTop: "1rem" }}>
-                    <Accordion>
+                    <Accordion className="ruleBuilderAccordion">
                       <AccordionItem
                         title={
                           <FormattedMessage
@@ -1034,8 +1035,10 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                     <IconButton
                                       renderIcon={Subtract}
                                       id={index + "_removeoperation"}
-                                      kind="danger"
-                                      label=""
+                                      kind="ghost"
+                                      label={intl.formatMessage({
+                                        id: "label.button.remove",
+                                      })}
                                       size="sm"
                                       onClick={() =>
                                         removeOperation(index, operation_index)
@@ -1055,7 +1058,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                     labelText={
                                       <FormattedMessage id="testcalculation.label.insertOperation" />
                                     }
-                                    value={calculation.sampleId}
+                                    value={calculation.sampleId ?? ""}
                                     className="inputSelect"
                                     onChange={(e) => {
                                       addOperationBySelect(
@@ -1114,7 +1117,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 labelText={
                                   <FormattedMessage id="rulebuilder.label.selectSample" />
                                 }
-                                value={calculation.sampleId}
+                                value={calculation.sampleId ?? ""}
                                 className="inputSelect"
                                 onChange={(e) => {
                                   handleSampleSelected(
@@ -1151,7 +1154,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 onSelect={(id) =>
                                   handleTestSelection(id, index)
                                 }
-                                value={calculation.testId}
+                                value={calculation.testId ?? ""}
                                 suggestions={
                                   sampleTestList["FINAL_RESULT"][index]
                                     ? sampleTestList["FINAL_RESULT"][index]
@@ -1204,7 +1207,7 @@ const CalculatedValue: React.FC<CalculatedValueProps> = () => {
                                 labelText={
                                   <FormattedMessage id="rulebuilder.label.addExternalNote" />
                                 }
-                                value={calculation.note}
+                                value={calculation.note ?? ""}
                                 onChange={(e) => {
                                   handleCalculationFieldChange(e, index);
                                 }}
