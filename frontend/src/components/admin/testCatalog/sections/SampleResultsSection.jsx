@@ -599,24 +599,31 @@ const SampleResultsSection = ({ testId }) => {
   const detectionLimitsInvalid = (c) =>
     detectionLimitProblem(c) === "error.testCatalog.sampleResults.lodGtLoq";
 
-  // Result entry lists every option row, so the same value twice shows twice.
+  // Result entry lists every option row, so the same stored value twice shows
+  // twice; this is the check the server applies.
   const duplicateOptionNames = (c) => {
     const seen = new Set();
     const duplicates = new Set();
     (c.options || []).forEach((o) => {
-      const name = String(o.valueName || o.value || "")
-        .trim()
-        .toLowerCase();
-      if (!name) {
+      const value = String(o.value || "").trim();
+      if (!value) {
         return;
       }
-      if (seen.has(name)) {
-        duplicates.add(String(o.valueName || o.value).trim());
+      if (seen.has(value)) {
+        duplicates.add(o.valueName || value);
       }
-      seen.add(name);
+      seen.add(value);
     });
     return [...duplicates];
   };
+
+  // A select list's default must be one of its options; one it no longer offers
+  // is shown as "No default" and cleared on save.
+  const offeredDefault = (c) =>
+    !["D", "M", "C"].includes(c.resultType) ||
+    (c.options || []).some((o) => o.value && o.value === c.defaultResult)
+      ? c.defaultResult
+      : "";
 
   const handleSave = () => {
     // Every component needs a label (FR-29); the code isn't a separate user field,
@@ -697,6 +704,7 @@ const SampleResultsSection = ({ testId }) => {
       testId,
       components: normalized.map((c) => ({
         ...c,
+        defaultResult: offeredDefault(c),
         displayOrder: toInt(c.displayOrder),
         significantDigits: toInt(c.significantDigits),
         lod: toInt(c.lod),

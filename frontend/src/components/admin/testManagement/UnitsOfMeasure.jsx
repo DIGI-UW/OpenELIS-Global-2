@@ -63,6 +63,9 @@ function UnitsOfMeasure() {
 
   const loadUnits = () => {
     getFromOpenElisServer("/rest/uom", (response) => {
+      if (!Array.isArray(response)) {
+        notify(NotificationKinds.error, "server.error.msg");
+      }
       setUnits(Array.isArray(response) ? response : []);
     });
   };

@@ -1519,6 +1519,8 @@ public class TestCatalogEditorRestController {
                 copy.highCritical = r.highCritical;
                 copy.lowValid = r.lowValid;
                 copy.highValid = r.highValid;
+                copy.lowReporting = r.lowReporting;
+                copy.highReporting = r.highReporting;
                 perTest.add(copy);
             }
             resultLimitService.saveRangesForTest(testId, toResultLimits(perTest), sysUserId);

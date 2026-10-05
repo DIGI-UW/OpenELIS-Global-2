@@ -50,6 +50,12 @@ describe("legacy Test Management addresses redirect to the new editors", () => {
     expect(redirectFor(legacyPath)).toBe(target);
   });
 
+  it("serves View Test Catalog at its own address rather than redirecting it", () => {
+    expect(admin).toMatch(
+      /<Route exact path=\{`\$\{path\}\/TestCatalog`\} component=\{ViewTestCatalog\} \/>/,
+    );
+  });
+
   it("routes from the legacy folder only the pages that have no replacement", () => {
     const imports = [
       ...admin.matchAll(/from "\.\/testManagementConfigMenu\/([^"]+)"/g),

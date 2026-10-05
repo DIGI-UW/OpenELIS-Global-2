@@ -4098,6 +4098,7 @@
   "label.test.deactivate": "The following tests will be deactivated:",
   "label.test.display.order": "Test display order",
   "label.test.order.confirm": "Verify: Enable/disable test orderability",
+  "label.test.activation.confirm": "Verify: Activate/deactivate tests",
   "label.test.orderable": "The following tests will be orderable from the order form.",
   "label.test.results": "Test Results",
   "label.test.resultsData": "Test results data",

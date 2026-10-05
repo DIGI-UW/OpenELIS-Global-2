@@ -65,6 +65,9 @@ function ManageMethod() {
 
   const loadMethods = () => {
     getFromOpenElisServer("/rest/MethodCreate", (res) => {
+      if (!Array.isArray(res?.methods)) {
+        notify(NotificationKinds.error, "server.error.msg");
+      }
       setMethods(Array.isArray(res?.methods) ? res.methods : []);
     });
   };

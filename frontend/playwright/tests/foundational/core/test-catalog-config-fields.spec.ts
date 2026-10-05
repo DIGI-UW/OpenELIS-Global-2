@@ -116,6 +116,14 @@ test.describe("Test Catalogue: holding time, report flags and lab-unit filter", 
           notifyResults: !!original.notifyResults,
         },
       });
+      const restored = await (
+        await page.request.get(`${API}/tests/${testId}/basic-info`)
+      ).json();
+      expect(restored).toMatchObject({
+        timeHolding: original.timeHolding ?? "",
+        inLabOnly: !!original.inLabOnly,
+        notifyResults: !!original.notifyResults,
+      });
     }
   });
 

@@ -26,6 +26,8 @@ import UnitsOfMeasure from "./UnitsOfMeasure";
 
 let units;
 
+let addNotification;
+
 const renderPage = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -33,7 +35,7 @@ const renderPage = () =>
         value={{
           notificationVisible: false,
           setNotificationVisible: vi.fn(),
-          addNotification: vi.fn(),
+          addNotification,
         }}
       >
         <MemoryRouter>
@@ -47,6 +49,7 @@ const modal = () => screen.getByRole("dialog");
 
 describe("Units of Measure", () => {
   beforeEach(() => {
+    addNotification = vi.fn();
     units = [
       { id: "1", value: "mg/dL", code: "MGDL", ucumCode: "mg/dL" },
       { id: "2", value: "mmol/L", code: "", ucumCode: "mmol/L" },
@@ -157,5 +160,20 @@ describe("Units of Measure", () => {
     expect(
       within(modal()).getByText("This field is required"),
     ).toBeInTheDocument();
+  });
+
+  it("says so when the list cannot be loaded", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback(undefined),
+    );
+
+    renderPage();
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["server.error.msg"],
+      }),
+    );
   });
 });

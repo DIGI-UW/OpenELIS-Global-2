@@ -26,6 +26,8 @@ import ManageMethod from "./ManageMethod";
 
 let methods;
 
+let addNotification;
+
 const renderPage = () =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -33,7 +35,7 @@ const renderPage = () =>
         value={{
           notificationVisible: false,
           setNotificationVisible: vi.fn(),
-          addNotification: vi.fn(),
+          addNotification,
         }}
       >
         <MemoryRouter>
@@ -53,6 +55,7 @@ const fill = (label, value) =>
 
 describe("Manage Methods", () => {
   beforeEach(() => {
+    addNotification = vi.fn();
     methods = [
       {
         id: "1",
@@ -188,5 +191,20 @@ describe("Manage Methods", () => {
     expect(
       within(modal()).getByText("This field is required"),
     ).toBeInTheDocument();
+  });
+
+  it("says so when the list cannot be loaded", () => {
+    utilsMock.getFromOpenElisServer.mockImplementation((url, callback) =>
+      callback(undefined),
+    );
+
+    renderPage();
+
+    expect(addNotification).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: "error",
+        message: messages["server.error.msg"],
+      }),
+    );
   });
 });

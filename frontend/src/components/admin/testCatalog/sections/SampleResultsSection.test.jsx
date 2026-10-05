@@ -271,6 +271,37 @@ describe("SampleResultsSection", () => {
     expect(putToOpenElisServer).not.toHaveBeenCalled();
   });
 
+  it("accepts two options that share a label but store different values", async () => {
+    const sameLabel = clone(SAMPLE_RESULTS);
+    sameLabel.components[0].options = [
+      { id: "O1", value: "1103", valueName: "Negatif", sortOrder: 1 },
+      { id: "O2", value: "1200", valueName: "Negatif", sortOrder: 2 },
+    ];
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(sameLabel) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    expect(screen.queryByTestId("duplicate-options-0")).not.toBeInTheDocument();
+    fireEvent.click(saveButton());
+    expect(putToOpenElisServer).toHaveBeenCalledTimes(1);
+  });
+
+  it("clears a stored default that is not one of the options", async () => {
+    const stale = clone(SAMPLE_RESULTS);
+    stale.components[0].defaultResult = "legacy free text";
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.startsWith("/rest/test-catalog/tests/") ? clone(stale) : []),
+    );
+    renderSection();
+    await screen.findByDisplayValue("SYS");
+
+    fireEvent.click(saveButton());
+
+    expect(savedPayload().components[0].defaultResult).toBe("");
+  });
+
   it("picks a select list's default result from its options", async () => {
     renderSection();
     await screen.findByDisplayValue("SYS");
