@@ -264,7 +264,8 @@ mvn clean install -DskipTests
 - **Docker + Docker Compose**: For container orchestration
 - **PostgreSQL 14+**: Database (runs in Docker)
 - **Maven 3.8+**: Build system
-- **Node.js 16+**: Frontend development
+- **Node.js**: Use the version selected by the local CI runner; see
+  `frontend/package.json` for supported development versions.
 - **Git with submodules**: `git submodule update --init --recursive`
 
 ### Environment Configuration (.env file) - CRITICAL
@@ -326,7 +327,7 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Core Framework:**
 
-- **React 17** (react-scripts 5.0.1)
+- **React 17** (Vite; versions are maintained in `frontend/package.json`)
 - **Carbon Design System v1.15** (@carbon/react v1.15.0) - OFFICIAL UI FRAMEWORK
 - **Carbon Icons** (@carbon/icons-react v11.17.0)
 - **Carbon Charts** (@carbon/charts-react v1.5.2)
@@ -724,6 +725,24 @@ servers use the same command after setting `LETSENCRYPT_DOMAIN` and
 `LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
 existing Let's Encrypt flow.
 
+### Source development, candidate CI and published deployment
+
+Use the mode matching the work:
+
+- `scripts/dev-stack up` builds this checkout and pinned analyzer dependencies
+  using worktree-specific images. It does not reuse published application
+  images.
+- `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
+  revision, concurrently with GitHub after each push. Targeted tests alone are
+  not full parity. Retain and inspect the aggregate result and reports.
+- Published deployments use the released image Compose/installer path described
+  in [the setup guide](docs/dev_setup.md). Pull a coherent version or digest
+  set; do not mount source, a local WAR, or silently build missing application
+  images.
+
+Docker contexts select the runtime; do not hard-code a host socket or require
+runtime-specific manual environment edits. Dependency caches remain reusable.
+
 ### Initial Setup
 
 ```bash
@@ -739,23 +758,16 @@ java -version  # Must be Java 21
 # OR use SDKMAN
 sdk env  # Automatically switches to Java 21
 
-# Build DataExport submodule
-cd dataexport
-mvn clean install -DskipTests -Dmaven.test.skip=true
-cd ..
-
-# Build OpenELIS WAR
-mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# Start the complete isolated development stack
+# Check prerequisites, then build and start the complete source stack
+scripts/dev-stack doctor
 scripts/dev-stack up
 ```
 
 **Access Points:**
 
-- React UI: https://localhost/
-- Legacy UI: https://localhost/api/OpenELIS-Global/
-- FHIR Server: https://fhir.openelis.org:8443/fhir/
+- React UI: output of `scripts/dev-stack url`
+- Legacy UI: `<scripts/dev-stack url>/api/OpenELIS-Global/`
+- FHIR Server: use `FHIR_URL` from `scripts/dev-stack env`
 
 ### Git Worktrees
 

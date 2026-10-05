@@ -484,6 +484,9 @@ def cleanup_analyzer_networks(context: StackContext, environment: dict[str, str]
 
 
 def doctor(context: StackContext, environment: dict[str, str]) -> None:
+    for command in ("git", "docker", "mvn", "bash", "curl", "envsubst"):
+        if not shutil.which(command, path=environment.get("PATH")):
+            raise RuntimeError(f"Missing source-build prerequisite: {command}")
     for path in context.compose_files:
         if not path.is_file():
             raise RuntimeError(f"Missing compose file: {path}")
@@ -534,13 +537,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     environment = build_environment(context)
 
     if args.command == "doctor":
-        bootstrap_analyzer_harness(context, environment)
         doctor(context, environment)
     elif args.command == "config":
         bootstrap_analyzer_harness(context, environment)
         run(compose_command(context, "config"), cwd=context.project_dir, environment=environment)
     elif args.command == "up":
         ensure_local_env(context)
+        environment = build_environment(context)
+        doctor(context, environment)
         ensure_submodules(context, environment)
         bootstrap_analyzer_harness(context, environment)
         backend_was_running = service_is_running(
@@ -552,6 +556,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")
+        else:
+            images = [f"{context.project}-{name}:dev" for name in ("frontend", "backend", "analyzer-mock", "analyzer-bridge")]
+            run(["docker", "image", "inspect", *images], cwd=context.repo_root, environment=environment, capture=True)
         start_services(
             context,
             environment,

@@ -5,6 +5,13 @@
 
 ---
 
+## Development and CI entrypoints
+
+Follow [the setup guide](docs/dev_setup.md): `scripts/dev-stack up` builds the
+current source stack; `scripts/run-ci-checks.sh` runs the complete committed
+candidate locally in parallel with GitHub after every push. A targeted green
+suite is not full CI parity. Published-image deployment is a separate mode.
+
 ## Documentation Hierarchy
 
 When working on this project, follow this documentation order:

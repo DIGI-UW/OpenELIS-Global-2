@@ -45,6 +45,7 @@ TEST_USER_INPUT="${TEST_USER:-}"
 TEST_PASS_INPUT="${TEST_PASS:-}"
 MODE="parity"
 PLAYWRIGHT_PROJECT=""
+PLAYWRIGHT_PROJECTS=()
 PLAYWRIGHT_TEST_FILE=""
 # Empty keeps the video projects' own slowMo default in playwright.config.ts.
 PLAYWRIGHT_SLOWMO_INPUT="${PLAYWRIGHT_SLOWMO:-}"
@@ -93,6 +94,7 @@ while [[ $# -gt 0 ]]; do
         echo "ERROR: --project requires a harness Playwright project" >&2
         exit 2
       fi
+      PLAYWRIGHT_PROJECTS+=("$PLAYWRIGHT_PROJECT")
       shift 2
       ;;
     --test-file)
@@ -139,7 +141,7 @@ print(digest[:8], 64 + int(digest[:4], 16) % 160)
 PY
 )
 parity_slug="$(printf '%s' "$(basename "$REPO_ROOT")" | tr '[:upper:]' '[:lower:]' | tr -c 'a-z0-9-' '-')"
-export CI_PARITY_IMAGE_PREFIX="oe2-ci-${parity_slug}-${parity_digest}"
+export CI_PARITY_IMAGE_PREFIX="${CI_CANDIDATE_IMAGE_PREFIX:-oe2-ci-${parity_slug}-${parity_digest}}"
 export CI_PARITY_COMPOSE_PROJECT="${CI_PARITY_IMAGE_PREFIX}-$(date -u +%Y%m%d%H%M%S)-$$"
 export CI_PARITY_ANALYZER_SUBNET_PREFIX="10.${parity_octet}"
 export COMPOSE_PROJECT_NAME="$CI_PARITY_COMPOSE_PROJECT"
@@ -183,9 +185,12 @@ cleanup() {
     if [[ "$exit_code" -ne 0 ]]; then
       collect_failure_artifacts || true
     fi
-    docker compose "${CI_COMPOSE_FILES[@]}" down --volumes > "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
+    if ! docker compose "${CI_COMPOSE_FILES[@]}" down --volumes --remove-orphans > "$ARTIFACT_DIR/cleanup.log" 2>&1; then
+      echo "Failed to clean parity stack: $CI_PARITY_COMPOSE_PROJECT" >&2
+      [[ "$exit_code" != 0 ]] || exit_code=1
+    fi
   fi
-  return "$exit_code"
+  exit "$exit_code"
 }
 trap cleanup EXIT
 
@@ -261,45 +266,16 @@ require_images_for_compose() {
 }
 
 check_playwright_chromium_installed() {
-  local linux_cache="${HOME}/.cache/ms-playwright"
-  local mac_cache="${HOME}/Library/Caches/ms-playwright"
-
-  if [[ -d "$linux_cache" ]] && ls "$linux_cache"/chromium-* >/dev/null 2>&1; then
-    pass "playwright chromium cache is present ($linux_cache)"
-    return
+  if (cd "$FRONTEND_DIR" && node -e '
+    const { chromium } = require("playwright");
+    chromium.launch({headless: true}).then(browser => browser.close()).catch(error => {
+      console.error(error.message); process.exit(1);
+    });
+  '); then
+    pass "Playwright Chromium can launch"
+  else
+    fail "Playwright Chromium is unavailable (run: cd frontend && npx playwright install --only-shell chromium)"
   fi
-
-  if [[ -d "$mac_cache" ]] && ls "$mac_cache"/chromium-* >/dev/null 2>&1; then
-    pass "playwright chromium cache is present ($mac_cache)"
-    return
-  fi
-
-  fail "playwright chromium browser is missing (run: cd frontend && npx playwright install chromium --with-deps)"
-}
-
-with_timeout_wait() {
-  local seconds="$1"
-  local description="$2"
-  local cmd="$3"
-
-  if command -v timeout >/dev/null 2>&1; then
-    timeout "$seconds" bash -c "$cmd"
-    return $?
-  fi
-
-  local start now
-  start="$(date +%s)"
-  while true; do
-    if bash -c "$cmd"; then
-      return 0
-    fi
-    now="$(date +%s)"
-    if (( now - start >= seconds )); then
-      echo "Timed out waiting for: $description" >&2
-      return 124
-    fi
-    sleep 2
-  done
 }
 
 collect_failure_artifacts() {
@@ -403,9 +379,6 @@ check_file "$SEED_SCRIPT"
 check_file "$FIXTURE_DB_TARGET_TEST"
 check_file "$REUSABLE_WORKFLOW"
 check_file "$FRONTEND_DIR/package-lock.json"
-if [[ "$BUILD_SOURCE" == true ]]; then
-  require_command mvn
-fi
 
 if bash "$FIXTURE_DB_TARGET_TEST"; then
   pass "fixture loader honors an explicit database container"
@@ -452,7 +425,6 @@ if [[ "$BUILD_SOURCE" == true && "$PRECHECK_FAILED" == false ]]; then
   git -C "$REPO_ROOT" rev-parse HEAD > "$ARTIFACT_DIR/source-head.txt"
   (
     cd "$REPO_ROOT"
-    mvn -q clean install -DskipTests -Dmaven.test.skip=true
     docker compose "${CI_COMPOSE_FILES[@]}" build
     # `build` skips image-only services such as harness-catalog-init.
     docker compose "${CI_COMPOSE_FILES[@]}" pull --ignore-buildable --quiet
@@ -470,7 +442,13 @@ if [[ "$PRECHECK_ONLY" == true ]]; then
   exit 0
 fi
 
-PLAYWRIGHT_PROJECT="$(resolve_harness_playwright_project "$MODE" "$PLAYWRIGHT_PROJECT")"
+if [[ ${#PLAYWRIGHT_PROJECTS[@]} == 0 ]]; then
+  PLAYWRIGHT_PROJECTS+=("$(resolve_harness_playwright_project "$MODE" "")")
+fi
+for project in "${PLAYWRIGHT_PROJECTS[@]}"; do
+  resolve_harness_playwright_project "$MODE" "$project" >/dev/null
+done
+PLAYWRIGHT_PROJECT="${PLAYWRIGHT_PROJECTS[0]}"
 
 if [[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" && -n "$SHARD" ]]; then
   echo "ERROR: sharding is unsupported in harness-demo-video mode" >&2
@@ -498,7 +476,7 @@ chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" ||
 
 (
   cd "$REPO_ROOT"
-  OE_UAT_SCENARIOS_ENABLED=true docker compose "${CI_COMPOSE_FILES[@]}" up -d --no-build
+  OE_UAT_SCENARIOS_ENABLED=true docker compose "${CI_COMPOSE_FILES[@]}" up -d --no-build --wait --wait-timeout 600
 ) 2>&1 | tee -a "$RUN_LOG"
 
 WEBAPP_CONTAINER="$(container_id oe.openelis.org)"
@@ -509,8 +487,8 @@ BRIDGE_URL="https://localhost:$(published_port openelis-analyzer-bridge 8443)"
 MOCK_URL="http://localhost:$(published_port astm-simulator 8080)"
 echo "Isolated parity endpoints: OpenELIS=$BASE_URL Bridge=$BRIDGE_URL Mock=$MOCK_URL" | tee -a "$RUN_LOG"
 
-with_timeout_wait 60 "webapp cert material" "docker exec $WEBAPP_CONTAINER sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
-with_timeout_wait 60 "bridge cert material" "docker exec $BRIDGE_CONTAINER sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'" 2>&1 | tee -a "$RUN_LOG"
+docker exec "$WEBAPP_CONTAINER" sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
+docker exec "$BRIDGE_CONTAINER" sh -c 'test -s /etc/openelis-global/keystore && test -s /etc/openelis-global/truststore'
 
 (
   cd "$REPO_ROOT"
@@ -518,10 +496,8 @@ with_timeout_wait 60 "bridge cert material" "docker exec $BRIDGE_CONTAINER sh -c
   export TEST_PASS="$TEST_PASS_RESOLVED"
   export TIMEOUT_SECONDS=240
   export BASE_URL
-  bash scripts/e2e/wait-for-openelis-login.sh
+  BRIDGE_ADMIN_URL="$BRIDGE_URL" MOCK_SIMULATOR_URL="$MOCK_URL" bash scripts/e2e/wait-for-analyzer-harness-readiness.sh
 ) 2>&1 | tee -a "$RUN_LOG"
-with_timeout_wait 120 "bridge readiness" "curl -k -s -f --connect-timeout 2 --max-time 3 $BRIDGE_URL/actuator/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
-with_timeout_wait 120 "simulator readiness" "curl -s -f --connect-timeout 2 --max-time 3 $MOCK_URL/health > /dev/null" 2>&1 | tee -a "$RUN_LOG"
 
 (
   cd "$REPO_ROOT"
@@ -557,7 +533,7 @@ for dir in \
   demo--quantstudio-5 \
   demo--quantstudio-7 \
   demo--fluorocycler-xt; do
-  with_timeout_wait 120 "incoming dir $dir" "[ -d \"$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports/$dir/incoming\" ]" 2>&1 | tee -a "$RUN_LOG"
+  test -d "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports/$dir/incoming"
 done
 chmod -R a+rwX "$REPO_ROOT/projects/analyzer-harness/volume/analyzer-imports" || true
 
@@ -570,7 +546,10 @@ if ! verify_analyzer_connections "$analyzer_connections"; then
 fi
 echo "Analyzer connection references captured at $analyzer_connections" | tee -a "$RUN_LOG"
 
-PLAYWRIGHT_CMD=(npm run pw:test -- --project="$PLAYWRIGHT_PROJECT" --workers=1)
+PLAYWRIGHT_CMD=(npm run pw:test -- --workers=1)
+for project in "${PLAYWRIGHT_PROJECTS[@]}"; do
+  PLAYWRIGHT_CMD+=("--project=$project")
+done
 if [[ -n "$SHARD" ]]; then
   PLAYWRIGHT_CMD+=(--shard="$SHARD")
 fi
@@ -588,6 +567,8 @@ set +e
   MOCK_SIMULATOR_URL="$MOCK_URL" \
   TEST_USER="$TEST_USER_RESOLVED" \
   TEST_PASS="$TEST_PASS_RESOLVED" \
+  ANALYZER_INGRESS_USER="$TEST_USER_RESOLVED" \
+  ANALYZER_INGRESS_PASS="$TEST_PASS_RESOLVED" \
   PLAYWRIGHT_VIDEO="$([[ "$PLAYWRIGHT_PROJECT" == "harness-demo-video" ]] && echo "on" || echo "off")" \
   PLAYWRIGHT_SLOWMO="$PLAYWRIGHT_SLOWMO_INPUT" \
   "${PLAYWRIGHT_CMD[@]}"

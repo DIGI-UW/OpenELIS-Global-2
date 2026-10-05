@@ -8,8 +8,7 @@
 #   1. A FRESH database every run (CI never reuses a volume; dirty-volume
 #      reloads are the only place fixture cleanup FK errors can happen).
 #   2. The workflow's exact fixture command (load-test-fixtures.sh, NOT the
-#      minimal scripts/load-ci-fixtures.sh, which lacks the demo patient and
-#      storage fixtures).
+#      with the fixture profile owned by that CI job).
 #   3. The workflow's exact Playwright invocation (core-app + core-demo
 #      projects; workers=1 comes from playwright.config.ts, same as CI).
 #
@@ -55,12 +54,14 @@ cd "$PROJECT_ROOT"
 
 KEEP_DB=false
 CLEANUP=false
+BUILD_IMAGES=true
 SUITE=core
 PW_ARGS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --keep-db) KEEP_DB=true; shift ;;
     --cleanup) CLEANUP=true; shift ;;
+    --no-build) BUILD_IMAGES=false; shift ;;
     --suite) SUITE="${2:?--suite needs a value}"; shift 2 ;;
     --) shift; PW_ARGS=("$@"); break ;;
     *) PW_ARGS+=("$1"); shift ;;
@@ -84,6 +85,7 @@ fi
 
 COMPOSE=(docker compose -p "$E2E_STACK_PROJECT"
          -f "$PROJECT_ROOT/build.docker-compose.yml"
+         -f "$PROJECT_ROOT/.github/ci/ci.memory-limits.yml"
          -f "$PROJECT_ROOT/build.docker-compose.worktree.yml")
 if [[ "$CLEANUP" == true ]]; then
   cleanup_stack() {
@@ -141,7 +143,10 @@ else
   # local CI-parity stack is disposable and needs it for the Playwright setup.
   export OE_UAT_SCENARIOS_ENABLED=true
   "${COMPOSE[@]}" down -v --remove-orphans
-  "${COMPOSE[@]}" up -d --build --wait --wait-timeout 600
+  if [[ "$BUILD_IMAGES" == true ]]; then
+    "${COMPOSE[@]}" build
+  fi
+  "${COMPOSE[@]}" up -d --no-build --wait --wait-timeout 600
 fi
 echo -e "${GREEN}✓ Stack ready${NC}"
 echo ""
@@ -162,12 +167,22 @@ if [ -z "$PROXY_HTTPS_PORT" ]; then
   echo -e "${RED}ERROR: proxy has no published 443 port; is the stack up?${NC}"
   exit 1
 fi
+export BASE_URL="https://localhost:${PROXY_HTTPS_PORT}"
+export TEST_USER="${TEST_USER:-admin}"
+export TEST_PASS="${TEST_PASS:-adminADMIN!}"
+export ANALYZER_INGRESS_USER="$TEST_USER"
+export ANALYZER_INGRESS_PASS="$TEST_PASS"
+TIMEOUT_SECONDS=240 bash scripts/e2e/wait-for-openelis-login.sh
 
 # Step 2: Fixtures — the workflow's exact command
 # (.github/workflows/e2e-playwright-reusable.yml, "Load core fixtures").
 echo -e "${YELLOW}[2/4] Loading $SUITE fixtures (CI command)...${NC}"
 if [[ "$SUITE" == core ]]; then
   ./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
+  "${COMPOSE[@]}" exec -T oe.openelis.org mkdir -p \
+    /data/analyzer-imports/e2e-qs5/incoming \
+    /data/analyzer-imports/e2e-qs7/incoming \
+    /data/analyzer-imports/e2e-fluorocycler/incoming
 else
   "${COMPOSE[@]}" exec -T db.openelis.org psql -U clinlims -d clinlims --set=ON_ERROR_STOP=on < src/test/resources/e2e-foundational-data.sql
 fi
@@ -204,8 +219,12 @@ export LANG=en_US.UTF-8
 export TEST_USER="${TEST_USER:-admin}"
 export TEST_PASS="${TEST_PASS:-adminADMIN!}"
 if [[ "$SUITE" == core ]]; then
-  export BASE_URL="${BASE_URL:-https://localhost:${PROXY_HTTPS_PORT}}"
   CMD=(npm run pw:test -- --project=core-app --project=core-demo)
+  if [[ -n "${OE_CI_CORE_PROJECTS:-}" ]]; then
+    CMD=(npm run pw:test --)
+    IFS=',' read -ra projects <<< "$OE_CI_CORE_PROJECTS"
+    for project in "${projects[@]}"; do CMD+=("--project=$project"); done
+  fi
   CMD+=("${PW_ARGS[@]}")
 else
   if [[ "${#PW_ARGS[@]}" -gt 0 ]]; then

@@ -387,6 +387,7 @@ class DevStackContractTest(unittest.TestCase):
 
     def test_up_recreates_a_running_backend_exactly_once_after_build(self):
         with (
+            patch.object(self.dev_stack, "doctor"),
             patch.object(self.dev_stack, "ensure_local_env"),
             patch.object(self.dev_stack, "ensure_submodules"),
             patch.object(self.dev_stack, "bootstrap_analyzer_harness"),

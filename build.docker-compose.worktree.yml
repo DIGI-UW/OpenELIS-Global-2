@@ -20,11 +20,11 @@
 services:
   certs:
     container_name: !reset null
-    image: ${E2E_STACK_PROJECT:-oe2-e2e}-certgen
+    image: ${CI_CANDIDATE_IMAGE_PREFIX:-${E2E_STACK_PROJECT:-oe2-e2e}}-certs:ci
 
   db.openelis.org:
     container_name: !reset null
-    image: ${E2E_STACK_PROJECT:-oe2-e2e}-database
+    image: ${CI_CANDIDATE_IMAGE_PREFIX:-${E2E_STACK_PROJECT:-oe2-e2e}}-db_openelis_org:ci
     ports: !override
       - name: postgres
         target: 5432
@@ -34,7 +34,7 @@ services:
 
   oe.openelis.org:
     container_name: !reset null
-    image: ${E2E_STACK_PROJECT:-oe2-e2e}-webapp
+    image: ${CI_CANDIDATE_IMAGE_PREFIX:-${E2E_STACK_PROJECT:-oe2-e2e}}-oe_openelis_org:ci
     ports: !override
       - name: http
         target: 8080
@@ -56,7 +56,7 @@ services:
 
   fhir.openelis.org:
     container_name: !reset null
-    image: ${E2E_STACK_PROJECT:-oe2-e2e}-fhir
+    image: ${CI_CANDIDATE_IMAGE_PREFIX:-${E2E_STACK_PROJECT:-oe2-e2e}}-fhir_openelis_org:ci
     ports: !override
       - name: http
         target: 8080
@@ -71,11 +71,11 @@ services:
 
   frontend.openelis.org:
     container_name: !reset null
-    image: ${E2E_STACK_PROJECT:-oe2-e2e}-frontend
+    image: ${CI_CANDIDATE_IMAGE_PREFIX:-${E2E_STACK_PROJECT:-oe2-e2e}}-frontend_openelis_org:ci
 
   proxy:
     container_name: !reset null
-    image: ${E2E_STACK_PROJECT:-oe2-e2e}-proxy
+    image: ${CI_CANDIDATE_IMAGE_PREFIX:-${E2E_STACK_PROJECT:-oe2-e2e}}-proxy:ci
     ports: !override
       - name: http
         target: 80

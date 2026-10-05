@@ -33,27 +33,25 @@ user text directly into shell commands. Support these patterns:
 
 **Behavior options:**
 
-| Flag                    | Default                | Description                                                                                                       |
-| ----------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `--max-iterations N`    | 5                      | Max fix-push-check cycles before escalating                                                                       |
-| `--dry-run`             | off                    | Diagnose only — no fixes, no pushes                                                                               |
-| `--local-e2e`           | off                    | Run full local E2E suite in parallel with CI after push                                                           |
-| `--reset-env`           | off                    | Reset local E2E environment (fixtures) before local runs                                                          |
-| `--compose-file <path>` | dev.docker-compose.yml | Docker Compose file for local E2E (use `build.docker-compose.yml` to match CI exactly)                            |
-| `--flaky-retry N`       | 0                      | Re-run suspected flaky tests N times before diagnosing                                                            |
-| `--skip-local-validate` | off                    | Skip local validation (push immediately after fix)                                                                |
-| `--jobs <job-names>`    | all                    | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
-| `--notify`              | off                    | Force NOTIFY level (always summarize, even for AUTO)                                                              |
-| `--report-to-pr`        | off                    | Post resolution report as a PR comment when done                                                                  |
+| Flag                    | Default     | Description                                                                                                       |
+| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+| `--max-iterations N`    | 5           | Max fix-push-check cycles before escalating                                                                       |
+| `--dry-run`             | off         | Diagnose only — no fixes, no pushes                                                                               |
+| `--local-e2e`           | deprecated  | Full local CI always runs in parallel after push; this legacy flag is unnecessary                                 |
+| `--reset-env`           | deprecated  | Isolated lane runners own their fresh databases; never reset the interactive stack                                 |
+| `--compose-file <path>` | unsupported | Use the isolated repository runners; do not override Compose layering                                             |
+| `--flaky-retry N`       | 0           | Re-run suspected flaky tests N times before diagnosing                                                            |
+| `--skip-local-validate` | unsupported | Do not skip local validation                                                                                      |
+| `--jobs <job-names>`    | all         | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
+| `--notify`              | off         | Force NOTIFY level (always summarize, even for AUTO)                                                              |
+| `--report-to-pr`        | off         | Post resolution report as a PR comment when done                                                                  |
 
 **Examples:**
 
 ```
 /fix-ci                                    # Basic: fix current branch
-/fix-ci --pr 123 --local-e2e              # Fix PR 123, run local E2E in parallel
+/fix-ci --pr 123                           # Fix PR 123; full local CI runs in parallel
 /fix-ci --dry-run                          # Diagnose only, show what would be fixed
-/fix-ci --local-e2e --reset-env            # Full local replication + CI in parallel
-/fix-ci --local-e2e --compose-file build.docker-compose.yml  # Match CI exactly
 /fix-ci --flaky-retry 2                    # Retry suspected flaky tests twice
 /fix-ci --max-iterations 2 --jobs "E2E / Cypress (Deprecated) / Core"  # Fix deprecated Cypress core shard only
 /fix-ci --notify --report-to-pr            # Verbose + post report to PR
@@ -465,31 +463,14 @@ If the diagnosed failure was a Cypress or Playwright E2E test, replicate the CI
 environment locally and run the specific failing test **before pushing**. This
 catches fixes that pass unit tests but fail in the full browser context.
 
-**Step 1 — Reset local E2E environment to match CI:**
+**Step 1 — Use an isolated source-built CI stack:**
 
-If `--reset-env` is set, or if containers are unhealthy/stopped, reset the local
-environment using the project's existing fixture scripts:
-
-```bash
-# Load the exact same fixtures CI loads (works with both dev and build compose)
-./src/test/resources/load-ci-fixtures.sh
-
-# OR for a full environment reset (if containers are stale/unhealthy):
-./scripts/reset-dev-env.sh --skip-build
-```
-
-If containers are not running or are unhealthy, restart them first:
-
-```bash
-# Quick restart using configured compose file (preserves DB, reloads fixtures)
-# Default: dev.docker-compose.yml. Use --compose-file build.docker-compose.yml
-# to match CI exactly (builds from source instead of using pre-built images).
-docker compose -f $COMPOSE_FILE up -d
-./src/test/resources/load-ci-fixtures.sh
-```
-
-Without `--reset-env`, only reload fixtures if the test failure suggests stale
-data (e.g., missing patient, missing analyzer config).
+Use `scripts/run-e2e-like-ci.sh --cleanup -- <Playwright selection>` for
+focused core debugging. For the analyzer lane, use the internal
+`projects/analyzer-harness/ci-parity-test.sh --build --project <project>` runner.
+These tools own their fresh databases, Compose layering and discovered URLs.
+Never reload fixtures into an interactive development stack or invoke raw
+Compose commands to reproduce CI. For interactive work, use `scripts/dev-stack`.
 
 **Step 2 — Run the specific failing E2E test locally:**
 
@@ -514,7 +495,7 @@ cd frontend && npm run cy:failfast
 
 - [ ] Formatting passes (no diffs)
 - [ ] Relevant unit tests pass
-- [ ] If E2E failure: local environment reset via `load-ci-fixtures.sh`
+- [ ] If E2E failure: reproduced through the owning isolated lane runner
 - [ ] If E2E failure: specific test passes locally against reset environment
 - [ ] No new warnings or errors introduced
 
@@ -575,34 +556,21 @@ fi
 This catches cascading failures (e.g., a test fix that breaks formatting) before
 waiting 30 minutes for E2E to report back.
 
-#### Parallel tracks: Local E2E + CI monitoring
+#### Parallel tracks: Full local CI and GitHub monitoring
 
-After pushing, always monitor CI. If `--local-e2e` is set, **also** run the full
-local E2E suite in parallel — local results arrive in minutes while CI takes
-15-30 minutes.
-
-**Track A — Local E2E (only with `--local-e2e` flag):**
-
-Reset the environment and run the **full E2E suite** (not just the single test)
-to catch regressions before CI reports back.
+After every push, start `scripts/run-ci-checks.sh` on that committed revision
+while GitHub CI runs. Backend, frontend and E2E checks run through the one
+public entrypoint; passing a targeted suite is never a full-parity result.
+Preserve the printed artifact directory and report all lanes, including failures
+and checks that did not run. Use `--base REF` when the PR targets another branch.
 
 ```bash
-# Reset fixtures to match CI (include if --reset-env is set, or always
-# when --local-e2e is used for the first time in this iteration)
-./src/test/resources/load-ci-fixtures.sh
-
-# Run full Cypress suite with fail-fast (stops on first failure for faster feedback)
-cd frontend && npm run cy:failfast
-
-# Or full Playwright suite (background)
-cd frontend && npm run pw:test
+scripts/run-ci-checks.sh --artifact-dir /tmp/openelis-local-ci
 ```
 
-Run this in the background while monitoring CI. If local E2E fails before CI
-completes, you have early signal to start diagnosing the next failure without
-waiting for CI.
-
-**Without `--local-e2e`:** Skip Track A entirely and only monitor CI.
+The runner creates its own isolated checkouts and test stacks. Do not pass an
+interactive development URL or reuse its database. Only stop a previous local
+run after confirming that it is superseded by the newer committed candidate.
 
 **Track B — CI monitoring (poll `gh pr checks`):**
 
@@ -746,21 +714,21 @@ fi
 
 Use this to rapidly classify failures in Phase 1:
 
-| Log Pattern                                       | Category | Strategy               |
-| ------------------------------------------------- | -------- | ---------------------- |
-| `FATAL: password authentication failed`           | config   | Check .env / env vars  |
-| `container ... is unhealthy`                      | config   | Check .env / Docker    |
-| `Cannot find module`                              | build    | Fix import path        |
-| `TypeError: Cannot read properties of undefined`  | build    | Fix null reference     |
-| `expected ... to be 'visible'`                    | test     | Fix selector / timing  |
-| `is being covered by`                             | test     | Fix z-index / overlay  |
-| `Timed out after waiting`                         | test     | Increase timeout / fix |
-| `No such file or directory`                       | config   | Check paths / fixtures |
-| `Exit code 137` (OOM)                             | infra    | Suggest re-run         |
-| `::error::The runner has received a shutdown`     | infra    | Suggest re-run         |
-| `Object with guid response@ was not bound`        | infra    | Playwright browser GC  |
-| `Target page, context or browser has been closed` | infra    | Playwright browser GC  |
-| `page.reload: Target page, context or browser`    | infra    | Playwright browser GC  |
+| Log Pattern                                       | Category | Strategy                              |
+| ------------------------------------------------- | -------- | ------------------------------------- |
+| `FATAL: password authentication failed`           | config   | Check .env / env vars                 |
+| `container ... is unhealthy`                      | config   | Check .env / Docker                   |
+| `Cannot find module`                              | build    | Fix import path                       |
+| `TypeError: Cannot read properties of undefined`  | build    | Fix null reference                    |
+| `expected ... to be 'visible'`                    | test     | Fix selector / timing                 |
+| `is being covered by`                             | test     | Fix z-index / overlay                 |
+| `Timed out after waiting`                         | test     | Diagnose readiness or isolation / fix |
+| `No such file or directory`                       | config   | Check paths / fixtures                |
+| `Exit code 137` (OOM)                             | infra    | Suggest re-run                        |
+| `::error::The runner has received a shutdown`     | infra    | Suggest re-run                        |
+| `Object with guid response@ was not bound`        | infra    | Playwright browser GC                 |
+| `Target page, context or browser has been closed` | infra    | Playwright browser GC                 |
+| `page.reload: Target page, context or browser`    | infra    | Playwright browser GC                 |
 
 ## Iteration State Tracking
 

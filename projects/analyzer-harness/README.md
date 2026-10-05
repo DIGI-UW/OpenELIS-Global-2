@@ -11,10 +11,11 @@ The analyzer harness CI gate runs from the repository root using:
 - `.github/ci/ci.analyzer-harness.yml`
 - `.github/workflows/e2e-playwright-reusable.yml`
 
-Use `ci-parity-test.sh` to run that path locally. The extra local Compose
-override keeps CI images and service settings. Each run gets fresh containers,
-networks, volumes, and random loopback ports; its image tags are scoped to the
-worktree.
+Use `scripts/run-ci-checks.sh` for complete local CI. `ci-parity-test.sh` is an
+internal harness-only debugging and recording tool; its result is not full CI
+parity. Use it to run that lane locally. The extra local Compose override keeps
+CI images and service settings. Each run gets fresh containers, networks,
+volumes, and random loopback ports; its image tags are scoped to the worktree.
 
 ```bash
 ./projects/analyzer-harness/ci-parity-test.sh --build

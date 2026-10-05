@@ -8,11 +8,13 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 ARTIFACT_DIR=""
 PLAN_ONLY=false
 KEEP_CHECKOUTS=false
+BASE_REF=origin/develop
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --artifact-dir) ARTIFACT_DIR="${2:?--artifact-dir needs a path}"; shift 2 ;;
     --plan) PLAN_ONLY=true; shift ;;
     --keep-checkouts) KEEP_CHECKOUTS=true; shift ;;
+    --base) BASE_REF="${2:?--base needs a Git ref}"; shift 2 ;;
     --help|-h)
       sed -n '1,34p' "$0"
       exit 0 ;;
@@ -21,6 +23,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 HEAD_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
+BASE_SHA="$(git -C "$REPO_ROOT" rev-parse "$BASE_REF^{commit}")"
+SOURCE_BRANCH="$(git -C "$REPO_ROOT" branch --show-current)"
+export OE_CI_BASE_SHA="$BASE_SHA" OE_CI_SOURCE_BRANCH="$SOURCE_BRANCH"
+SPECKIT_CHANGED=false
+if git -C "$REPO_ROOT" diff --name-only "$BASE_SHA...$HEAD_SHA" | \
+  grep -Eq '^(\.specify/|\.ai/|\.cursor/|\.claude/|scripts/(install-agent-skills|install-speckit-commands)\.py$|\.github/workflows/speckit-validate\.yml$|scripts/ci/validate-agent-assets\.sh$)'; then
+  SPECKIT_CHANGED=true
+fi
 if ! git -C "$REPO_ROOT" diff --quiet || ! git -C "$REPO_ROOT" diff --cached --quiet; then
   echo "Commit or discard tracked changes first; CI tests the committed source, not this working tree." >&2
   exit 2
@@ -28,16 +38,20 @@ fi
 
 if [[ "$PLAN_ONLY" == true ]]; then
   printf 'Source: %s\n' "$HEAD_SHA"
+  printf 'Base: %s (%s)\nAgent asset validation applicable: %s\n' "$BASE_REF" "$BASE_SHA" "$SPECKIT_CHANGED"
   printf '%s\n' \
     'Backend: formatting, deployment contract, DataExport, full Maven build and tests' \
     'Frontend: clean install, formatting, lint, Playwright guard, full Vitest, image build, i18n' \
-    'E2E: shared build, all four core Playwright shards, both analyzer projects, both Cypress shards (fresh database per suite)'
+    'E2E: shared candidate images, core Playwright shards, combined analyzer project shards, Cypress shards (fresh database per job)'
   exit 0
 fi
 
 for command in git mvn node npm python3 docker; do
   command -v "$command" >/dev/null || { echo "Missing prerequisite: $command" >&2; exit 2; }
 done
+source "$REPO_ROOT/scripts/ci/docker-env.sh"
+configure_docker_environment
+"$REPO_ROOT/scripts/run-java21" >/dev/null
 # GitHub runs application checks on Node 20 and the deployment contract on Node 22.
 if command -v fnm >/dev/null; then
   NODE20_BIN="$(fnm exec --using=20 which node)"
@@ -56,6 +70,9 @@ fi
 mkdir -p "$ARTIFACT_DIR/checkouts"
 ARTIFACT_DIR="$(cd "$ARTIFACT_DIR" && pwd)"
 printf '%s\n' "$HEAD_SHA" > "$ARTIFACT_DIR/source-head.txt"
+printf '%s\n' "$BASE_SHA" > "$ARTIFACT_DIR/base-head.txt"
+export CI_CANDIDATE_IMAGE_PREFIX="oe2-ci-${HEAD_SHA:0:12}-$(date -u +%Y%m%d%H%M%S)-$$"
+printf '%s\n' "$CI_CANDIDATE_IMAGE_PREFIX" > "$ARTIFACT_DIR/candidate-image-prefix.txt"
 printf 'Full local CI: %s\nLogs: %s\n' "$HEAD_SHA" "$ARTIFACT_DIR"
 python3 -m venv "$ARTIFACT_DIR/python"
 "$ARTIFACT_DIR/python/bin/python" -m pip install --disable-pip-version-check PyYAML==6.0.2 > "$ARTIFACT_DIR/python-dependencies.log" 2>&1
@@ -68,11 +85,21 @@ cleanup() {
     for lane in backend frontend e2e; do
       local checkout="$ARTIFACT_DIR/checkouts/$lane"
       if [[ -d "$checkout" ]]; then
-        git -C "$REPO_ROOT" worktree remove --force "$checkout" >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
+        for report in "$checkout"/target/surefire-reports "$checkout"/target/failsafe-reports \
+          "$checkout"/dataexport/*/target/surefire-reports; do
+          [[ -d "$report" ]] || continue
+          local destination="$ARTIFACT_DIR/$lane-artifacts/${report#"$checkout"/}"
+          mkdir -p "$(dirname "$destination")"
+          cp -R "$report" "$destination" || original_status=1
+        done
+        if ! git -C "$REPO_ROOT" worktree remove --force --force "$checkout" >> "$ARTIFACT_DIR/cleanup.log" 2>&1; then
+          original_status=1
+        fi
       fi
     done
   fi
-  return "$original_status"
+  printf '%s\n' "$original_status" > "$ARTIFACT_DIR/result.exit"
+  exit "$original_status"
 }
 trap cleanup EXIT
 
@@ -90,6 +117,10 @@ run_backend() {
   scripts/run-java21 mvn spotless:check
   "$NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs
   python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
+  python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
+  if [[ "$SPECKIT_CHANGED" == true ]]; then
+    bash scripts/ci/validate-agent-assets.sh
+  fi
   (cd dataexport && ../scripts/run-java21 mvn clean install)
   scripts/run-java21 mvn clean install -Dspotless.check.skip=true
 }
@@ -103,46 +134,33 @@ run_frontend() {
   npm run lint:all || echo 'Advisory src lint failed; GitHub treats this step as non-blocking.'
   npm run pw:guard
   CI=true npm test
-  docker build -f Dockerfile -t "oe-full-ci-frontend:${HEAD_SHA:0:12}" .
-  python3 - <<'PY'
-import glob, json, pathlib, subprocess, sys
-errors = []
-for path in sorted(glob.glob('src/languages/*.json')):
-    pairs = json.loads(pathlib.Path(path).read_text(), object_pairs_hook=lambda value: value)
-    seen = set()
-    duplicates = [key for key, _ in pairs if key in seen or seen.add(key)]
-    if duplicates:
-        errors.append(f'{path}: duplicate keys: {duplicates[:5]}')
-base = subprocess.check_output(['git', 'merge-base', 'HEAD', 'origin/develop'], text=True).strip()
-changed = subprocess.check_output(['git', 'diff', '--name-only', base, 'HEAD', '--', ':/frontend/src/languages/'], text=True).splitlines()
-non_english = [path for path in changed if path.endswith('.json') and not path.endswith('/en.json')]
-if non_english:
-    errors.append('Non-English locale changes: ' + ', '.join(non_english))
-if errors:
-    sys.exit('\n'.join(errors))
-print('i18n duplicate-key and source-of-truth checks passed')
-PY
+  docker build -f Dockerfile -t "${CI_CANDIDATE_IMAGE_PREFIX}-frontend-static:ci" .
+  python3 "$root/scripts/ci/validate-i18n.py" --base "$OE_CI_BASE_SHA" --branch "$OE_CI_SOURCE_BRANCH"
 }
 
 run_e2e_step() {
   local name="$1"
   shift
   printf 'Running %s\n' "$name"
-  if "$@" > "$ARTIFACT_DIR/$name.log" 2>&1; then
+  local result=0
+  "$@" > "$ARTIFACT_DIR/$name.log" 2>&1 || result=$?
+  if [[ "$result" == 0 ]]; then
     printf 'PASS\n' > "$ARTIFACT_DIR/$name.status"
-    return 0
+  else
+    printf 'FAIL\n' > "$ARTIFACT_DIR/$name.status"
   fi
-  printf 'FAIL\n' > "$ARTIFACT_DIR/$name.status"
   local checkout="$ARTIFACT_DIR/checkouts/e2e/frontend"
   local evidence="$ARTIFACT_DIR/$name-artifacts"
   # CI=true selects Playwright's blob reporter, so blob-report holds the report.
   for path in test-results playwright-report blob-report cypress/screenshots; do
     if [[ -d "$checkout/$path" ]]; then
       mkdir -p "$evidence/$(dirname "$path")"
-      cp -R "$checkout/$path" "$evidence/$path" || true
+      cp -R "$checkout/$path" "$evidence/$path" || result=1
+      rm -rf "$checkout/$path"
     fi
   done
-  return 1
+  [[ "$result" == 0 ]] || printf 'FAIL\n' > "$ARTIFACT_DIR/$name.status"
+  return "$result"
 }
 
 run_shared_build() {
@@ -152,14 +170,21 @@ run_shared_build() {
   docker buildx bake \
     -f build.docker-compose.yml \
     -f .github/ci/ci.analyzer-harness.yml \
-    --print >/dev/null || return
-  docker compose \
-    -f build.docker-compose.yml \
-    -f .github/ci/ci.analyzer-harness.yml \
-    config --images >/dev/null || return
-  (cd dataexport/dataexport-core && ../../scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true) || return
-  (cd dataexport && ../scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true) || return
-  scripts/run-java21 mvn clean install -DskipTests -Dmaven.test.skip=true -Dspotless.check.skip=true
+    --print > "$ARTIFACT_DIR/bake-input.json" || return
+  python3 - "$ARTIFACT_DIR" "$CI_CANDIDATE_IMAGE_PREFIX" "$HEAD_SHA" <<'PY'
+import json, pathlib, sys
+directory, prefix, sha = sys.argv[1:]
+path = pathlib.Path(directory)
+definition = json.loads((path / 'bake-input.json').read_text())
+overrides = {'target': {name: {'tags': [f'{prefix}-{name}:ci'],
+                              'labels': {'org.opencontainers.image.revision': sha}}
+                         for name in definition['target']}}
+(path / 'candidate-tags.json').write_text(json.dumps(overrides, indent=2))
+PY
+  docker buildx bake -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml \
+    -f "$ARTIFACT_DIR/candidate-tags.json" --load || return
+  docker compose -f build.docker-compose.yml -f .github/ci/ci.analyzer-harness.yml \
+    pull --ignore-buildable --quiet
 }
 
 run_e2e() {
@@ -167,16 +192,39 @@ run_e2e() {
   local failed=0
   cd "$root"
   run_e2e_step e2e-scope node --test .github/scripts/e2e-scope.test.cjs || failed=1
-  run_e2e_step shared-build run_shared_build || failed=1
-  run_e2e_step e2e-frontend-deps bash -c "cd frontend && npm ci --legacy-peer-deps" || failed=1
+  run_e2e_step shared-build run_shared_build || return 1
+  run_e2e_step e2e-frontend-deps bash -c "cd frontend && npm ci --legacy-peer-deps && npx playwright install --only-shell chromium" || return 1
+  local core_count harness_count harness_projects
+  read -r OE_CI_CORE_PROJECTS core_count harness_projects harness_count < <(python3 - "$ARTIFACT_DIR" <<'PY'
+import json, pathlib, sys, yaml
+root = pathlib.Path('.github/workflows')
+jobs = yaml.safe_load((root / 'e2e-authoritative-reusable.yml').read_text())['jobs']
+reusable = yaml.safe_load((root / 'e2e-playwright-reusable.yml').read_text())
+default = reusable.get('on', reusable.get(True))['workflow_call']['inputs']['shard_indices']['default']
+resolved = {}
+for name in ('playwright-core', 'playwright-harness'):
+    config = jobs[name]['with']
+    resolved[name] = {'projects': config['projects'], 'shards': json.loads(config.get('shard_indices', default))}
+pathlib.Path(sys.argv[1], 'resolved-e2e-plan.json').write_text(json.dumps(resolved, indent=2))
+core, harness = resolved.values()
+print(core['projects'], len(core['shards']), harness['projects'], len(harness['shards']))
+PY
+  ) || return 1
+  export OE_CI_CORE_PROJECTS
   export OE_CI_PROJECT_FILE="$ARTIFACT_DIR/core-compose-project.txt"
-  for shard in 1 2 3 4; do
-    run_e2e_step "core-playwright-$shard" scripts/run-e2e-like-ci.sh --cleanup -- --shard="$shard/4" || failed=1
+  for ((shard=1; shard<=core_count; shard++)); do
+    run_e2e_step "core-playwright-$shard" scripts/run-e2e-like-ci.sh --no-build --cleanup -- --shard="$shard/$core_count" || failed=1
   done
-  run_e2e_step analyzer-foundational projects/analyzer-harness/ci-parity-test.sh --build --project harness-foundational --artifact-dir "$ARTIFACT_DIR/analyzer-foundational" || failed=1
-  run_e2e_step analyzer-demo projects/analyzer-harness/ci-parity-test.sh --project harness-demo --artifact-dir "$ARTIFACT_DIR/analyzer-demo" || failed=1
+  local project_args=()
+  IFS=',' read -ra projects <<< "$harness_projects"
+  for project in "${projects[@]}"; do project_args+=(--project "$project"); done
+  for ((shard=1; shard<=harness_count; shard++)); do
+    run_e2e_step "analyzer-$shard" projects/analyzer-harness/ci-parity-test.sh \
+      "${project_args[@]}" --shard "$shard/$harness_count" \
+      --artifact-dir "$ARTIFACT_DIR/analyzer-$shard" || failed=1
+  done
   for shard in core independent; do
-    run_e2e_step "cypress-$shard" scripts/run-e2e-like-ci.sh --suite "cypress-$shard" --cleanup || failed=1
+    run_e2e_step "cypress-$shard" scripts/run-e2e-like-ci.sh --no-build --suite "cypress-$shard" --cleanup || failed=1
   done
   return "$failed"
 }
@@ -191,7 +239,7 @@ cleanup_owned_stacks() {
       -f build.docker-compose.yml -f build.docker-compose.worktree.yml \
       down -v --remove-orphans) >> "$ARTIFACT_DIR/cleanup.log" 2>&1 || true
   fi
-  for lane in analyzer-foundational analyzer-demo; do
+  for lane in analyzer-1 analyzer-2; do
     local project_file="$ARTIFACT_DIR/$lane/compose-project.txt"
     [[ -f "$project_file" ]] || continue
     project="$(cat "$project_file")"
@@ -230,7 +278,7 @@ set -e
 
 failed=0
 printf '\nLocal CI result for %s\n' "$HEAD_SHA"
-for lane in backend frontend e2e-scope shared-build e2e-frontend-deps core-playwright-1 core-playwright-2 core-playwright-3 core-playwright-4 analyzer-foundational analyzer-demo cypress-core cypress-independent; do
+for lane in backend frontend e2e e2e-scope shared-build e2e-frontend-deps core-playwright-1 core-playwright-2 core-playwright-3 core-playwright-4 analyzer-1 analyzer-2 cypress-core cypress-independent; do
   if [[ -f "$ARTIFACT_DIR/$lane.status" ]]; then
     result="$(cat "$ARTIFACT_DIR/$lane.status")"
   elif [[ -f "$ARTIFACT_DIR/$lane.exit" ]]; then

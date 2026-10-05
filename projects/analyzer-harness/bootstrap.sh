@@ -156,7 +156,7 @@ fi
 # --- WAR check ---
 WAR="$REPO_ROOT/target/OpenELIS-Global.war"
 if [ ! -f "$WAR" ]; then
-  echo -e "  ${YELLOW}WARN: $WAR not found. Run ./build.sh or mvn clean install -DskipTests -Dmaven.test.skip=true from repo root.${NC}"
+  echo -e "  ${YELLOW}INFO: $WAR not found yet. scripts/dev-stack up builds it from source.${NC}"
 else
   echo -e "  ${GREEN}✓ WAR found${NC}"
 fi

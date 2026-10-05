@@ -7,7 +7,7 @@ services:
 
   db.openelis.org:
     container_name: !reset null
-    image: ${CI_PARITY_IMAGE_PREFIX}-db:ci
+    image: ${CI_PARITY_IMAGE_PREFIX}-db_openelis_org:ci
     ports: !override
       - target: 5432
         published: "0"
@@ -15,7 +15,7 @@ services:
 
   oe.openelis.org:
     container_name: !reset null
-    image: ${CI_PARITY_IMAGE_PREFIX}-oe:ci
+    image: ${CI_PARITY_IMAGE_PREFIX}-oe_openelis_org:ci
     ports: !override
       - target: 8080
         published: "0"
@@ -31,7 +31,7 @@ services:
 
   fhir.openelis.org:
     container_name: !reset null
-    image: ${CI_PARITY_IMAGE_PREFIX}-fhir:ci
+    image: ${CI_PARITY_IMAGE_PREFIX}-fhir_openelis_org:ci
     ports: !override
       - target: 8080
         published: "0"
@@ -42,7 +42,7 @@ services:
 
   frontend.openelis.org:
     container_name: !reset null
-    image: ${CI_PARITY_IMAGE_PREFIX}-frontend:ci
+    image: ${CI_PARITY_IMAGE_PREFIX}-frontend_openelis_org:ci
 
   proxy:
     container_name: !reset null
@@ -57,7 +57,7 @@ services:
 
   astm-simulator:
     container_name: !reset null
-    image: ${CI_PARITY_IMAGE_PREFIX}-mock:ci
+    image: ${CI_PARITY_IMAGE_PREFIX}-astm-simulator:ci
     ports: !override
       - target: 9600
         published: "0"
@@ -76,7 +76,7 @@ services:
 
   openelis-analyzer-bridge:
     container_name: !reset null
-    image: ${CI_PARITY_IMAGE_PREFIX}-bridge:ci
+    image: ${CI_PARITY_IMAGE_PREFIX}-openelis-analyzer-bridge:ci
     ports: !override
       - target: 8443
         published: "0"

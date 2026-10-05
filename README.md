@@ -181,15 +181,17 @@ accessing any of these links, simply follow these steps:
 ```
 
 The runner uses detached checkouts at the current commit and runs backend,
-frontend, the shared build, core Playwright, analyzer Playwright, and all three
-Cypress shards. Each E2E suite gets a fresh isolated database. It reports every
-lane and exits unsuccessfully if any required lane fails or does not run. Logs
-and the source commit are saved in the printed artifact directory. Run
+frontend, the shared image build, core Playwright, analyzer Playwright, and
+Cypress. Each E2E job gets a fresh isolated database. Candidate images are built
+once and reused across those jobs. It reports every lane and exits
+unsuccessfully if any required lane fails or does not run. Logs and the source
+commit are saved in the printed artifact directory. Run
 `./scripts/run-ci-checks.sh --plan` to see the lanes without starting them, or
-use `--artifact-dir PATH` to choose where evidence is saved. The targeted E2E
-scripts remain available for debugging a single lane; their passing result alone
-is not full CI parity. GitHub-only publication, security upload, and checkpoint
-jobs still need their GitHub checks.
+use `--artifact-dir PATH` to choose where evidence is saved. Use `--base REF`
+when the PR targets a branch other than `develop`. The targeted E2E scripts
+remain available for debugging a single lane; their passing result alone is not
+full CI parity. GitHub-only publication, security upload, and checkpoint jobs
+still need their GitHub checks.
 
 **Manual commands** (if you prefer to run steps individually):
 
