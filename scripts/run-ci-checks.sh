@@ -85,6 +85,11 @@ python3 -m venv "$ARTIFACT_DIR/python"
 "$ARTIFACT_DIR/python/bin/python" -m pip install --disable-pip-version-check PyYAML==6.0.2 > "$ARTIFACT_DIR/python-dependencies.log" 2>&1
 export PATH="$ARTIFACT_DIR/python/bin:$PATH"
 python3 "$REPO_ROOT/scripts/ci/e2e-plan.py" "$ARTIFACT_DIR"
+printf '%s\n' backend-format deployment-contract backend-build frontend-static frontend-image \
+  i18n-duplicates i18n-source >> "$ARTIFACT_DIR/expected-lanes.txt"
+if [[ "$SPECKIT_CHANGED" == true ]]; then
+  printf 'agent-assets\n' >> "$ARTIFACT_DIR/expected-lanes.txt"
+fi
 
 cleanup() {
   local original_status=$?
@@ -119,34 +124,7 @@ for lane in backend frontend e2e; do
   fi
 done
 
-run_backend() {
-  local root="$ARTIFACT_DIR/checkouts/backend"
-  cd "$root"
-  scripts/run-java21 mvn spotless:check
-  "$NODE22_BIN" --test .github/scripts/publish-checkpoints.test.cjs
-  python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
-  python3 -m unittest discover -s scripts/tests -p 'test_*.py' -v
-  if [[ "$SPECKIT_CHANGED" == true ]]; then
-    bash scripts/ci/validate-agent-assets.sh
-  fi
-  (cd dataexport && ../scripts/run-java21 mvn clean install)
-  scripts/run-java21 mvn clean install -Dspotless.check.skip=true
-}
-
-run_frontend() {
-  local root="$ARTIFACT_DIR/checkouts/frontend"
-  cd "$root/frontend"
-  npm ci --legacy-peer-deps
-  npx prettier ./ --check
-  npm run lint
-  npm run lint:all || echo 'Advisory src lint failed; GitHub treats this step as non-blocking.'
-  npm run pw:guard
-  CI=true npm test
-  docker build -f Dockerfile -t "${CI_CANDIDATE_IMAGE_PREFIX}-frontend-static:ci" .
-  python3 "$root/scripts/ci/validate-i18n.py" --base "$OE_CI_BASE_SHA" --branch "$OE_CI_SOURCE_BRANCH"
-}
-
-run_e2e_step() {
+run_job() {
   local name="$1"
   shift
   printf 'Running %s\n' "$name"
@@ -157,6 +135,55 @@ run_e2e_step() {
   else
     printf 'FAIL\n' > "$ARTIFACT_DIR/$name.status"
   fi
+  return "$result"
+}
+
+run_backend() {
+  local root="$ARTIFACT_DIR/checkouts/backend"
+  local failed=0
+  cd "$root"
+  # Independent GitHub jobs must still run when another job fails. Explicit
+  # child shells keep prerequisite failures within each multi-step job fatal.
+  run_job backend-format scripts/run-java21 mvn spotless:check || failed=1
+  run_job deployment-contract bash -ec '
+    "$1" --test .github/scripts/publish-checkpoints.test.cjs
+    python3 -m unittest discover -s .github/scripts -p "test_*.py" -v
+    python3 -m unittest discover -s scripts/tests -p "test_*.py" -v
+  ' backend-contract "$NODE22_BIN" || failed=1
+  if [[ "$SPECKIT_CHANGED" == true ]]; then
+    run_job agent-assets bash scripts/ci/validate-agent-assets.sh || failed=1
+  fi
+  run_job backend-build bash -ec '
+    (cd dataexport && ../scripts/run-java21 mvn clean install)
+    scripts/run-java21 mvn clean install -Dspotless.check.skip=true
+  ' || failed=1
+  return "$failed"
+}
+
+run_frontend() {
+  local root="$ARTIFACT_DIR/checkouts/frontend"
+  local failed=0
+  cd "$root/frontend"
+  run_job frontend-static bash -ec '
+    npm ci --legacy-peer-deps
+    npx prettier ./ --check
+    npm run lint
+    npm run lint:all || echo "Advisory src lint failed; GitHub treats this step as non-blocking."
+    npm run pw:guard
+    CI=true npm test
+  ' || failed=1
+  run_job frontend-image docker build -f Dockerfile \
+    -t "${CI_CANDIDATE_IMAGE_PREFIX}-frontend-static:ci" . || failed=1
+  run_job i18n-duplicates python3 "$root/scripts/ci/validate-i18n.py" --mode duplicates || failed=1
+  run_job i18n-source python3 "$root/scripts/ci/validate-i18n.py" --mode source \
+    --base "$OE_CI_BASE_SHA" --branch "$OE_CI_SOURCE_BRANCH" || failed=1
+  return "$failed"
+}
+
+run_e2e_step() {
+  local name="$1"
+  local result=0
+  run_job "$@" || result=$?
   local checkout="$ARTIFACT_DIR/checkouts/e2e/frontend"
   local evidence="$ARTIFACT_DIR/$name-artifacts"
   # CI=true selects Playwright's blob reporter, so blob-report holds the report.

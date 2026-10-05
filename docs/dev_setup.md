@@ -59,6 +59,10 @@ in parallel, and retains logs and browser reports. Each E2E job gets a fresh
 isolated database and reuses the candidate images. Use `--base REF` when the PR
 base is not `develop`.
 
+A failed job stops its dependent steps, while independent jobs still run. Each
+job keeps its own log and result; the overall command fails if any required job
+fails or does not run.
+
 The runner selects the CI Node versions with `fnm`, or accepts an explicitly
 configured Node installation. It uses the selected Docker context for the Java
 test database too. Docker runtime names do not change the test commands.

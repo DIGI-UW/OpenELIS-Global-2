@@ -64,6 +64,46 @@ class DockerEndpointTest(unittest.TestCase):
 
 
 class BrowserPlanTest(unittest.TestCase):
+    def test_independent_checks_run_after_a_lane_check_fails(self):
+        runner = (ROOT / "scripts/run-ci-checks.sh").read_text()
+        start = runner.index("run_job() {") if "run_job() {" in runner else runner.index("run_backend() {")
+        functions = runner[start:runner.index("\nrun_e2e_step() {")]
+        for lane, expected in (
+            ("backend", ("backend-format", "deployment-contract", "agent-assets", "backend-build")),
+            ("frontend", ("frontend-static", "frontend-image", "i18n-duplicates", "i18n-source")),
+        ):
+            with self.subTest(lane=lane), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "checkouts" / lane / "frontend").mkdir(parents=True)
+                (root / "checkouts" / lane / "dataexport").mkdir()
+                scripts = root / "checkouts" / lane / "scripts"
+                scripts.mkdir()
+                shim = '#!/bin/sh\ncase "$*" in *spotless:check*|test) exit 9;; esac\nexit 0\n'
+                for name in ("npm", "npx", "docker", "python3", "node"):
+                    (root / name).write_text(shim)
+                    (root / name).chmod(0o755)
+                (scripts / "run-java21").write_text(shim)
+                (scripts / "run-java21").chmod(0o755)
+                (scripts / "ci").mkdir()
+                (scripts / "ci/validate-agent-assets.sh").write_text("exit 0\n")
+                env = os.environ.copy()
+                env.update(PATH=directory + os.pathsep + env["PATH"])
+                script = '''ARTIFACT_DIR="$1"
+NODE22_BIN="$1/node"
+SPECKIT_CHANGED=true
+CI_CANDIDATE_IMAGE_PREFIX=owned-test
+OE_CI_BASE_SHA=base
+OE_CI_SOURCE_BRANCH=feature
+HEAD_SHA=candidate
+''' + functions + f"\nrun_{lane}\n"
+                result = subprocess.run(["bash", "-ec", script, "test", directory],
+                                        env=env, capture_output=True, text=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(
+                    {path.stem: path.read_text().strip() for path in root.glob("*.status")},
+                    {name: "FAIL" if index == 0 else "PASS" for index, name in enumerate(expected)},
+                )
+
     def test_browser_stack_uses_its_workflows_resource_and_scenario_settings(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
