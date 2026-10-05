@@ -1,12 +1,12 @@
 # One pull request per ecosystem per month for version updates, and one per
 # ecosystem for security fixes. Major versions are upgrades we plan, so
 # Dependabot does not propose them; security fixes are not held back by the
-# cooldown.
+# cooldown. No target-branch: develop is the default branch, and a block that
+# names a target-branch no longer applies to security updates at all.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /
-    target-branch: develop
     schedule:
       interval: monthly
     cooldown:
@@ -23,7 +23,6 @@ updates:
 
   - package-ecosystem: npm
     directory: /frontend
-    target-branch: develop
     schedule:
       interval: monthly
     cooldown:
@@ -40,7 +39,6 @@ updates:
 
   - package-ecosystem: github-actions
     directory: /
-    target-branch: develop
     schedule:
       interval: monthly
     cooldown:
@@ -54,7 +52,6 @@ updates:
 
   - package-ecosystem: docker
     directories: [/, /db, /fhir, /frontend, /nginx-proxy]
-    target-branch: develop
     schedule:
       interval: monthly
     cooldown:
@@ -68,7 +65,6 @@ updates:
 
   - package-ecosystem: gitsubmodule
     directory: /
-    target-branch: develop
     schedule:
       interval: monthly
     groups:
