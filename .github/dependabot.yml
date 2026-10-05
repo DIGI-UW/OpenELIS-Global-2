@@ -1,45 +1,86 @@
+# One pull request per ecosystem per month for version updates, and one per
+# ecosystem for security fixes.
+#
+# Major versions of Maven, npm and Docker dependencies are migrations we plan,
+# so Dependabot does not propose them. GitHub Actions majors stay in: they
+# mostly follow runner Node retirements and are cheap to take.
+#
+# The major-version ignore rules name update-types, which GitHub documents as a
+# filter on version updates only, so a security fix that needs a new major
+# should still open. GitHub also documents ignore rules in general as applying
+# to security updates, so that is not guaranteed. If such a fix is withheld,
+# its Dependabot alert still shows on the Security tab, and that alert is the
+# signal to plan the major upgrade.
+#
+# Security fixes are not held back by the cooldown. target-branch is omitted:
+# develop is the default branch, and naming a target-branch would stop these
+# settings, including the security groups, from applying to security updates.
 version: 2
 updates:
   - package-ecosystem: maven
     directory: /
-    target-branch: develop
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
       maven-minor-and-patch:
         update-types: [minor, patch]
+      maven-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: npm
     directory: /frontend
-    target-branch: develop
     schedule:
-      interval: weekly
-    open-pull-requests-limit: 5
+      interval: monthly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
       npm-minor-and-patch:
         update-types: [minor, patch]
+      npm-security:
+        applies-to: security-updates
+        patterns: ["*"]
 
   - package-ecosystem: github-actions
     directory: /
-    target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 7
     groups:
       github-actions:
+        patterns: ["*"]
+      github-actions-security:
+        applies-to: security-updates
         patterns: ["*"]
 
   - package-ecosystem: docker
     directories: [/, /db, /fhir, /frontend, /nginx-proxy]
-    target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 7
+    ignore:
+      - dependency-name: "*"
+        update-types: [version-update:semver-major]
     groups:
       docker-images:
         patterns: ["*"]
 
   - package-ecosystem: gitsubmodule
     directory: /
-    target-branch: develop
     schedule:
-      interval: weekly
+      interval: monthly
+    cooldown:
+      default-days: 7
+    groups:
+      submodules:
+        patterns: ["*"]
