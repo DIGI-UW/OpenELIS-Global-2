@@ -22,10 +22,10 @@ running containers.
 The job builds `deploy-bundle.tgz` (both compose files, `volume/`, the analyzer
 seed script, shared harness catalog initializer, molecular catalog configuration
 and the Bridge profiles at the submodule pin). On the VM,
-`deploy-published-testing.py` unpacks it into
-`<site>/releases/<sha>/` and runs Compose as project `openelis-testing`, so
-named volumes persist across releases. The site directory (`TESTING_SITE_PATH`,
-default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
+`deploy-published-testing.py` unpacks it into `<site>/releases/<sha>/` and runs
+Compose as project `openelis-testing`, so named volumes persist across releases.
+The site directory (`TESTING_SITE_PATH`, default
+`/home/ubuntu/openelis-testing`) holds what belongs to the host:
 
 - `.env` (required): passed as the Compose env file.
 - `docker-compose.site.yml` (optional): applied after the release's files, for
@@ -34,38 +34,37 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
 - `lucene/`: the search index, linked into every release.
 - `configuration/backend/`: writable catalog files, linked into every release.
   The shared `harness-catalog-init` service copies the same molecular tests and
-  result configuration used in core development and CI, before OE2 starts.
-  Other catalog domains use bundled application defaults. Ordinary deployments
+  result configuration used in core development and CI, before OE2 starts. Other
+  catalog domains use bundled application defaults. Ordinary deployments
   preserve edited files. The nightly reset restores the versioned baseline.
 - `.openelis-ci/`: the image override and `target.json`.
 
 After the application reports ready, the deploy creates missing default
-analyzers
-(`seed-analyzers.sh --ensure-connections --no-mock-network`). It never selects,
-excludes or confirms mapping rows. Existing connections retain their configuration
-and activation state. New connections await the normal lab-facing review and
-activation workflow, just as in `scripts/dev-stack`.
+analyzers (`seed-analyzers.sh --ensure-connections --no-mock-network`). It never
+selects, excludes or confirms mapping rows. Existing connections retain their
+configuration and activation state. New connections await the normal lab-facing
+review and activation workflow, just as in `scripts/dev-stack`.
 
 CI owns new-analyzer creation, default-mapping and clinical result workflow
 validation. Deployment checks image identity and application readiness, then
 initializes the harness connections. It does not send synthetic traffic through
 a tester's existing analyzer or require testers to approve mappings before a
-deployment can finish. The deploy refuses superseded commits and ports 80/443 owned by any other
-Compose project. After success it keeps the current and previous release and
-removes unused images.
+deployment can finish. The deploy refuses superseded commits and ports 80/443
+owned by any other Compose project. After success it keeps the current and
+previous release and removes unused images.
 
 Configure access with `TESTING_VM_SSH_KEY`, `DEPLOY_HOST`, `TESTING_VM_USER`,
 `DEPLOY_PORT`, and `TESTING_SITE_PATH`. `DOCKERHUB_USERNAME` controls the image
 namespace.
 
 The site's `.env` also configures the API account used by the Bridge, seeding,
-and delivery verification. Set `TEST_USER` and `TEST_PASS` to an existing
+and connection initialization. Set `TEST_USER` and `TEST_PASS` to an existing
 OpenELIS account. If unset, `OE_ADMIN_USERNAME` and `OE_ADMIN_PASSWORD` are
 used, then the standard testing defaults. These settings do not change the
 account's password in OpenELIS. `ASTM_SIMULATOR_HTTP_PORT` (default `8085`) sets
-both the mock's loopback port and the delivery check's destination. The deployer
-uses Compose's environment parser for these values and passes credentials to the
-seed subprocess through its environment, not command arguments.
+the mock's loopback port. The deployer uses Compose's environment parser for
+these values and passes credentials to the seed subprocess through its
+environment, not command arguments.
 
 Optional readiness variables are:
 
@@ -102,13 +101,14 @@ Ordinary deployments preserve data and never invoke the reset.
 
 The reset uses the recorded deployed release and every container's actual image
 ID. It does not fetch develop, pull new images, rebuild or change the software
-version. It shares `/tmp/openelis-testing-deploy.lock` with deployment. It removes
-only the testing project's application/FHIR database, Bridge state and queues,
-analyzer-import files and reporting data, and clears the site's catalog overrides
-and search index. Certificates, keys, `.env` and host configuration remain.
-The shared harness initializer restores catalog configuration, normal application
-startup populates the database, and the existing setup API script creates fresh
-analyzers. No SQL fixtures, mapping repairs or manufactured confirmations run.
+version. It shares `/tmp/openelis-testing-deploy.lock` with deployment. It
+removes only the testing project's application/FHIR database, Bridge state and
+queues, analyzer-import files and reporting data, and clears the site's catalog
+overrides and search index. Certificates, keys, `.env` and host configuration
+remain. The shared harness initializer restores catalog configuration, normal
+application startup populates the database, and the existing setup API script
+creates fresh analyzers. No SQL fixtures, mapping repairs or manufactured
+confirmations run.
 
 The baseline contains the application's initial reference/demo data and four
 analyzer instances: GeneXpert, FluoroCycler, QuantStudio 5 and QuantStudio 7.
@@ -118,10 +118,10 @@ initialization. Source mounts, CI-only fixture services and development-only
 scenario endpoints are not required for manual analyzer use.
 
 Visit `/testing-baseline/` for the deployed version, last successful reset and
-latest reset outcome. JSON is available at `/testing-baseline/status.json`.
-Full errors remain in `journalctl -u openelis-testing-reset.service`, not in the
-public page. Failed resets are reported as failed, and old staging-delivery proof
-is removed because it refers to discarded data.
+latest reset outcome. JSON is available at `/testing-baseline/status.json`. Full
+errors remain in `journalctl -u openelis-testing-reset.service`, not in the
+public page. Failed resets are reported as failed, and old staging-delivery
+proof is removed because it refers to discarded data.
 
 On the testing VM (replace the site path if configured differently):
 
@@ -134,37 +134,8 @@ systemctl list-timers openelis-testing-reset.timer
 ```
 
 `skip-next` retains a reproduction for one night; manual resets still work.
-Disable the timer with `sudo systemctl disable --now openelis-testing-reset.timer`
-for a longer pause. A concurrent deployment/reset is rejected before destructive
-work; no second reset is queued. The workflow needs passwordless `sudo` for
-installing these testing-only units. Installation itself never clears data.
-
-### Reviewing a site that used the former harness catalog
-
-Before an upgrade, inspect `configuration/backend/` on the host. A filesystem
-CSV overrides classpath defaults for its entire domain, so changing those files
-can change a site's clinical catalog. Older releases shipped these files:
-
-- `dictionaries/analyzer-result-options.csv`
-- `sample-types/harness-samples.csv` and
-  `sample-types/molecular-sample-types.csv`
-- `test-results/harness-test-results.csv`
-- `test-sections/harness-sections.csv` and
-  `test-sections/molecular-sections.csv`
-- `tests/harness-tests.csv` and `tests/molecular-tests.csv`
-
-Compare their contents with the prior deployed release and the site's approved
-catalog. Retain intentional site edits and uploaded catalogs. Do not remove a
-file merely because a harness once used its name: this deployment does not ship
-the harness molecular CSVs as a replacement. If any CSV remains in a domain,
-that domain still uses filesystem configuration rather than bundled defaults.
-Apply deliberate corrections through the supported catalog workflow and verify
-the resulting test identities and analyzer bindings.
-
-Removing a CSV does not delete existing database records or reconcile duplicate
-COVID tests. Inspect the resulting catalog and analyzer bindings; resolve any
-existing duplicates through the supported catalog workflow before claiming
-upgrade success. Do not delete clinical history or repair it with SQL. Run the
-stock-default Playwright checks against the upgraded server, then verify native
-analyzer delivery and clinical result readback. A clean-install pass does not
-prove this populated upgrade.
+Disable the timer with
+`sudo systemctl disable --now openelis-testing-reset.timer` for a longer pause.
+A concurrent deployment/reset is rejected before destructive work; no second
+reset is queued. The workflow needs passwordless `sudo` for installing these
+testing-only units. Installation itself never clears data.

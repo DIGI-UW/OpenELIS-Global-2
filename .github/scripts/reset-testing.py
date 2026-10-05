@@ -123,7 +123,9 @@ def reset(site, scheduled=False):
     try:
         settings = deployment.site_settings(site, plan["release"])
         origin = "{0.scheme}://{0.netloc}".format(urllib.parse.urlsplit(plan["readiness"]["url"]))
-        deployment.run(plan["compose"] + ["down"], site)
+        # Data reset does not require deleting a network shared with site tools.
+        deployment.run(plan["compose"] + ["stop"], site)
+        deployment.run(plan["compose"] + ["rm", "--force"], site)
         deployment.run(["docker", "volume", "rm", *plan["volumes"]], site)
         for directory in plan["directories"]:
             deployment.run(["docker", "run", "--rm", "--network", "none", "--user", "0", "--entrypoint", "sh",

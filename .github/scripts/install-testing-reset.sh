@@ -9,7 +9,9 @@ source_dir="${3:?directory containing reset tooling required}"
 test -f "$site/.openelis-ci/target.json"
 test -f "$source_dir/openelis-testing-reset.service"
 test -f "$source_dir/openelis-testing-reset.timer"
-exec 9>/tmp/openelis-testing-deploy.lock
+# Deployment already created this user-owned lock. Read-open avoids Linux's
+# protected_regular restriction on root recreating/truncating files in /tmp.
+exec 9</tmp/openelis-testing-deploy.lock
 flock -n 9
 install -d -m 755 /usr/local/lib/openelis-testing
 for filename in reset-testing.py deploy-published-testing.py check-readiness.py; do

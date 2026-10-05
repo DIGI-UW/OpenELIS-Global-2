@@ -74,8 +74,10 @@ class TestingResetTest(unittest.TestCase):
 
     def test_reset_recreates_only_data_and_reuses_actual_images_then_runs_normal_setup(self):
         self.reset()
-        down = next(args for args in self.commands if args[-1:] == ["down"])
-        self.assertNotIn("--volumes", down)
+        stop = next(args for args in self.commands if args[-1:] == ["stop"])
+        remove = next(args for args in self.commands if args[-2:] == ["rm", "--force"])
+        self.assertNotIn("--volumes", remove)
+        self.assertFalse(any("down" in args for args in self.commands))
         deletion = next(args for args in self.commands if args[:3] == ["docker", "volume", "rm"])
         self.assertEqual({"testing_" + key for key in resetter.DATA_VOLUMES}, set(deletion[3:]))
         up = next(args for args in self.commands if "up" in args)
@@ -86,7 +88,8 @@ class TestingResetTest(unittest.TestCase):
         seed = next(args for args in self.commands if args[:1] == ["env"])
         self.assertEqual(["--ensure-connections", "--no-mock-network"], seed[-2:])
         self.assertNotIn("--activate", seed)
-        self.assertLess(self.commands.index(down), self.commands.index(up))
+        self.assertLess(self.commands.index(stop), self.commands.index(remove))
+        self.assertLess(self.commands.index(remove), self.commands.index(up))
         self.assertLess(self.commands.index(up), self.commands.index(seed))
         status = json.loads((self.state / "reset-status.json").read_text())
         self.assertEqual("ready", status["state"])
@@ -103,7 +106,7 @@ class TestingResetTest(unittest.TestCase):
                 self.commands.clear()
                 with self.assertRaises(ValueError):
                     self.reset()
-                self.assertFalse(any("down" in args or "rm" in args for args in self.commands))
+                self.assertFalse(any("stop" in args or "rm" in args for args in self.commands))
                 setattr(self, field, False)
 
     def test_overlay_cannot_relocate_catalog_but_external_certificate_mounts_are_preserved(self):
@@ -115,7 +118,7 @@ class TestingResetTest(unittest.TestCase):
         self.commands.clear()
         with self.assertRaises(ValueError):
             self.reset()
-        self.assertFalse(any("down" in args for args in self.commands))
+        self.assertFalse(any("stop" in args for args in self.commands))
 
     def test_failed_setup_marks_baseline_failed_and_retains_last_success(self):
         self.reset()
