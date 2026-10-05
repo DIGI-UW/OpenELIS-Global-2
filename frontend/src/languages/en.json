@@ -12153,7 +12153,7 @@
   "message.locations.export.done": "Exported {count} records in the import format.",
   "label.locations.import.working": "Reading the file and matching every row. Large files take a moment.",
   "message.locations.import.failed": "The import could not be read: {reason}",
-  "eqa.wizard.noSchemeTests": "This scheme has no tests a panel can use."
+  "eqa.wizard.noSchemeTests": "This scheme has no tests a panel can use.",
   "eqa.performance.titleForScheme": "Participant performance: {scheme}",
   "eqa.cycle.trigger.first_shipment_sent": "First shipment sent",
   "eqa.cycle.trigger.all_shipments_delivered": "All shipments delivered",
