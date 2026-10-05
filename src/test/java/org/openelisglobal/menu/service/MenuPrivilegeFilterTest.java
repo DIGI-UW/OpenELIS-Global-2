@@ -22,20 +22,6 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.web.servlet.MvcResult;
 
-/**
- * Covers the OGC-1151 menu privilege filter: {@code GET /rest/menu} must omit
- * nodes whose target the caller holds no module grant for.
- *
- * <p>
- * The fixture is built additively over the migrated schema rather than through
- * a DBUnit dataset. A dataset naming {@code menu} or {@code system_module}
- * would be TRUNCATE-d CASCADE by the loader, which both destroys the seeded
- * privilege chain this filter reads and leaves later tests in the shared
- * container without their role grants. Every row inserted here carries a
- * reserved id and is removed again in {@link #removeFixture()}, so the test is
- * order-independent — notably it does not depend on the production menu tree,
- * which {@code MenuRestControllerTest} truncates.
- */
 public class MenuPrivilegeFilterTest extends BaseWebContextSensitiveTest {
 
     private static final long FOLDER_ID = 99115101L;
@@ -67,18 +53,13 @@ public class MenuPrivilegeFilterTest extends BaseWebContextSensitiveTest {
     public void insertFixture() throws Exception {
         removeFixture();
 
-        // A folder holding one node with no policy (must survive) and one node
-        // pointing at a module the role is not granted (must be removed).
         insertMenu(FOLDER_ID, null, 1, FOLDER, null);
         insertMenu(GRANTED_CHILD_ID, FOLDER_ID, 1, GRANTED_CHILD, UNMAPPED_URL);
         insertMenu(DENIED_CHILD_ID, FOLDER_ID, 2, DENIED_CHILD, RESTRICTED_URL);
 
-        // A folder whose only child is removed, so the folder goes with it.
         insertMenu(LONELY_FOLDER_ID, null, 2, LONELY_FOLDER, null);
         insertMenu(LONELY_FOLDER_CHILD_ID, LONELY_FOLDER_ID, 1, DENIED_CHILD + "_2", RESTRICTED_URL);
 
-        // No url and no children: a placeholder whose target an admin supplies at
-        // runtime (the menu_billing shape). Must survive.
         insertMenu(PLACEHOLDER_ID, null, 3, PLACEHOLDER, null);
 
         jdbcTemplate.update("INSERT INTO system_module (id, name, description, has_select_flag)"
@@ -120,7 +101,6 @@ public class MenuPrivilegeFilterTest extends BaseWebContextSensitiveTest {
         assertTrue("a childless node with no url is a placeholder and must stay visible",
                 visible.contains(PLACEHOLDER));
 
-        // Inversion: the filter must be reading the grant data, not a hardcoded list.
         jdbcTemplate.update("INSERT INTO system_role_module (id, has_select, system_role_id, system_module_id)"
                 + " VALUES (?, 'Y', ?, ?)", ROLE_MODULE_ID, ROLE_ID, MODULE_ID);
 

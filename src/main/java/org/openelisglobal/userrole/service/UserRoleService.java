@@ -13,12 +13,7 @@ public interface UserRoleService extends BaseObjectService<UserRole, UserRolePK>
 
     List<String> getRoleIdsForUser(String userId);
 
-    /**
-     * Union of permitted module names across the user's roles — the same set
-     * {@code ModuleAuthenticationInterceptor} authorizes pages against. Role-agent
-     * resolution only: the USER mode of {@code permissions.agent} takes a different
-     * branch in the interceptor and is set in no deployment.
-     */
+    /** Names of the modules the user's roles grant. */
     Set<String> getAllPermittedPagesForUser(String userId);
 
     boolean userInRole(String userId, String roleName);

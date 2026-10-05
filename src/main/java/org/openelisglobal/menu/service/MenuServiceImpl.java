@@ -37,12 +37,7 @@ import org.springframework.web.util.UriComponentsBuilder;
 @Service
 public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String> implements MenuService {
 
-    /**
-     * Authorities that see the whole tree, mirroring the
-     * {@code || userModuleService.isUserAdmin(request)} arm of
-     * {@code ModuleAuthenticationInterceptor.hasPermission}. Both are needed:
-     * production grants them together, but some contexts grant only ROLE_ADMIN.
-     */
+    // The interceptor's admin bypass; some contexts grant only ROLE_ADMIN.
     private static final Set<String> ADMIN_AUTHORITIES = Set.of("ROLE_GLOBAL_ADMIN", "ROLE_ADMIN");
 
     @Autowired
@@ -194,8 +189,6 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         }
         String sysUserId = userContextHolder.getCurrentSysUserId();
         if (GenericValidator.isBlankOrNull(sysUserId)) {
-            // No resolvable identity: return the tree rather than hiding every node
-            // with a declared policy.
             return menuTree;
         }
 
@@ -205,9 +198,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
         Set<String> visibleElementIds = new HashSet<>();
         collectIndependentlyVisible(menuTree, permittedModules, urlsByPath, visibleElementIds);
 
-        // filterByIncludes already keeps any ancestor of a surviving node, so listing
-        // only the independently visible ids implements the pruning rule: a folder
-        // whose children were all removed is dropped with them.
+        // filterByIncludes adds ancestors, so emptied folders drop out.
         return MenuUtil.filterByIncludes(menuTree, visibleElementIds, Collections.emptySet());
     }
 
@@ -231,9 +222,7 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
             Map<String, List<SystemModuleUrl>> urlsByPath) {
         String actionURL = menuItem.getMenu().getActionURL();
         if (GenericValidator.isBlankOrNull(actionURL)) {
-            // No target to authorize. A childless node is a placeholder whose URL is
-            // supplied later by an admin (menu_billing), so it stands on its own; a node
-            // with children is a folder and survives only through a surviving child.
+            // A childless node with no URL is a placeholder (menu_billing).
             return menuItem.getChildMenus().isEmpty();
         }
 
@@ -254,8 +243,6 @@ public class MenuServiceImpl extends AuditableBaseObjectServiceImpl<Menu, String
                 return true;
             }
         }
-        // Every candidate was ruled out by its parameter predicate, so no policy
-        // covers this exact target and the node is treated as undeclared.
         return !anyCandidateApplies;
     }
 
