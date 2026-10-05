@@ -232,11 +232,16 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
     getFromOpenElisServer("/rest/user-test-sections/ALL", (res: any) => {
       const sections = Array.isArray(res) ? res : [];
       setTestSections(sections);
-      setSelectedTestSection(
-        hasRole(userSessionDetails, "Global Administrator")
-          ? ALL_SECTIONS
-          : sections[0]?.id,
-      );
+      // Every tile opens on the whole of the reader's scope, not on one
+      // section. A tile is a work queue - "In Progress" is the work waiting
+      // for results entry - and its number is counted across every section
+      // the reader can see. Opening on sections[0] asked a different
+      // question from the one the tile answered: the first section returned
+      // is simply the first of the list (Hematology here), so a user whose
+      // work sat in any other section read a non-zero tile and then an empty
+      // table. The server still narrows an unscoped request to the reader's
+      // own lab units, so this widens nothing they could not already see.
+      setSelectedTestSection(ALL_SECTIONS);
     });
   }, [userSessionDetails]);
 
@@ -399,9 +404,10 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
       setSelectedTile(tile);
     } else {
       setSelectedTile(null);
-      hasRole(userSessionDetails, "Global Administrator")
-        ? setSelectedTestSection(ALL_SECTIONS)
-        : setSelectedTestSection(testSections[0]?.id);
+      // Closing a tile returns to the scope it opened on, for the same
+      // reason: reverting to sections[0] would have left the next tile
+      // opened on a section the reader never chose.
+      setSelectedTestSection(ALL_SECTIONS);
     }
   };
 
