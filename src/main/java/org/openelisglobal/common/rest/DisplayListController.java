@@ -340,6 +340,14 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.UseExternalPatientInfo.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.UseExternalPatientInfo));
+        configs.put(Property.DEFAULT_ORDER_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED));
+        configs.put(Property.MAX_ORDER_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED));
+        configs.put(Property.DEFAULT_SPECIMEN_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED));
+        configs.put(Property.MAX_SPECIMEN_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_SPECIMEN_LABEL_PRINTED));
         configs.put("DEFAULT_PAGE_SIZE",
                 ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         configs.put("FIRST_NAME_REGEX", FIRST_NAME_REGEX);

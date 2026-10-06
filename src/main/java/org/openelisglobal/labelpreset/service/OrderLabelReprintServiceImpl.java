@@ -83,6 +83,16 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
     @Transactional(readOnly = true)
     public ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId,
             String scope) {
+        return renderFromSnapshot(orderId, presetId, sampleItemId, scope, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId, String scope,
+            Integer quantity) {
+        if (quantity != null && quantity < 1) {
+            throw new IllegalArgumentException("quantity must be at least 1");
+        }
         ArrayList<Label> labels = new ArrayList<>();
         BarcodeLabelMaker.BarcodeType barcodeType = BarcodeLabelMaker.BarcodeType.BARCODE;
 
@@ -98,6 +108,14 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
                 String labNo = resolveBarcodePayload(row);
                 SnapshotLabel label = new SnapshotLabel(snapshot, labNo, fieldValues(row));
                 int qty = row.getQty() == null ? 1 : row.getQty();
+                if (quantity != null) {
+                    int max = maximumFor(row);
+                    if (quantity > max) {
+                        throw new IllegalArgumentException(
+                                "quantity " + quantity + " exceeds the preset maximum of " + max);
+                    }
+                    qty = quantity;
+                }
                 label.setNumLabels(qty);
                 labels.add(label);
                 // Barcode symbology lives on the maker, not the Label. Apply the
@@ -115,6 +133,19 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
         BarcodeLabelMaker maker = new BarcodeLabelMaker(labels);
         maker.setBarcodeType(barcodeType);
         return maker.createLabelsAsStream();
+    }
+
+    /**
+     * The preset's maximum for the label's scope, read from the live preset
+     * (FR-I5).
+     */
+    static int maximumFor(OrderLabelRequest row) {
+        if (row.getPreset() == null) {
+            return Integer.MAX_VALUE;
+        }
+        Integer max = row.getSampleItem() == null ? row.getPreset().getMaxPerOrder()
+                : row.getPreset().getMaxPerSample();
+        return max == null ? Integer.MAX_VALUE : max;
     }
 
     private boolean matches(OrderLabelRequest row, Integer presetId, String sampleItemId, String scope) {

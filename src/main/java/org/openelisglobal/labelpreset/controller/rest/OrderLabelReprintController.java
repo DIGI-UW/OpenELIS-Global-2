@@ -2,6 +2,7 @@ package org.openelisglobal.labelpreset.controller.rest;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.labelpreset.dto.OrderLabelRequestView;
 import org.openelisglobal.labelpreset.service.OrderLabelReprintService;
 import org.openelisglobal.sample.service.SampleService;
@@ -114,14 +115,21 @@ public class OrderLabelReprintController {
      * Samples (OGC-1422, FR-I6, FR-I7); {@code 404} when nothing matches.
      */
     @GetMapping("/api/orders/{id}/labels/pdf")
-    public ResponseEntity<byte[]> printOrderLabels(@PathVariable("id") String orderId,
+    public ResponseEntity<?> printOrderLabels(@PathVariable("id") String orderId,
             @RequestParam(name = "presetId", required = false) Integer presetId,
             @RequestParam(name = "sampleItemId", required = false) String sampleItemId,
-            @RequestParam(name = "scope", required = false) String scope) {
+            @RequestParam(name = "scope", required = false) String scope,
+            @RequestParam(name = "quantity", required = false) Integer quantity) {
         if (!isNumericId(orderId) || (sampleItemId != null && !isNumericId(sampleItemId))) {
             return ResponseEntity.badRequest().build();
         }
-        return pdfResponse(orderLabelReprintService.renderFromSnapshot(orderId, presetId, sampleItemId, scope));
+        try {
+            return pdfResponse(
+                    orderLabelReprintService.renderFromSnapshot(orderId, presetId, sampleItemId, scope, quantity));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(Map.of("messageKey", "error.labels.quantity.max", "message", e.getMessage()));
+        }
     }
 
     private static boolean isNumericId(String id) {

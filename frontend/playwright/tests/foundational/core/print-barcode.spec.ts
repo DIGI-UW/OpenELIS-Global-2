@@ -133,55 +133,166 @@ test.describe("Print Bar Code Labels", () => {
           name: "Print Barcodes for Existing Orders",
         }),
       ).toBeVisible({ timeout: NAV_TIMEOUT });
-      await expect(
-        page.getByRole("heading", { name: "Print Sets", exact: true }),
-      ).toHaveCount(0);
+      await expect(page.getByTestId("order-labels")).toHaveCount(0);
       await page
         .getByRole("textbox", { name: "Enter Accession Number" })
         .fill(labNo);
       await page.getByRole("button", { name: "Submit", exact: true }).click();
     });
 
-    await test.step("the order's patient and print controls appear", async () => {
+    // OGC-1169: one table of labels by display name, a stepper and one Print on
+    // every row, one Print all, and no second reprint block.
+    await test.step("the order's patient and one label table appear", async () => {
       await expect(page.getByText("Esig Testpatient")).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
-      await expect(
-        page.getByRole("heading", { name: "Print Sets", exact: true }),
-      ).toBeVisible();
-      await expect(
-        page.getByRole("button", { name: "Print Set", exact: true }),
-      ).toBeVisible();
+      const labels = page.getByTestId("order-labels");
+      await expect(labels).toBeVisible();
+      await expect(labels.getByText("Labels for this order")).toBeVisible();
       await expect(
         page.getByRole("heading", { name: "Reprint labels", exact: true }),
-      ).toBeVisible();
-
-      const orderRow = page.getByRole("row").filter({
-        has: page.getByRole("cell", { name: "Order", exact: true }),
-      });
-      await expect(orderRow).toHaveCount(1);
+      ).toHaveCount(0);
       await expect(
-        orderRow.getByRole("cell", { name: labNo, exact: true }),
-      ).toBeVisible();
+        page.getByRole("heading", { name: "Print Sets", exact: true }),
+      ).toHaveCount(0);
+      await expect(page.getByText(/^order$/)).toHaveCount(0);
+      await expect(page.getByText("specimen-1")).toHaveCount(0);
 
-      const specimenRows = page.getByRole("row").filter({
-        has: page.getByRole("cell", { name: "Specimen", exact: true }),
-      });
+      const orderRow = labels.getByTestId("label-row-order");
+      await expect(orderRow).toContainText("Order label");
+      await expect(orderRow).toContainText(labNo);
+      await expect(orderRow.getByRole("spinbutton")).toBeVisible();
+
+      const specimenRows = labels.locator(
+        '[data-testid^="label-row-specimen-"]',
+      );
       await expect(specimenRows).toHaveCount(1);
+      await expect(specimenRows).toContainText("Specimen label");
       await expect(specimenRows).toContainText(labNo);
       await expect(specimenRows).toContainText(SAMPLE_TYPE);
+      await expect(specimenRows.getByRole("spinbutton")).toBeVisible();
+      await expect(labels.getByTestId("print-all-labels")).toBeVisible();
+      await expect(
+        labels.getByText(
+          /Prints \d+ order labels and \d+ labels per specimen\./,
+        ),
+      ).toBeVisible();
     });
 
-    await test.step("printing the order label renders the frame for that accession", async () => {
-      const orderRow = page.getByRole("row").filter({
-        has: page.getByRole("cell", { name: "Order", exact: true }),
-      });
-      await orderRow.getByRole("button", { name: "Print Label" }).click();
+    await test.step("printing a changed specimen quantity renders the frame with that quantity", async () => {
+      const labels = page.getByTestId("order-labels");
+      const specimenRow = labels
+        .locator('[data-testid^="label-row-specimen-"]')
+        .first();
+      const stepper = specimenRow.getByRole("spinbutton");
+      // The stepper stops at the laboratory's configured maximum for specimen
+      // labels; a typed value above it is clamped to that maximum.
+      const max = Number(await stepper.getAttribute("max"));
+      expect(max).toBeGreaterThanOrEqual(1);
+      await stepper.fill(String(max + 1));
+      await specimenRow.getByRole("button", { name: /^Print/ }).click();
       const frame = page.locator('iframe[src*="LabelMakerServlet"]');
       await expect(frame).toHaveAttribute(
         "src",
-        new RegExp(`labNo=${labNo}&type=order`),
+        new RegExp(`labNo=${labNo}-1&type=specimen&quantity=${max}$`),
       );
+      await labels
+        .getByTestId("label-row-order")
+        .getByRole("button", { name: /^Print/ })
+        .click();
+      await expect(frame).toHaveAttribute(
+        "src",
+        new RegExp(`labNo=${labNo}&type=order&quantity=\\d+`),
+      );
+    });
+  });
+
+  // OGC-1169: an order saved with label requests (order entry v4) lists its
+  // presets by display name and size and reprints at a chosen quantity through
+  // the snapshot endpoint, capped at the preset maximum.
+  test("an order saved with label requests lists its presets by name and size and reprints a chosen quantity", async ({
+    page,
+    context,
+  }) => {
+    test.setTimeout(180_000);
+    const labNo = await createSampleOrder(page, {});
+    expect(labNo, "seeded order").not.toBe("");
+
+    await test.step("save the order's labels from Prepare Samples", async () => {
+      await page.goto(
+        `/order/clinical/collect?labNumber=${encodeURIComponent(labNo)}`,
+        { timeout: NAV_TIMEOUT },
+      );
+      const section = page.getByTestId("prepare-labels-section");
+      await expect(section).toBeVisible({ timeout: NAV_TIMEOUT });
+      const printAll = section.getByRole("button", {
+        name: "Print all labels",
+        exact: true,
+      });
+      await expect(printAll).toBeEnabled({ timeout: UI_TIMEOUT });
+      const pdf = page.waitForResponse((r) =>
+        /\/api\/orders\/\d+\/labels\/pdf/.test(r.url()),
+      );
+      const popup = context.waitForEvent("page");
+      await printAll.click();
+      expect((await pdf).status()).toBe(200);
+      await (await popup).close();
+    });
+
+    await test.step("Print Bar Code Labels lists the saved presets", async () => {
+      await page.goto("/PrintBarcode", { waitUntil: "domcontentloaded" });
+      await page
+        .getByRole("textbox", { name: "Enter Accession Number" })
+        .fill(labNo);
+      await page.getByRole("button", { name: "Submit", exact: true }).click();
+      const labels = page.getByTestId("order-labels");
+      await expect(labels).toBeVisible({ timeout: LONG_TIMEOUT });
+      const rows = labels.locator('[data-testid^="label-row-saved-"]');
+      await expect(rows).toHaveCount(2);
+      await expect(rows.first()).toContainText(/Order Label \(\d+ × \d+ mm\)/);
+      await expect(rows.nth(1)).toContainText(
+        /Specimen Label \(\d+ × \d+ mm\)/,
+      );
+      await expect(rows.nth(1)).toContainText(`${labNo}-1`);
+      await expect(
+        labels.getByText(
+          "Prints every label saved with this order at its saved quantity.",
+        ),
+      ).toBeVisible();
+    });
+
+    await test.step("a chosen quantity reprints that many copies through the snapshot endpoint", async () => {
+      const labels = page.getByTestId("order-labels");
+      const tubeRow = labels
+        .locator('[data-testid^="label-row-saved-"]')
+        .nth(1);
+      const stepper = tubeRow.getByRole("spinbutton");
+      const max = Number(await stepper.getAttribute("max"));
+      expect(max).toBeGreaterThanOrEqual(2);
+      await stepper.fill("2");
+      const rendered = page.waitForResponse(
+        (r) =>
+          /\/api\/orders\/\d+\/labels\/pdf\?/.test(r.url()) &&
+          r.url().includes("scope=sample") &&
+          r.url().includes("quantity=2"),
+      );
+      await tubeRow.getByRole("button", { name: /^Print/ }).click();
+      const response = await rendered;
+      expect(response.status()).toBe(200);
+      expect(response.headers()["content-type"]).toContain("application/pdf");
+
+      const tooMany = await page.request.get(
+        new URL(response.url()).pathname.replace(
+          /^\/api\/OpenELIS-Global/,
+          "/api/OpenELIS-Global",
+        ) +
+          "?" +
+          new URL(response.url()).searchParams
+            .toString()
+            .replace("quantity=2", `quantity=${max + 1}`),
+      );
+      expect(tooMany.status()).toBe(422);
+      expect(await tooMany.text()).toContain("error.labels.quantity.max");
     });
   });
 

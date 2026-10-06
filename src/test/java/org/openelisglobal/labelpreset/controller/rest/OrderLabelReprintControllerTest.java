@@ -215,4 +215,22 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
             // ignored — next run retries
         }
     }
+
+    // ── OGC-1169: a chosen quantity, capped at the preset maximum ─────────────
+
+    @Test
+    public void printOrderLabels_withQuantityUpToThePresetMax_returnsPdf() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", String.valueOf(preset.getId()))
+                .param("scope", "sample").param("sampleItemId", sampleItemId).param("quantity", "5"))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    public void printOrderLabels_quantityAbovePresetMax_returns422NamingTheRule() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", String.valueOf(preset.getId()))
+                .param("scope", "sample").param("quantity", "6")).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("quantity", "0"))
+                .andExpect(status().isUnprocessableEntity());
+    }
 }
