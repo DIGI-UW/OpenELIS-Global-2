@@ -814,6 +814,7 @@ const AnalyzerTypeMappingEditor = () => {
           {readOnly && (
             <AffectedAnalyzerList
               analyzers={currentTypeSummary?.affectedAnalyzers || []}
+              revision={currentTypeSummary?.revision}
             />
           )}
 
