@@ -81,6 +81,7 @@ public class AnalyzerResultItem implements Serializable {
     // OGC-1129 — the resolved result component (test_result_component.id); null =
     // PRIMARY. Carried from the staged AnalyzerResults row through to accept.
     private String componentId;
+    private String componentLabel;
 
     // OGC-1145 FR-8 — the sample type the reviewer chose for a specimen-ambiguous
     // row (test runs on several sample types, message carried no specimen).
@@ -356,6 +357,14 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setComponentId(String componentId) {
         this.componentId = componentId;
+    }
+
+    public String getComponentLabel() {
+        return componentLabel;
+    }
+
+    public void setComponentLabel(String componentLabel) {
+        this.componentLabel = componentLabel;
     }
 
     public String getComponentId() {

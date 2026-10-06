@@ -39,6 +39,7 @@ import ResultAlertModal, {
 } from "../resultPage/ResultAlertModal";
 import PlacementNotice from "./PlacementNotice";
 import InstrumentReported from "./InstrumentReported";
+import ResultParts, { groupTestParts } from "./ResultParts";
 import DeliveryBundleModal from "./DeliveryBundleModal";
 import RedirectControl from "./RedirectControl";
 
@@ -154,6 +155,11 @@ const AnalyserResults = (props) => {
 
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
+  // Accept, retest and ignore are decided per test: its first row carries the
+  // decision, and the rows on its components show beneath its main result.
+  const { decisionHeadIds, partsByHeadId, partIds } =
+    groupTestParts(patientResults);
+  const tableRows = patientResults.filter((row) => !partIds.has(row.id));
   const arrows = serverPageArrowsProps({
     paging: props.results?.paging,
     onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
@@ -607,7 +613,7 @@ const AnalyserResults = (props) => {
         return (
           <>
             <div>
-              {sampleGroupHasId(row.id) && (
+              {decisionHeadIds.has(row.id) && (
                 <Field name="isAccepted">
                   {({ field }) => (
                     <Checkbox
@@ -631,7 +637,7 @@ const AnalyserResults = (props) => {
         }
         return (
           <>
-            {sampleGroupHasId(row.id) && (
+            {decisionHeadIds.has(row.id) && (
               <Field name="isRejected">
                 {({ field }) => (
                   <Checkbox
@@ -654,7 +660,7 @@ const AnalyserResults = (props) => {
         }
         return (
           <>
-            {sampleGroupHasId(row.id) && (
+            {decisionHeadIds.has(row.id) && (
               <Field name="isDeleted">
                 {({ field }) => (
                   <Checkbox
@@ -697,6 +703,10 @@ const AnalyserResults = (props) => {
           <>
             {renderResultValue(row, held && !awaitingReview)}
             <InstrumentReported row={row} />
+            <ResultParts
+              headId={row.id}
+              parts={partsByHeadId.get(row.id) || []}
+            />
           </>
         );
 
@@ -894,7 +904,7 @@ const AnalyserResults = (props) => {
           <Form onChange={handleChange}>
             {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={patientResults}
+              data={tableRows}
               columns={columns}
               isSortable
             ></DataTable>

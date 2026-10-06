@@ -554,46 +554,44 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     // Extraction helpers
     // ---------------------------------------------------------------
 
+    /**
+     * Applies the reviewer's decisions. Accept, retest and ignore are decided per
+     * test: a test's components follow its decision, and the other tests on the
+     * same specimen keep their own. Every row of a grouping takes its specimen's
+     * accession.
+     */
     List<AnalyzerResultItem> extractActionableResult(List<AnalyzerResultItem> resultItemList) {
         List<AnalyzerResultItem> actionableResultList = new ArrayList<>();
-        Map<Integer, AnalyzerResultItem> selectedActions = new HashMap<>();
+        Map<DecisionKey, AnalyzerResultItem> selectedActions = new HashMap<>();
         for (AnalyzerResultItem item : resultItemList) {
             if (item.getIsAccepted() || item.getIsRejected() || item.getIsDeleted()) {
-                selectedActions.putIfAbsent(item.getSampleGroupingNumber(), item);
+                selectedActions.putIfAbsent(DecisionKey.of(item), item);
             }
         }
 
-        int currentSampleGrouping = 0;
-        boolean acceptResult = false;
-        boolean rejectResult = false;
-        boolean deleteResult = false;
-        String accessionNumber = null;
-
+        Map<Integer, String> accessionByGrouping = new HashMap<>();
         for (AnalyzerResultItem resultItem : resultItemList) {
+            String accessionNumber = accessionByGrouping.computeIfAbsent(resultItem.getSampleGroupingNumber(),
+                    grouping -> resultItem.getAccessionNumber());
+            AnalyzerResultItem action = selectedActions.getOrDefault(DecisionKey.of(resultItem), resultItem);
+            resultItem.setAccessionNumber(accessionNumber);
+            resultItem.setIsAccepted(action.getIsAccepted());
+            resultItem.setIsRejected(action.getIsRejected());
+            resultItem.setIsDeleted(action.getIsDeleted());
 
-            if (currentSampleGrouping != resultItem.getSampleGroupingNumber()) {
-                currentSampleGrouping = resultItem.getSampleGroupingNumber();
-                AnalyzerResultItem action = selectedActions.getOrDefault(currentSampleGrouping, resultItem);
-                acceptResult = action.getIsAccepted();
-                rejectResult = action.getIsRejected();
-                deleteResult = action.getIsDeleted();
-                accessionNumber = resultItem.getAccessionNumber();
-                resultItem.setIsAccepted(acceptResult);
-                resultItem.setIsRejected(rejectResult);
-                resultItem.setIsDeleted(deleteResult);
-            } else {
-                resultItem.setAccessionNumber(accessionNumber);
-                resultItem.setIsAccepted(acceptResult);
-                resultItem.setIsRejected(rejectResult);
-                resultItem.setIsDeleted(deleteResult);
-            }
-
-            if (acceptResult || rejectResult || deleteResult) {
+            if (resultItem.getIsAccepted() || resultItem.getIsRejected() || resultItem.getIsDeleted()) {
                 actionableResultList.add(resultItem);
             }
         }
 
         return actionableResultList;
+    }
+
+    private record DecisionKey(int grouping, String testId) {
+
+        static DecisionKey of(AnalyzerResultItem item) {
+            return new DecisionKey(item.getSampleGroupingNumber(), item.getTestId());
+        }
     }
 
     List<AnalyzerResultItem> extractChildlessControls(List<AnalyzerResultItem> resultItemList) {

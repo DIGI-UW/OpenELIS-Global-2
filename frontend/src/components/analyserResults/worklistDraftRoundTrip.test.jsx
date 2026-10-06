@@ -139,7 +139,7 @@ describe("Analyzer worklist review choices across mapping visits", () => {
     expect(acceptBox()).toBeChecked();
   });
 
-  it("shows a restored acceptance on the grouping's checkbox after its held row is recovered", async () => {
+  it("keeps a restored acceptance on its own test after a held sibling is recovered", async () => {
     renderWorklist();
     await waitFor(() => expect(acceptBox()).toBeInTheDocument());
     fireEvent.click(acceptBox());
@@ -147,7 +147,8 @@ describe("Analyzer worklist review choices across mapping visits", () => {
     fireEvent.click(
       await screen.findByRole("link", { name: "Review analyzer mapping" }),
     );
-    // Correcting the mapping recovers the held row; it now leads its grouping.
+    // Correcting the mapping recovers the held row, a different test on the
+    // same specimen, which is decided on its own.
     getFromOpenElisServer.mockImplementation((_url, callback) =>
       callback({
         type: "GeneXpert",
@@ -162,12 +163,12 @@ describe("Analyzer worklist review choices across mapping visits", () => {
       await screen.findByRole("link", { name: "Back to worklist" }),
     );
 
-    const groupingAccept = await waitFor(() => {
+    const recoveredAccept = await waitFor(() => {
       const box = document.getElementById("resultList1004.isAccepted");
       expect(box).toBeInTheDocument();
       return box;
     });
-    expect(groupingAccept).toBeChecked();
-    expect(acceptBox()).not.toBeInTheDocument();
+    expect(recoveredAccept).not.toBeChecked();
+    expect(acceptBox()).toBeChecked();
   });
 });
