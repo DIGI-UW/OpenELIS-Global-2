@@ -19,4 +19,13 @@ public interface AnalyzerAdoptionService {
      * under the revision being left.
      */
     AdoptionPlan prepareAdoption(String analyzerId, int toRevision);
+
+    /**
+     * Saves the reviewed decisions as the analyzer's next mapping revision on
+     * {@code toRevision}. Every record the revision keeps needs a decision; nothing
+     * may still be blocked. A decision equal to the plan's proposal keeps its
+     * origin, and one the operator changed is an override. The existing Confirm and
+     * Apply then put it in force.
+     */
+    AnalyzerMappingSnapshot adopt(String analyzerId, int toRevision, AnalyzerMappingDraft decisions, String actor);
 }

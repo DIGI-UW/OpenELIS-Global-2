@@ -91,7 +91,7 @@ public final class AnalyzerMappingAdoption {
     }
 
     /** Two decisions agree on the record's target and on every answer. */
-    private static boolean sameDecision(Decision a, Decision b) {
+    static boolean sameDecision(Decision a, Decision b) {
         AnalyzerMappingTestDraft x = a.test();
         AnalyzerMappingTestDraft y = b.test();
         return x.mappingState() == y.mappingState() && Objects.equals(x.testId(), y.testId())
@@ -106,7 +106,7 @@ public final class AnalyzerMappingAdoption {
         return answers;
     }
 
-    private static Map<AnalyzerMappingRowKey, Decision> decisions(AnalyzerMappingDraft draft) {
+    static Map<AnalyzerMappingRowKey, Decision> decisions(AnalyzerMappingDraft draft) {
         Map<AnalyzerMappingRowKey, Decision> decisions = new LinkedHashMap<>();
         for (AnalyzerMappingTestDraft test : draft.tests()) {
             List<AnalyzerMappingResultDraft> results = draft.results().stream()
