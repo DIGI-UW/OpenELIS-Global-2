@@ -17,8 +17,11 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.analyzer.service.AnalyzerService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzerimport.service.AnalyzerDeliveryBundleService;
 import org.openelisglobal.analyzerresults.action.AnalyzerResultsPaging;
 import org.openelisglobal.analyzerresults.action.beanitems.AnalyzerResultItem;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacement;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsAcceptService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -106,6 +109,10 @@ public class AnalyzerResultsController extends BaseController {
     private TypeOfSampleTestService typeOfSampleTestService;
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
+    @Autowired
+    private AnalyzerResultPlacementService placementService;
+    @Autowired
+    private AnalyzerDeliveryBundleService deliveryBundleService;
     @Autowired
     private AnalyzerResultsAcceptService acceptService;
     @Autowired
@@ -275,6 +282,7 @@ public class AnalyzerResultsController extends BaseController {
 
                 analyzerResultItemList.add(resultItem);
             }
+            preTickMatchedGroup(group);
         }
 
         form.setDisplayMissingTestMsg(Boolean.valueOf(missingTest));
@@ -347,8 +355,11 @@ public class AnalyzerResultsController extends BaseController {
 
         AnalyzerResultItem resultItem = new AnalyzerResultItem();
         boolean held = !GenericValidator.isBlankOrNull(result.getImportIssueReason());
-        boolean awaitingSpecimen = AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason());
+        boolean awaitingReview = AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason())
+                || AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(result.getImportIssueReason());
         resultItem.setAccessionNumber(result.getAccessionNumber());
+        resultItem.setInstrumentSpecimenId(result.getInstrumentSpecimenId());
+        resultItem.setDeliveryReceiptId(deliveryReceiptIdOf(result));
         resultItem.setAnalyzerId(result.getAnalyzerId());
         resultItem.setIsControl(result.getIsControl());
         resultItem.setTestName(result.getTestName());
@@ -358,12 +369,12 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setComponentId(result.getComponentId());
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
-        resultItem.setReadOnly((held && !awaitingSpecimen) || result.isReadOnly() || result.getTestId() == null);
-        resultItem.setResult(held && !awaitingSpecimen ? result.getRawResultValue() : getResultForItem(result));
+        resultItem.setReadOnly((held && !awaitingReview) || result.isReadOnly() || result.getTestId() == null);
+        resultItem.setResult(held && !awaitingReview ? result.getRawResultValue() : getResultForItem(result));
         resultItem.setSignificantDigits(getSignificantDigitsFromAnalyzerResults(result));
         resultItem.setTestResultType(result.getResultType());
-        resultItem.setDictionaryResultList(
-                held && !awaitingSpecimen ? new ArrayList<>() : getDictionaryResultList(result));
+        resultItem
+                .setDictionaryResultList(held && !awaitingReview ? new ArrayList<>() : getDictionaryResultList(result));
         resultItem.setIsHighlighted(!GenericValidator.isBlankOrNull(result.getDuplicateAnalyzerResultId())
                 || GenericValidator.isBlankOrNull(result.getTestId()));
         resultItem.setUserChoiceReflex(giveUserChoice(result));
@@ -381,7 +392,59 @@ public class AnalyzerResultsController extends BaseController {
             resultItem.setUserChoicePending(!GenericValidator.isBlankOrNull(resultItem.getSelectionOneText()));
         }
         addSampleTypeOptionsIfAmbiguous(resultItem, result);
+        placeForReview(resultItem, result);
         return resultItem;
+    }
+
+    /** Shows where a patient result would land and why. */
+    private void placeForReview(AnalyzerResultItem resultItem, AnalyzerResults result) {
+        if (resultItem.getIsControl() || GenericValidator.isBlankOrNull(result.getTestId())
+                || (!GenericValidator.isBlankOrNull(result.getImportIssueReason())
+                        && !AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(result.getImportIssueReason())
+                        && !AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason()))) {
+            return;
+        }
+        AnalyzerResultPlacement placement = placementService.place(
+                GenericValidator.isBlankOrNull(result.getInstrumentSpecimenId()) ? result.getAccessionNumber()
+                        : result.getInstrumentSpecimenId(),
+                result.getTestId(), result.getInstrumentPatientId(), result.getInstrumentPatientName());
+        resultItem.setPlacement(placement);
+    }
+
+    /**
+     * A grouping is saved by one tick, so it is pre-ticked only when every result
+     * it would save has exactly one analysis waiting for it. One result that needs
+     * a decision leaves the whole grouping for the reviewer to tick.
+     */
+    private void preTickMatchedGroup(List<AnalyzerResultItem> group) {
+        List<AnalyzerResultItem> saved = group.stream().filter(item -> !item.isReadOnly()).toList();
+        boolean matched = !saved.isEmpty() && group.stream().noneMatch(AnalyzerResultItem::getIsControl)
+                && saved.stream().allMatch(item -> item.getPlacement() != null
+                        && item.getPlacement().state() == AnalyzerResultPlacement.State.RESOLVED
+                        && patientAgrees(item.getPlacement())
+                        && GenericValidator.isBlankOrNull(item.getImportIssueReason()) && !item.isUserChoiceReflex());
+        if (matched) {
+            saved.forEach(item -> item.setIsAccepted(true));
+        }
+    }
+
+    /**
+     * A result with no reported patient, or whose patient is the order's, may be
+     * pre-ticked.
+     */
+    private static boolean patientAgrees(AnalyzerResultPlacement placement) {
+        var status = placement.patient().status();
+        return status == AnalyzerResultPlacement.PatientStatus.NOT_REPORTED
+                || status == AnalyzerResultPlacement.PatientStatus.MATCH;
+    }
+
+    private String deliveryReceiptIdOf(AnalyzerResults result) {
+        if (GenericValidator.isBlankOrNull(result.getSourceConnectionId())
+                || GenericValidator.isBlankOrNull(result.getSourceMessageId())) {
+            return null;
+        }
+        return deliveryBundleService.findReceiptId(result.getSourceConnectionId(), result.getSourceMessageId())
+                .orElse(null);
     }
 
     /**

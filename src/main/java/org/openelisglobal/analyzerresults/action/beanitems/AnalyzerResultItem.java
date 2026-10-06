@@ -13,11 +13,13 @@
  */
 package org.openelisglobal.analyzerresults.action.beanitems;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.Pattern;
 import java.io.Serializable;
 import java.sql.Timestamp;
 import java.util.List;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacement;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -43,6 +45,14 @@ public class AnalyzerResultItem implements Serializable {
     // @ValidAccessionNumber(groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     @Pattern(regexp = "^[0-9a-zA-Z_ -:]*$", groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String accessionNumber;
+    private String instrumentSpecimenId;
+    private String chosenAnalysisId;
+    private String redirectAccession;
+    private String instrumentPatientId;
+    private String instrumentPatientName;
+    private String redirectReason;
+    private AnalyzerResultPlacement placement;
+    private String deliveryReceiptId;
 
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { AnalyzerResultsForm.AnalyzerResuts.class })
     private String result;
@@ -178,6 +188,92 @@ public class AnalyzerResultItem implements Serializable {
 
     public String getAccessionNumber() {
         return accessionNumber;
+    }
+
+    /** The specimen ID the instrument reported: an accession or a tube ID. */
+    public String getInstrumentSpecimenId() {
+        return instrumentSpecimenId;
+    }
+
+    public void setInstrumentSpecimenId(String instrumentSpecimenId) {
+        this.instrumentSpecimenId = instrumentSpecimenId;
+    }
+
+    /**
+     * Where this result would land and why; computed by the server, never read from
+     * a request.
+     */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public AnalyzerResultPlacement getPlacement() {
+        return placement;
+    }
+
+    public void setPlacement(AnalyzerResultPlacement placement) {
+        this.placement = placement;
+    }
+
+    /** The accepted delivery this result arrived in; its bundle is viewable. */
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
+    public String getDeliveryReceiptId() {
+        return deliveryReceiptId;
+    }
+
+    public void setDeliveryReceiptId(String deliveryReceiptId) {
+        this.deliveryReceiptId = deliveryReceiptId;
+    }
+
+    /**
+     * The patient the instrument reported, restored from the staged row; never read
+     * from a request.
+     */
+    @JsonIgnore
+    public String getInstrumentPatientId() {
+        return instrumentPatientId;
+    }
+
+    @JsonIgnore
+    public void setInstrumentPatientId(String instrumentPatientId) {
+        this.instrumentPatientId = instrumentPatientId;
+    }
+
+    @JsonIgnore
+    public String getInstrumentPatientName() {
+        return instrumentPatientName;
+    }
+
+    @JsonIgnore
+    public void setInstrumentPatientName(String instrumentPatientName) {
+        this.instrumentPatientName = instrumentPatientName;
+    }
+
+    /** An existing order the reviewer placed this grouping's results on instead. */
+    public String getRedirectAccession() {
+        return redirectAccession;
+    }
+
+    public void setRedirectAccession(String redirectAccession) {
+        this.redirectAccession = redirectAccession;
+    }
+
+    /**
+     * Why the reviewer overrode the instrument's specimen ID; required with a
+     * redirect.
+     */
+    public String getRedirectReason() {
+        return redirectReason;
+    }
+
+    public void setRedirectReason(String redirectReason) {
+        this.redirectReason = redirectReason;
+    }
+
+    /** The analysis the reviewer chose when several matched. */
+    public String getChosenAnalysisId() {
+        return chosenAnalysisId;
+    }
+
+    public void setChosenAnalysisId(String chosenAnalysisId) {
+        this.chosenAnalysisId = chosenAnalysisId;
     }
 
     public void setResult(String result) {

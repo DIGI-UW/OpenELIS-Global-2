@@ -60,7 +60,10 @@ unit, values, value_codes, translations, sub_identity`) and `call_component` (ru
 - Bundle: `src/main/java/org/itech/ahb/fhir/FhirBundleBuilder.java`;
   `AnalyzerResult` record (449-461) has no flag, assay, operator, note.
   Extend it and the builder: `Patient` resource with identifier and name
-  plus extension `analyzer-patient-source=instrument`; `Quantity.comparator`
+  plus extension `analyzer-patient-source=instrument`, referenced from
+  `Observation.subject` (OE2 reads exactly this since step 1b,
+  `AnalyzerNormalizedResultContract`; a Patient without the extension is
+  ignored); `Quantity.comparator`
   from the flag; `Device.version` from assay version; `Observation.note`
   from C records; `Observation.performer` from operator; existing extension
   namespace `https://openelis-global.org/fhir/...` for anything without a

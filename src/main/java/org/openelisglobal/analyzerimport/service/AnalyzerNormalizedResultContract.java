@@ -10,6 +10,7 @@ import org.hl7.fhir.r4.model.Device;
 import org.hl7.fhir.r4.model.DomainResource;
 import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.PrimitiveType;
 import org.hl7.fhir.r4.model.Specimen;
 
@@ -29,6 +30,7 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     private static final String CONTROL_RECOGNITION = EXTENSION_ROOT + "analyzer-control-recognition";
     private static final String RAW_VALUE = EXTENSION_ROOT + "analyzer-raw-value";
     private static final String SOURCE_TRANSPORT = EXTENSION_ROOT + "analyzer-source-transport";
+    private static final String PATIENT_SOURCE = EXTENSION_ROOT + "analyzer-patient-source";
     private static final String LOT_NUMBER = "http://openelis-global.org/fhir/qc/lot-number";
     private static final String CONTROL_LEVEL = "http://openelis-global.org/fhir/qc/control-level";
 
@@ -76,10 +78,21 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
             }
         }
 
+        Map<String, InstrumentPatient> patients = new LinkedHashMap<>();
+        for (Bundle.BundleEntryComponent entry : bundle.getEntry()) {
+            if (entry.getResource() instanceof Patient patient && entry.getFullUrl() != null
+                    && "instrument".equals(optionalExtensionText(patient, PATIENT_SOURCE))
+                    && patient.getIdentifierFirstRep().hasValue()) {
+                patients.put(entry.getFullUrl(),
+                        new InstrumentPatient(patient.getIdentifierFirstRep().getValue(), nameOf(patient)));
+            }
+        }
+
         String deviceReference = deviceEntries.get(0).getFullUrl();
         List<Result> results = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
                 .filter(Observation.class::isInstance).map(Observation.class::cast)
-                .map(observation -> parseResult(observation, specimens, deviceReference, fhirContext)).toList();
+                .map(observation -> parseResult(observation, specimens, patients, deviceReference, fhirContext))
+                .toList();
         if (results.isEmpty()) {
             throw new IllegalArgumentException("Normalized analyzer traffic requires at least one Observation");
         }
@@ -87,8 +100,8 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 sourceProtocol, results);
     }
 
-    static Result parseResult(Observation observation, Map<String, String> specimens, String deviceReference,
-            FhirContext fhirContext) {
+    static Result parseResult(Observation observation, Map<String, String> specimens,
+            Map<String, InstrumentPatient> patients, String deviceReference, FhirContext fhirContext) {
         if (!observation.hasDevice() || !deviceReference.equals(observation.getDevice().getReference())) {
             throw new IllegalArgumentException("Every analyzer Observation must reference the bundle Device");
         }
@@ -131,10 +144,26 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String lotNumber = optionalExtensionText(observation, LOT_NUMBER);
         String controlLevel = optionalExtensionText(observation, CONTROL_LEVEL);
         String sourcePayload = fhirContext.newJsonParser().encodeResourceToString(observation);
+        InstrumentPatient patient = observation.hasSubject() ? patients.get(observation.getSubject().getReference())
+                : null;
 
         return new Result(accessionNumber, rawCodes.get(0), rawValue, units, resultType, classification,
                 sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, lotNumber, controlLevel,
-                completed, sourcePayload);
+                completed, sourcePayload, patient == null ? null : patient.identifier(),
+                patient == null ? null : patient.name());
+    }
+
+    private static String nameOf(Patient patient) {
+        var name = patient.getNameFirstRep();
+        if (name.hasText()) {
+            return name.getText();
+        }
+        String given = name.getGivenAsSingleString();
+        String family = name.getFamily();
+        if (family != null && !given.isBlank()) {
+            return family + ", " + given;
+        }
+        return family != null ? family : given.isBlank() ? null : given;
     }
 
     private static String requireExtensionText(DomainResource resource, String url, String message) {
@@ -194,6 +223,13 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     public record Result(String accessionNumber, String rawTestCode, String rawValue, String units, String resultType,
             String classification, String sourceTransport, String recognitionMode, String recognitionOutcome,
             String recognitionFingerprint, String lotNumber, String controlLevel, Timestamp completeDate,
-            String sourcePayload) {
+            String sourcePayload, String instrumentPatientId, String instrumentPatientName) {
+    }
+
+    /**
+     * The patient the instrument reported, kept as reported; never an OpenELIS
+     * patient.
+     */
+    record InstrumentPatient(String identifier, String name) {
     }
 }
