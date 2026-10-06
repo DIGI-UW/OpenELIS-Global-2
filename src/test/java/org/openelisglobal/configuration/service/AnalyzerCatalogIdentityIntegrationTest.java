@@ -2,6 +2,7 @@ package org.openelisglobal.configuration.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +21,7 @@ import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingDefaults;
+import org.openelisglobal.analyzer.service.AnalyzerUnresolvedReason;
 import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -176,9 +178,11 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
                         {"profileMeta":{"id":"fixture.specimen","displayName":"Specimen default"},
                         "protocol":{"name":"ASTM"},
                         "catalog":{"revision":1,"revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","source":"SITE","status":"ACTIVE"},
-                        "default_test_mappings":[{"test_code":"RAW-VL","loinc":"20447-9","result_type":"quantitative","specimen_type_hint":"Plasma"}]}
+                        "default_test_mappings":[{"test_code":"RAW-VL","loinc":"20447-9","result_type":"quantitative"}]}
                         """);
-        assertEquals(plasmaId, defaults.resolve(BridgeAnalyzerProfile.from(profile)).tests().get(0).testId());
+        var viralLoad = defaults.resolve(BridgeAnalyzerProfile.from(profile)).tests().get(0);
+        assertNull(viralLoad.testId());
+        assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, viralLoad.unresolvedReason());
         assertEquals(plasmaSpecimens, specimenIds(plasmaId));
         assertEquals(serumSpecimens, specimenIds(serumId));
         assertEquals("20447-9", tests.get(serumId).getLoinc());
@@ -204,25 +208,24 @@ public class AnalyzerCatalogIdentityIntegrationTest extends BaseWebContextSensit
             if (firstOptions != null)
                 assertEquals(firstOptions, options);
             firstOptions = options;
-            var draft = defaults.resolve(shipped);
-            var bindings = draft.results().stream().filter(row -> "RIF".equals(row.sourceRowKey()))
-                    .collect(Collectors.toMap(row -> row.rawValue(), row -> row.testResultId()));
-            assertEquals(Map.of("DETECTED", options.get("DETECTED"), "NOT DETECTED", options.get("NOT DETECTED"),
-                    "INDETERMINATE", options.get("Indeterminate")), bindings);
+            var rifAnswers = defaults.resolve(shipped).results().stream()
+                    .filter(row -> "RIF".equals(row.sourceRowKey())).toList();
+            assertEquals(java.util.Set.of("DETECTED", "NOT DETECTED", "INDETERMINATE"),
+                    rifAnswers.stream().map(row -> row.rawValue()).collect(Collectors.toSet()));
+            rifAnswers.forEach(row -> {
+                assertNull(row.testResultId());
+                assertNotNull(row.unresolvedReason());
+            });
         }
-        var covid = tests.getTestByDescription("COVIDPCR(Respiratory Swab)");
-        var originalCovidOptions = mappingCatalog.getActiveResultOptions(covid.getId()).stream()
-                .collect(Collectors.toMap(option -> option.label(), option -> option.id()));
-        var hinted = defaults.resolve(shipped);
-        assertEquals(covid.getId(), hinted.tests().stream().filter(row -> "COVID19".equals(row.sourceRowKey()))
-                .findFirst().orElseThrow().testId());
-        var covidBindings = hinted.results().stream().filter(row -> "COVID19".equals(row.sourceRowKey())).toList();
-        assertEquals(originalCovidOptions.get("SARS-CoV-2 RNA DETECTED"), covidBindings.get(0).testResultId());
-        assertEquals(originalCovidOptions.get("SARS-COV-2 RNA NOT DETECTED"), covidBindings.get(1).testResultId());
-        assertEquals("POSITIVE", covidBindings.get(0).rawValue());
-        assertEquals("NEGATIVE", covidBindings.get(1).rawValue());
-        assertEquals(null, covidBindings.get(2).testResultId());
-        assertEquals(null, covidBindings.get(3).testResultId());
+        var resolved = defaults.resolve(shipped);
+        var covidRow = resolved.tests().stream().filter(row -> "COVID19".equals(row.sourceRowKey())).findFirst()
+                .orElseThrow();
+        assertNull(covidRow.testId());
+        assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, covidRow.unresolvedReason());
+        resolved.results().stream().filter(row -> "COVID19".equals(row.sourceRowKey())).forEach(row -> {
+            assertNull(row.testResultId());
+            assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, row.unresolvedReason());
+        });
 
     }
 

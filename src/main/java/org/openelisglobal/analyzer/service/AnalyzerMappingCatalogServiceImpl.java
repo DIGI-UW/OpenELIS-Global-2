@@ -94,7 +94,8 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
                 continue;
             }
             String value = option.getValue();
-            choices.add(new ResultOption(option.getId(), value, resolveLabel(value)));
+            Dictionary dictionary = findDictionary(value);
+            choices.add(new ResultOption(option.getId(), value, label(dictionary, value), answerCode(dictionary)));
         }
         choices.sort(Comparator.comparing(ResultOption::label, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(ResultOption::id));
@@ -116,14 +117,16 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
                 && TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(option.getTestResultType());
     }
 
-    private String resolveLabel(String value) {
-        if (value.matches("\\d+")) {
-            Dictionary dictionary = dictionaryService.getDictionaryById(value);
-            if (dictionary != null && !isBlank(dictionary.getDictEntry())) {
-                return dictionary.getDictEntry();
-            }
-        }
-        return value;
+    private Dictionary findDictionary(String value) {
+        return value.matches("\\d+") ? dictionaryService.getDictionaryById(value) : null;
+    }
+
+    private static String label(Dictionary dictionary, String value) {
+        return dictionary != null && !isBlank(dictionary.getDictEntry()) ? dictionary.getDictEntry() : value;
+    }
+
+    private static String answerCode(Dictionary dictionary) {
+        return dictionary == null || isBlank(dictionary.getLoincCode()) ? null : dictionary.getLoincCode().trim();
     }
 
     private static boolean contains(String value, String query) {

@@ -4,7 +4,6 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -31,11 +30,13 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
     private final AnalyzerProfileBindingService profileBindingService;
     private final AnalyzerSiteBindingConfirmationService confirmationService;
     private final AnalyzerResultsService analyzerResultsService;
+    private final AnalyzerMappingDefaults mappingDefaults;
 
     public AnalyzerTypeMappingServiceImpl(BridgeProfileCatalogService bridgeProfileCatalogService,
             AnalyzerProfileBindingDAO profileBindingDAO, AnalyzerSiteBindingService siteBindingService,
             AnalyzerMappingCatalogService mappingCatalogService, AnalyzerProfileBindingService profileBindingService,
-            AnalyzerSiteBindingConfirmationService confirmationService, AnalyzerResultsService analyzerResultsService) {
+            AnalyzerSiteBindingConfirmationService confirmationService, AnalyzerResultsService analyzerResultsService,
+            AnalyzerMappingDefaults mappingDefaults) {
         this.bridgeProfileCatalogService = bridgeProfileCatalogService;
         this.profileBindingDAO = profileBindingDAO;
         this.siteBindingService = siteBindingService;
@@ -43,6 +44,7 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
         this.profileBindingService = profileBindingService;
         this.confirmationService = confirmationService;
         this.analyzerResultsService = analyzerResultsService;
+        this.mappingDefaults = mappingDefaults;
     }
 
     @Override
@@ -122,12 +124,12 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
             if (row.getRawTestCode() != null && !row.getRawTestCode().isBlank()) {
                 definitions.putIfAbsent(row.getRawTestCode(),
                         new BridgeAnalyzerProfile.TestDefinition(row.getRawTestCode(), List.of(), null, null,
-                                row.getUnits(), row.getResultType(), List.of(), null, null, Map.of()));
+                                row.getUnits(), row.getResultType(), List.of(), null, Map.of()));
             }
         }
         currentTests.keySet()
                 .forEach(source -> definitions.putIfAbsent(source, new BridgeAnalyzerProfile.TestDefinition(source,
-                        List.of(), null, null, null, null, List.of(), null, null, Map.of())));
+                        List.of(), null, null, null, null, List.of(), null, Map.of())));
         List<AnalyzerTypeMappingView.TestRow> rows = definitions.values().stream()
                 .map(definition -> composeTestRow(definition, currentTests.get(definition.analyzerCode()),
                         currentResults, observedHeldValues, activeTests, activeTestsById))
@@ -221,11 +223,17 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
                 : current.getMappingState();
         String testId = current == null ? null : current.getTestId();
         AnalyzerMappingCatalogService.TestOption selected = testId == null ? null : activeTestsById.get(testId);
-        AnalyzerMappingCatalogService.TestOption suggested = state == AnalyzerSiteBindingMappingState.UNRESOLVED
-                ? uniqueSuggestion(definition, activeTests)
+        AnalyzerSiteBindingTestDraft resolved = state == AnalyzerSiteBindingMappingState.UNRESOLVED
+                ? mappingDefaults.resolveTest(definition, activeTests)
                 : null;
+        AnalyzerMappingCatalogService.TestOption suggested = resolved == null || resolved.testId() == null ? null
+                : activeTestsById.get(resolved.testId());
+        AnalyzerUnresolvedReason testReason = resolved == null ? null : resolved.unresolvedReason();
+        AnalyzerMappingCatalogService.TestOption answerTest = selected != null ? selected : suggested;
+        List<AnalyzerMappingCatalogService.ResultOption> answerOptions = answerTest == null ? List.of()
+                : mappingCatalogService.getActiveResultOptions(answerTest.id());
         Map<String, AnalyzerMappingCatalogService.ResultOption> activeResults = selected == null ? Map.of()
-                : mappingCatalogService.getActiveResultOptions(selected.id()).stream()
+                : answerOptions.stream()
                         .collect(Collectors.toMap(AnalyzerMappingCatalogService.ResultOption::id, Function.identity()));
         LinkedHashSet<String> rawValues = new LinkedHashSet<>(definition.resultValues());
         currentResults.keySet().stream().filter(key -> definition.analyzerCode().equals(key.sourceRowKey()))
@@ -239,39 +247,28 @@ public class AnalyzerTypeMappingServiceImpl implements AnalyzerTypeMappingServic
             AnalyzerSiteBindingMappingState resultState = result == null ? AnalyzerSiteBindingMappingState.UNRESOLVED
                     : result.getMappingState();
             String optionId = result == null ? null : result.getTestResultId();
+            AnalyzerMappingCatalogService.ResultOption suggestedOption = null;
+            AnalyzerUnresolvedReason reason = null;
+            if (resultState == AnalyzerSiteBindingMappingState.UNRESOLVED) {
+                if (answerTest == null) {
+                    reason = testReason == null ? AnalyzerUnresolvedReason.NO_MATCH : testReason;
+                } else {
+                    AnalyzerSiteBindingResultDraft answer = mappingDefaults.resolveAnswer(definition, rawValue,
+                            answerOptions);
+                    reason = answer.unresolvedReason();
+                    suggestedOption = answer.testResultId() == null ? null
+                            : answerOptions.stream().filter(option -> option.id().equals(answer.testResultId()))
+                                    .findFirst().orElse(null);
+                }
+            }
             results.add(new AnalyzerTypeMappingView.ResultRow(rawValue, resultState, optionId,
-                    optionId == null ? null : activeResults.get(optionId), observedHeldValues.contains(key)));
+                    optionId == null ? null : activeResults.get(optionId), suggestedOption, reason,
+                    observedHeldValues.contains(key)));
         }
         return new AnalyzerTypeMappingView.TestRow(definition.analyzerCode(), definition.analyzerCode(),
                 definition.aliases(), definition.testNameHint(), definition.loinc(), definition.unit(),
-                definition.resultType(), definition.normalizedCoding(), state, testId, selected, suggested, results);
-    }
-
-    private static AnalyzerMappingCatalogService.TestOption uniqueSuggestion(
-            BridgeAnalyzerProfile.TestDefinition definition,
-            List<AnalyzerMappingCatalogService.TestOption> activeTests) {
-        Map<String, AnalyzerMappingCatalogService.TestOption> candidates = new LinkedHashMap<>();
-        for (AnalyzerMappingCatalogService.TestOption option : activeTests) {
-            if (matches(definition, option)) {
-                candidates.put(option.id(), option);
-            }
-        }
-        return candidates.size() == 1 ? candidates.values().iterator().next() : null;
-    }
-
-    private static boolean matches(BridgeAnalyzerProfile.TestDefinition definition,
-            AnalyzerMappingCatalogService.TestOption option) {
-        if (definition.loinc() != null && option.loincCodes().contains(definition.loinc())
-                || equalText(option.code(), definition.analyzerCode())
-                || equalText(option.name(), definition.testNameHint())) {
-            return true;
-        }
-        return definition.aliases().stream().anyMatch(alias -> equalText(option.code(), alias));
-    }
-
-    private static boolean equalText(String left, String right) {
-        return left != null && right != null
-                && left.trim().toLowerCase(Locale.ROOT).equals(right.trim().toLowerCase(Locale.ROOT));
+                definition.resultType(), definition.normalizedCoding(), state, testId, selected, suggested, testReason,
+                results);
     }
 
     private record ResultSourceKey(String sourceRowKey, String rawValue) {

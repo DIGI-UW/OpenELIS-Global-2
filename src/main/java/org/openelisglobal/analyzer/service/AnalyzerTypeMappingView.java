@@ -24,7 +24,8 @@ public record AnalyzerTypeMappingView(String profileId, int profileRevision, Str
             String unit, String resultType, BridgeAnalyzerProfile.NormalizedCoding normalizedCoding,
             AnalyzerSiteBindingMappingState mappingState, String testId,
             AnalyzerMappingCatalogService.TestOption selectedTest,
-            AnalyzerMappingCatalogService.TestOption suggestedTest, List<ResultRow> results) {
+            AnalyzerMappingCatalogService.TestOption suggestedTest, AnalyzerUnresolvedReason unresolvedReason,
+            List<ResultRow> results) {
 
         public TestRow {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
@@ -33,6 +34,8 @@ public record AnalyzerTypeMappingView(String profileId, int profileRevision, Str
     }
 
     public record ResultRow(String rawValue, AnalyzerSiteBindingMappingState mappingState, String resultOptionId,
-            AnalyzerMappingCatalogService.ResultOption selectedOption, boolean observed) {
+            AnalyzerMappingCatalogService.ResultOption selectedOption,
+            AnalyzerMappingCatalogService.ResultOption suggestedOption, AnalyzerUnresolvedReason unresolvedReason,
+            boolean observed) {
     }
 }
