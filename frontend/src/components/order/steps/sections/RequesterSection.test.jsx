@@ -8,14 +8,26 @@ import messages from "../../../../languages/en.json";
 import RequesterSection from "./RequesterSection";
 import { ConfigurationContext } from "../../../layout/Layout";
 
-const { getFromOpenElisServerMock } = vi.hoisted(() => ({
-  getFromOpenElisServerMock: vi.fn(),
-}));
+const { getFromOpenElisServerMock, possibleMatchesMock, postFullMock } =
+  vi.hoisted(() => ({
+    getFromOpenElisServerMock: vi.fn(),
+    possibleMatchesMock: vi.fn(),
+    postFullMock: vi.fn(),
+  }));
 
 vi.mock("../../../utils/Utils", async (importOriginal) => ({
-  getFromOpenElisServer: (...args) => getFromOpenElisServerMock(...args),
+  getFromOpenElisServer: (url, callback, ...rest) =>
+    url.startsWith("/rest/possible-matches/")
+      ? callback(possibleMatchesMock(url))
+      : getFromOpenElisServerMock(url, callback, ...rest),
+  postToOpenElisServerFullResponse: (...args) => postFullMock(...args),
   toLocalIsoDate: (await importOriginal()).toLocalIsoDate,
 }));
+
+const lastOrderUpdate = (setOrderData) =>
+  setOrderData.mock.calls[setOrderData.mock.calls.length - 1][0]({
+    sampleOrderItems: {},
+  }).sampleOrderItems;
 
 function renderSection({
   workflowType = "clinical",
@@ -85,6 +97,9 @@ function renderControlledRequester(initialOrderData) {
 describe("RequesterSection", () => {
   beforeEach(() => {
     getFromOpenElisServerMock.mockReset();
+    possibleMatchesMock.mockReset();
+    possibleMatchesMock.mockReturnValue({ matches: [] });
+    postFullMock.mockReset();
   });
 
   // Vector previously had the entire organization/site search block
@@ -131,7 +146,10 @@ describe("RequesterSection", () => {
 
   // Clinical Provider must surface Fax and Email (v1 dropped them).
   it("renders Provider Fax and Email inputs for clinical orders", () => {
-    renderSection({ workflowType: "clinical" });
+    renderSection({
+      workflowType: "clinical",
+      configurationProperties: { SHOW_FAX_FIELDS: "true" },
+    });
 
     expect(screen.getByLabelText("Provider Fax")).toBeInTheDocument();
     expect(screen.getByLabelText("Provider Email")).toBeInTheDocument();
@@ -139,7 +157,11 @@ describe("RequesterSection", () => {
 
   it("calls setOrderData with providerFax/providerEmail on input", () => {
     const setOrderData = vi.fn();
-    renderSection({ workflowType: "clinical", setOrderData });
+    renderSection({
+      workflowType: "clinical",
+      setOrderData,
+      configurationProperties: { SHOW_FAX_FIELDS: "true" },
+    });
 
     fireEvent.change(screen.getByLabelText("Provider Fax"), {
       target: { value: "555-1234" },
@@ -308,7 +330,10 @@ describe("RequesterSection", () => {
   // Requesting Organization needs its own phone/fax/email, separate
   // from any Requestor contact person.
   it("renders Organization contact fields for environmental/vector orders", () => {
-    renderSection({ workflowType: "environmental" });
+    renderSection({
+      workflowType: "environmental",
+      configurationProperties: { SHOW_FAX_FIELDS: "true" },
+    });
 
     expect(screen.getByLabelText("Organization Phone")).toBeInTheDocument();
     expect(screen.getByLabelText("Organization Fax")).toBeInTheDocument();
@@ -343,11 +368,12 @@ describe("RequesterSection", () => {
       screen.getByText('+ Add new organization "Brand New Clinic"'),
     );
 
-    const updater =
-      setOrderData.mock.calls[setOrderData.mock.calls.length - 1][0];
-    const result = updater({ sampleOrderItems: {} });
-    expect(result.sampleOrderItems.newRequesterName).toBe("Brand New Clinic");
-    expect(result.sampleOrderItems.referringSiteId).toBe("");
+    await waitFor(() =>
+      expect(lastOrderUpdate(setOrderData).newRequesterName).toBe(
+        "Brand New Clinic",
+      ),
+    );
+    expect(lastOrderUpdate(setOrderData).referringSiteId).toBe("");
   });
 
   // Provider previously had no way to create a brand-new provider on the
@@ -377,12 +403,11 @@ describe("RequesterSection", () => {
 
     fireEvent.click(screen.getByText('+ Add new provider "Jane Doe"'));
 
-    const updater =
-      setOrderData.mock.calls[setOrderData.mock.calls.length - 1][0];
-    const result = updater({ sampleOrderItems: {} });
-    expect(result.sampleOrderItems.providerFirstName).toBe("Jane");
-    expect(result.sampleOrderItems.providerLastName).toBe("Doe");
-    expect(result.sampleOrderItems.providerPersonId).toBe("");
+    await waitFor(() =>
+      expect(lastOrderUpdate(setOrderData).providerFirstName).toBe("Jane"),
+    );
+    expect(lastOrderUpdate(setOrderData).providerLastName).toBe("Doe");
+    expect(lastOrderUpdate(setOrderData).providerPersonId).toBe("");
   });
 
   // Requestor previously had no "no match" affordance at all — unlike
@@ -762,7 +787,7 @@ describe("RequesterSection", () => {
         </ConfigurationContext.Provider>,
       );
 
-      expect(screen.getByLabelText("Provider Fax")).toBeDisabled();
+      expect(screen.getByLabelText("Provider Email")).toBeDisabled();
       expect(
         screen.getByText(
           "Entering contact info for a new provider has been disabled by your administrator. Search for an existing provider above.",
@@ -799,11 +824,11 @@ describe("RequesterSection", () => {
         </ConfigurationContext.Provider>,
       );
 
-      expect(screen.getByLabelText("Provider Fax")).toBeDisabled();
+      expect(screen.getByLabelText("Provider Email")).toBeDisabled();
 
       fireEvent.click(screen.getByText("Edit details"));
 
-      expect(screen.getByLabelText("Provider Fax")).not.toBeDisabled();
+      expect(screen.getByLabelText("Provider Email")).not.toBeDisabled();
     });
 
     it("keeps new-Provider contact fields enabled when restrictFreeTextProviderEntry is false", () => {
@@ -812,7 +837,7 @@ describe("RequesterSection", () => {
         configurationProperties: { restrictFreeTextProviderEntry: "false" },
       });
 
-      expect(screen.getByLabelText("Provider Fax")).not.toBeDisabled();
+      expect(screen.getByLabelText("Provider Email")).not.toBeDisabled();
     });
   });
 
@@ -900,11 +925,11 @@ describe("RequesterSection", () => {
       await waitFor(() => screen.getByText("Select"));
       fireEvent.click(screen.getByText("Select"));
 
-      expect(screen.getByLabelText("Provider Fax")).toBeDisabled();
+      expect(screen.getByLabelText("Provider Email")).toBeDisabled();
 
       fireEvent.click(screen.getByText("Edit details"));
 
-      expect(screen.getByLabelText("Provider Fax")).not.toBeDisabled();
+      expect(screen.getByLabelText("Provider Email")).not.toBeDisabled();
     });
 
     it("leaves a brand-new provider's contact fields editable immediately, with no Edit details link", async () => {
@@ -927,7 +952,10 @@ describe("RequesterSection", () => {
       );
       fireEvent.click(screen.getByText('+ Add new provider "Jane Doe"'));
 
-      expect(screen.getByLabelText("Provider Fax")).not.toBeDisabled();
+      await waitFor(() =>
+        expect(screen.getByLabelText("Title")).toBeInTheDocument(),
+      );
+      expect(screen.getByLabelText("Provider Email")).not.toBeDisabled();
       expect(screen.queryByText("Edit details")).not.toBeInTheDocument();
     });
 
@@ -1242,6 +1270,232 @@ describe("RequesterSection", () => {
         "Doctor, Mary",
       );
       expect(screen.getByLabelText(/Provider Name/)).toBeDisabled();
+    });
+  });
+
+  describe("OGC-1424 fax setting, possible matches and provider title", () => {
+    const providerSearchMock = (providers) => (url, callback) => {
+      if (url.startsWith("/rest/provider/search")) {
+        callback({ providers });
+      }
+      if (url.startsWith("/rest/dictionary/categories/providerTitle")) {
+        callback([
+          { code: "Dr", label: "Doctor" },
+          { code: "HEO", label: "Health Extension Officer" },
+        ]);
+      }
+    };
+
+    const typeProvider = async (name) => {
+      fireEvent.change(screen.getByLabelText("Provider Name"), {
+        target: { value: name },
+      });
+      await waitFor(() =>
+        expect(
+          screen.getByText(`+ Add new provider "${name}"`),
+        ).toBeInTheDocument(),
+      );
+    };
+
+    it("hides every fax field unless showFaxFields is on, keeping a saved fax on the order", () => {
+      const setOrderData = vi.fn();
+      renderSection({
+        workflowType: "clinical",
+        setOrderData,
+        orderData: { sampleOrderItems: { providerFax: "675-321-0000" } },
+      });
+
+      expect(screen.queryByLabelText("Provider Fax")).toBeNull();
+      expect(screen.queryByLabelText("Organization Fax")).toBeNull();
+      expect(screen.getByLabelText("Provider Email")).toBeInTheDocument();
+      expect(setOrderData).not.toHaveBeenCalledWith(
+        expect.objectContaining({ providerFax: "" }),
+      );
+    });
+
+    it("lists possible matches before adding a provider, and Use this one selects the existing provider", async () => {
+      getFromOpenElisServerMock.mockImplementation(
+        providerSearchMock([
+          {
+            id: "41",
+            personId: "141",
+            firstName: "Agnes",
+            lastName: "Tau",
+            titleAbbreviation: "Dr",
+          },
+        ]),
+      );
+      possibleMatchesMock.mockReturnValue({
+        matches: [
+          {
+            id: "41",
+            kind: "provider",
+            firstName: "Agnes",
+            lastName: "Tau",
+            title: "Dr",
+            matchedOn: ["name"],
+          },
+        ],
+      });
+      getFromOpenElisServerMock.mockImplementationOnce(providerSearchMock([]));
+      const setOrderData = vi.fn();
+      renderSection({ workflowType: "clinical", setOrderData });
+
+      await typeProvider("Agnis Tau");
+      fireEvent.click(screen.getByText('+ Add new provider "Agnis Tau"'));
+
+      const dialog = await screen.findByTestId("possible-match-41");
+      expect(within(dialog).getByText("Dr Agnes Tau")).toBeInTheDocument();
+      expect(within(dialog).getByText("Matched on: name")).toBeInTheDocument();
+      expect(possibleMatchesMock).toHaveBeenCalledWith(
+        "/rest/possible-matches/provider?firstName=Agnis&lastName=Tau",
+      );
+
+      fireEvent.click(screen.getByTestId("possible-match-use-41"));
+
+      await waitFor(() =>
+        expect(lastOrderUpdate(setOrderData).providerId).toBe("41"),
+      );
+      expect(lastOrderUpdate(setOrderData).providerPersonId).toBe("141");
+      expect(postFullMock).not.toHaveBeenCalled();
+    });
+
+    it("Create new anyway asks for confirmation, records the choice, then adds the provider", async () => {
+      getFromOpenElisServerMock.mockImplementation(providerSearchMock([]));
+      possibleMatchesMock.mockReturnValue({
+        matches: [
+          {
+            id: "41",
+            kind: "provider",
+            firstName: "Agnes",
+            lastName: "Tau",
+            matchedOn: ["name"],
+          },
+        ],
+      });
+      postFullMock.mockImplementation((url, body, callback) =>
+        callback({ ok: true, status: 201, json: () => Promise.resolve({}) }),
+      );
+      const setOrderData = vi.fn();
+      renderSection({ workflowType: "clinical", setOrderData });
+
+      await typeProvider("Agnis Tau");
+      fireEvent.click(screen.getByText('+ Add new provider "Agnis Tau"'));
+      await screen.findByTestId("possible-match-41");
+
+      fireEvent.click(screen.getByText("Create new anyway"));
+      expect(
+        screen.getByText(
+          "Create a new record even though 1 similar records exist?",
+        ),
+      ).toBeInTheDocument();
+      expect(postFullMock).not.toHaveBeenCalled();
+
+      fireEvent.click(screen.getByText("Create new record"));
+
+      await waitFor(() =>
+        expect(lastOrderUpdate(setOrderData).providerLastName).toBe("Tau"),
+      );
+      const [url, body] = postFullMock.mock.calls[0];
+      expect(url).toBe("/rest/possible-matches/provider/override");
+      expect(JSON.parse(body)).toEqual({
+        entered: { firstName: "Agnis", lastName: "Tau" },
+        matches: [{ id: "41", matchedOn: ["name"] }],
+      });
+    });
+
+    it("adds nothing when the choice could not be recorded, and says so", async () => {
+      getFromOpenElisServerMock.mockImplementation(providerSearchMock([]));
+      possibleMatchesMock.mockReturnValue({
+        matches: [
+          {
+            id: "41",
+            kind: "provider",
+            firstName: "Agnes",
+            lastName: "Tau",
+            matchedOn: ["name"],
+          },
+        ],
+      });
+      postFullMock.mockImplementation((url, body, callback) =>
+        callback({
+          ok: false,
+          status: 500,
+          json: () => Promise.resolve({ message: "boom" }),
+        }),
+      );
+      const setOrderData = vi.fn();
+      renderSection({ workflowType: "clinical", setOrderData });
+
+      await typeProvider("Agnis Tau");
+      fireEvent.click(screen.getByText('+ Add new provider "Agnis Tau"'));
+      await screen.findByTestId("possible-match-41");
+      fireEvent.click(screen.getByText("Create new anyway"));
+      fireEvent.click(screen.getByText("Create new record"));
+
+      expect(
+        await screen.findByText(
+          "Your choice could not be recorded, so nothing was created. Try again.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        setOrderData.mock.calls.some(
+          ([updater]) =>
+            typeof updater === "function" &&
+            updater({ sampleOrderItems: {} }).sampleOrderItems
+              .providerLastName === "Tau",
+        ),
+      ).toBe(false);
+    });
+
+    it("when the check cannot run it says so and still lets the user add the facility", async () => {
+      getFromOpenElisServerMock.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/organization/search")) {
+          callback({ organizations: [] });
+        }
+      });
+      possibleMatchesMock.mockReturnValue(undefined);
+      const setOrderData = vi.fn();
+      renderSection({ workflowType: "clinical", setOrderData });
+
+      fireEvent.change(screen.getByLabelText(/Site Name/), {
+        target: { value: "Tokarara Health Center" },
+      });
+      await waitFor(() =>
+        screen.getByText('+ Add new organization "Tokarara Health Center"'),
+      );
+      fireEvent.click(
+        screen.getByText('+ Add new organization "Tokarara Health Center"'),
+      );
+
+      expect(
+        await screen.findByText(
+          "Similar records could not be checked. You can still create the new record.",
+        ),
+      ).toBeInTheDocument();
+      fireEvent.click(screen.getByText("Create new anyway"));
+
+      await waitFor(() =>
+        expect(lastOrderUpdate(setOrderData).newRequesterName).toBe(
+          "Tokarara Health Center",
+        ),
+      );
+      expect(postFullMock).not.toHaveBeenCalled();
+    });
+
+    it("a new provider takes a title from the provider title list", async () => {
+      getFromOpenElisServerMock.mockImplementation(providerSearchMock([]));
+      const setOrderData = vi.fn();
+      renderSection({ workflowType: "clinical", setOrderData });
+
+      await typeProvider("Jane Doe");
+      fireEvent.click(screen.getByText('+ Add new provider "Jane Doe"'));
+
+      const title = await screen.findByLabelText("Title");
+      expect(within(title).getByText("Health Extension Officer")).toBeTruthy();
+      fireEvent.change(title, { target: { value: "HEO" } });
+
+      expect(lastOrderUpdate(setOrderData).providerTitleCode).toBe("HEO");
     });
   });
 });

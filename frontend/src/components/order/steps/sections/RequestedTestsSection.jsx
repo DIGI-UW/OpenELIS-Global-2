@@ -12,10 +12,18 @@ import {
   Tag,
   OperationalTag,
   InlineNotification,
+  OverflowMenu,
+  OverflowMenuItem,
 } from "@carbon/react";
 import { Checkmark } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import TestAssignmentModal from "./TestAssignmentModal";
+import TestedElsewhereFields from "./TestedElsewhereFields";
+import {
+  listTestedElsewhere,
+  markTestedElsewhere,
+  unmarkTestedElsewhere,
+} from "../../api/orderEntryCleanupApi";
 
 const compatibilityMapKey = (id, isPanel) =>
   `${isPanel ? "panel" : "test"}-${id}`;
@@ -46,8 +54,98 @@ const RequestedTestsSection = ({
   removeTestFromSample: _removeTestFromSample,
   sampleTypes,
   isReadOnly,
+  labNumber = "",
+  referringSite = null,
 }) => {
   const intl = useIntl();
+
+  // FR-B20: tests whose result another laboratory reported, by test id.
+  const [testedElsewhere, setTestedElsewhere] = useState({});
+  const [testedElsewhereError, setTestedElsewhereError] = useState("");
+
+  useEffect(() => {
+    if (!labNumber) {
+      return undefined;
+    }
+    let active = true;
+    listTestedElsewhere(labNumber)
+      .then((marks) => {
+        if (!active) return;
+        const byTest = {};
+        (marks || []).forEach((mark) => {
+          byTest[String(mark.testId)] = mark;
+        });
+        setTestedElsewhere(byTest);
+      })
+      .catch(() => {
+        if (active) setTestedElsewhere({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [labNumber]);
+
+  const saveTestedElsewhere = useCallback(
+    (testId, changes) => {
+      const current = testedElsewhere[String(testId)] || {};
+      const next = { ...current, ...changes };
+      setTestedElsewhereError("");
+      markTestedElsewhere({
+        labNumber,
+        testId,
+        performingLabId: next.performingLabId,
+        reportedValue: next.reportedValue,
+      })
+        .then((saved) =>
+          setTestedElsewhere((previous) => ({
+            ...previous,
+            [String(testId)]: saved,
+          })),
+        )
+        .catch((error) =>
+          setTestedElsewhereError(
+            intl.formatMessage(
+              { id: "order.tests.testedElsewhere.saveFailed" },
+              { reason: error.message },
+            ),
+          ),
+        );
+    },
+    [intl, labNumber, testedElsewhere],
+  );
+
+  const markTest = useCallback(
+    (testId) =>
+      saveTestedElsewhere(testId, {
+        performingLabId: referringSite?.id || "",
+        performingLabName: referringSite?.name || "",
+        reportedValue: "",
+      }),
+    [referringSite, saveTestedElsewhere],
+  );
+
+  const unmarkTest = useCallback(
+    (testId) => {
+      setTestedElsewhereError("");
+      unmarkTestedElsewhere(labNumber, testId)
+        .then(() =>
+          setTestedElsewhere((previous) => {
+            const next = { ...previous };
+            delete next[String(testId)];
+            return next;
+          }),
+        )
+        .catch((error) =>
+          setTestedElsewhereError(
+            intl.formatMessage(
+              { id: "order.tests.testedElsewhere.saveFailed" },
+              { reason: error.message },
+            ),
+          ),
+        );
+    },
+    [intl, labNumber],
+  );
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -246,6 +344,7 @@ const RequestedTestsSection = ({
           defaultMessage: "Sample Assignment(s)",
         }),
       },
+      { key: "actions", header: "" },
     ],
     [intl],
   );
@@ -256,6 +355,7 @@ const RequestedTestsSection = ({
       requestedItems.map((item) => {
         const compatibleTypes = getCompatibleSampleTypes(item.id, item.isPanel);
         const assignments = getSampleAssignments(item.id, item.isPanel);
+        const mark = item.isPanel ? null : testedElsewhere[String(item.id)];
 
         return {
           id: `${item.isPanel ? "panel" : "test"}-${item.id}`,
@@ -274,6 +374,31 @@ const RequestedTestsSection = ({
                   ({item.testIds.split(",").length}{" "}
                   <FormattedMessage id="label.tests" defaultMessage="tests" />)
                 </span>
+              )}
+              {mark && (
+                <Tag
+                  type="purple"
+                  size="sm"
+                  data-testid={`tested-elsewhere-tag-${item.id}`}
+                >
+                  {mark.performingLabName ? (
+                    <FormattedMessage
+                      id="order.tests.testedElsewhereAt"
+                      values={{ lab: mark.performingLabName }}
+                    />
+                  ) : (
+                    <FormattedMessage id="order.tests.tag.testedElsewhere" />
+                  )}
+                </Tag>
+              )}
+              {mark && (
+                <TestedElsewhereFields
+                  key={`${item.id}-${mark.performingLabId || ""}`}
+                  testId={item.id}
+                  mark={mark}
+                  onSave={(changes) => saveTestedElsewhere(item.id, changes)}
+                  disabled={isReadOnly}
+                />
               )}
             </div>
           ),
@@ -319,6 +444,17 @@ const RequestedTestsSection = ({
                     {a.sampleTypeName} (Sample {a.sampleIndex + 1})
                   </Tag>
                 ))
+              ) : mark ? (
+                <span className="tested-elsewhere-at">
+                  <FormattedMessage
+                    id="order.tests.testedElsewhereAt"
+                    values={{
+                      lab:
+                        mark.performingLabName ||
+                        intl.formatMessage({ id: "common.notRecorded" }),
+                    }}
+                  />
+                </span>
               ) : (
                 <span className="no-assignment">
                   <FormattedMessage
@@ -329,15 +465,50 @@ const RequestedTestsSection = ({
               )}
             </div>
           ),
+          actions:
+            !item.isPanel && labNumber && !isReadOnly ? (
+              <OverflowMenu
+                size="sm"
+                flipped
+                aria-label={intl.formatMessage({ id: "common.moreActions" })}
+                iconDescription={intl.formatMessage({
+                  id: "common.moreActions",
+                })}
+                data-testid={`test-row-actions-${item.id}`}
+              >
+                {mark ? (
+                  <OverflowMenuItem
+                    itemText={intl.formatMessage({
+                      id: "order.tests.action.unmarkTestedElsewhere",
+                    })}
+                    onClick={() => unmarkTest(item.id)}
+                  />
+                ) : (
+                  <OverflowMenuItem
+                    itemText={intl.formatMessage({
+                      id: "order.tests.action.markTestedElsewhere",
+                    })}
+                    onClick={() => markTest(item.id)}
+                  />
+                )}
+              </OverflowMenu>
+            ) : null,
         };
       }),
     [
       getCompatibleSampleTypes,
       getSampleAssignments,
       handleSampleTypeClick,
+      intl,
       isLoadingCompatibility,
+      isReadOnly,
+      labNumber,
+      markTest,
       requestedItems,
       sampleTypes,
+      saveTestedElsewhere,
+      testedElsewhere,
+      unmarkTest,
     ],
   );
 
@@ -381,6 +552,16 @@ const RequestedTestsSection = ({
         />
       </p>
 
+      {testedElsewhereError && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          title=""
+          subtitle={testedElsewhereError}
+          onCloseButtonClick={() => setTestedElsewhereError("")}
+          data-testid="tested-elsewhere-error"
+        />
+      )}
       <DataTable rows={rows} headers={headers} size="lg">
         {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
           <Table {...getTableProps()}>

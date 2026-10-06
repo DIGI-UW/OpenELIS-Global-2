@@ -578,6 +578,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
                     savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
+                    copyHandlingDetails(sampleTestCollection.item, savedItem);
                     // Keep existing typeOfSample if incoming is null (don't change sample type
                     // during collection)
                     if (sampleTestCollection.item.getTypeOfSample() != null) {
@@ -977,6 +978,39 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
      * the server itself considers microbiology. A submitted payload never makes an
      * order microbiology.
      */
+    /**
+     * Carries the collection and handling details a step save sends for a sample
+     * that already exists. Before OGC-1424 only some of them were copied, so an
+     * edited collection method, GPS position or legacy temperature on a saved
+     * sample was silently dropped. The receiver and the arrival condition follow
+     * the incoming sample; the arrival keeps its original recorder and time while
+     * the condition and temperature are unchanged.
+     */
+    static void copyHandlingDetails(SampleItem incoming, SampleItem saved) {
+        saved.setCollectionMethod(incoming.getCollectionMethod());
+        saved.setSampleTemperature(incoming.getSampleTemperature());
+        saved.setSpecimenOrigin(incoming.getSpecimenOrigin());
+        saved.setContainer(incoming.getContainer());
+        saved.setLocationDetails(incoming.getLocationDetails());
+        saved.setGpsLatitude(incoming.getGpsLatitude());
+        saved.setGpsLongitude(incoming.getGpsLongitude());
+        if (incoming.getReceivedById() != null) {
+            saved.setReceivedById(incoming.getReceivedById());
+        }
+        boolean arrivalChanged = !java.util.Objects.equals(incoming.getArrivalCondition(), saved.getArrivalCondition())
+                || !sameTemperature(incoming.getArrivalTemperature(), saved.getArrivalTemperature());
+        if (arrivalChanged) {
+            saved.setArrivalCondition(incoming.getArrivalCondition());
+            saved.setArrivalTemperature(incoming.getArrivalTemperature());
+            saved.setArrivalRecordedById(incoming.getArrivalRecordedById());
+            saved.setArrivalRecordedAt(incoming.getArrivalRecordedAt());
+        }
+    }
+
+    private static boolean sameTemperature(java.math.BigDecimal a, java.math.BigDecimal b) {
+        return a == null ? b == null : b != null && a.compareTo(b) == 0;
+    }
+
     private boolean isMicrobiologyOrder(SamplePatientUpdateData updateData,
             java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
         if (microOrderRoutingService == null) {

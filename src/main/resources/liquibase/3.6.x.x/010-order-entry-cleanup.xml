@@ -1,0 +1,122 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1424 (clinical order entry v4, FRS v0.20 slice M14) -->
+
+    <changeSet id="3.6.0.0-sample-item-receipt-and-arrival" author="OGC-1424">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="sample_item"/>
+            <not>
+                <columnExists tableName="sample_item" columnName="arrival_condition"/>
+            </not>
+        </preConditions>
+        <comment>
+            Who received a sample (FR-B23) and the condition it arrived in (FR-C9a): one of a short
+            coded list, an optional measured temperature in degrees C, and who recorded it and when.
+            The free-text sample_temperature, collection_conditions and specimen_origin columns stay
+            for values saved before v4.
+        </comment>
+        <addColumn tableName="sample_item">
+            <column name="received_by_id" type="NUMERIC(10)"/>
+            <column name="arrival_condition" type="VARCHAR(32)"/>
+            <column name="arrival_temperature" type="NUMERIC(5,1)"/>
+            <column name="arrival_recorded_by_id" type="NUMERIC(10)"/>
+            <column name="arrival_recorded_at" type="TIMESTAMP WITH TIME ZONE"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet id="3.6.0.0-order-test-tested-elsewhere" author="OGC-1424">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="order_test_tested_elsewhere"/>
+            </not>
+        </preConditions>
+        <comment>
+            A test on an order whose result was reported by another laboratory (FR-B20): the
+            performing laboratory from the Organizations list and the reported value.
+        </comment>
+        <createSequence sequenceName="order_test_tested_elsewhere_seq" startValue="1" incrementBy="1"/>
+        <createTable tableName="order_test_tested_elsewhere">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" primaryKeyName="order_test_tested_elsewhere_pk"/>
+            </column>
+            <column name="sample_id" type="NUMERIC(10)">
+                <constraints nullable="false" foreignKeyName="order_test_tested_elsewhere_sample_fk"
+                    references="sample(id)" deleteCascade="true"/>
+            </column>
+            <column name="test_id" type="NUMERIC(10)">
+                <constraints nullable="false" foreignKeyName="order_test_tested_elsewhere_test_fk"
+                    references="test(id)"/>
+            </column>
+            <column name="performing_lab_id" type="NUMERIC(10)">
+                <constraints nullable="true" foreignKeyName="order_test_tested_elsewhere_org_fk"
+                    references="organization(id)"/>
+            </column>
+            <column name="reported_value" type="VARCHAR(255)"/>
+            <column name="sys_user_id" type="NUMERIC(10)"/>
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+        <addUniqueConstraint tableName="order_test_tested_elsewhere" columnNames="sample_id, test_id"
+            constraintName="order_test_tested_elsewhere_uniq"/>
+    </changeSet>
+
+    <changeSet id="3.6.0.0-possible-match-override" author="OGC-1424">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="possible_match_override"/>
+            </not>
+        </preConditions>
+        <comment>
+            The record of Create new anyway (FR-B6a, D-216): who created a new patient, facility or
+            provider although similar records were shown, when, what was entered and which matches.
+        </comment>
+        <createSequence sequenceName="possible_match_override_seq" startValue="1" incrementBy="1"/>
+        <createTable tableName="possible_match_override">
+            <column name="id" type="INTEGER">
+                <constraints primaryKey="true" primaryKeyName="possible_match_override_pk"/>
+            </column>
+            <column name="record_kind" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="entered_values" type="TEXT"/>
+            <column name="matches_shown" type="TEXT"/>
+            <column name="sys_user_id" type="NUMERIC(10)"/>
+            <column name="last_updated" type="TIMESTAMP WITH TIME ZONE" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="3.6.0.0-show-fax-fields-setting" author="OGC-1424">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.site_information WHERE name = 'showFaxFields'
+            </sqlCheck>
+        </preConditions>
+        <comment>
+            Fax fields on a new facility, a new provider and a facility's contact in order entry are
+            shown only when this is on (FR-B7, FR-B9); off by default, saved fax numbers are kept.
+        </comment>
+        <insert tableName="site_information" schemaName="clinlims">
+            <column name="id" valueSequenceNext="site_information_seq"/>
+            <column name="name" value="showFaxFields"/>
+            <column name="lastupdated" valueComputed="now()"/>
+            <column name="description" value="Show fax fields for facilities and providers in order entry"/>
+            <column name="value" value="false"/>
+            <column name="encrypted" valueBoolean="false"/>
+            <column name="domain_id" valueComputed="(SELECT id FROM clinlims.site_information_domain WHERE name = 'sampleEntryConfig')"/>
+            <column name="value_type" value="boolean"/>
+            <column name="instruction_key" value="siteInfo.instruction.showFaxFields"/>
+            <column name="group" valueNumeric="0"/>
+            <column name="description_key" value="siteInfo.instruction.showFaxFields.d"/>
+            <column name="name_key" value="siteInfo.showFaxFields"/>
+        </insert>
+    </changeSet>
+</databaseChangeLog>

@@ -222,6 +222,8 @@
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelConfig</class>
         <class>org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink</class>
         <class>org.openelisglobal.labelpreset.valueholder.OrderLabelRequest</class>
+        <class>org.openelisglobal.orderentry.valueholder.OrderTestTestedElsewhere</class>
+        <class>org.openelisglobal.orderentry.valueholder.PossibleMatchOverride</class>
 
         <!-- Test Accreditation (OGC-686) -->
         <class>org.openelisglobal.accreditation.valueholder.AccreditingBody</class>

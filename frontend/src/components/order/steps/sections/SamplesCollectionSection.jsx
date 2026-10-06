@@ -3,6 +3,7 @@ import { useIntl, FormattedMessage } from "react-intl";
 import { Tile, Button, Stack, Tag } from "@carbon/react";
 import { Add, Printer } from "@carbon/icons-react";
 import SampleCollectionCard from "./SampleCollectionCard";
+import ReceivedByLine from "./ReceivedByLine";
 import { sampleObject } from "../../OrderContext";
 import { currentLocalTime, todayLocalIso } from "../../dateUtils";
 
@@ -26,6 +27,8 @@ const SamplesCollectionSection = ({
   admissionDate,
   onPrintLabels,
   printDisabled = false,
+  workflowType = "clinical",
+  labNumber = "",
 }) => {
   const intl = useIntl();
   // The laboratory's "now" when the page opens: the default collection and
@@ -54,6 +57,30 @@ const SamplesCollectionSection = ({
   };
 
   // Handle add new sample
+  const primarySampleIndexes = samples
+    .map((sample, index) => ({ sample, index }))
+    .filter(
+      ({ sample }) => !sample.qcMetadata?.qcType && !sample.sampleRejected,
+    )
+    .map(({ index }) => index);
+
+  // FR-C9a: one cooler usually carries every tube, so Same for all samples
+  // copies the arrival condition to every primary sample on the order.
+  const handleSameForAll = (arrival) => {
+    primarySampleIndexes.forEach((index) =>
+      updateSampleCollectionDetails(index, arrival),
+    );
+  };
+
+  const handleReceiverChange = ({ id, name }) => {
+    primarySampleIndexes.forEach((index) =>
+      updateSampleCollectionDetails(index, {
+        receivedById: id,
+        receivedByName: name,
+      }),
+    );
+  };
+
   const handleAddSample = () => {
     const newSample = {
       ...sampleObject,
@@ -69,6 +96,15 @@ const SamplesCollectionSection = ({
       <h4 className="section-title">
         <FormattedMessage id="collect.samples.title" defaultMessage="Samples" />
       </h4>
+      {workflowType === "clinical" && (
+        <ReceivedByLine
+          samples={samples.filter((_, index) =>
+            primarySampleIndexes.includes(index),
+          )}
+          onChange={handleReceiverChange}
+          isReadOnly={isReadOnly}
+        />
+      )}
 
       <Stack gap={5}>
         {/* Sample Cards — only regular (non-QC) samples get full collection forms */}
@@ -91,6 +127,11 @@ const SamplesCollectionSection = ({
                 isReadOnly={isReadOnly}
                 canRemove={!isReadOnly}
                 admissionDate={admissionDate}
+                workflowType={workflowType}
+                labNumber={labNumber}
+                onSameForAll={
+                  primarySampleIndexes.length > 1 ? handleSameForAll : undefined
+                }
               />
 
               {/* Nested QC sample summaries — inherit collection details from parent */}
