@@ -13,6 +13,9 @@ import {
   createAnalyzer,
   getAnalyzer,
   getAnalyzerMapping,
+  getAnalyzerMappingComponents,
+  getAnalyzerMappingResultOptions,
+  getAnalyzerMappingTests,
   getAnalyzerActivationReadiness,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -27,11 +30,16 @@ vi.mock("../../../services/analyzerService", () => ({
   applyAnalyzerMapping: vi.fn(),
   createAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
+  confirmAnalyzerMapping: vi.fn(),
   getAnalyzerMapping: vi.fn(),
+  getAnalyzerMappingComponents: vi.fn(),
+  getAnalyzerMappingResultOptions: vi.fn(),
+  getAnalyzerMappingTests: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   testConnection: vi.fn(),
+  saveAnalyzerMapping: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
 
@@ -206,6 +214,15 @@ describe("AnalyzerSetup Instrument step", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.history.replaceState({}, "", "/analyzers?setup=instrument");
+    // Verify embeds the mapping editor, which loads the catalog's tests and,
+    // for a mapped test, its answers and components.
+    getAnalyzerMappingTests.mockImplementation((callback) => callback([]));
+    getAnalyzerMappingResultOptions.mockImplementation((_id, callback) =>
+      callback([]),
+    );
+    getAnalyzerMappingComponents.mockImplementation((_id, callback) =>
+      callback([]),
+    );
     getAnalyzerTypeCatalog.mockImplementation((callback) =>
       callback({
         schemaVersion: "1.0",
@@ -556,17 +573,14 @@ describe("AnalyzerSetup Instrument step", () => {
     const history = renderSetupWithHistory(entry);
 
     expect(
-      await screen.findByRole("heading", {
-        name: "Review analyzer mappings",
-      }),
+      await screen.findAllByTestId("analyzer-type-mapping-row"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByText("Rule-based control recognition")[0],
     ).toBeVisible();
-    expect(screen.getByText("2 of 2 tests ready")).toBeVisible();
-    expect(screen.getByText("2 of 2 result values ready")).toBeVisible();
-    expect(screen.getByText("Rule-based control recognition")).toBeVisible();
     expect(screen.getByText("Specimen ID starts with QC")).toBeVisible();
     expect(screen.getByText(/Casey Iiams-Hauser/)).toBeVisible();
     expect(getAnalyzerMapping).toHaveBeenCalledWith("42", expect.any(Function));
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
     const reviewLink = screen.getByRole("link", {
       name: "Review mappings",
@@ -617,7 +631,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
 
     expect(
-      await screen.findByText("Control recognition not configured"),
+      (await screen.findAllByText("Control recognition not configured"))[0],
     ).toBeVisible();
     expect(
       screen.getByText(
@@ -632,7 +646,7 @@ describe("AnalyzerSetup Instrument step", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("allows a confirmed partial mapping to continue without hiding unresolved counts", async () => {
+  it("keeps Connect closed while a record of an assay that is on is unmapped", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
@@ -645,12 +659,47 @@ describe("AnalyzerSetup Instrument step", () => {
             mappingState: "UNRESOLVED",
             testId: null,
             selectedTest: null,
-            results: currentMapping.tests[0].results.map((result) => ({
-              ...result,
-              mappingState: "UNRESOLVED",
-              resultOptionId: null,
-              selectedOption: null,
-            })),
+          },
+          currentMapping.tests[1],
+        ],
+      }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+
+    expect(
+      await screen.findByText(
+        "1 record or value of the assays that are on still need mapping. Map them below, or turn the assay off in Assays if this instrument does not run it.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Continue to Connect" }),
+    ).toBeDisabled();
+  });
+
+  it("does not hold Connect closed for an assay this instrument does not run", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(connectedCandidate()),
+    );
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+      callback(connectedCandidate()),
+    );
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...currentMapping,
+        tests: [
+          currentMapping.tests[0],
+          {
+            sourceRowKey: "test:FLU",
+            rawCode: "FLU",
+            aliases: [],
+            mappingState: "UNRESOLVED",
+            unresolvedReason: "NO_MATCH",
+            enabled: false,
+            testId: null,
+            selectedTest: null,
+            results: [],
           },
         ],
       }),
@@ -658,10 +707,12 @@ describe("AnalyzerSetup Instrument step", () => {
     const history = renderSetupWithHistory(
       `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
     );
+
     const button = await screen.findByRole("button", {
       name: "Continue to Connect",
     });
-    expect(button).toBeEnabled();
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(screen.queryByText("FLU")).not.toBeInTheDocument();
     await userEvent.click(button);
     expect(applyAnalyzerMapping).toHaveBeenCalled();
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
@@ -736,14 +787,14 @@ describe("AnalyzerSetup Instrument step", () => {
     );
 
     expect(
-      await screen.findByText("Verification needs attention"),
+      await screen.findByText(
+        "1 record or value of the assays that are on still need mapping. Map them below, or turn the assay off in Assays if this instrument does not run it.",
+      ),
     ).toBeVisible();
-    expect(screen.getByText("0 of 1 tests ready")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Continue to Connect" }),
     ).toBeDisabled();
     expect(screen.getByRole("link", { name: "Review mappings" })).toBeVisible();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 
   it("returns to and updates the same candidate through browser history", async () => {

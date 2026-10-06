@@ -232,7 +232,9 @@ const AnalyzerTypeMappingEditor = ({
     () => new URLSearchParams(location.search),
     [location.search],
   );
-  const revision = Number(query.get("revision"));
+  // Embedded, the page's own query (setup's profile and revision) is not this
+  // editor's: it always edits the analyzer's newest mapping.
+  const revision = embedded ? null : Number(query.get("revision"));
   const returnTo = safeInternalPath(
     query.get("returnTo"),
     readOnly ? "/analyzers/types" : "/analyzers",
