@@ -3,6 +3,7 @@ import { DatePicker, DatePickerInput } from "@carbon/react";
 import { format, isValid, parse } from "date-fns";
 import { useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
+import { labNow } from "../utils/labClock";
 
 const CustomDatePicker = (props) => {
   const [currentDate, setCurrentDate] = useState(
@@ -21,7 +22,7 @@ const CustomDatePicker = (props) => {
     const parsed = parse(
       text,
       dateLocale.current == "fr-FR" ? "dd/MM/yyyy" : "MM/dd/yyyy",
-      new Date(),
+      labNow(),
     );
     return isValid(parsed) ? parsed : undefined;
   }, []);
@@ -29,8 +30,8 @@ const CustomDatePicker = (props) => {
   // the calendar with its own rules, which read "26/09/2026" as a January
   // date, and a value set after mount was then clamped to that bound.
   const [todayBounds] = useState(() => ({
-    start: new Date().setHours(0, 0, 0, 0),
-    end: new Date().setHours(23, 59, 59, 999),
+    start: labNow().setHours(0, 0, 0, 0),
+    end: labNow().setHours(23, 59, 59, 999),
   }));
   // A typed date past a disallowed bound is refused here. The calendar never
   // offers it, but typing did reach the form while flatpickr blanked the box.

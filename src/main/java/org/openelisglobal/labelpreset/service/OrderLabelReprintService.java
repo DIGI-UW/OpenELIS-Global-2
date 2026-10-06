@@ -41,6 +41,20 @@ public interface OrderLabelReprintService {
     ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId);
 
     /**
+     * Render a print-ready PDF for the order's persisted label requests that match
+     * every given filter, each row rendered from its own frozen snapshot at the
+     * stored {@code qty}. A {@code null} filter matches everything.
+     *
+     * @param orderId      the parent {@code Sample} id
+     * @param presetId     only rows of this preset
+     * @param sampleItemId only the rows bound to this sample item
+     * @param scope        {@code "order"} for the per-order rows only,
+     *                     {@code "sample"} for the per-sample rows only
+     * @return a PDF stream; empty if no row matches
+     */
+    ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId, String scope);
+
+    /**
      * Decrease-only quantity update. Allows lowering {@code qty} to the given value
      * (or leaving it unchanged); rejects any value greater than the currently saved
      * qty.

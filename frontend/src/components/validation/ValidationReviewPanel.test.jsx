@@ -21,10 +21,11 @@ vi.mock("../utils/Utils", async (importOriginal) => {
 });
 
 vi.mock("../esignature/ESignatureButton", () => ({
-  default: ({ children, onSign, disabled }) => (
+  default: ({ children, onSign, disabled, ariaDescribedBy }) => (
     <button
       type="button"
       disabled={disabled}
+      aria-describedby={ariaDescribedBy}
       onClick={() => onSign && onSign()}
     >
       {children}
@@ -51,7 +52,10 @@ vi.mock("../nonconform/common/InlineNceForm", () => ({
   ),
 }));
 
-import { postToOpenElisServerJsonResponse } from "../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../utils/Utils";
 
 const row = (overrides = {}) => ({
   id: 0,
@@ -88,6 +92,7 @@ const renderPanel = (data, props = {}) =>
         qcAck={props.qcAck || { required: false, satisfied: true }}
         onActionDone={props.onActionDone || vi.fn()}
         onStale={props.onStale}
+        onQcHold={props.onQcHold}
       />
     </IntlProvider>,
   );
@@ -310,6 +315,51 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     );
   });
 
+  it("a result a failed control holds cannot be released while the lab blocks on QC", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "true" },
+    });
+    expect(screen.getByText("Validate & release")).toBeDisabled();
+    expect(screen.getByTestId("review-qc-hold-hint")).toHaveTextContent(
+      "Release blocked: a failed QC control holds this result until its non-conformity is closed.",
+    );
+    expect(screen.getByText("Validate & release")).toHaveAttribute(
+      "aria-describedby",
+      screen.getByTestId("review-qc-hold-hint").id,
+    );
+  });
+
+  it("a held result that also waits on a QC acknowledgment names both hints", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "true" },
+      qcAck: { required: true, satisfied: false },
+    });
+    expect(screen.getByText("Validate & release")).toHaveAttribute(
+      "aria-describedby",
+      `${screen.getByTestId("review-qc-ack-hint").id} ${screen.getByTestId("review-qc-hold-hint").id}`,
+    );
+  });
+
+  it("a release the server refuses for a QC hold goes to the page, not to a success", () => {
+    const onActionDone = vi.fn();
+    const onQcHold = vi.fn();
+    renderPanel(row(), { onActionDone, onQcHold });
+
+    fireEvent.click(screen.getByText("Validate & release"));
+    lastPost()[2]({ error: "qcHold", status: 409 });
+
+    expect(onQcHold).toHaveBeenCalledTimes(1);
+    expect(onActionDone).not.toHaveBeenCalled();
+  });
+
+  it("a warn-only lab can still release a held result", () => {
+    renderPanel(row({ qcHold: true }), {
+      configurationProperties: { QC_FAIL_BLOCKS_VALIDATION: "false" },
+    });
+    expect(screen.getByText("Validate & release")).toBeEnabled();
+    expect(screen.queryByTestId("review-qc-hold-hint")).toBeNull();
+  });
+
   it("Modify needs a reason when the lab requires one, then posts the new value as a modification", () => {
     renderPanel(row(), {
       configurationProperties: { notesRequiredForModifyResults: "true" },
@@ -340,6 +390,53 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(payload.noteVisibility).toBe("I");
   });
 
+  it("OGC-1417: a correction the server refuses as critical is acknowledged in the modal and sent again", () => {
+    const onActionDone = vi.fn();
+    const answers = [
+      {
+        status: 422,
+        code: "ACKNOWLEDGEMENT_REQUIRED",
+        customCriticalMessage: "Call the clinician now",
+        acknowledgementRequired: [
+          {
+            kind: "CRITICAL",
+            value: "75",
+            testName: "Lead(Serum)",
+            analysisId: "100",
+          },
+        ],
+      },
+      { analysisId: "100", outcome: "modified" },
+    ];
+    postToOpenElisServerJsonResponse.mockImplementation((url, body, callback) =>
+      callback(answers.shift()),
+    );
+    renderPanel(row(), {
+      configurationProperties: { notesRequiredForModifyResults: "false" },
+      onActionDone,
+    });
+
+    fireEvent.click(screen.getByTestId("review-modify"));
+    fireEvent.change(screen.getByLabelText("New result"), {
+      target: { value: "75" },
+    });
+    fireEvent.click(screen.getByTestId("review-save-modification"));
+
+    expect(
+      screen.getByTestId("result-alert-critical-message"),
+    ).toHaveTextContent("Call the clinician now");
+    expect(onActionDone).not.toHaveBeenCalled();
+    fireEvent.click(
+      screen.getByText("Acknowledge and save", { selector: "button" }),
+    );
+
+    const [url, body] = lastPost();
+    expect(url).toBe("/rest/AccessionValidation/analysis/100/modify");
+    expect(JSON.parse(body).criticalAcknowledged).toBe(true);
+    expect(JSON.parse(body).result).toBe("75");
+    expect(onActionDone).toHaveBeenCalledWith("modified", expect.anything());
+  });
+
   it("multi-select results are not edited here — the panel points to Results Entry", () => {
     renderPanel(row({ resultType: "M", multiSelectResultValues: "{}" }));
     fireEvent.click(screen.getByTestId("review-modify"));
@@ -353,7 +450,7 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     renderPanel(row());
     expect(screen.getByTestId("review-refer")).toHaveAttribute(
       "href",
-      "/result?type=order&doRange=false&accessionNumber=ACC0",
+      "/Results?accessionNumber=ACC0",
     );
   });
 
@@ -441,5 +538,28 @@ describe("ValidationReviewPanel (OGC-1028)", () => {
     expect(list).toHaveTextContent("Result Note (Validation)");
     expect(list).toHaveTextContent("Internal");
     expect(list).toHaveTextContent("Val One");
+  });
+});
+
+describe("ValidationReviewPanel attachments (review only)", () => {
+  it("attachments stay read-only on validation: the section lists files but offers no upload", () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (typeof url === "string" && url.endsWith("/attachments") && cb) {
+        cb([
+          {
+            id: 9,
+            fileName: "worksheet.pdf",
+            fileSizeBytes: 4096,
+            analysisId: "",
+          },
+        ]);
+      }
+    });
+    renderPanel(row());
+    fireEvent.click(screen.getByRole("button", { name: /Attachments/ }));
+    expect(screen.getByText("worksheet.pdf")).toBeInTheDocument();
+    expect(screen.queryByTestId("attachment-upload")).toBeNull();
+    expect(screen.queryByText("Add attachment")).toBeNull();
+    expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 });

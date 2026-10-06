@@ -1,9 +1,7 @@
 import * as Yup from "yup";
 import { createPatientValidationSchema } from "./CreatePatientValidationShema";
 
-// domain is optional: E/V skip patient validation; clinical orders validate
-// patients using configurationProperties. Requester first/last name are
-// required only when the deployment turns REQUESTER_REQUIRED on (#4003).
+// domain is optional; E/V and EQA orders have no patient to validate.
 export const createOrderEntryValidationSchema = (
   configurationProperties = {},
   domain,
@@ -45,8 +43,12 @@ export const createOrderEntryValidationSchema = (
   };
 
   if (!isNonClinical) {
-    shape.patientProperties = createPatientValidationSchema(
-      configurationProperties,
+    shape.patientProperties = Yup.object().when(
+      "sampleOrderItems.isEQASample",
+      {
+        is: true,
+        otherwise: createPatientValidationSchema(configurationProperties),
+      },
     );
   }
 

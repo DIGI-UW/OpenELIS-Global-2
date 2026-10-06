@@ -64,7 +64,21 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
             baseObjectDAO.clearDefaultsForTest(testMethod.getTestId(), testMethod.getSysUserId());
         }
         insert(testMethod);
+        activateMethod(testMethod.getMethodId(), testMethod.getSysUserId());
         return testMethod;
+    }
+
+    /**
+     * A method added on Manage Methods starts inactive and becomes active once a
+     * test uses it, which is when it is linked to one.
+     */
+    private void activateMethod(String methodId, String sysUserId) {
+        Method method = methodService.get(methodId);
+        if (!IActionConstants.YES.equals(method.getIsActive())) {
+            method.setIsActive(IActionConstants.YES);
+            method.setSysUserId(sysUserId);
+            methodService.update(method);
+        }
     }
 
     @Override
@@ -190,6 +204,7 @@ public class TestMethodServiceImpl extends AuditableBaseObjectServiceImpl<TestMe
                 copy.setIsActive(IActionConstants.YES);
                 copy.setSysUserId(sysUserId);
                 insert(copy);
+                activateMethod(source.getMethodId(), sysUserId);
             }
         }
     }

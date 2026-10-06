@@ -88,6 +88,7 @@ import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.resultvalidation.action.util.ResultValidationItem;
 import org.openelisglobal.resultvalidation.bean.AnalysisItem;
 import org.openelisglobal.resultvalidation.bean.QcFailureItem;
+import org.openelisglobal.resultvalidation.bean.ValidationQueueFilter;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.spring.util.SpringContext;
@@ -136,6 +137,8 @@ public class ResultsValidationUtility {
     protected org.openelisglobal.vector.service.VectorPoolService vectorPoolService;
     @Autowired
     protected org.openelisglobal.analysis.service.AnalysisAnchorService analysisAnchorService;
+    @Autowired
+    protected org.openelisglobal.samplehuman.service.SampleHumanService sampleHumanService;
     @Autowired
     protected org.openelisglobal.testresultcomponent.service.TestResultComponentService testResultComponentService;
 
@@ -205,6 +208,96 @@ public class ResultsValidationUtility {
         }
 
         return resultList;
+    }
+
+    /**
+     * OGC-1418: the queue for every criterion of the search at once. The most
+     * selective criterion loads the candidates (lab numbers, then the Lab Unit,
+     * then the patient, then the start dates) and the others filter them, so Lab
+     * Unit + date range + lab number narrow one another rather than the first one
+     * given winning.
+     */
+    public List<AnalysisItem> getResultValidationList(List<String> statusList, ValidationQueueFilter filter) {
+        if (filter == null || filter.isEmpty()) {
+            return new ArrayList<>();
+        }
+        Set<String> patientSampleIds = patientSampleIds(filter.getPatientId());
+        java.sql.Date fromDate = sqlDate(filter.getFromDate());
+        java.sql.Date toDate = sqlDate(filter.getToDate());
+        List<Analysis> candidates = candidateAnalyses(statusList, filter, patientSampleIds, fromDate, toDate);
+        List<Analysis> matching = candidates.stream()
+                .filter(analysis -> matches(analysis, filter, patientSampleIds, fromDate, toDate))
+                .collect(Collectors.toList());
+        List<ResultValidationItem> testList = getGroupedTestsForAnalysisList(excludeQcAnalyses(matching),
+                !StatusRules.useRecordStatusForValidation());
+        List<AnalysisItem> resultList = testResultListToAnalysisItemList(testList);
+        sortByAccessionNumberAndOrder(resultList);
+        setGroupingNumbers(resultList);
+        return resultList;
+    }
+
+    private List<Analysis> candidateAnalyses(List<String> statusList, ValidationQueueFilter filter,
+            Set<String> patientSampleIds, java.sql.Date fromDate, java.sql.Date toDate) {
+        if (!GenericValidator.isBlankOrNull(filter.getLabNumberFrom())) {
+            return analysisService.getPageAnalysisAtAccessionNumberAndStatusExcludingQc(filter.getLabNumberFrom(),
+                    statusList, false);
+        }
+        if (!GenericValidator.isBlankOrNull(filter.getTestSectionId())) {
+            return analysisService.getPageAnalysisByTestSectionAndStatusExcludingQc(filter.getTestSectionId(),
+                    statusList, false);
+        }
+        if (patientSampleIds != null) {
+            Set<String> statuses = new HashSet<>(statusList);
+            List<Analysis> analyses = new ArrayList<>();
+            for (String sampleId : patientSampleIds) {
+                analyses.addAll(analysisService.getAnalysesBySampleIdAndStatusId(sampleId, statuses));
+            }
+            return analyses;
+        }
+        java.sql.Date low = fromDate != null ? fromDate : java.sql.Date.valueOf("1900-01-01");
+        java.sql.Date high = java.sql.Date
+                .valueOf((toDate != null ? toDate.toLocalDate() : java.time.LocalDate.now()).plusDays(1));
+        List<Analysis> analyses = new ArrayList<>();
+        for (String statusId : statusList) {
+            analyses.addAll(analysisService.getAnalysisStartedOnRangeByStatusId(low, high, statusId));
+        }
+        return analyses;
+    }
+
+    private boolean matches(Analysis analysis, ValidationQueueFilter filter, Set<String> patientSampleIds,
+            java.sql.Date fromDate, java.sql.Date toDate) {
+        if (!GenericValidator.isBlankOrNull(filter.getTestSectionId()) && (analysis.getTestSection() == null
+                || !filter.getTestSectionId().equals(analysis.getTestSection().getId()))) {
+            return false;
+        }
+        if (fromDate != null || toDate != null) {
+            if (analysis.getStartedDate() == null) {
+                return false;
+            }
+            java.time.LocalDate started = analysis.getStartedDate().toLocalDateTime().toLocalDate();
+            if ((fromDate != null && started.isBefore(fromDate.toLocalDate()))
+                    || (toDate != null && started.isAfter(toDate.toLocalDate()))) {
+                return false;
+            }
+        }
+        Sample sample = analysisAnchorService.resolveSample(analysis);
+        if (patientSampleIds != null && (sample == null || !patientSampleIds.contains(sample.getId()))) {
+            return false;
+        }
+        return filter.matchesLabNumber(sample == null ? null : sample.getAccessionNumber());
+    }
+
+    /** The patient's samples, or null when the search names no patient. */
+    private Set<String> patientSampleIds(String patientId) {
+        if (GenericValidator.isBlankOrNull(patientId)) {
+            return null;
+        }
+        return sampleHumanService.getSamplesForPatient(patientId).stream().map(Sample::getId)
+                .collect(Collectors.toSet());
+    }
+
+    private static java.sql.Date sqlDate(String date) {
+        return GenericValidator.isBlankOrNull(date) ? null : DateUtil.convertStringDateToSqlDate(date);
     }
 
     public int getCountResultValidationList(List<String> statusList, String testSectionId) {

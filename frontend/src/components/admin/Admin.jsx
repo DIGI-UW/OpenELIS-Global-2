@@ -24,18 +24,25 @@ import DataExportStatus from "./DataExportStatus/DataExportStatus";
 import LabelPresetList from "./labelPresets/LabelPresetList";
 import { Redirect } from "react-router-dom";
 import ResultReportingConfiguration from "./ResultReportingConfiguration/ResultReportingConfiguration";
-import TestCatalog from "./testManagement/ViewTestCatalog";
 import TestCatalogEditor from "./testCatalog/TestCatalogEditor";
 import PanelEditor from "./testCatalog/PanelEditor";
 import CombinedTestEditor from "./testCatalog/CombinedTestEditor";
 import TestCatalogList from "./testCatalog/TestCatalogList";
 import CatalogImport from "./catalogImport/CatalogImport";
 import PushNotificationPage from "../notifications/PushNotificationPage.jsx";
-import OrganizationManagement from "./OrganizationManagement/OrganizationManagement";
-import OrganizationAddModify from "./OrganizationManagement/OrganizationAddModify";
+import LocationsPage, {
+  legacyOrganizationEditTarget,
+} from "./locations/LocationsPage";
 import UserManagement from "./userManagement/UserManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod";
+import UnitsOfMeasure from "./testManagement/UnitsOfMeasure";
+import ViewTestCatalog from "./testManagement/ViewTestCatalog";
+import TestActivation from "./testManagementConfigMenu/TestActivation";
+import TestOrderability from "./testManagementConfigMenu/TestOrderability";
+import PanelOrder from "./testManagementConfigMenu/PanelOrder";
+import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd";
+import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation";
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit";
@@ -43,36 +50,8 @@ import NotificationTriggerConfig from "./notificationTriggerConfig/NotificationT
 import SearchIndexManagement from "./searchIndexManagement/SearchIndexManagement";
 import LoggingManagement from "./loggingManagement/LoggingManagement";
 import TestManagementConfigMenu from "./testManagementConfigMenu/TestManagementConfigMenu";
-import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd";
-import TestAdd from "./testManagementConfigMenu/TestAdd";
-import TestModifyEntry from "./testManagementConfigMenu/TestModifyEntry";
-import TestOrderability from "./testManagementConfigMenu/TestOrderability";
-import MethodCreate from "./testManagementConfigMenu/MethodCreate";
-import TestSectionManagement from "./testManagementConfigMenu/TestSectionManagement";
-import TestSectionCreate from "./testManagementConfigMenu/TestSectionCreate";
-import TestSectionOrder from "./testManagementConfigMenu/TestSectionOrder";
 import SampleTypeEditor from "./sampleTypeManagement/SampleTypeManagement.jsx";
-import LegacySampleTypeManagement from "./testManagementConfigMenu/SampleTypeManagement";
 import LabUnitManagement from "./labUnitManagement/LabUnitManagement.jsx";
-import TestSectionTestAssign from "./testManagementConfigMenu/TestSectionTestAssign";
-import SampleTypeOrder from "./testManagementConfigMenu/SampleTypeOrder";
-import SampleTypeCreate from "./testManagementConfigMenu/SampleTypeCreate";
-import SampleTypeTestAssign from "./testManagementConfigMenu/SampleTypeTestAssign";
-import UomManagement from "./testManagementConfigMenu/UomManagement";
-import UomCreate from "./testManagementConfigMenu/UomCreate";
-import PanelManagement from "./testManagementConfigMenu/PanelManagement";
-import PanelCreate from "./testManagementConfigMenu/PanelCreate";
-import PanelOrder from "./testManagementConfigMenu/PanelOrder";
-import PanelTestAssign from "./testManagementConfigMenu/PanelTestAssign";
-import TestActivation from "./testManagementConfigMenu/TestActivation";
-import TestRenameEntry from "./testManagementConfigMenu/TestRenameEntry";
-import PanelRenameEntry from "./testManagementConfigMenu/PanelRenameEntry";
-import SampleTypeRenameEntry from "./testManagementConfigMenu/SampleTypeRenameEntry";
-import TestSectionRenameEntry from "./testManagementConfigMenu/TestSectionRenameEntry";
-import TestSectionEdit from "./testManagementConfigMenu/TestSectionEdit";
-import UomRenameEntry from "./testManagementConfigMenu/UomRenameEntry";
-import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
-import MethodRenameEntry from "./testManagementConfigMenu/MethodRenameEntry";
 import ComplianceStandardsAdmin from "./complianceStandards/ComplianceStandardsAdmin";
 import {
   LanguageManagement,
@@ -102,7 +81,7 @@ function Admin() {
       />
       <Route path={`${path}/reflex`} component={ReflexTestManagement} />
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
-      <Route path={`${path}/TestCatalog`} component={TestCatalog} />
+      <Route exact path={`${path}/TestCatalog`} component={ViewTestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
       <Route path={`${path}/CatalogImport`} component={CatalogImport} />
       <Route
@@ -124,6 +103,7 @@ function Admin() {
         component={TestCatalogEditor}
       />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
+      <Route path={`${path}/UnitsOfMeasure`} component={UnitsOfMeasure} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
       {/* OGC-781: the Programs rework keeps the live /program URL so bookmarks
@@ -138,13 +118,22 @@ function Admin() {
         from={`${path}/barcodeConfiguration`}
         to={`${path}/labelPresets`}
       />
-      <Route
-        path={`${path}/organizationManagement`}
-        component={OrganizationManagement}
+      {/* OGC-1363: Locations & Organizations replaces Organization Management
+          and absorbs the vector Sampling Sites page; the old routes redirect. */}
+      <Route path={`${path}/locations`} component={LocationsPage} />
+      <Redirect
+        from={`${path}/organizationManagement`}
+        to={`${path}/locations`}
       />
       <Route
         path={`${path}/organizationEdit`}
-        component={OrganizationAddModify}
+        render={({ location }) => (
+          <Redirect to={legacyOrganizationEditTarget(path, location)} />
+        )}
+      />
+      <Redirect
+        from={`${path}/vectorSurveillanceSetup/sampling-sites`}
+        to={`${path}/locations/sites`}
       />
       <Route
         path={`${path}/resultReportingConfiguration`}
@@ -182,75 +171,81 @@ function Admin() {
         path={`${path}/testManagementConfigMenu`}
         component={TestManagementConfigMenu}
       />
+      {/* The legacy test-management pages are gone. Every address they had
+          opens the editor that replaced it: tests, panels, sample types and
+          lab units have editors of their own; result select lists are
+          dictionary entries; methods are listed under Methods. */}
       <Route
-        path={`${path}/ResultSelectListAdd`}
-        component={ResultSelectListAdd}
+        path={`${path}/TestAdd`}
+        render={() => (
+          <Redirect to={`${path}/TestCatalogEditor/new/basic-info`} />
+        )}
       />
-      {/* OGC-1112 FR-38: the unified New test flow (TestCatalogEditor/new) is the
-          intended create path. The legacy 7-step Add Test and the legacy Modify Test
-          are kept available in parallel temporarily during the transition. */}
-      <Route path={`${path}/TestAdd`} component={TestAdd} />
-      <Route path={`${path}/TestModifyEntry`} component={TestModifyEntry} />
-      <Route path={`${path}/TestOrderability`} component={TestOrderability} />
-      <Route path={`${path}/MethodCreate`} component={MethodCreate} />
       <Route
-        path={`${path}/TestSectionManagement`}
-        component={TestSectionManagement}
+        path={[`${path}/TestModifyEntry`, `${path}/TestRenameEntry`]}
+        render={() => <Redirect to={`${path}/TestCatalogList`} />}
       />
-      <Route path={`${path}/TestSectionCreate`} component={TestSectionCreate} />
-      <Route path={`${path}/TestSectionOrder`} component={TestSectionOrder} />
       <Route
-        path={`${path}/TestSectionTestAssign`}
-        component={TestSectionTestAssign}
+        path={[
+          `${path}/UomManagement`,
+          `${path}/UomCreate`,
+          `${path}/UomRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/UnitsOfMeasure`} />}
       />
-      {/* Manage Sample Types under the legacy Test Management menu keeps opening
-          the legacy page. The new editor answers on its own path so that link,
-          and every other legacy one, is left where it was. */}
       <Route
-        path={`${path}/SampleTypeManagement`}
-        exact
-        component={LegacySampleTypeManagement}
+        path={[
+          `${path}/PanelManagement`,
+          `${path}/PanelCreate`,
+          `${path}/PanelTestAssign`,
+          `${path}/PanelRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/TestCatalogList?entity=panels`} />}
+      />
+      <Route
+        path={[
+          `${path}/SampleTypeManagement`,
+          `${path}/SampleTypeCreate`,
+          `${path}/SampleTypeOrder`,
+          `${path}/SampleTypeTestAssign`,
+          `${path}/SampleTypeRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/SampleTypeEditor`} />}
       />
       <Route
         path={`${path}/SampleTypeEditor/:sampleTypeId?/:section?`}
         component={SampleTypeEditor}
       />
       <Route
+        path={[
+          `${path}/TestSectionManagement`,
+          `${path}/TestSectionCreate`,
+          `${path}/TestSectionOrder`,
+          `${path}/TestSectionTestAssign`,
+          `${path}/TestSectionEdit`,
+          `${path}/TestSectionRenameEntry`,
+        ]}
+        render={() => <Redirect to={`${path}/LabUnitManagement`} />}
+      />
+      <Route
         path={`${path}/LabUnitManagement/:labUnitId?/:section?`}
         component={LabUnitManagement}
       />
-      <Route path={`${path}/SampleTypeCreate`} component={SampleTypeCreate} />
-      <Route path={`${path}/SampleTypeOrder`} component={SampleTypeOrder} />
-      <Route
-        path={`${path}/SampleTypeTestAssign`}
-        component={SampleTypeTestAssign}
-      />
-      <Route path={`${path}/UomManagement`} component={UomManagement} />
-      <Route path={`${path}/UomCreate`} component={UomCreate} />
-      {/* OGC-224 — the legacy Panel pages stay authoritative until the new
-          Panels context is stabilized; they are not redirected. */}
-      <Route path={`${path}/PanelManagement`} component={PanelManagement} />
-      <Route path={`${path}/PanelCreate`} component={PanelCreate} />
-      <Route path={`${path}/PanelOrder`} component={PanelOrder} />
-      <Route path={`${path}/PanelTestAssign`} component={PanelTestAssign} />
       <Route path={`${path}/TestActivation`} component={TestActivation} />
-      <Route path={`${path}/TestRenameEntry`} component={TestRenameEntry} />
-      <Route path={`${path}/PanelRenameEntry`} component={PanelRenameEntry} />
+      <Route path={`${path}/TestOrderability`} component={TestOrderability} />
+      <Route path={`${path}/PanelOrder`} component={PanelOrder} />
       <Route
-        path={`${path}/SampleTypeRenameEntry`}
-        component={SampleTypeRenameEntry}
+        path={`${path}/ResultSelectListAdd`}
+        component={ResultSelectListAdd}
       />
-      <Route
-        path={`${path}/TestSectionRenameEntry`}
-        component={TestSectionRenameEntry}
-      />
-      <Route path={`${path}/TestSectionEdit`} component={TestSectionEdit} />
-      <Route path={`${path}/UomRenameEntry`} component={UomRenameEntry} />
       <Route
         path={`${path}/SelectListRenameEntry`}
         component={SelectListRenameEntry}
       />
-      <Route path={`${path}/MethodRenameEntry`} component={MethodRenameEntry} />
+      <Route
+        path={[`${path}/MethodCreate`, `${path}/MethodRenameEntry`]}
+        render={() => <Redirect to={`${path}/MethodManagement`} />}
+      />
       <Route
         path={`${path}/ComplianceStandardsAdmin`}
         component={ComplianceStandardsAdmin}

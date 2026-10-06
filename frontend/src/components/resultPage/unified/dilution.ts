@@ -13,12 +13,17 @@ export function dilutionApplies(resultType?: string): boolean {
 
 /**
  * The reported value for a measured value and dilution factor, preserving the
- * measured value's decimal places. Returns null when either input is not a
- * usable positive number — the caller then leaves the result value alone.
+ * measured value's decimal places up to the precision the test reports to.
+ * A product finer than that (3.5 × 2 on a test reporting whole numbers) is
+ * rounded to it, since the precision gate would otherwise refuse the save
+ * and leave the technician at a dead end (OGC-1408). Returns null when either
+ * input is not a usable positive number — the caller then leaves the result
+ * value alone.
  */
 export function computeReportedValue(
   measuredValue: string,
   dilutionFactor: string,
+  significantDigits?: number,
 ): string | null {
   const measured = Number(measuredValue);
   const factor = Number(dilutionFactor);
@@ -32,6 +37,15 @@ export function computeReportedValue(
     return null;
   }
   const reported = measured * factor;
-  const decimals = (measuredValue.split(".")[1] || "").length;
-  return decimals > 0 ? reported.toFixed(decimals) : String(reported);
+  let decimals = (measuredValue.split(".")[1] || "").length;
+  if (
+    typeof significantDigits === "number" &&
+    significantDigits >= 0 &&
+    decimals > significantDigits
+  ) {
+    decimals = significantDigits;
+  }
+  return decimals > 0
+    ? reported.toFixed(decimals)
+    : String(Math.round(reported));
 }

@@ -25,11 +25,12 @@ concurrency:
 
 jobs:
   # ─── Detect Changes ─────────────────────────────────────────────────────────
-  # Skips the Shared Build when a pull request changes only documentation. This
-  # is only an optimisation: E2E / Tests re-decides from the default branch's
-  # copy of .github/scripts/e2e-scope.cjs before it reports the checkpoint, so a
-  # pull request cannot skip E2E by editing this file. Every other event always
-  # builds.
+  # Skips the Shared Build when a pull request changes only documentation, or
+  # sits below the top of a stack (the top pull request's run covers the whole
+  # stack). This is only an optimisation: E2E / Tests re-decides from the
+  # default branch's copy of .github/scripts/e2e-scope.cjs before it reports the
+  # checkpoint, so a pull request cannot skip E2E by editing this file. Every
+  # other event always builds.
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
@@ -55,11 +56,10 @@ jobs:
         with:
           script: |
             const scope = require('./.github/scripts/e2e-scope.cjs');
-            const files = await scope.listPullRequestFiles({ github, owner: context.repo.owner,
-              repo: context.repo.repo, pullNumber: context.payload.pull_request.number });
-            const e2e = scope.requiresE2E(files);
-            core.info(`${files.length} changed file(s); E2E ${e2e ? 'required' : 'skipped: documentation only'}`);
-            core.setOutput('e2e', e2e ? 'true' : 'false');
+            const reason = await scope.skipReason({ github, owner: context.repo.owner,
+              repo: context.repo.repo, pull: context.payload.pull_request });
+            core.info(reason ? `E2E skipped: ${reason.description}` : 'E2E required');
+            core.setOutput('e2e', reason ? 'false' : 'true');
       # E2E / Tests reads this to know which pull request triggered the build.
       # It is only a lookup key there: the wrapper accepts it only when the API
       # confirms that pull request is open at this exact head sha.
@@ -97,13 +97,6 @@ jobs:
           submodules: recursive
           persist-credentials: false
 
-      - name: Set up Java 21
-        uses: actions/setup-java@v5
-        with:
-          distribution: temurin
-          java-version: "21"
-          cache: maven
-
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -117,42 +110,6 @@ jobs:
 
       - name: Prepare .env
         run: cp .env.example .env
-
-      - name: Build OpenELIS artifacts for plugin compilation
-        run: |
-          cd dataexport/dataexport-core
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-          cd ..
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-          cd ..
-          # NOTE: Do NOT add -Dmaven.test.skip=true here — the root build must
-          # compile test classes so maven-jar-plugin produces the test-jar
-          # (openelisglobal:jar:tests) required by GenericASTM/File/HL7 plugins.
-          #
-          # plugins/pom.xml (another repository) depends on
-          # org.openelisglobal:openelisglobal at the literal version 3.2.1.3,
-          # so the root is installed under that version. Change it only together
-          # with that dependency in the plugins repository.
-          mvn clean install -DskipTests -Dspotless.check.skip=true \
-            -Drevision=3.2.1.3
-
-      - name: Build plugins
-        run: >-
-          mvn -f plugins/pom.xml
-          -pl analyzers/GenericASTM,analyzers/GenericHL7,analyzers/GenericFile
-          -am clean install -DskipTests -Dmaven.test.skip=true
-
-      - name: Stage generic plugin compatibility jars
-        # The active downstream E2E workflow still requires this artifact.
-        # These jars are not mounted into OpenELIS; Bridge is the runtime.
-        run: |
-          mkdir -p volume/plugins
-          rm -rf volume/plugins/*
-          find plugins/analyzers -type f -path "*/target/Generic*.jar" \
-            ! -name "*sources.jar" ! -name "*javadoc.jar" \
-            ! -name "*-tests.jar" ! -name "*-test.jar" ! -name "*-original.jar" \
-            -exec cp {} volume/plugins/ \;
-          ls -lah volume/plugins
 
       - name: Prepare build context metadata (early)
         run: |
@@ -365,15 +322,6 @@ jobs:
         with:
           name: e2e-image-handoff
           path: /tmp/e2e-image-handoff/
-          retention-days: 1
-
-      - name: Upload plugin jars artifact
-        if: steps.transfer-mode.outputs.mode == 'ghcr' || steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v6
-        with:
-          name: e2e-plugin-jars
-          path: volume/plugins/*.jar
-          if-no-files-found: error
           retention-days: 1
 
       - name: Upload Docker image map artifact

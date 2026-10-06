@@ -79,6 +79,22 @@ const CULTURE_WORKFLOW_TYPES = [
   "MYCOLOGY",
 ];
 
+const QC_THRESHOLD_FIELDS = [
+  { field: "qcBlankThreshold", labelKey: "test.qc.blankThreshold" },
+  { field: "qcRpdThreshold", labelKey: "test.qc.rpdThreshold" },
+  { field: "qcRecoveryWindowPct", labelKey: "test.qc.recoveryWindowPct" },
+];
+
+const isBlankValue = (value) =>
+  value === undefined || value === null || String(value).trim() === "";
+
+// Mirrors the server: whole minutes, and non-negative numbers for QC limits.
+const holdingTimeValid = (value) =>
+  isBlankValue(value) || /^\d{1,9}$/.test(String(value).trim());
+
+const thresholdValid = (value) =>
+  isBlankValue(value) || /^\d{1,10}(\.\d{1,5})?$/.test(String(value).trim());
+
 const BasicInfoSection = ({ testId }) => {
   const domains = useDomains();
   const intl = useIntl();
@@ -109,6 +125,8 @@ const BasicInfoSection = ({ testId }) => {
   // FR-18 (OGC-1119) — the LOINC integrity warnings activation re-surfaces:
   // shown beside the toggle right after the test goes Active, never a block.
   const [activationWarnings, setActivationWarnings] = useState(null);
+  // The field a 422 save named as unstorable.
+  const [serverInvalidField, setServerInvalidField] = useState(null);
 
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
@@ -174,7 +192,10 @@ const BasicInfoSection = ({ testId }) => {
     );
   }, []);
 
-  const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const update = (patch) => {
+    setServerInvalidField(null);
+    setForm((prev) => ({ ...prev, ...patch }));
+  };
   const updateCreate = (patch) =>
     setCreateForm((prev) => ({ ...prev, ...patch }));
 
@@ -366,6 +387,7 @@ const BasicInfoSection = ({ testId }) => {
 
   const handleSave = () => {
     setSaving(true);
+    setServerInvalidField(null);
     putToOpenElisServerJsonResponse(
       `/rest/test-catalog/tests/${testId}/basic-info`,
       JSON.stringify(form),
@@ -388,6 +410,17 @@ const BasicInfoSection = ({ testId }) => {
         } else if (res && res.status === 409 && res.conflict === "stale") {
           setNotificationVisible(false);
           setStaleSave(resolveApiErrorMessage(intl, res, "server.error.msg"));
+        } else if (res && res.status === 422 && res.invalidField) {
+          setServerInvalidField(res.invalidField);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.basic-info",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.basicInfo.invalidValue",
+            }),
+          });
         } else if (
           res &&
           res.status === 409 &&
@@ -631,6 +664,17 @@ const BasicInfoSection = ({ testId }) => {
     );
   }
 
+  const timeHoldingInvalid =
+    !holdingTimeValid(form.timeHolding) || serverInvalidField === "timeHolding";
+  const invalidThresholds = QC_THRESHOLD_FIELDS.map(
+    ({ field }) => field,
+  ).filter(
+    (field) => !thresholdValid(form[field]) || serverInvalidField === field,
+  );
+  const showQcThresholds =
+    (form.domain && form.domain !== "CLINICAL") ||
+    QC_THRESHOLD_FIELDS.some(({ field }) => !isBlankValue(form[field]));
+
   return (
     <Stack gap={6}>
       <TextInput
@@ -765,6 +809,60 @@ const BasicInfoSection = ({ testId }) => {
           />
         ))}
       </Select>
+      <TextInput
+        id="basic-info-time-holding"
+        labelText={intl.formatMessage({ id: "test.timeHolding" })}
+        value={form.timeHolding || ""}
+        onChange={(e) => update({ timeHolding: e.target.value })}
+        invalid={timeHoldingInvalid}
+        invalidText={intl.formatMessage({
+          id: "error.testCatalog.basicInfo.timeHolding",
+        })}
+      />
+      <Toggle
+        id="basic-info-in-lab-only"
+        labelText={intl.formatMessage({ id: "test.inLabOnly" })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.inLabOnly}
+        onToggle={(checked) => update({ inLabOnly: checked })}
+      />
+      <Toggle
+        id="basic-info-notify-results"
+        labelText={intl.formatMessage({ id: "test.notifyResults" })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.notifyResults}
+        onToggle={(checked) => update({ notifyResults: checked })}
+      />
+      {showQcThresholds && (
+        <fieldset
+          className="cds--fieldset"
+          data-testid="basic-info-qc-thresholds"
+        >
+          <legend className="cds--label">
+            <FormattedMessage id="test.qc.thresholds.heading" />
+          </legend>
+          <p className="cds--form__helper-text">
+            <FormattedMessage id="test.qc.thresholds.description" />
+          </p>
+          <Stack gap={5}>
+            {QC_THRESHOLD_FIELDS.map(({ field, labelKey }) => (
+              <TextInput
+                key={field}
+                id={`basic-info-${field}`}
+                labelText={intl.formatMessage({ id: labelKey })}
+                value={form[field] || ""}
+                onChange={(e) => update({ [field]: e.target.value })}
+                invalid={invalidThresholds.includes(field)}
+                invalidText={intl.formatMessage({
+                  id: "error.testCatalog.basicInfo.qcThreshold",
+                })}
+              />
+            ))}
+          </Stack>
+        </fieldset>
+      )}
       <Toggle
         id="basic-info-active"
         labelText={intl.formatMessage({
@@ -859,6 +957,8 @@ const BasicInfoSection = ({ testId }) => {
           disabled={
             saving ||
             Boolean(staleSave) ||
+            timeHoldingInvalid ||
+            invalidThresholds.length > 0 ||
             editSampleTypesMissing ||
             editIncompatibleTypes.length > 0
           }

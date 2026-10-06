@@ -34,6 +34,9 @@ import { ConfigurationContext } from "../layout/Layout";
 import { convertAlphaNumLabNumForDisplay } from "../utils/Utils";
 import { jpSet } from "../utils/JsonPath";
 import config from "../../config.json";
+import ResultAlertModal, {
+  acknowledgementRefusal,
+} from "../resultPage/ResultAlertModal";
 
 export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
   if (!analyzerId) {
@@ -85,6 +88,9 @@ const AnalyserResults = (props) => {
   const intl = useIntl();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // OGC-1417: retyped values the server will not accept until the reviewer
+  // acknowledges them as critical, or confirms them outside the valid range
+  const [resultAlert, setResultAlert] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -244,6 +250,16 @@ const AnalyserResults = (props) => {
     let message = intl.formatMessage({ id: "validation.save.error" });
     let kind = NotificationKinds.error;
     setIsSubmitting(false);
+    if (response.status == 422) {
+      const body = await response.json().catch(() => null);
+      const refusal = acknowledgementRefusal(
+        body ? { ...body, status: 422 } : null,
+      );
+      if (refusal) {
+        setResultAlert(refusal);
+        return;
+      }
+    }
     if (response.status == 200) {
       message = intl.formatMessage({ id: "validation.save.success" });
       kind = NotificationKinds.success;
@@ -262,12 +278,44 @@ const AnalyserResults = (props) => {
     setNotificationVisible(true);
   };
 
+  const confirmResultAlert = () => {
+    const pending = resultAlert;
+    setResultAlert(null);
+    if (!pending) {
+      return;
+    }
+    const rows = props.results?.resultList || [];
+    pending.alerts.forEach((alert) => {
+      const row = rows.find(
+        (candidate) => String(candidate.id) === String(alert.rowId),
+      );
+      if (!row) {
+        return;
+      }
+      if (alert.kind === "CRITICAL") {
+        row.criticalAcknowledged = true;
+      } else {
+        row.invalidResultConfirmed = true;
+      }
+    });
+    handleSave();
+  };
+
   const handleChange = (e, rowId) => {
     const { name, id, value } = e.target;
     let form = props.results;
     jpSet(form, name, value);
     const field = name.match(/\.(result|note)$/)?.[1];
     if (field) rememberEdit(rowId, field, value);
+    if (field === "result") {
+      const row = (form.resultList || []).find(
+        (candidate) => String(candidate.id) === String(rowId),
+      );
+      if (row) {
+        row.criticalAcknowledged = false;
+        row.invalidResultConfirmed = false;
+      }
+    }
   };
 
   const handleDatePickerChange = (date, rowId) => {
@@ -784,6 +832,14 @@ const AnalyserResults = (props) => {
           </AccordionItem>
         </Accordion>
       )}
+      <ResultAlertModal
+        open={Boolean(resultAlert)}
+        alerts={resultAlert?.alerts || []}
+        mode="save"
+        customCriticalMessage={resultAlert?.customCriticalMessage}
+        onConfirm={confirmResultAlert}
+        onCorrect={() => setResultAlert(null)}
+      />
     </>
   );
 };

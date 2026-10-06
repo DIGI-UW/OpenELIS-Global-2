@@ -10,6 +10,7 @@ import java.util.EnumSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.alert.valueholder.AlertNotificationPayload;
@@ -255,6 +256,7 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
             dto.put("responseReceivedAt",
                     followup.getResponseReceivedAt() == null ? null : followup.getResponseReceivedAt().toString());
             dto.put("resolutionNotes", followup.getResolutionNotes());
+            dto.put("responseNotes", followup.getResponseNotes());
             dto.put("persistentFailureFlag", followup.getPersistentFailureFlag());
             dto.put("results", summaryRows(followup));
             rows.add(dto);
@@ -348,7 +350,12 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         if (target == EQAFollowupStatus.RESPONSE_RECEIVED || followup.getResponseReceivedAt() == null) {
             followup.setResponseReceivedAt(DateUtil.getNowAsTimestamp());
         }
-        if (!GenericValidator.isBlankOrNull(notes)) {
+        if (target == EQAFollowupStatus.RESPONSE_RECEIVED) {
+            if (GenericValidator.isBlankOrNull(notes)) {
+                throw new IllegalArgumentException("Recording a response needs what the laboratory said");
+            }
+            followup.setResponseNotes(notes.trim());
+        } else if (!GenericValidator.isBlankOrNull(notes)) {
             followup.setResolutionNotes(notes);
         }
         followup.setFollowupStatus(target);
@@ -419,10 +426,12 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
         StringBuilder body = new StringBuilder("Your laboratory's results for ").append(schemeName(followup))
                 .append(", cycle ").append(cycleLabel(followup))
                 .append(", were assessed as unacceptable for the following tests:\n");
-        for (Map<String, Object> row : summaryRows(followup)) {
+        List<Map<String, Object>> rows = summaryRows(followup);
+        nameAnalytes(List.of(Map.of("results", rows)));
+        for (Map<String, Object> row : rows) {
             body.append("- ").append(row.getOrDefault("testName", row.getOrDefault("analyteName", "")))
-                    .append(": reported ").append(row.getOrDefault("reported", "")).append(", target ")
-                    .append(row.getOrDefault("target", "")).append('\n');
+                    .append(": reported ").append(Objects.toString(row.get("reported"), "")).append(", target ")
+                    .append(Objects.toString(row.get("target"), "")).append('\n');
         }
         if (Boolean.TRUE.equals(followup.getPersistentFailureFlag())) {
             body.append("\nThis is a repeated failure across recent cycles and has been escalated.\n");
@@ -431,6 +440,10 @@ public class EQAParticipantFollowupServiceImpl extends BaseObjectServiceImpl<EQA
     }
 
     private String contactEmail(Long organizationId) {
+        Organization organization = organizationService.getOrganizationById(String.valueOf(organizationId));
+        if (organization != null && !GenericValidator.isBlankOrNull(organization.getEmail())) {
+            return organization.getEmail();
+        }
         for (OrganizationContact contact : organizationContactService
                 .getListForOrganizationId(String.valueOf(organizationId))) {
             Person person = contact.getPerson();

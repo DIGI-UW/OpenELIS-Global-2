@@ -47,7 +47,7 @@ describe("Admin", () => {
         screen.getByText(messages["unifiedSystemUser.browser.title"]),
       ).toBeInTheDocument();
       expect(
-        screen.getByText(messages["organization.main.title"]),
+        screen.getByText(messages["sidenav.label.admin.locations"]),
       ).toBeInTheDocument();
       expect(
         screen.getByText(messages["master.lists.page.test.management"]),

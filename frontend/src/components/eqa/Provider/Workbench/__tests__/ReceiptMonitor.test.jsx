@@ -75,7 +75,11 @@ const PROVIDER_AND_MANAGER = [
 
 const renderTab = (
   cycleStatus = "SUBMISSIONS_OPEN",
-  { permissions = PROVIDER_AND_MANAGER, onNotice = vi.fn() } = {},
+  {
+    permissions = PROVIDER_AND_MANAGER,
+    onNotice = vi.fn(),
+    distributionMethod = "FHIR",
+  } = {},
 ) =>
   render(
     <IntlProvider locale="en" messages={messages}>
@@ -91,6 +95,7 @@ const renderTab = (
           <ReceiptMonitor
             cycleId="9"
             cycleStatus={cycleStatus}
+            distributionMethod={distributionMethod}
             onChanged={vi.fn()}
             onNotice={onNotice}
           />
@@ -108,7 +113,7 @@ describe("ReceiptMonitor", () => {
   });
 
   it("tags an overdue shipment and a damaged arrival differently", async () => {
-    renderTab();
+    renderTab("SCORED");
 
     expect(await screen.findByText("Overdue")).toBeInTheDocument();
     expect(screen.getByText("Arrived damaged")).toBeInTheDocument();
@@ -160,7 +165,42 @@ describe("ReceiptMonitor", () => {
     );
   });
 
-  it("sends a repeat with the override note the reserve may require", async () => {
+  it("shows no score and offers no score action before the cycle is scored", async () => {
+    renderTab("SUBMISSIONS_OPEN");
+
+    await screen.findByText("Iringa District Lab");
+    expect(screen.queryByText("1 unacceptable of 3")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Send scores" })).toBeNull();
+    expect(screen.queryByRole("link", { name: "Scores CSV" })).toBeNull();
+  });
+
+  it.each(["SCORED", "CLOSED"])(
+    "offers no result entry or repeat on a %s cycle, but still returns scores",
+    async (cycleStatus) => {
+      renderTab(cycleStatus);
+
+      await screen.findByText("Iringa District Lab");
+      expect(
+        screen.queryByRole("button", { name: "Enter results" }),
+      ).toBeNull();
+      expect(screen.queryByRole("button", { name: "Send repeat" })).toBeNull();
+      expect(
+        screen.getByRole("button", { name: "Send scores" }),
+      ).toBeInTheDocument();
+    },
+  );
+
+  it("offers the scores file, not a FHIR return, on a CSV cycle", async () => {
+    renderTab("SCORED", { distributionMethod: "CSV" });
+
+    await screen.findByText("Iringa District Lab");
+    expect(screen.queryByRole("button", { name: "Send scores" })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Scores CSV" }),
+    ).toBeInTheDocument();
+  });
+
+  it("sends a repeat with its courier details and the override note the reserve may require", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(jsonResponse(true, { boxCode: "EQA-C9-550-R1" })),
     );
@@ -168,6 +208,12 @@ describe("ReceiptMonitor", () => {
 
     await screen.findByText("Mbeya Regional Lab");
     fireEvent.click(screen.getAllByRole("button", { name: "Send repeat" })[0]);
+    fireEvent.change(screen.getByLabelText("Courier"), {
+      target: { value: "DHL" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking number"), {
+      target: { value: "DHL-4471" },
+    });
     fireEvent.change(screen.getByLabelText("Override note"), {
       target: { value: "Courier lost the box" },
     });
@@ -178,7 +224,12 @@ describe("ReceiptMonitor", () => {
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
         "/rest/eqa/cycles/9/receipts/550/repeat",
-        JSON.stringify({ overrideNote: "Courier lost the box" }),
+        JSON.stringify({
+          overrideNote: "Courier lost the box",
+          courier: "DHL",
+          trackingNumber: "DHL-4471",
+          estimatedDeliveryDate: "",
+        }),
         expect.any(Function),
       ),
     );
@@ -211,7 +262,7 @@ describe("ReceiptMonitor", () => {
   // every write action on this tab rendered and was enabled, and pressing one
   // answered 403 with the single word "Forbidden".
   it("offers no write action to a persona without either grant", async () => {
-    renderTab("SUBMISSIONS_OPEN", {
+    const { unmount } = renderTab("SUBMISSIONS_OPEN", {
       permissions: ["qa.view.eqa", "qa.eqa.participant"],
     });
 
@@ -231,6 +282,11 @@ describe("ReceiptMonitor", () => {
       screen.getByText("Read-only view of receipts and scores"),
     ).toBeInTheDocument();
     expect(screen.getByText("Iringa District Lab")).toBeInTheDocument();
+
+    unmount();
+    renderTab("SCORED", { permissions: ["qa.view.eqa", "qa.eqa.participant"] });
+    await screen.findByText("Iringa District Lab");
+    expect(screen.queryByRole("button", { name: "Send scores" })).toBeNull();
     expect(
       screen.getByRole("link", { name: "Scores CSV" }),
     ).toBeInTheDocument();
@@ -513,7 +569,7 @@ describe("ReceiptMonitor", () => {
       organizationId: 550,
       csv: "analyte_name,result_value\nHIV VL,250\nGhost,1",
     });
-    expect(await screen.findByText("1 values imported.")).toBeInTheDocument();
+    expect(await screen.findByText("1 value imported.")).toBeInTheDocument();
     expect(
       screen.getByText("Row 3: no test in this scheme reports 'Ghost'"),
     ).toBeInTheDocument();

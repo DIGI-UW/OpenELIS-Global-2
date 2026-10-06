@@ -15,8 +15,6 @@ nav:
     - Install OpenELIS Global: install.md
     - Upgrade to the Newest Version: upgrade.md
     - Upgrade from 2.x to 2.7: 27upgrade.md
-    - Analyzers: analyzer.md
-    - ASTM Bi-Directional Analyzer Setup: astm.md
     - Deploy:
        - Technical Requirements for Deployment: implementation.md 
        - Implementation Best Practices: implementation-bestpract.md
@@ -35,6 +33,10 @@ nav:
        - Adding a Requester to the Consolidated server: add_dr.md
        - Database Profiles Mass facility and test catalog updates: dbprofiles.md
        - Entity Relation Diagram: entity relation diagram.md
+       - Analyzers:
+          - Shipped analyzer clinical defaults: analyzers/default-catalog-evidence.md
+          - Analyzer setup with partial mappings: analyzers/partial-mapping-setup.md
+          - Pre-Bridge analyzer settings: analyzers/pre-bridge-settings-export.md
     - Interacting with the co-resident FHIR store: directFHIRCommunication.md
     - Troubleshooting: troubleshooting.md
     - Security:

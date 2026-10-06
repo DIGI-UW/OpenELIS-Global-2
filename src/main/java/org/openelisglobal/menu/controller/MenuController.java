@@ -61,6 +61,8 @@ public class MenuController {
         return findMenuItem(elementId, MenuUtil.getMenuTree());
     }
 
+    // No system_module_url row can match a path variable, so the interceptor lets
+    // this path through and @PreAuthorize is its only gate.
     @GetMapping(value = "/rest/admin/menu/{elementId}", produces = MediaType.APPLICATION_JSON_VALUE)
     @PreAuthorize("hasRole('ADMIN')")
     public Optional<MenuItem> getEditableMenuItem(@PathVariable String elementId) {

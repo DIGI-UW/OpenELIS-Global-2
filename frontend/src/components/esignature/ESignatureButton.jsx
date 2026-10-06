@@ -37,6 +37,7 @@ import { SignatureMeaning, isEsigEnabled } from "./api";
  * - kind: string - Carbon button kind (optional, defaults to "primary")
  * - size: string - Carbon button size (optional)
  * - disabled: boolean - Whether the button is disabled (optional)
+ * - ariaDescribedBy: string - Id of the text that says why the button is disabled (optional)
  * - style: object - Custom styles for the button (optional)
  * - className: string - Custom CSS class (optional)
  * - children: node - Custom button content (optional, overrides label)
@@ -54,6 +55,7 @@ const ESignatureButton = ({
   kind = "primary",
   size,
   disabled = false,
+  ariaDescribedBy,
   style,
   className,
   children,
@@ -167,6 +169,7 @@ const ESignatureButton = ({
         size={size}
         disabled={disabled || !isLoggedIn || isCheckingEsig}
         onClick={handleClick}
+        aria-describedby={ariaDescribedBy}
         style={style}
         className={className}
       >

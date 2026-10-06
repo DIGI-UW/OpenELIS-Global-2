@@ -123,22 +123,30 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     await picker.evaluate((input) => input.scrollIntoView({ block: "center" }));
     await picker.click();
     await expect(options).toHaveCount(programs.length);
-    const menu = await page
-      .locator(".program-section .cds--list-box__menu")
-      .evaluate((list) => {
-        const box = list.getBoundingClientRect();
-        const bottomEdge = document.elementFromPoint(
-          box.left + 10,
-          box.bottom - 4,
-        );
-        return {
-          wholeMenuShowing: list.contains(bottomEdge),
-          scrollsWhenLonger:
-            list.scrollHeight <= list.clientHeight ||
-            ["auto", "scroll"].includes(getComputedStyle(list).overflowY),
-        };
-      });
-    expect(menu).toEqual({ wholeMenuShowing: true, scrollsWhenLonger: true });
+    // Sections above the picker can still be laying out, which pushes the menu
+    // below the viewport. Only the window is scrolled back, so a container
+    // clipping the menu still fails the check.
+    const menu = page.locator(".program-section .cds--list-box__menu");
+    await expect
+      .poll(() =>
+        menu.evaluate((list) => {
+          const input = document.querySelector("#program");
+          const inputBox = input.getBoundingClientRect();
+          window.scrollBy(0, inputBox.top - window.innerHeight / 3);
+          const box = list.getBoundingClientRect();
+          const bottomEdge = document.elementFromPoint(
+            box.left + 10,
+            box.bottom - 4,
+          );
+          return {
+            wholeMenuShowing: list.contains(bottomEdge),
+            scrollsWhenLonger:
+              list.scrollHeight <= list.clientHeight ||
+              ["auto", "scroll"].includes(getComputedStyle(list).overflowY),
+          };
+        }),
+      )
+      .toEqual({ wholeMenuShowing: true, scrollsWhenLonger: true });
     const last = programs[programs.length - 1].value;
     await options.filter({ hasText: last }).click();
     await expect(picker).toHaveValue(last);
@@ -173,7 +181,7 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     await samples.getByLabel("Sample Type").first().selectOption(sampleTypeId);
     await samples.locator(`label[for="test-0-${testId}"]`).click();
     await expect(samples.locator(`#test-0-${testId}`)).toBeChecked();
-    await page.getByRole("button", { name: "Save & Next" }).click();
+    await page.getByRole("button", { name: "Save and next" }).click();
     await expect(page).toHaveURL(/\/order\/clinical\/collect/, {
       timeout: NAV_TIMEOUT,
     });
@@ -213,16 +221,33 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
         saves.push(request.url());
       }
     });
+    // Storage lives on Prepare Samples now (OGC-1266 M4): one row per
+    // requested sample, no phantom second row.
+    const storage = page.getByTestId("prepare-storage-section");
+    await expect(storage).toContainText(`${labNumber}-1`);
+    await expect(storage).not.toContainText(`${labNumber}-2`);
+
+    // The defaults would complete the step (the collector is optional,
+    // OGC-1419), so the collection time is cleared to save it incomplete and
+    // have Continue reopen Prepare Samples.
+    await page.locator("#collectionTime-0").fill("");
+    await page.locator("#collectionTime-0").press("Tab");
+    await expect(page.getByTestId("to-continue-checklist")).toContainText(
+      `Collection date and time for ${labNumber}-1`,
+    );
+
     const saved = page.waitForResponse(
       (response) =>
         response.url().includes("/rest/SamplePatientEntry") &&
         response.request().method() === "POST",
     );
-    await page.getByRole("button", { name: "Save", exact: true }).dblclick();
+    await page
+      .getByRole("button", { name: "Save and exit", exact: true })
+      .dblclick();
     await saved;
-    await expect(page.getByRole("button", { name: "Save & Next" })).toBeEnabled(
-      { timeout: NAV_TIMEOUT },
-    );
+    await expect(page).toHaveURL(/\/order\/clinical\?highlight=/, {
+      timeout: NAV_TIMEOUT,
+    });
     expect(saves).toHaveLength(1);
 
     const order = await (
@@ -240,13 +265,17 @@ test.describe("OGC-1266 order entry fix-now bundle", () => {
     ).json();
     expect(requests.map((r) => r.status)).toEqual(["COLLECTED"]);
 
-    await page.getByRole("button", { name: "Save & Next" }).click();
-    await expect(page).toHaveURL(/\/order\/clinical\/label/, {
+    // The dashboard highlights the order Save and exit came from and offers
+    // to continue it at Prepare Samples.
+    const row = page.locator("tr.order-highlighted");
+    await expect(row).toContainText(labNumber, { timeout: NAV_TIMEOUT });
+    await row.getByRole("button", { name: "Continue" }).click();
+    await expect(page).toHaveURL(/\/order\/clinical\/collect\?order=/, {
       timeout: NAV_TIMEOUT,
     });
-    await expect(page.locator("main")).toContainText(`${labNumber}.1`, {
-      timeout: NAV_TIMEOUT,
-    });
-    await expect(page.locator("main")).not.toContainText(`${labNumber}-2`);
+    await expect(page.getByTestId("prepare-storage-section")).toContainText(
+      `${labNumber}-1`,
+      { timeout: NAV_TIMEOUT },
+    );
   });
 });

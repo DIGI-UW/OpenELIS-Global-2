@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- Both changeSets change page authorization as well as menu visibility. -->
+    <changeSet author="samuelmale" id="ogc-1151-001-master-lists-page-url">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims"/>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.system_module WHERE name = 'MasterList'
+            </sqlCheck>
+            <sqlCheck expectedResult="0">
+                SELECT COUNT(*) FROM clinlims.system_module_url WHERE url_path = '/MasterListsPage'
+            </sqlCheck>
+        </preConditions>
+        <comment>Map /MasterListsPage to the MasterList module so the Admin menu is privilege-gated</comment>
+
+        <insert tableName="system_module_url" schemaName="clinlims">
+            <column name="id" valueSequenceNext="system_module_url_seq"/>
+            <column name="url_path" value="/MasterListsPage"/>
+            <column name="system_module_id"
+                valueComputed="(SELECT id FROM clinlims.system_module WHERE name = 'MasterList')"/>
+        </insert>
+
+        <rollback>
+            <delete tableName="system_module_url" schemaName="clinlims">
+                <where>url_path = '/MasterListsPage'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <!-- Starts enforcing /eqa, /qc, /alerts, and /reports/amendment against EQAView and AmendmentReport. -->
+    <changeSet author="samuelmale" id="ogc-1151-002-strip-rest-prefix-from-module-urls">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="system_module_url" schemaName="clinlims"/>
+        </preConditions>
+        <comment>Strip the /rest prefix from system_module_url rows so they can match a request path</comment>
+
+        <!-- Drop duplicates first, while the /rest prefix still tells them from the originals. -->
+        <sql>
+            DELETE FROM clinlims.system_module_url redundant
+            WHERE redundant.url_path LIKE '/rest/%'
+              AND EXISTS (
+                SELECT 1
+                FROM clinlims.system_module_url existing
+                WHERE existing.url_path = SUBSTRING(redundant.url_path FROM 6)
+                  AND existing.system_module_id = redundant.system_module_id
+                  AND existing.system_module_param_id IS NOT DISTINCT FROM redundant.system_module_param_id
+              );
+        </sql>
+
+        <sql>
+            UPDATE clinlims.system_module_url
+            SET url_path = SUBSTRING(url_path FROM 6)
+            WHERE url_path LIKE '/rest/%';
+        </sql>
+
+        <rollback>
+            <!-- Restore the duplicate that the delete removed. -->
+            <sql>
+                INSERT INTO clinlims.system_module_url (id, url_path, system_module_id, system_module_param_id)
+                SELECT nextval('clinlims.system_module_url_seq'), '/rest/GenericSampleOrder',
+                       system_module_id, system_module_param_id
+                FROM clinlims.system_module_url
+                WHERE url_path = '/GenericSampleOrder'
+                LIMIT 1;
+            </sql>
+            <!-- Not /GenericSampleOrder: that row was never prefixed. -->
+            <sql>
+                UPDATE clinlims.system_module_url
+                SET url_path = '/rest' || url_path
+                WHERE url_path IN ('/alerts', '/eqa', '/qc', '/reports/amendment',
+                                   '/GenericSampleOrder/import', '/GenericSampleOrder/validate',
+                                   '/reports/vector-surveillance/manual-entry',
+                                   '/reports/vector-surveillance/manual-entry/submit',
+                                   '/admin/vector/manual-entry-fields');
+            </sql>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

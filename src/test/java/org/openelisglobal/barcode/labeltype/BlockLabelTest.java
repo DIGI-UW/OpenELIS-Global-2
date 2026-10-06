@@ -1,11 +1,13 @@
 package org.openelisglobal.barcode.labeltype;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
 import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import org.junit.After;
 import org.junit.Before;
@@ -71,8 +73,26 @@ public class BlockLabelTest {
 
     @After
     public void tearDown() {
+        LabelFieldPolicy.useLookup(null);
         ReflectionTestUtils.setField(SpringContext.class, "factory", previousFactory);
         ReflectionTestUtils.setField(MessageUtil.class, "instance", previousMessageUtilInstance);
+    }
+
+    @Test
+    public void blockLabel_printsTheFieldsOfTheSystemPresetWhenItHasThem() {
+        LabelFieldPolicy.useLookup(name -> new LinkedHashSet<>(List.of("LAB_NUMBER", "BLOCK_ID", "CASE_NUMBER")));
+        PathologySample pathologySample = new PathologySample();
+        pathologySample.setId(55);
+        PathologyBlock block = new PathologyBlock();
+        block.setBlockNumber(3);
+
+        BlockLabel label = new BlockLabel(null, new Sample(), pathologySample, block, "ACC-1", "Biopsy");
+
+        List<LabelField> fields = collect(label.getAboveFields());
+        assertFalse("Specimen Type was removed from the preset although the legacy key still says true",
+                fields.stream().anyMatch(field -> "Biopsy".equals(field.getValue())));
+        assertTrue(fields.stream().anyMatch(field -> "55".equals(field.getValue())));
+        assertTrue(fields.stream().anyMatch(field -> "3".equals(field.getValue())));
     }
 
     @Test

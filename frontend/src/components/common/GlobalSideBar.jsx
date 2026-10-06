@@ -7,9 +7,11 @@ import {
   SideNavMenuItem,
 } from "@carbon/react";
 import PathRoute from "../utils/PathRoute";
+import useInAppNavigation from "./useInAppNavigation";
 
 const GlobalSideBar = (props) => {
   const { sideNav } = props;
+  const navigate = useInAppNavigation();
 
   return (
     <>
@@ -30,6 +32,7 @@ const GlobalSideBar = (props) => {
                         <SideNavMenuItem
                           key={index + "_" + subIndex}
                           href={subItem.link}
+                          onClick={navigate(subItem.link)}
                         >
                           {subItem.label}
                         </SideNavMenuItem>

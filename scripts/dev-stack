@@ -152,7 +152,6 @@ def compose_command(context: StackContext, *arguments: str) -> list[str]:
 def required_submodules() -> tuple[str, ...]:
     return (
         "dataexport",
-        "plugins",
         "tools/analyzer-mock-server",
         "tools/openelis-analyzer-bridge",
     )
@@ -358,7 +357,7 @@ def build_application(context: StackContext, environment: dict[str, str]) -> Non
 
 
 def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str]) -> None:
-    arguments = [str(context.project_dir / "bootstrap.sh"), "--skip-plugins"]
+    arguments = [str(context.project_dir / "bootstrap.sh")]
     if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
         arguments.append("--local")
     run(

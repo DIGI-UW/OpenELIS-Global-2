@@ -85,8 +85,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 contract.messageId());
         if (accepted.isPresent()) {
             AnalyzerDeliveryReceipt receipt = accepted.orElseThrow();
-            return new AnalyzerNormalizedResultImportSummary(receipt.getAnalyzerId(), receipt.getResultsStaged(),
-                    receipt.getResultsHeld(), receipt.getControlsProcessed());
+            // The same receipt the first acceptance returned, so a sender that
+            // retried because it never saw the first answer gets an identical
+            // response rather than a second acceptance.
+            return new AnalyzerNormalizedResultImportSummary(receipt.getId(), receipt.getAnalyzerId(),
+                    receipt.getResultsStaged(), receipt.getResultsHeld(), receipt.getControlsProcessed());
         }
         requireMatchingProfile(analyzer, contract);
 
@@ -114,7 +117,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         receipt.setAcceptedBy(effectiveActor);
         receipt.setAcceptedAt(new Timestamp(System.currentTimeMillis()));
         receiptDAO.insert(receipt);
-        return new AnalyzerNormalizedResultImportSummary(analyzer.getId(), staged.size(), held, controlsProcessed);
+        return new AnalyzerNormalizedResultImportSummary(receipt.getId(), analyzer.getId(), staged.size(), held,
+                controlsProcessed);
     }
 
     @Override

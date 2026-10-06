@@ -82,8 +82,8 @@ public class ViewNonConformEventsRestController extends BaseRestController {
         NonConformingEventForm response = new NonConformingEventForm();
 
         response.setnceEventsSearchResults(searchResults);
-        response.setNceCategories(nceCategoryService.getActiveCategoriesAsIdValuePairs());
-        response.setNceTypes(nceTypeService.getActiveTypesAsIdValuePairs());
+        response.setNceCategories(nceCategoryService.getAllCategoriesAsIdValuePairs());
+        response.setNceTypes(nceTypeService.getAllTypesAsIdValuePairs());
         response.setLabComponentList(
                 DisplayListService.getInstance().getList(DisplayListService.ListType.LABORATORY_COMPONENT));
         response.setSeverityConsequencesList(

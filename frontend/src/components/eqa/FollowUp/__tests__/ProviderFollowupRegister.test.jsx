@@ -100,7 +100,31 @@ describe("ProviderFollowupRegister", () => {
     expect(screen.getByText("3.2")).toBeInTheDocument();
   });
 
-  it("moves the row through triage without asking for notes on the early steps", async () => {
+  it("moves the row to investigation without asking for notes", async () => {
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb(
+        jsonResponse(true, {
+          followupId: 12,
+          followupStatus: "UNDER_INVESTIGATION",
+        }),
+      ),
+    );
+    renderPage();
+
+    await screen.findByText("Mbeya Regional Lab");
+    expand();
+    fireEvent.click(screen.getByRole("button", { name: "Investigate" }));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/eqa/provider/followups/12/status",
+        JSON.stringify({ target: "UNDER_INVESTIGATION", notes: null }),
+        expect.any(Function),
+      ),
+    );
+  });
+
+  it("records a response only with what the laboratory said", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(
         jsonResponse(true, {
@@ -114,11 +138,21 @@ describe("ProviderFollowupRegister", () => {
     await screen.findByText("Mbeya Regional Lab");
     expand();
     fireEvent.click(screen.getByRole("button", { name: "Record response" }));
+    const confirm = screen.getByRole("button", { name: "Confirm" });
+    expect(confirm).toBeDisabled();
+
+    fireEvent.change(screen.getByLabelText("What the laboratory said"), {
+      target: { value: "Pipette recalibrated" },
+    });
+    fireEvent.click(confirm);
 
     await waitFor(() =>
       expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
         "/rest/eqa/provider/followups/12/status",
-        JSON.stringify({ target: "RESPONSE_RECEIVED", notes: null }),
+        JSON.stringify({
+          target: "RESPONSE_RECEIVED",
+          notes: "Pipette recalibrated",
+        }),
         expect.any(Function),
       ),
     );
@@ -150,6 +184,32 @@ describe("ProviderFollowupRegister", () => {
     );
   });
 
+  it("sends the repeat's courier and tracking number", async () => {
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb(jsonResponse(true, { boxCode: "EQA-C9-550-R1" })),
+    );
+    renderPage();
+
+    await screen.findByText("Mbeya Regional Lab");
+    expand();
+    fireEvent.click(screen.getByRole("button", { name: "Flag for repeat" }));
+    fireEvent.change(screen.getByLabelText("Courier"), {
+      target: { value: "DHL" },
+    });
+    fireEvent.change(screen.getByLabelText("Tracking number"), {
+      target: { value: "DHL-4471" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/rest/eqa/provider/followups/12/repeat",
+        JSON.stringify({ courier: "DHL", trackingNumber: "DHL-4471" }),
+        expect.any(Function),
+      ),
+    );
+  });
+
   it("falls back to a downloadable CSV when the lab has no contact email", async () => {
     postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
       cb(
@@ -171,6 +231,38 @@ describe("ProviderFollowupRegister", () => {
     expect(
       await screen.findByText(/downloaded as CSV to send by hand/),
     ).toBeInTheDocument();
+    click.mockRestore();
+  });
+
+  it("names the address it could not reach when the mail fails to send", async () => {
+    postToOpenElisServerFullResponse.mockImplementation((_url, _body, cb) =>
+      cb(
+        jsonResponse(true, {
+          followupId: 12,
+          emailed: false,
+          recipient: "qa@mbeya.example.org",
+        }),
+      ),
+    );
+    const click = vi
+      .spyOn(HTMLAnchorElement.prototype, "click")
+      .mockImplementation(() => {});
+    global.URL.createObjectURL = vi.fn(() => "blob:csv");
+    global.URL.revokeObjectURL = vi.fn();
+    renderPage();
+
+    await screen.findByText("Mbeya Regional Lab");
+    expand();
+    fireEvent.click(screen.getByRole("button", { name: "Notify lab" }));
+
+    await waitFor(() => expect(click).toHaveBeenCalled());
+    expect(
+      await screen.findByText(/Could not email qa@mbeya\.example\.org/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/No contact email on file/)).toBeNull();
+    expect(
+      document.querySelector(".cds--inline-notification--warning"),
+    ).not.toBeNull();
     click.mockRestore();
   });
 

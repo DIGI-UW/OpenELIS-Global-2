@@ -29,6 +29,11 @@ const mockServer = (cycles = []) =>
       callback([{ id: 200, value: "Basic Metabolic Panel" }]);
     else if (url === "/rest/eqa/my-programs/analytes")
       callback([{ id: 900, value: "Glucose (serum)" }]);
+    else if (url === "/rest/eqa/programs/6/tests")
+      callback([
+        { id: 1, testId: 100, isActive: true },
+        { id: 2, testId: 101, isActive: false },
+      ]);
     else callback([]);
   });
 
@@ -73,6 +78,21 @@ describe("InlineEnrollmentForm", () => {
       programName: "Virology PT",
       provider: "NHLS",
     });
+  });
+
+  test("picking a scheme selects the tests it covers", () => {
+    mockServer();
+    const onSave = vi.fn();
+    renderForm({ enrollment: null, enrollments: ENROLLED, onSave });
+
+    fireEvent.change(screen.getByLabelText("Scheme"), {
+      target: { value: "Virology PT" },
+    });
+
+    // The test's analyte picker appears once the test is selected.
+    expect(screen.getByLabelText("Glucose")).toBeInTheDocument();
+    fireEvent.click(screen.getByRole("button", { name: "Save Enrollment" }));
+    expect(onSave.mock.calls[0][0].testIds).toEqual([100]);
   });
 
   test("free text stays available for a provider this instance does not carry", () => {

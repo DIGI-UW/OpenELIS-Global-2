@@ -470,6 +470,23 @@ const SampleResultsSection = ({ testId }) => {
       ),
     );
 
+  // A select list has one reference value, so marking an option Normal unmarks
+  // the others in that component.
+  const markNormal = (ci, oi, checked) =>
+    setComponents((prev) =>
+      prev.map((c, i) =>
+        i === ci
+          ? {
+              ...c,
+              options: c.options.map((row, j) => ({
+                ...row,
+                normal: j === oi ? checked : checked ? false : row.normal,
+              })),
+            }
+          : c,
+      ),
+    );
+
   // Live dictionary search for the "add option" typeahead, scoped per component.
   const searchDictionary = (ci, query) => {
     if (!query || !query.trim()) {
@@ -501,6 +518,7 @@ const SampleResultsSection = ({ testId }) => {
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  qualifiable: false,
                 },
               ],
             }
@@ -527,6 +545,7 @@ const SampleResultsSection = ({ testId }) => {
                   resultType: c.resultType,
                   sortOrder: c.options.length + 1,
                   normal: false,
+                  qualifiable: false,
                 },
               ],
             }
@@ -580,6 +599,32 @@ const SampleResultsSection = ({ testId }) => {
   const detectionLimitsInvalid = (c) =>
     detectionLimitProblem(c) === "error.testCatalog.sampleResults.lodGtLoq";
 
+  // Result entry lists every option row, so the same stored value twice shows
+  // twice; this is the check the server applies.
+  const duplicateOptionNames = (c) => {
+    const seen = new Set();
+    const duplicates = new Set();
+    (c.options || []).forEach((o) => {
+      const value = String(o.value || "").trim();
+      if (!value) {
+        return;
+      }
+      if (seen.has(value)) {
+        duplicates.add(o.valueName || value);
+      }
+      seen.add(value);
+    });
+    return [...duplicates];
+  };
+
+  // A select list's default must be one of its options; one it no longer offers
+  // is shown as "No default" and cleared on save.
+  const offeredDefault = (c) =>
+    !["D", "M", "C"].includes(c.resultType) ||
+    (c.options || []).some((o) => o.value && o.value === c.defaultResult)
+      ? c.defaultResult
+      : "";
+
   const handleSave = () => {
     // Every component needs a label (FR-29); the code isn't a separate user field,
     // so default it to the label when left blank. Guide the user with a clear
@@ -632,11 +677,34 @@ const SampleResultsSection = ({ testId }) => {
       });
       return;
     }
+    const repeated = normalized.find(
+      (c) =>
+        ["D", "M", "C"].includes(c.resultType) &&
+        duplicateOptionNames(c).length > 0,
+    );
+    if (repeated) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: "error",
+        title: intl.formatMessage({
+          id: "label.testCatalog.section.sample-results",
+        }),
+        message: intl.formatMessage(
+          { id: "error.testCatalog.sampleResults.duplicateOption" },
+          {
+            component: repeated.label || repeated.code,
+            options: duplicateOptionNames(repeated).join(", "),
+          },
+        ),
+      });
+      return;
+    }
     setSaving(true);
     const payload = {
       testId,
       components: normalized.map((c) => ({
         ...c,
+        defaultResult: offeredDefault(c),
         displayOrder: toInt(c.displayOrder),
         significantDigits: toInt(c.significantDigits),
         lod: toInt(c.lod),
@@ -1034,16 +1102,51 @@ const SampleResultsSection = ({ testId }) => {
                     </div>
                   </>
                 )}
-                <TextInput
-                  id={`comp-default-${ci}`}
-                  labelText={intl.formatMessage({
-                    id: "label.testCatalog.sampleResults.defaultResult",
-                  })}
-                  value={c.defaultResult || ""}
-                  onChange={(e) =>
-                    patchComponent(ci, { defaultResult: e.target.value })
-                  }
-                />
+                {["D", "M", "C"].includes(c.resultType) ? (
+                  <Select
+                    id={`comp-default-${ci}`}
+                    labelText={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.defaultResult",
+                    })}
+                    value={
+                      (c.options || []).some(
+                        (o) => o.value && o.value === c.defaultResult,
+                      )
+                        ? c.defaultResult
+                        : ""
+                    }
+                    onChange={(e) =>
+                      patchComponent(ci, { defaultResult: e.target.value })
+                    }
+                  >
+                    <SelectItem
+                      value=""
+                      text={intl.formatMessage({
+                        id: "label.testCatalog.sampleResults.defaultResult.none",
+                      })}
+                    />
+                    {(c.options || [])
+                      .filter((o) => o.value)
+                      .map((o) => (
+                        <SelectItem
+                          key={o.id || `default-${o.value}`}
+                          value={o.value}
+                          text={o.valueName || o.value}
+                        />
+                      ))}
+                  </Select>
+                ) : (
+                  <TextInput
+                    id={`comp-default-${ci}`}
+                    labelText={intl.formatMessage({
+                      id: "label.testCatalog.sampleResults.defaultResult",
+                    })}
+                    value={c.defaultResult || ""}
+                    onChange={(e) =>
+                      patchComponent(ci, { defaultResult: e.target.value })
+                    }
+                  />
+                )}
                 <TextInput
                   id={`comp-order-${ci}`}
                   type="number"
@@ -1114,6 +1217,9 @@ const SampleResultsSection = ({ testId }) => {
                               <FormattedMessage id="label.testCatalog.sampleResults.option.normal" />
                             </TableHeader>
                             <TableHeader>
+                              <FormattedMessage id="label.testCatalog.sampleResults.option.qualifiable" />
+                            </TableHeader>
+                            <TableHeader>
                               <FormattedMessage id="label.testCatalog.sampleResults.actions" />
                             </TableHeader>
                           </TableRow>
@@ -1158,8 +1264,18 @@ const SampleResultsSection = ({ testId }) => {
                                   labelText=""
                                   checked={!!o.normal}
                                   onChange={(_e, { checked }) =>
+                                    markNormal(ci, oi, checked)
+                                  }
+                                />
+                              </TableCell>
+                              <TableCell>
+                                <Checkbox
+                                  id={`opt-qualifiable-${ci}-${oi}`}
+                                  labelText=""
+                                  checked={!!o.qualifiable}
+                                  onChange={(_e, { checked }) =>
                                     patchChild(ci, "options", oi, {
-                                      normal: checked,
+                                      qualifiable: checked,
                                     })
                                   }
                                 />
@@ -1180,6 +1296,23 @@ const SampleResultsSection = ({ testId }) => {
                           ))}
                         </TableBody>
                       </Table>
+                    )}
+                    {duplicateOptionNames(c).length > 0 && (
+                      <InlineNotification
+                        kind="error"
+                        lowContrast
+                        hideCloseButton
+                        data-testid={`duplicate-options-${ci}`}
+                        title={intl.formatMessage(
+                          {
+                            id: "error.testCatalog.sampleResults.duplicateOption",
+                          },
+                          {
+                            component: c.label || c.code,
+                            options: duplicateOptionNames(c).join(", "),
+                          },
+                        )}
+                      />
                     )}
                     <ComboBox
                       key={`opt-add-${ci}-${optionComboReset[ci] || 0}`}

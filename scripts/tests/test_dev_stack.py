@@ -132,7 +132,6 @@ class DevStackContractTest(unittest.TestCase):
             self.dev_stack.required_submodules(),
             (
                 "dataexport",
-                "plugins",
                 "tools/analyzer-mock-server",
                 "tools/openelis-analyzer-bridge",
             ),
@@ -150,15 +149,15 @@ class DevStackContractTest(unittest.TestCase):
     def test_submodule_initialization_forces_only_an_empty_failed_checkout(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            (root / "plugins").mkdir()
-            (root / "plugins" / ".git").write_text("gitdir: missing\n")
+            (root / "dataexport").mkdir()
+            (root / "dataexport" / ".git").write_text("gitdir: missing\n")
             context = SimpleNamespace(repo_root=root)
             failed = subprocess.CalledProcessError(128, ["git", "submodule"])
 
             with patch.object(
                 self.dev_stack, "run", side_effect=[failed, None]
             ) as run:
-                self.dev_stack.initialize_submodule(context, {}, "plugins")
+                self.dev_stack.initialize_submodule(context, {}, "dataexport")
 
             self.assertEqual(run.call_count, 2)
             self.assertEqual(
@@ -171,21 +170,21 @@ class DevStackContractTest(unittest.TestCase):
                     "--recursive",
                     "--checkout",
                     "--force",
-                    "plugins",
+                    "dataexport",
                 ],
             )
 
     def test_submodule_initialization_never_forces_a_populated_failed_checkout(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
-            (root / "plugins").mkdir()
-            (root / "plugins" / "local-change.txt").write_text("keep me\n")
+            (root / "dataexport").mkdir()
+            (root / "dataexport" / "local-change.txt").write_text("keep me\n")
             context = SimpleNamespace(repo_root=root)
             failed = subprocess.CalledProcessError(128, ["git", "submodule"])
 
             with patch.object(self.dev_stack, "run", side_effect=failed) as run:
                 with self.assertRaisesRegex(RuntimeError, "populated checkout"):
-                    self.dev_stack.initialize_submodule(context, {}, "plugins")
+                    self.dev_stack.initialize_submodule(context, {}, "dataexport")
 
             run.assert_called_once()
 

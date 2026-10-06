@@ -6,8 +6,13 @@ import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer } from "../utils/Utils";
 
 const PatientInfo = (props) => {
-  const { orderFormValues, setOrderFormValues, error, setPhoneValidation } =
-    props;
+  const {
+    orderFormValues,
+    setOrderFormValues,
+    error,
+    setPhoneValidation,
+    renderNotifications,
+  } = props;
   const componentMounted = useRef(false);
   const intl = useIntl();
   const [searchPatientTab, setSearchPatientTab] = useState({
@@ -71,19 +76,13 @@ const PatientInfo = (props) => {
   }, []);
 
   // When EQA mode toggles on, switch to the form tab and populate selectedPatient
-  // from the patient properties (which may be an existing or new N_A patient).
+  // from the patient properties.
   useEffect(() => {
     if (isEQASample) {
       handleNewPatientTab();
       setSelectedPatient({
         id: orderFormValues.patientProperties.patientPK || "",
         healthRegion: [],
-        firstName: orderFormValues.patientProperties.firstName || "NULL",
-        lastName: orderFormValues.patientProperties.lastName || "NULL",
-        nationalId: orderFormValues.patientProperties.nationalId || "NULL",
-        gender: orderFormValues.patientProperties.gender || "M",
-        birthDateForDisplay:
-          orderFormValues.patientProperties.birthDateForDisplay || "01/01/1900",
       });
     }
   }, [isEQASample, orderFormValues.patientProperties.patientPK]);
@@ -163,6 +162,7 @@ const PatientInfo = (props) => {
                   {searchPatientTab.active && (
                     <SearchPatientForm
                       getSelectedPatient={getSelectedPatient}
+                      renderNotifications={renderNotifications}
                     />
                   )}
                 </Column>
@@ -187,6 +187,7 @@ const PatientInfo = (props) => {
                     error={error}
                     setPhoneValidation={setPhoneValidation}
                     disabled={isEQASample}
+                    renderNotifications={renderNotifications}
                   />
                 </div>
               )}

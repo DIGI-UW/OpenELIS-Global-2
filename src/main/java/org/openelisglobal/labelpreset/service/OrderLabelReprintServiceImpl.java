@@ -2,18 +2,34 @@ package org.openelisglobal.labelpreset.service;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
+import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.barcode.BarcodeLabelMaker;
 import org.openelisglobal.barcode.labeltype.Label;
 import org.openelisglobal.barcode.labeltype.SnapshotLabel;
+import org.openelisglobal.common.services.RequesterService;
+import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.labelpreset.dao.OrderLabelRequestDAO;
 import org.openelisglobal.labelpreset.dto.OrderLabelRequestView;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
+import org.openelisglobal.organization.valueholder.Organization;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.sample.valueholder.Sample;
+import org.openelisglobal.samplehuman.service.SampleHumanService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.service.TestServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -30,6 +46,18 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
 
     @Autowired
     private OrderLabelRequestDAO orderLabelRequestDAO;
+
+    @Autowired
+    @Lazy
+    private SampleHumanService sampleHumanService;
+
+    @Autowired
+    @Lazy
+    private AnalysisService analysisService;
+
+    @Autowired
+    @Lazy
+    private SampleItemService sampleItemService;
 
     @Override
     @Transactional(readOnly = true)
@@ -48,12 +76,19 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
     @Override
     @Transactional(readOnly = true)
     public ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId) {
+        return renderFromSnapshot(orderId, presetId, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId,
+            String scope) {
         ArrayList<Label> labels = new ArrayList<>();
         BarcodeLabelMaker.BarcodeType barcodeType = BarcodeLabelMaker.BarcodeType.BARCODE;
 
-        if (orderId != null && presetId != null) {
+        if (orderId != null) {
             for (OrderLabelRequest row : orderLabelRequestDAO.listByParentSampleId(orderId)) {
-                if (row.getPreset() == null || !presetId.equals(row.getPreset().getId())) {
+                if (!matches(row, presetId, sampleItemId, scope)) {
                     continue;
                 }
                 PresetSnapshotDto snapshot = row.getPresetSnapshot();
@@ -61,7 +96,7 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
                     continue;
                 }
                 String labNo = resolveBarcodePayload(row);
-                SnapshotLabel label = buildSnapshotLabel(snapshot, labNo);
+                SnapshotLabel label = new SnapshotLabel(snapshot, labNo, fieldValues(row));
                 int qty = row.getQty() == null ? 1 : row.getQty();
                 label.setNumLabels(qty);
                 labels.add(label);
@@ -80,6 +115,23 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
         BarcodeLabelMaker maker = new BarcodeLabelMaker(labels);
         maker.setBarcodeType(barcodeType);
         return maker.createLabelsAsStream();
+    }
+
+    private boolean matches(OrderLabelRequest row, Integer presetId, String sampleItemId, String scope) {
+        if (presetId != null && (row.getPreset() == null || !presetId.equals(row.getPreset().getId()))) {
+            return false;
+        }
+        boolean perOrder = row.getSampleItem() == null;
+        if ("order".equalsIgnoreCase(scope) && !perOrder) {
+            return false;
+        }
+        if ("sample".equalsIgnoreCase(scope) && perOrder) {
+            return false;
+        }
+        if (sampleItemId != null && (perOrder || !sampleItemId.equals(row.getSampleItem().getId()))) {
+            return false;
+        }
+        return true;
     }
 
     @Override
@@ -105,6 +157,66 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
     @Override
     public SnapshotLabel buildSnapshotLabel(PresetSnapshotDto snapshot, String labNo) {
         return new SnapshotLabel(snapshot, labNo);
+    }
+
+    /**
+     * What the order knows at print time, by field key (OGC-1218): the patient from
+     * the order, the requesting site, and for a specimen label the tube's
+     * collection, collector and type; the tests are the tube's, or the whole
+     * order's on an order label. A field the order cannot fill (pathology or
+     * storage detail) is left out and prints as a line to write on.
+     */
+    Map<String, String> fieldValues(OrderLabelRequest row) {
+        Map<String, String> values = new HashMap<>();
+        Sample sample = row.getParentSample();
+        if (sample == null) {
+            return values;
+        }
+        SampleItem sampleItem = row.getSampleItem();
+        Patient patient = sampleHumanService.getPatientForSample(sample);
+        if (patient != null) {
+            Person person = patient.getPerson();
+            if (person != null) {
+                String name = (StringUtils.defaultString(person.getLastName()) + ", "
+                        + StringUtils.defaultString(person.getFirstName())).trim();
+                values.put(LabelFieldKey.PATIENT_NAME.name(),
+                        ",".equals(name) ? "" : StringUtils.substring(name.replaceAll("( )+", " "), 0, 30));
+            }
+            values.put(LabelFieldKey.PATIENT_ID.name(),
+                    StringUtils.defaultString(StringUtils.isNotBlank(patient.getNationalId()) ? patient.getNationalId()
+                            : patient.getExternalId()));
+            values.put(LabelFieldKey.PATIENT_DOB.name(), StringUtils.defaultString(patient.getBirthDateForDisplay()));
+            values.put(LabelFieldKey.PATIENT_SEX.name(), StringUtils.defaultString(patient.getGender()));
+        }
+        Organization requester = new RequesterService(sample.getId()).getOrganization();
+        if (requester != null) {
+            values.put(LabelFieldKey.SITE_ID.name(), StringUtils.defaultString(requester.getOrganizationName()));
+        }
+        if (sampleItem != null) {
+            if (sampleItem.getCollectionDate() != null) {
+                values.put(LabelFieldKey.COLLECTION_DATETIME.name(),
+                        DateUtil.convertTimestampToStringDateAndTime(sampleItem.getCollectionDate()));
+            }
+            values.put(LabelFieldKey.COLLECTED_BY.name(), StringUtils.defaultString(sampleItem.getCollector()));
+            if (sampleItem.getTypeOfSample() != null) {
+                values.put(LabelFieldKey.SPECIMEN_TYPE.name(),
+                        StringUtils.defaultString(sampleItem.getTypeOfSample().getLocalizedName()));
+            }
+        }
+        List<SampleItem> items = sampleItem != null ? List.of(sampleItem)
+                : sampleItemService.getSampleItemsBySampleId(sample.getId());
+        Set<String> tests = new LinkedHashSet<>();
+        for (SampleItem item : items) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(item)) {
+                if (analysis.getTest() != null) {
+                    tests.add(TestServiceImpl.getUserLocalizedTestName(analysis.getTest()));
+                }
+            }
+        }
+        if (!tests.isEmpty()) {
+            values.put(LabelFieldKey.TESTS.name(), String.join(", ", tests));
+        }
+        return values;
     }
 
     /**

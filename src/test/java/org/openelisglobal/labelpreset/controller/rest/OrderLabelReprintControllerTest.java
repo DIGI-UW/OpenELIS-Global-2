@@ -140,6 +140,14 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void printOrderLabels_nonNumericIds_return400() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", "not-an-id")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", "abc"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels", "not-an-id")).andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void printFromSnapshot_returnsApplicationPdf() throws Exception {
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
                 .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
@@ -149,6 +157,28 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
     public void printFromSnapshot_noRows_returns404() throws Exception {
         // A preset id with no persisted rows for this order yields an empty render.
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, 999999))
+                .andExpect(status().isNotFound());
+    }
+
+    // ── OGC-1422: one PDF endpoint behind Print row / column / all ───────────
+
+    @Test
+    public void printOrderLabels_withoutFilters_returnsEveryLabelOfTheOrder() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId)).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    public void printOrderLabels_filtersBySampleItemPresetAndScope() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", sampleItemId))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("scope", "sample").param("presetId",
+                String.valueOf(preset.getId()))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("scope", "order"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", "0"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", "999999"))
                 .andExpect(status().isNotFound());
     }
 

@@ -22,9 +22,10 @@ import { ChevronDown, ChevronUp } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { useOrderContext } from "../../OrderContext";
 import { ConfigurationContext } from "../../../layout/Layout";
+import { labNow } from "../../../utils/labClock";
 
 const todayIso = () => {
-  const d = new Date();
+  const d = labNow();
   const yyyy = d.getFullYear();
   const mm = String(d.getMonth() + 1).padStart(2, "0");
   const dd = String(d.getDate()).padStart(2, "0");

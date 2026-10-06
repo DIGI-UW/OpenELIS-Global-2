@@ -46,6 +46,7 @@ const SampleCollectionCard = ({
   onUpdate,
   onRemove,
   onPrintLabels,
+  printDisabled = false,
   isReadOnly,
   canRemove,
   admissionDate = "",
@@ -160,7 +161,7 @@ const SampleCollectionCard = ({
             size="sm"
             renderIcon={Printer}
             onClick={() => onPrintLabels(sampleIndex)}
-            disabled={isReadOnly}
+            disabled={isReadOnly || printDisabled}
           >
             <FormattedMessage
               id="collect.sample.printLabels"

@@ -259,6 +259,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
             // tables absent before changeset 041
         }
         jdbc.update("DELETE FROM clinlims.result_limits WHERE test_id = ?", id);
+        jdbc.update("UPDATE clinlims.test SET default_test_result_id = NULL WHERE id = ?", id);
         jdbc.update("DELETE FROM clinlims.test_result WHERE test_id = ?", id);
         try {
             jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id = ?", id);
@@ -648,6 +649,9 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         primaryAfter.resultType = "D";
         primaryAfter.isPrimary = true;
         primaryAfter.options.add(opt(null, kept, 1));
+        // The editor loads the kept range's value as the Normal option and sends it
+        // back.
+        primaryAfter.options.get(0).normal = true;
         ResultComponentDto secondAfter = comp(secondId, "SECOND", "Second", 1);
         secondAfter.resultType = "N";
         controller.saveSampleResults(String.valueOf(TEST_ID), body(primaryAfter, secondAfter), authedRequest());
@@ -894,7 +898,7 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         // returns a null element for the new id. Rebuild both after inserting.
         typeOfSampleService.clearCache();
 
-        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
+        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null, null,
                 "SampleResultsIT", false, 1, 25);
         TestCatalogEditorRestController.TestListRow row = page.rows.stream()
                 .filter(r -> r.testId.equals(String.valueOf(TEST_ID))).findFirst().orElseThrow();
@@ -965,12 +969,154 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
         assertTrue("blank search must return nothing", controller.searchDictionaryOptions("  ").isEmpty());
     }
 
+    /**
+     * The select-list reference value lives on the limit result flagging,
+     * validation and reflex rules read; marking an option Normal writes it there.
+     */
+    @org.junit.Test
+    public void markingASelectListOptionNormal_writesTheReferenceLimitAndMovingOrClearingItFollows() {
+        ResultComponentDto primary = selectList(null, opt(null, "SRIT-Positive", 1), opt(null, "SRIT-Negative", 2));
+        primary.options.get(1).normal = true;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+
+        ResultComponentDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0);
+        String positive = optionNamed(saved, "SRIT-Positive").value;
+        String negative = optionNamed(saved, "SRIT-Negative").value;
+        assertEquals(java.util.List.of(negative), normalLimitValues());
+        assertTrue(optionNamed(saved, "SRIT-Negative").normal);
+        assertTrue(!optionNamed(saved, "SRIT-Positive").normal);
+
+        ResultComponentDto moved = selectList(saved.id, opt(optionNamed(saved, "SRIT-Positive").id, positive, 1),
+                opt(optionNamed(saved, "SRIT-Negative").id, negative, 2));
+        moved.options.get(0).normal = true;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(moved), authedRequest());
+        assertEquals(java.util.List.of(positive), normalLimitValues());
+
+        ResultComponentDto cleared = selectList(saved.id, opt(optionNamed(saved, "SRIT-Positive").id, positive, 1),
+                opt(optionNamed(saved, "SRIT-Negative").id, negative, 2));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(cleared), authedRequest());
+        assertTrue(normalLimitValues().isEmpty());
+    }
+
+    /**
+     * A test configured in the legacy editor holds its reference value on a limit
+     * without a component id and leaves the option rows unmarked; the editor must
+     * show that value as Normal so saving the section unchanged keeps it.
+     */
+    @org.junit.Test
+    public void aLegacyReferenceValueShowsAsNormalAndSurvivesAnUnchangedSave() {
+        ResultComponentDto primary = selectList(null, opt(null, String.valueOf(DICT_ID), 1),
+                opt(null, "SRIT-Other", 2));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+        jdbc.update("INSERT INTO clinlims.result_limits (id, test_id, test_result_type_id, normal_dictionary_id,"
+                + " lastupdated) VALUES (95294, ?, 2, ?, NOW())", TEST_ID, DICT_ID);
+
+        ResultComponentDto loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0);
+        assertTrue(optionNamed(loaded, DICT_ENTRY).normal);
+        assertTrue(!optionNamed(loaded, "SRIT-Other").normal);
+
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(loaded), authedRequest());
+
+        assertEquals(java.util.List.of(String.valueOf(DICT_ID)), normalLimitValues());
+        assertEquals(Long.valueOf(1L),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.result_limits WHERE id = 95294", Long.class));
+    }
+
+    @org.junit.Test
+    public void aQualifiableOptionRoundTrips() {
+        ResultComponentDto primary = selectList(null, opt(null, "SRIT-Other", 1), opt(null, "SRIT-Plain", 2));
+        primary.options.get(0).qualifiable = true;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+
+        ResultComponentDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0);
+        assertTrue(optionNamed(saved, "SRIT-Other").qualifiable);
+        assertTrue(!optionNamed(saved, "SRIT-Plain").qualifiable);
+        assertEquals(Long.valueOf(1L), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_result" + " WHERE test_id = ? AND is_active AND is_quantifiable",
+                Long.class, TEST_ID));
+
+        optionNamed(saved, "SRIT-Other").qualifiable = false;
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(saved), authedRequest());
+        assertEquals(Long.valueOf(0L), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.test_result" + " WHERE test_id = ? AND is_active AND is_quantifiable",
+                Long.class, TEST_ID));
+    }
+
+    /**
+     * Result entry pre-selects test.default_test_result_id; the primary select
+     * list's default result is mirrored there, including a default typed as a new
+     * free-text option in the same save.
+     */
+    @org.junit.Test
+    public void thePrimarySelectListDefaultIsTheTestsDefaultResult() {
+        ResultComponentDto primary = selectList(null, opt(null, "SRIT-Positive", 1), opt(null, "SRIT-Negative", 2));
+        primary.defaultResult = "SRIT-Negative";
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+
+        ResultComponentDto saved = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0);
+        String negative = optionNamed(saved, "SRIT-Negative").value;
+        assertEquals(negative, saved.defaultResult);
+        assertEquals(negative, testService.getTestById(String.valueOf(TEST_ID)).getDefaultTestResult().getValue());
+
+        saved.defaultResult = "";
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(saved), authedRequest());
+        assertEquals(null, testService.getTestById(String.valueOf(TEST_ID)).getDefaultTestResult());
+    }
+
+    @org.junit.Test
+    public void aLegacyDefaultResultShowsInTheEditorAndSurvivesAnUnchangedSave() {
+        ResultComponentDto primary = selectList(null, opt(null, String.valueOf(DICT_ID), 1));
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(primary), authedRequest());
+        jdbc.update("UPDATE clinlims.test_result_component SET default_result = NULL WHERE test_id = ?", TEST_ID);
+        jdbc.update(
+                "UPDATE clinlims.test SET default_test_result_id = (SELECT id FROM clinlims.test_result"
+                        + " WHERE test_id = ? AND is_active AND value = ?) WHERE id = ?",
+                TEST_ID, String.valueOf(DICT_ID), TEST_ID);
+
+        ResultComponentDto loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.get(0);
+        assertEquals(String.valueOf(DICT_ID), loaded.defaultResult);
+
+        controller.saveSampleResults(String.valueOf(TEST_ID), body(loaded), authedRequest());
+        assertEquals(String.valueOf(DICT_ID),
+                testService.getTestById(String.valueOf(TEST_ID)).getDefaultTestResult().getValue());
+    }
+
+    @org.junit.Test
+    public void aSelectListOfferingTheSameValueTwiceIsRefused() {
+        ResultComponentDto primary = selectList(null, opt(null, String.valueOf(DICT_ID), 1),
+                opt(null, " " + DICT_ID + " ", 2));
+
+        ResponseEntity<SampleResults> resp = controller.saveSampleResults(String.valueOf(TEST_ID), body(primary),
+                authedRequest());
+
+        assertEquals(422, resp.getStatusCode().value());
+        assertEquals(Long.valueOf(0L), jdbc
+                .queryForObject("SELECT count(*) FROM clinlims.test_result WHERE test_id = ?", Long.class, TEST_ID));
+    }
+
+    private static ResultComponentDto selectList(String id, OptionDto... options) {
+        ResultComponentDto primary = comp(id, "PRIMARY", "Result", 0);
+        primary.resultType = "D";
+        primary.isPrimary = true;
+        primary.options.addAll(java.util.List.of(options));
+        return primary;
+    }
+
+    private static OptionDto optionNamed(ResultComponentDto component, String name) {
+        return component.options.stream().filter(o -> name.equals(o.valueName)).findFirst().get();
+    }
+
+    private java.util.List<String> normalLimitValues() {
+        return jdbc.queryForList("SELECT CAST(normal_dictionary_id AS varchar) FROM clinlims.result_limits"
+                + " WHERE test_id = ? AND normal_dictionary_id IS NOT NULL ORDER BY id", String.class, TEST_ID);
+    }
+
     private static OptionDto opt(String id, String value, Integer sortOrder) {
         OptionDto o = new OptionDto();
         o.id = id;
         o.value = value;
         o.sortOrder = sortOrder;
-        o.normal = true;
+        o.normal = false;
         o.resultType = "D";
         return o;
     }

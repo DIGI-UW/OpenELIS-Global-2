@@ -112,8 +112,8 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
             List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(panelId);
 
             for (PanelItem panelItem : panelItems) {
-                List<Analysis> analysisList = analysisService.getAllAnalysisByTestAndStatus(panelItem.getTest().getId(),
-                        statusList);
+                List<Analysis> analysisList = withoutReferredOut(
+                        analysisService.getAllAnalysisByTestAndStatus(panelItem.getTest().getId(), statusList));
 
                 for (Analysis analysis : analysisList) {
                     TestResultItem testResultItem = new TestResultItem();

@@ -31,6 +31,10 @@ public class AnalyzerResultItem implements Serializable {
     private String id;
     private String analyzerId;
     private String analysisId;
+    // OGC-1417: the reviewer who retyped the value has acknowledged it as
+    // critical, or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
     private String units;
     private String testName;
 
@@ -342,6 +346,22 @@ public class AnalyzerResultItem implements Serializable {
 
     public boolean isReadOnly() {
         return readOnly;
+    }
+
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
     }
 
     public void setTestResultType(String testResultType) {

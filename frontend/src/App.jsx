@@ -74,12 +74,12 @@ import {
   ControlLotSetup,
   RuleConfigPanel,
 } from "./components/qc";
-import ResultSearch from "./components/resultPage/ResultSearch";
 import {
-  LegacyResultsGate,
+  LegacyResultsRedirect,
   UnifiedResultsRoute,
 } from "./components/resultPage/unified/routeGates";
 import { getFromOpenElisServer } from "./components/utils/Utils";
+import { loadLabClock } from "./components/utils/labClock";
 import { loadAndApplyBranding } from "./components/utils/BrandingUtils";
 import { resolveMessagesForLocale } from "./languages";
 import {
@@ -249,6 +249,7 @@ export default function App() {
           const jsonResp = await response.json();
           if (jsonResp.authenticated) {
             localStorage.setItem("CSRF", jsonResp.csrf);
+            await loadLabClock();
           }
           setUserSessionDetails(jsonResp);
           setErrorLoadingSessionDetails(false);
@@ -700,11 +701,18 @@ export default function App() {
                           render={() => <OrderCollect />}
                           role={Roles.RECEPTION}
                         />
-                        <SecureRoute
+                        {/* Label & Store folded into Prepare Samples (OGC-1266 M4, D-066) */}
+                        <Route
                           path={`${match.path}/label`}
                           exact
-                          render={() => <OrderLabel />}
-                          role={Roles.RECEPTION}
+                          render={({ location }) => (
+                            <Redirect
+                              to={{
+                                pathname: `${match.path}/collect`,
+                                search: location.search,
+                              }}
+                            />
+                          )}
                         />
                         <SecureRoute
                           path={`${match.path}/qa`}
@@ -712,6 +720,8 @@ export default function App() {
                           render={() => <OrderQA />}
                           role={Roles.RECEPTION}
                         />
+                        {/* A step that does not exist never shows a blank page (FR-A16) */}
+                        <Route render={() => <Redirect to={match.path} />} />
                       </Switch>
                     </OrderProvider>
                   )}
@@ -1566,8 +1576,8 @@ export default function App() {
                   render={() => <Workplan type="priority" />}
                   role={Roles.RESULTS}
                 />
-                {/* OGC-1020 (R1): canonical unified worklist, gated by the
-                    results.entry.unifiedRoute site flag */}
+                {/* OGC-1020 (R1): the one results-entry page; the legacy
+                    result-entry addresses below redirect to it */}
                 <SecureRoute
                   path="/Results"
                   exact
@@ -1578,77 +1588,17 @@ export default function App() {
                   )}
                   role={Roles.RESULTS}
                 />
-                <SecureRoute
-                  path="/result"
+                <Route
+                  path={[
+                    "/result",
+                    "/LogbookResults",
+                    "/PatientResults",
+                    "/AccessionResults",
+                    "/StatusResults",
+                    "/RangeResults",
+                  ]}
                   exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/LogbookResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/PatientResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/AccessionResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/StatusResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
-                />
-                <SecureRoute
-                  path="/RangeResults"
-                  exact
-                  render={() => (
-                    <LegacyResultsGate>
-                      <RouteErrorBoundary {...routeErrorResultsSearch}>
-                        <ResultSearch />
-                      </RouteErrorBoundary>
-                    </LegacyResultsGate>
-                  )}
-                  role={Roles.RESULTS}
+                  render={() => <LegacyResultsRedirect />}
                 />
                 <SecureRoute
                   path="/RoutineReports"

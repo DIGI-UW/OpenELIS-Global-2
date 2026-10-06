@@ -19,7 +19,7 @@ PR-facing E2E validation across trusted and fork-originated contributions.
 
 - Build workflow:
   [`../../.github/workflows/e2e-playwright.yml`](../../.github/workflows/e2e-playwright.yml)
-  - Builds artifacts, plugins, and Docker images.
+  - Builds the Docker images.
   - Publishes GHCR images directly for non-fork runs.
   - Exports a prebuilt image handoff payload for fork runs.
 - Wrapper workflow:
@@ -53,8 +53,6 @@ See the operator runbook for troubleshooting and expectations:
   - GHCR image references for downstream execution.
 - `e2e-image-handoff`
   - Fork-only prebuilt image archive and source image lists.
-- `e2e-plugin-jars`
-  - Runtime plugin payload consumed by downstream tests.
 
 ### 3.2 Transfer modes
 
@@ -76,6 +74,20 @@ See the operator runbook for troubleshooting and expectations:
   - `E2E / Tests` publishes those exact images to GHCR and then runs the
     executor.
 
+### 3.4 Shard allocation
+
+- Playwright core uses four shards; analyzer harness uses two. Each shard has
+  one worker and its own application/database stack.
+- Deprecated Cypress uses two shards: an explicit Core list and Independent,
+  which discovers every remaining spec. New Cypress specs therefore stay covered.
+- The current Cypress split contains eight files in each group. In run
+  `37032755474`, files with measured durations sum to 3m08s in Core and 3m24s
+  in Independent. Five files restored by the spec-path fix have no recent
+  timings; three run in Core and two in Independent. Recheck the balance after
+  the first complete run, using test-step time separately from stack startup.
+- Shard topology changes take effect after merging to the default branch,
+  because the `workflow_run` executor uses that branch's workflow definitions.
+
 ## 4. Trust Boundary Model
 
 - `pull_request` build stage is untrusted execution.
@@ -93,6 +105,16 @@ path. Risk is reduced, not eliminated.
 
 - `03 Checkpoint - E2E` is the only required PR-facing E2E status.
 - The wrapper workflow owns pending and terminal status reporting.
+- Two cases skip the suites, both decided from the default branch's copy of
+  `.github/scripts/e2e-scope.cjs`, and the status description names the reason:
+  - A pull request that changes only documentation gets `success`. The top of
+    a stack is judged on the whole stack's files (the comparison from the
+    stack's base), not on its own layer.
+  - A pull request below the top of a stack gets `pending`: the top pull
+    request contains every commit of the stack and runs E2E for all of them,
+    and its run posts its result on every lower pull request whose head it
+    contains. A lower pull request pushed after the stack was built stays
+    pending until the stack is rebuilt.
 - In `workflow_run`, two identities exist:
   - run identity: what GitHub shows in Actions UI for the triggered run
   - validation identity: the code ref and commit actually validated downstream
@@ -114,8 +136,8 @@ not the Actions list label by itself.
 Parity failures can still happen even with the correct CI topology:
 
 - Non-deterministic E2E tests.
-- Runtime timing sensitivity across containers, DB readiness, plugins, and
-  browser startup.
+- Runtime timing sensitivity across containers, DB readiness and browser
+  startup.
 - Comparing the wrong audit surface when diagnosing runs.
 
 The main remaining parity risk is test/runtime instability, not `workflow_run`

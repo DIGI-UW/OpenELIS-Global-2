@@ -21,6 +21,7 @@ import { useHistory } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import { hasQaPermission } from "../../utils/Utils";
+import { requestFailed, serverMessage } from "../../utils/requestOutcome";
 import {
   downloadLabelSheet,
   fetchInHouseSchemes,
@@ -99,15 +100,11 @@ const InHousePanelsPage = () => {
 
   const unblind = (panelId) => {
     unblindPanel(panelId, (response) => {
-      if (
-        !response ||
-        response.error ||
-        (response.status && response.status >= 400)
-      ) {
+      if (requestFailed(response) || response.error) {
         setNotification({
           kind: "error",
           message:
-            response?.error ||
+            serverMessage(response) ||
             intl.formatMessage({ id: "eqa.inhouse.unblind.error" }),
         });
         return;

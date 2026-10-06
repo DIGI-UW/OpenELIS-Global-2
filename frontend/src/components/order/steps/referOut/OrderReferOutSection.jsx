@@ -27,74 +27,65 @@ import OrderReferOutForm from "./OrderReferOutForm";
 
 const OrderReferOutSection = () => {
   const intl = useIntl();
-  const { samples, setSamples, orderData, saveOrder, loadOrder, labNumber } =
+  const { samples, setSamples, orderData, loadOrder, labNumber } =
     useOrderContext();
   const { addNotification, setNotificationVisible } =
     useContext(NotificationContext);
 
   const [expandedSampleId, setExpandedSampleId] = useState(null);
   const [savingSampleId, setSavingSampleId] = useState(null);
+  const [bulkOpen, setBulkOpen] = useState(false);
 
   const referralOrganizations = orderData?.referralOrganizations || [];
+  const referralReasons = orderData?.referralReasons || [];
 
   const closeForm = () => setExpandedSampleId(null);
 
-  const handleSaveReferral = async (sampleIndex, formValues) => {
-    const sampleItemId = samples[sampleIndex]?.sampleItemId;
-    setSavingSampleId(sampleItemId);
-    try {
-      // Stash the referralItems on the sample, then trigger an order save.
-      // The backend ReferralSetService creates one Referral per (sample,test)
-      // pair from the expanded payload built in OrderContext.buildReferralItems.
-      const existing = samples[sampleIndex]?.referralItems?.[0] || {};
-      // Edits already know the server-assigned referralId, so the optimistic
-      // setSamples is canonical and a backend reload would race the async
-      // FHIR-listener write (clobbering the typed values with stale data).
-      // Creates still need the reload to discover the new referralId.
-      const isEdit = !!existing.referralId;
-      const updatedSamples = samples.map((s, idx) =>
-        idx === sampleIndex
-          ? {
-              ...s,
-              referralItems: [
-                {
-                  ...existing,
-                  ...formValues,
-                },
-              ],
-            }
-          : s,
-      );
-      setSamples(updatedSamples);
-      await saveOrder(false, false, updatedSamples, isEdit);
-      if (!isEdit && labNumber) {
-        await loadOrder(labNumber, false);
-      }
-      addNotification({
-        kind: NotificationKinds.success,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({
-          id: "label.referOut.save.success",
-          defaultMessage: "Referral saved.",
-        }),
-      });
-      setNotificationVisible(true);
-      closeForm();
-    } catch (error) {
-      addNotification({
-        kind: NotificationKinds.error,
-        title: intl.formatMessage({ id: "notification.title" }),
-        message:
-          error?.message ||
-          intl.formatMessage({
-            id: "label.referOut.save.error",
-            defaultMessage: "Failed to save referral.",
-          }),
-      });
-      setNotificationVisible(true);
-    } finally {
-      setSavingSampleId(null);
-    }
+  // A referral entered here is staged on its sample and saved with the step's
+  // Save, as one transaction with everything else on the step (FR-A5, FR-E5).
+  const stageReferral = (sample, formValues) => ({
+    ...sample,
+    referralItems: [
+      {
+        ...(sample.referralItems?.[0] || {}),
+        ...formValues,
+        pendingSave: true,
+      },
+    ],
+  });
+
+  const notifyStaged = (count) => {
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage(
+        { id: "label.referOut.staged.success" },
+        { count },
+      ),
+    });
+    setNotificationVisible(true);
+  };
+
+  const handleSaveReferral = (sampleIndex, formValues) => {
+    setSamples(
+      samples.map((s, idx) =>
+        idx === sampleIndex ? stageReferral(s, formValues) : s,
+      ),
+    );
+    notifyStaged(1);
+    closeForm();
+  };
+
+  const isInHouse = (sample) =>
+    Boolean(sample.sampleItemId) && !sample.referralItems?.[0];
+
+  const handleBulkReferral = (formValues) => {
+    const count = samples.filter(isInHouse).length;
+    setSamples(
+      samples.map((s) => (isInHouse(s) ? stageReferral(s, formValues) : s)),
+    );
+    notifyStaged(count);
+    setBulkOpen(false);
   };
 
   const handleDispatch = (sample) => {
@@ -287,6 +278,37 @@ const OrderReferOutSection = () => {
         />
       </p>
 
+      <div className="refer-out-bulk">
+        <Button
+          kind="tertiary"
+          size="sm"
+          data-testid="refer-out-all"
+          disabled={!samples.some(isInHouse) || bulkOpen}
+          onClick={() => {
+            setExpandedSampleId(null);
+            setBulkOpen(true);
+          }}
+        >
+          <FormattedMessage
+            id="label.referOut.action.referOutAll"
+            defaultMessage="Refer out all in-house samples"
+          />
+        </Button>
+        {bulkOpen && (
+          <div
+            className="refer-out-bulk__form"
+            data-testid="refer-out-bulk-form"
+          >
+            <OrderReferOutForm
+              referralOrganizations={referralOrganizations}
+              referralReasons={referralReasons}
+              onSave={handleBulkReferral}
+              onCancel={() => setBulkOpen(false)}
+            />
+          </div>
+        )}
+      </div>
+
       <DataTable rows={rows} headers={headers}>
         {({ rows: dtRows, headers: dtHeaders, getTableProps, getRowProps }) => (
           <Table {...getTableProps()} size="md">
@@ -318,7 +340,22 @@ const OrderReferOutSection = () => {
                       <TableCell>{renderTests(data.tests)}</TableCell>
                       <TableCell>{renderReferringLab(referral)}</TableCell>
                       <TableCell>
-                        <ReferralStatusTag status={referral?.referralStatus} />
+                        {referral?.pendingSave ? (
+                          <Tag
+                            type="blue"
+                            size="sm"
+                            data-testid="refer-out-pending"
+                          >
+                            <FormattedMessage
+                              id="label.referOut.status.pendingSave"
+                              defaultMessage="Pending save"
+                            />
+                          </Tag>
+                        ) : (
+                          <ReferralStatusTag
+                            status={referral?.referralStatus}
+                          />
+                        )}
                       </TableCell>
                       <TableCell>
                         {!referral && (
@@ -363,6 +400,7 @@ const OrderReferOutSection = () => {
                         <OrderReferOutForm
                           initialValues={referral || {}}
                           referralOrganizations={referralOrganizations}
+                          referralReasons={referralReasons}
                           isSaving={isSaving}
                           onSave={(values) =>
                             handleSaveReferral(data.sampleIndex, values)

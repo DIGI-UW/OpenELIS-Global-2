@@ -49,6 +49,7 @@ import PatientImageSelector from "./photoManagement/uploadPhoto/PatientImageSele
 import IdentificationDocuments from "./IdentificationDocuments";
 import { getPhoneFormatHint } from "./phoneFormatHint";
 import type { AddressHierarchyLevel, PatientRecord, Nullable } from "./types";
+import { labNow } from "../utils/labClock";
 
 type ConfigurationItem = {
   id?: string;
@@ -69,6 +70,8 @@ interface CreatePatientFormProps {
   >;
   showActionsButton?: boolean;
   showPatientSearch?: boolean;
+  /** False when the host screen already renders the notification toasts. */
+  renderNotifications?: boolean;
   [key: string]: unknown;
 }
 
@@ -156,8 +159,8 @@ const computeDobFromFormatter = (
   { years, months, days }: { years?: string; months?: string; days?: string },
   dateLocale?: string,
 ) => {
-  const currentDate = new Date();
-  const pastDate = new Date();
+  const currentDate = labNow();
+  const pastDate = labNow();
   pastDate.setFullYear(currentDate.getFullYear() - (Number(years) || 0));
   pastDate.setMonth(currentDate.getMonth() - (Number(months) || 0));
   pastDate.setDate(currentDate.getDate() - (Number(days) || 0));
@@ -190,7 +193,7 @@ const computeAgePartsFromDob = (dob?: string, dateLocale?: string) => {
   if (Number.isNaN(birthDate.getTime())) {
     return { years: "", months: "", days: "" };
   }
-  const now = new Date();
+  const now = labNow();
   if (birthDate > now) return { years: "", months: "", days: "" };
   const years = differenceInYears(now, birthDate);
   const months = differenceInMonths(now, addYears(birthDate, years));
@@ -419,7 +422,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
         if (componentMounted.current) {
           setAddressHierarchyValues({ 0: values });
           // Also populate healthRegions for backward compatibility
-          setHealthRegions(values);
+          setHealthRegions(Array.isArray(values) ? values : []);
 
           // Check if any level has defaults configured
           const hasDefaults = levels.some((lvl) => lvl.defaultId);
@@ -543,7 +546,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
   };
 
   function fetchHealthDistrictsCallback(res) {
-    setHealthDistricts(res);
+    setHealthDistricts(Array.isArray(res) ? res : []);
   }
 
   // Edit-flow side effects: fetch health-districts cascade for the patient's
@@ -669,7 +672,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
 
   const fetchHeathRegions = (regions) => {
     if (componentMounted.current) {
-      setHealthRegions(regions);
+      setHealthRegions(Array.isArray(regions) ? regions : []);
     }
   };
 
@@ -715,18 +718,18 @@ function CreatePatientForm(props: CreatePatientFormProps) {
 
   const fetchMaritalStatuses = (statuses) => {
     if (componentMounted.current) {
-      setMaritalStatuses(statuses);
+      setMaritalStatuses(Array.isArray(statuses) ? statuses : []);
     }
   };
 
   const fetchEducationList = (eductationList) => {
     if (componentMounted.current) {
-      setEducationList(eductationList);
+      setEducationList(Array.isArray(eductationList) ? eductationList : []);
     }
   };
 
   const fetchHeathDistricts = (districts) => {
-    setHealthDistricts(districts);
+    setHealthDistricts(Array.isArray(districts) ? districts : []);
   };
 
   const handleSubmit = (values, formikBag) => {
@@ -807,9 +810,19 @@ function CreatePatientForm(props: CreatePatientFormProps) {
     props.selectedPatient?.mergedIntoNationalId ||
     props.selectedPatient?.mergedIntoPatientId;
 
+  // An order screen shows the shared notifications itself; a second dialog
+  // here showed every message twice.
+  const embeddedInOrder = Boolean(props.orderFormValues);
+
   return (
     <>
-      {notificationVisible === true ? <AlertDialog /> : ""}
+      {notificationVisible === true &&
+      !embeddedInOrder &&
+      props.renderNotifications !== false ? (
+        <AlertDialog />
+      ) : (
+        ""
+      )}
       {props.selectedPatient?.isMerged === true && (
         <InlineNotification
           kind="warning"
