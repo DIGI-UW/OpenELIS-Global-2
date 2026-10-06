@@ -152,8 +152,8 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             when(mappingCatalogService.searchActiveTests(null))
                     .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption(testId,
                             "Analyzer mapping persistence test", "TEST", List.of())));
-            when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(List
-                    .of(new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive", null)));
+            when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(List.of(
+                    new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive", List.of())));
 
             AuditTrailServiceImpl auditTrailService = auditTrail();
             String profileId = "site.persistence." + UUID.randomUUID();
@@ -831,7 +831,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                           "loinc":"94500-6",
                           "result_type":"qualitative",
                           "values":["POS"],
-                          "value_codes":{"POS":{"system":"http://loinc.org","code":"LA6576-8"}}
+                          "value_codes":{"POS":[{"system":"http://loinc.org","code":"LA6576-8"}]}
                         }
                       ]
                     }

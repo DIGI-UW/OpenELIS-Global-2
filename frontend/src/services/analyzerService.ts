@@ -156,7 +156,8 @@ export interface AnalyzerMappingResultOption {
   id: string;
   value: string;
   label: string;
-  answerCode?: string | null;
+  /** The answer's standard codes, each in its FHIR system URI. */
+  codings?: Array<{ system: string; code: string }>;
   componentId?: string | null;
 }
 

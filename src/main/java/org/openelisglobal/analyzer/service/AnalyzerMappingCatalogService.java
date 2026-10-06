@@ -22,15 +22,26 @@ public interface AnalyzerMappingCatalogService {
         }
     }
 
-    /** An answer of a test; {@code componentId} names its component, if any. */
-    record ResultOption(String id, String value, String label, String answerCode, String componentId) {
-        public ResultOption(String id, String value, String label, String answerCode) {
-            this(id, value, label, answerCode, null);
+    /**
+     * An answer of a test with the standard codings it carries; {@code componentId}
+     * names its component, if any.
+     */
+    record ResultOption(String id, String value, String label, List<AnswerCoding> codings, String componentId) {
+        public ResultOption {
+            codings = codings == null ? List.of() : List.copyOf(codings);
+        }
+
+        public ResultOption(String id, String value, String label, List<AnswerCoding> codings) {
+            this(id, value, label, codings, null);
         }
 
         public ResultOption(String id, String value, String label) {
-            this(id, value, label, null);
+            this(id, value, label, List.of());
         }
+    }
+
+    /** One standard code of an answer, in a FHIR system URI. */
+    record AnswerCoding(String system, String code) {
     }
 
     record ComponentOption(String id, String code, String label) {

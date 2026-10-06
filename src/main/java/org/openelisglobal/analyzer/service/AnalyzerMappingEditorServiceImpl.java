@@ -327,8 +327,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
      * translations; a translation answers with its value's code.
      */
     private record ReportedRecord(BridgeAnalyzerProfile.TestDefinition test, String componentCode, String unit,
-            String resultType, List<String> values, Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes,
-            Map<String, String> translationOf) {
+            String resultType, List<String> values,
+            Map<String, List<BridgeAnalyzerProfile.NormalizedCoding>> valueCodes, Map<String, String> translationOf) {
 
         static ReportedRecord main(BridgeAnalyzerProfile.TestDefinition test) {
             return translated(test, null, test.unit(), test.resultType(), test.resultValues(), test.valueCodes(),
@@ -348,9 +348,10 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
 
         private static ReportedRecord translated(BridgeAnalyzerProfile.TestDefinition test, String componentCode,
                 String unit, String resultType, List<String> declared,
-                Map<String, BridgeAnalyzerProfile.NormalizedCoding> codes, Map<String, List<String>> translations) {
+                Map<String, List<BridgeAnalyzerProfile.NormalizedCoding>> codes,
+                Map<String, List<String>> translations) {
             List<String> values = new ArrayList<>();
-            Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes = new LinkedHashMap<>(codes);
+            Map<String, List<BridgeAnalyzerProfile.NormalizedCoding>> valueCodes = new LinkedHashMap<>(codes);
             Map<String, String> translationOf = new LinkedHashMap<>();
             for (String value : declared) {
                 values.add(value);

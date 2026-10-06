@@ -187,21 +187,29 @@ public final class BridgeAnalyzerProfile {
         return List.copyOf(result);
     }
 
-    private static Map<String, NormalizedCoding> valueCodes(JsonNode codes, List<String> values) {
+    /**
+     * Each declared value's codings, in any system: {@code value -> [{system,
+     * code}]}.
+     */
+    private static Map<String, List<NormalizedCoding>> valueCodes(JsonNode codes, List<String> values) {
         if (codes.isMissingNode() || codes.isNull()) {
             return Map.of();
         }
         if (!codes.isObject()) {
             throw new IllegalArgumentException("Bridge analyzer value codes must be an object");
         }
-        Map<String, NormalizedCoding> result = new LinkedHashMap<>();
+        Map<String, List<NormalizedCoding>> result = new LinkedHashMap<>();
         codes.fields().forEachRemaining(entry -> {
             if (!values.contains(entry.getKey())) {
                 throw new IllegalArgumentException("Bridge analyzer value code must name a declared raw value");
             }
-            JsonNode coding = entry.getValue();
-            result.put(entry.getKey(), new NormalizedCoding(requiredText(coding, "system"),
-                    requiredText(coding, "code"), nullableText(coding, "display")));
+            if (!entry.getValue().isArray()) {
+                throw new IllegalArgumentException("Bridge analyzer value codes must list codings for each value");
+            }
+            List<NormalizedCoding> codings = new ArrayList<>();
+            entry.getValue().forEach(coding -> codings.add(new NormalizedCoding(requiredText(coding, "system"),
+                    requiredText(coding, "code"), nullableText(coding, "display"))));
+            result.put(entry.getKey(), List.copyOf(codings));
         });
         return Map.copyOf(result);
     }
@@ -214,7 +222,7 @@ public final class BridgeAnalyzerProfile {
      */
     public record TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc,
             String unit, String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
-            Map<String, NormalizedCoding> valueCodes, String callComponent, List<ComponentDefinition> components,
+            Map<String, List<NormalizedCoding>> valueCodes, String callComponent, List<ComponentDefinition> components,
             Map<String, List<String>> translations) {
         public TestDefinition {
             translations = translations == null ? Map.of() : Map.copyOf(translations);
@@ -226,7 +234,7 @@ public final class BridgeAnalyzerProfile {
 
         public TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc, String unit,
                 String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
-                Map<String, NormalizedCoding> valueCodes) {
+                Map<String, List<NormalizedCoding>> valueCodes) {
             this(analyzerCode, aliases, testNameHint, loinc, unit, resultType, resultValues, normalizedCoding,
                     valueCodes, null, List.of(), Map.of());
         }
@@ -243,7 +251,7 @@ public final class BridgeAnalyzerProfile {
      * vendor's sub-ID notation (HIV-1&Ct), or null for the call component.
      */
     public record ComponentDefinition(String code, String label, String resultType, String unit, String subIdentity,
-            List<String> resultValues, Map<String, NormalizedCoding> valueCodes,
+            List<String> resultValues, Map<String, List<NormalizedCoding>> valueCodes,
             Map<String, List<String>> translations) {
         public ComponentDefinition {
             resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);

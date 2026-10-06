@@ -17,6 +17,8 @@ import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
 public class AnalyzerMappingDefaultsTest {
+    private static final String LOINC_SYSTEM = "http://loinc.org";
+    private static final String SNOMED_SYSTEM = "http://snomed.info/sct";
     private static final String LOINC = "11111-1";
     private static final String DETECTED = "LA11111-1";
     private static final String NOT_DETECTED = "LA22222-2";
@@ -36,7 +38,7 @@ public class AnalyzerMappingDefaultsTest {
     public void bindsTheUsableCandidateWhenAnAnswerlessTestSharesItsLoinc() throws Exception {
         when(catalog.searchActiveTests(null)).thenReturn(List.of(test("1"), test("2")));
         when(catalog.getActiveResultOptions("2"))
-                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", DETECTED)));
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
         assertEquals(AnalyzerMappingState.BOUND, draft.tests().get(0).mappingState());
         assertEquals("2", draft.tests().get(0).testId());
@@ -49,7 +51,7 @@ public class AnalyzerMappingDefaultsTest {
         when(catalog.searchActiveTests(null)).thenReturn(List.of(test("1"), test("2")));
         for (String id : List.of("1", "2")) {
             when(catalog.getActiveResultOptions(id)).thenReturn(
-                    List.of(new AnalyzerMappingCatalogService.ResultOption("2" + id, "99" + id, "Detected", DETECTED)));
+                    List.of(new AnalyzerMappingCatalogService.ResultOption("2" + id, "99" + id, "Detected", loinc(DETECTED))));
         }
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
         assertEquals(AnalyzerMappingState.UNRESOLVED, draft.tests().get(0).mappingState());
@@ -72,7 +74,7 @@ public class AnalyzerMappingDefaultsTest {
         when(catalog.searchActiveTests(null)).thenReturn(List.of(
                 new AnalyzerMappingCatalogService.TestOption("1", "RAW-A", "RAW-A", List.of("99999-9"))));
         when(catalog.getActiveResultOptions("1"))
-                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", DETECTED)));
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
         assertNull(draft.tests().get(0).testId());
         assertEquals(AnalyzerUnresolvedReason.NO_MATCH, draft.tests().get(0).unresolvedReason());
@@ -100,8 +102,8 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void bindsAnAnswerOnItsCodeNotItsLabel() throws Exception {
         when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Positive for target", DETECTED),
-                new AnalyzerMappingCatalogService.ResultOption("22", "992", "Not detected", NOT_DETECTED)));
+                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Positive for target", loinc(DETECTED)),
+                new AnalyzerMappingCatalogService.ResultOption("22", "992", "Not detected", loinc(NOT_DETECTED))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED, "NOT DETECTED", NOT_DETECTED)));
         assertEquals("21", draft.results().get(0).testResultId());
         assertEquals("22", draft.results().get(1).testResultId());
@@ -110,7 +112,7 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void doesNotBindAnAnswerWhoseLabelMatchesButWhoseCodeDiffers() throws Exception {
         when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", "LA99999-9")));
+                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc("LA99999-9"))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
         assertEquals("1", draft.tests().get(0).testId());
         assertNull(draft.results().get(0).testResultId());
@@ -120,7 +122,7 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void reportsNoMatchForAValueTheProfileGivesNoCode() throws Exception {
         when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", DETECTED)));
+                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED), "NOT DETECTED"));
         assertEquals("21", draft.results().get(0).testResultId());
         assertNull(draft.results().get(1).testResultId());
@@ -128,10 +130,32 @@ public class AnalyzerMappingDefaultsTest {
     }
 
     @Test
+    public void aValueCodedOnlyInSnomedBindsToTheAnswerCarryingThatSnomedCode() throws Exception {
+        when(catalog.getActiveResultOptions("1")).thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption(
+                "21", "991", "Detected", List.of(new AnalyzerMappingCatalogService.AnswerCoding(LOINC_SYSTEM, DETECTED),
+                        new AnalyzerMappingCatalogService.AnswerCoding(SNOMED_SYSTEM, "260373001")))));
+
+        var draft = defaults.resolve(profile("qualitative", SNOMED_SYSTEM, codes("DETECTED", "260373001")));
+
+        assertEquals("21", draft.results().get(0).testResultId());
+    }
+
+    @Test
+    public void theSameCodeInAnotherSystemDoesNotBind() throws Exception {
+        when(catalog.getActiveResultOptions("1")).thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption(
+                "21", "991", "Detected", List.of(new AnalyzerMappingCatalogService.AnswerCoding(LOINC_SYSTEM, "123")))));
+
+        var draft = defaults.resolve(profile("qualitative", SNOMED_SYSTEM, codes("DETECTED", "123")));
+
+        assertNull(draft.results().get(0).testResultId());
+        assertEquals(AnalyzerUnresolvedReason.NO_MATCH, draft.results().get(0).unresolvedReason());
+    }
+
+    @Test
     public void retainsTwoAnswersWithTheSameCodeAsAmbiguous() throws Exception {
         when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", DETECTED),
-                new AnalyzerMappingCatalogService.ResultOption("22", "992", "DETECTED", DETECTED)));
+                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED)),
+                new AnalyzerMappingCatalogService.ResultOption("22", "992", "DETECTED", loinc(DETECTED))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
         assertEquals("1", draft.tests().get(0).testId());
         assertNull(draft.results().get(0).testResultId());
@@ -169,7 +193,7 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void resolvesAnAnswerAgainstAnOperatorChosenTestsOptions() throws Exception {
         var definition = profile("qualitative", codes("DETECTED", DETECTED)).testDefinitions().get(0);
-        var options = List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Whatever", DETECTED));
+        var options = List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Whatever", loinc(DETECTED)));
         var row = defaults.resolveAnswer(definition, "DETECTED", options);
         assertEquals(AnalyzerMappingState.BOUND, row.mappingState());
         assertEquals("21", row.testResultId());
@@ -255,8 +279,8 @@ public class AnalyzerMappingDefaultsTest {
     }
 
     private static AnalyzerMappingCatalogService.ResultOption option(String component, String value, String code) {
-        return new AnalyzerMappingCatalogService.ResultOption("opt-" + component + "-" + value, value, value, code,
-                "comp-" + component);
+        return new AnalyzerMappingCatalogService.ResultOption("opt-" + component + "-" + value, value, value,
+                loinc(code), "comp-" + component);
     }
 
     private BridgeAnalyzerProfile viralLoadProfile() throws Exception {
@@ -271,9 +295,9 @@ public class AnalyzerMappingDefaultsTest {
                 .put("call_component", "call");
         test.putArray("values").add("DETECTED").add("NOT DETECTED").add("INVALID");
         var mainCodes = test.putObject("value_codes");
-        mainCodes.putObject("DETECTED").put("system", "http://loinc.org").put("code", DETECTED);
-        mainCodes.putObject("NOT DETECTED").put("system", "http://loinc.org").put("code", NOT_DETECTED);
-        mainCodes.putObject("INVALID").put("system", "http://loinc.org").put("code", INVALID);
+        mainCodes.putArray("DETECTED").addObject().put("system", "http://loinc.org").put("code", DETECTED);
+        mainCodes.putArray("NOT DETECTED").addObject().put("system", "http://loinc.org").put("code", NOT_DETECTED);
+        mainCodes.putArray("INVALID").addObject().put("system", "http://loinc.org").put("code", INVALID);
         test.putObject("translations").putArray("NOT DETECTED").add("NON DÉTECTÉ");
         var components = test.putArray("components");
         components.addObject().put("code", "call").put("result_type", "qualitative");
@@ -283,8 +307,8 @@ public class AnalyzerMappingDefaultsTest {
                 "qualitative");
         analyte.putArray("values").add("POS").add("INVALID");
         var analyteCodes = analyte.putObject("value_codes");
-        analyteCodes.putObject("POS").put("system", "http://loinc.org").put("code", POSITIVE);
-        analyteCodes.putObject("INVALID").put("system", "http://loinc.org").put("code", INVALID);
+        analyteCodes.putArray("POS").addObject().put("system", "http://loinc.org").put("code", POSITIVE);
+        analyteCodes.putArray("INVALID").addObject().put("system", "http://loinc.org").put("code", INVALID);
         return BridgeAnalyzerProfile.from(document);
     }
 
@@ -313,6 +337,11 @@ public class AnalyzerMappingDefaultsTest {
 
     private BridgeAnalyzerProfile profile(String type, Map<String, String> codes, String... uncodedValues)
             throws Exception {
+        return profile(type, LOINC_SYSTEM, codes, uncodedValues);
+    }
+
+    private BridgeAnalyzerProfile profile(String type, String system, Map<String, String> codes,
+            String... uncodedValues) throws Exception {
         var mapper = new ObjectMapper();
         var document = mapper.createObjectNode();
         document.putObject("profileMeta").put("id", "fixture.defaults").put("displayName", "Default resolution");
@@ -325,7 +354,7 @@ public class AnalyzerMappingDefaultsTest {
         var valueCodes = definition.putObject("value_codes");
         for (var entry : codes.entrySet()) {
             rawValues.add(entry.getKey());
-            valueCodes.putObject(entry.getKey()).put("system", "http://loinc.org").put("code", entry.getValue());
+            valueCodes.putArray(entry.getKey()).addObject().put("system", system).put("code", entry.getValue());
         }
         for (String value : uncodedValues) {
             rawValues.add(value);
@@ -337,5 +366,9 @@ public class AnalyzerMappingDefaultsTest {
             definition.remove("values");
         }
         return BridgeAnalyzerProfile.from(document);
+    }
+
+    private static List<AnalyzerMappingCatalogService.AnswerCoding> loinc(String code) {
+        return List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", code));
     }
 }

@@ -14,6 +14,7 @@ import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sampletypeterminology.service.SampleTypeTerminologyMappingService;
 import org.openelisglobal.sampletypeterminology.valueholder.SampleTypeTerminologyMapping;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
@@ -89,7 +90,7 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
             if (mapping.getComponentId() != null || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
-            String system = terminologySystemUrl(mapping.getSource());
+            String system = TerminologySystems.urlOf(mapping.getSource());
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }
@@ -192,7 +193,7 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
                     || !appliesToSpecimen(mapping.getSampleTypeId(), sampleTypeId)) {
                 continue;
             }
-            String system = terminologySystemUrl(mapping.getSource());
+            String system = TerminologySystems.urlOf(mapping.getSource());
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }
@@ -208,30 +209,6 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
             codeableConcept.setText(label);
         }
         return codeableConcept;
-    }
-
-    /**
-     * Canonical FHIR system URI for a terminology mapping source. LOINC and SNOMED
-     * use the HL7-registered URIs already used elsewhere in this service; CIEL and
-     * OCL use their OpenConceptLab canonical URLs. Returns {@code null} for an
-     * unrecognized source so it is skipped rather than emitting a bogus system.
-     */
-    private String terminologySystemUrl(String source) {
-        if (source == null) {
-            return null;
-        }
-        switch (source.toUpperCase()) {
-        case "LOINC":
-            return "http://loinc.org";
-        case "SNOMED":
-            return "http://snomed.info/sct";
-        case "CIEL":
-            return "https://openconceptlab.org/orgs/CIEL/sources/CIEL";
-        case "OCL":
-            return "https://openconceptlab.org";
-        default:
-            return null;
-        }
     }
 
     @Override
@@ -255,7 +232,7 @@ public class TerminologyTransformServiceImpl implements TerminologyTransformServ
         Map<String, List<Candidate>> bySystem = new LinkedHashMap<>();
         for (SampleTypeTerminologyMapping mapping : sampleTypeTerminologyMappingService
                 .getActiveBySampleTypeId(typeOfSample.getId())) {
-            String system = terminologySystemUrl(mapping.getSource());
+            String system = TerminologySystems.urlOf(mapping.getSource());
             if (system == null || GenericValidator.isBlankOrNull(mapping.getCode())) {
                 continue;
             }
