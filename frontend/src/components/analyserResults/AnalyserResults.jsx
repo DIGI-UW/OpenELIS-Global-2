@@ -481,6 +481,14 @@ const AnalyserResults = (props) => {
             <FormattedMessage id="analyzer.results.failedRun.dismiss" />
           </Button>
         )}
+        {row.importIssueReason === "arrived_under_other_revision" && (
+          <div>
+            <FormattedMessage
+              id="analyzer.results.held.otherRevision"
+              values={{ revision: row.sourceProfileRevision }}
+            />
+          </div>
+        )}
         {row.importIssueReason === "qc_target_missing" && (
           <>
             <div>

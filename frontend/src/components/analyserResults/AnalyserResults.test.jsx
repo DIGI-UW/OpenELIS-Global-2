@@ -319,6 +319,25 @@ describe("AnalyserResults", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("explains a result sent under another profile revision and asks for a rerun", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        sourceProfileRevision: 3,
+        importIssueReason: "arrived_under_other_revision",
+      },
+    ]);
+
+    expect(
+      await screen.findByText(
+        /Sent under revision 3 of this analyzer's profile/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows a failed run's instrument note and dismisses it as a failed run", async () => {
     postResults.mockImplementation((_endpoint, _body, callback) =>
       callback({ status: 200, json: async () => ({ analysisId: "50" }) }),

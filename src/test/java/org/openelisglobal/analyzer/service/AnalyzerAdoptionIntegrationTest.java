@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -15,12 +16,22 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
+import ca.uhn.fhir.context.FhirContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import java.math.BigDecimal;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import javax.sql.DataSource;
+import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.Device;
+import org.hl7.fhir.r4.model.IntegerType;
+import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.StringType;
 import org.junit.After;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
@@ -31,6 +42,8 @@ import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportException;
+import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +61,10 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     private static final String CONNECTION_ID = "bridge-connection-adoption";
     private static final String CONFIG_FINGERPRINT = "sha256:" + "c".repeat(64);
     private static final ObjectMapper JSON = new ObjectMapper();
+    private static final FhirContext FHIR = FhirContext.forR4();
+    private static final Path DELIVERY = Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1",
+            "fixtures", "normalized-unknown-test.fhir.json");
+    private static final String EXTENSIONS = "https://openelis-global.org/fhir/StructureDefinition/";
 
     @Autowired
     private AnalyzerDAO analyzerDAO;
@@ -68,6 +85,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     private AnalyzerInstanceService instances;
     @Autowired
     private AnalyzerActivationService activations;
+    @Autowired
+    private AnalyzerNormalizedResultImportService importService;
 
     private String analyzerId;
     private String deactivatedTestId;
@@ -87,6 +106,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         }
         Long id = Long.valueOf(analyzerId);
         jdbc.update("DELETE FROM analyzer_results WHERE analyzer_id = ?", id);
+        jdbc.update("DELETE FROM analyzer_delivery_receipt WHERE connection_id = ?", CONNECTION_ID);
         jdbc.update("UPDATE analyzer SET latest_activation_record_id = NULL, mapping_id = NULL WHERE id = ?", id);
         jdbc.update("DELETE FROM analyzer_activation_record WHERE analyzer_id = ?", id);
         String mappingIds = "(SELECT id FROM analyzer_mapping WHERE analyzer_id = ?)";
@@ -234,6 +254,39 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 pins.getAllValues().get(1).path("profileRef").path("revision").asInt());
     }
 
+    @Test
+    public void aResultStampedWithTheOldRevisionMapsWhenTheNewOneReadsItAlikeAndIsHeldWhenNot() throws Exception {
+        analyzerOnRevisionOne();
+        String testId = catalog.searchActiveTests(null).get(0).id();
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+                bindAdoptA(proposals(adoptionService.prepareAdoption(analyzerId, 2)), testId), "1");
+        confirm(adopted);
+        bridgeOn(1);
+        apply(adopted);
+
+        importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A", "ADOPT-C"),
+                "1");
+
+        AnalyzerResults fixed = staged("ADOPT-A");
+        assertFalse("revision 2 only fixed ADOPT-A's LOINC", fixed.isReadOnly());
+        assertEquals(testId, fixed.getTestId());
+        assertEquals(Integer.valueOf(1), fixed.getSourceProfileRevision());
+        AnalyzerResults dropped = staged("ADOPT-C");
+        assertTrue(dropped.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, dropped.getImportIssueReason());
+        assertEquals(Integer.valueOf(1), dropped.getSourceProfileRevision());
+    }
+
+    @Test
+    public void aResultFromAnotherProfileIsStillRefused() throws Exception {
+        analyzerOnRevisionOne();
+
+        AnalyzerNormalizedResultImportException refusal = assertThrows(AnalyzerNormalizedResultImportException.class,
+                () -> importService.importBundle(delivery("test.other-analyzer", 1, "ADOPT-A"), "1"));
+
+        assertEquals("analyzer.fhirImport.error.profileMismatch", refusal.getErrorKey());
+    }
+
     private String overrideAdoptAOnAnotherTest(Analyzer analyzer) {
         AnalyzerMappingSnapshot first = mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow();
         AnalyzerMappingDraft draft = AnalyzerMappingDraft.of(first);
@@ -274,6 +327,45 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
         held.setReadOnly(true);
         results.insertAnalyzerResults(List.of(held), "1");
+    }
+
+    private static AnalyzerMappingDraft bindAdoptA(AnalyzerMappingDraft decisions, String testId) {
+        return new AnalyzerMappingDraft(decisions.tests().stream()
+                .map(test -> test.sourceRowKey().equals("ADOPT-A")
+                        ? new AnalyzerMappingTestDraft(test.sourceRowKey(), AnalyzerMappingState.BOUND, testId, null,
+                                null, AnalyzerMappingOrigin.OVERRIDE, test.subIdentity(), null)
+                        : test)
+                .toList(), decisions.results());
+    }
+
+    /** One delivery from the Bridge, stamped with a profile revision. */
+    private Bundle delivery(String profileId, int revision, String... codes) throws Exception {
+        Bundle bundle = FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(DELIVERY));
+        bundle.getIdentifier().setValue("adoption-delivery-" + profileId + "-" + revision);
+        Device device = (Device) bundle.getEntry().get(0).getResource();
+        device.getIdentifier().get(0).setValue(CONNECTION_ID);
+        device.getIdentifier().get(1).setValue(analyzerId);
+        device.getExtensionByUrl(EXTENSIONS + "analyzer-profile-id").setValue(new StringType(profileId));
+        device.getExtensionByUrl(EXTENSIONS + "analyzer-profile-revision").setValue(new IntegerType(revision));
+        Observation template = bundle.getEntry().stream().map(entry -> entry.getResource())
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        template.getExtensionByUrl(EXTENSIONS + "analyzer-control-recognition")
+                .getExtensionByUrl("recognitionFingerprint")
+                .setValue(new StringType(AnalyzerTestProfileCatalog.ADOPTABLE_RECOGNITION_FINGERPRINT));
+        template.getExtensionByUrl(EXTENSIONS + "analyzer-raw-value").setValue(new StringType("7.1"));
+        template.setValue(new Quantity().setValue(new BigDecimal("7.1")).setUnit("mg/dL"));
+        bundle.getEntry().removeIf(entry -> entry.getResource() instanceof Observation);
+        for (String code : codes) {
+            Observation record = template.copy();
+            record.getCode().getCodingFirstRep().setCode(code).setDisplay(code);
+            bundle.addEntry().setFullUrl("urn:uuid:adoption-" + code).setResource(record);
+        }
+        return bundle;
+    }
+
+    private AnalyzerResults staged(String code) {
+        return results.getResultsbyAnalyzer(analyzerId).stream().filter(row -> code.equals(row.getRawTestCode()))
+                .findFirst().orElseThrow(() -> new AssertionError("nothing staged for " + code));
     }
 
     private static AnalyzerMappingAdoption.Row row(AnalyzerAdoptionService.AdoptionPlan plan, String code) {

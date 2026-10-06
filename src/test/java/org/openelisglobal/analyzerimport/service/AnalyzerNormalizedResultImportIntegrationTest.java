@@ -208,7 +208,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void invalidProfileDoesNotCommitAReceipt() throws Exception {
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
-        jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_revision = 4 WHERE id = ?", MAPPING_ID);
+        jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_id = 'site.other-analyzer' WHERE id = ?", MAPPING_ID);
         assertThrows(AnalyzerNormalizedResultImportException.class, () -> importService.importBundle(bundle, "1"));
         assertEquals(Integer.valueOf(0),
                 jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer_delivery_receipt WHERE connection_id = ?",
@@ -220,7 +220,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         AnalyzerNormalizedResultImportSummary accepted = importService.importBundle(bundle, "1");
         jdbc.update("DELETE FROM clinlims.analyzer_results WHERE analyzer_id = ?", ANALYZER_ID);
-        jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_revision = 4 WHERE id = ?", MAPPING_ID);
+        jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_id = 'site.other-analyzer' WHERE id = ?", MAPPING_ID);
 
         AnalyzerNormalizedResultImportSummary replay = importService.importBundle(bundle, "1");
 

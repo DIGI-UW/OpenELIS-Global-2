@@ -12,6 +12,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.Predicate;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Observation;
@@ -21,7 +22,12 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingRowKey;
 import org.openelisglobal.analyzer.service.AnalyzerMappingService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
+import org.openelisglobal.analyzer.service.AnalyzerRecordReading;
 import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerProfile;
+import org.openelisglobal.analyzer.service.BridgeProfileCatalog;
+import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
+import org.openelisglobal.analyzer.service.BridgeProfileCatalogService;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
@@ -54,13 +60,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private final FhirContext fhirContext;
     private final AnalyzerDeliveryReceiptDAO receiptDAO;
     private final AnalyzerResultPlacementService placementService;
+    private final BridgeProfileCatalogService profileCatalogService;
 
     public AnalyzerNormalizedResultImportServiceImpl(AnalyzerService analyzerService,
             AnalyzerMappingService mappingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
             FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
             AnalyzerMappingConfirmationService confirmationService, AnalyzerMappingCatalogService mappingCatalogService,
-            AnalyzerResultPlacementService placementService) {
+            AnalyzerResultPlacementService placementService, BridgeProfileCatalogService profileCatalogService) {
         this.analyzerService = analyzerService;
         this.mappingService = mappingService;
         this.analyzerResultsService = analyzerResultsService;
@@ -71,6 +78,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         this.confirmationService = confirmationService;
         this.mappingCatalogService = mappingCatalogService;
         this.placementService = placementService;
+        this.profileCatalogService = profileCatalogService;
     }
 
     @Override
@@ -223,7 +231,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 binding.results().stream().collect(Collectors.toMap(
                         row -> new ResultKey(AnalyzerMappingRowKey.of(row), row.getId().getRawValue()), row -> row)),
                 binding.results().stream().map(AnalyzerMappingRowKey::of).collect(Collectors.toSet()),
-                AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding));
+                AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding),
+                readsAlike(contract, binding.mapping().getProfilePin()));
         Map<String, Boolean> confirmedByRecognition = new HashMap<>();
         return contract.results().stream().flatMap(result -> {
             boolean confirmed = confirmedByRecognition.computeIfAbsent(result.recognitionFingerprint(),
@@ -240,6 +249,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             AnalyzerNormalizedResultContract.Result result, Analyzer analyzer, Mapping mapping,
             boolean mappingConfirmed) {
         AnalyzerMappingRowKey record = new AnalyzerMappingRowKey(result.rawTestCode(), result.subIdentity());
+        if (!mapping.readsAlike().test(record)) {
+            return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION));
+        }
         AnalyzerMappingTest testMapping = mapping.tests().get(record);
         if (testMapping == null) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST));
@@ -383,12 +395,42 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setInstrumentOperator(result.operator());
     }
 
+    /**
+     * Traffic from another revision of the analyzer's own profile is never refused
+     * for its revision alone; {@link #readsAlike} decides record by record.
+     */
     private void requireMatchingProfile(Analyzer analyzer, AnalyzerNormalizedResultContract contract) {
         AnalyzerProfilePin pinned = analyzer.getPinnedProfile();
-        if (pinned == null || !contract.profileId().equals(pinned.getProfileId())
-                || contract.profileRevision() != pinned.getProfileRevision()) {
+        if (pinned == null || !contract.profileId().equals(pinned.getProfileId())) {
             throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.profileMismatch",
                     "Normalized traffic profile does not match the analyzer pin");
+        }
+    }
+
+    /**
+     * The records a delivery stamped with another revision can map through the
+     * revision in force: those both revisions read alike. When either revision
+     * cannot be read, none can.
+     */
+    private Predicate<AnalyzerMappingRowKey> readsAlike(AnalyzerNormalizedResultContract contract,
+            AnalyzerProfilePin pinned) {
+        if (contract.profileRevision() == pinned.getProfileRevision()) {
+            return record -> true;
+        }
+        try {
+            BridgeProfileCatalog.ProfileRevision sent = profileCatalogService.getProfile(pinned.getProfileId(),
+                    contract.profileRevision());
+            BridgeProfileCatalog.ProfileRevision inForce = profileCatalogService.getProfile(pinned.getProfileId(),
+                    pinned.getProfileRevision());
+            if (sent == null || inForce == null) {
+                return record -> false;
+            }
+            return AnalyzerRecordReading.readAlike(BridgeAnalyzerProfile.from(sent.profile()),
+                    BridgeAnalyzerProfile.from(inForce.profile()))::contains;
+        } catch (BridgeProfileCatalogException | IllegalArgumentException exception) {
+            LogEvent.logWarn(CLASS_NAME, "readsAlike", "Profile revision " + contract.profileRevision() + " of "
+                    + pinned.getProfileId() + " could not be read: " + exception.getMessage());
+            return record -> false;
         }
     }
 
@@ -434,6 +476,6 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
 
     private record Mapping(Map<AnalyzerMappingRowKey, AnalyzerMappingTest> tests,
             Map<ResultKey, AnalyzerMappingResult> results, Set<AnalyzerMappingRowKey> recordsWithAnswers,
-            AnalyzerMappingCatalogState.Validation catalog) {
+            AnalyzerMappingCatalogState.Validation catalog, Predicate<AnalyzerMappingRowKey> readsAlike) {
     }
 }
