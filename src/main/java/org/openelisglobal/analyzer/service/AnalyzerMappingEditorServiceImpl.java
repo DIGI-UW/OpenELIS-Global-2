@@ -120,23 +120,20 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                         || AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY.equals(row.getImportIssueReason())
                         || AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING.equals(row.getImportIssueReason()))
                 .filter(row -> row.getRawTestCode() != null && row.getRawResultValue() != null)
-                .map(row -> new ResultSourceKey(row.getRawTestCode(), row.getRawResultValue()))
+                .map(row -> new ResultSourceKey(recordOf(row), row.getRawResultValue()))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        Map<String, BridgeAnalyzerProfile.TestDefinition> definitions = new LinkedHashMap<>();
-        profile.testDefinitions().forEach(definition -> definitions.put(definition.analyzerCode(), definition));
+        Map<AnalyzerMappingRowKey, ReportedRecord> records = declaredRecords(profile);
         for (AnalyzerResults row : observed) {
             if (row.getRawTestCode() != null && !row.getRawTestCode().isBlank()) {
-                definitions.putIfAbsent(row.getRawTestCode(),
-                        new BridgeAnalyzerProfile.TestDefinition(row.getRawTestCode(), List.of(), null, null,
-                                row.getUnits(), row.getResultType(), List.of(), null, Map.of()));
+                records.putIfAbsent(recordOf(row),
+                        ReportedRecord.main(new BridgeAnalyzerProfile.TestDefinition(row.getRawTestCode(), List.of(),
+                                null, null, row.getUnits(), row.getResultType(), List.of(), null, Map.of())));
             }
         }
-        current.tests().keySet()
-                .forEach(source -> definitions.putIfAbsent(source, new BridgeAnalyzerProfile.TestDefinition(source,
-                        List.of(), null, null, null, null, List.of(), null, Map.of())));
-        List<AnalyzerMappingView.TestRow> rows = definitions.values().stream()
-                .map(definition -> composeTestRow(definition, current.tests().get(definition.analyzerCode()),
+        current.tests().keySet().forEach(key -> records.putIfAbsent(key, ReportedRecord.undeclared(key)));
+        List<AnalyzerMappingView.TestRow> rows = records.entrySet().stream()
+                .map(entry -> composeTestRow(entry.getKey(), entry.getValue(), current.tests().get(entry.getKey()),
                         current.results(), observedHeldValues, activeTests, activeTestsById))
                 .toList();
         AnalyzerMappingConfirmationView confirmation = snapshot == null ? AnalyzerMappingConfirmationView.unconfirmed()
@@ -166,33 +163,32 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     private static AnalyzerMappingDraft validateUpdate(BridgeAnalyzerProfile profile, AnalyzerMappingSnapshot current,
             List<AnalyzerResults> observed, AnalyzerMappingUpdate update) {
         AnalyzerMappingDraft draft = update.toDraft();
-        Set<String> expectedTests = profile.testDefinitions().stream()
-                .map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
+        Map<AnalyzerMappingRowKey, ReportedRecord> declared = declaredRecords(profile);
+        Set<AnalyzerMappingRowKey> expectedTests = new LinkedHashSet<>(declared.keySet());
+        current.tests().forEach(row -> expectedTests.add(AnalyzerMappingRowKey.of(row)));
+        Set<AnalyzerMappingRowKey> allowedTests = new LinkedHashSet<>(expectedTests);
+        observed.stream().filter(row -> row.getRawTestCode() != null).map(AnalyzerMappingEditorServiceImpl::recordOf)
+                .forEach(allowedTests::add);
+        Set<AnalyzerMappingRowKey> actualTests = draft.tests().stream()
+                .filter(row -> row != null && row.sourceRowKey() != null).map(AnalyzerMappingTestDraft::rowKey)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        current.tests().forEach(row -> expectedTests.add(row.getId().getSourceRowKey()));
-        Set<String> allowedTests = new LinkedHashSet<>(expectedTests);
-        observed.stream().map(AnalyzerResults::getRawTestCode).filter(Objects::nonNull).forEach(allowedTests::add);
-        Set<String> actualTests = draft.tests().stream().filter(row -> row != null && row.sourceRowKey() != null)
-                .map(AnalyzerMappingTestDraft::sourceRowKey).collect(Collectors.toCollection(LinkedHashSet::new));
         if (draft.tests().size() != actualTests.size() || !actualTests.containsAll(expectedTests)
                 || !allowedTests.containsAll(actualTests)) {
             throw new IllegalArgumentException(
                     "Mapping update must retain declared and saved tests and may add only received test codes");
         }
 
-        Set<ResultSourceKey> expectedResults = profile.testDefinitions().stream()
-                .flatMap(definition -> definition.resultValues().stream()
-                        .map(value -> new ResultSourceKey(definition.analyzerCode(), value)))
+        Set<ResultSourceKey> expectedResults = declared.entrySet().stream().flatMap(
+                entry -> entry.getValue().values().stream().map(value -> new ResultSourceKey(entry.getKey(), value)))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
-        current.results().forEach(row -> expectedResults
-                .add(new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue())));
+        current.results().forEach(row -> expectedResults.add(ResultSourceKey.of(row)));
         Set<ResultSourceKey> actualResults = draft.results().stream()
                 .filter(row -> row != null && row.sourceRowKey() != null && row.rawValue() != null)
-                .map(row -> new ResultSourceKey(row.sourceRowKey(), row.rawValue()))
+                .map(row -> new ResultSourceKey(row.rowKey(), row.rawValue()))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         boolean hasDuplicateResults = draft.results().size() != actualResults.size();
         boolean omitsProfileDefault = !actualResults.containsAll(expectedResults);
-        boolean hasUnknownTest = actualResults.stream().anyMatch(row -> !actualTests.contains(row.sourceRowKey()));
+        boolean hasUnknownTest = actualResults.stream().anyMatch(row -> !actualTests.contains(row.record()));
         if (hasDuplicateResults || omitsProfileDefault || hasUnknownTest) {
             throw new IllegalArgumentException(
                     "Mapping update must retain declared and saved result rows and may add values only to included tests");
@@ -205,28 +201,27 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
      * says; a row left as it was keeps its origin.
      */
     private static AnalyzerMappingDraft withOrigins(AnalyzerMappingSnapshot previous, AnalyzerMappingDraft draft) {
-        Map<String, org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest> before = previous.tests().stream()
-                .collect(Collectors.toMap(row -> row.getId().getSourceRowKey(), Function.identity()));
+        Map<AnalyzerMappingRowKey, org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest> before = previous
+                .tests().stream().collect(Collectors.toMap(AnalyzerMappingRowKey::of, Function.identity()));
         Map<ResultSourceKey, org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult> beforeResults = previous
-                .results().stream()
-                .collect(Collectors.toMap(
-                        row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()),
-                        Function.identity()));
+                .results().stream().collect(Collectors.toMap(ResultSourceKey::of, Function.identity()));
         List<AnalyzerMappingTestDraft> tests = draft.tests().stream().map(row -> {
-            var old = before.get(row.sourceRowKey());
+            var old = before.get(row.rowKey());
             boolean same = old != null && old.getMappingState() == row.mappingState()
                     && Objects.equals(old.getTestId(), row.testId())
-                    && Objects.equals(old.getComponentId(), row.componentId());
+                    && Objects.equals(old.getComponentId(), row.componentId())
+                    && Objects.equals(old.getCallComponentId(), row.callComponentId());
             return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
-                    row.unresolvedReason(), same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE);
+                    row.unresolvedReason(), same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE, row.subIdentity(),
+                    row.callComponentId());
         }).toList();
         List<AnalyzerMappingResultDraft> results = draft.results().stream().map(row -> {
-            var old = beforeResults.get(new ResultSourceKey(row.sourceRowKey(), row.rawValue()));
+            var old = beforeResults.get(new ResultSourceKey(row.rowKey(), row.rawValue()));
             boolean same = old != null && old.getMappingState() == row.mappingState()
                     && Objects.equals(old.getTestResultId(), row.testResultId());
             return new AnalyzerMappingResultDraft(row.sourceRowKey(), row.rawValue(), row.mappingState(),
-                    row.testResultId(), row.unresolvedReason(),
-                    same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE);
+                    row.testResultId(), row.unresolvedReason(), same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE,
+                    row.subIdentity());
         }).toList();
         return new AnalyzerMappingDraft(tests, results);
     }
@@ -238,14 +233,16 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         }
     }
 
-    private AnalyzerMappingView.TestRow composeTestRow(BridgeAnalyzerProfile.TestDefinition definition,
+    private AnalyzerMappingView.TestRow composeTestRow(AnalyzerMappingRowKey key, ReportedRecord record,
             CurrentTest current, Map<ResultSourceKey, CurrentResult> currentResults,
             Set<ResultSourceKey> observedHeldValues, List<AnalyzerMappingCatalogService.TestOption> activeTests,
             Map<String, AnalyzerMappingCatalogService.TestOption> activeTestsById) {
+        BridgeAnalyzerProfile.TestDefinition definition = record.test();
         AnalyzerMappingState state = current == null ? AnalyzerMappingState.UNRESOLVED : current.state();
         AnalyzerMappingOrigin origin = current == null ? AnalyzerMappingOrigin.DEFAULT : current.origin();
         String testId = current == null ? null : current.testId();
         String componentId = current == null ? null : current.componentId();
+        String callComponentId = current == null ? null : current.callComponentId();
         AnalyzerMappingCatalogService.TestOption selected = testId == null ? null : activeTestsById.get(testId);
         AnalyzerMappingTestDraft resolved = state == AnalyzerMappingState.UNRESOLVED
                 ? mappingDefaults.resolveTest(definition, activeTests)
@@ -254,20 +251,29 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 : activeTestsById.get(resolved.testId());
         AnalyzerUnresolvedReason testReason = resolved == null ? null : resolved.unresolvedReason();
         AnalyzerMappingCatalogService.TestOption answerTest = selected != null ? selected : suggested;
-        List<AnalyzerMappingCatalogService.ResultOption> answerOptions = answerTest == null ? List.of()
-                : mappingCatalogService.getActiveResultOptions(answerTest.id());
+        // A record's answers are the options of the component it lands on: the
+        // main record's call component, or the record's own component. Until that
+        // component is known, no answer is offered.
+        boolean landsOnComponent = !key.subIdentity().isEmpty() || definition.callComponent() != null;
+        String answerComponent = key.subIdentity().isEmpty() ? callComponentId : componentId;
+        List<AnalyzerMappingCatalogService.ResultOption> answerOptions = answerTest == null
+                || landsOnComponent && answerComponent == null
+                        ? List.of()
+                        : mappingCatalogService.getActiveResultOptions(answerTest.id()).stream().filter(
+                                option -> answerComponent == null || answerComponent.equals(option.componentId()))
+                                .toList();
         Map<String, AnalyzerMappingCatalogService.ResultOption> activeResults = selected == null ? Map.of()
                 : answerOptions.stream()
                         .collect(Collectors.toMap(AnalyzerMappingCatalogService.ResultOption::id, Function.identity()));
-        LinkedHashSet<String> rawValues = new LinkedHashSet<>(definition.resultValues());
-        currentResults.keySet().stream().filter(key -> definition.analyzerCode().equals(key.sourceRowKey()))
-                .map(ResultSourceKey::rawValue).forEach(rawValues::add);
-        observedHeldValues.stream().filter(key -> definition.analyzerCode().equals(key.sourceRowKey()))
-                .map(ResultSourceKey::rawValue).forEach(rawValues::add);
+        LinkedHashSet<String> rawValues = new LinkedHashSet<>(record.values());
+        currentResults.keySet().stream().filter(result -> key.equals(result.record())).map(ResultSourceKey::rawValue)
+                .forEach(rawValues::add);
+        observedHeldValues.stream().filter(result -> key.equals(result.record())).map(ResultSourceKey::rawValue)
+                .forEach(rawValues::add);
         List<AnalyzerMappingView.ResultRow> results = new ArrayList<>();
         for (String rawValue : rawValues) {
-            ResultSourceKey key = new ResultSourceKey(definition.analyzerCode(), rawValue);
-            CurrentResult result = currentResults.get(key);
+            ResultSourceKey resultKey = new ResultSourceKey(key, rawValue);
+            CurrentResult result = currentResults.get(resultKey);
             AnalyzerMappingState resultState = result == null ? AnalyzerMappingState.UNRESOLVED : result.state();
             AnalyzerMappingOrigin resultOrigin = result == null ? AnalyzerMappingOrigin.DEFAULT : result.origin();
             String optionId = result == null ? null : result.testResultId();
@@ -277,8 +283,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 if (answerTest == null) {
                     reason = testReason == null ? AnalyzerUnresolvedReason.NO_MATCH : testReason;
                 } else {
-                    AnalyzerMappingResultDraft answer = mappingDefaults.resolveAnswer(definition, rawValue,
-                            answerOptions);
+                    AnalyzerMappingResultDraft answer = mappingDefaults.resolveAnswer(definition.analyzerCode(),
+                            key.subIdentity(), record.valueCodes(), rawValue, answerOptions);
                     reason = answer.unresolvedReason();
                     suggestedOption = answer.testResultId() == null ? null
                             : answerOptions.stream().filter(option -> option.id().equals(answer.testResultId()))
@@ -287,19 +293,83 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
             }
             results.add(new AnalyzerMappingView.ResultRow(rawValue, resultState, resultOrigin, optionId,
                     optionId == null ? null : activeResults.get(optionId), suggestedOption, reason,
-                    observedHeldValues.contains(key)));
+                    observedHeldValues.contains(resultKey)));
         }
         return new AnalyzerMappingView.TestRow(definition.analyzerCode(), definition.analyzerCode(),
-                definition.aliases(), definition.testNameHint(), definition.loinc(), definition.unit(),
-                definition.resultType(), definition.normalizedCoding(), state, origin, testId, componentId, selected,
-                suggested, testReason, results);
+                definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
+                definition.normalizedCoding(), state, origin, testId, componentId, selected, suggested, testReason,
+                results, key.subIdentity(), callComponentId);
     }
 
-    private record ResultSourceKey(String sourceRowKey, String rawValue) {
+    private static AnalyzerMappingRowKey recordOf(AnalyzerResults staged) {
+        return new AnalyzerMappingRowKey(staged.getRawTestCode(), staged.getRawSubIdentity());
+    }
+
+    /**
+     * Every record the profile declares: each test's main result, then its
+     * components' records.
+     */
+    private static Map<AnalyzerMappingRowKey, ReportedRecord> declaredRecords(BridgeAnalyzerProfile profile) {
+        Map<AnalyzerMappingRowKey, ReportedRecord> records = new LinkedHashMap<>();
+        for (var definition : profile.testDefinitions()) {
+            records.put(AnalyzerMappingRowKey.main(definition.analyzerCode()), ReportedRecord.main(definition));
+            for (var component : definition.recordComponents()) {
+                records.put(new AnalyzerMappingRowKey(definition.analyzerCode(), component.subIdentity()),
+                        ReportedRecord.of(definition, component));
+            }
+        }
+        return records;
+    }
+
+    /**
+     * One record a test reports. Its values are the declared values followed by
+     * their translations; a translation answers with its value's code.
+     */
+    private record ReportedRecord(BridgeAnalyzerProfile.TestDefinition test, String unit, String resultType,
+            List<String> values, Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes) {
+
+        static ReportedRecord main(BridgeAnalyzerProfile.TestDefinition test) {
+            return translated(test, test.unit(), test.resultType(), test.resultValues(), test.valueCodes(),
+                    test.translations());
+        }
+
+        static ReportedRecord of(BridgeAnalyzerProfile.TestDefinition test,
+                BridgeAnalyzerProfile.ComponentDefinition component) {
+            return translated(test, component.unit(), component.resultType(), component.resultValues(),
+                    component.valueCodes(), component.translations());
+        }
+
+        static ReportedRecord undeclared(AnalyzerMappingRowKey key) {
+            return new ReportedRecord(new BridgeAnalyzerProfile.TestDefinition(key.sourceRowKey(), List.of(), null,
+                    null, null, null, List.of(), null, Map.of()), null, null, List.of(), Map.of());
+        }
+
+        private static ReportedRecord translated(BridgeAnalyzerProfile.TestDefinition test, String unit,
+                String resultType, List<String> declared, Map<String, BridgeAnalyzerProfile.NormalizedCoding> codes,
+                Map<String, List<String>> translations) {
+            List<String> values = new ArrayList<>(declared);
+            Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes = new LinkedHashMap<>(codes);
+            for (String value : declared) {
+                for (String text : translations.getOrDefault(value, List.of())) {
+                    values.add(text);
+                    if (codes.containsKey(value)) {
+                        valueCodes.put(text, codes.get(value));
+                    }
+                }
+            }
+            return new ReportedRecord(test, unit, resultType, List.copyOf(values), valueCodes);
+        }
+    }
+
+    private record ResultSourceKey(AnalyzerMappingRowKey record, String rawValue) {
+
+        static ResultSourceKey of(org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult row) {
+            return new ResultSourceKey(AnalyzerMappingRowKey.of(row), row.getId().getRawValue());
+        }
     }
 
     private record CurrentTest(AnalyzerMappingState state, AnalyzerMappingOrigin origin, String testId,
-            String componentId) {
+            String componentId, String callComponentId) {
     }
 
     private record CurrentResult(AnalyzerMappingState state, AnalyzerMappingOrigin origin, String testResultId) {
@@ -308,25 +378,25 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     /**
      * The decisions in a saved revision, or in a freshly resolved set of defaults.
      */
-    private record CurrentRows(Map<String, CurrentTest> tests, Map<ResultSourceKey, CurrentResult> results) {
+    private record CurrentRows(Map<AnalyzerMappingRowKey, CurrentTest> tests,
+            Map<ResultSourceKey, CurrentResult> results) {
 
         static CurrentRows of(AnalyzerMappingSnapshot snapshot) {
-            Map<String, CurrentTest> tests = snapshot.tests().stream().collect(
-                    Collectors.toMap(row -> row.getId().getSourceRowKey(), row -> new CurrentTest(row.getMappingState(),
-                            row.getOrigin(), row.getTestId(), row.getComponentId())));
+            Map<AnalyzerMappingRowKey, CurrentTest> tests = snapshot.tests().stream()
+                    .collect(Collectors.toMap(AnalyzerMappingRowKey::of, row -> new CurrentTest(row.getMappingState(),
+                            row.getOrigin(), row.getTestId(), row.getComponentId(), row.getCallComponentId())));
             Map<ResultSourceKey, CurrentResult> results = snapshot.results().stream()
-                    .collect(Collectors.toMap(
-                            row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()),
+                    .collect(Collectors.toMap(ResultSourceKey::of,
                             row -> new CurrentResult(row.getMappingState(), row.getOrigin(), row.getTestResultId())));
             return new CurrentRows(tests, results);
         }
 
         static CurrentRows of(AnalyzerMappingDraft draft) {
-            Map<String, CurrentTest> tests = draft.tests().stream()
-                    .collect(Collectors.toMap(AnalyzerMappingTestDraft::sourceRowKey,
-                            row -> new CurrentTest(row.mappingState(), row.origin(), row.testId(), row.componentId())));
+            Map<AnalyzerMappingRowKey, CurrentTest> tests = draft.tests().stream().collect(
+                    Collectors.toMap(AnalyzerMappingTestDraft::rowKey, row -> new CurrentTest(row.mappingState(),
+                            row.origin(), row.testId(), row.componentId(), row.callComponentId())));
             Map<ResultSourceKey, CurrentResult> results = draft.results().stream()
-                    .collect(Collectors.toMap(row -> new ResultSourceKey(row.sourceRowKey(), row.rawValue()),
+                    .collect(Collectors.toMap(row -> new ResultSourceKey(row.rowKey(), row.rawValue()),
                             row -> new CurrentResult(row.mappingState(), row.origin(), row.testResultId())));
             return new CurrentRows(tests, results);
         }

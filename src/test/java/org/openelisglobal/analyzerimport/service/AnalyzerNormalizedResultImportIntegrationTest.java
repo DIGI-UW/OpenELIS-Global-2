@@ -566,6 +566,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(2, staged.size());
         AnalyzerResults endPoint = staged.stream().filter(AnalyzerResults::isReadOnly).findFirst().orElseThrow();
         assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, endPoint.getImportIssueReason());
+        assertEquals("HIVVL", endPoint.getRawTestCode());
+        assertEquals("HIV-1&EndPt", endPoint.getRawSubIdentity());
+        assertEquals("", stagedOn(staged, null).getRawSubIdentity());
         assertFalse("the mapped main record still lands", stagedOn(staged, null).isReadOnly());
     }
 

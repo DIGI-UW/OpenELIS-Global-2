@@ -14,6 +14,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -34,16 +35,19 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     private final DictionaryService dictionaryService;
     private final TypeOfSampleService sampleTypes;
     private final TypeOfSampleTestService sampleTypeTests;
+    private final TestResultComponentService componentService;
 
     public AnalyzerMappingCatalogServiceImpl(TestService testService, TestResultService testResultService,
             TestTerminologyMappingService terminologyService, DictionaryService dictionaryService,
-            TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests) {
+            TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests,
+            TestResultComponentService componentService) {
         this.testService = testService;
         this.testResultService = testResultService;
         this.terminologyService = terminologyService;
         this.dictionaryService = dictionaryService;
         this.sampleTypes = sampleTypes;
         this.sampleTypeTests = sampleTypeTests;
+        this.componentService = componentService;
     }
 
     @Override
@@ -95,11 +99,19 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
             }
             String value = option.getValue();
             Dictionary dictionary = findDictionary(value);
-            choices.add(new ResultOption(option.getId(), value, label(dictionary, value), answerCode(dictionary)));
+            choices.add(new ResultOption(option.getId(), value, label(dictionary, value), answerCode(dictionary),
+                    option.getComponentId()));
         }
         choices.sort(Comparator.comparing(ResultOption::label, String.CASE_INSENSITIVE_ORDER)
                 .thenComparing(ResultOption::id));
         return List.copyOf(choices);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<ComponentOption> getActiveComponents(String testId) {
+        return componentService.getActiveComponentsByTestId(testId).stream()
+                .map(component -> new ComponentOption(component.getId(), component.getCode())).toList();
     }
 
     private static boolean matches(TestOption option, String query) {
