@@ -644,6 +644,66 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).toBeVisible();
   });
 
+  it.each([
+    [
+      "a refusal",
+      {
+        status: 400,
+        error: "Confirm the analyzer's current mapping before applying it",
+        messageKey: "analyzer.mapping.error.confirmBeforeApply",
+      },
+      "Confirm the analyzer's current mapping before applying it.",
+    ],
+    [
+      "an unreachable Bridge",
+      {
+        status: 502,
+        error: "The Analyzer Bridge could not switch with this mapping",
+        messageKey: "analyzer.bridge.connection.unreachable",
+      },
+      "The Analyzer Bridge could not be reached.",
+    ],
+  ])(
+    "explains %s when Apply fails, in words rather than the server's text",
+    async (_case, response, words) => {
+      getAnalyzerMapping.mockImplementation((_id, callback) =>
+        callback({
+          ...mapping,
+          confirmation: { ...unconfirmed, state: "CURRENT" },
+        }),
+      );
+      applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+        callback(response),
+      );
+      renderEditor();
+
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: "Apply mappings and retry held results",
+        }),
+      );
+
+      expect(await screen.findByText(words)).toBeVisible();
+      expect(screen.queryByText(response.error)).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows its own load error, not the server's text, when the mapping cannot load", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ status: 400, error: "Analyzer has no mapping: 501" }),
+    );
+    renderEditor();
+
+    expect(
+      await screen.findByText(
+        messages["analyzerType.mappingEditor.error.load"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Analyzer has no mapping: 501"),
+    ).not.toBeInTheDocument();
+  });
+
   it.each(["UNCONFIRMED", "STALE"])(
     "does not apply a %s mapping to held results",
     async (state) => {

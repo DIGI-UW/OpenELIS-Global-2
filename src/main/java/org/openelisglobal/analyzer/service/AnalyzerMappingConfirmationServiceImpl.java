@@ -59,18 +59,20 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
             throw new IllegalArgumentException("Confirmation request is required");
         }
         requireMatchingFingerprint(request.baseMappingFingerprint(), context.mappingFingerprint,
-                "Analyzer mapping changed after Verify was loaded");
+                "analyzer.mapping.error.changedSinceLoaded", "Analyzer mapping changed after Verify was loaded");
         requireMatchingFingerprint(request.recognitionFingerprint(), context.recognitionFingerprint,
-                "Control recognition changed after Verify was loaded");
+                "analyzer.mapping.error.recognitionChanged", "Control recognition changed after Verify was loaded");
         if (!hasCurrentCatalogBindings(candidate)) {
-            throw new IllegalArgumentException("Analyzer mapping references inactive or unrelated catalog values");
+            throw new AnalyzerRequestException("analyzer.mapping.error.catalogNotCurrent",
+                    "Analyzer mapping references inactive or unrelated catalog values");
         }
 
         RowDisposition expected = expectedRows(candidate);
         List<AnalyzerMappingSourceRow> confirmedRows = normalizeRows(request.confirmedRows(), "confirmed");
         List<AnalyzerMappingSourceRow> excludedRows = normalizeRows(request.excludedRows(), "excluded");
         if (!confirmedRows.equals(expected.confirmed) || !excludedRows.equals(expected.excluded)) {
-            throw new IllegalArgumentException("Confirmation rows must exactly match the current mapping decisions");
+            throw new AnalyzerRequestException("analyzer.mapping.error.changedSinceLoaded",
+                    "Confirmation rows must exactly match the current mapping decisions");
         }
 
         Optional<AnalyzerMappingConfirmation> existing = confirmationDAO.findByMappingId(candidate.mapping().getId());
@@ -294,9 +296,10 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
         }
     }
 
-    private static void requireMatchingFingerprint(String submitted, String expected, String message) {
+    private static void requireMatchingFingerprint(String submitted, String expected, String messageKey,
+            String message) {
         if (!expected.equals(submitted)) {
-            throw new IllegalArgumentException(message);
+            throw new AnalyzerRequestException(messageKey, message);
         }
     }
 

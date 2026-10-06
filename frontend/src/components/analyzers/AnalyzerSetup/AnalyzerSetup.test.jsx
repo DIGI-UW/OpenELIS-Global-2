@@ -675,7 +675,11 @@ describe("AnalyzerSetup Instrument step", () => {
       callback(connectedCandidate()),
     );
     applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
-      callback({ error: "stale binding", statusCode: 400 }),
+      callback({
+        error: "stale binding",
+        statusCode: 400,
+        messageKey: "analyzer.mapping.error.changedSinceLoaded",
+      }),
     );
     const history = renderSetupWithHistory(entry);
 
@@ -688,6 +692,12 @@ describe("AnalyzerSetup Instrument step", () => {
         "Could not apply the reviewed mappings. Reload Verify and try again.",
       ),
     ).toBeVisible();
+    expect(
+      screen.getByText(
+        "This analyzer's mapping changed after this page was loaded. Reload the page to see the current mapping.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("stale binding")).not.toBeInTheDocument();
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
       "verify",
     );
