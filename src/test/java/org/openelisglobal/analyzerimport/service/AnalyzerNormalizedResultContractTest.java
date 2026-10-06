@@ -2,6 +2,7 @@ package org.openelisglobal.analyzerimport.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
@@ -11,6 +12,10 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Device;
+import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.Patient;
+import org.hl7.fhir.r4.model.Reference;
+import org.hl7.fhir.r4.model.StringType;
 import org.junit.Test;
 
 public class AnalyzerNormalizedResultContractTest {
@@ -41,6 +46,53 @@ public class AnalyzerNormalizedResultContractTest {
         assertEquals("RULES", result.recognitionMode());
         assertEquals("NO_MATCH", result.recognitionOutcome());
         assertFalse(result.sourcePayload().isBlank());
+    }
+
+    @Test
+    public void readsTheInstrumentReportedPatientFromTheObservationSubject() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        addPatient(bundle, "urn:uuid:patient-1", "PAT-77", "Doe, Jane", true);
+
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results()
+                .get(0);
+
+        assertEquals("PAT-77", result.instrumentPatientId());
+        assertEquals("Doe, Jane", result.instrumentPatientName());
+    }
+
+    @Test
+    public void ignoresAPatientThatIsNotMarkedAsInstrumentReported() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        addPatient(bundle, "urn:uuid:patient-1", "PAT-77", "Doe, Jane", false);
+
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results()
+                .get(0);
+
+        assertNull(result.instrumentPatientId());
+        assertNull(result.instrumentPatientName());
+    }
+
+    @Test
+    public void aResultWithoutAPatientCarriesNone() throws IOException {
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract
+                .parse(fixture("normalized-known-test.fhir.json"), FHIR).results().get(0);
+
+        assertNull(result.instrumentPatientId());
+        assertNull(result.instrumentPatientName());
+    }
+
+    private static void addPatient(Bundle bundle, String fullUrl, String identifier, String name,
+            boolean instrumentReported) {
+        Patient patient = new Patient();
+        patient.addIdentifier().setValue(identifier);
+        patient.addName().setText(name);
+        if (instrumentReported) {
+            patient.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-patient-source",
+                    new StringType("instrument"));
+        }
+        bundle.addEntry().setFullUrl(fullUrl).setResource(patient);
+        bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource).filter(Observation.class::isInstance)
+                .map(Observation.class::cast).forEach(observation -> observation.setSubject(new Reference(fullUrl)));
     }
 
     @Test

@@ -75,6 +75,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
     @Autowired
+    private AnalyzerResultPlacementService placementService;
+    @Autowired
     private ResultEntryAcknowledgementService acknowledgementService;
     @Autowired
     private EffectiveTestStatusService effectiveTestStatusService;
@@ -122,8 +124,16 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     public void acceptAndPersist(List<AnalyzerResultItem> allResults, String sysUserId, List<ResultEntryAlert> alerts) {
         List<AnalyzerResultItem> actionableResults = extractActionableResult(allResults);
         retainResolvableResults(actionableResults);
+        applyRedirects(actionableResults, sysUserId);
         keepGroupingsOnOneOrder(actionableResults);
 
+        if (actionableResults.isEmpty()) {
+            return;
+        }
+
+        // A result whose specimen ID matches several analyses has no placement
+        // until the reviewer chooses one; its row stays staged, the rest proceed.
+        holdRowsAwaitingPlacement(actionableResults, sysUserId);
         if (actionableResults.isEmpty()) {
             return;
         }
@@ -220,6 +230,13 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 item.setReadOnly(false);
                 return false;
             }
+            if (AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(staged.getImportIssueReason())
+                    && (item.getIsAccepted() || item.getIsRejected()) && staged.getTestId() != null
+                    && Objects.equals(staged.getTestId(), item.getTestId())) {
+                restoreStagedIdentity(item, staged);
+                item.setReadOnly(false);
+                return false;
+            }
             if (staged.isReadOnly() || !GenericValidator.isBlankOrNull(staged.getImportIssueReason())
                     || GenericValidator.isBlankOrNull(staged.getTestId())) {
                 return true;
@@ -238,6 +255,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
      */
     private void restoreStagedIdentity(AnalyzerResultItem item, AnalyzerResults staged) {
         item.setAccessionNumber(staged.getAccessionNumber());
+        item.setInstrumentSpecimenId(staged.getInstrumentSpecimenId());
+        item.setInstrumentPatientId(staged.getInstrumentPatientId());
+        item.setInstrumentPatientName(staged.getInstrumentPatientName());
         item.setTestId(staged.getTestId());
         item.setComponentId(staged.getComponentId());
         item.setIsControl(staged.getIsControl());
@@ -275,6 +295,102 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                             + ", not its grouping's order " + order + "; it stays staged.");
             return true;
         });
+    }
+
+    // ---------------------------------------------------------------
+    // Placement hold
+    // ---------------------------------------------------------------
+
+    /**
+     * Removes each patient result whose analysis cannot be told without a choice:
+     * several analyses match its specimen ID and the reviewer chose none of them,
+     * or the instrument's patient is not the order's patient and the reviewer gave
+     * no note saying why. The staged row keeps its place in review, flagged
+     * {@code awaiting_placement}.
+     */
+    private void holdRowsAwaitingPlacement(List<AnalyzerResultItem> actionableResults, String sysUserId) {
+        List<AnalyzerResultItem> held = actionableResults.stream()
+                .filter(item -> !item.getIsControl() && !GenericValidator.isBlankOrNull(item.getTestId()))
+                .filter(item -> awaitsPlacement(item)).toList();
+        holdForPlacement(actionableResults, held, sysUserId);
+    }
+
+    private void holdForPlacement(List<AnalyzerResultItem> actionableResults, List<AnalyzerResultItem> held,
+            String sysUserId) {
+        actionableResults.removeAll(held);
+        for (AnalyzerResultItem item : held) {
+            AnalyzerResults stagedRow = analyzerResultsService.get(item.getId());
+            if (stagedRow != null) {
+                stagedRow.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT);
+                stagedRow.setSysUserId(sysUserId);
+                analyzerResultsService.update(stagedRow);
+            }
+            LogEvent.logWarn(this.getClass().getSimpleName(), "holdForPlacement",
+                    "holding specimen " + specimenIdOf(item) + " test " + item.getTestId()
+                            + " awaiting placement: its analysis is not determined");
+        }
+    }
+
+    /**
+     * The reviewer placed a grouping's results on another existing order, the way
+     * to correct a specimen ID the instrument misread. It takes a reason, which is
+     * recorded on each analysis, and an order that exists; without either, the
+     * grouping's rows stay staged instead of guessing.
+     */
+    private void applyRedirects(List<AnalyzerResultItem> actionableResults, String sysUserId) {
+        Map<Integer, AnalyzerResultItem> requests = new HashMap<>();
+        for (AnalyzerResultItem item : actionableResults) {
+            if (!item.getIsControl() && !GenericValidator.isBlankOrNull(item.getRedirectAccession())) {
+                requests.putIfAbsent(item.getSampleGroupingNumber(), item);
+            }
+        }
+        if (requests.isEmpty()) {
+            return;
+        }
+        List<AnalyzerResultItem> held = new ArrayList<>();
+        for (AnalyzerResultItem item : actionableResults) {
+            AnalyzerResultItem request = requests.get(item.getSampleGroupingNumber());
+            if (request == null || item.getIsControl()) {
+                continue;
+            }
+            String target = request.getRedirectAccession().trim();
+            if (GenericValidator.isBlankOrNull(request.getRedirectReason())
+                    || sampleService.getSampleByAccessionNumber(target) == null) {
+                held.add(item);
+                continue;
+            }
+            String reported = specimenIdOf(item);
+            String note = "Instrument reported specimen ID " + reported + "; the reviewer placed it on order " + target
+                    + ": " + request.getRedirectReason().trim();
+            item.setNote(GenericValidator.isBlankOrNull(item.getNote()) ? note : item.getNote() + " " + note);
+            item.setAccessionNumber(target);
+            item.setInstrumentSpecimenId(target);
+        }
+        holdForPlacement(actionableResults, held, sysUserId);
+    }
+
+    private boolean awaitsPlacement(AnalyzerResultItem item) {
+        AnalyzerResultPlacement placed = placementOf(item);
+        boolean unchosen = placed.state() == AnalyzerResultPlacement.State.MULTI_TUBE
+                && !isCandidate(placed, item.getChosenAnalysisId());
+        boolean unexplainedPatient = placed.patient().status() == AnalyzerResultPlacement.PatientStatus.MISMATCH
+                && GenericValidator.isBlankOrNull(item.getNote());
+        return unchosen || unexplainedPatient;
+    }
+
+    private static boolean isCandidate(AnalyzerResultPlacement placed, String analysisId) {
+        return !GenericValidator.isBlankOrNull(analysisId)
+                && placed.analyses().stream().anyMatch(candidate -> candidate.analysisId().equals(analysisId));
+    }
+
+    private AnalyzerResultPlacement placementOf(AnalyzerResultItem item) {
+        return placementService.place(specimenIdOf(item), item.getTestId(), item.getInstrumentPatientId(),
+                item.getInstrumentPatientName());
+    }
+
+    private static String specimenIdOf(AnalyzerResultItem item) {
+        return GenericValidator.isBlankOrNull(item.getInstrumentSpecimenId()) ? item.getAccessionNumber()
+                : item.getInstrumentSpecimenId();
     }
 
     // ---------------------------------------------------------------
@@ -753,18 +869,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         // analysis keeps its own, which serves only when nothing new is added.
         SampleItem newAnalysisSampleItem = null;
         SampleItem existingAnalysisSampleItem = null;
-        List<Analysis> dBAnalysisList = analysisService.getAnalysesBySampleId(sample.getId());
         Patient patient = sampleHumanService.getPatientForSample(sample);
 
         for (AnalyzerResultItem resultItem : groupedAnalyzerResultItems) {
-            Analysis analysis = null;
-
-            for (Analysis dbAnalysis : dBAnalysisList) {
-                if (dbAnalysis.getTest().getId().equals(resultItem.getTestId())) {
-                    analysis = dbAnalysis;
-                    break;
-                }
-            }
+            Analysis analysis = getExistingAnalysis(resultItem);
 
             if (analysis == null) {
                 Test test = testService.get(resultItem.getTestId());
@@ -784,7 +892,6 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 }
                 analysis.setSampleItem(newAnalysisSampleItem);
             } else {
-                dBAnalysisList.remove(analysis);
                 if (existingAnalysisSampleItem == null) {
                     existingAnalysisSampleItem = analysis.getSampleItem();
                     existingAnalysisSampleItem.setSysUserId(sysUserId);
@@ -955,6 +1062,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                                 : AnalysisStatus.TechnicalRejected);
                 analysis.setStatusId(statusId);
                 analysis.setAnalyzerId(resultItem.getAnalyzerId());
+                analysis.setRevision(nextRevision(analysis));
             }
 
             analysis.setSysUserId(sysUserId);
@@ -990,11 +1098,20 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         return match;
     }
 
+    /**
+     * The one analysis this result lands on: the single match, or the reviewer's
+     * pick among several. Null when the test is not ordered. Never the first of
+     * many.
+     */
     private Analysis getExistingAnalysis(AnalyzerResultItem resultItem) {
-        List<Analysis> analysisList = analysisService.getAnalysisByAccessionAndTestId(resultItem.getAccessionNumber(),
-                resultItem.getTestId());
-
-        return analysisList.isEmpty() ? null : analysisList.get(0);
+        AnalyzerResultPlacement placed = placementOf(resultItem);
+        String chosen = resultItem.getChosenAnalysisId();
+        if (isCandidate(placed, chosen)) {
+            return analysisService.get(chosen);
+        }
+        return placed.proposedAnalysisId() != null && placed.analyses().size() == 1
+                ? analysisService.get(placed.proposedAnalysisId())
+                : null;
     }
 
     private Result getResult(Analysis analysis, Patient patient, AnalyzerResultItem resultItem, String sysUserId) {
@@ -1072,9 +1189,24 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             analysis.setTest(test);
             analysis.setTestSection(test.getTestSection());
             analysis.setIsReportable(test.getIsReportable());
-            analysis.setRevision("0");
+            analysis.setRevision(nextRevision(analysis));
             analysis.setAnalyzerId(resultItem.getAnalyzerId());
         }
+    }
+
+    /**
+     * A first result leaves the revision alone ("0" for a new analysis). Saving a
+     * result over one the analysis already holds is a correction, so the revision
+     * rises above 1, which validation reads as modified and reports as corrected.
+     */
+    private String nextRevision(Analysis analysis) {
+        boolean replacing = analysis.getId() != null && !resultService.getResultsByAnalysis(analysis).isEmpty();
+        if (!replacing) {
+            return GenericValidator.isBlankOrNull(analysis.getRevision()) ? "0" : analysis.getRevision();
+        }
+        int current = StringUtil.isInteger(analysis.getRevision()) ? Integer.parseInt(analysis.getRevision().trim())
+                : 0;
+        return String.valueOf(Math.max(current, 1) + 1);
     }
 
     private void setAnalyte(Result result) {

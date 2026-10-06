@@ -11,11 +11,15 @@ import AnalyserResults, {
   buildHeldResultResolutionUrl,
 } from "./AnalyserResults";
 
-const { postResults } = vi.hoisted(() => ({ postResults: vi.fn() }));
+const { postResults, getFromServer } = vi.hoisted(() => ({
+  postResults: vi.fn(),
+  getFromServer: vi.fn(),
+}));
 
 vi.mock("../utils/Utils", () => ({
   convertAlphaNumLabNumForDisplay: (value) => value,
   postToOpenElisServerFullResponse: postResults,
+  getFromOpenElisServer: getFromServer,
 }));
 
 const heldResult = {
@@ -84,9 +88,123 @@ const renderResults = (
   return { ...view, history };
 };
 
+const matched = (id, group, extra = {}) => ({
+  ...mappedQualitativeResult,
+  id,
+  accessionNumber: "ACC-" + group,
+  sampleGroupingNumber: group,
+  placement: {
+    state: "RESOLVED",
+    match: "ACCESSION",
+    tubes: [{ sampleItemId: "10", externalId: "ACC-" + group + "-1" }],
+    analyses: [{ analysisId: "50", sampleItemId: "10", awaitingResult: true }],
+    proposedSampleItemId: "10",
+    proposedAnalysisId: "50",
+  },
+  ...extra,
+});
+
 describe("AnalyserResults", () => {
   beforeEach(() => {
     postResults.mockReset();
+    getFromServer.mockReset();
+  });
+
+  it("ticks only the groupings whose every result is matched when saving all", () => {
+    const unordered = matched("2002", 2, {
+      placement: {
+        state: "UNORDERED_ONE_FITS",
+        match: "ACCESSION",
+        tubes: [{ sampleItemId: "11", externalId: "ACC-2-1" }],
+        analyses: [],
+        proposedSampleItemId: "11",
+      },
+    });
+    const first = matched("2001", 1);
+    renderResults([first, unordered], [first, unordered]);
+
+    fireEvent.click(screen.getByLabelText("Save All Results"));
+
+    expect(document.getElementById("resultList2001.isAccepted").checked).toBe(
+      true,
+    );
+    expect(document.getElementById("resultList2002.isAccepted").checked).toBe(
+      false,
+    );
+  });
+
+  it("keeps a result held for placement actionable and posts the chosen analysis", () => {
+    const held = matched("3001", 1, {
+      importIssueReason: "awaiting_placement",
+      placement: {
+        state: "MULTI_TUBE",
+        match: "ACCESSION",
+        tubes: [
+          { sampleItemId: "10", externalId: "ACC-1-1" },
+          { sampleItemId: "11", externalId: "ACC-1-2" },
+        ],
+        analyses: [
+          { analysisId: "50", sampleItemId: "10", awaitingResult: true },
+          { analysisId: "51", sampleItemId: "11", awaitingResult: true },
+        ],
+      },
+    });
+    renderResults([held]);
+
+    fireEvent.change(screen.getByLabelText("Analysis this result belongs to"), {
+      target: { value: "51" },
+    });
+    fireEvent.click(document.getElementById("resultList3001.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].chosenAnalysisId).toBe("51");
+    expect(submitted.resultList[0].isAccepted).toBe(true);
+  });
+
+  it("posts the order and reason when a result is placed on another order", () => {
+    renderResults([matched("6001", 1)]);
+
+    fireEvent.click(
+      screen.getByRole("button", { name: "Place on another order" }),
+    );
+    fireEvent.change(screen.getByLabelText("Order (lab number)"), {
+      target: { value: "DEV01260000000000038" },
+    });
+    fireEvent.change(screen.getByLabelText("Why this belongs to that order"), {
+      target: { value: "Label misread" },
+    });
+    fireEvent.click(document.getElementById("resultList6001.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].redirectAccession).toBe(
+      "DEV01260000000000038",
+    );
+    expect(submitted.resultList[0].redirectReason).toBe("Label misread");
+  });
+
+  it("shows the specimen ID the instrument sent when it differs from the accession", () => {
+    renderResults([matched("4001", 1, { instrumentSpecimenId: "ACC-1-2" })]);
+    expect(screen.getByTestId("InstrumentSpecimenId")).toHaveTextContent(
+      "Instrument sent: ACC-1-2",
+    );
+  });
+
+  it("opens the delivery bundle from the row", async () => {
+    getFromServer.mockImplementation((url, callback) =>
+      callback({ resourceType: "Bundle" }),
+    );
+    renderResults([matched("5001", 1, { deliveryReceiptId: "receipt-1" })]);
+
+    fireEvent.click(screen.getByRole("button", { name: "View bundle" }));
+
+    expect(await screen.findByTestId("delivery-bundle")).toHaveTextContent(
+      '"resourceType": "Bundle"',
+    );
+    expect(getFromServer.mock.calls[0][0]).toBe(
+      "/rest/analyzer/deliveries/receipt-1/bundle",
+    );
   });
 
   it("keeps a held qualitative result visible and links it to the shared mapping editor", async () => {

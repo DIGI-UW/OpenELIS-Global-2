@@ -12,6 +12,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
@@ -72,6 +73,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private AnalyzerInstanceLocalStateService localState;
     @Autowired
     private AnalyzerResultsService resultsService;
+    @Autowired
+    private AnalyzerDeliveryBundleService bundleService;
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -220,6 +223,22 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(accepted, replay);
         assertEquals(Integer.valueOf(0), jdbc.queryForObject(
                 "SELECT COUNT(*) FROM clinlims.analyzer_results WHERE analyzer_id = ?", Integer.class, ANALYZER_ID));
+    }
+
+    @Test
+    public void theDeliveryBundleStaysReadableAfterItsStagedResultsAreReviewed() throws Exception {
+        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        AnalyzerNormalizedResultImportSummary accepted = importService.importBundle(bundle, "1");
+        String messageId = jdbc.queryForObject("SELECT message_id FROM clinlims.analyzer_delivery_receipt WHERE id = ?",
+                String.class, accepted.receiptId());
+
+        jdbc.update("DELETE FROM clinlims.analyzer_results WHERE analyzer_id = ?", ANALYZER_ID);
+
+        String json = bundleService.getBundle(accepted.receiptId()).orElseThrow();
+        Bundle kept = REAL_FHIR.newJsonParser().parseResource(Bundle.class, json);
+        assertEquals(bundle.getEntry().size(), kept.getEntry().size());
+        assertEquals(accepted.receiptId(), bundleService.findReceiptId(CONNECTION_ID, messageId).orElseThrow());
+        assertEquals(Optional.empty(), bundleService.getBundle("no-such-receipt"));
     }
 
     @Test
