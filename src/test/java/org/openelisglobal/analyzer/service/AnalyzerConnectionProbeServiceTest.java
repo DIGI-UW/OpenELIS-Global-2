@@ -18,8 +18,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerConnectionProbeServiceTest {
@@ -50,7 +48,7 @@ public class AnalyzerConnectionProbeServiceTest {
     public void probesTheExactSavedBridgeConnectionRevision() throws Exception {
         ObjectNode connection = fixture("analyzer-connection.json");
         ObjectNode evidence = fixture("connection-probe-result.json");
-        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(connection);
         when(bridgeClient.probe(CONNECTION_ID, 4, "probe-fixture-004")).thenReturn(evidence);
 
@@ -70,7 +68,7 @@ public class AnalyzerConnectionProbeServiceTest {
     public void rejectsAConnectionOwnedByAnotherOpenElisAnalyzer() throws Exception {
         ObjectNode connection = fixture("analyzer-connection.json");
         connection.put("clientAnalyzerId", "another-analyzer");
-        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(connection);
 
         AnalyzerConnectionProbeException exception = assertThrows(AnalyzerConnectionProbeException.class,
@@ -84,7 +82,7 @@ public class AnalyzerConnectionProbeServiceTest {
     public void rejectsEvidenceForAStaleSavedRevision() throws Exception {
         ObjectNode evidence = fixture("connection-probe-result.json");
         evidence.put("configRevision", 3);
-        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(fixture("analyzer-connection.json"));
         when(bridgeClient.probe(CONNECTION_ID, 4, "probe-fixture-004")).thenReturn(evidence);
 
@@ -96,7 +94,7 @@ public class AnalyzerConnectionProbeServiceTest {
 
     @Test
     public void doesNotProbeAnUnknownAnalyzer() {
-        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.empty());
+        when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.empty());
 
         AnalyzerConnectionProbeException exception = assertThrows(AnalyzerConnectionProbeException.class,
                 () -> service.probe(ANALYZER_ID));
@@ -106,18 +104,14 @@ public class AnalyzerConnectionProbeServiceTest {
     }
 
     private static Analyzer analyzer() {
-        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
-        profile.setProfileId(PROFILE_ID);
-        profile.setProfileRevision(PROFILE_REVISION);
-        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setProfileBinding(profile);
         AnalyzerMapping revision = new AnalyzerMapping();
-        revision.setSiteBinding(binding);
+        revision.setProfileId(PROFILE_ID);
+        revision.setProfileRevision(PROFILE_REVISION);
+        revision.setProfileFingerprint(PROFILE_FINGERPRINT);
         Analyzer analyzer = new Analyzer();
         analyzer.setId(ANALYZER_ID);
         analyzer.setBridgeConnectionId(CONNECTION_ID);
-        analyzer.setSiteBindingRevision(revision);
+        analyzer.setMapping(revision);
         return analyzer;
     }
 

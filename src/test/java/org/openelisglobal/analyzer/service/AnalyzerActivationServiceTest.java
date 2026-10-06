@@ -32,8 +32,6 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 
@@ -57,7 +55,7 @@ public class AnalyzerActivationServiceTest {
     private BridgeProfileCatalogService profileCatalogService;
 
     @Mock
-    private AnalyzerMappingService siteBindingService;
+    private AnalyzerMappingService mappingService;
 
     @Mock
     private AnalyzerMappingConfirmationService confirmationService;
@@ -83,8 +81,8 @@ public class AnalyzerActivationServiceTest {
     public void setUp() throws Exception {
         analyzer = analyzer();
         snapshot = snapshot();
-        analyzer.setSiteBindingRevision(snapshot.revision());
-        confirmation = confirmation(snapshot.revision());
+        analyzer.setMapping(snapshot.mapping());
+        confirmation = confirmation(snapshot.mapping());
         connection = fixture("analyzer-connection.json");
         connection.put("clientAnalyzerId", ANALYZER_ID);
         activationAcknowledgement = fixture("connection-activate-ack.json");
@@ -92,9 +90,9 @@ public class AnalyzerActivationServiceTest {
         retained.setVerificationConfirmation(confirmation);
 
         when(analyzerService.findByIdForUpdate(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
-        when(analyzerService.getWithBinding(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping(ANALYZER_ID)).thenReturn(Optional.of(analyzer));
         when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(profileRevision());
-        when(siteBindingService.findByRevisionId(snapshot.revision().getId())).thenReturn(Optional.of(snapshot));
+        when(mappingService.findById(snapshot.mapping().getId())).thenReturn(Optional.of(snapshot));
         when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
                 .thenReturn(AnalyzerMappingVerificationAssessment.current(confirmation));
         TestSection activeUnit = new TestSection();
@@ -103,7 +101,7 @@ public class AnalyzerActivationServiceTest {
         when(testSectionService.get("4")).thenReturn(activeUnit);
         when(bridgeClient.getConnection(CONNECTION_ID)).thenReturn(connection);
 
-        service = new AnalyzerActivationServiceImpl(analyzerService, profileCatalogService, siteBindingService,
+        service = new AnalyzerActivationServiceImpl(analyzerService, profileCatalogService, mappingService,
                 confirmationService, testSectionService, bridgeClient, activationRecordService,
                 Clock.fixed(ACTIVATED_AT, ZoneOffset.UTC), () -> "activate-fixture-004",
                 () -> "deactivate-fixture-004");
@@ -113,7 +111,7 @@ public class AnalyzerActivationServiceTest {
     public void activatesOnlyTheExactSavedBridgeConnectionRevision() {
         when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
                 .thenReturn(activationAcknowledgement);
-        when(activationRecordService.retain(analyzer, snapshot.revision(), confirmation, activationAcknowledgement,
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, activationAcknowledgement,
                 "ACTIVE", ACTOR)).thenReturn(retained);
 
         AnalyzerActivationResult result = service.activate(ANALYZER_ID, ACTOR);
@@ -127,7 +125,7 @@ public class AnalyzerActivationServiceTest {
         order.verify(analyzerService).findByIdForUpdate(ANALYZER_ID);
         order.verify(bridgeClient).getConnection(CONNECTION_ID);
         order.verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004");
-        order.verify(activationRecordService).retain(analyzer, snapshot.revision(), confirmation,
+        order.verify(activationRecordService).retain(analyzer, snapshot.mapping(), confirmation,
                 activationAcknowledgement, "ACTIVE", ACTOR);
         order.verify(analyzerService).update(analyzer);
     }
@@ -206,7 +204,7 @@ public class AnalyzerActivationServiceTest {
         ObjectNode deactivationAcknowledgement = fixture("connection-deactivate-ack.json");
         when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "ACTIVATE", "activate-fixture-004"))
                 .thenReturn(activationAcknowledgement);
-        when(activationRecordService.retain(analyzer, snapshot.revision(), confirmation, activationAcknowledgement,
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, activationAcknowledgement,
                 "ACTIVE", ACTOR)).thenReturn(retained);
         doThrow(new IllegalStateException("database unavailable")).when(analyzerService).update(analyzer);
         when(bridgeClient.applyRuntimeCommand(eq(CONNECTION_ID), eq(4), eq("DEACTIVATE"), any(String.class)))
@@ -226,7 +224,8 @@ public class AnalyzerActivationServiceTest {
         analyzer.setLatestActivationRecord(retained);
         when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004"))
                 .thenReturn(deactivationAcknowledgement);
-        when(activationRecordService.retain(analyzer, snapshot.revision(), confirmation, deactivationAcknowledgement,
+        when(confirmationService.findForMapping("41")).thenReturn(Optional.of(confirmation));
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, deactivationAcknowledgement,
                 "INACTIVE", ACTOR)).thenReturn(retained);
 
         AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
@@ -235,9 +234,32 @@ public class AnalyzerActivationServiceTest {
         assertEquals(Analyzer.AnalyzerStatus.INACTIVE, analyzer.getStatus());
         assertFalse(analyzer.isActive());
         verify(bridgeClient).applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004");
-        verify(activationRecordService).retain(analyzer, snapshot.revision(), confirmation, deactivationAcknowledgement,
+        verify(activationRecordService).retain(analyzer, snapshot.mapping(), confirmation, deactivationAcknowledgement,
                 "INACTIVE", ACTOR);
         verify(analyzerService).update(analyzer);
+    }
+
+    @Test
+    public void deactivatingAfterANewMappingWasAppliedRecordsTheConfirmationOfTheMappingInForce() throws Exception {
+        AnalyzerMapping activatedUnder = new AnalyzerMapping();
+        activatedUnder.setId("40");
+        AnalyzerActivationRecord activation = new AnalyzerActivationRecord();
+        activation.setVerificationConfirmation(confirmation(activatedUnder));
+        analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
+        analyzer.setActive(true);
+        analyzer.setLatestActivationRecord(activation);
+        ObjectNode deactivationAcknowledgement = fixture("connection-deactivate-ack.json");
+        when(bridgeClient.applyRuntimeCommand(CONNECTION_ID, 4, "DEACTIVATE", "deactivate-fixture-004"))
+                .thenReturn(deactivationAcknowledgement);
+        when(confirmationService.findForMapping("41")).thenReturn(Optional.of(confirmation));
+        when(activationRecordService.retain(analyzer, snapshot.mapping(), confirmation, deactivationAcknowledgement,
+                "INACTIVE", ACTOR)).thenReturn(retained);
+
+        AnalyzerDeactivationResult result = service.deactivate(ANALYZER_ID, ACTOR);
+
+        assertTrue(result.deactivated());
+        verify(activationRecordService).retain(analyzer, snapshot.mapping(), confirmation, deactivationAcknowledgement,
+                "INACTIVE", ACTOR);
     }
 
     private void assertUnchanged() {
@@ -260,29 +282,23 @@ public class AnalyzerActivationServiceTest {
     }
 
     private static AnalyzerMappingSnapshot snapshot() {
-        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
-        profile.setId("21");
-        profile.setProfileId(PROFILE_ID);
-        profile.setProfileRevision(PROFILE_REVISION);
-        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setId("31");
-        binding.setProfileBinding(profile);
         AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId("41");
-        revision.setSiteBinding(binding);
-        revision.setBindingFingerprint("sha256:" + "5".repeat(64));
-        return new AnalyzerMappingSnapshot(binding, revision, List.of(), List.of());
+        revision.setProfileId(PROFILE_ID);
+        revision.setProfileRevision(PROFILE_REVISION);
+        revision.setProfileFingerprint(PROFILE_FINGERPRINT);
+        revision.setMappingFingerprint("sha256:" + "5".repeat(64));
+        return new AnalyzerMappingSnapshot(revision, List.of(), List.of());
     }
 
     private static AnalyzerMappingConfirmation confirmation(AnalyzerMapping revision) {
         AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("51");
-        confirmation.setSiteBindingRevision(revision);
+        confirmation.setMapping(revision);
         confirmation.setProfileId(PROFILE_ID);
         confirmation.setProfileRevision(PROFILE_REVISION);
         confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
-        confirmation.setBindingFingerprint(revision.getBindingFingerprint());
+        confirmation.setMappingFingerprint(revision.getMappingFingerprint());
         confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
         return confirmation;
     }

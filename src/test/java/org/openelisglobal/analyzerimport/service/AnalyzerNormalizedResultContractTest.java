@@ -81,6 +81,33 @@ public class AnalyzerNormalizedResultContractTest {
         assertNull(result.instrumentPatientName());
     }
 
+    @Test
+    public void aRunWithNoValueAndADataAbsentReasonIsAFailedRunCarryingTheInstrumentsNotes() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Observation observation = bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        observation.setValue(null);
+        observation.getDataAbsentReason().addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/data-absent-reason").setCode("error");
+        observation.addNote().setText("Error 2008: pressure abort");
+        observation.addNote().setText("Repeat with a new cartridge");
+
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results()
+                .get(0);
+
+        assertTrue(result.runFailed());
+        assertEquals("Error 2008: pressure abort\nRepeat with a new cartridge", result.note());
+    }
+
+    @Test
+    public void aResultWithAValueIsNotAFailedRunAndCarriesNoNoteWhenNoneIsSent() throws IOException {
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract
+                .parse(fixture("normalized-known-test.fhir.json"), FHIR).results().get(0);
+
+        assertFalse(result.runFailed());
+        assertNull(result.note());
+    }
+
     private static void addPatient(Bundle bundle, String fullUrl, String identifier, String name,
             boolean instrumentReported) {
         Patient patient = new Patient();

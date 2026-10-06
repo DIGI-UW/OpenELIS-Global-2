@@ -12,9 +12,9 @@ public class AnalyzerMappingResultPK implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Column(name = "site_binding_revision_id")
+    @Column(name = "mapping_id")
     @Convert(converter = StringToIntegerConverter.class)
-    private String siteBindingRevisionId;
+    private String mappingId;
 
     @Column(name = "source_row_key", length = 255)
     private String sourceRowKey;
@@ -25,18 +25,18 @@ public class AnalyzerMappingResultPK implements Serializable {
     public AnalyzerMappingResultPK() {
     }
 
-    public AnalyzerMappingResultPK(String siteBindingRevisionId, String sourceRowKey, String rawValue) {
-        this.siteBindingRevisionId = siteBindingRevisionId;
+    public AnalyzerMappingResultPK(String mappingId, String sourceRowKey, String rawValue) {
+        this.mappingId = mappingId;
         this.sourceRowKey = sourceRowKey;
         this.rawValue = rawValue;
     }
 
-    public String getSiteBindingRevisionId() {
-        return siteBindingRevisionId;
+    public String getMappingId() {
+        return mappingId;
     }
 
-    public void setSiteBindingRevisionId(String siteBindingRevisionId) {
-        this.siteBindingRevisionId = siteBindingRevisionId;
+    public void setMappingId(String mappingId) {
+        this.mappingId = mappingId;
     }
 
     public String getSourceRowKey() {
@@ -63,12 +63,12 @@ public class AnalyzerMappingResultPK implements Serializable {
         if (!(other instanceof AnalyzerMappingResultPK that)) {
             return false;
         }
-        return Objects.equals(siteBindingRevisionId, that.siteBindingRevisionId)
-                && Objects.equals(sourceRowKey, that.sourceRowKey) && Objects.equals(rawValue, that.rawValue);
+        return Objects.equals(mappingId, that.mappingId) && Objects.equals(sourceRowKey, that.sourceRowKey)
+                && Objects.equals(rawValue, that.rawValue);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(siteBindingRevisionId, sourceRowKey, rawValue);
+        return Objects.hash(mappingId, sourceRowKey, rawValue);
     }
 }

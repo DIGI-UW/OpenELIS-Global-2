@@ -10,26 +10,89 @@
                 SELECT COUNT(*) FROM analyzer
                 WHERE id = 900001 AND name = 'Empty draft' AND is_active IS TRUE AND
                 status = 'SETUP'
-                AND bridge_connection_id IS NULL AND site_binding_revision_id IS NULL
+                AND bridge_connection_id IS NULL AND mapping_id IS NULL
             </sqlCheck>
             <sqlCheck expectedResult="1">
                 SELECT COUNT(*) FROM analyzer
                 WHERE id = 900002 AND is_active IS FALSE AND status = 'INACTIVE'
             </sqlCheck>
+            <!-- A configured analyzer keeps its identity, lab units, Bridge connection
+                and activation history, and is inactive with no mapping until a person verifies
+                it under the baseline profile. -->
             <sqlCheck expectedResult="1">
-                SELECT COUNT(*) FROM analyzer a
-                JOIN analyzer_site_binding_revision r ON r.id =
-                a.site_binding_revision_id
-                JOIN analyzer_site_binding b ON b.id = r.site_binding_id
-                JOIN analyzer_profile_binding p ON p.id = b.profile_binding_id
-                JOIN analyzer_site_binding_test t ON t.site_binding_revision_id = r.id
-                WHERE a.id = 900003 AND a.name = 'Migrated fixture' AND a.is_active
-                IS TRUE AND a.status = 'ACTIVE'
-                AND a.bridge_connection_id = 'bridge-upgrade-fixture'
-                AND p.profile_id = 'upgrade-fixture' AND p.profile_revision = 1
-                AND t.source_row_key = 'upgrade-test' AND t.mapping_state = 'BOUND'
-                AND t.test_id = (SELECT MIN(id) FROM test)
+                SELECT COUNT(*) FROM analyzer
+                WHERE id = 900003 AND name = 'Migrated fixture' AND is_active IS FALSE
+                AND status = 'INACTIVE' AND mapping_id IS NULL
+                AND bridge_connection_id = 'bridge-upgrade-fixture' AND test_unit_ids =
+                '1,2'
+                AND latest_activation_record_id = 900003
             </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM analyzer
+                WHERE id = 900004 AND name = 'Second migrated fixture' AND is_active IS
+                FALSE
+                AND status = 'INACTIVE' AND mapping_id IS NULL
+                AND bridge_connection_id = 'bridge-upgrade-fixture-2' AND test_unit_ids
+                = '2'
+            </sqlCheck>
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM analyzer_activation_record
+                WHERE id = 900003 AND analyzer_id = 900003 AND mapping_id IS NULL
+                AND verification_confirmation_id IS NULL
+                AND runtime_fingerprint = 'sha256:' || repeat('d', 64)
+            </sqlCheck>
+            <!-- One export holds both old mappings, so nothing a person confirmed
+                is lost. -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM configuration_import_run
+                WHERE source = 'ANALYZER_MAPPING' AND status = 'EXPORTED'
+            </sqlCheck>
+            <sqlCheck expectedResult="2"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzers') d
+                WHERE r.source = 'ANALYZER_MAPPING'
+                AND (d->>'id')::numeric IN (900003, 900004)
+                AND (d->>'site_binding_revision_id')::numeric = 900003
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_site_binding_test') t
+                WHERE r.source = 'ANALYZER_MAPPING'
+                AND (t->>'site_binding_revision_id')::numeric = 900003
+                AND t->>'source_row_key' = 'upgrade-test' AND t->>'mapping_state' = 'BOUND'
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_profile_binding') p
+                WHERE r.source = 'ANALYZER_MAPPING' AND p->>'profile_id' = 'upgrade-fixture'
+            ]]></sqlCheck>
+            <!-- A revision no analyzer uses is exported too, and so is the revision
+                each activation ran under, before the record's link is cleared. -->
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_site_binding_revision') v
+                WHERE r.source = 'ANALYZER_MAPPING' AND (v->>'id')::numeric = 900005
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_activation_record') a
+                WHERE r.source = 'ANALYZER_MAPPING' AND (a->>'id')::numeric = 900003
+                AND (a->>'site_binding_revision_id')::numeric = 900003
+            ]]></sqlCheck>
+            <not>
+                <tableExists tableName="analyzer_site_binding_revision" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_site_binding" />
+            </not>
+            <not>
+                <tableExists tableName="analyzer_profile_binding" />
+            </not>
+            <not>
+                <columnExists tableName="analyzer"
+                    columnName="site_binding_revision_id" />
+            </not>
+            <tableExists tableName="analyzer_mapping" />
             <!-- Values that are about to be dropped are exported first: 900001's
                 superseded type text, and 900003's machine id and mapping row even though
                 900003 already has a Bridge connection. -->

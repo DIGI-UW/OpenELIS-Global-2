@@ -129,6 +129,8 @@ public class AnalyzerResultItem implements Serializable {
     private String rawTestCode;
     private String rawResultValue;
 
+    private String instrumentNote;
+
     public String getSignificantDigits() {
         return significantDigits;
     }
@@ -611,5 +613,13 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setRawResultValue(String rawResultValue) {
         this.rawResultValue = rawResultValue;
+    }
+
+    public String getInstrumentNote() {
+        return instrumentNote;
+    }
+
+    public void setInstrumentNote(String instrumentNote) {
+        this.instrumentNote = instrumentNote;
     }
 }

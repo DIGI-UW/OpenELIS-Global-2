@@ -1,10 +1,13 @@
 package org.openelisglobal.qc.valueholder;
 
+import java.util.Set;
+
 /**
  * OGC-1147 — the controlled vocabulary for a QC outcome that is not a number.
  * RDT control lines read VALID/INVALID; manual quantitative runs carry
- * PASS/FAIL alongside their measured value. Never encoded as magic numbers in
- * {@code result_value}.
+ * PASS/FAIL alongside their measured value; an analyzer control that reports an
+ * answer is PASS or FAIL against its Test Catalog QC target, with no value.
+ * Never encoded as magic numbers in {@code result_value}.
  *
  * <p>
  * The {@code chk_qc_result_source_shape} CHECK enforces only <em>presence</em>
@@ -23,16 +26,19 @@ public enum QCQualitativeOutcome {
      */
     INVALID(QCSource.RDT),
 
-    /** Manual control within the captured expected value ± uncertainty. */
-    PASS(QCSource.MANUAL),
+    /**
+     * Manual control within the captured expected value ± uncertainty, or an
+     * analyzer control that gave its expected answer.
+     */
+    PASS(QCSource.MANUAL, QCSource.ASTM),
 
-    /** Manual control outside tolerance — raises the QC-fail signal. */
-    FAIL(QCSource.MANUAL);
+    /** Outside tolerance, or the wrong answer — raises the QC-fail signal. */
+    FAIL(QCSource.MANUAL, QCSource.ASTM);
 
-    private final QCSource source;
+    private final Set<QCSource> sources;
 
-    QCQualitativeOutcome(QCSource source) {
-        this.source = source;
+    QCQualitativeOutcome(QCSource... sources) {
+        this.sources = Set.of(sources);
     }
 
     /** Whether this outcome represents a control the lab must act on. */
@@ -42,6 +48,6 @@ public enum QCQualitativeOutcome {
 
     /** Whether this outcome may be recorded against the given source. */
     public boolean isValidFor(QCSource candidate) {
-        return this.source == candidate;
+        return sources.contains(candidate);
     }
 }

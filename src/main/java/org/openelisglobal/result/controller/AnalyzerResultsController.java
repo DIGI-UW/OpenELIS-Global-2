@@ -386,6 +386,7 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setSourceTransport(result.getSourceTransport());
         resultItem.setRawTestCode(result.getRawTestCode());
         resultItem.setRawResultValue(result.getRawResultValue());
+        resultItem.setInstrumentNote(result.getInstrumentNote());
 
         if (resultItem.isUserChoiceReflex()) {
             setChoiceForCurrentValue(resultItem, result);

@@ -25,7 +25,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
@@ -43,7 +43,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private static final String CLASS_NAME = "AnalyzerNormalizedResultImportServiceImpl";
 
     private final AnalyzerService analyzerService;
-    private final AnalyzerMappingService siteBindingService;
+    private final AnalyzerMappingService mappingService;
     private final AnalyzerMappingConfirmationService confirmationService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final AnalyzerResultsService analyzerResultsService;
@@ -54,13 +54,13 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private final AnalyzerResultPlacementService placementService;
 
     public AnalyzerNormalizedResultImportServiceImpl(AnalyzerService analyzerService,
-            AnalyzerMappingService siteBindingService, AnalyzerResultsService analyzerResultsService,
+            AnalyzerMappingService mappingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
             FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
             AnalyzerMappingConfirmationService confirmationService, AnalyzerMappingCatalogService mappingCatalogService,
             AnalyzerResultPlacementService placementService) {
         this.analyzerService = analyzerService;
-        this.siteBindingService = siteBindingService;
+        this.mappingService = mappingService;
         this.analyzerResultsService = analyzerResultsService;
         this.testResultService = testResultService;
         this.qcResultProcessingService = qcResultProcessingService;
@@ -103,8 +103,16 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
 
         int controlsProcessed = 0;
         for (AnalyzerResults row : staged) {
-            if (row.getIsControl() && !row.isReadOnly() && row.getTestId() != null && processControl(row, analyzer)) {
+            if (!row.getIsControl() || row.isReadOnly() || row.getTestId() == null) {
+                continue;
+            }
+            QCResultProcessingService.Outcome outcome = processControl(row, analyzer);
+            if (outcome == QCResultProcessingService.Outcome.RECORDED) {
                 controlsProcessed++;
+            } else if (outcome == QCResultProcessingService.Outcome.NO_TARGET) {
+                hold(row, AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING);
+                row.setSysUserId(effectiveActor);
+                analyzerResultsService.update(row);
             }
         }
         int held = (int) staged.stream().filter(AnalyzerResults::isReadOnly).count();
@@ -129,14 +137,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     @Transactional
     public int recoverHeldMappingResults(String analyzerId, String actor) {
         String effectiveActor = requireText(actor, "Recovery actor is required");
-        Analyzer candidate = analyzerService.getWithBinding(analyzerId)
+        Analyzer candidate = analyzerService.getWithMapping(analyzerId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found"));
         if (candidate.getBridgeConnectionId() == null) {
             return 0;
         }
         Analyzer analyzer = analyzerService.findByBridgeConnectionIdForUpdate(candidate.getBridgeConnectionId())
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer connection not found"));
-        AnalyzerProfileBinding pin = analyzer.getPinnedProfileBinding();
+        AnalyzerProfilePin pin = analyzer.getPinnedProfile();
         int recoveredCount = 0;
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
             if (pin == null || !pin.getProfileId().equals(held.getSourceProfileId())
@@ -158,6 +166,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 continue;
             }
             AnalyzerResults recovered = mapped.get(0);
+            if (!recovered.isReadOnly() && recovered.getIsControl()
+                    && processControl(recovered, analyzer) == QCResultProcessingService.Outcome.NO_TARGET) {
+                hold(recovered, AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING);
+            }
             if (recovered.isReadOnly() && Objects.equals(held.getImportIssueReason(), recovered.getImportIssueReason())
                     && Objects.equals(held.getTestId(), recovered.getTestId())) {
                 continue;
@@ -169,9 +181,6 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             recovered.setSysUserId(effectiveActor);
             analyzerResultsService.update(recovered);
             if (!recovered.isReadOnly()) {
-                if (recovered.getIsControl()) {
-                    processControl(recovered, analyzer);
-                }
                 recoveredCount++;
             }
         }
@@ -184,14 +193,13 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     }
 
     private List<AnalyzerResults> mapResults(AnalyzerNormalizedResultContract contract, Analyzer analyzer) {
-        AnalyzerProfileBinding profileBinding = analyzer.getPinnedProfileBinding();
-        if (profileBinding == null || profileBinding.getId() == null) {
-            throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingSiteBinding",
-                    "Analyzer has no profile-scoped site binding");
+        if (analyzer.getMapping() == null || analyzer.getMapping().getId() == null) {
+            throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingMapping",
+                    "Analyzer has no mapping in force");
         }
-        AnalyzerMappingSnapshot binding = siteBindingService.findByRevisionId(analyzer.getSiteBindingRevision().getId())
-                .orElseThrow(() -> new AnalyzerNormalizedResultImportException(
-                        "analyzer.fhirImport.error.missingSiteBinding", "Analyzer site binding does not exist"));
+        AnalyzerMappingSnapshot binding = mappingService.findById(analyzer.getMapping().getId()).orElseThrow(
+                () -> new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingMapping",
+                        "Analyzer mapping does not exist"));
         Map<String, AnalyzerMappingTest> testsBySource = binding.tests().stream()
                 .collect(Collectors.toMap(row -> row.getId().getSourceRowKey(), row -> row));
         Map<ResultKey, AnalyzerMappingResult> resultsBySource = binding.results().stream().collect(Collectors
@@ -221,7 +229,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setInstrumentPatientName(result.instrumentPatientName());
         row.setAccessionNumber(placementService.accessionFor(result.accessionNumber()));
         row.setTestName(result.rawTestCode());
-        row.setResult(result.rawValue());
+        row.setResult(result.reportedValue());
         row.setUnits(result.units());
         row.setResultType(result.resultType());
         row.setCompleteDate(
@@ -249,6 +257,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return Optional.of(row);
         }
         row.setTestId(testMapping.getTestId());
+        row.setComponentId(testMapping.getComponentId());
+        if (result.runFailed()) {
+            hold(row, AnalyzerResults.IMPORT_ISSUE_RUN_FAILED);
+            return Optional.of(row);
+        }
 
         ResultKey resultKey = new ResultKey(result.rawTestCode(), result.rawValue());
         AnalyzerMappingResult resultMapping = resultsBySource.get(resultKey);
@@ -295,10 +308,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setRecognitionOutcome(result.recognitionOutcome());
         row.setRecognitionFingerprint(result.recognitionFingerprint());
         row.setSourcePayload(result.sourcePayload());
+        row.setInstrumentNote(result.note());
     }
 
     private void requireMatchingProfile(Analyzer analyzer, AnalyzerNormalizedResultContract contract) {
-        AnalyzerProfileBinding pinned = analyzer.getPinnedProfileBinding();
+        AnalyzerProfilePin pinned = analyzer.getPinnedProfile();
         if (pinned == null || !contract.profileId().equals(pinned.getProfileId())
                 || contract.profileRevision() != pinned.getProfileRevision()) {
             throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.profileMismatch",
@@ -306,19 +320,29 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         }
     }
 
-    private boolean processControl(AnalyzerResults row, Analyzer analyzer) {
+    /**
+     * Sends a control to operational QC: a number to the statistical path, an
+     * answer the mapping resolved to a dictionary entry to be judged against its QC
+     * target. Null when the control is neither and stays staged for review.
+     */
+    private QCResultProcessingService.Outcome processControl(AnalyzerResults row, Analyzer analyzer) {
+        LocalDateTime timestamp = row.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
+        if ("D".equals(row.getResultType())) {
+            return qcResultProcessingService.processQualitativeQCResult(analyzer.getId(), row.getTestId(),
+                    row.getComponentId(), row.getAccessionNumber(), row.getLotNumber(), row.getControlLevel(),
+                    row.getResult(), timestamp);
+        }
         BigDecimal value;
         try {
             value = new BigDecimal(row.getResult());
         } catch (NumberFormatException exception) {
             LogEvent.logWarn(CLASS_NAME, "processControl",
-                    "Control result is not numeric and remains staged for review");
-            return false;
+                    "Control result is neither numeric nor a mapped answer and remains staged for review");
+            return null;
         }
-        LocalDateTime timestamp = row.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         qcResultProcessingService.processQCResult(analyzer.getId(), row.getTestId(), row.getAccessionNumber(),
                 row.getLotNumber(), row.getControlLevel(), value, row.getUnits(), timestamp);
-        return true;
+        return QCResultProcessingService.Outcome.RECORDED;
     }
 
     private void hold(AnalyzerResults row, String reason) {

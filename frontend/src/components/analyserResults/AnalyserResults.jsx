@@ -71,15 +71,13 @@ export const buildHeldResultResolutionUrl = (row, analyzerId) => {
   }
 
   const query = new URLSearchParams({
-    revision: String(row.sourceProfileRevision),
-    analyzerId: String(analyzerId),
     returnTo: buildAnalyzerResultsRedirectUrl(analyzerId),
     focusTest: row.rawTestCode,
   });
   if (row.rawResultValue) {
     query.set("focusValue", row.rawResultValue);
   }
-  return `/analyzers/types/${encodeURIComponent(row.sourceProfileId)}/mapping?${query.toString()}`;
+  return `/analyzers/${encodeURIComponent(analyzerId)}/mapping?${query.toString()}`;
 };
 const AnalyserResults = (props) => {
   const componentMounted = useRef(false);
@@ -98,6 +96,7 @@ const AnalyserResults = (props) => {
   // acknowledges them as critical, or confirms them outside the valid range
   const [resultAlert, setResultAlert] = useState(null);
   const [bundleReceiptId, setBundleReceiptId] = useState(null);
+  const [dismissingRunIds, setDismissingRunIds] = useState([]);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -395,6 +394,105 @@ const AnalyserResults = (props) => {
     return props.sampleGroup.some((item) => item.id === id);
   };
 
+  // The run produced no result: the reviewer records the failure on the order's
+  // waiting test, which stays open for the repeat.
+  const dismissFailedRun = (row) => {
+    setDismissingRunIds((ids) => [...ids, row.id]);
+    postToOpenElisServerFullResponse(
+      `/rest/analyzer/results/${encodeURIComponent(row.id)}/failed-run`,
+      JSON.stringify({}),
+      // The response is undefined when the request never reached the server.
+      async (response) => {
+        setDismissingRunIds((ids) => ids.filter((id) => id !== row.id));
+        const succeeded = response?.status == 200;
+        let message = intl.formatMessage({
+          id: succeeded
+            ? "analyzer.results.failedRun.dismissed"
+            : "analyzer.results.failedRun.error",
+        });
+        if (!succeeded) {
+          const body = await response?.json?.().catch(() => null);
+          if (body?.error) {
+            message = message + ": " + body.error;
+          }
+        }
+        addNotification({
+          kind: succeeded ? NotificationKinds.success : NotificationKinds.error,
+          title: intl.formatMessage({ id: "notification.title" }),
+          message,
+        });
+        setNotificationVisible(true);
+        if (succeeded) {
+          props.refreshResults?.(
+            Number(props.results?.paging?.currentPage) || 1,
+          );
+        }
+      },
+    );
+  };
+
+  const renderHeldResult = (row) => {
+    const resolutionUrl = buildHeldResultResolutionUrl(row, props.analyzerId);
+    return (
+      <div data-testid={`held-analyzer-result-${row.id}`}>
+        <Tag type="warm-gray" size="sm">
+          <FormattedMessage id="analyzer.results.held.tag" />
+        </Tag>
+        <div>
+          <strong>{row.rawResultValue || row.result}</strong>
+        </div>
+        <div>
+          <FormattedMessage
+            id="analyzer.results.held.code"
+            values={{ code: row.rawTestCode || row.testName }}
+          />
+        </div>
+        {resolutionUrl && (
+          <CarbonLink
+            as={RouterLink}
+            to={resolutionUrl}
+            onClick={(event) => openMappingWithDraft(event, resolutionUrl)}
+          >
+            <FormattedMessage id="analyzer.results.held.reviewMapping" />
+          </CarbonLink>
+        )}
+        {row.instrumentNote && (
+          <div data-testid={`instrument-note-${row.id}`}>
+            <FormattedMessage
+              id="analyzer.results.held.instrumentNote"
+              values={{ note: row.instrumentNote }}
+            />
+          </div>
+        )}
+        {row.importIssueReason === "run_failed" && !row.isControl && (
+          <Button
+            kind="tertiary"
+            size="sm"
+            disabled={dismissingRunIds.includes(row.id)}
+            onClick={() => dismissFailedRun(row)}
+          >
+            <FormattedMessage id="analyzer.results.failedRun.dismiss" />
+          </Button>
+        )}
+        {row.importIssueReason === "qc_target_missing" && (
+          <>
+            <div>
+              <FormattedMessage id="analyzer.results.held.qcTargetMissing" />
+            </div>
+            {row.testId && (
+              <CarbonLink
+                as={RouterLink}
+                to={`/MasterListsPage/TestCatalogEditor/${encodeURIComponent(row.testId)}/qc-targets`}
+              >
+                <FormattedMessage id="analyzer.results.held.setQcTarget" />
+              </CarbonLink>
+            )}
+          </>
+        )}
+      </div>
+    );
+  };
+
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
@@ -595,37 +693,7 @@ const AnalyserResults = (props) => {
 
       case "result":
         if (held && !awaitingReview) {
-          const resolutionUrl = buildHeldResultResolutionUrl(
-            row,
-            props.analyzerId,
-          );
-          return (
-            <div data-testid={`held-analyzer-result-${row.id}`}>
-              <Tag type="warm-gray" size="sm">
-                <FormattedMessage id="analyzer.results.held.tag" />
-              </Tag>
-              <div>
-                <strong>{row.rawResultValue || row.result}</strong>
-              </div>
-              <div>
-                <FormattedMessage
-                  id="analyzer.results.held.code"
-                  values={{ code: row.rawTestCode || row.testName }}
-                />
-              </div>
-              {resolutionUrl && (
-                <CarbonLink
-                  as={RouterLink}
-                  to={resolutionUrl}
-                  onClick={(event) =>
-                    openMappingWithDraft(event, resolutionUrl)
-                  }
-                >
-                  <FormattedMessage id="analyzer.results.held.reviewMapping" />
-                </CarbonLink>
-              )}
-            </div>
-          );
+          return renderHeldResult(row);
         }
         switch (row.testResultType) {
           case "M":
@@ -881,6 +949,8 @@ const AnalyserResults = (props) => {
                   id: "result",
                   name: intl.formatMessage({ id: "column.name.result" }),
                   selector: (row) => row.result,
+                  cell: (row) =>
+                    row.importIssueReason ? renderHeldResult(row) : row.result,
                   width: "20rem",
                 },
               ]}

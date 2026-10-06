@@ -18,7 +18,7 @@ public final class AnalyzerMappingFingerprint {
 
     public static String calculate(AnalyzerMappingDraft draft) {
         if (draft == null) {
-            throw new IllegalArgumentException("Site binding draft is required");
+            throw new IllegalArgumentException("Mapping draft is required");
         }
 
         ObjectNode canonical = JSON.createObjectNode();
@@ -27,7 +27,9 @@ public final class AnalyzerMappingFingerprint {
             ObjectNode value = tests.addObject();
             value.put("sourceRowKey", row.sourceRowKey());
             value.put("mappingState", row.mappingState().name());
+            value.put("origin", row.origin().name());
             putNullable(value, "testId", row.testId());
+            putNullable(value, "componentId", row.componentId());
         });
 
         ArrayNode results = canonical.putArray("results");
@@ -37,6 +39,7 @@ public final class AnalyzerMappingFingerprint {
                     value.put("sourceRowKey", row.sourceRowKey());
                     value.put("rawValue", row.rawValue());
                     value.put("mappingState", row.mappingState().name());
+                    value.put("origin", row.origin().name());
                     putNullable(value, "testResultId", row.testResultId());
                 });
 

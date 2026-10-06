@@ -7,5 +7,5 @@ import org.openelisglobal.common.dao.BaseDAO;
 
 public interface AnalyzerMappingTestDAO extends BaseDAO<AnalyzerMappingTest, AnalyzerMappingTestPK> {
 
-    List<AnalyzerMappingTest> findByRevisionId(String revisionId);
+    List<AnalyzerMappingTest> findByMappingId(String mappingId);
 }

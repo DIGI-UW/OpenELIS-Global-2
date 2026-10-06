@@ -7,9 +7,9 @@ import org.openelisglobal.common.service.BaseObjectService;
 
 public interface AnalyzerService extends BaseObjectService<Analyzer, String> {
 
-    List<Analyzer> getAllWithBindings();
+    List<Analyzer> getAllWithMapping();
 
-    Optional<Analyzer> getWithBinding(String id);
+    Optional<Analyzer> getWithMapping(String id);
 
     Analyzer getAnalyzerByName(String name);
 

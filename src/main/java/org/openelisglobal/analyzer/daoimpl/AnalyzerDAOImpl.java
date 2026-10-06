@@ -54,19 +54,16 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     @Override
     @Transactional(readOnly = true)
-    public List<Analyzer> findAllWithBindings() {
-        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.siteBindingRevision revision "
-                + "LEFT JOIN FETCH revision.siteBinding binding " + "LEFT JOIN FETCH binding.profileBinding";
+    public List<Analyzer> findAllWithMapping() {
+        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.mapping";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         return query.list();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<Analyzer> findByIdWithBinding(String id) {
-        String hql = "SELECT a FROM Analyzer a " + "LEFT JOIN FETCH a.siteBindingRevision revision "
-                + "LEFT JOIN FETCH revision.siteBinding binding " + "LEFT JOIN FETCH binding.profileBinding "
-                + "WHERE a.id = :id";
+    public Optional<Analyzer> findByIdWithMapping(String id) {
+        String hql = "SELECT a FROM Analyzer a LEFT JOIN FETCH a.mapping WHERE a.id = :id";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         query.setParameter("id", id);
         Analyzer result = query.uniqueResult();
@@ -79,9 +76,7 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
         if (bridgeConnectionId == null || bridgeConnectionId.isBlank()) {
             return Optional.empty();
         }
-        String hql = "SELECT a FROM Analyzer a " + "JOIN FETCH a.siteBindingRevision revision "
-                + "JOIN FETCH revision.siteBinding binding " + "JOIN FETCH binding.profileBinding "
-                + "WHERE a.bridgeConnectionId = :connectionId";
+        String hql = "SELECT a FROM Analyzer a JOIN FETCH a.mapping WHERE a.bridgeConnectionId = :connectionId";
         Query<Analyzer> query = entityManager.unwrap(Session.class).createQuery(hql, Analyzer.class);
         query.setParameter("connectionId", bridgeConnectionId.trim());
         return Optional.ofNullable(query.uniqueResult());
@@ -89,7 +84,7 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     @Override
     public Optional<Analyzer> findByBridgeConnectionIdForUpdate(String bridgeConnectionId) {
-        // Lock only the analyzer row, not the shared profile/site-binding rows.
+        // Lock only the analyzer row, not its mapping rows.
         return entityManager.createQuery("FROM Analyzer a WHERE a.bridgeConnectionId = :connectionId", Analyzer.class)
                 .setParameter("connectionId", bridgeConnectionId).setLockMode(LockModeType.PESSIMISTIC_WRITE)
                 .getResultStream().findFirst();
@@ -97,7 +92,7 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
 
     @Override
     public Optional<Analyzer> findByIdForUpdate(String id) {
-        // Lock only the analyzer row, not the shared profile/site-binding rows.
+        // Lock only the analyzer row, not its mapping rows.
         return entityManager.createQuery("FROM Analyzer a WHERE a.id = :id", Analyzer.class).setParameter("id", id)
                 .setLockMode(LockModeType.PESSIMISTIC_WRITE).getResultStream().findFirst();
     }
@@ -106,9 +101,9 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     @Transactional(readOnly = true)
     public List<AnalyzerTestCapability> findCapabilitiesByTestId(String testId) {
         String hql = "SELECT new org.openelisglobal.analyzer.service.AnalyzerTestCapability("
-                + "a.id, a.name, mapping.id.sourceRowKey) " + "FROM Analyzer a, AnalyzerMappingTest mapping "
-                + "WHERE a.siteBindingRevision = mapping.siteBindingRevision " + "AND mapping.testId = :testId "
-                + "AND mapping.mappingState = :mappedState " + "ORDER BY lower(a.name), mapping.id.sourceRowKey";
+                + "a.id, a.name, row.id.sourceRowKey) FROM Analyzer a, AnalyzerMappingTest row "
+                + "WHERE a.mapping = row.mapping AND row.testId = :testId AND row.mappingState = :mappedState "
+                + "ORDER BY lower(a.name), row.id.sourceRowKey";
         Query<AnalyzerTestCapability> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerTestCapability.class);
         query.setParameter("testId", testId);

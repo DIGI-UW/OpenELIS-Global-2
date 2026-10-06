@@ -20,30 +20,29 @@ public class AnalyzerMappingConfirmationDAOImpl extends BaseDAOImpl<AnalyzerMapp
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AnalyzerMappingConfirmation> findByRevisionId(String revisionId) {
-        if (revisionId == null || revisionId.trim().isEmpty()) {
+    public Optional<AnalyzerMappingConfirmation> findByMappingId(String mappingId) {
+        if (mappingId == null || mappingId.trim().isEmpty()) {
             return Optional.empty();
         }
-        String hql = "FROM AnalyzerMappingConfirmation c JOIN FETCH c.siteBindingRevision r "
-                + "JOIN FETCH r.siteBinding b JOIN FETCH b.profileBinding WHERE r.id = :revisionId";
+        String hql = "FROM AnalyzerMappingConfirmation c JOIN FETCH c.mapping m JOIN FETCH m.analyzer "
+                + "WHERE m.id = :mappingId";
         Query<AnalyzerMappingConfirmation> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerMappingConfirmation.class);
-        query.setParameter("revisionId", revisionId.trim());
+        query.setParameter("mappingId", mappingId.trim());
         return query.uniqueResultOptional();
     }
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<AnalyzerMappingConfirmation> findLatestByBindingId(String bindingId) {
-        if (bindingId == null || bindingId.trim().isEmpty()) {
+    public Optional<AnalyzerMappingConfirmation> findLatestByAnalyzerId(String analyzerId) {
+        if (analyzerId == null || analyzerId.trim().isEmpty()) {
             return Optional.empty();
         }
-        String hql = "FROM AnalyzerMappingConfirmation c JOIN FETCH c.siteBindingRevision r "
-                + "JOIN FETCH r.siteBinding b JOIN FETCH b.profileBinding "
-                + "WHERE b.id = :bindingId ORDER BY c.confirmedAt DESC, c.id DESC";
+        String hql = "FROM AnalyzerMappingConfirmation c JOIN FETCH c.mapping m JOIN FETCH m.analyzer a "
+                + "WHERE a.id = :analyzerId ORDER BY c.confirmedAt DESC, c.id DESC";
         Query<AnalyzerMappingConfirmation> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerMappingConfirmation.class);
-        query.setParameter("bindingId", bindingId.trim());
+        query.setParameter("analyzerId", analyzerId.trim());
         query.setMaxResults(1);
         List<AnalyzerMappingConfirmation> confirmations = query.getResultList();
         return confirmations.stream().findFirst();

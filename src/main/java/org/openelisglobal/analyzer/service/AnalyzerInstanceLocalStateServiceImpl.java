@@ -7,7 +7,7 @@ import java.util.Map;
 import java.util.Objects;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
 import org.openelisglobal.analyzerimport.service.AnalyzerNormalizedResultImportService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.springframework.beans.BeanUtils;
@@ -19,21 +19,18 @@ import org.springframework.transaction.annotation.Transactional;
 public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLocalStateService {
 
     private final AnalyzerService analyzerService;
-    private final AnalyzerProfileBindingService profileBindingService;
-    private final AnalyzerMappingService siteBindingService;
-    private final AnalyzerMappingEditorService typeMappingService;
+    private final AnalyzerMappingService mappingService;
+    private final AnalyzerMappingEditorService mappingEditorService;
     private final AnalyzerResultsService analyzerResultsService;
     private final AnalyzerNormalizedResultImportService importService;
 
     @Autowired
-    public AnalyzerInstanceLocalStateServiceImpl(AnalyzerService analyzerService,
-            AnalyzerProfileBindingService profileBindingService, AnalyzerMappingService siteBindingService,
-            AnalyzerMappingEditorService typeMappingService, AnalyzerResultsService analyzerResultsService,
+    public AnalyzerInstanceLocalStateServiceImpl(AnalyzerService analyzerService, AnalyzerMappingService mappingService,
+            AnalyzerMappingEditorService mappingEditorService, AnalyzerResultsService analyzerResultsService,
             AnalyzerNormalizedResultImportService importService) {
         this.analyzerService = analyzerService;
-        this.profileBindingService = profileBindingService;
-        this.siteBindingService = siteBindingService;
-        this.typeMappingService = typeMappingService;
+        this.mappingService = mappingService;
+        this.mappingEditorService = mappingEditorService;
         this.analyzerResultsService = analyzerResultsService;
         this.importService = importService;
     }
@@ -60,18 +57,21 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
         analyzer.setActive(false);
         analyzer.setSysUserId(exactActor);
-        profileBindingService.assignProfile(analyzer, profileId, profileRevision, exactActor);
         String analyzerId = analyzerService.insert(analyzer);
         if (analyzer.getId() == null) {
             analyzer.setId(analyzerId);
         }
-        return state(analyzer, 0L);
+        Analyzer withMapping = copyForUpdate(analyzer);
+        withMapping
+                .setMapping(mappingService.assignProfile(analyzer, profileId, profileRevision, exactActor).mapping());
+        analyzerService.update(withMapping);
+        return state(withMapping, 0L);
     }
 
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerInstanceState> list() {
-        List<Analyzer> analyzers = analyzerService.getAllWithBindings();
+        List<Analyzer> analyzers = analyzerService.getAllWithMapping();
         List<String> analyzerIds = analyzers.stream().map(Analyzer::getId).filter(Objects::nonNull).toList();
         Map<String, Long> heldCounts = analyzerResultsService.countHeldResultsByAnalyzerIds(analyzerIds);
         return analyzers.stream().map(analyzer -> state(analyzer, heldCounts.getOrDefault(analyzer.getId(), 0L)))
@@ -91,7 +91,7 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
             throw new IllegalArgumentException("Analyzer request is required");
         }
         Analyzer analyzer = copyForUpdate(find(analyzerId));
-        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
+        AnalyzerProfilePin profile = analyzer.getPinnedProfile();
         String requestedProfileId = requireText(request.getProfileId(), "Profile ID");
         int requestedRevision = request.getProfileRevision() == null ? 0 : request.getProfileRevision();
         String exactActor = requireText(actor, "actor");
@@ -101,9 +101,13 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
             throw new IllegalArgumentException("Profile revision must be at least 1");
         }
         if (profile == null && isUnconfiguredDraft(analyzer)) {
-            profileBindingService.assignProfile(analyzer, requestedProfileId, requestedRevision, exactActor);
+            analyzer.setMapping(mappingService
+                    .assignProfile(analyzer, requestedProfileId, requestedRevision, exactActor).mapping());
             analyzer.setBridgeConnectionId(null);
             analyzer.setActive(false);
+        } else if (profile == null && isInactiveWithoutMapping(analyzer)) {
+            analyzer.setMapping(mappingService
+                    .assignProfile(analyzer, requestedProfileId, requestedRevision, exactActor).mapping());
         } else if (profile == null || !requestedProfileId.equals(profile.getProfileId())
                 || requestedRevision != profile.getProfileRevision()) {
             throw new IllegalArgumentException("A configured analyzer cannot be moved to another profile revision");
@@ -117,40 +121,34 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
 
     @Override
     @Transactional
-    public AnalyzerInstanceState selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
-            String bindingFingerprint, String actor) {
+    public AnalyzerInstanceState applyMapping(String analyzerId, String mappingId, int revision,
+            String mappingFingerprint, String actor) {
         Analyzer analyzer = find(analyzerId);
         if (analyzer.getBridgeConnectionId() != null) {
             analyzer = analyzerService.findByBridgeConnectionIdForUpdate(analyzer.getBridgeConnectionId())
                     .orElseThrow(() -> new IllegalArgumentException("Analyzer connection is missing"));
         }
-        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
-        if (profile == null || profile.getId() == null) {
-            throw new IllegalStateException("Analyzer profile binding is missing");
+        AnalyzerMappingSnapshot current = mappingService.findLatestByAnalyzerId(analyzer.getId())
+                .orElseThrow(() -> new IllegalArgumentException("The analyzer has no mapping"));
+        if (!Objects.equals(requireText(mappingId, "Mapping ID"), current.mapping().getId())
+                || revision != current.mapping().getRevisionNumber()
+                || !Objects.equals(requireText(mappingFingerprint, "Mapping fingerprint"),
+                        current.mapping().getMappingFingerprint())) {
+            throw new IllegalArgumentException("The analyzer's mapping changed after Verify was loaded");
         }
-        AnalyzerMappingSnapshot current = siteBindingService.findCurrentByProfileBindingId(profile.getId())
-                .orElseThrow(() -> new IllegalArgumentException("Analyzer Type mappings are missing"));
-        if (!Objects.equals(requireText(siteBindingId, "Site binding ID"), current.binding().getId())
-                || revision != current.revision().getRevisionNumber()
-                || !Objects.equals(requireText(bindingFingerprint, "Binding fingerprint"),
-                        current.revision().getBindingFingerprint())) {
-            throw new IllegalArgumentException("Analyzer Type mappings changed after Verify was loaded");
-        }
-        AnalyzerMappingView mapping = typeMappingService.getMapping(profile.getProfileId(),
-                profile.getProfileRevision());
+        AnalyzerMappingView mapping = mappingEditorService.getMapping(analyzer.getId());
         if (mapping.confirmation().state() != AnalyzerMappingConfirmationView.State.CURRENT
-                || !Objects.equals(mapping.siteBindingId(), current.binding().getId())
-                || mapping.siteBindingRevision() != revision
-                || !Objects.equals(mapping.bindingFingerprint(), current.revision().getBindingFingerprint())) {
-            throw new IllegalArgumentException("Confirm the current Analyzer Type mappings before applying them");
+                || !Objects.equals(mapping.mappingId(), current.mapping().getId())
+                || mapping.mappingRevision() != revision
+                || !Objects.equals(mapping.mappingFingerprint(), current.mapping().getMappingFingerprint())) {
+            throw new IllegalArgumentException("Confirm the analyzer's current mapping before applying it");
         }
-        if (analyzer.getSiteBindingRevision() != null
-                && Objects.equals(analyzer.getSiteBindingRevision().getId(), current.revision().getId())) {
+        if (analyzer.getMapping() != null && Objects.equals(analyzer.getMapping().getId(), current.mapping().getId())) {
             importService.recoverHeldMappingResults(analyzer.getId(), actor);
             return state(analyzer);
         }
         analyzer = copyForUpdate(analyzer);
-        analyzer.setSiteBindingRevision(current.revision());
+        analyzer.setMapping(current.mapping());
         analyzer.setSysUserId(requireText(actor, "actor"));
         analyzerService.update(analyzer);
         importService.recoverHeldMappingResults(analyzer.getId(), actor);
@@ -186,7 +184,7 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
 
     private Analyzer find(String analyzerId) {
         String exactId = requireText(analyzerId, "Analyzer ID");
-        return analyzerService.getWithBinding(exactId)
+        return analyzerService.getWithMapping(exactId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + exactId));
     }
 
@@ -198,7 +196,7 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
     }
 
     private static AnalyzerInstanceState state(Analyzer analyzer, long heldResultCount) {
-        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
+        AnalyzerProfilePin profile = analyzer.getPinnedProfile();
         if (profile == null) {
             // Preserved pre-Bridge records must remain visible while migration is pending.
             return new AnalyzerInstanceState(analyzer.getId(), analyzer.getName(), analyzer.getTestUnitIds(), "", 0, "",
@@ -212,8 +210,14 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
     private static boolean isUnconfiguredDraft(Analyzer analyzer) {
         return analyzer.getStatus() == Analyzer.AnalyzerStatus.SETUP
                 && (analyzer.getBridgeConnectionId() == null || analyzer.getBridgeConnectionId().isBlank())
-                && analyzer.getSiteBindingRevision() == null && analyzer.getLastActivatedDate() == null
+                && analyzer.getMapping() == null && analyzer.getLastActivatedDate() == null
                 && analyzer.getLatestActivationRecord() == null;
+    }
+
+    // Changeset 124 leaves every analyzer that had a shared mapping this way. It
+    // keeps its Bridge connection and stays inactive until verified and activated.
+    private static boolean isInactiveWithoutMapping(Analyzer analyzer) {
+        return analyzer.getStatus() == Analyzer.AnalyzerStatus.INACTIVE && analyzer.getMapping() == null;
     }
 
     private static List<String> normalizeLabUnits(List<String> ids) {

@@ -12,7 +12,7 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,7 +36,7 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
 
     @Override
     @Transactional
-    public AnalyzerActivationRecord retain(Analyzer analyzer, AnalyzerMapping siteBindingRevision,
+    public AnalyzerActivationRecord retain(Analyzer analyzer, AnalyzerMapping mappingRevision,
             AnalyzerMappingConfirmation confirmation, ObjectNode runtimeAcknowledgement, String intent, String actor) {
         String analyzerId = requireText(analyzer == null ? null : analyzer.getId(), "analyzer ID");
         String connectionId = requireText(analyzer.getBridgeConnectionId(), "Bridge connection ID");
@@ -45,18 +45,18 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
         if (!INTENTS.contains(exactIntent)) {
             throw new IllegalArgumentException("Activation intent is invalid");
         }
-        if (siteBindingRevision == null || analyzer.getSiteBindingRevision() == null
-                || !sameId(siteBindingRevision.getId(), analyzer.getSiteBindingRevision().getId())) {
-            throw new IllegalArgumentException("Exact analyzer site-binding revision is required");
+        if (mappingRevision == null || analyzer.getMapping() == null
+                || !sameId(mappingRevision.getId(), analyzer.getMapping().getId())) {
+            throw new IllegalArgumentException("The analyzer's mapping in force is required");
         }
         if ("ACTIVE".equals(exactIntent) && confirmation == null) {
             throw new IllegalArgumentException("Exact analyzer verification is required");
         }
-        if (confirmation != null && (confirmation.getSiteBindingRevision() == null
-                || !sameId(siteBindingRevision.getId(), confirmation.getSiteBindingRevision().getId()))) {
+        if (confirmation != null && (confirmation.getMapping() == null
+                || !sameId(mappingRevision.getId(), confirmation.getMapping().getId()))) {
             throw new IllegalArgumentException("Analyzer verification does not match the site binding");
         }
-        AnalyzerProfileBinding profile = analyzer.getPinnedProfileBinding();
+        AnalyzerProfilePin profile = analyzer.getPinnedProfile();
         if (profile == null) {
             throw new IllegalArgumentException("Pinned profile reference is required");
         }
@@ -72,7 +72,7 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
 
         AnalyzerActivationRecord record = new AnalyzerActivationRecord();
         record.setAnalyzer(analyzer);
-        record.setSiteBindingRevision(siteBindingRevision);
+        record.setMapping(mappingRevision);
         record.setVerificationConfirmation(confirmation);
         record.setBridgeConnectionId(connectionId);
         record.setActivationIntent(exactIntent);
@@ -91,7 +91,7 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
         return recordDAO.findByAnalyzerId(requireText(analyzerId, "analyzer ID"));
     }
 
-    private static boolean matchesProfile(AnalyzerProfileBinding profile, JsonNode profileRef) {
+    private static boolean matchesProfile(AnalyzerProfilePin profile, JsonNode profileRef) {
         return profile.getProfileId().equals(profileRef.path("profileId").asText(null))
                 && profile.getProfileRevision() == profileRef.path("revision").asInt(0)
                 && profile.getProfileFingerprint().equals(profileRef.path("fingerprint").asText(null));

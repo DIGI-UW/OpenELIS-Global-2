@@ -9,7 +9,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 
 public interface AnalyzerActivationRecordService {
 
-    AnalyzerActivationRecord retain(Analyzer analyzer, AnalyzerMapping siteBindingRevision,
+    AnalyzerActivationRecord retain(Analyzer analyzer, AnalyzerMapping mappingRevision,
             AnalyzerMappingConfirmation confirmation, ObjectNode runtimeAcknowledgement, String intent, String actor);
 
     List<AnalyzerActivationRecord> findByAnalyzerId(String analyzerId);

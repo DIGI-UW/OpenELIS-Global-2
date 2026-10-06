@@ -38,8 +38,8 @@ public class AnalyzerActivationRecord extends BaseObject<String> {
     private Analyzer analyzer;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "site_binding_revision_id", updatable = false)
-    private AnalyzerMapping siteBindingRevision;
+    @JoinColumn(name = "mapping_id", updatable = false)
+    private AnalyzerMapping mapping;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "verification_confirmation_id", updatable = false)
@@ -89,12 +89,12 @@ public class AnalyzerActivationRecord extends BaseObject<String> {
         this.analyzer = analyzer;
     }
 
-    public AnalyzerMapping getSiteBindingRevision() {
-        return siteBindingRevision;
+    public AnalyzerMapping getMapping() {
+        return mapping;
     }
 
-    public void setSiteBindingRevision(AnalyzerMapping siteBindingRevision) {
-        this.siteBindingRevision = siteBindingRevision;
+    public void setMapping(AnalyzerMapping mapping) {
+        this.mapping = mapping;
     }
 
     public AnalyzerMappingConfirmation getVerificationConfirmation() {

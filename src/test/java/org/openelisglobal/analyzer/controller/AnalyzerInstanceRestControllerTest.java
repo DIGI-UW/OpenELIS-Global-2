@@ -103,19 +103,18 @@ public class AnalyzerInstanceRestControllerTest {
     }
 
     @Test
-    public void selectsTheExactReviewedSiteBindingRevision() {
+    public void selectsTheExactReviewedMappingRevision() {
         AnalyzerMappingSelectionRequest selection = new AnalyzerMappingSelectionRequest();
-        selection.setSiteBindingId("12");
+        selection.setMappingId("12");
         selection.setRevision(2);
-        selection.setBindingFingerprint("sha256:" + "3".repeat(64));
-        when(service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
-                .thenReturn(connectedView());
+        selection.setMappingFingerprint("sha256:" + "3".repeat(64));
+        when(service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17")).thenReturn(connectedView());
 
-        ResponseEntity<Map<String, Object>> response = controller.selectSiteBindingRevision("42", selection, request);
+        ResponseEntity<Map<String, Object>> response = controller.applyMapping("42", selection, request);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("42", response.getBody().get("id"));
-        verify(service).selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17");
+        verify(service).applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17");
     }
 
     @Test

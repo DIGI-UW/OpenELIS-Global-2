@@ -4,10 +4,10 @@ import java.util.List;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 
-public record AnalyzerMappingSnapshot(AnalyzerSiteBinding binding, AnalyzerMapping revision,
-        List<AnalyzerMappingTest> tests, List<AnalyzerMappingResult> results) {
+/** One revision of an analyzer's mapping with all of its rows. */
+public record AnalyzerMappingSnapshot(AnalyzerMapping mapping, List<AnalyzerMappingTest> tests,
+        List<AnalyzerMappingResult> results) {
 
     public AnalyzerMappingSnapshot {
         tests = tests == null ? List.of() : List.copyOf(tests);
