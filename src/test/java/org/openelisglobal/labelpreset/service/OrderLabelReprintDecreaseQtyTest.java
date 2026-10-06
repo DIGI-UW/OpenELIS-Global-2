@@ -152,9 +152,12 @@ public class OrderLabelReprintDecreaseQtyTest extends BaseWebContextSensitiveTes
             reader.close();
         }
 
-        IllegalArgumentException ex = assertThrows(IllegalArgumentException.class,
+        LabelQuantityRefusedException above = assertThrows(LabelQuantityRefusedException.class,
                 () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(), sampleItemId, "sample", 6));
-        assertEquals(true, ex.getMessage().contains("maximum"));
+        assertEquals(LabelQuantityRefusedException.ABOVE_MAXIMUM, above.getMessageKey());
+        LabelQuantityRefusedException below = assertThrows(LabelQuantityRefusedException.class,
+                () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(), sampleItemId, "sample", 0));
+        assertEquals(LabelQuantityRefusedException.BELOW_MINIMUM, below.getMessageKey());
     }
 
     private void cleanTestData() {

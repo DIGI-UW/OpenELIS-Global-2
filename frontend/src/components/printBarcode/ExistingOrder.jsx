@@ -74,14 +74,18 @@ export function buildLabelRows({
         ? tests.find((t) => String(t.sampleItemId) === String(sampleItemId))
         : null;
       const name = snapPreset.name || preset?.name || `#${presetId}`;
-      const height = snapPreset.heightMm ?? preset?.heightMm;
-      const width = snapPreset.widthMm ?? preset?.widthMm;
+      const height =
+        snapPreset.height_mm ?? snapPreset.heightMm ?? preset?.heightMm;
+      const width =
+        snapPreset.width_mm ?? snapPreset.widthMm ?? preset?.widthMm;
       const size =
         height && width
           ? intl.formatMessage({ id: "barcode.print.size" }, { height, width })
           : "";
       const max = positiveInt(
-        scope === "order" ? preset?.maxPerOrder : preset?.maxPerSample,
+        row.max_qty ??
+          row.maxQty ??
+          (scope === "order" ? preset?.maxPerOrder : preset?.maxPerSample),
         FALLBACK_MAX,
       );
       return {
@@ -126,6 +130,7 @@ export function buildLabelRows({
       scope: "order",
       qty: clampQuantity(orderDefault, orderMax),
       max: orderMax,
+      cumulative: true,
       printUrl: (quantity) =>
         `/LabelMakerServlet?labNo=${encodeURIComponent(accessionNumber)}&type=order&quantity=${quantity}`,
     },
@@ -137,6 +142,7 @@ export function buildLabelRows({
       scope: "sample",
       qty: clampQuantity(specimenDefault, specimenMax),
       max: specimenMax,
+      cumulative: true,
       printUrl: (quantity) =>
         `/LabelMakerServlet?labNo=${encodeURIComponent(test.accessionNumber)}&type=specimen&quantity=${quantity}`,
     })),
@@ -160,6 +166,7 @@ const ExistingOrder = () => {
   const [savedRows, setSavedRows] = useState(null);
   const [presets, setPresets] = useState([]);
   const [quantities, setQuantities] = useState({});
+  const [inputVersions, setInputVersions] = useState({});
   const [source, setSource] = useState("about:blank");
   const [renderBarcode, setRenderBarcode] = useState(false);
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -320,6 +327,7 @@ const ExistingOrder = () => {
         info: row.info,
         quantity: (
           <NumberInput
+            key={`${row.key}-${inputVersions[row.key] || 0}`}
             id={`print-qty-${row.key}`}
             min={1}
             max={row.max}
@@ -330,20 +338,27 @@ const ExistingOrder = () => {
               { label: `${row.name} ${row.accession}` },
             )}
             helperText={intl.formatMessage(
-              { id: "barcode.print.max.hint" },
+              {
+                id: row.cumulative
+                  ? "barcode.print.max.total"
+                  : "barcode.print.max.hint",
+              },
               { max: row.max },
             )}
-            onChange={(_event, state) =>
-              setQuantities((prev) => ({
-                ...prev,
-                [row.key]: clampQuantity(
-                  state && state.value !== undefined
-                    ? state.value
-                    : _event?.target?.value,
-                  row.max,
-                ),
-              }))
-            }
+            onChange={(_event, state) => {
+              const typed =
+                state && state.value !== undefined
+                  ? state.value
+                  : _event?.target?.value;
+              const clamped = clampQuantity(typed, row.max);
+              setQuantities((prev) => ({ ...prev, [row.key]: clamped }));
+              if (String(clamped) !== String(typed).trim()) {
+                setInputVersions((prev) => ({
+                  ...prev,
+                  [row.key]: (prev[row.key] || 0) + 1,
+                }));
+              }
+            }}
             className="inputText"
             data-testid={`print-qty-${row.key}`}
           />

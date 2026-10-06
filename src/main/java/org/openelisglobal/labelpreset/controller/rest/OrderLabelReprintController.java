@@ -4,6 +4,7 @@ import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.labelpreset.dto.OrderLabelRequestView;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.labelpreset.service.OrderLabelReprintService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -126,9 +127,9 @@ public class OrderLabelReprintController {
         try {
             return pdfResponse(
                     orderLabelReprintService.renderFromSnapshot(orderId, presetId, sampleItemId, scope, quantity));
-        } catch (IllegalArgumentException e) {
+        } catch (LabelQuantityRefusedException e) {
             return ResponseEntity.unprocessableEntity()
-                    .body(Map.of("messageKey", "error.labels.quantity.max", "message", e.getMessage()));
+                    .body(Map.of("messageKey", e.getMessageKey(), "message", e.getMessage()));
         }
     }
 

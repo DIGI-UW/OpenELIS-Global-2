@@ -73,8 +73,9 @@ const SAVED = [
     sample_item_id: null,
     preset_id: 1,
     qty: 2,
+    max_qty: 4,
     preset_snapshot: {
-      preset: { id: 1, name: "Order Label", heightMm: 25, widthMm: 76 },
+      preset: { id: 1, name: "Order Label", height_mm: 25, width_mm: 76 },
     },
   },
   {
@@ -83,8 +84,9 @@ const SAVED = [
     sample_item_id: "10109",
     preset_id: 2,
     qty: 1,
+    max_qty: 6,
     preset_snapshot: {
-      preset: { id: 2, name: "Specimen Label", heightMm: 30, widthMm: 60 },
+      preset: { id: 2, name: "Specimen Label", height_mm: 30, width_mm: 60 },
     },
   },
 ];
@@ -96,12 +98,12 @@ const SETTINGS = {
   MAX_SPECIMEN_LABEL_PRINTED: "3",
 };
 
-const serve = (saved) =>
+const serve = (saved, presets = PRESETS) =>
   getFromOpenElisServer.mockImplementation((url, callback) => {
     if (url.startsWith("/rest/patient-search-results")) callback(PATIENT);
     else if (url.startsWith("/rest/SampleEdit")) callback(TESTS);
     else if (url.startsWith("/api/orders/by-accession/")) callback(saved);
-    else if (url === "/api/labelPresets") callback(PRESETS);
+    else if (url === "/api/labelPresets") callback(presets);
   });
 
 const renderPage = () =>
@@ -156,7 +158,7 @@ describe("ExistingOrder labels (OGC-1169)", () => {
     expect(specimenQty).toHaveAttribute("max", "3");
     expect(screen.getAllByRole("button", { name: /^Print/ })).toHaveLength(3);
     expect(
-      screen.getByText("Prints 2 order labels and 1 labels per specimen."),
+      screen.getByText("Prints 2 order labels and 1 label per specimen."),
     ).toBeInTheDocument();
   });
 
@@ -271,6 +273,51 @@ describe("ExistingOrder labels (OGC-1169)", () => {
     });
     expect(
       screen.getByText(messages["barcode.print.all.saved"]),
+    ).toBeInTheDocument();
+  });
+
+  test("a user who cannot read the presets still sees each saved label's size and maximum", async () => {
+    serve(SAVED, undefined);
+    renderPage();
+    await search();
+
+    const tubeRow = screen.getByTestId("label-row-saved-502");
+    expect(
+      within(tubeRow).getByText("Specimen Label (30 × 60 mm)"),
+    ).toBeInTheDocument();
+    expect(within(tubeRow).getByRole("spinbutton")).toHaveAttribute("max", "6");
+  });
+
+  test("a quantity typed above the maximum shows the maximum it will print", async () => {
+    serve([]);
+    renderPage();
+    await search();
+
+    const specimen = screen.getByTestId("label-row-specimen-10109");
+    fireEvent.change(within(specimen).getByRole("spinbutton"), {
+      target: { value: "3" },
+    });
+    fireEvent.change(within(specimen).getByRole("spinbutton"), {
+      target: { value: "9" },
+    });
+
+    expect(within(specimen).getByRole("spinbutton")).toHaveValue(3);
+    fireEvent.click(screen.getByTestId("print-row-specimen-10109"));
+    await waitFor(() =>
+      expect(frameSrc()).toBe(
+        `/LabelMakerServlet?labNo=${LAB}-1&type=specimen&quantity=3`,
+      ),
+    );
+  });
+
+  test("older orders say the maximum counts earlier prints; saved labels do not", async () => {
+    serve([]);
+    renderPage();
+    await search();
+    expect(
+      within(screen.getByTestId("label-row-order")).getByText(
+        "Up to 5 in total, counting earlier prints",
+      ),
     ).toBeInTheDocument();
   });
 });

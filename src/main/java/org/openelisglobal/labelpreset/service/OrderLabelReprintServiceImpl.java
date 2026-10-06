@@ -91,7 +91,8 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
     public ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId, String scope,
             Integer quantity) {
         if (quantity != null && quantity < 1) {
-            throw new IllegalArgumentException("quantity must be at least 1");
+            throw new LabelQuantityRefusedException(LabelQuantityRefusedException.BELOW_MINIMUM,
+                    "quantity must be at least 1");
         }
         ArrayList<Label> labels = new ArrayList<>();
         BarcodeLabelMaker.BarcodeType barcodeType = BarcodeLabelMaker.BarcodeType.BARCODE;
@@ -111,7 +112,7 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
                 if (quantity != null) {
                     int max = maximumFor(row);
                     if (quantity > max) {
-                        throw new IllegalArgumentException(
+                        throw new LabelQuantityRefusedException(LabelQuantityRefusedException.ABOVE_MAXIMUM,
                                 "quantity " + quantity + " exceeds the preset maximum of " + max);
                     }
                     qty = quantity;

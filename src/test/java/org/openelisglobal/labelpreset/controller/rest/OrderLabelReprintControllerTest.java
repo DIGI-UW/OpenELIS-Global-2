@@ -230,7 +230,18 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
         mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", String.valueOf(preset.getId()))
                 .param("scope", "sample").param("quantity", "6")).andExpect(status().isUnprocessableEntity())
                 .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+    }
+
+    @Test
+    public void printOrderLabels_quantityBelowOne_returns422WithItsOwnRule() throws Exception {
         mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("quantity", "0"))
-                .andExpect(status().isUnprocessableEntity());
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.min"));
+    }
+
+    @Test
+    public void getOrderLabels_carriesEachLabelsMaximumForItsScope() throws Exception {
+        mockMvc.perform(get("/api/orders/by-accession/{accession}/labels", ACCESSION)).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].max_qty").value(preset.getMaxPerSample()));
     }
 }
