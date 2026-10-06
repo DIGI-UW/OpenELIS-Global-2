@@ -108,16 +108,27 @@ function UserAddModify() {
     return "0";
   })();
 
-  const { data: readUser } = useServerData(
+  const { data: readUser, isPreviousData: readUserIsPrevious } = useServerData(
     ID ? `/rest/UnifiedSystemUser?ID=${ID}&startingRecNo=1&roleFilter=` : null,
   );
   const invalidateServerData = useInvalidateServerData();
+  const loadedUserFor = useRef(null);
+  const reloadUser = useRef(false);
 
+  // The server payload seeds the form once per user and again after a save.
+  // Every other read (the one that follows a cached payload, for instance)
+  // arrives while the user may be typing and must not replace their input.
   useEffect(() => {
-    if (readUser) {
-      handleUserData(readUser);
+    if (!readUser || readUserIsPrevious) {
+      return;
     }
-  }, [readUser]);
+    if (loadedUserFor.current === ID && !reloadUser.current) {
+      return;
+    }
+    loadedUserFor.current = ID;
+    reloadUser.current = false;
+    handleUserData(readUser);
+  }, [readUser, readUserIsPrevious, ID]);
 
   useEffect(() => {
     if (!ID) {
@@ -376,6 +387,7 @@ function UserAddModify() {
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
+      reloadUser.current = true;
       invalidateServerData();
     } else {
       addNotification({
