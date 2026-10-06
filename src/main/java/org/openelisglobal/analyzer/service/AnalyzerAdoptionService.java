@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import java.util.ArrayList;
 import java.util.List;
 
 /** Rule 7: moving an analyzer to a newer revision of its profile. */
@@ -11,6 +12,17 @@ public interface AnalyzerAdoptionService {
      */
     record AdoptionPlan(String analyzerId, String profileId, int fromRevision, int toRevision,
             List<AnalyzerMappingAdoption.Row> rows) {
+
+        /** What adoption saves if the operator changes nothing. */
+        public AnalyzerMappingDraft proposals() {
+            List<AnalyzerMappingTestDraft> tests = new ArrayList<>();
+            List<AnalyzerMappingResultDraft> results = new ArrayList<>();
+            rows.stream().filter(row -> row.proposed() != null).forEach(row -> {
+                tests.add(row.proposed().test());
+                results.addAll(row.proposed().results());
+            });
+            return new AnalyzerMappingDraft(tests, results);
+        }
     }
 
     /**

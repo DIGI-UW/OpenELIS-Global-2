@@ -12,8 +12,11 @@ import org.openelisglobal.analyzer.service.AnalyzerAdoptionService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingAdoption;
+import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
+import org.openelisglobal.analyzer.service.AnalyzerMappingView;
 import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,12 +40,22 @@ public class AnalyzerInstanceRestController extends BaseRestController {
 
     private final AnalyzerInstanceService analyzerInstanceService;
     private final AnalyzerAdoptionService adoptionService;
+    private final AnalyzerMappingEditorService editorService;
 
     @Autowired
     public AnalyzerInstanceRestController(AnalyzerInstanceService analyzerInstanceService,
-            AnalyzerAdoptionService adoptionService) {
+            AnalyzerAdoptionService adoptionService, AnalyzerMappingEditorService editorService) {
         this.analyzerInstanceService = analyzerInstanceService;
         this.adoptionService = adoptionService;
+        this.editorService = editorService;
+    }
+
+    /**
+     * An adoption plan with the mapping it would save if the operator changes
+     * nothing, as the editor shows it.
+     */
+    public record AdoptionReview(String analyzerId, String profileId, int fromRevision, int toRevision,
+            List<AnalyzerMappingAdoption.Row> rows, AnalyzerMappingView proposal) {
     }
 
     @PostMapping
@@ -87,9 +100,10 @@ public class AnalyzerInstanceRestController extends BaseRestController {
      * What adopting a newer revision of the analyzer's profile does to each record.
      */
     @GetMapping("/{id}/adoption")
-    public ResponseEntity<AnalyzerAdoptionService.AdoptionPlan> prepareAdoption(@PathVariable String id,
-            @RequestParam int revision) {
-        return ResponseEntity.ok(adoptionService.prepareAdoption(id, revision));
+    public ResponseEntity<AdoptionReview> prepareAdoption(@PathVariable String id, @RequestParam int revision) {
+        AnalyzerAdoptionService.AdoptionPlan plan = adoptionService.prepareAdoption(id, revision);
+        return ResponseEntity.ok(new AdoptionReview(plan.analyzerId(), plan.profileId(), plan.fromRevision(),
+                plan.toRevision(), plan.rows(), editorService.preview(id, revision, plan.proposals())));
     }
 
     /**
