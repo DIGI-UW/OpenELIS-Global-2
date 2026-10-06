@@ -153,6 +153,45 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
         }
     }
 
+    /**
+     * Manage Methods renames a method through MethodRenameEntry. A name another
+     * method already has used to be written anyway, and an unknown method was a
+     * 500; both are now refused and nothing is changed.
+     */
+    @Test
+    public void methodRename_refusesATakenName_andAnUnknownMethod_andRenamesOtherwise() throws Exception {
+        ensureRole(RESULTS_ROLE_ID, Constants.ROLE_RESULTS);
+        ensureRole(VALIDATION_ROLE_ID, Constants.ROLE_VALIDATION);
+        String second = METHOD_NAME + " Two";
+        postJson("/rest/MethodCreate",
+                "{\"methodEnglishName\":\"" + METHOD_NAME + "\",\"methodFrenchName\":\"" + METHOD_NAME + " FR\"}")
+                .andExpect(status().isOk());
+        postJson("/rest/MethodCreate",
+                "{\"methodEnglishName\":\"" + second + "\",\"methodFrenchName\":\"" + second + " FR\"}")
+                .andExpect(status().isOk());
+        String firstId = jdbc.queryForObject("SELECT CAST(id AS varchar) FROM clinlims.method WHERE name = ?",
+                String.class, METHOD_NAME);
+
+        postJson("/rest/MethodRenameEntry",
+                "{\"methodId\":\"" + firstId + "\",\"nameEnglish\":\"" + second + "\",\"nameFrench\":\"Autre\"}")
+                .andExpect(status().isConflict()).andExpect(jsonPath("$.error").value("duplicate"));
+        assertEquals(METHOD_NAME, englishNameOf(firstId));
+
+        postJson("/rest/MethodRenameEntry",
+                "{\"methodId\":\"99999999\",\"nameEnglish\":\"Nowhere\",\"nameFrench\":\"Nulle part\"}")
+                .andExpect(status().isNotFound()).andExpect(jsonPath("$.error").value("notFound"));
+
+        postJson("/rest/MethodRenameEntry", "{\"methodId\":\"" + firstId + "\",\"nameEnglish\":\"" + METHOD_NAME
+                + " Renamed\",\"nameFrench\":\"Renommee\"}").andExpect(status().isOk());
+        assertEquals(METHOD_NAME + " Renamed", englishNameOf(firstId));
+    }
+
+    private String englishNameOf(String methodId) {
+        return jdbc.queryForObject("SELECT lv.value FROM clinlims.method m JOIN clinlims.localization_value lv"
+                + " ON lv.localization_id = m.name_localization_id AND lv.locale = 'en' WHERE m.id = CAST(? AS numeric)",
+                String.class, methodId);
+    }
+
     private ResultActions postJson(String url, String body) throws Exception {
         return validatingMvc
                 .perform(post(url).contentType(MediaType.APPLICATION_JSON).content(body).session(adminSession()));
@@ -166,14 +205,14 @@ public class LegacyTestConfigurationRefusalIntegrationTest extends BaseWebContex
     private void cleanup() {
         jdbc.update("DELETE FROM clinlims.unit_of_measure WHERE name LIKE ?", UOM_PREFIX + "%");
         jdbc.update("DELETE FROM clinlims.system_role_module WHERE system_module_id IN (SELECT id FROM"
-                + " clinlims.system_module WHERE name LIKE ?)", "%:" + METHOD_NAME);
-        jdbc.update("DELETE FROM clinlims.system_module WHERE name LIKE ?", "%:" + METHOD_NAME);
+                + " clinlims.system_module WHERE name LIKE ?)", "%:" + METHOD_NAME + "%");
+        jdbc.update("DELETE FROM clinlims.system_module WHERE name LIKE ?", "%:" + METHOD_NAME + "%");
         jdbc.update("DELETE FROM clinlims.localization_value WHERE localization_id IN (SELECT name_localization_id"
-                + " FROM clinlims.method WHERE name = ?)", METHOD_NAME);
+                + " FROM clinlims.method WHERE name LIKE ?)", METHOD_NAME + "%");
         jdbc.update(
-                "WITH removed AS (DELETE FROM clinlims.method WHERE name = ? RETURNING name_localization_id)"
+                "WITH removed AS (DELETE FROM clinlims.method WHERE name LIKE ? RETURNING name_localization_id)"
                         + " DELETE FROM clinlims.localization WHERE id IN (SELECT name_localization_id FROM removed)",
-                METHOD_NAME);
+                METHOD_NAME + "%");
     }
 
     private static Object target(Object bean) {

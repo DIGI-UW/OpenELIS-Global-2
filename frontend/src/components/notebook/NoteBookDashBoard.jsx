@@ -45,6 +45,7 @@ import {
 import "./NoteBook.css";
 import { labNow } from "../utils/labClock";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 function NoteBookDashBoard() {
   const componentMounted = useRef(false);
 
@@ -74,6 +75,7 @@ function NoteBookDashBoard() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(100);
   const intl = useIntl();
+  const navigate = useInAppNavigation();
 
   const setStatusList = (statusList) => {
     if (componentMounted.current) {
@@ -167,23 +169,23 @@ function NoteBookDashBoard() {
   };
 
   const openNoteBookView = (id) => {
-    window.location.href = "/NoteBookEntryForm/" + id;
+    navigate("/NoteBookEntryForm/" + id)();
   };
 
   const openNoteBookEntryForm = () => {
-    window.location.href = "/NoteBookEntryForm";
+    navigate("/NoteBookEntryForm")();
   };
 
   const openNoteBookInstanceEntryForm = () => {
-    window.location.href = "/NoteBookInstanceEntryForm/" + selectedNoteBook.id;
+    navigate("/NoteBookInstanceEntryForm/" + selectedNoteBook.id)();
   };
 
   const openNoteBookInstanceView = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=view";
+    navigate("/NoteBookInstanceEditForm/" + id + "?mode=view")();
   };
 
   const openNoteBookInstanceEdit = (id) => {
-    window.location.href = "/NoteBookInstanceEditForm/" + id + "?mode=edit";
+    navigate("/NoteBookInstanceEditForm/" + id + "?mode=edit")();
   };
 
   useEffect(() => {

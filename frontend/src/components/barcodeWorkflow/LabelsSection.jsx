@@ -141,6 +141,18 @@ export const buildPersistPayload = (
   })),
 });
 
+// The quantities an untouched section would persist: every cell at its
+// resolved default (clamped), so a save made without editing the section still
+// carries the labels the presets and the test catalog call for.
+export const seedPersistPayload = (labelRequest) =>
+  buildPersistPayload(
+    labelRequest?.order_columns,
+    labelRequest?.sample_columns,
+    labelRequest?.sample_rows,
+    seedOrderQuantities(labelRequest?.order_row),
+    seedSampleQuantities(labelRequest?.sample_rows),
+  );
+
 // Source tag i18n + colour for an aggregated cell. Falls back to the raw
 // source string so an unknown future source still renders a chip.
 const SOURCE_TAG = {

@@ -693,3 +693,102 @@ describe("BasicInfoSection stale saves (OGC-1376)", () => {
     expect(sent).toEqual(["100", "200"]);
   });
 });
+
+describe("BasicInfoSection holding time, report and QC fields", () => {
+  const savedBody = () =>
+    JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]);
+
+  it("saves the holding time and the in-lab-only and notify toggles", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(screen.getByLabelText("SOP Max Holding Time (minutes)"), {
+      target: { value: "120" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: /In Lab Only/ }));
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Notify Patient Of Results/ }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(savedBody()).toMatchObject({
+      timeHolding: "120",
+      inLabOnly: true,
+      notifyResults: true,
+    });
+  });
+
+  it("refuses a holding time that is not whole minutes before saving", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.change(screen.getByLabelText("SOP Max Holding Time (minutes)"), {
+      target: { value: "1.5" },
+    });
+
+    expect(
+      screen.getByText("Enter a whole number of minutes, or leave blank."),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("hides QC thresholds for a clinical test and shows them for environmental", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    expect(
+      screen.queryByTestId("basic-info-qc-thresholds"),
+    ).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+    fireEvent.change(screen.getByLabelText("RPD Threshold (%)"), {
+      target: { value: "20" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(savedBody()).toMatchObject({
+      domain: "ENVIRONMENTAL",
+      qcRpdThreshold: "20",
+    });
+  });
+
+  it("flags a negative QC threshold and disables Save", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    fireEvent.click(screen.getByLabelText("Environmental"));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm" }));
+
+    fireEvent.change(screen.getByLabelText("Blank Threshold"), {
+      target: { value: "-1" },
+    });
+
+    expect(
+      screen.getByText(
+        "Enter a number of 0 or more (up to 5 decimal places), or leave blank.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+  });
+
+  it("marks the field a refused save names", async () => {
+    putToOpenElisServerJsonResponse.mockImplementation((url, payload, cb) =>
+      cb({ status: 422, invalidField: "timeHolding" }),
+    );
+    renderSection();
+    await screen.findByLabelText("Clinical");
+
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    expect(
+      await screen.findByText(
+        "Enter a whole number of minutes, or leave blank.",
+      ),
+    ).toBeInTheDocument();
+  });
+});

@@ -19,10 +19,54 @@
   width: 100% !important;
   max-width: none;
   min-width: 0;
+  // Keep the date and its placeholder clear of the calendar icon.
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 2.75rem;
+  text-overflow: ellipsis;
 }
 
 // The search box carries a hint under it, so the row aligns its labels rather
 // than its bottoms; the buttons keep a spacer label to sit level with the inputs.
 .validationSearchArea.unifiedResultsPage .unifiedResultsToolbarColumn {
   justify-content: flex-start;
+}
+
+// One row of filters and actions on desktop: the inputs share the width with
+// minimums that keep them usable, the buttons keep their natural width, and the
+// row wraps only when even those minimums no longer fit (tablet, phone).
+.validationSearchArea .validationToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: 0.75rem;
+  row-gap: 0.75rem;
+}
+
+.validationSearchArea .validationToolbar > .unifiedResultsToolbarColumn {
+  min-width: 0;
+}
+
+.validationSearchArea .validationToolbarSearch {
+  flex: 3 1 8rem;
+}
+
+.validationSearchArea .validationToolbarLabUnit {
+  flex: 2 1 6rem;
+}
+
+.validationSearchArea .validationToolbar > .validationToolbarDates {
+  flex: 5 1 17.5rem;
+  min-width: 17.5rem;
+}
+
+.validationSearchArea .validationToolbarPatient,
+.validationSearchArea .validationToolbarLoad {
+  flex: 0 0 auto;
+}
+
+// These buttons carry no icon, so drop the icon space Carbon reserves on the
+// right and centre the label.
+.validationSearchArea .validationToolbar .cds--btn {
+  padding-inline: 1rem;
+  justify-content: center;
 }

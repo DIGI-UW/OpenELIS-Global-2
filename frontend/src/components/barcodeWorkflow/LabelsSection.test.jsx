@@ -8,6 +8,7 @@ import LabelsSection, {
   calculateRunningTotal,
   calculateAggregateTotal,
   buildPersistPayload,
+  seedPersistPayload,
 } from "./LabelsSection";
 
 const renderWithIntl = (ui) =>
@@ -322,5 +323,18 @@ describe("LabelsSection — legacy count mode", () => {
     expect(last.orderRow.quantities.order).toBe(3);
     expect(last.sampleRows[0].quantities.specimen).toBe(1);
     expect(last.runningTotal).toBe(4);
+  });
+
+  test("seedPersistPayload carries every cell's clamped default", () => {
+    const payload = seedPersistPayload(labelRequestFixture());
+
+    expect(payload.order_cells).toEqual([{ preset_id: 1, qty: 2 }]);
+    expect(payload.sample_rows[0].sample_id_local).toBe("S1");
+    expect(payload.sample_rows[0].cells).toEqual(
+      expect.arrayContaining([
+        { preset_id: 17, qty: 1 },
+        { preset_id: 24, qty: 3 },
+      ]),
+    );
   });
 });
