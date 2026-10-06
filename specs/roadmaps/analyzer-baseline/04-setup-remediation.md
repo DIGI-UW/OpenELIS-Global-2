@@ -39,13 +39,13 @@ operator fix it in place, and never shows raw server text.
 ### Build
 
 ```
-- [ ] T4.1 Red: component tests, each listed server message renders its en.json string, never raw text
+- [x] T4.1 Red: component tests, each listed server message renders its en.json string, never raw text
 - [ ] T4.2 Red: E2E on a populated catalog (answerless COVID duplicate, legacy RIF answers): Verify lists each unresolved row with reason; resolve in place; Continue enabled only when remaining unresolved rows are acknowledged
 - [ ] T4.3 Red: E2E, a changed instrument code is used for result translation and an outbound order
 - [ ] T4.4 Verify step: render step-1 reasons per row; inline resolve controls (same components as the editor); acknowledge-unresolved checkbox per row; gate = confirmed AND all unresolved acknowledged; counts derive from the same rows
 - [ ] T4.5 Instrument step: code column per profile row, editable, stored as override
 - [ ] T4.5b Red then green: E2E, a result under a code the profile does not declare is held as an unknown test; the operator adds it to the analyzer's mapping from the held row (test, and answers when categorical), stored as OVERRIDE; the held result recovers (rule 13)
-- [ ] T4.6 Error mapping: one errorKeyFor(response) helper; every path uses it; add keys to en.json
+- [x] T4.6 Error mapping: one errorKeyFor(response) helper; every path uses it; add keys to en.json. The server names an operator-facing refusal with `messageKey` and `messageArgs` (`AnalyzerRequestException`); setup, Verify, the mapping editor, adoption and the lifecycle modal show its words or their own message. Derived 6 Oct: analyzer type authoring keeps showing the Bridge's profile validation text, which is the author's only detail, until step 6 gives the Bridge's profile contract keyed errors
 - [ ] T4.7 Hand-offs: editor link carries analyzerId; return label from returnTo; roles on the mapping route match /analyzers; edit title; Activate action for SETUP; zero-test type explanation
 - [ ] T4.8 Green; format cold; commit; stack PR on step 2
 ```

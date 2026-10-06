@@ -159,11 +159,13 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     private static void validateConfirmable(AnalyzerMappingView view) {
         for (AnalyzerMappingView.TestRow test : view.tests()) {
             if (test.mappingState() == AnalyzerMappingState.BOUND && test.selectedTest() == null) {
-                throw new IllegalArgumentException("Bound test rows must reference a current catalog Test");
+                throw new AnalyzerRequestException("analyzer.mapping.error.testNotCurrent",
+                        "Bound test rows must reference a current catalog Test");
             }
             for (AnalyzerMappingView.ResultRow result : test.results()) {
                 if (result.mappingState() == AnalyzerMappingState.BOUND && result.selectedOption() == null) {
-                    throw new IllegalArgumentException("Bound result rows must reference a current Result Option");
+                    throw new AnalyzerRequestException("analyzer.mapping.error.resultNotCurrent",
+                            "Bound result rows must reference a current Result Option");
                 }
             }
         }
@@ -238,7 +240,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     private static void validateLoadedFingerprint(AnalyzerMappingSnapshot current, String loadedFingerprint) {
         String normalized = loadedFingerprint == null || loadedFingerprint.isBlank() ? null : loadedFingerprint.trim();
         if (!Objects.equals(normalized, current.mapping().getMappingFingerprint())) {
-            throw new IllegalArgumentException("The analyzer's mapping changed after this editor was loaded");
+            throw new AnalyzerRequestException("analyzer.mapping.error.changedSinceLoaded",
+                    "The analyzer's mapping changed after this editor was loaded");
         }
     }
 

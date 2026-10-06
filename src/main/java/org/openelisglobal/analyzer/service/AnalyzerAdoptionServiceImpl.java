@@ -47,8 +47,10 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
                 .filter(row -> row.bucket() != AnalyzerMappingAdoption.Bucket.RETIRED).toList();
         for (AnalyzerMappingAdoption.Row row : kept) {
             if (row.blockReason() == AnalyzerMappingAdoption.BlockReason.HELD_RESULTS) {
-                throw new IllegalArgumentException(row.key().label() + " still has held results from revision "
-                        + plan.fromRevision() + "; resolve them before adopting revision " + toRevision);
+                throw new AnalyzerRequestException("analyzer.adoption.error.heldResults",
+                        Map.of("record", row.key().label(), "revision", plan.fromRevision()),
+                        row.key().label() + " still has held results from revision " + plan.fromRevision()
+                                + "; resolve them before adopting revision " + toRevision);
             }
         }
         Set<AnalyzerMappingRowKey> keptKeys = kept.stream().map(AnalyzerMappingAdoption.Row::key)
@@ -57,8 +59,9 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
             String missing = kept.stream().map(AnalyzerMappingAdoption.Row::key)
                     .filter(key -> !decided.containsKey(key)).map(AnalyzerMappingRowKey::label)
                     .collect(Collectors.joining(", "));
-            throw new IllegalArgumentException("Adoption needs one decision for each record the revision keeps"
-                    + (missing.isEmpty() ? "" : "; missing " + missing));
+            throw new AnalyzerRequestException("analyzer.adoption.error.missingDecisions", Map.of("records", missing),
+                    "Adoption needs one decision for each record the revision keeps"
+                            + (missing.isEmpty() ? "" : "; missing " + missing));
         }
         List<AnalyzerMappingTestDraft> tests = new ArrayList<>();
         List<AnalyzerMappingResultDraft> results = new ArrayList<>();
@@ -66,8 +69,9 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
             AnalyzerMappingAdoption.Decision decision = decided.get(row.key());
             if (row.blockReason() == AnalyzerMappingAdoption.BlockReason.INACTIVE_TEST
                     && AnalyzerMappingAdoption.sameDecision(decision, row.current())) {
-                throw new IllegalArgumentException(row.key().label()
-                        + " is mapped to a test that is no longer active; choose another test before adopting");
+                throw new AnalyzerRequestException("analyzer.adoption.error.inactiveTest",
+                        Map.of("record", row.key().label()), row.key().label()
+                                + " is mapped to a test that is no longer active; choose another test before adopting");
             }
             tests.add(withOrigin(decision.test(), originFor(decision.test(), row.proposed())));
             for (AnalyzerMappingResultDraft result : decision.results()) {
@@ -86,13 +90,14 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
         String profileId = current.mapping().getProfileId();
         int fromRevision = current.mapping().getProfileRevision();
         if (toRevision <= fromRevision) {
-            throw new IllegalArgumentException(
+            throw new AnalyzerRequestException("analyzer.adoption.error.notNewer", Map.of("revision", fromRevision),
                     "Adoption moves to a newer revision of " + profileId + " than " + fromRevision);
         }
         BridgeAnalyzerProfile from = profile(profileId, fromRevision);
         BridgeAnalyzerProfile to = profile(profileId, toRevision);
         if (!"ACTIVE".equals(to.status())) {
-            throw new IllegalArgumentException(profileId + " revision " + toRevision + " is not active");
+            throw new AnalyzerRequestException("analyzer.adoption.error.revisionInactive",
+                    Map.of("revision", toRevision), profileId + " revision " + toRevision + " is not active");
         }
         Set<String> activeTestIds = catalogService.searchActiveTests(null).stream()
                 .map(AnalyzerMappingCatalogService.TestOption::id).collect(Collectors.toSet());

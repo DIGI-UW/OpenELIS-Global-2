@@ -46,13 +46,11 @@ import {
   saveAnalyzerMapping,
 } from "../../../services/analyzerService";
 import { includesComboBoxText } from "../comboBoxSearch";
+import { analyzerErrorText } from "../analyzerErrors";
 import "./AnalyzerTypeMappingEditor.scss";
 
 const hasApiError = (response) =>
   !response || Boolean(response.error) || Number(response.status || 0) >= 400;
-
-const errorText = (response, fallback) =>
-  response?.error || response?.message || fallback;
 
 const cloneTests = (tests = []) =>
   tests.map((test) => ({
@@ -286,14 +284,9 @@ const AnalyzerTypeMappingEditor = () => {
     load((response) => {
       setLoading(false);
       if (hasApiError(response) || !Array.isArray(response.tests)) {
-        setLoadError(
-          errorText(
-            response,
-            intl.formatMessage({
-              id: "analyzerType.mappingEditor.error.load",
-            }),
-          ),
-        );
+        // The heading already says the mapping could not load; the line under it
+        // names the cause when the server gave one.
+        setLoadError({ cause: analyzerErrorText(intl, response, null) });
         return;
       }
       loadedResultOptions.current = new Set();
@@ -651,7 +644,7 @@ const AnalyzerTypeMappingEditor = () => {
           title: intl.formatMessage({
             id: "analyzerType.mappingEditor.error.save",
           }),
-          subtitle: errorText(response, ""),
+          subtitle: analyzerErrorText(intl, response, null),
         });
         return;
       }
@@ -683,7 +676,7 @@ const AnalyzerTypeMappingEditor = () => {
             title: intl.formatMessage({
               id: "analyzerType.adoption.error.save",
             }),
-            subtitle: errorText(response, ""),
+            subtitle: analyzerErrorText(intl, response, null),
           });
           return;
         }
@@ -746,7 +739,7 @@ const AnalyzerTypeMappingEditor = () => {
             title: intl.formatMessage({
               id: "analyzerType.mappingEditor.error.confirm",
             }),
-            subtitle: errorText(response, ""),
+            subtitle: analyzerErrorText(intl, response, null),
           });
           return;
         }
@@ -793,7 +786,7 @@ const AnalyzerTypeMappingEditor = () => {
               ? "analyzerType.mappingEditor.appliedToAnalyzer"
               : "analyzerType.mappingEditor.error.applyToAnalyzer",
           }),
-          subtitle: applied ? "" : errorText(response, ""),
+          subtitle: applied ? "" : analyzerErrorText(intl, response, null),
         });
       },
     );
@@ -833,7 +826,7 @@ const AnalyzerTypeMappingEditor = () => {
             title={intl.formatMessage({
               id: "analyzerType.mappingEditor.error.load",
             })}
-            subtitle={routeError || loadError || ""}
+            subtitle={routeError || loadError?.cause || ""}
             actionButtonLabel={intl.formatMessage({
               id: "common.retry",
             })}

@@ -366,6 +366,7 @@ public class AnalyzerMappingEditorServiceTest {
                         "17"));
 
         assertEquals("The analyzer's mapping changed after this editor was loaded", error.getMessage());
+        assertEquals("analyzer.mapping.error.changedSinceLoaded", ((AnalyzerRequestException) error).messageKey());
         verify(mappingService, never()).appendRevision(any(), any(), any());
     }
 

@@ -15,6 +15,7 @@ import {
   type AnalyzerActivationResultView,
   type AnalyzerDeactivationResultView,
 } from "../../../services/analyzerService";
+import { analyzerErrorText } from "../analyzerErrors";
 import type { Analyzer } from "../types";
 
 export type AnalyzerLifecycleAction = "deactivate" | "reactivate";
@@ -76,10 +77,7 @@ const AnalyzerLifecycleModal = ({
     }
     setSubmitting(false);
     setError(
-      response?.failure ||
-        response?.error ||
-        response?.message ||
-        message("error"),
+      analyzerErrorText(intl, response, `analyzer.lifecycle.${action}.error`),
     );
   };
 
@@ -95,7 +93,9 @@ const AnalyzerLifecycleModal = ({
       setBlockers(response.blockers);
       return;
     }
-    setError(response?.error || response?.message || message("error"));
+    setError(
+      analyzerErrorText(intl, response, `analyzer.lifecycle.${action}.error`),
+    );
   };
 
   const handleConfirm = () => {

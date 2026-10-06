@@ -26,6 +26,7 @@ import {
   formatRecognitionCondition,
   formatRecognitionMode,
 } from "../AnalyzerTypeManagement/recognitionText";
+import { analyzerErrorText } from "../analyzerErrors";
 import { includesComboBoxText } from "../comboBoxSearch";
 import AnalyzerConnectionSetup, {
   needsMappingVerification,
@@ -304,7 +305,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
         response.error ||
         Number(response.statusCode) >= 400
       ) {
-        setSaveError(true);
+        setSaveError(response || true);
         return;
       }
 
@@ -368,7 +369,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
           response.error ||
           Number(response.statusCode) >= 400
         ) {
-          setBindingSelectionError(true);
+          setBindingSelectionError(response || true);
           return;
         }
         setCandidate(response);
@@ -420,6 +421,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
           title={intl.formatMessage({
             id: "analyzer.setup.instrument.saveError",
           })}
+          subtitle={analyzerErrorText(intl, saveError, null)}
         />
       )}
 
@@ -773,6 +775,11 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                           title={intl.formatMessage({
                             id: "analyzer.setup.verify.selectionError",
                           })}
+                          subtitle={analyzerErrorText(
+                            intl,
+                            bindingSelectionError,
+                            null,
+                          )}
                         />
                       )}
                     </>

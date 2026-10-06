@@ -208,6 +208,15 @@ public class AnalyzerInstanceRestControllerTest {
                 .andExpect(jsonPath("$.error").value("Analyzer not found"));
     }
 
+    @Test
+    public void aRefusalTheOperatorCanActOnCarriesItsMessageKey() throws Exception {
+        when(service.get("42")).thenThrow(new org.openelisglobal.analyzer.service.AnalyzerRequestException(
+                "analyzer.mapping.error.confirmBeforeApply", "Confirm the analyzer's current mapping before applying it"));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/42")).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.messageKey").value("analyzer.mapping.error.confirmBeforeApply"));
+    }
+
     private static AnalyzerInstanceView connectedView() {
         AnalyzerInstanceState state = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
                 "fixture.synthetic-connection", 3, FINGERPRINT, "bridge-connection-42", Analyzer.AnalyzerStatus.SETUP,
