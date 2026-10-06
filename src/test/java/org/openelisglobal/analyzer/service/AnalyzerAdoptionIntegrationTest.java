@@ -4,9 +4,15 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -18,6 +24,7 @@ import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
@@ -28,6 +35,8 @@ import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.test.util.AopTestUtils;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * Rule 7 through the real services: an analyzer on revision 1 adopts revision
@@ -37,6 +46,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final String CONNECTION_ID = "bridge-connection-adoption";
+    private static final String CONFIG_FINGERPRINT = "sha256:" + "c".repeat(64);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Autowired
@@ -48,20 +58,26 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private AnalyzerMappingConfirmationService confirmations;
     @Autowired
-    private AnalyzerInstanceLocalStateService localState;
-    @Autowired
     private DataSource dataSource;
 
     @Autowired
     private AnalyzerResultsService results;
     @Autowired
     private AnalyzerMappingCatalogService catalog;
+    @Autowired
+    private AnalyzerInstanceService instances;
+    @Autowired
+    private AnalyzerActivationService activations;
 
     private String analyzerId;
     private String deactivatedTestId;
+    private BridgeAnalyzerConnectionClient realBridge;
 
     @After
     public void deleteAnalyzer() {
+        if (realBridge != null) {
+            useBridge(realBridge);
+        }
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         if (deactivatedTestId != null) {
             jdbc.update("UPDATE test SET is_active = 'Y' WHERE id = ?", Long.valueOf(deactivatedTestId));
@@ -94,9 +110,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, proposals(plan), "1");
         confirm(adopted);
         BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
-        new AnalyzerInstanceServiceImpl(localState, bridge, () -> "adoption-request").applyMapping(analyzerId,
-                adopted.mapping().getId(), adopted.mapping().getRevisionNumber(),
-                adopted.mapping().getMappingFingerprint(), "1");
+        apply(adopted);
 
         Analyzer after = analyzerDAO.get(analyzerId).orElseThrow();
         assertEquals(analyzer.getName(), after.getName());
@@ -152,6 +166,74 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(1, mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow().mapping().getProfileRevision());
     }
 
+    @Test
+    public void anActiveAnalyzerReceivesOnItsRevisionUntilApplyWhichMovesAndReactivatesTheConnection() {
+        analyzerOnRevisionOne();
+        String revisionOne = inForceMappingId();
+        markActive();
+        BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
+
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+                proposals(adoptionService.prepareAdoption(analyzerId, 2)), "1");
+        confirm(adopted);
+        verifyZeroInteractions(bridge);
+        assertEquals("adopting and confirming leave revision 1 in force", revisionOne, inForceMappingId());
+
+        apply(adopted);
+
+        assertEquals(adopted.mapping().getId(), inForceMappingId());
+        InOrder bridgeOrder = inOrder(bridge);
+        bridgeOrder.verify(bridge).updateConnection(eq(CONNECTION_ID), any(ObjectNode.class));
+        bridgeOrder.verify(bridge).applyRuntimeCommand(eq(CONNECTION_ID), anyInt(), eq("ACTIVATE"), anyString());
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        assertEquals("the connection is active on the adopted revision", adopted.mapping().getId(),
+                jdbc.queryForObject(
+                        "SELECT r.mapping_id FROM analyzer a JOIN analyzer_activation_record r"
+                                + " ON a.latest_activation_record_id = r.id WHERE a.id = ?",
+                        String.class, Long.valueOf(analyzerId)));
+        assertEquals("ACTIVE", jdbc.queryForObject("SELECT status FROM analyzer WHERE id = ?", String.class,
+                Long.valueOf(analyzerId)));
+    }
+
+    @Test
+    public void aBridgeThatCannotMoveTheConnectionLeavesTheAnalyzerOnItsRevision() {
+        analyzerOnRevisionOne();
+        String revisionOne = inForceMappingId();
+        markActive();
+        BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
+        when(bridge.updateConnection(eq(CONNECTION_ID), any(ObjectNode.class)))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+                proposals(adoptionService.prepareAdoption(analyzerId, 2)), "1");
+        confirm(adopted);
+
+        assertThrows(BridgeAnalyzerConnectionException.class, () -> apply(adopted));
+
+        assertEquals(revisionOne, inForceMappingId());
+        verify(bridge, never()).applyRuntimeCommand(anyString(), anyInt(), anyString(), anyString());
+    }
+
+    @Test
+    public void aReactivationTheBridgeRefusesPutsThePinBackAndLeavesTheAnalyzerOnItsRevision() {
+        analyzerOnRevisionOne();
+        String revisionOne = inForceMappingId();
+        markActive();
+        BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
+        when(bridge.applyRuntimeCommand(eq(CONNECTION_ID), anyInt(), eq("ACTIVATE"), anyString()))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+                proposals(adoptionService.prepareAdoption(analyzerId, 2)), "1");
+        confirm(adopted);
+
+        assertThrows(BridgeAnalyzerConnectionException.class, () -> apply(adopted));
+
+        assertEquals(revisionOne, inForceMappingId());
+        ArgumentCaptor<ObjectNode> pins = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(bridge, times(2)).updateConnection(eq(CONNECTION_ID), pins.capture());
+        assertEquals("the connection is pinned back to revision 1", 1,
+                pins.getAllValues().get(1).path("profileRef").path("revision").asInt());
+    }
+
     private String overrideAdoptAOnAnotherTest(Analyzer analyzer) {
         AnalyzerMappingSnapshot first = mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow();
         AnalyzerMappingDraft draft = AnalyzerMappingDraft.of(first);
@@ -205,7 +287,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         analyzer.setName("Adoption bench");
         analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
         analyzer.setActive(false);
-        analyzer.setTestUnitIds(List.of("1"));
+        analyzer.setTestUnitIds(List.of(new JdbcTemplate(dataSource)
+                .queryForObject("SELECT min(id)::text FROM test_section WHERE is_active = 'Y'", String.class)));
         analyzer.setSysUserId("1");
         analyzerDAO.insert(analyzer);
         analyzerId = analyzer.getId();
@@ -240,11 +323,61 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                         "1");
     }
 
+    private void apply(AnalyzerMappingSnapshot adopted) {
+        instances.applyMapping(analyzerId, adopted.mapping().getId(), adopted.mapping().getRevisionNumber(),
+                adopted.mapping().getMappingFingerprint(), "1");
+    }
+
+    private String inForceMappingId() {
+        return new JdbcTemplate(dataSource).queryForObject("SELECT mapping_id FROM analyzer WHERE id = ?", String.class,
+                Long.valueOf(analyzerId));
+    }
+
+    private void markActive() {
+        new JdbcTemplate(dataSource).update("UPDATE analyzer SET status = 'ACTIVE', is_active = true WHERE id = ?",
+                Long.valueOf(analyzerId));
+    }
+
+    /**
+     * Swaps the Bridge client inside the Spring beans so Apply runs through their
+     * real transaction; the original is put back after each test.
+     */
     private BridgeAnalyzerConnectionClient bridgeOn(int revision) {
         BridgeAnalyzerConnectionClient bridge = mock(BridgeAnalyzerConnectionClient.class);
-        when(bridge.getConnection(CONNECTION_ID)).thenReturn(connection(revision));
+        when(bridge.getConnection(CONNECTION_ID)).thenReturn(connection(revision), connection(2));
         when(bridge.updateConnection(eq(CONNECTION_ID), any(ObjectNode.class))).thenReturn(connection(2));
+        when(bridge.applyRuntimeCommand(eq(CONNECTION_ID), anyInt(), eq("ACTIVATE"), anyString()))
+                .thenAnswer(call -> acknowledgement(call.getArgument(3)));
+        if (realBridge == null) {
+            realBridge = (BridgeAnalyzerConnectionClient) ReflectionTestUtils
+                    .getField(AopTestUtils.<Object>getUltimateTargetObject(instances), "bridgeClient");
+        }
+        useBridge(bridge);
         return bridge;
+    }
+
+    private void useBridge(BridgeAnalyzerConnectionClient bridge) {
+        ReflectionTestUtils.setField(AopTestUtils.<Object>getUltimateTargetObject(instances), "bridgeClient", bridge);
+        ReflectionTestUtils.setField(AopTestUtils.<Object>getUltimateTargetObject(activations), "bridgeClient", bridge);
+    }
+
+    private ObjectNode acknowledgement(String commandId) {
+        ObjectNode acknowledgement = JSON.createObjectNode();
+        acknowledgement.put("schemaVersion", "1.0");
+        acknowledgement.put("commandId", commandId);
+        acknowledgement.put("action", "ACTIVATE");
+        acknowledgement.put("outcome", "APPLIED");
+        acknowledgement.put("connectionId", CONNECTION_ID);
+        acknowledgement.set("profileRef", connection(2).path("profileRef"));
+        acknowledgement.put("configRevision", 1);
+        acknowledgement.put("configFingerprint", CONFIG_FINGERPRINT);
+        acknowledgement.put("runtimeRevision", 2);
+        acknowledgement.put("runtimeFingerprint", "sha256:" + "d".repeat(64));
+        acknowledgement.put("desiredRuntimeState", "ACTIVE");
+        acknowledgement.put("actualRuntimeState", "ACTIVE");
+        acknowledgement.putArray("blockers");
+        acknowledgement.put("acknowledgedAt", "2026-10-06T12:00:00Z");
+        return acknowledgement;
     }
 
     private ObjectNode connection(int revision) {
@@ -255,6 +388,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 .put("revision", revision)
                 .put("fingerprint", AnalyzerTestProfileCatalog.adoptableFingerprint(revision));
         connection.put("configRevision", 1);
+        connection.put("configFingerprint", CONFIG_FINGERPRINT);
+        connection.putObject("readiness").put("ready", true).putArray("blockers");
         return connection;
     }
 }
