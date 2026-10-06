@@ -1,9 +1,5 @@
 # Quick Start: Sample Storage Pagination Implementation
 
-For local development, run `scripts/dev-stack up` from the repository root,
-then `eval "$(scripts/dev-stack env)"`. Use the reported URL (including its
-assigned port) for browser steps and `$BASE_URL` for shell requests.
-
 **Feature**: OGC-150 Sample Storage Pagination  
 **Estimated Time**: 1-2 days (9 hours)  
 **Prerequisites**: Feature 001-sample-storage must be fully implemented and
@@ -348,7 +344,7 @@ const renderWithIntl = (component) => {
       <IntlProvider locale="en" messages={messages}>
         {component}
       </IntlProvider>
-    </BrowserRouter>,
+    </BrowserRouter>
   );
 };
 
@@ -394,7 +390,7 @@ describe("StorageDashboard Pagination", () => {
     // Wait for initial render
     await waitFor(() => {
       expect(
-        screen.queryByRole("navigation", { name: /pagination/i }),
+        screen.queryByRole("navigation", { name: /pagination/i })
       ).toBeInTheDocument();
     });
 
@@ -405,7 +401,7 @@ describe("StorageDashboard Pagination", () => {
     // Assert
     await waitFor(() => {
       expect(getFromOpenElisServer).toHaveBeenCalledWith(
-        expect.stringContaining("page=1"),
+        expect.stringContaining("page=1")
       );
     });
   });
@@ -448,7 +444,7 @@ const fetchSamples = async () => {
   try {
     setLoading(true);
     const response = await getFromOpenElisServer(
-      `/rest/storage/sample-items?page=${page - 1}&size=${pageSize}`, // Convert to 0-based
+      `/rest/storage/sample-items?page=${page - 1}&size=${pageSize}` // Convert to 0-based
     );
     setSamples(response.items || []);
     setTotalItems(response.totalItems || 0);
@@ -514,18 +510,18 @@ describe("Sample Storage Pagination", () => {
   it("should display first page with 25 items by default", () => {
     // Wait for page load
     cy.get('[data-testid="samples-table"]', { timeout: 10000 }).should(
-      "be.visible",
+      "be.visible"
     );
 
     // Verify 25 items displayed (or fewer if less than 25 total)
     cy.get('[data-testid="samples-table"] tbody tr').should(
       "have.length.at.most",
-      25,
+      25
     );
 
     // Verify pagination controls visible
     cy.get('nav[aria-label*="pagination"]', { timeout: 5000 }).should(
-      "be.visible",
+      "be.visible"
     );
   });
 
@@ -608,10 +604,10 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 1. Start development environment:
 
 ```bash
-scripts/dev-stack up
+docker compose -f dev.docker-compose.yml up -d
 ```
 
-2. Navigate to the URL reported by `scripts/dev-stack url`, followed by `/Storage/sample-items`
+2. Navigate to `https://localhost/Storage/sample-items`
 3. Verify:
    - Page loads with 25 items in <2 seconds
    - Pagination controls visible

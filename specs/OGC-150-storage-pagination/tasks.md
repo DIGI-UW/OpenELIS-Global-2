@@ -390,8 +390,8 @@ constitution compliance
       Coverage, No @Transactional in controller, Input validation, etc.) - ✅
       All 8 principles verified
 - [x] T050 Manual testing with large dataset: Start dev environment
-      `scripts/dev-stack up`, navigate to
-      the URL reported by `scripts/dev-stack url` plus `/Storage/sample-items`, verify page loads in <2 seconds
+      `docker compose -f dev.docker-compose.yml up -d`, navigate to
+      `https://localhost/Storage/sample-items`, verify page loads in <2 seconds
       with 100k+ samples, verify pagination controls work (Next, Previous, page
       numbers, page size selector), verify page state preserved when switching
       tabs - ⏳ Manual testing plan created in manual-test-results.md (requires

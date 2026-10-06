@@ -13,13 +13,13 @@
 1. Start development environment:
 
    ```bash
-   scripts/dev-stack up
+   docker compose -f dev.docker-compose.yml up -d
    ```
 
 2. Ensure database contains 100,000+ sample storage assignments for performance
    testing
 
-3. Access application at: the URL reported by `scripts/dev-stack url`
+3. Access application at: `https://localhost/`
 
 4. Login as admin user
 
@@ -211,6 +211,7 @@
 
 1. **Frontend Unit Tests**: 4 pagination tests timing out in Jest (test setup
    issue, not functionality issue)
+
    - Tests need proper tab state handling
    - Functionality validated via backend integration tests
 

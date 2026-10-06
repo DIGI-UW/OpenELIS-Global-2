@@ -201,7 +201,7 @@ describe("Storage Location CRUD", () => {
     // Assert: Error shown
     cy.get('[data-testid="error-notification"]').should(
       "contain",
-      "Cannot delete",
+      "Cannot delete"
     );
   });
 });
@@ -211,20 +211,14 @@ describe("Storage Location CRUD", () => {
 
 ### Issue: Liquibase changeset not applied
 
-Inspect startup logs first; do not delete Liquibase history to force a migration.
-For code or changeset updates, rebuild through the supported launcher:
-
 ```bash
-scripts/dev-stack up
-scripts/dev-stack logs oe.openelis.org
-```
+# Force Liquibase update
+docker compose -f dev.docker-compose.yml exec db psql -U clinlims -c \
+  "DELETE FROM databasechangelog WHERE id LIKE 'storage-151%';"
 
-If you need to replay all migrations on a disposable development database, reset
-only this checkout's data, then start again (this deletes its development data):
-
-```bash
-scripts/dev-stack down --volumes --yes
-scripts/dev-stack up
+# Rebuild and restart
+mvn clean install -DskipTests -Dmaven.test.skip=true
+docker compose -f dev.docker-compose.yml up -d --force-recreate oe.openelis.org
 ```
 
 ### Issue: FHIR sync failing
