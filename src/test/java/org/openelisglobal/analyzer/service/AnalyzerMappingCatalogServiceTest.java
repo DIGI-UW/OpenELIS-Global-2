@@ -15,6 +15,7 @@ import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -38,13 +39,15 @@ public class AnalyzerMappingCatalogServiceTest {
     private TypeOfSampleService sampleTypes;
     @Mock
     private TypeOfSampleTestService sampleTypeTests;
+    @Mock
+    private TestResultComponentService componentService;
 
     private AnalyzerMappingCatalogService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerMappingCatalogServiceImpl(testService, testResultService, terminologyService,
-                dictionaryService, sampleTypes, sampleTypeTests);
+                dictionaryService, sampleTypes, sampleTypeTests, componentService);
     }
 
     @Test

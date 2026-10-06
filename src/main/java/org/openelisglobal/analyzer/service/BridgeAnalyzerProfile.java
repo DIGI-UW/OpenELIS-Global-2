@@ -69,20 +69,16 @@ public final class BridgeAnalyzerProfile {
         for (JsonNode mapping : document.path("default_test_mappings")) {
             String analyzerCode = requiredText(mapping, "test_code");
             List<String> aliases = textList(mapping.path("aliases"), "profile analyzer alias");
-            List<String> values = new ArrayList<>();
-            for (JsonNode value : mapping.path("values")) {
-                if (!value.isTextual() || value.asText().isBlank()) {
-                    throw new IllegalArgumentException("Bridge analyzer profile result value must be nonblank text");
-                }
-                values.add(value.asText());
-            }
+            List<String> values = values(mapping.path("values"));
             JsonNode coding = mapping.path("normalized_coding");
             NormalizedCoding normalizedCoding = coding.isMissingNode() || coding.isNull() ? null
                     : new NormalizedCoding(requiredText(coding, "system"), requiredText(coding, "code"),
                             nullableText(coding, "display"));
             tests.add(new TestDefinition(analyzerCode, aliases, nullableText(mapping, "test_name_hint"),
                     requiredText(mapping, "loinc"), nullableText(mapping, "unit"), nullableText(mapping, "result_type"),
-                    values, normalizedCoding, valueCodes(mapping.path("value_codes"), values)));
+                    values, normalizedCoding, valueCodes(mapping.path("value_codes"), values),
+                    nullableText(mapping, "call_component"), components(mapping.path("components")),
+                    translations(mapping.path("translations"), values)));
         }
 
         JsonNode lineage = catalog.path("lineage");
@@ -210,14 +206,94 @@ public final class BridgeAnalyzerProfile {
         return Map.copyOf(result);
     }
 
+    /**
+     * A profile test. Its values belong to its main record; when it names a
+     * {@code callComponent}, those values are the main record's call and land on
+     * that component. Each component with a sub-identity receives one more record
+     * of the test.
+     */
     public record TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc,
             String unit, String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
-            Map<String, NormalizedCoding> valueCodes) {
+            Map<String, NormalizedCoding> valueCodes, String callComponent, List<ComponentDefinition> components,
+            Map<String, List<String>> translations) {
         public TestDefinition {
+            translations = translations == null ? Map.of() : Map.copyOf(translations);
             valueCodes = valueCodes == null ? Map.of() : Map.copyOf(valueCodes);
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
             resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);
+            components = components == null ? List.of() : List.copyOf(components);
         }
+
+        public TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc, String unit,
+                String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
+                Map<String, NormalizedCoding> valueCodes) {
+            this(analyzerCode, aliases, testNameHint, loinc, unit, resultType, resultValues, normalizedCoding,
+                    valueCodes, null, List.of(), Map.of());
+        }
+
+        /** The components that receive a record of their own, in profile order. */
+        public List<ComponentDefinition> recordComponents() {
+            return components.stream().filter(component -> component.subIdentity() != null).toList();
+        }
+    }
+
+    /**
+     * A component the profile declares for a test, named by the stable code a local
+     * component carries; {@code subIdentity} is the record it receives, in the
+     * vendor's sub-ID notation (HIV-1&Ct), or null for the call component.
+     */
+    public record ComponentDefinition(String code, String label, String resultType, String unit, String subIdentity,
+            List<String> resultValues, Map<String, NormalizedCoding> valueCodes,
+            Map<String, List<String>> translations) {
+        public ComponentDefinition {
+            resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);
+            valueCodes = valueCodes == null ? Map.of() : Map.copyOf(valueCodes);
+            translations = translations == null ? Map.of() : Map.copyOf(translations);
+        }
+    }
+
+    /**
+     * The vendor's translations of declared values (Cepheid 303-0251 §3): each key
+     * a declared value, each entry the same result in another language.
+     */
+    private static Map<String, List<String>> translations(JsonNode node, List<String> values) {
+        if (node.isMissingNode() || node.isNull()) {
+            return Map.of();
+        }
+        if (!node.isObject()) {
+            throw new IllegalArgumentException("Bridge analyzer translations must be an object");
+        }
+        Map<String, List<String>> result = new LinkedHashMap<>();
+        node.fields().forEachRemaining(entry -> {
+            if (!values.contains(entry.getKey())) {
+                throw new IllegalArgumentException("Bridge analyzer translation must name a declared raw value");
+            }
+            result.put(entry.getKey(), values(entry.getValue()));
+        });
+        return result;
+    }
+
+    private static List<String> values(JsonNode node) {
+        List<String> values = new ArrayList<>();
+        for (JsonNode value : node) {
+            if (!value.isTextual() || value.asText().isBlank()) {
+                throw new IllegalArgumentException("Bridge analyzer profile result value must be nonblank text");
+            }
+            values.add(value.asText());
+        }
+        return values;
+    }
+
+    private static List<ComponentDefinition> components(JsonNode node) {
+        List<ComponentDefinition> components = new ArrayList<>();
+        for (JsonNode component : node) {
+            List<String> values = values(component.path("values"));
+            components.add(new ComponentDefinition(requiredText(component, "code"), nullableText(component, "label"),
+                    nullableText(component, "result_type"), nullableText(component, "unit"),
+                    nullableText(component, "sub_identity"), values, valueCodes(component.path("value_codes"), values),
+                    translations(component.path("translations"), values)));
+        }
+        return components;
     }
 
     public record NormalizedCoding(String system, String code, String display) {

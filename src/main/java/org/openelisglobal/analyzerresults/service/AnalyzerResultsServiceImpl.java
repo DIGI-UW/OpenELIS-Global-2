@@ -174,6 +174,7 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
                         && sameText(previous.getSourceProfileId(), incoming.getSourceProfileId())
                         && Objects.equals(previous.getSourceProfileRevision(), incoming.getSourceProfileRevision())
                         && sameText(previous.getRawTestCode(), incoming.getRawTestCode())
+                        && Objects.equals(previous.getRawSubIdentity(), incoming.getRawSubIdentity())
                         && sameText(previous.getRawResultValue(), incoming.getRawResultValue()))
                 .findFirst().orElse(null);
     }

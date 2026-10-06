@@ -38,11 +38,65 @@ public class AnalyzerMappingDefaults {
         List<AnalyzerMappingResultDraft> results = new ArrayList<>();
         for (var definition : profile.testDefinitions()) {
             TestResolution resolution = resolve(definition, active);
-            tests.add(resolution.draft());
-            for (String raw : definition.resultValues()) {
-                results.add(resolution.options() == null
-                        ? unresolvedAnswer(definition, raw, resolution.draft().unresolvedReason())
-                        : resolveAnswer(definition, raw, resolution.options()));
+            if (resolution.options() == null) {
+                AnalyzerUnresolvedReason reason = resolution.draft().unresolvedReason();
+                tests.add(resolution.draft());
+                definition.resultValues().forEach(raw -> results
+                        .addAll(translated(unresolvedAnswer(definition, raw, reason), definition.translations())));
+                for (var component : definition.recordComponents()) {
+                    tests.add(unresolvedRecord(definition, component, reason));
+                    component.resultValues()
+                            .forEach(raw -> results.addAll(translated(
+                                    unresolvedAnswer(definition.analyzerCode(), component.subIdentity(), raw, reason),
+                                    component.translations())));
+                }
+                continue;
+            }
+            String testId = resolution.draft().testId();
+            List<AnalyzerMappingCatalogService.ComponentOption> components = definition.components().isEmpty()
+                    ? List.of()
+                    : catalog.getActiveComponents(testId);
+
+            String callTarget = definition.callComponent() == null ? null
+                    : componentId(components, definition.callComponent());
+            if (definition.callComponent() != null && callTarget == null) {
+                tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.UNRESOLVED, null,
+                        AnalyzerUnresolvedReason.NO_MATCH));
+                definition.resultValues()
+                        .forEach(raw -> results
+                                .addAll(translated(unresolvedAnswer(definition, raw, AnalyzerUnresolvedReason.NO_MATCH),
+                                        definition.translations())));
+            } else {
+                tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND, testId,
+                        null, null, null, "", callTarget));
+                var mainOptions = callTarget == null ? resolution.options()
+                        : optionsOf(resolution.options(), callTarget);
+                definition.resultValues().forEach(raw -> results
+                        .addAll(translated(resolveAnswer(definition, raw, mainOptions), definition.translations())));
+            }
+
+            for (var component : definition.recordComponents()) {
+                String componentId = componentId(components, component.code());
+                if (componentId == null) {
+                    tests.add(unresolvedRecord(definition, component, AnalyzerUnresolvedReason.NO_MATCH));
+                    component.resultValues()
+                            .forEach(
+                                    raw -> results
+                                            .addAll(translated(
+                                                    unresolvedAnswer(definition.analyzerCode(), component.subIdentity(),
+                                                            raw, AnalyzerUnresolvedReason.NO_MATCH),
+                                                    component.translations())));
+                    continue;
+                }
+                tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND, testId,
+                        componentId, null, null, component.subIdentity(), null));
+                var componentOptions = optionsOf(resolution.options(), componentId);
+                component.resultValues()
+                        .forEach(
+                                raw -> results.addAll(translated(
+                                        resolveAnswer(definition.analyzerCode(), component.subIdentity(),
+                                                component.valueCodes(), raw, componentOptions),
+                                        component.translations())));
             }
         }
         return new AnalyzerMappingDraft(tests, results);
@@ -60,19 +114,60 @@ public class AnalyzerMappingDefaults {
      */
     public AnalyzerMappingResultDraft resolveAnswer(BridgeAnalyzerProfile.TestDefinition definition, String rawValue,
             List<AnalyzerMappingCatalogService.ResultOption> options) {
-        BridgeAnalyzerProfile.NormalizedCoding coding = definition.valueCodes().get(rawValue);
+        return resolveAnswer(definition.analyzerCode(), "", definition.valueCodes(), rawValue, options);
+    }
+
+    /**
+     * Resolves one declared answer of a record against the options of the component
+     * it lands on.
+     */
+    public AnalyzerMappingResultDraft resolveAnswer(String code, String subIdentity,
+            Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes, String rawValue,
+            List<AnalyzerMappingCatalogService.ResultOption> options) {
+        BridgeAnalyzerProfile.NormalizedCoding coding = valueCodes.get(rawValue);
         if (coding == null) {
-            return unresolvedAnswer(definition, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
+            return unresolvedAnswer(code, subIdentity, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
         }
         var matches = options.stream().filter(option -> sameCode(option.answerCode(), coding.code())).toList();
         if (matches.size() > 1) {
-            return unresolvedAnswer(definition, rawValue, AnalyzerUnresolvedReason.AMBIGUOUS);
+            return unresolvedAnswer(code, subIdentity, rawValue, AnalyzerUnresolvedReason.AMBIGUOUS);
         }
         if (matches.isEmpty()) {
-            return unresolvedAnswer(definition, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
+            return unresolvedAnswer(code, subIdentity, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
         }
-        return new AnalyzerMappingResultDraft(definition.analyzerCode(), rawValue, AnalyzerMappingState.BOUND,
-                matches.get(0).id());
+        return new AnalyzerMappingResultDraft(code, rawValue, AnalyzerMappingState.BOUND, matches.get(0).id(), null,
+                null, subIdentity);
+    }
+
+    /**
+     * A declared value's row, followed by one row per translation of it carrying
+     * the same decision, so an instrument binds whatever language it runs.
+     */
+    private static List<AnalyzerMappingResultDraft> translated(AnalyzerMappingResultDraft row,
+            Map<String, List<String>> translations) {
+        List<AnalyzerMappingResultDraft> rows = new ArrayList<>();
+        rows.add(row);
+        for (String text : translations.getOrDefault(row.rawValue(), List.of())) {
+            rows.add(new AnalyzerMappingResultDraft(row.sourceRowKey(), text, row.mappingState(), row.testResultId(),
+                    row.unresolvedReason(), row.origin(), row.subIdentity()));
+        }
+        return rows;
+    }
+
+    private static String componentId(List<AnalyzerMappingCatalogService.ComponentOption> components, String code) {
+        var matches = components.stream().filter(component -> code.equals(component.code())).toList();
+        return matches.size() == 1 ? matches.get(0).id() : null;
+    }
+
+    private static List<AnalyzerMappingCatalogService.ResultOption> optionsOf(
+            List<AnalyzerMappingCatalogService.ResultOption> options, String componentId) {
+        return options.stream().filter(option -> componentId.equals(option.componentId())).toList();
+    }
+
+    private static AnalyzerMappingTestDraft unresolvedRecord(BridgeAnalyzerProfile.TestDefinition definition,
+            BridgeAnalyzerProfile.ComponentDefinition component, AnalyzerUnresolvedReason reason) {
+        return new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.UNRESOLVED, null, null,
+                reason, null, component.subIdentity(), null);
     }
 
     private TestResolution resolve(BridgeAnalyzerProfile.TestDefinition definition,
@@ -103,7 +198,9 @@ public class AnalyzerMappingDefaults {
 
     private boolean canHold(BridgeAnalyzerProfile.TestDefinition definition,
             AnalyzerMappingCatalogService.TestOption test, List<AnalyzerMappingCatalogService.ResultOption> options) {
-        boolean categorical = !definition.resultValues().isEmpty()
+        // With a call component, the test's values are the call's and live on that
+        // component; the test itself holds the number.
+        boolean categorical = !definition.resultValues().isEmpty() && definition.callComponent() == null
                 || "qualitative".equalsIgnoreCase(definition.resultType());
         boolean numeric = "quantitative".equalsIgnoreCase(definition.resultType());
         if (categorical && options.isEmpty()) {
@@ -122,8 +219,13 @@ public class AnalyzerMappingDefaults {
 
     private static AnalyzerMappingResultDraft unresolvedAnswer(BridgeAnalyzerProfile.TestDefinition definition,
             String rawValue, AnalyzerUnresolvedReason reason) {
-        return new AnalyzerMappingResultDraft(definition.analyzerCode(), rawValue, AnalyzerMappingState.UNRESOLVED,
-                null, reason);
+        return unresolvedAnswer(definition.analyzerCode(), "", rawValue, reason);
+    }
+
+    private static AnalyzerMappingResultDraft unresolvedAnswer(String code, String subIdentity, String rawValue,
+            AnalyzerUnresolvedReason reason) {
+        return new AnalyzerMappingResultDraft(code, rawValue, AnalyzerMappingState.UNRESOLVED, null, reason, null,
+                subIdentity);
     }
 
     /**

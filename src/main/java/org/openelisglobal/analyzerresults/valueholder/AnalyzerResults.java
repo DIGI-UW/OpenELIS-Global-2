@@ -142,6 +142,10 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "raw_test_code", length = 255)
     private String rawTestCode;
 
+    /** Empty for a test's main record. */
+    @Column(name = "raw_sub_identity", length = 255, nullable = false)
+    private String rawSubIdentity = "";
+
     @Column(name = "raw_result_value", columnDefinition = "TEXT")
     private String rawResultValue;
 
@@ -274,6 +278,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setRawTestCode(String rawTestCode) {
         this.rawTestCode = rawTestCode;
+    }
+
+    public String getRawSubIdentity() {
+        return rawSubIdentity;
+    }
+
+    public void setRawSubIdentity(String rawSubIdentity) {
+        this.rawSubIdentity = rawSubIdentity == null ? "" : rawSubIdentity;
     }
 
     public String getRawResultValue() {

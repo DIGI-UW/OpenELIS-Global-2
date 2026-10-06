@@ -20,6 +20,8 @@ public class AnalyzerMappingDefaultsTest {
     private static final String LOINC = "11111-1";
     private static final String DETECTED = "LA11111-1";
     private static final String NOT_DETECTED = "LA22222-2";
+    private static final String INVALID = "LA15841-2";
+    private static final String POSITIVE = "LA6576-8";
 
     private final AnalyzerMappingCatalogService catalog = mock(AnalyzerMappingCatalogService.class);
     private final TestResultService testResults = mock(TestResultService.class);
@@ -172,6 +174,129 @@ public class AnalyzerMappingDefaultsTest {
         assertEquals(AnalyzerMappingState.BOUND, row.mappingState());
         assertEquals("21", row.testResultId());
         assertEquals("RAW-A", row.sourceRowKey());
+    }
+
+    // Cepheid 303-0251: HIVVL reports a number and a call on its main record, a
+    // LOG record and an HIV-1 analyte record, all under HIVVL.
+    @Test
+    public void eachRecordBindsToTheLocalComponentWithItsCode() throws Exception {
+        viralLoadCatalog(List.of("call", "LOG", "HIV-1"));
+
+        var draft = defaults.resolve(viralLoadProfile());
+
+        var main = row(draft, "");
+        assertEquals(AnalyzerMappingState.BOUND, main.mappingState());
+        assertEquals("1", main.testId());
+        assertNull("the number goes on the test itself", main.componentId());
+        assertEquals("comp-call", main.callComponentId());
+        assertEquals("comp-LOG", row(draft, "&LOG").componentId());
+        assertEquals("comp-HIV-1", row(draft, "HIV-1").componentId());
+        assertEquals("opt-call-DETECTED", answer(draft, "", "DETECTED").testResultId());
+        assertEquals("opt-HIV-1-POS", answer(draft, "HIV-1", "POS").testResultId());
+    }
+
+    @Test
+    public void aMainRecordWhoseCallComponentIsMissingStaysUnresolved() throws Exception {
+        viralLoadCatalog(List.of("LOG", "HIV-1"));
+
+        var draft = defaults.resolve(viralLoadProfile());
+
+        var main = row(draft, "");
+        assertEquals("a call must never land on the number", AnalyzerMappingState.UNRESOLVED, main.mappingState());
+        assertEquals(AnalyzerUnresolvedReason.NO_MATCH, main.unresolvedReason());
+        assertEquals(AnalyzerMappingState.BOUND, row(draft, "&LOG").mappingState());
+    }
+
+    @Test
+    public void aRecordWhoseComponentIsMissingStaysUnresolvedAlone() throws Exception {
+        viralLoadCatalog(List.of("call", "HIV-1"));
+
+        var draft = defaults.resolve(viralLoadProfile());
+
+        assertEquals(AnalyzerMappingState.UNRESOLVED, row(draft, "&LOG").mappingState());
+        assertEquals(AnalyzerUnresolvedReason.NO_MATCH, row(draft, "&LOG").unresolvedReason());
+        assertEquals(AnalyzerMappingState.BOUND, row(draft, "").mappingState());
+        assertEquals(AnalyzerMappingState.BOUND, row(draft, "HIV-1").mappingState());
+    }
+
+    @Test
+    public void anAnswerBindsOnlyToAnOptionOfItsOwnComponent() throws Exception {
+        viralLoadCatalog(List.of("call", "LOG", "HIV-1"));
+
+        var draft = defaults.resolve(viralLoadProfile());
+
+        assertEquals("opt-call-INVALID", answer(draft, "", "INVALID").testResultId());
+        assertEquals("opt-HIV-1-INVALID", answer(draft, "HIV-1", "INVALID").testResultId());
+    }
+
+    // Cepheid 303-0251 §3: a French-language instrument sends NON DÉTECTÉ for NOT
+    // DETECTED.
+    @Test
+    public void aTranslatedValueBindsToTheSameAnswerAsItsValue() throws Exception {
+        viralLoadCatalog(List.of("call", "LOG", "HIV-1"));
+
+        var draft = defaults.resolve(viralLoadProfile());
+
+        assertEquals("opt-call-NOT DETECTED", answer(draft, "", "NOT DETECTED").testResultId());
+        assertEquals("opt-call-NOT DETECTED", answer(draft, "", "NON DÉTECTÉ").testResultId());
+        assertEquals(AnalyzerMappingState.BOUND, answer(draft, "", "NON DÉTECTÉ").mappingState());
+    }
+
+    private void viralLoadCatalog(List<String> componentCodes) {
+        when(catalog.getActiveComponents("1")).thenReturn(componentCodes.stream()
+                .map(code -> new AnalyzerMappingCatalogService.ComponentOption("comp-" + code, code)).toList());
+        TestResult number = new TestResult();
+        number.setTestResultType("N");
+        when(testResults.getActiveTestResultsByTest("1")).thenReturn(List.of(number));
+        when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
+                option("call", "DETECTED", DETECTED), option("call", "NOT DETECTED", NOT_DETECTED),
+                option("call", "INVALID", INVALID), option("HIV-1", "POS", POSITIVE),
+                option("HIV-1", "INVALID", INVALID)));
+    }
+
+    private static AnalyzerMappingCatalogService.ResultOption option(String component, String value, String code) {
+        return new AnalyzerMappingCatalogService.ResultOption("opt-" + component + "-" + value, value, value, code,
+                "comp-" + component);
+    }
+
+    private BridgeAnalyzerProfile viralLoadProfile() throws Exception {
+        var mapper = new ObjectMapper();
+        var document = mapper.createObjectNode();
+        document.putObject("profileMeta").put("id", "fixture.records").put("displayName", "Viral load records");
+        document.putObject("catalog").put("revision", 1).put("revisionFingerprint", "sha256:" + "b".repeat(64))
+                .put("source", "SHIPPED").put("status", "ACTIVE");
+        document.putObject("protocol").put("name", "ASTM");
+        var test = document.putArray("default_test_mappings").addObject();
+        test.put("test_code", "HIVVL").put("loinc", LOINC).put("result_type", "quantitative").put("unit", "copies/mL")
+                .put("call_component", "call");
+        test.putArray("values").add("DETECTED").add("NOT DETECTED").add("INVALID");
+        var mainCodes = test.putObject("value_codes");
+        mainCodes.putObject("DETECTED").put("system", "http://loinc.org").put("code", DETECTED);
+        mainCodes.putObject("NOT DETECTED").put("system", "http://loinc.org").put("code", NOT_DETECTED);
+        mainCodes.putObject("INVALID").put("system", "http://loinc.org").put("code", INVALID);
+        test.putObject("translations").putArray("NOT DETECTED").add("NON DÉTECTÉ");
+        var components = test.putArray("components");
+        components.addObject().put("code", "call").put("result_type", "qualitative");
+        components.addObject().put("code", "LOG").put("sub_identity", "&LOG").put("result_type", "quantitative")
+                .put("unit", "log copies/mL");
+        var analyte = components.addObject().put("code", "HIV-1").put("sub_identity", "HIV-1").put("result_type",
+                "qualitative");
+        analyte.putArray("values").add("POS").add("INVALID");
+        var analyteCodes = analyte.putObject("value_codes");
+        analyteCodes.putObject("POS").put("system", "http://loinc.org").put("code", POSITIVE);
+        analyteCodes.putObject("INVALID").put("system", "http://loinc.org").put("code", INVALID);
+        return BridgeAnalyzerProfile.from(document);
+    }
+
+    private static AnalyzerMappingTestDraft row(AnalyzerMappingDraft draft, String subIdentity) {
+        return draft.tests().stream().filter(row -> subIdentity.equals(row.subIdentity())).findFirst()
+                .orElseThrow(() -> new AssertionError("no row for '" + subIdentity + "'"));
+    }
+
+    private static AnalyzerMappingResultDraft answer(AnalyzerMappingDraft draft, String subIdentity, String value) {
+        return draft.results().stream()
+                .filter(row -> subIdentity.equals(row.subIdentity()) && value.equals(row.rawValue())).findFirst()
+                .orElseThrow(() -> new AssertionError("no answer row for '" + subIdentity + "' " + value));
     }
 
     private static Map<String, String> codes(String... pairs) {

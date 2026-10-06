@@ -369,6 +369,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setSourceProtocol(contract.sourceProtocol());
         row.setSourceTransport(result.sourceTransport());
         row.setRawTestCode(result.rawTestCode());
+        row.setRawSubIdentity(result.subIdentity());
         row.setRawResultValue(result.rawValue());
         row.setResultClassification(result.classification());
         row.setRecognitionMode(result.recognitionMode());
