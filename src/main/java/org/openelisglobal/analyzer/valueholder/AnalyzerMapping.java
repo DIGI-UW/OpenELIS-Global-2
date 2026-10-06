@@ -19,8 +19,13 @@ import org.hibernate.annotations.Parameter;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
+/**
+ * One analyzer's mapping of a pinned profile revision to the local catalog, as
+ * an append-only revision. The analyzer's current revision is the one in force;
+ * a newer revision is a draft until it is confirmed and applied.
+ */
 @Entity
-@Table(name = "analyzer_site_binding_revision", schema = "clinlims")
+@Table(name = "analyzer_mapping", schema = "clinlims")
 @DynamicUpdate
 public class AnalyzerMapping extends BaseObject<String> {
 
@@ -28,26 +33,37 @@ public class AnalyzerMapping extends BaseObject<String> {
 
     @Id
     @Column(name = "id", precision = 10, scale = 0)
-    @GeneratedValue(generator = "analyzer_site_binding_revision_seq_gen")
-    @GenericGenerator(name = "analyzer_site_binding_revision_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "analyzer_site_binding_revision_seq"))
+    @GeneratedValue(generator = "analyzer_mapping_seq_gen")
+    @GenericGenerator(name = "analyzer_mapping_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "analyzer_mapping_seq"))
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "site_binding_id", nullable = false, updatable = false)
-    private AnalyzerSiteBinding siteBinding;
+    @JoinColumn(name = "analyzer_id", nullable = false, updatable = false)
+    private Analyzer analyzer;
 
     @Min(1)
     @Column(name = "revision_number", nullable = false, updatable = false)
     private int revisionNumber;
 
+    @Column(name = "profile_id", length = 128, nullable = false, updatable = false)
+    private String profileId;
+
+    @Min(1)
+    @Column(name = "profile_revision", nullable = false, updatable = false)
+    private int profileRevision;
+
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
-    @Column(name = "binding_fingerprint", length = 71, nullable = false, updatable = false)
-    private String bindingFingerprint;
+    @Column(name = "profile_fingerprint", length = 71, nullable = false, updatable = false)
+    private String profileFingerprint;
+
+    @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
+    @Column(name = "mapping_fingerprint", length = 71, nullable = false, updatable = false)
+    private String mappingFingerprint;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "supersedes_revision_id", updatable = false)
-    private AnalyzerMapping supersedesRevision;
+    @JoinColumn(name = "supersedes_mapping_id", updatable = false)
+    private AnalyzerMapping supersedes;
 
     @Column(name = "created_by", length = 36, nullable = false, updatable = false)
     private String createdBy;
@@ -72,12 +88,12 @@ public class AnalyzerMapping extends BaseObject<String> {
         this.id = id;
     }
 
-    public AnalyzerSiteBinding getSiteBinding() {
-        return siteBinding;
+    public Analyzer getAnalyzer() {
+        return analyzer;
     }
 
-    public void setSiteBinding(AnalyzerSiteBinding siteBinding) {
-        this.siteBinding = siteBinding;
+    public void setAnalyzer(Analyzer analyzer) {
+        this.analyzer = analyzer;
     }
 
     public int getRevisionNumber() {
@@ -88,20 +104,48 @@ public class AnalyzerMapping extends BaseObject<String> {
         this.revisionNumber = revisionNumber;
     }
 
-    public String getBindingFingerprint() {
-        return bindingFingerprint;
+    public String getProfileId() {
+        return profileId;
     }
 
-    public void setBindingFingerprint(String bindingFingerprint) {
-        this.bindingFingerprint = bindingFingerprint;
+    public void setProfileId(String profileId) {
+        this.profileId = profileId;
     }
 
-    public AnalyzerMapping getSupersedesRevision() {
-        return supersedesRevision;
+    public int getProfileRevision() {
+        return profileRevision;
     }
 
-    public void setSupersedesRevision(AnalyzerMapping supersedesRevision) {
-        this.supersedesRevision = supersedesRevision;
+    public void setProfileRevision(int profileRevision) {
+        this.profileRevision = profileRevision;
+    }
+
+    public String getProfileFingerprint() {
+        return profileFingerprint;
+    }
+
+    public void setProfileFingerprint(String profileFingerprint) {
+        this.profileFingerprint = profileFingerprint;
+    }
+
+    public AnalyzerProfilePin getProfilePin() {
+        return new AnalyzerProfilePin(profileId, profileRevision, profileFingerprint);
+    }
+
+    public String getMappingFingerprint() {
+        return mappingFingerprint;
+    }
+
+    public void setMappingFingerprint(String mappingFingerprint) {
+        this.mappingFingerprint = mappingFingerprint;
+    }
+
+    public AnalyzerMapping getSupersedes() {
+        return supersedes;
+    }
+
+    public void setSupersedes(AnalyzerMapping supersedes) {
+        this.supersedes = supersedes;
     }
 
     public String getCreatedBy() {

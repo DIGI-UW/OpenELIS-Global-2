@@ -11,11 +11,12 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.MapsId;
 import jakarta.persistence.Table;
+import org.openelisglobal.analyzer.service.AnalyzerUnresolvedReason;
 import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
-@Table(name = "analyzer_site_binding_result", schema = "clinlims")
+@Table(name = "analyzer_mapping_result", schema = "clinlims")
 public class AnalyzerMappingResult extends BaseObject<AnalyzerMappingResultPK> {
 
     private static final long serialVersionUID = 1L;
@@ -23,18 +24,26 @@ public class AnalyzerMappingResult extends BaseObject<AnalyzerMappingResultPK> {
     @EmbeddedId
     private AnalyzerMappingResultPK id;
 
-    @MapsId("siteBindingRevisionId")
+    @MapsId("mappingId")
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "site_binding_revision_id", nullable = false, updatable = false)
-    private AnalyzerMapping siteBindingRevision;
+    @JoinColumn(name = "mapping_id", nullable = false, updatable = false)
+    private AnalyzerMapping mapping;
 
     @Enumerated(EnumType.STRING)
     @Column(name = "mapping_state", length = 20, nullable = false, updatable = false)
     private AnalyzerMappingState mappingState;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "origin", length = 10, nullable = false, updatable = false)
+    private AnalyzerMappingOrigin origin = AnalyzerMappingOrigin.DEFAULT;
+
     @Column(name = "test_result_id")
     @Convert(converter = StringToIntegerConverter.class)
     private String testResultId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "unresolved_reason", length = 12)
+    private AnalyzerUnresolvedReason unresolvedReason;
 
     @Override
     public AnalyzerMappingResultPK getId() {
@@ -48,15 +57,15 @@ public class AnalyzerMappingResult extends BaseObject<AnalyzerMappingResultPK> {
 
     @Override
     public String getStringId() {
-        return id == null ? null : id.getSiteBindingRevisionId() + ":" + id.getSourceRowKey() + ":" + id.getRawValue();
+        return id == null ? null : id.getMappingId() + ":" + id.getSourceRowKey() + ":" + id.getRawValue();
     }
 
-    public AnalyzerMapping getSiteBindingRevision() {
-        return siteBindingRevision;
+    public AnalyzerMapping getMapping() {
+        return mapping;
     }
 
-    public void setSiteBindingRevision(AnalyzerMapping siteBindingRevision) {
-        this.siteBindingRevision = siteBindingRevision;
+    public void setMapping(AnalyzerMapping mapping) {
+        this.mapping = mapping;
     }
 
     public AnalyzerMappingState getMappingState() {
@@ -65,6 +74,22 @@ public class AnalyzerMappingResult extends BaseObject<AnalyzerMappingResultPK> {
 
     public void setMappingState(AnalyzerMappingState mappingState) {
         this.mappingState = mappingState;
+    }
+
+    public AnalyzerMappingOrigin getOrigin() {
+        return origin;
+    }
+
+    public void setOrigin(AnalyzerMappingOrigin origin) {
+        this.origin = origin;
+    }
+
+    public AnalyzerUnresolvedReason getUnresolvedReason() {
+        return unresolvedReason;
+    }
+
+    public void setUnresolvedReason(AnalyzerUnresolvedReason unresolvedReason) {
+        this.unresolvedReason = unresolvedReason;
     }
 
     public String getTestResultId() {

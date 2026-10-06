@@ -22,7 +22,7 @@ import org.openelisglobal.common.valueholder.BaseObject;
 import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
-@Table(name = "analyzer_site_binding_confirmation", schema = "clinlims")
+@Table(name = "analyzer_mapping_confirmation", schema = "clinlims")
 @DynamicUpdate
 public class AnalyzerMappingConfirmation extends BaseObject<String> {
 
@@ -30,14 +30,14 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
 
     @Id
     @Column(name = "id", precision = 10, scale = 0)
-    @GeneratedValue(generator = "analyzer_site_binding_confirmation_seq_gen")
-    @GenericGenerator(name = "analyzer_site_binding_confirmation_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "analyzer_site_binding_confirmation_seq"))
+    @GeneratedValue(generator = "analyzer_mapping_confirmation_seq_gen")
+    @GenericGenerator(name = "analyzer_mapping_confirmation_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = @Parameter(name = "sequence_name", value = "analyzer_mapping_confirmation_seq"))
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String id;
 
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "site_binding_revision_id", nullable = false, updatable = false)
-    private AnalyzerMapping siteBindingRevision;
+    @JoinColumn(name = "mapping_id", nullable = false, updatable = false)
+    private AnalyzerMapping mapping;
 
     @Column(name = "profile_id", length = 128, nullable = false, updatable = false)
     private String profileId;
@@ -51,8 +51,8 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
     private String profileRevisionFingerprint;
 
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
-    @Column(name = "binding_fingerprint", length = 71, nullable = false, updatable = false)
-    private String bindingFingerprint;
+    @Column(name = "mapping_fingerprint", length = 71, nullable = false, updatable = false)
+    private String mappingFingerprint;
 
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
     @Column(name = "recognition_fingerprint", length = 71, nullable = false, updatable = false)
@@ -91,12 +91,12 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
         this.id = id;
     }
 
-    public AnalyzerMapping getSiteBindingRevision() {
-        return siteBindingRevision;
+    public AnalyzerMapping getMapping() {
+        return mapping;
     }
 
-    public void setSiteBindingRevision(AnalyzerMapping siteBindingRevision) {
-        this.siteBindingRevision = siteBindingRevision;
+    public void setMapping(AnalyzerMapping mapping) {
+        this.mapping = mapping;
     }
 
     public String getProfileId() {
@@ -123,12 +123,12 @@ public class AnalyzerMappingConfirmation extends BaseObject<String> {
         this.profileRevisionFingerprint = profileRevisionFingerprint;
     }
 
-    public String getBindingFingerprint() {
-        return bindingFingerprint;
+    public String getMappingFingerprint() {
+        return mappingFingerprint;
     }
 
-    public void setBindingFingerprint(String bindingFingerprint) {
-        this.bindingFingerprint = bindingFingerprint;
+    public void setMappingFingerprint(String mappingFingerprint) {
+        this.mappingFingerprint = mappingFingerprint;
     }
 
     public String getRecognitionFingerprint() {

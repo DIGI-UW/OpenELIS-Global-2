@@ -63,10 +63,10 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     }
 
     @Override
-    public AnalyzerInstanceView selectSiteBindingRevision(String analyzerId, String siteBindingId, int revision,
-            String bindingFingerprint, String actor) {
-        AnalyzerInstanceState state = localStateService.selectSiteBindingRevision(analyzerId, siteBindingId, revision,
-                bindingFingerprint, actor);
+    public AnalyzerInstanceView applyMapping(String analyzerId, String mappingId, int revision,
+            String mappingFingerprint, String actor) {
+        AnalyzerInstanceState state = localStateService.applyMapping(analyzerId, mappingId, revision,
+                mappingFingerprint, actor);
         return compose(state);
     }
 

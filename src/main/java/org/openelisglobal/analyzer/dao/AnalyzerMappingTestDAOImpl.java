@@ -20,12 +20,11 @@ public class AnalyzerMappingTestDAOImpl extends BaseDAOImpl<AnalyzerMappingTest,
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerMappingTest> findByRevisionId(String revisionId) {
-        String hql = "FROM AnalyzerMappingTest t WHERE t.siteBindingRevision.id = :revisionId "
-                + "ORDER BY t.id.sourceRowKey";
+    public List<AnalyzerMappingTest> findByMappingId(String mappingId) {
+        String hql = "FROM AnalyzerMappingTest t WHERE t.mapping.id = :mappingId " + "ORDER BY t.id.sourceRowKey";
         Query<AnalyzerMappingTest> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerMappingTest.class);
-        query.setParameter("revisionId", revisionId);
+        query.setParameter("mappingId", mappingId);
         return query.getResultList();
     }
 }

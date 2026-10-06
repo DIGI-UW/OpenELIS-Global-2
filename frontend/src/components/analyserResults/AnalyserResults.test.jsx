@@ -63,6 +63,7 @@ const renderResults = (
   const history = createMemoryHistory({
     initialEntries: ["/AnalyzerResults?id=2001"],
   });
+  const addNotification = vi.fn();
   const view = render(
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
@@ -72,7 +73,7 @@ const renderResults = (
           <NotificationContext.Provider
             value={{
               setNotificationVisible: vi.fn(),
-              addNotification: vi.fn(),
+              addNotification,
             }}
           >
             <AnalyserResults
@@ -85,7 +86,7 @@ const renderResults = (
       </IntlProvider>
     </Router>,
   );
-  return { ...view, history };
+  return { ...view, history, addNotification };
 };
 
 const matched = (id, group, extra = {}) => ({
@@ -207,7 +208,7 @@ describe("AnalyserResults", () => {
     );
   });
 
-  it("keeps a held qualitative result visible and links it to the shared mapping editor", async () => {
+  it("keeps a held qualitative result visible and links it to the analyzer's own mapping", async () => {
     renderResults();
 
     expect(await screen.findByText("Held")).toBeInTheDocument();
@@ -215,10 +216,10 @@ describe("AnalyserResults", () => {
     expect(screen.getByText("Analyzer code: QUAL_RESULT")).toBeInTheDocument();
 
     expect(
-      screen.getByRole("link", { name: "Review Analyzer Type mapping" }),
+      screen.getByRole("link", { name: "Review analyzer mapping" }),
     ).toHaveAttribute(
       "href",
-      "/analyzers/types/genexpert-astm/mapping?revision=3&analyzerId=2001&returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=QUAL_RESULT&focusValue=POSITIVE",
+      "/analyzers/2001/mapping?returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=QUAL_RESULT&focusValue=POSITIVE",
     );
 
     expect(
@@ -257,12 +258,10 @@ describe("AnalyserResults", () => {
       target: { value: "Review before release" },
     });
     fireEvent.click(
-      screen.getByRole("link", { name: "Review Analyzer Type mapping" }),
+      screen.getByRole("link", { name: "Review analyzer mapping" }),
     );
 
-    expect(history.location.pathname).toBe(
-      "/analyzers/types/genexpert-astm/mapping",
-    );
+    expect(history.location.pathname).toBe("/analyzers/2001/mapping");
     expect(history.location.state.worklistDraft).toEqual({
       analyzerId: "2001",
       page: 1,
@@ -297,6 +296,103 @@ describe("AnalyserResults", () => {
     expect(submitted.resultList[0].isAccepted).toBe(true);
   });
 
+  it("explains a control held for a missing QC target and links to that test's targets", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        isControl: true,
+        importIssueReason: "qc_target_missing",
+      },
+    ]);
+    fireEvent.click(await screen.findByRole("button", { name: /QC Controls/ }));
+
+    expect(
+      await screen.findByText(/no QC target to judge it against/),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Set QC target" })).toHaveAttribute(
+      "href",
+      "/MasterListsPage/TestCatalogEditor/301/qc-targets",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("shows a failed run's instrument note and dismisses it as a failed run", async () => {
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback({ status: 200, json: async () => ({ analysisId: "50" }) }),
+    );
+    renderResults([
+      {
+        ...heldResult,
+        testId: "301",
+        rawResultValue: "ERROR",
+        importIssueReason: "run_failed",
+        instrumentNote: "Error 2008: pressure abort",
+      },
+    ]);
+
+    expect(
+      await screen.findByText(/Error 2008: pressure abort/),
+    ).toBeInTheDocument();
+    fireEvent.click(
+      screen.getByRole("button", { name: "Dismiss as failed run" }),
+    );
+
+    expect(postResults.mock.calls[0][0]).toBe(
+      "/rest/analyzer/results/1004/failed-run",
+    );
+    expect(
+      screen.queryByRole("link", { name: "Review analyzer mapping" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("reports a dismissal that never reached the server", async () => {
+    postResults.mockImplementation((_endpoint, _body, callback) =>
+      callback(undefined),
+    );
+    const { addNotification } = renderResults([
+      { ...heldResult, importIssueReason: "run_failed" },
+    ]);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Dismiss as failed run" }),
+    );
+
+    await vi.waitFor(() =>
+      expect(addNotification).toHaveBeenCalledWith(
+        expect.objectContaining({
+          kind: "error",
+          message: "The failed run could not be dismissed",
+        }),
+      ),
+    );
+  });
+
+  it("sends one dismissal while the first is still in flight", async () => {
+    postResults.mockImplementation(() => {});
+    renderResults([{ ...heldResult, importIssueReason: "run_failed" }]);
+
+    const dismiss = await screen.findByRole("button", {
+      name: "Dismiss as failed run",
+    });
+    fireEvent.click(dismiss);
+    fireEvent.click(dismiss);
+
+    expect(postResults).toHaveBeenCalledTimes(1);
+    expect(dismiss).toBeDisabled();
+  });
+
+  it("offers no failed-run dismissal for a result held for its mapping", async () => {
+    renderResults();
+
+    await screen.findByText("Held");
+    expect(
+      screen.queryByRole("button", { name: "Dismiss as failed run" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("links an unknown analyzer test to its mapping and named analyzer", () => {
     const url = buildHeldResultResolutionUrl(
       {
@@ -306,7 +402,7 @@ describe("AnalyserResults", () => {
       },
       "2001",
     );
-    expect(url).toContain("analyzerId=2001");
+    expect(url).toContain("/analyzers/2001/mapping");
     expect(url).toContain("focusTest=QUAL_RESULT");
     expect(url).not.toContain("focusValue=");
   });

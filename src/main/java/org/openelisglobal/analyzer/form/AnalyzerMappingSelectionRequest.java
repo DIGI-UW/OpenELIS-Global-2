@@ -7,21 +7,21 @@ import jakarta.validation.constraints.Pattern;
 public class AnalyzerMappingSelectionRequest {
 
     @NotBlank
-    private String siteBindingId;
+    private String mappingId;
 
     @Min(1)
     private int revision;
 
     @NotBlank
     @Pattern(regexp = "^sha256:[0-9a-f]{64}$")
-    private String bindingFingerprint;
+    private String mappingFingerprint;
 
-    public String getSiteBindingId() {
-        return siteBindingId;
+    public String getMappingId() {
+        return mappingId;
     }
 
-    public void setSiteBindingId(String siteBindingId) {
-        this.siteBindingId = siteBindingId;
+    public void setMappingId(String mappingId) {
+        this.mappingId = mappingId;
     }
 
     public int getRevision() {
@@ -32,11 +32,11 @@ public class AnalyzerMappingSelectionRequest {
         this.revision = revision;
     }
 
-    public String getBindingFingerprint() {
-        return bindingFingerprint;
+    public String getMappingFingerprint() {
+        return mappingFingerprint;
     }
 
-    public void setBindingFingerprint(String bindingFingerprint) {
-        this.bindingFingerprint = bindingFingerprint;
+    public void setMappingFingerprint(String mappingFingerprint) {
+        this.mappingFingerprint = mappingFingerprint;
     }
 }

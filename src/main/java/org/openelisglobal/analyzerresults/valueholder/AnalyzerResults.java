@@ -97,9 +97,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
     public static final String IMPORT_ISSUE_RESULT_MAPPING_NOT_READY = "result_mapping_not_ready";
     public static final String IMPORT_ISSUE_INVALID_RESULT_MAPPING = "invalid_result_mapping";
+    /** The run produced no value (ERROR, NO RESULT); never a patient result. */
+    public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
+    /** A control that reports an answer, for a test and level with no QC target. */
+    public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
+    /** Held results that applying the analyzer's mapping retries. */
     public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
             IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
-            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING);
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
@@ -112,6 +117,9 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     @Column(name = "instrument_patient_name", length = 255)
     private String instrumentPatientName;
+
+    @Column(name = "instrument_note", columnDefinition = "TEXT")
+    private String instrumentNote;
 
     @Column(name = "source_message_id", length = 255)
     private String sourceMessageId;
@@ -202,6 +210,14 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setInstrumentPatientName(String instrumentPatientName) {
         this.instrumentPatientName = instrumentPatientName;
+    }
+
+    public String getInstrumentNote() {
+        return instrumentNote;
+    }
+
+    public void setInstrumentNote(String instrumentNote) {
+        this.instrumentNote = instrumentNote;
     }
 
     public String getSourceMessageId() {

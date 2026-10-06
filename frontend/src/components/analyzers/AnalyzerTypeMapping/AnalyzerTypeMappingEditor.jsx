@@ -18,6 +18,7 @@ import {
   InlineNotification,
   Link as CarbonLink,
   Loading,
+  Modal,
   Tag,
 } from "@carbon/react";
 import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
@@ -32,13 +33,14 @@ import {
 } from "../AnalyzerTypeManagement/recognitionText";
 import { safeInternalPath } from "../../utils/UrlUtils";
 import {
-  confirmAnalyzerTypeMapping,
+  applyAnalyzerMapping,
+  confirmAnalyzerMapping,
+  getAnalyzerMapping,
   getAnalyzerMappingResultOptions,
   getAnalyzerMappingTests,
-  getAnalyzerTypeMapping,
+  getAnalyzerTypeDefaults,
   getAnalyzerTypeRevision,
-  saveAnalyzerTypeMapping,
-  selectAnalyzerSiteBinding,
+  saveAnalyzerMapping,
 } from "../../../services/analyzerService";
 import { includesComboBoxText } from "../comboBoxSearch";
 import "./AnalyzerTypeMappingEditor.scss";
@@ -81,20 +83,79 @@ const stateTagType = (state) => {
 const stateMessageId = (state) =>
   `analyzerType.mappingEditor.state.${String(state || "UNRESOLVED").toLowerCase()}`;
 
+/**
+ * What the operator changed since the last save, row by row, so Save can show
+ * the effect before it is written.
+ */
+// A mapped side is named by its target, so pointing a row at another test
+// reads as a change of test rather than "Mapped to Mapped".
+const changeSide = (state, targetName) => ({
+  state,
+  name: state === "BOUND" ? targetName || null : null,
+});
+
+const listChanges = (savedTests = [], draftTests = []) => {
+  const saved = new Map(savedTests.map((test) => [test.sourceRowKey, test]));
+  const changes = [];
+  draftTests.forEach((test) => {
+    const before = saved.get(test.sourceRowKey);
+    if (
+      before &&
+      (before.mappingState !== test.mappingState ||
+        (before.testId || null) !== (test.testId || null))
+    ) {
+      changes.push({
+        key: test.sourceRowKey,
+        label: test.rawCode,
+        from: changeSide(before.mappingState, before.selectedTest?.name),
+        to: changeSide(test.mappingState, test.selectedTest?.name),
+      });
+    }
+    const savedResults = new Map(
+      (before?.results || []).map((result) => [result.rawValue, result]),
+    );
+    test.results.forEach((result) => {
+      const beforeResult = savedResults.get(result.rawValue);
+      if (
+        beforeResult &&
+        (beforeResult.mappingState !== result.mappingState ||
+          (beforeResult.resultOptionId || null) !==
+            (result.resultOptionId || null))
+      ) {
+        changes.push({
+          key: `${test.sourceRowKey}:${result.rawValue}`,
+          label: `${test.rawCode} / ${result.rawValue}`,
+          from: changeSide(
+            beforeResult.mappingState,
+            beforeResult.selectedOption?.label,
+          ),
+          to: changeSide(result.mappingState, result.selectedOption?.label),
+        });
+      }
+    });
+  });
+  return changes;
+};
+
 const AnalyzerTypeMappingEditor = () => {
   const intl = useIntl();
   const location = useLocation();
-  const { profileId } = useParams();
+  const { profileId, analyzerId } = useParams();
+  // With no analyzer the editor shows the defaults a new analyzer on the
+  // profile revision would get. Each analyzer owns and edits its own mapping.
+  const readOnly = !analyzerId;
   const query = useMemo(
     () => new URLSearchParams(location.search),
     [location.search],
   );
   const revision = Number(query.get("revision"));
-  const returnTo = safeInternalPath(query.get("returnTo"), "/analyzers/types");
+  const returnTo = safeInternalPath(
+    query.get("returnTo"),
+    readOnly ? "/analyzers/types" : "/analyzers",
+  );
   const returnDestination = { ...parsePath(returnTo), state: location.state };
   const focusTest = query.get("focusTest");
   const focusValue = query.get("focusValue");
-  const analyzerId = query.get("analyzerId");
   const [mapping, setMapping] = useState(null);
   const [typeSummary, setTypeSummary] = useState(null);
   const [draftTests, setDraftTests] = useState([]);
@@ -106,12 +167,14 @@ const AnalyzerTypeMappingEditor = () => {
   const [saving, setSaving] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [applying, setApplying] = useState(false);
+  const [reviewingSave, setReviewingSave] = useState(false);
   const [notification, setNotification] = useState(null);
   const loadedResultOptions = useRef(new Set());
   const focusedResultRow = useRef(null);
   const focusHandled = useRef(false);
-  const routeIsValid =
-    Boolean(profileId) && Number.isInteger(revision) && revision >= 1;
+  const routeIsValid = readOnly
+    ? Boolean(profileId) && Number.isInteger(revision) && revision >= 1
+    : true;
   const routeError = routeIsValid
     ? null
     : intl.formatMessage({ id: "analyzerType.mappingEditor.error.route" });
@@ -126,7 +189,10 @@ const AnalyzerTypeMappingEditor = () => {
     if (!routeIsValid) {
       return;
     }
-    getAnalyzerTypeMapping(profileId, revision, (response) => {
+    const load = readOnly
+      ? (callback) => getAnalyzerTypeDefaults(profileId, revision, callback)
+      : (callback) => getAnalyzerMapping(analyzerId, callback);
+    load((response) => {
       setLoading(false);
       if (hasApiError(response) || !Array.isArray(response.tests)) {
         setLoadError(
@@ -144,17 +210,27 @@ const AnalyzerTypeMappingEditor = () => {
       setResultOptionsByTest({});
       applyMapping(response);
     });
-    getAnalyzerTypeRevision(profileId, revision, (response) => {
-      if (!hasApiError(response)) {
-        setTypeSummary(response);
-      }
-    });
+    if (readOnly) {
+      getAnalyzerTypeRevision(profileId, revision, (response) => {
+        if (!hasApiError(response)) {
+          setTypeSummary(response);
+        }
+      });
+    }
     getAnalyzerMappingTests((response) => {
       if (Array.isArray(response)) {
         setCatalogTests(response);
       }
     });
-  }, [applyMapping, intl, profileId, revision, routeIsValid]);
+  }, [
+    applyMapping,
+    intl,
+    analyzerId,
+    profileId,
+    readOnly,
+    revision,
+    routeIsValid,
+  ]);
 
   useEffect(() => {
     requestMapping();
@@ -224,6 +300,7 @@ const AnalyzerTypeMappingEditor = () => {
         ...test,
         mappingState: selectedTest ? "BOUND" : "UNRESOLVED",
         testId: selectedTest?.id || null,
+        componentId: changed ? null : test.componentId || null,
         selectedTest: selectedTest || null,
         results: changed
           ? test.results.map((result) => ({
@@ -237,18 +314,26 @@ const AnalyzerTypeMappingEditor = () => {
     });
   };
 
+  // Excluding keeps the row's selections and each result's own state, so that
+  // un-excluding before Save restores them. A saved excluded row has no target.
   const excludeTest = (sourceRowKey, checked) => {
     updateTest(sourceRowKey, (test) => ({
       ...test,
-      mappingState: checked ? "EXCLUDED" : "UNRESOLVED",
-      testId: null,
-      selectedTest: null,
-      results: test.results.map((result) => ({
-        ...result,
-        mappingState: checked ? "EXCLUDED" : "UNRESOLVED",
-        resultOptionId: null,
-        selectedOption: null,
-      })),
+      mappingState: checked ? "EXCLUDED" : test.testId ? "BOUND" : "UNRESOLVED",
+      results: test.results.map(({ stateBeforeExclusion, ...result }) =>
+        checked
+          ? {
+              ...result,
+              stateBeforeExclusion: stateBeforeExclusion || result.mappingState,
+              mappingState: "EXCLUDED",
+            }
+          : {
+              ...result,
+              mappingState:
+                stateBeforeExclusion ||
+                (result.resultOptionId ? "BOUND" : "UNRESOLVED"),
+            },
+      ),
     }));
   };
 
@@ -275,9 +360,11 @@ const AnalyzerTypeMappingEditor = () => {
         result.rawValue === rawValue
           ? {
               ...result,
-              mappingState: checked ? "EXCLUDED" : "UNRESOLVED",
-              resultOptionId: null,
-              selectedOption: null,
+              mappingState: checked
+                ? "EXCLUDED"
+                : result.resultOptionId
+                  ? "BOUND"
+                  : "UNRESOLVED",
             }
           : result,
       ),
@@ -286,11 +373,13 @@ const AnalyzerTypeMappingEditor = () => {
 
   const updatePayload = useMemo(
     () => ({
-      baseBindingFingerprint: mapping?.bindingFingerprint || null,
+      baseMappingFingerprint: mapping?.mappingFingerprint || null,
       tests: draftTests.map((test) => ({
         sourceRowKey: test.sourceRowKey,
         mappingState: test.mappingState,
         testId: test.mappingState === "BOUND" ? test.testId : null,
+        componentId:
+          test.mappingState === "BOUND" ? test.componentId || null : null,
       })),
       results: draftTests.flatMap((test) =>
         test.results.map((result) => ({
@@ -302,7 +391,12 @@ const AnalyzerTypeMappingEditor = () => {
         })),
       ),
     }),
-    [draftTests, mapping?.bindingFingerprint],
+    [draftTests, mapping?.mappingFingerprint],
+  );
+
+  const changes = useMemo(
+    () => listChanges(mapping?.tests, draftTests),
+    [mapping?.tests, draftTests],
   );
 
   const confirmable = useMemo(
@@ -339,8 +433,9 @@ const AnalyzerTypeMappingEditor = () => {
       return;
     }
     setSaving(true);
-    saveAnalyzerTypeMapping(profileId, revision, updatePayload, (response) => {
+    saveAnalyzerMapping(analyzerId, updatePayload, (response) => {
       setSaving(false);
+      setReviewingSave(false);
       if (hasApiError(response) || !Array.isArray(response.tests)) {
         setNotification({
           kind: "error",
@@ -363,7 +458,13 @@ const AnalyzerTypeMappingEditor = () => {
   };
 
   const confirm = () => {
-    if (!confirmable || dirty || confirming || !mapping?.bindingFingerprint) {
+    if (
+      readOnly ||
+      !confirmable ||
+      dirty ||
+      confirming ||
+      !mapping?.mappingFingerprint
+    ) {
       return;
     }
     const confirmedRows = [];
@@ -385,11 +486,10 @@ const AnalyzerTypeMappingEditor = () => {
       });
     });
     setConfirming(true);
-    confirmAnalyzerTypeMapping(
-      profileId,
-      revision,
+    confirmAnalyzerMapping(
+      analyzerId,
       {
-        baseBindingFingerprint: mapping.bindingFingerprint,
+        baseMappingFingerprint: mapping.mappingFingerprint,
         recognitionFingerprint:
           mapping.controlRecognition.recognitionFingerprint,
         confirmedRows,
@@ -421,23 +521,23 @@ const AnalyzerTypeMappingEditor = () => {
 
   const applyToAnalyzer = () => {
     if (
-      !analyzerId ||
+      readOnly ||
       dirty ||
       saving ||
       applying ||
-      !mapping?.siteBindingId ||
-      !mapping?.bindingFingerprint ||
+      !mapping?.mappingId ||
+      !mapping?.mappingFingerprint ||
       mapping?.confirmation?.state !== "CURRENT"
     ) {
       return;
     }
     setApplying(true);
-    selectAnalyzerSiteBinding(
+    applyAnalyzerMapping(
       analyzerId,
       {
-        siteBindingId: mapping.siteBindingId,
-        revision: mapping.siteBindingRevision,
-        bindingFingerprint: mapping.bindingFingerprint,
+        mappingId: mapping.mappingId,
+        revision: mapping.mappingRevision,
+        mappingFingerprint: mapping.mappingFingerprint,
       },
       (response) => {
         setApplying(false);
@@ -456,10 +556,13 @@ const AnalyzerTypeMappingEditor = () => {
     );
   };
 
-  const mappingMatchesRoute =
-    mapping?.profileId === profileId && mapping?.profileRevision === revision;
+  const mappingMatchesRoute = readOnly
+    ? mapping?.profileId === profileId && mapping?.profileRevision === revision
+    : String(mapping?.analyzerId) === String(analyzerId);
   const currentTypeSummary =
-    typeSummary?.profileId === profileId && typeSummary?.revision === revision
+    readOnly &&
+    typeSummary?.profileId === profileId &&
+    typeSummary?.revision === revision
       ? typeSummary
       : null;
 
@@ -505,8 +608,8 @@ const AnalyzerTypeMappingEditor = () => {
   const currentUrl = `${location.pathname}${location.search}`;
   const duplicateParams = new URLSearchParams({
     action: "duplicate",
-    profile: profileId,
-    revision: String(revision),
+    profile: mapping.profileId,
+    revision: String(mapping.profileRevision),
     returnTo: currentUrl,
   });
   const confirmation = mapping.confirmation || { state: "UNCONFIRMED" };
@@ -514,12 +617,20 @@ const AnalyzerTypeMappingEditor = () => {
   return (
     <>
       <PageBreadCrumb
-        breadcrumbs={[
-          { label: "home.label", link: "/" },
-          { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-          { label: "analyzerType.page.title", link: returnDestination },
-          { label: heading, isCurrentPage: true },
-        ]}
+        breadcrumbs={
+          readOnly
+            ? [
+                { label: "home.label", link: "/" },
+                { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+                { label: "analyzerType.page.title", link: returnDestination },
+                { label: heading, isCurrentPage: true },
+              ]
+            : [
+                { label: "home.label", link: "/" },
+                { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+                { label: heading, isCurrentPage: true },
+              ]
+        }
       />
       <Grid fullWidth className="analyzer-type-mapping">
         <Column lg={16} md={8} sm={4}>
@@ -545,15 +656,15 @@ const AnalyzerTypeMappingEditor = () => {
               >
                 <FormattedMessage id="analyzerType.mappingEditor.return" />
               </Button>
-              {analyzerId && (
+              {!readOnly && (
                 <Button
                   kind="primary"
                   disabled={
                     dirty ||
                     saving ||
                     applying ||
-                    !mapping.siteBindingId ||
-                    !mapping.bindingFingerprint ||
+                    !mapping.mappingId ||
+                    !mapping.mappingFingerprint ||
                     confirmation.state !== "CURRENT"
                   }
                   onClick={applyToAnalyzer}
@@ -561,14 +672,16 @@ const AnalyzerTypeMappingEditor = () => {
                   <FormattedMessage id="analyzerType.mappingEditor.applyToAnalyzer" />
                 </Button>
               )}
-              <Button
-                as={Link}
-                kind="secondary"
-                renderIcon={Copy}
-                to={`/analyzers/types?${duplicateParams.toString()}`}
-              >
-                <FormattedMessage id="analyzerType.button.duplicate" />
-              </Button>
+              {readOnly && (
+                <Button
+                  as={Link}
+                  kind="secondary"
+                  renderIcon={Copy}
+                  to={`/analyzers/types?${duplicateParams.toString()}`}
+                >
+                  <FormattedMessage id="analyzerType.button.duplicate" />
+                </Button>
+              )}
             </div>
           </div>
 
@@ -578,16 +691,21 @@ const AnalyzerTypeMappingEditor = () => {
             hideCloseButton
             className="analyzer-type-mapping__notice"
             title={intl.formatMessage({
-              id: "analyzerType.mappingEditor.shared.title",
+              id: readOnly
+                ? "analyzerType.mappingEditor.defaults.title"
+                : "analyzerType.mappingEditor.own.title",
             })}
-            subtitle={intl.formatMessage(
-              { id: "analyzerType.mappingEditor.shared.subtitle" },
-              { count: currentTypeSummary?.usedBy || 0 },
-            )}
+            subtitle={intl.formatMessage({
+              id: readOnly
+                ? "analyzerType.mappingEditor.defaults.subtitle"
+                : "analyzerType.mappingEditor.own.subtitle",
+            })}
           />
-          <AffectedAnalyzerList
-            analyzers={currentTypeSummary?.affectedAnalyzers || []}
-          />
+          {readOnly && (
+            <AffectedAnalyzerList
+              analyzers={currentTypeSummary?.affectedAnalyzers || []}
+            />
+          )}
 
           {notification && (
             <InlineNotification
@@ -689,6 +807,11 @@ const AnalyzerTypeMappingEditor = () => {
                             )}
                           />
                         </Tag>
+                        {test.origin === "OVERRIDE" && (
+                          <Tag type="blue" size="sm">
+                            <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
+                          </Tag>
+                        )}
                       </div>
                     }
                   >
@@ -748,15 +871,22 @@ const AnalyzerTypeMappingEditor = () => {
                           items={catalogTests}
                           itemToString={testItemText}
                           shouldFilterItem={includesComboBoxText}
+                          // An excluded row keeps showing its prior choice: clearing
+                          // a controlled ComboBox fires onChange(null).
                           selectedItem={
-                            test.mappingState === "BOUND" ? selectedTest : null
+                            test.mappingState === "UNRESOLVED"
+                              ? null
+                              : selectedTest
                           }
-                          disabled={test.mappingState === "EXCLUDED"}
+                          disabled={
+                            readOnly || test.mappingState === "EXCLUDED"
+                          }
                           onChange={({ selectedItem }) =>
                             selectTest(test.sourceRowKey, selectedItem)
                           }
                         />
-                        {test.suggestedTest &&
+                        {!readOnly &&
+                          test.suggestedTest &&
                           test.mappingState === "UNRESOLVED" && (
                             <div className="analyzer-type-mapping__suggestion">
                               <span>
@@ -790,6 +920,7 @@ const AnalyzerTypeMappingEditor = () => {
                             { code: test.rawCode },
                           )}
                           checked={test.mappingState === "EXCLUDED"}
+                          disabled={readOnly}
                           onChange={(_, state) =>
                             excludeTest(test.sourceRowKey, state.checked)
                           }
@@ -870,6 +1001,11 @@ const AnalyzerTypeMappingEditor = () => {
                                   >
                                     <div className="analyzer-type-mapping__result-source">
                                       <code>{result.rawValue}</code>
+                                      {result.origin === "OVERRIDE" && (
+                                        <Tag type="blue" size="sm">
+                                          <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
+                                        </Tag>
+                                      )}
                                       {result.observed && (
                                         <Tag type="warm-gray" size="sm">
                                           <FormattedMessage id="analyzerType.mappingEditor.observed" />
@@ -890,11 +1026,12 @@ const AnalyzerTypeMappingEditor = () => {
                                       items={resultOptions}
                                       itemToString={resultItemText}
                                       selectedItem={
-                                        result.mappingState === "BOUND"
-                                          ? selectedOption
-                                          : null
+                                        result.mappingState === "UNRESOLVED"
+                                          ? null
+                                          : selectedOption
                                       }
                                       disabled={
+                                        readOnly ||
                                         result.mappingState === "EXCLUDED"
                                       }
                                       onChange={({ selectedItem }) =>
@@ -919,6 +1056,7 @@ const AnalyzerTypeMappingEditor = () => {
                                       checked={
                                         result.mappingState === "EXCLUDED"
                                       }
+                                      disabled={readOnly}
                                       onChange={(_, state) =>
                                         excludeResult(
                                           test.sourceRowKey,
@@ -1050,36 +1188,83 @@ const AnalyzerTypeMappingEditor = () => {
               )}
             />
           )}
-          <div className="analyzer-type-mapping__actions">
-            <div>
-              {dirty && (
-                <span>
-                  <FormattedMessage id="analyzerType.mappingEditor.unsaved" />
-                </span>
-              )}
-              {!confirmable && !dirty && (
-                <span>
-                  <FormattedMessage id="analyzerType.mappingEditor.incomplete" />
-                </span>
-              )}
+          {!readOnly && (
+            <div className="analyzer-type-mapping__actions">
+              <div>
+                {dirty && (
+                  <span>
+                    <FormattedMessage id="analyzerType.mappingEditor.unsaved" />
+                  </span>
+                )}
+                {!confirmable && !dirty && (
+                  <span>
+                    <FormattedMessage id="analyzerType.mappingEditor.incomplete" />
+                  </span>
+                )}
+              </div>
+              <div>
+                <Button
+                  kind="secondary"
+                  renderIcon={Save}
+                  disabled={!dirty || saving}
+                  onClick={() => setReviewingSave(true)}
+                >
+                  <FormattedMessage id="analyzerType.mappingEditor.save" />
+                </Button>
+                <Button
+                  disabled={!confirmable || dirty || confirming}
+                  onClick={confirm}
+                >
+                  <FormattedMessage id="analyzerType.mappingEditor.confirm" />
+                </Button>
+              </div>
             </div>
-            <div>
-              <Button
-                kind="secondary"
-                renderIcon={Save}
-                disabled={!dirty || saving}
-                onClick={save}
-              >
-                <FormattedMessage id="analyzerType.mappingEditor.save" />
-              </Button>
-              <Button
-                disabled={!confirmable || dirty || confirming}
-                onClick={confirm}
-              >
-                <FormattedMessage id="analyzerType.mappingEditor.confirm" />
-              </Button>
-            </div>
-          </div>
+          )}
+          <Modal
+            open={reviewingSave}
+            size="sm"
+            modalHeading={intl.formatMessage({
+              id: "analyzerType.mappingEditor.changes.heading",
+            })}
+            primaryButtonText={intl.formatMessage({
+              id: "analyzerType.mappingEditor.changes.save",
+            })}
+            secondaryButtonText={intl.formatMessage({
+              id: "label.button.cancel",
+            })}
+            primaryButtonDisabled={saving}
+            onRequestSubmit={save}
+            onRequestClose={() => setReviewingSave(false)}
+          >
+            {changes.length === 0 ? (
+              <p>
+                <FormattedMessage id="analyzerType.mappingEditor.changes.none" />
+              </p>
+            ) : (
+              <ul data-testid="analyzer-mapping-changes">
+                {changes.map((change) => (
+                  <li key={change.key}>
+                    <strong>{change.label}</strong>{" "}
+                    <FormattedMessage
+                      id="analyzerType.mappingEditor.changes.row"
+                      values={{
+                        from:
+                          change.from.name ||
+                          intl.formatMessage({
+                            id: stateMessageId(change.from.state),
+                          }),
+                        to:
+                          change.to.name ||
+                          intl.formatMessage({
+                            id: stateMessageId(change.to.state),
+                          }),
+                      }}
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Modal>
         </Column>
       </Grid>
     </>

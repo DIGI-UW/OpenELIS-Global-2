@@ -33,7 +33,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class DeviceSearchDao extends BaseFhirDao {
 
     private static final String NAME_PROPERTY = "name";
-    private static final String TYPE_PROPERTY = "siteBindingRevision.siteBinding.profileBinding.profileId";
+    private static final String TYPE_PROPERTY = "mapping.profileId";
     private static final String STATUS_PROPERTY = "status";
     private static final String BRIDGE_CONNECTION_ID_PROPERTY = "bridgeConnectionId";
 
@@ -50,8 +50,7 @@ public class DeviceSearchDao extends BaseFhirDao {
             throw new IllegalArgumentException("Page size must be greater than zero");
         }
         FhirCriteriaContext<Analyzer, Analyzer> context = createCriteriaContext(Analyzer.class);
-        context.getRoot().fetch("siteBindingRevision", JoinType.LEFT).fetch("siteBinding", JoinType.LEFT)
-                .fetch("profileBinding", JoinType.LEFT);
+        context.getRoot().fetch("mapping", JoinType.LEFT);
         if (params != null) {
             addSearchPredicates(context, params);
         }

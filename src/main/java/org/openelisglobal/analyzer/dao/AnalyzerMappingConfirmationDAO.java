@@ -6,7 +6,7 @@ import org.openelisglobal.common.dao.BaseDAO;
 
 public interface AnalyzerMappingConfirmationDAO extends BaseDAO<AnalyzerMappingConfirmation, String> {
 
-    Optional<AnalyzerMappingConfirmation> findByRevisionId(String revisionId);
+    Optional<AnalyzerMappingConfirmation> findByMappingId(String mappingId);
 
-    Optional<AnalyzerMappingConfirmation> findLatestByBindingId(String bindingId);
+    Optional<AnalyzerMappingConfirmation> findLatestByAnalyzerId(String analyzerId);
 }

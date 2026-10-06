@@ -41,7 +41,7 @@ public class AuditTrailServiceInsertTest {
         AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("71");
 
-        String historyId = auditTrailService.saveNewHistory(confirmation, "17", "analyzer_site_binding_confirmation");
+        String historyId = auditTrailService.saveNewHistory(confirmation, "17", "analyzer_mapping_confirmation");
 
         assertEquals("91", historyId);
         ArgumentCaptor<History> saved = ArgumentCaptor.forClass(History.class);

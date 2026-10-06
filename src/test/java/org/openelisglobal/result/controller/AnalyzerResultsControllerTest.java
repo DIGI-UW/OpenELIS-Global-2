@@ -87,7 +87,8 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
                 .andExpect(jsonPath("$.resultList[1].sourceProfileId").value("genexpert-astm"))
                 .andExpect(jsonPath("$.resultList[1].sourceProfileRevision").value(3))
                 .andExpect(jsonPath("$.resultList[1].rawTestCode").value("QUAL_RESULT"))
-                .andExpect(jsonPath("$.resultList[1].rawResultValue").value("POSITIVE"));
+                .andExpect(jsonPath("$.resultList[1].rawResultValue").value("POSITIVE"))
+                .andExpect(jsonPath("$.resultList[1].instrumentNote").value("Reagent lot near expiry"));
     }
 
     @Test

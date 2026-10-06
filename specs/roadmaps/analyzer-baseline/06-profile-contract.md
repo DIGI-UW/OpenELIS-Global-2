@@ -64,8 +64,13 @@ unit, values, value_codes, translations, sub_identity`) and `call_component` (ru
   `Observation.subject` (OE2 reads exactly this since step 1b,
   `AnalyzerNormalizedResultContract`; a Patient without the extension is
   ignored); `Quantity.comparator`
-  from the flag; `Device.version` from assay version; `Observation.note`
-  from C records; `Observation.performer` from operator; existing extension
+  from the flag, with the documented limit as the value when the instrument
+  sends no number (rules 11 and 17; OE2 maps it in step 2b), and the
+  raw-value extension left as the instrument sent it; `Device.version` from assay version; `Observation.note`
+  from C records; a value the profile declares a run failure (ERROR, NO
+  RESULT) goes out with no value and `Observation.dataAbsentReason` (`error`),
+  the raw text kept in the raw-value extension, which OE2 holds as a failed run
+  (step 2); `Observation.performer` from operator; existing extension
   namespace `https://openelis-global.org/fhir/...` for anything without a
   slot.
 - One Observation per record (rule 17): its code is the test code; its

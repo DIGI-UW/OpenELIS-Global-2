@@ -83,10 +83,10 @@ export interface AnalyzerInstancePayload extends JsonObject {
   connectionValues?: Record<string, unknown>;
 }
 
-export interface AnalyzerSiteBindingSelection extends JsonObject {
-  siteBindingId: string;
+export interface AnalyzerMappingSelection extends JsonObject {
+  mappingId: string;
   revision: number;
-  bindingFingerprint: string;
+  mappingFingerprint: string;
 }
 
 export interface AnalyzerConnectionProbeCheck {
@@ -159,9 +159,12 @@ export interface AnalyzerMappingResultOption {
   answerCode?: string | null;
 }
 
+export type AnalyzerMappingOrigin = "DEFAULT" | "OVERRIDE";
+
 export interface AnalyzerTypeMappingResultRow {
   rawValue: string;
   mappingState: AnalyzerMappingState;
+  origin?: AnalyzerMappingOrigin;
   resultOptionId?: string | null;
   selectedOption?: AnalyzerMappingResultOption | null;
   suggestedOption?: AnalyzerMappingResultOption | null;
@@ -182,7 +185,9 @@ export interface AnalyzerTypeMappingTestRow {
     display?: string | null;
   } | null;
   mappingState: AnalyzerMappingState;
+  origin?: AnalyzerMappingOrigin;
   testId?: string | null;
+  componentId?: string | null;
   selectedTest?: AnalyzerMappingTestOption | null;
   suggestedTest?: AnalyzerMappingTestOption | null;
   unresolvedReason?: AnalyzerUnresolvedReason | null;
@@ -190,14 +195,16 @@ export interface AnalyzerTypeMappingTestRow {
 }
 
 export interface AnalyzerTypeMappingView {
+  /** Null for the read-only defaults a new analyzer on the profile would get. */
+  analyzerId?: string | null;
   profileId: string;
   profileRevision: number;
   profileFingerprint: string;
   displayName: string;
   protocol: AnalyzerProtocol;
-  siteBindingId?: string | null;
-  siteBindingRevision: number;
-  bindingFingerprint?: string | null;
+  mappingId?: string | null;
+  mappingRevision: number;
+  mappingFingerprint?: string | null;
   tests: AnalyzerTypeMappingTestRow[];
   controlRecognition: {
     recognitionFingerprint: string;
@@ -218,7 +225,7 @@ export interface AnalyzerTypeMappingView {
     state: "UNCONFIRMED" | "CURRENT" | "STALE" | string;
     profileId?: string | null;
     profileRevision: number;
-    bindingFingerprint?: string | null;
+    mappingFingerprint?: string | null;
     recognitionFingerprint?: string | null;
     confirmedBy?: string | null;
     confirmedByDisplayName?: string | null;
@@ -229,11 +236,12 @@ export interface AnalyzerTypeMappingView {
 }
 
 export interface AnalyzerTypeMappingUpdate {
-  baseBindingFingerprint?: string | null;
+  baseMappingFingerprint?: string | null;
   tests: Array<{
     sourceRowKey: string;
     mappingState: AnalyzerMappingState;
     testId?: string | null;
+    componentId?: string | null;
   }>;
   results: Array<{
     sourceRowKey: string;
@@ -244,7 +252,7 @@ export interface AnalyzerTypeMappingUpdate {
 }
 
 export interface AnalyzerTypeMappingConfirmationRequest {
-  baseBindingFingerprint: string;
+  baseMappingFingerprint: string;
   recognitionFingerprint: string;
   confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
   excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
@@ -467,14 +475,15 @@ export const updateAnalyzer = (
     extraParams,
   );
 
-export const selectAnalyzerSiteBinding = (
+/** Puts the analyzer's reviewed mapping revision in force. */
+export const applyAnalyzerMapping = (
   id: string,
-  selection: AnalyzerSiteBindingSelection,
+  selection: AnalyzerMappingSelection,
   callback: ApiCallback,
   extraParams?: ExtraParams,
 ) =>
   putAnalyzerJson(
-    `/rest/analyzer/analyzers/${id}/site-binding`,
+    `/rest/analyzer/analyzers/${id}/mapping/apply`,
     selection,
     callback,
     extraParams,
@@ -638,7 +647,8 @@ export const getAnalyzerTypeRevision = (
   );
 };
 
-export const getAnalyzerTypeMapping = (
+/** The defaults a new analyzer on this profile revision would get. Read-only. */
+export const getAnalyzerTypeDefaults = (
   profileId: string,
   revision: number,
   callback: DataCallback<AnalyzerTypeMappingView | undefined>,
@@ -702,30 +712,38 @@ const mutateAnalyzerType = <T>(
     });
 };
 
-export const saveAnalyzerTypeMapping = (
-  profileId: string,
-  revision: number,
+export const getAnalyzerMapping = (
+  analyzerId: string,
+  callback: DataCallback<AnalyzerTypeMappingView | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping`,
+    callback,
+  );
+};
+
+export const saveAnalyzerMapping = (
+  analyzerId: string,
   update: AnalyzerTypeMappingUpdate,
   callback: ApiCallback<AnalyzerTypeMappingView & AnalyzerApiError>,
 ) => {
   mutateAnalyzerType(
-    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping?revision=${revision}`,
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping`,
     "PUT",
     update as unknown as JsonObject,
     callback,
   );
 };
 
-export const confirmAnalyzerTypeMapping = (
-  profileId: string,
-  revision: number,
+export const confirmAnalyzerMapping = (
+  analyzerId: string,
   request: AnalyzerTypeMappingConfirmationRequest,
   callback: ApiCallback<
     AnalyzerTypeMappingView["confirmation"] & AnalyzerApiError
   >,
 ) => {
   mutateAnalyzerType(
-    `/rest/analyzer-types/${encodeURIComponent(profileId)}/mapping/confirm?revision=${revision}`,
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/mapping/confirm`,
     "POST",
     request as unknown as JsonObject,
     callback,

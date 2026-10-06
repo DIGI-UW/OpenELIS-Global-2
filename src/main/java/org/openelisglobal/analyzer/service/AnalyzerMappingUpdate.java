@@ -2,7 +2,7 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 
-public record AnalyzerMappingUpdate(String baseBindingFingerprint, List<AnalyzerMappingTestDraft> tests,
+public record AnalyzerMappingUpdate(String baseMappingFingerprint, List<AnalyzerMappingTestDraft> tests,
         List<AnalyzerMappingResultDraft> results) {
 
     public AnalyzerMappingUpdate {

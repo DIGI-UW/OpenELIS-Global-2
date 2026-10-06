@@ -23,8 +23,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.w3c.dom.NodeList;
 
@@ -54,8 +52,6 @@ public class HibernateMappingValidationTest {
 
         configuration.addAnnotatedClass(AnalyzerEvent.class);
         configuration.addAnnotatedClass(AnalyzerActivationRecord.class);
-        configuration.addAnnotatedClass(AnalyzerProfileBinding.class);
-        configuration.addAnnotatedClass(AnalyzerSiteBinding.class);
         configuration.addAnnotatedClass(AnalyzerMappingConfirmation.class);
         configuration.addAnnotatedClass(AnalyzerMapping.class);
         configuration.addAnnotatedClass(AnalyzerMappingTest.class);
@@ -92,10 +88,6 @@ public class HibernateMappingValidationTest {
         assertNotNull("AnalyzerEvent should be registered", sessionFactory.getMetamodel().entity(AnalyzerEvent.class));
         assertNotNull("AnalyzerActivationRecord should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerActivationRecord.class));
-        assertNotNull("AnalyzerProfileBinding should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerProfileBinding.class));
-        assertNotNull("AnalyzerSiteBinding should be registered",
-                sessionFactory.getMetamodel().entity(AnalyzerSiteBinding.class));
         assertNotNull("AnalyzerMappingConfirmation should be registered",
                 sessionFactory.getMetamodel().entity(AnalyzerMappingConfirmation.class));
         assertNotNull("AnalyzerMapping should be registered",
@@ -117,9 +109,9 @@ public class HibernateMappingValidationTest {
      */
     @Test
     public void testAnalyzerEntitiesHaveNoGetterConflicts() {
-        Class<?>[] entities = { Analyzer.class, AnalyzerActivationRecord.class, AnalyzerProfileBinding.class,
-                AnalyzerSiteBinding.class, AnalyzerMappingConfirmation.class, AnalyzerMapping.class,
-                AnalyzerMappingTest.class, AnalyzerMappingResult.class, AnalyzerResults.class, AnalyzerEvent.class };
+        Class<?>[] entities = { Analyzer.class, AnalyzerActivationRecord.class, AnalyzerMappingConfirmation.class,
+                AnalyzerMapping.class, AnalyzerMappingTest.class, AnalyzerMappingResult.class, AnalyzerResults.class,
+                AnalyzerEvent.class };
 
         for (Class<?> entityClass : entities) {
             // Check each entity independently for getter conflicts

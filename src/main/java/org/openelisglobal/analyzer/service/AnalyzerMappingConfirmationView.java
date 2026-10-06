@@ -5,7 +5,7 @@ import java.time.Instant;
 import java.util.List;
 
 public record AnalyzerMappingConfirmationView(State state, String profileId, int profileRevision,
-        String bindingFingerprint, String recognitionFingerprint, String confirmedBy, String confirmedByDisplayName,
+        String mappingFingerprint, String recognitionFingerprint, String confirmedBy, String confirmedByDisplayName,
         @JsonFormat(shape = JsonFormat.Shape.STRING) Instant confirmedAt, List<AnalyzerMappingSourceRow> confirmedRows,
         List<AnalyzerMappingSourceRow> excludedRows) {
 

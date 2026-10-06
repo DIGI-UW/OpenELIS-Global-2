@@ -38,8 +38,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResultPK;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -55,7 +53,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Mock
     private AnalyzerService analyzerService;
     @Mock
-    private AnalyzerMappingService siteBindingService;
+    private AnalyzerMappingService mappingService;
     @Mock
     private AnalyzerMappingConfirmationService confirmationService;
     @Mock
@@ -79,9 +77,9 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Before
     public void setUp() {
         MockitoAnnotations.initMocks(this);
-        service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, siteBindingService,
-                analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO,
-                confirmationService, mappingCatalogService, placementService);
+        service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, mappingService, analyzerResultsService,
+                testResultService, qcResultProcessingService, FHIR, receiptDAO, confirmationService,
+                mappingCatalogService, placementService);
         when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
         when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(true);
@@ -97,7 +95,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
-    public void knownNumericResultUsesCurrentSiteBindingAndPreservesRawContext() throws IOException {
+    public void knownNumericResultUsesTheMappingInForceAndPreservesRawContext() throws IOException {
         arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
 
         AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"),
@@ -146,6 +144,36 @@ public class AnalyzerNormalizedResultImportServiceTest {
         Bundle kept = FHIR.newJsonParser().parseResource(Bundle.class, receipt.getValue().getBundleJson());
         assertEquals(fixture("normalized-known-test.fhir.json").getEntry().size(), kept.getEntry().size());
         assertTrue(receipt.getValue().getBundleJson().contains("ACC-KNOWN-001"));
+    }
+
+    @Test
+    public void aNumericResultBeyondTheMeasuringRangeKeepsItsComparator() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observations(bundle).forEach(observation -> observation.getValueQuantity()
+                .setComparator(org.hl7.fhir.r4.model.Quantity.QuantityComparator.LESS_THAN));
+
+        service.importBundle(bundle, "7");
+
+        AnalyzerResults row = capturedRow();
+        assertEquals("<7.5", row.getResult());
+        assertEquals("the instrument's own value text is kept as sent", "7.5", row.getRawResultValue());
+    }
+
+    @Test
+    public void aRawValueThatAlreadyCarriesItsComparatorIsNotPrefixedAgain() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observations(bundle).forEach(observation -> {
+            observation.getValueQuantity()
+                    .setComparator(org.hl7.fhir.r4.model.Quantity.QuantityComparator.GREATER_THAN);
+            observation.getExtensionByUrl("https://openelis-global.org/fhir/StructureDefinition/analyzer-raw-value")
+                    .setValue(new org.hl7.fhir.r4.model.StringType(">7.5"));
+        });
+
+        service.importBundle(bundle, "7");
+
+        assertEquals(">7.5", capturedRow().getResult());
     }
 
     @Test
@@ -226,7 +254,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
         arrangeBinding(List.of(boundTest("VENDOR-NEW-42", "501")), List.of());
         when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(false);
-        when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
 
         assertEquals(0, service.recoverHeldMappingResults("42", "7"));
@@ -297,19 +325,17 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
-    public void incomingResultKeepsTheAdoptedRevisionWhenASharedMappingIsEdited() throws IOException {
+    public void incomingResultKeepsTheMappingInForceWhileANewerDraftExists() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "702")));
         AnalyzerMapping acknowledgedRevision = revision;
         AnalyzerMapping currentRevision = new AnalyzerMapping();
         currentRevision.setId("revision-2");
-        currentRevision.setSiteBinding(acknowledgedRevision.getSiteBinding());
         currentRevision.setRevisionNumber(2);
-        currentRevision.setBindingFingerprint("sha256:" + "3".repeat(64));
+        currentRevision.setMappingFingerprint("sha256:" + "3".repeat(64));
         AnalyzerMappingTest test = boundTest(currentRevision, "HIV-INTERP", "601");
         AnalyzerMappingResult result = boundResult(currentRevision, "HIV-INTERP", "INDETERMINATE-VENDOR-X", "701");
-        when(siteBindingService.findCurrentByProfileBindingId("profile-binding-1"))
-                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(currentRevision.getSiteBinding(), currentRevision,
-                        List.of(test), List.of(result))));
+        when(mappingService.findLatestByAnalyzerId("42"))
+                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(currentRevision, List.of(test), List.of(result))));
         TestResult option = new TestResult();
         option.setId("701");
         option.setValue("9001");
@@ -322,8 +348,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertTrue(row.isReadOnly());
         assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE, row.getImportIssueReason());
         assertEquals("INDETERMINATE-VENDOR-X", row.getResult());
-        verify(siteBindingService).findByRevisionId(acknowledgedRevision.getId());
-        verify(siteBindingService, never()).findCurrentByProfileBindingId("profile-binding-1");
+        verify(mappingService).findById(acknowledgedRevision.getId());
+        verify(mappingService, never()).findLatestByAnalyzerId("42");
     }
 
     @Test
@@ -332,19 +358,20 @@ public class AnalyzerNormalizedResultImportServiceTest {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "702")));
         AnalyzerMapping successor = new AnalyzerMapping();
         successor.setId("revision-2");
-        successor.setSiteBinding(revision.getSiteBinding());
         successor.setRevisionNumber(2);
-        successor.setBindingFingerprint("sha256:" + "3".repeat(64));
+        successor.setProfileId(revision.getProfileId());
+        successor.setProfileRevision(revision.getProfileRevision());
+        successor.setProfileFingerprint(revision.getProfileFingerprint());
+        successor.setMappingFingerprint("sha256:" + "3".repeat(64));
         Analyzer second = new Analyzer();
         second.setId("43");
         second.setName("Second analyzer");
         second.setBridgeConnectionId("bridge-connection-second");
-        second.setSiteBindingRevision(successor);
+        second.setMapping(successor);
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-second"))
                 .thenReturn(Optional.of(second));
-        when(siteBindingService.findByRevisionId("revision-2"))
-                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(successor.getSiteBinding(), successor,
-                        List.of(boundTest(successor, "HIV-INTERP", "601")),
+        when(mappingService.findById("revision-2")).thenReturn(
+                Optional.of(new AnalyzerMappingSnapshot(successor, List.of(boundTest(successor, "HIV-INTERP", "601")),
                         List.of(boundResult(successor, "HIV-INTERP", "INDETERMINATE-VENDOR-X", "701")))));
         TestResult option = new TestResult();
         option.setId("701");
@@ -410,7 +437,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
         assertEquals("analyzer.fhirImport.error.unknownConnection", error.getErrorKey());
         verify(analyzerResultsService, never()).insertAnalyzerResults(anyList(), eq("7"));
-        verify(siteBindingService, never()).findCurrentByProfileBindingId("profile-binding-1");
+        verify(mappingService, never()).findById(any());
     }
 
     @Test
@@ -427,35 +454,25 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     private Analyzer analyzer(String profileId, int profileRevision) {
-        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
-        profile.setId("profile-binding-1");
-        profile.setProfileId(profileId);
-        profile.setProfileRevision(profileRevision);
-        profile.setProfileFingerprint("sha256:" + "1".repeat(64));
-
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setId("site-binding-1");
-        binding.setProfileBinding(profile);
-
         revision = new AnalyzerMapping();
         revision.setId("revision-1");
-        revision.setSiteBinding(binding);
         revision.setRevisionNumber(1);
-        revision.setBindingFingerprint("sha256:" + "2".repeat(64));
+        revision.setProfileId(profileId);
+        revision.setProfileRevision(profileRevision);
+        revision.setProfileFingerprint("sha256:" + "1".repeat(64));
+        revision.setMappingFingerprint("sha256:" + "2".repeat(64));
 
         Analyzer value = new Analyzer();
         value.setId("42");
         value.setName("Lab analyzer");
         value.setBridgeConnectionId("bridge-connection-7f3c");
-        value.setSiteBindingRevision(revision);
+        value.setMapping(revision);
         return value;
     }
 
     private void arrangeBinding(List<AnalyzerMappingTest> tests, List<AnalyzerMappingResult> results) {
-        AnalyzerMappingSnapshot snapshot = new AnalyzerMappingSnapshot(revision.getSiteBinding(), revision, tests,
-                results);
-        when(siteBindingService.findCurrentByProfileBindingId("profile-binding-1")).thenReturn(Optional.of(snapshot));
-        when(siteBindingService.findByRevisionId(revision.getId())).thenReturn(Optional.of(snapshot));
+        AnalyzerMappingSnapshot snapshot = new AnalyzerMappingSnapshot(revision, tests, results);
+        when(mappingService.findById(revision.getId())).thenReturn(Optional.of(snapshot));
     }
 
     private AnalyzerMappingTest boundTest(String sourceRowKey, String testId) {
@@ -465,7 +482,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private AnalyzerMappingTest boundTest(AnalyzerMapping bindingRevision, String sourceRowKey, String testId) {
         AnalyzerMappingTest row = new AnalyzerMappingTest();
         row.setId(new AnalyzerMappingTestPK(bindingRevision.getId(), sourceRowKey));
-        row.setSiteBindingRevision(bindingRevision);
+        row.setMapping(bindingRevision);
         row.setMappingState(AnalyzerMappingState.BOUND);
         row.setTestId(testId);
         return row;
@@ -474,7 +491,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private AnalyzerMappingTest excludedTest(String sourceRowKey) {
         AnalyzerMappingTest row = new AnalyzerMappingTest();
         row.setId(new AnalyzerMappingTestPK(revision.getId(), sourceRowKey));
-        row.setSiteBindingRevision(revision);
+        row.setMapping(revision);
         row.setMappingState(AnalyzerMappingState.EXCLUDED);
         return row;
     }
@@ -487,7 +504,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
             String testResultId) {
         AnalyzerMappingResult row = new AnalyzerMappingResult();
         row.setId(new AnalyzerMappingResultPK(bindingRevision.getId(), sourceRowKey, rawValue));
-        row.setSiteBindingRevision(bindingRevision);
+        row.setMapping(bindingRevision);
         row.setMappingState(AnalyzerMappingState.BOUND);
         row.setTestResultId(testResultId);
         return row;
@@ -496,7 +513,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private AnalyzerMappingResult excludedResult(String sourceRowKey, String rawValue) {
         AnalyzerMappingResult row = new AnalyzerMappingResult();
         row.setId(new AnalyzerMappingResultPK(revision.getId(), sourceRowKey, rawValue));
-        row.setSiteBindingRevision(revision);
+        row.setMapping(revision);
         row.setMappingState(AnalyzerMappingState.EXCLUDED);
         return row;
     }
@@ -506,6 +523,12 @@ public class AnalyzerNormalizedResultImportServiceTest {
         ArgumentCaptor<List> captor = ArgumentCaptor.forClass(List.class);
         verify(analyzerResultsService).insertAnalyzerResults(captor.capture(), eq("7"));
         return ((List<AnalyzerResults>) captor.getValue()).get(0);
+    }
+
+    private static java.util.stream.Stream<org.hl7.fhir.r4.model.Observation> observations(Bundle bundle) {
+        return bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(org.hl7.fhir.r4.model.Observation.class::isInstance)
+                .map(org.hl7.fhir.r4.model.Observation.class::cast);
     }
 
     private Bundle fixture(String name) throws IOException {

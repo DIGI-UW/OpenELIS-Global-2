@@ -12,9 +12,9 @@ public class AnalyzerMappingTestPK implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
-    @Column(name = "site_binding_revision_id")
+    @Column(name = "mapping_id")
     @Convert(converter = StringToIntegerConverter.class)
-    private String siteBindingRevisionId;
+    private String mappingId;
 
     @Column(name = "source_row_key", length = 255)
     private String sourceRowKey;
@@ -22,17 +22,17 @@ public class AnalyzerMappingTestPK implements Serializable {
     public AnalyzerMappingTestPK() {
     }
 
-    public AnalyzerMappingTestPK(String siteBindingRevisionId, String sourceRowKey) {
-        this.siteBindingRevisionId = siteBindingRevisionId;
+    public AnalyzerMappingTestPK(String mappingId, String sourceRowKey) {
+        this.mappingId = mappingId;
         this.sourceRowKey = sourceRowKey;
     }
 
-    public String getSiteBindingRevisionId() {
-        return siteBindingRevisionId;
+    public String getMappingId() {
+        return mappingId;
     }
 
-    public void setSiteBindingRevisionId(String siteBindingRevisionId) {
-        this.siteBindingRevisionId = siteBindingRevisionId;
+    public void setMappingId(String mappingId) {
+        this.mappingId = mappingId;
     }
 
     public String getSourceRowKey() {
@@ -51,12 +51,11 @@ public class AnalyzerMappingTestPK implements Serializable {
         if (!(other instanceof AnalyzerMappingTestPK that)) {
             return false;
         }
-        return Objects.equals(siteBindingRevisionId, that.siteBindingRevisionId)
-                && Objects.equals(sourceRowKey, that.sourceRowKey);
+        return Objects.equals(mappingId, that.mappingId) && Objects.equals(sourceRowKey, that.sourceRowKey);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(siteBindingRevisionId, sourceRowKey);
+        return Objects.hash(mappingId, sourceRowKey);
     }
 }

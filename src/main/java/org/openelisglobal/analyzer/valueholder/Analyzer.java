@@ -60,8 +60,8 @@ public class Analyzer extends BaseObject<String> {
     private boolean active;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "site_binding_revision_id")
-    private AnalyzerMapping siteBindingRevision;
+    @JoinColumn(name = "mapping_id")
+    private AnalyzerMapping mapping;
 
     @Column(name = "bridge_connection_id", length = 255)
     private String bridgeConnectionId;
@@ -111,12 +111,16 @@ public class Analyzer extends BaseObject<String> {
         this.active = active;
     }
 
-    public AnalyzerMapping getSiteBindingRevision() {
-        return siteBindingRevision;
+    /**
+     * The mapping revision in force. A newer revision is a draft until it is
+     * applied.
+     */
+    public AnalyzerMapping getMapping() {
+        return mapping;
     }
 
-    public void setSiteBindingRevision(AnalyzerMapping siteBindingRevision) {
-        this.siteBindingRevision = siteBindingRevision;
+    public void setMapping(AnalyzerMapping mapping) {
+        this.mapping = mapping;
     }
 
     public String getBridgeConnectionId() {
@@ -135,11 +139,8 @@ public class Analyzer extends BaseObject<String> {
         this.latestActivationRecord = latestActivationRecord;
     }
 
-    public AnalyzerProfileBinding getPinnedProfileBinding() {
-        if (siteBindingRevision == null || siteBindingRevision.getSiteBinding() == null) {
-            return null;
-        }
-        return siteBindingRevision.getSiteBinding().getProfileBinding();
+    public AnalyzerProfilePin getPinnedProfile() {
+        return mapping == null ? null : mapping.getProfilePin();
     }
 
     public List<String> getTestUnitIds() {

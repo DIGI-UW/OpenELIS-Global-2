@@ -43,7 +43,7 @@ public class AnalyzerDeliveryIssueServiceTest {
     @Test
     public void namesTheOpenElisAnalyzerAndOffersActionsOnlyForDeadLetteredRows() throws Exception {
         Analyzer genexpert = analyzer("12", "GeneXpert bench 1", "conn-7");
-        when(analyzerService.getAllWithBindings()).thenReturn(List.of(genexpert));
+        when(analyzerService.getAllWithMapping()).thenReturn(List.of(genexpert));
         when(outboxClient.list("DMQ")).thenReturn(List.of(row("""
                 {"id":"ob-1","state":"DMQ","connectionId":"conn-7","sourceId":"10.1.2.3","protocol":"ASTM",
                 "accession":"DEV0126100001","attempts":5,"receivedAt":"2026-09-24T01:00:00Z",
@@ -71,7 +71,7 @@ public class AnalyzerDeliveryIssueServiceTest {
 
     @Test
     public void keepsRowsFromUnrecognizedSendersWithoutAnAnalyzer() throws Exception {
-        when(analyzerService.getAllWithBindings()).thenReturn(List.of(analyzer("12", "GeneXpert bench 1", "conn-7")));
+        when(analyzerService.getAllWithMapping()).thenReturn(List.of(analyzer("12", "GeneXpert bench 1", "conn-7")));
         when(outboxClient.list("DMQ")).thenReturn(List.of(row("""
                 {"id":"ob-9","state":"DMQ","sourceId":"10.9.9.9","failureReason":"UNREGISTERED_SOURCE",
                 "attempts":0,"receivedAt":"2026-09-24T03:00:00Z"}""")));

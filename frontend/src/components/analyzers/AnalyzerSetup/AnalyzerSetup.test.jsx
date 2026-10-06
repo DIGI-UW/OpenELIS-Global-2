@@ -9,13 +9,13 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   activateAnalyzer,
+  applyAnalyzerMapping,
   createAnalyzer,
   getAnalyzer,
+  getAnalyzerMapping,
   getAnalyzerActivationReadiness,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
-  getAnalyzerTypeMapping,
-  selectAnalyzerSiteBinding,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
@@ -24,13 +24,13 @@ import AnalyzerSetup from "./AnalyzerSetup";
 
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
+  applyAnalyzerMapping: vi.fn(),
   createAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
+  getAnalyzerMapping: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
-  getAnalyzerTypeMapping: vi.fn(),
-  selectAnalyzerSiteBinding: vi.fn(),
   testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -53,9 +53,10 @@ const currentMapping = {
   profileFingerprint: activeType.revisionFingerprint,
   displayName: activeType.displayName,
   protocol: activeType.protocol,
-  siteBindingId: "12",
-  siteBindingRevision: 2,
-  bindingFingerprint: `sha256:${"c".repeat(64)}`,
+  analyzerId: "42",
+  mappingId: "12",
+  mappingRevision: 2,
+  mappingFingerprint: `sha256:${"c".repeat(64)}`,
   tests: [
     {
       sourceRowKey: "test:MTB-RIF",
@@ -113,7 +114,7 @@ const currentMapping = {
     state: "CURRENT",
     profileId: activeType.profileId,
     profileRevision: activeType.revision,
-    bindingFingerprint: `sha256:${"c".repeat(64)}`,
+    mappingFingerprint: `sha256:${"c".repeat(64)}`,
     recognitionFingerprint: `sha256:${"d".repeat(64)}`,
     confirmedBy: "19",
     confirmedByDisplayName: "Casey Iiams-Hauser",
@@ -240,8 +241,8 @@ describe("AnalyzerSetup Instrument step", () => {
         { id: "8", name: "Hematology" },
       ]),
     );
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) => callback(currentMapping),
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback(currentMapping),
     );
   });
 
@@ -519,7 +520,7 @@ describe("AnalyzerSetup Instrument step", () => {
       "/analyzers?setup=verify&analyzerId=42&profile=site.inactive&revision=9",
     );
 
-    expect(getAnalyzerTypeMapping).not.toHaveBeenCalled();
+    expect(getAnalyzerMapping).not.toHaveBeenCalled();
 
     await act(async () => {
       loadCandidate({
@@ -533,31 +534,30 @@ describe("AnalyzerSetup Instrument step", () => {
     });
 
     await waitFor(() =>
-      expect(getAnalyzerTypeMapping).toHaveBeenCalledWith(
-        activeType.profileId,
-        activeType.revision,
+      expect(getAnalyzerMapping).toHaveBeenCalledWith(
+        "42",
         expect.any(Function),
       ),
     );
-    expect(getAnalyzerTypeMapping).toHaveBeenCalledTimes(1);
+    expect(getAnalyzerMapping).toHaveBeenCalledTimes(1);
     const params = new URLSearchParams(history.location.search);
     expect(params.get("profile")).toBe(activeType.profileId);
     expect(params.get("revision")).toBe(String(activeType.revision));
   });
 
-  it("reloads the shared mapping sign-off and advances a current candidate to Connect", async () => {
+  it("reloads the analyzer mapping sign-off and advances a current candidate to Connect", async () => {
     const entry = `/analyzers?search=gene&setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`;
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
-    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
       callback(connectedCandidate()),
     );
     const history = renderSetupWithHistory(entry);
 
     expect(
       await screen.findByRole("heading", {
-        name: "Review analyzer type mappings",
+        name: "Review analyzer mappings",
       }),
     ).toBeVisible();
     expect(screen.getByText("2 of 2 tests ready")).toBeVisible();
@@ -565,32 +565,25 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(screen.getByText("Rule-based control recognition")).toBeVisible();
     expect(screen.getByText("Specimen ID starts with QC")).toBeVisible();
     expect(screen.getByText(/Casey Iiams-Hauser/)).toBeVisible();
-    expect(getAnalyzerTypeMapping).toHaveBeenCalledWith(
-      activeType.profileId,
-      activeType.revision,
-      expect.any(Function),
-    );
+    expect(getAnalyzerMapping).toHaveBeenCalledWith("42", expect.any(Function));
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
 
     const reviewLink = screen.getByRole("link", {
-      name: "Review mappings in Analyzer Types",
+      name: "Review mappings",
     });
     const reviewUrl = new URL(reviewLink.href);
-    expect(reviewUrl.pathname).toBe(
-      `/analyzers/types/${activeType.profileId}/mapping`,
-    );
-    expect(reviewUrl.searchParams.get("revision")).toBe("3");
+    expect(reviewUrl.pathname).toBe("/analyzers/42/mapping");
     expect(reviewUrl.searchParams.get("returnTo")).toBe(entry);
 
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Connect" }),
     );
-    expect(selectAnalyzerSiteBinding).toHaveBeenCalledWith(
+    expect(applyAnalyzerMapping).toHaveBeenCalledWith(
       "42",
       {
-        siteBindingId: currentMapping.siteBindingId,
-        revision: currentMapping.siteBindingRevision,
-        bindingFingerprint: currentMapping.bindingFingerprint,
+        mappingId: currentMapping.mappingId,
+        revision: currentMapping.mappingRevision,
+        mappingFingerprint: currentMapping.mappingFingerprint,
       },
       expect.any(Function),
     );
@@ -609,16 +602,15 @@ describe("AnalyzerSetup Instrument step", () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) =>
-        callback({
-          ...currentMapping,
-          controlRecognition: {
-            ...currentMapping.controlRecognition,
-            description: "SERVER DESCRIPTION MUST NOT RENDER",
-            conditions: [],
-          },
-        }),
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...currentMapping,
+        controlRecognition: {
+          ...currentMapping.controlRecognition,
+          description: "SERVER DESCRIPTION MUST NOT RENDER",
+          conditions: [],
+        },
+      }),
     );
     renderSetupWithHistory(
       `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
@@ -644,7 +636,7 @@ describe("AnalyzerSetup Instrument step", () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
-    getAnalyzerTypeMapping.mockImplementation((_id, _revision, callback) =>
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
       callback({
         ...currentMapping,
         tests: [
@@ -671,7 +663,7 @@ describe("AnalyzerSetup Instrument step", () => {
     });
     expect(button).toBeEnabled();
     await userEvent.click(button);
-    expect(selectAnalyzerSiteBinding).toHaveBeenCalled();
+    expect(applyAnalyzerMapping).toHaveBeenCalled();
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
       "connect",
     );
@@ -682,7 +674,7 @@ describe("AnalyzerSetup Instrument step", () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
-    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
       callback({ error: "stale binding", statusCode: 400 }),
     );
     const history = renderSetupWithHistory(entry);
@@ -701,7 +693,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
   });
 
-  it("blocks Connect and uses the sole Analyzer Types editor when verification needs attention", async () => {
+  it("blocks Connect and uses the analyzer's own mapping editor when verification needs attention", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback({
         id: "42",
@@ -712,23 +704,22 @@ describe("AnalyzerSetup Instrument step", () => {
         status: "SETUP",
       }),
     );
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) =>
-        callback({
-          ...currentMapping,
-          tests: [
-            {
-              ...currentMapping.tests[0],
-              mappingState: "UNRESOLVED",
-              testId: null,
-              selectedTest: null,
-            },
-          ],
-          confirmation: {
-            ...currentMapping.confirmation,
-            state: "STALE",
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...currentMapping,
+        tests: [
+          {
+            ...currentMapping.tests[0],
+            mappingState: "UNRESOLVED",
+            testId: null,
+            selectedTest: null,
           },
-        }),
+        ],
+        confirmation: {
+          ...currentMapping.confirmation,
+          state: "STALE",
+        },
+      }),
     );
     renderSetupWithHistory(
       `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
@@ -741,9 +732,7 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(
       screen.getByRole("button", { name: "Continue to Connect" }),
     ).toBeDisabled();
-    expect(
-      screen.getByRole("link", { name: "Review mappings in Analyzer Types" }),
-    ).toBeVisible();
+    expect(screen.getByRole("link", { name: "Review mappings" })).toBeVisible();
     expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
   });
 

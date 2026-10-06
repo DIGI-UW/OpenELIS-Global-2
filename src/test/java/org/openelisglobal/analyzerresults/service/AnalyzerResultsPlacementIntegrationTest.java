@@ -1,6 +1,7 @@
 package org.openelisglobal.analyzerresults.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
@@ -33,6 +34,8 @@ public class AnalyzerResultsPlacementIntegrationTest extends BaseWebContextSensi
 
     @Autowired
     private AnalyzerResultsAcceptService acceptService;
+    @Autowired
+    private AnalyzerFailedRunService failedRunService;
     @Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSampleService typeOfSampleService;
     @Autowired
@@ -267,6 +270,69 @@ public class AnalyzerResultsPlacementIntegrationTest extends BaseWebContextSensi
         jdbc.update("UPDATE clinlims.sample_human SET patient_id = ? WHERE samp_id ="
                 + " (SELECT id FROM clinlims.sample WHERE accession_number = ?)", patient, ACCESSION);
         entityManager.clear();
+    }
+
+    @Test
+    public void dismissingAFailedRunRecordsTheInstrumentsNoteOnTheWaitingTestAndKeepsItOpen() {
+        acceptNew("1");
+        long tube = onlyTube();
+        long analysis = analysisOn(tube);
+        jdbc.update("DELETE FROM clinlims.result WHERE analysis_id = ?", analysis);
+        String notStarted = statusService.getStatusID(AnalysisStatus.NotStarted);
+        jdbc.update("UPDATE clinlims.analysis SET status_id = ? WHERE id = ?", Long.valueOf(notStarted), analysis);
+        String failed = stageFailedRun(ACCESSION, "Error 2008: pressure abort");
+
+        failedRunService.dismissAsFailedRun(failed, "1");
+        entityManager.flush();
+
+        assertEquals("the staged run is gone", Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, failed));
+        assertEquals("the order says the run failed and why", Integer.valueOf(1),
+                jdbc.queryForObject(
+                        "SELECT count(*) FROM clinlims.note WHERE reference_id = ? AND note_type = 'I'"
+                                + " AND text LIKE '%ERROR%' AND text LIKE '%Error 2008: pressure abort%'",
+                        Integer.class, analysis));
+        assertEquals("the test is still waiting for its repeat", notStarted, String.valueOf(
+                jdbc.queryForObject("SELECT status_id FROM clinlims.analysis WHERE id = ?", Long.class, analysis)));
+        assertEquals("no result was written", Integer.valueOf(0), jdbc
+                .queryForObject("SELECT count(*) FROM clinlims.result WHERE analysis_id = ?", Integer.class, analysis));
+    }
+
+    @Test
+    public void aFailedRunThatMatchesNoSingleTestIsRefusedAndStaysStaged() {
+        acceptNew("1");
+        addTube(ACCESSION + "-2", AnalysisStatus.NotStarted);
+        String failed = stageFailedRun(ACCESSION, "Error 2008: pressure abort");
+
+        assertThrows(IllegalStateException.class, () -> failedRunService.dismissAsFailedRun(failed, "1"));
+
+        assertEquals(Integer.valueOf(1), jdbc.queryForObject(
+                "SELECT count(*) FROM clinlims.analyzer_results WHERE id = ?::numeric", Integer.class, failed));
+        assertEquals(Integer.valueOf(0), jdbc
+                .queryForObject("SELECT count(*) FROM clinlims.note WHERE text LIKE '%Error 2008%'", Integer.class));
+    }
+
+    @Test
+    public void onlyAFailedRunCanBeDismissedAsOne() {
+        acceptNew("1");
+        String heldForMapping = stage(ACCESSION, ACCESSION, "UNMAPPED");
+        jdbc.update("UPDATE clinlims.analyzer_results SET read_only = true, import_issue_reason = ?"
+                + " WHERE id = ?::numeric", AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE, heldForMapping);
+
+        assertThrows(IllegalStateException.class, () -> failedRunService.dismissAsFailedRun(heldForMapping, "1"));
+    }
+
+    private String stageFailedRun(String instrumentId, String note) {
+        String id = stage(instrumentId, ACCESSION, "ERROR");
+        jdbc.update(
+                "UPDATE clinlims.analyzer_results SET read_only = true, import_issue_reason = ?,"
+                        + " raw_result_value = 'ERROR', instrument_note = ? WHERE id = ?::numeric",
+                AnalyzerResults.IMPORT_ISSUE_RUN_FAILED, note, id);
+        return id;
+    }
+
+    private long analysisOn(long tube) {
+        return jdbc.queryForObject("SELECT id FROM clinlims.analysis WHERE sampitem_id = ?", Long.class, tube);
     }
 
     private void acceptNew(String value) {

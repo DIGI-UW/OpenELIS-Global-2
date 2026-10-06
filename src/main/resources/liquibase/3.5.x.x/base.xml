@@ -627,6 +627,9 @@
   <include relativeToChangelogFile="true" file="120-analyzer-result-instrument-specimen-id.xml"/>
   <include relativeToChangelogFile="true" file="121-analyzer-delivery-receipt-bundle.xml"/>
   <include relativeToChangelogFile="true" file="122-analyzer-result-instrument-patient.xml"/>
+  <include relativeToChangelogFile="true" file="123-analyzer-mapping.xml"/>
+  <include relativeToChangelogFile="true" file="124-analyzer-mapping-baseline-migration.xml"/>
+  <include relativeToChangelogFile="true" file="125-analyzer-result-instrument-note.xml"/>
 
   <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
   <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>

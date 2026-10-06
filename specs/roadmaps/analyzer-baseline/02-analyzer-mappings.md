@@ -59,7 +59,7 @@ NoteType.INTERNAL, subject, text, ...)` as used at accept 806.
   `configuration_import_run(id, source, status, started_at, finished_at,
 summary)` with `source='ANALYZER_LEGACY'`, `status='EXPORTED'`, one JSONB
   document; documented in `docs/analyzers/pre-bridge-settings-export.md`
-  (50 lines). Use `source='ANALYZER_MAPPING_BASELINE'`.
+  (50 lines). Use `source='ANALYZER_MAPPING'`.
 - Highest changeset at baseline: `119-stat-turnaround-config.xml`. Use 120
   onward.
 - Editor: `frontend/src/components/analyzers/AnalyzerTypeMapping/AnalyzerTypeMappingEditor.jsx`;
@@ -74,30 +74,54 @@ summary)` with `source='ANALYZER_LEGACY'`, `status='EXPORTED'`, one JSONB
   `AnalyzerTypeMappingEditor.test.jsx`, E2E
   `demo/harness/ogc-1054-m2-shared-mapping.spec.ts`.
 
+### Decisions (2026-10-05)
+
+- Qualitative controls are judged against the Test Catalog QC target for the
+  test and control level (OGC-1148 `test_qc_target.expected_dict_result_id`,
+  lot override first). The mapped answer equal to the expected answer records
+  PASS, otherwise FAIL, as an analyzer-sourced `qc_result` row with no value.
+  The shape check and `QCQualitativeOutcome` allow that pairing; Westgard
+  evaluation skips rows without a value. With no target configured the control
+  is held on the review row with a visible reason; nothing is guessed. The
+  RDT-only rule was the scope of OGC-1147, not a rule about analyzers.
+- A failed run (ERROR, NO RESULT) stays a held row. OpenELIS recognises it by
+  `Observation.dataAbsentReason` (no value), never by guessing from text, since
+  values such as `<40` are real results. A result beyond the measuring range
+  arrives as `Quantity.comparator`; this step records it leading the raw value
+  text (`<40`, `>10000000`, rule 11) and keeps that text as the raw value.
+  Cepheid sends an off-scale result with no number in R.4 (303-0251 §2.1.1),
+  so step 2b takes the staged value from the bundle's quantity instead.
+  `Observation.note` is kept
+  on the staged result and shown on the review row. A reviewer's "Dismiss as
+  failed run" writes it as an INTERNAL note on the one test waiting for that
+  run, removes the staged row and leaves the test open for the repeat. Nothing
+  is written to an order at import, and the action is refused when the run
+  matches no single test.
+
 ### Build
 
 ```
-- [ ] T2.1 Red: integration test, two analyzers on one profile; editing one leaves the other's rows identical
-- [ ] T2.2 Red: integration test, Cepheid-shaped HIV VL bundle (main, LOG, HIV-1, Ct, EndPt, IQS-H, IQS-L) lands main on primary and the rest on components of the same analysis
-- [ ] T2.3 Red: integration test, POS control cartridge yields a QCResult with qualitativeOutcome set
-- [ ] T2.4 Red: integration test, ERROR bundle with a note yields a held row whose INTERNAL note carries the note text
-- [ ] T2.5 Red: component test, exclude then un-exclude restores test and answers; Save shows a summary listing BOUND->EXCLUDED rows
-- [ ] T2.6 Red: integration test on a fixture with two configured analyzers: after migration each keeps id, name, lab units, bridge_connection_id, activation records; mapping_id is null; status INACTIVE; configuration_import_run has one ANALYZER_MAPPING_BASELINE row holding both old mappings
-- [ ] T2.7 Changeset 120: create analyzer_mapping, analyzer_mapping_test, analyzer_mapping_result, analyzer_mapping_confirmation; add analyzer.mapping_id
-- [ ] T2.8 Changeset 121 (migration): export every analyzer_site_binding_revision + tests + results + confirmation to configuration_import_run; set analyzer.active=false, status='INACTIVE', site_binding_revision_id=null; drop analyzer_site_binding_* and analyzer_profile_binding and the analyzer column
-- [ ] T2.9 Services: AnalyzerMappingService (resolveDefaults at setup via step 1; appendRevision; confirm) replacing the four site-binding services; AnalyzerInstanceLocalStateService.create resolves and stores the analyzer's own mapping
-- [ ] T2.10 Import: set componentId from the mapping row; route qualitative controls to QC; attach Observation.note as a note on held run failures
-- [ ] T2.11 Editor: re-point to the analyzer endpoints; keep prior selections on exclude; change summary before save; show origin per row
-- [ ] T2.12 Analyzer Types page: remove Edit mappings; show read-only defaults preview from step 1's resolver against the current catalog
-- [ ] T2.13 docs/analyzers/mapping-baseline-migration.md (under one page): what the changeset does, how to read the export, how to re-verify an analyzer
+- [x] T2.1 Red: integration test, two analyzers on one profile; editing one leaves the other's rows identical
+- [x] T2.2 Red: integration test, Cepheid-shaped HIV VL bundle (main, LOG, HIV-1, Ct, EndPt, IQS-H, IQS-L) lands main on primary and the rest on components of the same analysis
+- [x] T2.3 Red: integration test, POS control cartridge yields a QCResult with qualitativeOutcome PASS against its QC target; a wrong answer FAIL; no target holds the control
+- [x] T2.4 Red: integration test, ERROR bundle with a note yields a held row carrying the note; dismissing it as a failed run writes an INTERNAL note on the waiting test and leaves the test open
+- [x] T2.5 Red: component test, exclude then un-exclude restores test and answers; Save shows a summary listing BOUND->EXCLUDED rows
+- [x] T2.6 Red: integration test on a fixture with two configured analyzers: after migration each keeps id, name, lab units, bridge_connection_id, activation records; mapping_id is null; status INACTIVE; configuration_import_run has one ANALYZER_MAPPING row holding both old mappings
+- [x] T2.7 Changeset 123 (120-122 went to step 1b): create analyzer_mapping, analyzer_mapping_test, analyzer_mapping_result, analyzer_mapping_confirmation; add analyzer.mapping_id
+- [x] T2.8 Changeset 124 (migration): export every analyzer_site_binding_revision + tests + results + confirmation to configuration_import_run; set analyzer.active=false, status='INACTIVE', site_binding_revision_id=null; drop analyzer_site_binding_* and analyzer_profile_binding and the analyzer column
+- [x] T2.9 Services: AnalyzerMappingService (resolveDefaults at setup via step 1; appendRevision; confirm) replacing the four site-binding services; AnalyzerInstanceLocalStateService.create resolves and stores the analyzer's own mapping
+- [x] T2.10 Import: set componentId from the mapping row; route qualitative controls to QC; attach Observation.note as a note on held run failures
+- [x] T2.11 Editor: re-point to the analyzer endpoints; keep prior selections on exclude; change summary before save; show origin per row
+- [x] T2.12 Analyzer Types page: remove Edit mappings; show read-only defaults preview from step 1's resolver against the current catalog
+- [x] T2.13 docs/analyzers/mapping-baseline-migration.md (under one page): what the changeset does, how to read the export, how to re-verify an analyzer
 - [ ] T2.14 Delete the superseded tests; green; format cold; commit; stack PR on step 1
 ```
 
 ### Verify
 
 ```bash
-mvn -Dtest='AnalyzerMapping*Test,AnalyzerNormalizedResultImportIntegrationTest,AnalyzerResultsAccept*IntegrationTest,AnalyzerMappingBaselineMigrationIntegrationTest' test
-grep -rn "AnalyzerSiteBinding\|AnalyzerProfileBinding\|site_binding_revision" src/main/java src/main/resources/liquibase/3.5.x.x/1[2-9][0-9]-*.xml   # 0 hits
+mvn -Dtest='AnalyzerMapping*Test,AnalyzerNormalizedResultImportIntegrationTest,AnalyzerResultsAccept*IntegrationTest,DatabaseUpgradeIntegrationTest' test
+grep -rn "AnalyzerSiteBinding\|AnalyzerProfileBinding\|site_binding_revision" src/main/java src/main/resources/liquibase/3.5.x.x/12[0-3]-*.xml   # 0 hits; 124 names the old tables to export and drop
 cd frontend && npm test -- AnalyzerTypeMappingEditor
 cd frontend && npm run pw:test -- --project=harness-foundational
 wc -l docs/analyzers/mapping-baseline-migration.md

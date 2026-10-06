@@ -25,7 +25,15 @@ public class AnalyzerMappingDefaults {
     }
 
     public AnalyzerMappingDraft resolve(BridgeAnalyzerProfile profile) {
-        List<AnalyzerMappingCatalogService.TestOption> active = catalog.searchActiveTests(null);
+        return resolve(profile, catalog.searchActiveTests(null));
+    }
+
+    /**
+     * As {@link #resolve(BridgeAnalyzerProfile)}, against an active-test list the
+     * caller already read.
+     */
+    public AnalyzerMappingDraft resolve(BridgeAnalyzerProfile profile,
+            List<AnalyzerMappingCatalogService.TestOption> active) {
         List<AnalyzerMappingTestDraft> tests = new ArrayList<>();
         List<AnalyzerMappingResultDraft> results = new ArrayList<>();
         for (var definition : profile.testDefinitions()) {

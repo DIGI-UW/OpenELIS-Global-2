@@ -8,24 +8,26 @@ import { MemoryRouter, Route, useLocation } from "react-router-dom";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import {
-  confirmAnalyzerTypeMapping,
+  applyAnalyzerMapping,
+  confirmAnalyzerMapping,
+  getAnalyzerMapping,
   getAnalyzerMappingResultOptions,
   getAnalyzerMappingTests,
-  getAnalyzerTypeMapping,
+  getAnalyzerTypeDefaults,
   getAnalyzerTypeRevision,
-  saveAnalyzerTypeMapping,
-  selectAnalyzerSiteBinding,
+  saveAnalyzerMapping,
 } from "../../../services/analyzerService";
 import AnalyzerTypeMappingEditor from "./AnalyzerTypeMappingEditor";
 
 vi.mock("../../../services/analyzerService", () => ({
-  confirmAnalyzerTypeMapping: vi.fn(),
+  applyAnalyzerMapping: vi.fn(),
+  confirmAnalyzerMapping: vi.fn(),
+  getAnalyzerMapping: vi.fn(),
   getAnalyzerMappingResultOptions: vi.fn(),
   getAnalyzerMappingTests: vi.fn(),
-  getAnalyzerTypeMapping: vi.fn(),
+  getAnalyzerTypeDefaults: vi.fn(),
   getAnalyzerTypeRevision: vi.fn(),
-  saveAnalyzerTypeMapping: vi.fn(),
-  selectAnalyzerSiteBinding: vi.fn(),
+  saveAnalyzerMapping: vi.fn(),
 }));
 
 const recognition = {
@@ -50,7 +52,7 @@ const unconfirmed = {
   state: "UNCONFIRMED",
   profileId: null,
   profileRevision: 0,
-  bindingFingerprint: null,
+  mappingFingerprint: null,
   recognitionFingerprint: null,
   confirmedBy: null,
   confirmedAt: null,
@@ -59,14 +61,15 @@ const unconfirmed = {
 };
 
 const mapping = {
+  analyzerId: "501",
   profileId: "shipped.genexpert",
   profileRevision: 2,
   profileFingerprint: `sha256:${"a".repeat(64)}`,
   displayName: "Cepheid GeneXpert MTB/RIF",
   protocol: "ASTM",
-  siteBindingId: "11",
-  siteBindingRevision: 3,
-  bindingFingerprint: `sha256:${"b".repeat(64)}`,
+  mappingId: "11",
+  mappingRevision: 3,
+  mappingFingerprint: `sha256:${"b".repeat(64)}`,
   tests: [
     {
       sourceRowKey: "RAW-A",
@@ -197,12 +200,12 @@ const ReturnStateProbe = () => {
 };
 
 const renderEditor = (
-  entry = "/analyzers/types/shipped.genexpert/mapping?revision=2&returnTo=%2Fanalyzers%2Ftypes%3Fmapping%3DINCOMPLETE",
+  entry = "/analyzers/501/mapping?returnTo=%2FAnalyzerResults%3Fid%3D501",
 ) =>
   render(
     <MemoryRouter initialEntries={[entry]}>
       <IntlProvider locale="en" messages={messages}>
-        <Route path="/analyzers/types/:profileId/mapping">
+        <Route path="/analyzers/:analyzerId/mapping">
           <AnalyzerTypeMappingEditor />
           <LocationProbe />
         </Route>
@@ -213,11 +216,27 @@ const renderEditor = (
     </MemoryRouter>,
   );
 
+const renderDefaults = (
+  entry = "/analyzers/types/shipped.genexpert/mapping?revision=2&returnTo=%2Fanalyzers%2Ftypes%3Fmapping%3DINCOMPLETE",
+) =>
+  render(
+    <MemoryRouter initialEntries={[entry]}>
+      <IntlProvider locale="en" messages={messages}>
+        <Route path="/analyzers/types/:profileId/mapping">
+          <AnalyzerTypeMappingEditor />
+          <LocationProbe />
+        </Route>
+      </IntlProvider>
+    </MemoryRouter>,
+  );
+
 describe("AnalyzerTypeMappingEditor", () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) => callback(mapping),
+    getAnalyzerMapping.mockImplementation((_id, callback) => callback(mapping));
+    getAnalyzerTypeDefaults.mockImplementation(
+      (_profileId, _revision, callback) =>
+        callback({ ...mapping, analyzerId: null, mappingId: null }),
     );
     getAnalyzerTypeRevision.mockImplementation(
       (_profileId, _revision, callback) =>
@@ -269,14 +288,12 @@ describe("AnalyzerTypeMappingEditor", () => {
       edits: { 1005: { isAccepted: true, note: "Reviewed" } },
     };
     renderEditor({
-      pathname: "/analyzers/types/shipped.genexpert/mapping",
-      search: "?revision=2&returnTo=%2FAnalyzerResults%3Fid%3D501",
+      pathname: "/analyzers/501/mapping",
+      search: "?returnTo=%2FAnalyzerResults%3Fid%3D501",
       state: { worklistDraft },
     });
 
-    await userEvent.click(
-      (await screen.findAllByRole("link", { name: "Analyzer Types" }))[1],
-    );
+    await userEvent.click(await screen.findByRole("link", { name: "Back" }));
 
     expect(screen.getByTestId("return-state")).toHaveTextContent(
       JSON.stringify({ worklistDraft }),
@@ -284,19 +301,16 @@ describe("AnalyzerTypeMappingEditor", () => {
   });
 
   it("applies the current mapping only to the named analyzer and retries its holds", async () => {
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) =>
-        callback({
-          ...mapping,
-          confirmation: { ...unconfirmed, state: "CURRENT" },
-        }),
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        confirmation: { ...unconfirmed, state: "CURRENT" },
+      }),
     );
-    selectAnalyzerSiteBinding.mockImplementation((_id, _selection, callback) =>
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
       callback({ id: "501" }),
     );
-    renderEditor(
-      "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501&returnTo=%2FAnalyzerResults%3Fid%3D501",
-    );
+    renderEditor();
 
     await userEvent.click(
       await screen.findByRole("button", {
@@ -304,12 +318,12 @@ describe("AnalyzerTypeMappingEditor", () => {
       }),
     );
 
-    expect(selectAnalyzerSiteBinding).toHaveBeenCalledWith(
+    expect(applyAnalyzerMapping).toHaveBeenCalledWith(
       "501",
       {
-        siteBindingId: mapping.siteBindingId,
-        revision: mapping.siteBindingRevision,
-        bindingFingerprint: mapping.bindingFingerprint,
+        mappingId: mapping.mappingId,
+        revision: mapping.mappingRevision,
+        mappingFingerprint: mapping.mappingFingerprint,
       },
       expect.any(Function),
     );
@@ -323,24 +337,21 @@ describe("AnalyzerTypeMappingEditor", () => {
   it.each(["UNCONFIRMED", "STALE"])(
     "does not apply a %s mapping to held results",
     async (state) => {
-      getAnalyzerTypeMapping.mockImplementation(
-        (_profileId, _revision, callback) =>
-          callback({ ...mapping, confirmation: { ...unconfirmed, state } }),
+      getAnalyzerMapping.mockImplementation((_id, callback) =>
+        callback({ ...mapping, confirmation: { ...unconfirmed, state } }),
       );
-      renderEditor(
-        "/analyzers/types/shipped.genexpert/mapping?revision=2&analyzerId=501",
-      );
+      renderEditor();
 
       expect(
         await screen.findByRole("button", {
           name: "Apply mappings and retry held results",
         }),
       ).toBeDisabled();
-      expect(selectAnalyzerSiteBinding).not.toHaveBeenCalled();
+      expect(applyAnalyzerMapping).not.toHaveBeenCalled();
     },
   );
 
-  it("restores a bookmarkable shared-type editor with breadcrumbs and every independent source row", async () => {
+  it("restores a bookmarkable analyzer mapping with breadcrumbs and every independent source row", async () => {
     renderEditor();
 
     expect(
@@ -350,19 +361,17 @@ describe("AnalyzerTypeMappingEditor", () => {
       }),
     ).toBeVisible();
     expect(document.querySelectorAll("h1")).toHaveLength(1);
-    expect(getAnalyzerTypeMapping).toHaveBeenCalledWith(
-      "shipped.genexpert",
-      2,
+    expect(getAnalyzerMapping).toHaveBeenCalledWith(
+      "501",
       expect.any(Function),
     );
+    expect(getAnalyzerTypeRevision).not.toHaveBeenCalled();
+    expect(screen.getByText("This analyzer's own mapping")).toBeVisible();
 
     const breadcrumb = screen.getByRole("navigation", { name: "Breadcrumb" });
     expect(
       within(breadcrumb).getByRole("link", { name: "Analyzers" }),
     ).toHaveAttribute("href", "/analyzers");
-    expect(
-      within(breadcrumb).getByRole("link", { name: "Analyzer Types" }),
-    ).toHaveAttribute("href", "/analyzers/types?mapping=INCOMPLETE");
     expect(breadcrumb.querySelector('[aria-current="page"]')).toHaveTextContent(
       "Cepheid GeneXpert MTB/RIF mappings",
     );
@@ -382,14 +391,11 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(
       screen.queryByText("SERVER DESCRIPTION MUST NOT RENDER"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("GeneXpert - Main Lab")).toBeVisible();
-    expect(screen.getByText("GeneXpert - TB Bench")).toBeVisible();
-    expect(screen.getByText("GeneXpert - Reference Lab")).toBeVisible();
-    expect(screen.getByText("Update available")).toBeVisible();
+    expect(screen.queryByText("GeneXpert - Main Lab")).not.toBeInTheDocument();
     expect(screen.queryByText(/regex/i)).not.toBeInTheDocument();
     expect(screen.queryByText(/operational QC/i)).not.toBeInTheDocument();
     expect(screen.getByTestId("location")).toHaveTextContent(
-      "revision=2&returnTo=%2Fanalyzers%2Ftypes%3Fmapping%3DINCOMPLETE",
+      "/analyzers/501/mapping?returnTo=%2FAnalyzerResults%3Fid%3D501",
     );
   });
 
@@ -403,7 +409,7 @@ describe("AnalyzerTypeMappingEditor", () => {
       screen.getByText(/unresolved mappings.*saved for correction/),
     ).toBeVisible();
     await userEvent.click(button);
-    const request = confirmAnalyzerTypeMapping.mock.calls[0][2];
+    const request = confirmAnalyzerMapping.mock.calls[0][1];
     expect(request.confirmedRows).toContainEqual({
       sourceRowKey: "RAW-A",
       rawValue: "DETECTED",
@@ -423,18 +429,17 @@ describe("AnalyzerTypeMappingEditor", () => {
   });
 
   it("renders explicit NONE recognition without server-authored technical details", async () => {
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) =>
-        callback({
-          ...mapping,
-          controlRecognition: {
-            recognitionFingerprint: `sha256:${"d".repeat(64)}`,
-            mode: "NONE",
-            description: "SERVER NONE DESCRIPTION MUST NOT RENDER",
-            affirmedNoControlResults: true,
-            conditions: [],
-          },
-        }),
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        controlRecognition: {
+          recognitionFingerprint: `sha256:${"d".repeat(64)}`,
+          mode: "NONE",
+          description: "SERVER NONE DESCRIPTION MUST NOT RENDER",
+          affirmedNoControlResults: true,
+          conditions: [],
+        },
+      }),
     );
 
     renderEditor();
@@ -451,16 +456,15 @@ describe("AnalyzerTypeMappingEditor", () => {
   });
 
   it("shows unconfigured rules without claiming the interface sends no controls", async () => {
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) =>
-        callback({
-          ...mapping,
-          controlRecognition: {
-            ...recognition,
-            description: "SERVER DESCRIPTION MUST NOT RENDER",
-            conditions: [],
-          },
-        }),
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        controlRecognition: {
+          ...recognition,
+          description: "SERVER DESCRIPTION MUST NOT RENDER",
+          conditions: [],
+        },
+      }),
     );
 
     renderEditor();
@@ -482,27 +486,26 @@ describe("AnalyzerTypeMappingEditor", () => {
   });
 
   it("opens and focuses the held analyzer value named in the bookmark", async () => {
-    getAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, callback) =>
-        callback({
-          ...mapping,
-          tests: mapping.tests.map((test) =>
-            test.sourceRowKey === "RAW-A"
-              ? {
-                  ...test,
-                  results: test.results.map((result) =>
-                    result.rawValue === "NOT DETECTED"
-                      ? { ...result, observed: true }
-                      : result,
-                  ),
-                }
-              : test,
-          ),
-        }),
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        tests: mapping.tests.map((test) =>
+          test.sourceRowKey === "RAW-A"
+            ? {
+                ...test,
+                results: test.results.map((result) =>
+                  result.rawValue === "NOT DETECTED"
+                    ? { ...result, observed: true }
+                    : result,
+                ),
+              }
+            : test,
+        ),
+      }),
     );
 
     renderEditor(
-      "/analyzers/types/shipped.genexpert/mapping?revision=2&returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=RAW-A&focusValue=NOT+DETECTED",
+      "/analyzers/501/mapping?returnTo=%2FAnalyzerResults%3Fid%3D2001&focusTest=RAW-A&focusValue=NOT+DETECTED",
     );
 
     expect(await screen.findByText("Observed in held results")).toBeVisible();
@@ -568,16 +571,14 @@ describe("AnalyzerTypeMappingEditor", () => {
     expect(
       within(rawB).getByText("Suggested match: COVID-19 PCR"),
     ).toBeVisible();
-    expect(
-      screen.getByRole("button", { name: "Update shared mappings" }),
-    ).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save mapping" })).toBeEnabled();
   });
 
   it("saves independent catalog-bound decisions and confirms exact evidence", async () => {
     const saved = {
       ...mapping,
-      siteBindingRevision: 4,
-      bindingFingerprint: `sha256:${"d".repeat(64)}`,
+      mappingRevision: 4,
+      mappingFingerprint: `sha256:${"d".repeat(64)}`,
       tests: mapping.tests.map((test) => {
         if (test.sourceRowKey === "RAW-A") {
           return {
@@ -613,23 +614,22 @@ describe("AnalyzerTypeMappingEditor", () => {
       }),
       confirmation: { ...unconfirmed, state: "STALE" },
     };
-    saveAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, _request, callback) => callback(saved),
+    saveAnalyzerMapping.mockImplementation((_id, _request, callback) =>
+      callback(saved),
     );
-    confirmAnalyzerTypeMapping.mockImplementation(
-      (_profileId, _revision, request, callback) =>
-        callback({
-          state: "CURRENT",
-          profileId: mapping.profileId,
-          profileRevision: mapping.profileRevision,
-          bindingFingerprint: request.baseBindingFingerprint,
-          recognitionFingerprint: request.recognitionFingerprint,
-          confirmedBy: "17",
-          confirmedByDisplayName: "Lab Admin",
-          confirmedAt: "2026-08-22T12:00:00Z",
-          confirmedRows: request.confirmedRows,
-          excludedRows: request.excludedRows,
-        }),
+    confirmAnalyzerMapping.mockImplementation((_id, request, callback) =>
+      callback({
+        state: "CURRENT",
+        profileId: mapping.profileId,
+        profileRevision: mapping.profileRevision,
+        mappingFingerprint: request.baseMappingFingerprint,
+        recognitionFingerprint: request.recognitionFingerprint,
+        confirmedBy: "17",
+        confirmedByDisplayName: "Lab Admin",
+        confirmedAt: "2026-08-22T12:00:00Z",
+        confirmedRows: request.confirmedRows,
+        excludedRows: request.excludedRows,
+      }),
     );
 
     renderEditor();
@@ -666,24 +666,39 @@ describe("AnalyzerTypeMappingEditor", () => {
       await screen.findByRole("option", { name: "Susceptible" }),
     );
 
-    const save = screen.getByRole("button", {
-      name: "Update shared mappings",
-    });
+    const save = screen.getByRole("button", { name: "Save mapping" });
     expect(save).toBeEnabled();
     await userEvent.click(save);
-
-    await waitFor(() =>
-      expect(saveAnalyzerTypeMapping).toHaveBeenCalledTimes(1),
+    await userEvent.click(
+      within(await screen.findByRole("dialog")).getByRole("button", {
+        name: "Save changes",
+      }),
     );
-    expect(saveAnalyzerTypeMapping.mock.calls[0].slice(0, 3)).toEqual([
-      "shipped.genexpert",
-      2,
+
+    await waitFor(() => expect(saveAnalyzerMapping).toHaveBeenCalledTimes(1));
+    expect(saveAnalyzerMapping.mock.calls[0].slice(0, 2)).toEqual([
+      "501",
       {
-        baseBindingFingerprint: mapping.bindingFingerprint,
+        baseMappingFingerprint: mapping.mappingFingerprint,
         tests: [
-          { sourceRowKey: "RAW-A", mappingState: "BOUND", testId: "9701" },
-          { sourceRowKey: "RAW-B", mappingState: "BOUND", testId: "9702" },
-          { sourceRowKey: "RAW-C", mappingState: "EXCLUDED", testId: null },
+          {
+            sourceRowKey: "RAW-A",
+            mappingState: "BOUND",
+            testId: "9701",
+            componentId: null,
+          },
+          {
+            sourceRowKey: "RAW-B",
+            mappingState: "BOUND",
+            testId: "9702",
+            componentId: null,
+          },
+          {
+            sourceRowKey: "RAW-C",
+            mappingState: "EXCLUDED",
+            testId: null,
+            componentId: null,
+          },
         ],
         results: [
           {
@@ -716,11 +731,10 @@ describe("AnalyzerTypeMappingEditor", () => {
     await userEvent.click(confirm);
 
     await waitFor(() =>
-      expect(confirmAnalyzerTypeMapping).toHaveBeenCalledWith(
-        "shipped.genexpert",
-        2,
+      expect(confirmAnalyzerMapping).toHaveBeenCalledWith(
+        "501",
         {
-          baseBindingFingerprint: saved.bindingFingerprint,
+          baseMappingFingerprint: saved.mappingFingerprint,
           recognitionFingerprint: recognition.recognitionFingerprint,
           confirmedRows: [
             { sourceRowKey: "RAW-A", rawValue: null },
@@ -740,5 +754,179 @@ describe("AnalyzerTypeMappingEditor", () => {
       screen.getByText(/Confirmed by Lab Admin on Aug 22, 2026/),
     ).toBeVisible();
     expect(screen.getByText("Current confirmation")).toBeVisible();
+  });
+
+  it("keeps the selections of an excluded test so that un-excluding restores them", async () => {
+    renderEditor();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Cepheid GeneXpert MTB/RIF mappings",
+    });
+    const rawA = () =>
+      screen
+        .getAllByTestId("analyzer-type-mapping-row")
+        .find((row) => within(row).queryByText("RAW-A"));
+
+    await userEvent.click(
+      within(rawA()).getByRole("checkbox", { name: "Do not receive RAW-A" }),
+    );
+    expect(
+      within(rawA()).getByRole("combobox", { name: "OpenELIS test for RAW-A" }),
+    ).toBeDisabled();
+
+    await userEvent.click(
+      within(rawA()).getByRole("checkbox", { name: "Do not receive RAW-A" }),
+    );
+
+    expect(
+      within(rawA()).getByRole("combobox", { name: "OpenELIS test for RAW-A" }),
+    ).toHaveValue("Rifampin Resistance · RIF · 46244-0");
+    expect(
+      within(rawA()).getByRole("combobox", {
+        name: "OpenELIS result for DETECTED",
+      }),
+    ).toHaveTextContent("Resistant");
+    // Back where it started, so Save has nothing to write.
+    await userEvent.click(screen.getByRole("button", { name: "Save mapping" }));
+    expect(
+      within(await screen.findByRole("dialog")).getByText(
+        "Nothing has changed since the last save.",
+      ),
+    ).toBeVisible();
+  });
+
+  it("keeps a result the operator excluded excluded when its test is excluded and un-excluded", async () => {
+    renderEditor();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Cepheid GeneXpert MTB/RIF mappings",
+    });
+    const rawA = () =>
+      screen
+        .getAllByTestId("analyzer-type-mapping-row")
+        .find((row) => within(row).queryByText("RAW-A"));
+    const detected = () =>
+      within(rawA()).getByRole("checkbox", {
+        name: "Do not receive DETECTED",
+      });
+
+    await userEvent.click(detected());
+    await userEvent.click(
+      within(rawA()).getByRole("checkbox", { name: "Do not receive RAW-A" }),
+    );
+    await userEvent.click(
+      within(rawA()).getByRole("checkbox", { name: "Do not receive RAW-A" }),
+    );
+
+    expect(detected()).toBeChecked();
+  });
+
+  it("names the old and new test when a mapped row is pointed at another test", async () => {
+    renderEditor();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Cepheid GeneXpert MTB/RIF mappings",
+    });
+    const rawA = screen
+      .getAllByTestId("analyzer-type-mapping-row")
+      .find((row) => within(row).queryByText("RAW-A"));
+    const picker = within(rawA).getByRole("combobox", {
+      name: "OpenELIS test for RAW-A",
+    });
+    await userEvent.clear(picker);
+    await userEvent.type(picker, "94558-4");
+    await userEvent.click(
+      await screen.findByRole("option", {
+        name: "Unconfigured qualitative test · UNCONFIGURED · 94558-4",
+      }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save mapping" }));
+
+    const changes = within(
+      await screen.findByTestId("analyzer-mapping-changes"),
+    );
+    expect(
+      changes.getByText("Rifampin Resistance to Unconfigured qualitative test"),
+    ).toBeVisible();
+    expect(changes.getByText("Resistant to Needs mapping")).toBeVisible();
+  });
+
+  it("lists every mapped row that becomes excluded before Save writes it", async () => {
+    renderEditor();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Cepheid GeneXpert MTB/RIF mappings",
+    });
+    const rawA = screen
+      .getAllByTestId("analyzer-type-mapping-row")
+      .find((row) => within(row).queryByText("RAW-A"));
+
+    await userEvent.click(
+      within(rawA).getByRole("checkbox", { name: "Do not receive RAW-A" }),
+    );
+    await userEvent.click(screen.getByRole("button", { name: "Save mapping" }));
+
+    const changes = within(
+      await screen.findByTestId("analyzer-mapping-changes"),
+    );
+    expect(changes.getByText("RAW-A")).toBeVisible();
+    expect(changes.getByText("RAW-A / DETECTED")).toBeVisible();
+    expect(
+      changes.getByText("Rifampin Resistance to Do not receive"),
+    ).toBeVisible();
+    expect(changes.getByText("Resistant to Do not receive")).toBeVisible();
+    expect(saveAnalyzerMapping).not.toHaveBeenCalled();
+  });
+
+  it("marks a row the operator edited and leaves defaults unmarked", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        tests: mapping.tests.map((test) =>
+          test.sourceRowKey === "RAW-A"
+            ? { ...test, origin: "OVERRIDE" }
+            : { ...test, origin: "DEFAULT" },
+        ),
+      }),
+    );
+    renderEditor();
+    await screen.findByRole("heading", {
+      level: 1,
+      name: "Cepheid GeneXpert MTB/RIF mappings",
+    });
+
+    expect(screen.getAllByText("Edited")).toHaveLength(1);
+  });
+
+  it("shows a type's defaults read-only, with no way to save, confirm or apply them", async () => {
+    renderDefaults();
+
+    expect(await screen.findByText("Defaults for new analyzers")).toBeVisible();
+    expect(getAnalyzerTypeDefaults).toHaveBeenCalledWith(
+      "shipped.genexpert",
+      2,
+      expect.any(Function),
+    );
+    expect(getAnalyzerMapping).not.toHaveBeenCalled();
+    expect(screen.getByText("GeneXpert - Main Lab")).toBeVisible();
+    expect(
+      screen.queryByRole("button", { name: "Save mapping" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Confirm mappings and control recognition",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Apply mappings and retry held results",
+      }),
+    ).not.toBeInTheDocument();
+    screen
+      .getAllByRole("combobox", { name: /OpenELIS test for/ })
+      .forEach((picker) => expect(picker).toBeDisabled());
+    screen
+      .getAllByRole("checkbox")
+      .forEach((checkbox) => expect(checkbox).toBeDisabled());
   });
 });

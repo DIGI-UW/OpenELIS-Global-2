@@ -28,7 +28,7 @@ public class AnalyzerDeliveryIssueServiceImpl implements AnalyzerDeliveryIssueSe
     @Override
     @Transactional(readOnly = true)
     public List<AnalyzerDeliveryIssue> getOpenIssues() {
-        Map<String, Analyzer> byConnection = analyzerService.getAllWithBindings().stream()
+        Map<String, Analyzer> byConnection = analyzerService.getAllWithMapping().stream()
                 .filter(analyzer -> analyzer.getBridgeConnectionId() != null).collect(
                         Collectors.toMap(Analyzer::getBridgeConnectionId, Function.identity(), (first, next) -> first));
         List<AnalyzerDeliveryIssue> issues = new ArrayList<>();

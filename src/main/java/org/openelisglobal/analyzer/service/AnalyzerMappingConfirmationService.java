@@ -1,5 +1,8 @@
 package org.openelisglobal.analyzer.service;
 
+import java.util.Optional;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
+
 public interface AnalyzerMappingConfirmationService {
 
     AnalyzerMappingConfirmationView confirm(AnalyzerMappingSnapshot candidate, String recognitionFingerprint,
@@ -15,4 +18,6 @@ public interface AnalyzerMappingConfirmationService {
 
     AnalyzerMappingVerificationAssessment assessCurrent(AnalyzerMappingSnapshot candidate,
             String recognitionFingerprint);
+
+    Optional<AnalyzerMappingConfirmation> findForMapping(String mappingId);
 }

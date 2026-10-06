@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -18,6 +19,8 @@ import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -32,14 +35,13 @@ import org.openelisglobal.analyzer.dao.AnalyzerMappingConfirmationDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingResultDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingTestDAO;
-import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
-import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
+import org.openelisglobal.analyzer.valueholder.AnalyzerProfilePin;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.qc.service.QCControlLotService;
@@ -52,6 +54,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -62,9 +65,6 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
 
     private static final String PROFILE_FINGERPRINT = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
     private static final String RECOGNITION_FINGERPRINT = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
-
-    @Autowired
-    private AnalyzerProfileBindingDAO profileBindingDAO;
 
     @Autowired
     private AnalyzerDAO analyzerDAO;
@@ -82,16 +82,13 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
     private AnalyzerService analyzerService;
 
     @Autowired
-    private AnalyzerSiteBindingDAO siteBindingDAO;
+    private AnalyzerMappingDAO mappingDAO;
 
     @Autowired
-    private AnalyzerMappingDAO revisionDAO;
+    private AnalyzerMappingTestDAO mappingTestDAO;
 
     @Autowired
-    private AnalyzerMappingTestDAO siteBindingTestDAO;
-
-    @Autowired
-    private AnalyzerMappingResultDAO siteBindingResultDAO;
+    private AnalyzerMappingResultDAO mappingResultDAO;
 
     @Autowired
     private AnalyzerMappingConfirmationDAO confirmationDAO;
@@ -115,7 +112,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
     private EntityManager entityManager;
 
     @Test
-    public void savedCatalogBindingsAndConfirmationReloadFromPostgres() {
+    public void savedMappingAndConfirmationReloadFromPostgres() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
             JdbcTemplate jdbc = new JdbcTemplate(dataSource);
@@ -124,7 +121,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             jdbc.update(
                     "INSERT INTO test (id, name, description, guid, is_active, is_reportable, orderable, "
                             + "lastupdated) VALUES (?, ?, ?, ?, 'Y', 'Y', TRUE, CURRENT_TIMESTAMP)",
-                    Long.valueOf(testId), "Analyzer binding persistence test", "Analyzer binding persistence test",
+                    Long.valueOf(testId), "Analyzer mapping persistence test", "Analyzer mapping persistence test",
                     UUID.randomUUID());
             jdbc.update("INSERT INTO test_result (id, test_id, tst_rslt_type, value, sort_order, is_active, "
                     + "is_normal, lastupdated) VALUES (?, ?, 'D', 'POSITIVE', 1, TRUE, TRUE, CURRENT_TIMESTAMP)",
@@ -150,61 +147,48 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             when(testService.get(testId)).thenReturn(test);
             when(testResultService.get(resultOptionId)).thenReturn(resultOption);
             when(systemUserService.getUserById(TEST_SYS_USER_ID)).thenReturn(actor);
+            // The local test carries no LOINC code, so no default can bind and the operator
+            // decides.
             when(mappingCatalogService.searchActiveTests(null))
                     .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption(testId,
-                            "Analyzer binding persistence test", "TEST", List.of())));
-            when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(
-                    List.of(new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive")));
+                            "Analyzer mapping persistence test", "TEST", List.of())));
+            when(mappingCatalogService.getActiveResultOptions(testId)).thenReturn(List
+                    .of(new AnalyzerMappingCatalogService.ResultOption(resultOptionId, "POSITIVE", "Positive", null)));
 
-            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
-            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
-            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
-            AnalyzerMappingService siteBindingService = new AnalyzerMappingServiceImpl(siteBindingDAO, revisionDAO,
-                    siteBindingTestDAO, siteBindingResultDAO, auditTrailService, testService, testResultService,
-                    new AnalyzerMappingDefaults(mappingCatalogService, testResultService));
+            AuditTrailServiceImpl auditTrailService = auditTrail();
+            String profileId = "site.persistence." + UUID.randomUUID();
+            AnalyzerMappingService mappingService = mappingService(testService, testResultService,
+                    mappingCatalogService, auditTrailService, profileId);
             AnalyzerMappingConfirmationService confirmationService = new AnalyzerMappingConfirmationServiceImpl(
                     confirmationDAO, auditTrailService, systemUserService, mappingCatalogService);
 
-            String profileId = "site.persistence." + UUID.randomUUID();
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
-
-            ObjectNode profile = profile(profileId);
-            AnalyzerMappingSnapshot initial = siteBindingService.resolveInitialRevision(profileBinding, profile,
-                    TEST_SYS_USER_ID);
+            Analyzer analyzer = insertAnalyzer("Persistence analyzer", Analyzer.AnalyzerStatus.VALIDATION);
+            AnalyzerMappingSnapshot initial = mappingService.assignProfile(analyzer, profileId, 1, TEST_SYS_USER_ID);
             AnalyzerMappingDraft decisions = new AnalyzerMappingDraft(
-                    List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, testId)),
-                    List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.BOUND,
-                            resultOptionId)));
-            AnalyzerMappingSnapshot saved = siteBindingService.appendRevision(initial.binding(), decisions,
-                    TEST_SYS_USER_ID);
+                    List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, testId, null, null,
+                            AnalyzerMappingOrigin.OVERRIDE)),
+                    List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.BOUND, resultOptionId,
+                            null, AnalyzerMappingOrigin.OVERRIDE)));
+            AnalyzerMappingSnapshot saved = mappingService.appendRevision(analyzer, decisions, TEST_SYS_USER_ID);
+            analyzer.setMapping(saved.mapping());
+            analyzerDAO.update(analyzer);
             AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
-                    saved.revision().getBindingFingerprint(), RECOGNITION_FINGERPRINT,
+                    saved.mapping().getMappingFingerprint(), RECOGNITION_FINGERPRINT,
                     List.of(new AnalyzerMappingSourceRow("RAW-A", null), new AnalyzerMappingSourceRow("RAW-A", "POS")),
                     List.of());
             confirmationService.confirm(saved, RECOGNITION_FINGERPRINT, request, TEST_SYS_USER_ID);
-            var storedVerification = confirmationDAO.findByRevisionId(saved.revision().getId()).orElseThrow();
-
-            Analyzer analyzer = new Analyzer();
-            analyzer.setName("Persistence analyzer");
-            analyzer.setStatus(Analyzer.AnalyzerStatus.VALIDATION);
-            analyzer.setSiteBindingRevision(saved.revision());
-            analyzer.setTestUnitIds(List.of("1"));
+            var storedVerification = confirmationDAO.findByMappingId(saved.mapping().getId()).orElseThrow();
             analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
-            analyzer.setSysUserId(TEST_SYS_USER_ID);
-            analyzerDAO.insert(analyzer);
+            analyzerDAO.update(analyzer);
 
             AnalyzerActivationRecordService activationRecordService = new AnalyzerActivationRecordServiceImpl(
                     activationRecordDAO, auditTrailService);
-            ObjectNode firstAcknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-1", 1);
-            var firstRecord = activationRecordService.retain(analyzer, saved.revision(), storedVerification,
+            AnalyzerProfilePin pin = saved.mapping().getProfilePin();
+            ObjectNode firstAcknowledgement = runtimeAcknowledgement(analyzer, pin, "activate-1", 1);
+            var firstRecord = activationRecordService.retain(analyzer, saved.mapping(), storedVerification,
                     firstAcknowledgement, "ACTIVE", TEST_SYS_USER_ID);
-            ObjectNode secondAcknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-2", 2);
-            var latestRecord = activationRecordService.retain(analyzer, saved.revision(), storedVerification,
+            ObjectNode secondAcknowledgement = runtimeAcknowledgement(analyzer, pin, "activate-2", 2);
+            var latestRecord = activationRecordService.retain(analyzer, saved.mapping(), storedVerification,
                     secondAcknowledgement, "ACTIVE", TEST_SYS_USER_ID);
             analyzer.setLatestActivationRecord(latestRecord);
             analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
@@ -213,18 +197,26 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             entityManager.flush();
             entityManager.clear();
 
-            AnalyzerMappingSnapshot reloaded = siteBindingService.findCurrentByProfileBindingId(profileBinding.getId())
-                    .orElseThrow();
-            assertEquals(2, reloaded.revision().getRevisionNumber());
-            assertEquals(saved.revision().getBindingFingerprint(), reloaded.revision().getBindingFingerprint());
+            AnalyzerMappingSnapshot reloaded = mappingService.findLatestByAnalyzerId(analyzer.getId()).orElseThrow();
+            assertEquals(2, reloaded.mapping().getRevisionNumber());
+            assertEquals(saved.mapping().getMappingFingerprint(), reloaded.mapping().getMappingFingerprint());
+            assertEquals(profileId, reloaded.mapping().getProfileId());
+            assertEquals(PROFILE_FINGERPRINT, reloaded.mapping().getProfileFingerprint());
+            assertEquals(initial.mapping().getId(), reloaded.mapping().getSupersedes().getId());
             assertEquals(AnalyzerMappingState.BOUND, reloaded.tests().get(0).getMappingState());
+            assertEquals(AnalyzerMappingOrigin.OVERRIDE, reloaded.tests().get(0).getOrigin());
             assertEquals(testId, reloaded.tests().get(0).getTestId());
             assertEquals(AnalyzerMappingState.BOUND, reloaded.results().get(0).getMappingState());
             assertEquals(resultOptionId, reloaded.results().get(0).getTestResultId());
 
+            AnalyzerMappingSnapshot firstRevision = mappingService.findById(initial.mapping().getId()).orElseThrow();
+            assertEquals(AnalyzerMappingState.UNRESOLVED, firstRevision.tests().get(0).getMappingState());
+            assertEquals(AnalyzerMappingOrigin.DEFAULT, firstRevision.tests().get(0).getOrigin());
+            assertEquals(AnalyzerUnresolvedReason.NO_MATCH, firstRevision.tests().get(0).getUnresolvedReason());
+
             AnalyzerMappingConfirmationView confirmation = confirmationService.getStatus(reloaded,
                     RECOGNITION_FINGERPRINT);
-            var storedConfirmation = confirmationDAO.findByRevisionId(reloaded.revision().getId()).orElseThrow();
+            var storedConfirmation = confirmationDAO.findByMappingId(reloaded.mapping().getId()).orElseThrow();
             assertEquals(AnalyzerMappingConfirmationView.State.CURRENT, confirmation.state());
             assertEquals(PROFILE_FINGERPRINT, storedConfirmation.getProfileRevisionFingerprint());
             assertNotNull(storedConfirmation.getAuditEventId());
@@ -246,48 +238,72 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
     }
 
     @Test
-    public void sharedMappingCanReturnToTheContentOfAnEarlierRevision() {
+    public void aMappingCanReturnToTheContentOfAnEarlierRevision() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
-            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
-            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
-            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
-            AnalyzerMappingService siteBindingService = new AnalyzerMappingServiceImpl(siteBindingDAO, revisionDAO,
-                    siteBindingTestDAO, siteBindingResultDAO, auditTrailService, mock(TestService.class),
-                    mock(TestResultService.class), new AnalyzerMappingDefaults(
-                            mock(AnalyzerMappingCatalogService.class), mock(TestResultService.class)));
-
             String profileId = "site.revert." + UUID.randomUUID();
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
+            AnalyzerMappingService mappingService = mappingService(mock(TestService.class),
+                    mock(TestResultService.class), mock(AnalyzerMappingCatalogService.class), auditTrail(), profileId);
 
-            AnalyzerMappingSnapshot initial = siteBindingService.resolveInitialRevision(profileBinding,
-                    profile(profileId), TEST_SYS_USER_ID);
+            Analyzer analyzer = insertAnalyzer("Revert analyzer", Analyzer.AnalyzerStatus.SETUP);
+            AnalyzerMappingSnapshot initial = mappingService.assignProfile(analyzer, profileId, 1, TEST_SYS_USER_ID);
             AnalyzerMappingDraft excluded = new AnalyzerMappingDraft(
                     List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.EXCLUDED, null)),
                     List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.EXCLUDED, null)));
-            AnalyzerMappingSnapshot changed = siteBindingService.appendRevision(initial.binding(), excluded,
-                    TEST_SYS_USER_ID);
+            AnalyzerMappingSnapshot changed = mappingService.appendRevision(analyzer, excluded, TEST_SYS_USER_ID);
             AnalyzerMappingDraft restoredContent = new AnalyzerMappingDraft(
                     List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.UNRESOLVED, null)),
                     List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.UNRESOLVED, null)));
 
-            AnalyzerMappingSnapshot restored = siteBindingService.appendRevision(initial.binding(), restoredContent,
+            AnalyzerMappingSnapshot restored = mappingService.appendRevision(analyzer, restoredContent,
                     TEST_SYS_USER_ID);
             entityManager.flush();
             entityManager.clear();
 
-            AnalyzerMappingSnapshot current = siteBindingService.findCurrentByProfileBindingId(profileBinding.getId())
+            AnalyzerMappingSnapshot current = mappingService.findLatestByAnalyzerId(analyzer.getId()).orElseThrow();
+            assertEquals(1, initial.mapping().getRevisionNumber());
+            assertEquals(2, changed.mapping().getRevisionNumber());
+            assertEquals(3, restored.mapping().getRevisionNumber());
+            assertFalse(initial.mapping().getId().equals(restored.mapping().getId()));
+            assertEquals(initial.mapping().getMappingFingerprint(), restored.mapping().getMappingFingerprint());
+            assertEquals(restored.mapping().getId(), current.mapping().getId());
+            status.setRollbackOnly();
+        });
+    }
+
+    @Test
+    public void twoAnalyzersOnTheSameProfileKeepIndependentMappings() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.executeWithoutResult(status -> {
+            String profileId = "site.independent." + UUID.randomUUID();
+            AnalyzerMappingService mappingService = mappingService(mock(TestService.class),
+                    mock(TestResultService.class), mock(AnalyzerMappingCatalogService.class), auditTrail(), profileId);
+            Analyzer first = insertAnalyzer("Independent analyzer 1", Analyzer.AnalyzerStatus.SETUP);
+            Analyzer second = insertAnalyzer("Independent analyzer 2", Analyzer.AnalyzerStatus.SETUP);
+            first.setMapping(mappingService.assignProfile(first, profileId, 1, TEST_SYS_USER_ID).mapping());
+            second.setMapping(mappingService.assignProfile(second, profileId, 1, TEST_SYS_USER_ID).mapping());
+            analyzerDAO.update(first);
+            analyzerDAO.update(second);
+
+            mappingService.appendRevision(first,
+                    new AnalyzerMappingDraft(
+                            List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.EXCLUDED, null, null,
+                                    null, AnalyzerMappingOrigin.OVERRIDE)),
+                            List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.EXCLUDED, null,
+                                    null, AnalyzerMappingOrigin.OVERRIDE))),
+                    TEST_SYS_USER_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            AnalyzerMappingSnapshot editedFirst = mappingService.findLatestByAnalyzerId(first.getId()).orElseThrow();
+            AnalyzerMappingSnapshot untouchedSecond = mappingService.findLatestByAnalyzerId(second.getId())
                     .orElseThrow();
-            assertEquals(2, changed.revision().getRevisionNumber());
-            assertEquals(3, restored.revision().getRevisionNumber());
-            assertFalse(initial.revision().getId().equals(restored.revision().getId()));
-            assertEquals(initial.revision().getBindingFingerprint(), restored.revision().getBindingFingerprint());
-            assertEquals(restored.revision().getId(), current.revision().getId());
+            assertEquals(2, editedFirst.mapping().getRevisionNumber());
+            assertEquals(AnalyzerMappingState.EXCLUDED, editedFirst.tests().get(0).getMappingState());
+            assertEquals(1, untouchedSecond.mapping().getRevisionNumber());
+            assertEquals(AnalyzerMappingState.UNRESOLVED, untouchedSecond.tests().get(0).getMappingState());
+            assertEquals(List.of(first.getId(), second.getId()), mappingDAO.findAnalyzersInForceOnProfile(profileId)
+                    .stream().map(Analyzer::getId).sorted().toList());
             status.setRollbackOnly();
         });
     }
@@ -295,163 +311,97 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
     @Test
     public void bridgeConnectionReferencePersistsAfterReloadingTheLocalAnalyzer() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
-        ConnectionFixture fixture = transaction.execute(status -> {
-            String profileId = "site.connection." + UUID.randomUUID();
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
-
-            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-            binding.setProfileBinding(profileBinding);
-            binding.setCreatedBy(TEST_SYS_USER_ID);
-            binding.setSysUserId(TEST_SYS_USER_ID);
-            siteBindingDAO.insert(binding);
-
-            AnalyzerMapping revision = new AnalyzerMapping();
-            revision.setSiteBinding(binding);
-            revision.setRevisionNumber(1);
-            revision.setBindingFingerprint("sha256:" + "c".repeat(64));
-            revision.setCreatedBy(TEST_SYS_USER_ID);
-            revision.setSysUserId(TEST_SYS_USER_ID);
-            revisionDAO.insert(revision);
-
-            Analyzer analyzer = new Analyzer();
-            analyzer.ensureFhirUuid();
-            analyzer.setName("Connection reference persistence test");
-            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
-            analyzer.setActive(false);
-            analyzer.setSiteBindingRevision(revision);
-            analyzer.setTestUnitIds(List.of("1"));
-            analyzer.setSysUserId(TEST_SYS_USER_ID);
-            analyzerDAO.insert(analyzer);
-
+        String analyzerId = transaction.execute(status -> {
+            Analyzer analyzer = insertAnalyzer("Connection reference persistence test", Analyzer.AnalyzerStatus.SETUP);
+            AnalyzerMapping revision = insertMapping(analyzer, 1, "site.connection." + UUID.randomUUID(),
+                    "sha256:" + "c".repeat(64));
+            analyzer.setMapping(revision);
+            analyzerDAO.update(analyzer);
             entityManager.flush();
-            return new ConnectionFixture(analyzer.getId(), revision.getId(), binding.getId(), profileBinding.getId());
+            return analyzer.getId();
         });
 
         try {
             String connectionId = "bridge-" + UUID.randomUUID();
-            AnalyzerInstanceState attached = analyzerInstanceLocalStateService
-                    .attachBridgeConnection(fixture.analyzerId(), connectionId, TEST_SYS_USER_ID);
+            AnalyzerInstanceState attached = analyzerInstanceLocalStateService.attachBridgeConnection(analyzerId,
+                    connectionId, TEST_SYS_USER_ID);
 
             assertEquals(connectionId, attached.bridgeConnectionId());
             String persistedConnectionId = transaction
-                    .execute(status -> analyzerDAO.get(fixture.analyzerId()).orElseThrow().getBridgeConnectionId());
+                    .execute(status -> analyzerDAO.get(analyzerId).orElseThrow().getBridgeConnectionId());
             assertEquals(connectionId, persistedConnectionId);
         } finally {
-            transaction.executeWithoutResult(status -> {
-                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-                jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
-                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
-                        Long.valueOf(fixture.revisionId()));
-                jdbc.update("DELETE FROM analyzer_site_binding WHERE id = ?", Long.valueOf(fixture.bindingId()));
-                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id = ?",
-                        Long.valueOf(fixture.profileBindingId()));
-            });
+            deleteAnalyzer(transaction, analyzerId);
         }
     }
 
     @Test
-    public void reviewedSharedBindingRevisionPersistsAfterReloadingTheLocalAnalyzer() {
+    public void anAnalyzerWithNoMappingStaysVisibleAndCarriesNoProfile() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
-        BindingSelectionFixture fixture = transaction.execute(status -> {
-            String profileId = "site.unknown-capable";
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(3);
-            profileBinding.setProfileFingerprint("sha256:" + "1".repeat(64));
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
-
-            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-            binding.setProfileBinding(profileBinding);
-            binding.setCreatedBy(TEST_SYS_USER_ID);
-            binding.setSysUserId(TEST_SYS_USER_ID);
-            siteBindingDAO.insert(binding);
-
-            AnalyzerMapping initial = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
-            AnalyzerMapping reviewed = bindingRevision(binding, 2, "sha256:" + "d".repeat(64));
-            AnalyzerMappingSnapshot reviewedSnapshot = new AnalyzerMappingSnapshot(binding, reviewed, List.of(),
-                    List.of());
-            confirmationService.confirm(reviewedSnapshot, "sha256:" + "2".repeat(64),
-                    new AnalyzerMappingConfirmationRequest(reviewed.getBindingFingerprint(), "sha256:" + "2".repeat(64),
-                            List.of(), List.of()),
-                    TEST_SYS_USER_ID);
-            String confirmationId = confirmationDAO.findByRevisionId(reviewed.getId()).orElseThrow().getId();
-
-            Analyzer analyzer = new Analyzer();
-            analyzer.ensureFhirUuid();
-            analyzer.setName("Binding selection persistence test");
-            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
-            analyzer.setActive(false);
-            analyzer.setSiteBindingRevision(initial);
-            analyzer.setTestUnitIds(List.of("1"));
-            analyzer.setSysUserId(TEST_SYS_USER_ID);
-            analyzerDAO.insert(analyzer);
+        String analyzerId = transaction.execute(status -> {
+            Analyzer analyzer = insertAnalyzer("Unmapped migrated analyzer", Analyzer.AnalyzerStatus.INACTIVE);
             entityManager.flush();
-            return new BindingSelectionFixture(analyzer.getId(), initial.getId(), reviewed.getId(), binding.getId(),
-                    profileBinding.getId(), reviewed.getBindingFingerprint(), confirmationId);
+            return analyzer.getId();
         });
 
         try {
-            analyzerInstanceLocalStateService.selectSiteBindingRevision(fixture.analyzerId(), fixture.bindingId(), 2,
+            AnalyzerInstanceState state = analyzerInstanceLocalStateService.get(analyzerId);
+
+            assertEquals("", state.profileId());
+            assertEquals(0, state.profileRevision());
+            assertEquals(Analyzer.AnalyzerStatus.INACTIVE, state.status());
+            assertNull(transaction.execute(status -> analyzerDAO.get(analyzerId).orElseThrow().getMapping()));
+        } finally {
+            deleteAnalyzer(transaction, analyzerId);
+        }
+    }
+
+    @Test
+    public void reviewedMappingRevisionPersistsAfterReloadingTheLocalAnalyzer() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        MappingSelectionFixture fixture = transaction.execute(status -> {
+            Analyzer analyzer = insertAnalyzer("Mapping selection persistence test", Analyzer.AnalyzerStatus.SETUP);
+            // The confirmation service reads this profile from the test Bridge catalog.
+            String profileId = "site.unknown-capable";
+            String profileFingerprint = "sha256:" + "1".repeat(64);
+            AnalyzerMapping initial = insertMapping(analyzer, 1, profileId, 3, profileFingerprint,
+                    "sha256:" + "c".repeat(64));
+            AnalyzerMapping reviewed = insertMapping(analyzer, 2, profileId, 3, profileFingerprint,
+                    "sha256:" + "d".repeat(64));
+            analyzer.setMapping(initial);
+            analyzerDAO.update(analyzer);
+
+            confirmationService.confirm(new AnalyzerMappingSnapshot(reviewed, List.of(), List.of()),
+                    "sha256:" + "2".repeat(64), new AnalyzerMappingConfirmationRequest(reviewed.getMappingFingerprint(),
+                            "sha256:" + "2".repeat(64), List.of(), List.of()),
+                    TEST_SYS_USER_ID);
+            entityManager.flush();
+            return new MappingSelectionFixture(analyzer.getId(), reviewed.getId(), reviewed.getMappingFingerprint());
+        });
+
+        try {
+            analyzerInstanceLocalStateService.applyMapping(fixture.analyzerId(), fixture.reviewedMappingId(), 2,
                     fixture.reviewedFingerprint(), TEST_SYS_USER_ID);
 
-            String persistedRevisionId = transaction.execute(
-                    status -> analyzerDAO.get(fixture.analyzerId()).orElseThrow().getSiteBindingRevision().getId());
-            assertEquals(fixture.reviewedRevisionId(), persistedRevisionId);
+            String persistedMappingId = transaction
+                    .execute(status -> analyzerDAO.get(fixture.analyzerId()).orElseThrow().getMapping().getId());
+            assertEquals(fixture.reviewedMappingId(), persistedMappingId);
         } finally {
-            transaction.executeWithoutResult(status -> {
-                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-                jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
-                jdbc.update("DELETE FROM analyzer_site_binding_confirmation WHERE id = ?",
-                        Long.valueOf(fixture.confirmationId()));
-                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
-                        Long.valueOf(fixture.reviewedRevisionId()));
-                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
-                        Long.valueOf(fixture.initialRevisionId()));
-                jdbc.update("DELETE FROM analyzer_site_binding WHERE id = ?", Long.valueOf(fixture.bindingId()));
-                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id = ?",
-                        Long.valueOf(fixture.profileBindingId()));
-            });
+            deleteAnalyzer(transaction, fixture.analyzerId());
         }
     }
 
     @Test
     public void connectionProbeReadsThePinnedProfileAfterTheAnalyzerTransactionCloses() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        String profileId = "site.probe." + UUID.randomUUID();
         ProbeFixture fixture = transaction.execute(status -> {
-            String profileId = "site.probe." + UUID.randomUUID();
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
-
-            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-            binding.setProfileBinding(profileBinding);
-            binding.setCreatedBy(TEST_SYS_USER_ID);
-            binding.setSysUserId(TEST_SYS_USER_ID);
-            siteBindingDAO.insert(binding);
-
-            AnalyzerMapping revision = bindingRevision(binding, 1, "sha256:" + "e".repeat(64));
-            Analyzer analyzer = new Analyzer();
-            analyzer.ensureFhirUuid();
-            analyzer.setName("Connection probe persistence test");
-            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
-            analyzer.setActive(false);
-            analyzer.setSiteBindingRevision(revision);
-            analyzer.setTestUnitIds(List.of("1"));
+            Analyzer analyzer = insertAnalyzer("Connection probe persistence test", Analyzer.AnalyzerStatus.SETUP);
+            analyzer.setMapping(insertMapping(analyzer, 1, profileId, "sha256:" + "e".repeat(64)));
             analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
-            analyzer.setSysUserId(TEST_SYS_USER_ID);
-            analyzerDAO.insert(analyzer);
+            analyzerDAO.update(analyzer);
             entityManager.flush();
-            return new ProbeFixture(analyzer.getId(), analyzer.getBridgeConnectionId(), revision.getId(),
-                    binding.getId(), profileBinding.getId(), profileId);
+            return new ProbeFixture(analyzer.getId(), analyzer.getBridgeConnectionId(), profileId);
         });
 
         try {
@@ -468,15 +418,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             assertEquals("SUCCEEDED", result.status());
             assertEquals(fixture.profileId(), result.profileRef().profileId());
         } finally {
-            transaction.executeWithoutResult(status -> {
-                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-                jdbc.update("DELETE FROM analyzer WHERE id = ?", Long.valueOf(fixture.analyzerId()));
-                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id = ?",
-                        Long.valueOf(fixture.revisionId()));
-                jdbc.update("DELETE FROM analyzer_site_binding WHERE id = ?", Long.valueOf(fixture.bindingId()));
-                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id = ?",
-                        Long.valueOf(fixture.profileBindingId()));
-            });
+            deleteAnalyzer(transaction, fixture.analyzerId());
         }
     }
 
@@ -493,49 +435,18 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                     "Analyzer activation QC independence test", UUID.randomUUID());
 
             String profileId = "site.activation." + UUID.randomUUID();
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
-
-            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-            binding.setProfileBinding(profileBinding);
-            binding.setCreatedBy(TEST_SYS_USER_ID);
-            binding.setSysUserId(TEST_SYS_USER_ID);
-            siteBindingDAO.insert(binding);
-
-            AnalyzerMapping revision = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
-            AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
-            confirmation.setSiteBindingRevision(revision);
-            confirmation.setProfileId(profileId);
-            confirmation.setProfileRevision(1);
-            confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
-            confirmation.setBindingFingerprint(revision.getBindingFingerprint());
-            confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
-            confirmation.setConfirmedRowsJson("[]");
-            confirmation.setExcludedRowsJson("[]");
-            confirmation.setConfirmedBy(TEST_SYS_USER_ID);
-            confirmation.setSysUserId(TEST_SYS_USER_ID);
-            confirmationDAO.insert(confirmation);
-
-            Analyzer analyzer = new Analyzer();
-            analyzer.ensureFhirUuid();
-            analyzer.setName("Activation persistence test");
-            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
-            analyzer.setActive(false);
-            analyzer.setSiteBindingRevision(revision);
-            analyzer.setTestUnitIds(List.of("1"));
+            Analyzer analyzer = insertAnalyzer("Activation persistence test", Analyzer.AnalyzerStatus.SETUP);
+            AnalyzerMapping revision = insertMapping(analyzer, 1, profileId, "sha256:" + "c".repeat(64));
+            AnalyzerMappingConfirmation confirmation = insertConfirmation(revision, profileId);
+            analyzer.setMapping(revision);
             analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
-            analyzer.setSysUserId(TEST_SYS_USER_ID);
-            analyzerDAO.insert(analyzer);
+            analyzerDAO.update(analyzer);
             entityManager.flush();
             entityManager.clear();
 
-            AnalyzerMappingSnapshot snapshot = new AnalyzerMappingSnapshot(binding, revision, List.of(), List.of());
+            AnalyzerMappingSnapshot snapshot = new AnalyzerMappingSnapshot(revision, List.of(), List.of());
             BridgeProfileCatalogService profileCatalogService = mock(BridgeProfileCatalogService.class);
-            AnalyzerMappingService siteBindingService = mock(AnalyzerMappingService.class);
+            AnalyzerMappingService mappingService = mock(AnalyzerMappingService.class);
             AnalyzerMappingConfirmationService confirmationService = mock(AnalyzerMappingConfirmationService.class);
             TestSectionService testSectionService = mock(TestSectionService.class);
             BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
@@ -543,32 +454,32 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                     new BridgeProfileCatalog.ProfileRevision(profile(profileId), new ObjectMapper().createObjectNode(),
                             new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
                                     "No automated control recognition", true, List.of())));
-            when(siteBindingService.findByRevisionId(revision.getId())).thenReturn(java.util.Optional.of(snapshot));
+            when(mappingService.findById(revision.getId())).thenReturn(java.util.Optional.of(snapshot));
             when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
                     .thenReturn(AnalyzerMappingVerificationAssessment.current(confirmation));
+            when(confirmationService.findForMapping(revision.getId())).thenReturn(java.util.Optional.of(confirmation));
             TestSection activeUnit = new TestSection();
             activeUnit.setId("1");
             activeUnit.setIsActive("Y");
             when(testSectionService.get("1")).thenReturn(activeUnit);
 
-            ObjectNode connection = connectionDocument(analyzer, profileBinding);
-            ObjectNode acknowledgement = runtimeAcknowledgement(analyzer, profileBinding, "activate-persistence", 1);
+            AnalyzerProfilePin pin = revision.getProfilePin();
+            ObjectNode connection = connectionDocument(analyzer, pin);
+            ObjectNode acknowledgement = runtimeAcknowledgement(analyzer, pin, "activate-persistence", 1);
             when(bridgeClient.getConnection(analyzer.getBridgeConnectionId())).thenReturn(connection);
             when(bridgeClient.applyRuntimeCommand(analyzer.getBridgeConnectionId(), 1, "ACTIVATE",
                     "activate-persistence")).thenReturn(acknowledgement);
 
-            AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
-            ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
-            ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
+            AuditTrailServiceImpl auditTrailService = auditTrail();
             AnalyzerActivationRecordService activationRecordService = new AnalyzerActivationRecordServiceImpl(
                     activationRecordDAO, auditTrailService);
             AnalyzerActivationService activationService = new AnalyzerActivationServiceImpl(analyzerService,
-                    profileCatalogService, siteBindingService, confirmationService, testSectionService, bridgeClient,
+                    profileCatalogService, mappingService, confirmationService, testSectionService, bridgeClient,
                     activationRecordService, java.time.Clock.systemUTC(), () -> "activate-persistence",
                     () -> "deactivate-persistence");
 
             AnalyzerActivationResult readinessBeforeQc = activationService.readiness(analyzer.getId());
-            String confirmationIdBeforeQc = confirmationDAO.findByRevisionId(revision.getId()).orElseThrow().getId();
+            String confirmationIdBeforeQc = confirmationDAO.findByMappingId(revision.getId()).orElseThrow().getId();
 
             QCControlLot controlLot = new QCControlLot();
             controlLot.setId(UUID.randomUUID().toString());
@@ -585,7 +496,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             controlLotService.createControlLot(controlLot);
 
             AnalyzerActivationResult readinessAfterQc = activationService.readiness(analyzer.getId());
-            String confirmationIdAfterQc = confirmationDAO.findByRevisionId(revision.getId()).orElseThrow().getId();
+            String confirmationIdAfterQc = confirmationDAO.findByMappingId(revision.getId()).orElseThrow().getId();
             assertTrue(readinessBeforeQc.ready());
             assertTrue(readinessAfterQc.ready());
             assertEquals(confirmationIdBeforeQc, confirmationIdAfterQc);
@@ -600,8 +511,8 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             assertTrue(reloaded.isActive());
             assertNotNull(reloaded.getLatestActivationRecord());
 
-            ObjectNode deactivationAcknowledgement = runtimeAcknowledgement(reloaded, profileBinding,
-                    "deactivate-persistence", "DEACTIVATE", "INACTIVE", 2);
+            ObjectNode deactivationAcknowledgement = runtimeAcknowledgement(reloaded, pin, "deactivate-persistence",
+                    "DEACTIVATE", "INACTIVE", 2);
             when(bridgeClient.applyRuntimeCommand(reloaded.getBridgeConnectionId(), 1, "DEACTIVATE",
                     "deactivate-persistence")).thenReturn(deactivationAcknowledgement);
 
@@ -619,6 +530,73 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
     }
 
     /**
+     * Two operators save the same analyzer's mapping from the same loaded revision.
+     * Both read it before either writes, which the catalog lookup between the read
+     * and the insert holds open. The later save must be refused as stale, not fail
+     * on the revision number or land on top of a revision it never loaded. The data
+     * is committed so both transactions really contend.
+     */
+    @Test
+    public void overlappingSavesOfOneMappingRefuseTheStaleOne() throws Exception {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        String profileId = "site.save-race." + UUID.randomUUID();
+        AnalyzerMappingService mappingService = mappingService(mock(TestService.class), mock(TestResultService.class),
+                mock(AnalyzerMappingCatalogService.class), auditTrail(), profileId);
+        Analyzer analyzer = transaction.execute(status -> {
+            Analyzer inserted = insertAnalyzer("Mapping save race test", Analyzer.AnalyzerStatus.SETUP);
+            inserted.setMapping(mappingService.assignProfile(inserted, profileId, 1, TEST_SYS_USER_ID).mapping());
+            analyzerDAO.update(inserted);
+            return inserted;
+        });
+        String loadedFingerprint = mappingDAO.findLatestByAnalyzerId(analyzer.getId()).orElseThrow()
+                .getMappingFingerprint();
+
+        CyclicBarrier bothRead = new CyclicBarrier(2);
+        BridgeProfileCatalogService catalog = mock(BridgeProfileCatalogService.class);
+        when(catalog.getProfile(profileId, 1)).thenAnswer(invocation -> {
+            try {
+                bothRead.await(2, TimeUnit.SECONDS);
+            } catch (Exception serialized) {
+                // Only one save reaches this point at a time once saves are serialized.
+            }
+            return new BridgeProfileCatalog.ProfileRevision(profile(profileId), new ObjectMapper().createObjectNode(),
+                    new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
+                            "No automated control recognition", true, List.of()));
+        });
+        AnalyzerMappingEditorService editor = new AnalyzerMappingEditorServiceImpl(analyzerService, catalog,
+                mappingService, mock(AnalyzerMappingCatalogService.class), confirmationService,
+                mock(AnalyzerResultsService.class),
+                new AnalyzerMappingDefaults(mock(AnalyzerMappingCatalogService.class), mock(TestResultService.class)));
+        AnalyzerMappingUpdate exclude = new AnalyzerMappingUpdate(loadedFingerprint,
+                List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.EXCLUDED, null)),
+                List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.EXCLUDED, null)));
+        Callable<AnalyzerMappingView> save = () -> transaction
+                .execute(status -> editor.saveMapping(analyzer.getId(), exclude, TEST_SYS_USER_ID));
+
+        ExecutorService executor = Executors.newFixedThreadPool(2);
+        try {
+            Future<AnalyzerMappingView> first = executor.submit(save);
+            Future<AnalyzerMappingView> second = executor.submit(save);
+            List<Throwable> refusals = new java.util.ArrayList<>();
+            for (Future<AnalyzerMappingView> outcome : List.of(first, second)) {
+                try {
+                    outcome.get(30, TimeUnit.SECONDS);
+                } catch (ExecutionException refused) {
+                    refusals.add(refused.getCause());
+                }
+            }
+
+            assertEquals(1, refusals.size());
+            assertTrue("the later save is refused as stale, got " + refusals.get(0),
+                    refusals.get(0) instanceof IllegalArgumentException);
+            assertEquals(2, mappingDAO.findLatestByAnalyzerId(analyzer.getId()).orElseThrow().getRevisionNumber());
+        } finally {
+            executor.shutdownNow();
+            deleteAnalyzer(transaction, analyzer.getId());
+        }
+    }
+
+    /**
      * Two activations of one analyzer overlap: the first to reach the Bridge gets
      * APPLIED and the second ALREADY_APPLIED. Unless lifecycle transitions on the
      * analyzer row are serialized, the second commits first, the first then fails
@@ -631,52 +609,20 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         String profileId = "site.activation-race." + UUID.randomUUID();
         ActivationRaceFixture fixture = transaction.execute(status -> {
-            AnalyzerProfileBinding profileBinding = new AnalyzerProfileBinding();
-            profileBinding.setProfileId(profileId);
-            profileBinding.setProfileRevision(1);
-            profileBinding.setProfileFingerprint(PROFILE_FINGERPRINT);
-            profileBinding.setSysUserId(TEST_SYS_USER_ID);
-            profileBindingDAO.insert(profileBinding);
-
-            AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-            binding.setProfileBinding(profileBinding);
-            binding.setCreatedBy(TEST_SYS_USER_ID);
-            binding.setSysUserId(TEST_SYS_USER_ID);
-            siteBindingDAO.insert(binding);
-
-            AnalyzerMapping revision = bindingRevision(binding, 1, "sha256:" + "c".repeat(64));
-            AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
-            confirmation.setSiteBindingRevision(revision);
-            confirmation.setProfileId(profileId);
-            confirmation.setProfileRevision(1);
-            confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
-            confirmation.setBindingFingerprint(revision.getBindingFingerprint());
-            confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
-            confirmation.setConfirmedRowsJson("[]");
-            confirmation.setExcludedRowsJson("[]");
-            confirmation.setConfirmedBy(TEST_SYS_USER_ID);
-            confirmation.setSysUserId(TEST_SYS_USER_ID);
-            confirmationDAO.insert(confirmation);
-
-            Analyzer analyzer = new Analyzer();
-            analyzer.ensureFhirUuid();
-            analyzer.setName("Activation race test");
-            analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
-            analyzer.setActive(false);
-            analyzer.setSiteBindingRevision(revision);
-            analyzer.setTestUnitIds(List.of("1"));
+            Analyzer analyzer = insertAnalyzer("Activation race test", Analyzer.AnalyzerStatus.SETUP);
+            AnalyzerMapping revision = insertMapping(analyzer, 1, profileId, "sha256:" + "c".repeat(64));
+            AnalyzerMappingConfirmation confirmation = insertConfirmation(revision, profileId);
+            analyzer.setMapping(revision);
             analyzer.setBridgeConnectionId("bridge-" + UUID.randomUUID());
-            analyzer.setSysUserId(TEST_SYS_USER_ID);
-            analyzerDAO.insert(analyzer);
-            return new ActivationRaceFixture(analyzer, profileBinding, binding, revision, confirmation);
+            analyzerDAO.update(analyzer);
+            return new ActivationRaceFixture(analyzer, revision, confirmation);
         });
         Analyzer analyzer = fixture.analyzer();
 
         try {
-            AnalyzerMappingSnapshot snapshot = new AnalyzerMappingSnapshot(fixture.binding(), fixture.revision(),
-                    List.of(), List.of());
+            AnalyzerMappingSnapshot snapshot = new AnalyzerMappingSnapshot(fixture.revision(), List.of(), List.of());
             BridgeProfileCatalogService profileCatalogService = mock(BridgeProfileCatalogService.class);
-            AnalyzerMappingService siteBindingService = mock(AnalyzerMappingService.class);
+            AnalyzerMappingService mappingService = mock(AnalyzerMappingService.class);
             AnalyzerMappingConfirmationService confirmationService = mock(AnalyzerMappingConfirmationService.class);
             TestSectionService testSectionService = mock(TestSectionService.class);
             BridgeAnalyzerConnectionClient bridgeClient = mock(BridgeAnalyzerConnectionClient.class);
@@ -684,8 +630,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                     new BridgeProfileCatalog.ProfileRevision(profile(profileId), new ObjectMapper().createObjectNode(),
                             new BridgeProfileCatalog.ControlRecognitionSummary(RECOGNITION_FINGERPRINT, "NONE",
                                     "No automated control recognition", true, List.of())));
-            when(siteBindingService.findByRevisionId(fixture.revision().getId()))
-                    .thenReturn(java.util.Optional.of(snapshot));
+            when(mappingService.findById(fixture.revision().getId())).thenReturn(java.util.Optional.of(snapshot));
             when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
                     .thenReturn(AnalyzerMappingVerificationAssessment.current(fixture.confirmation()));
             TestSection activeUnit = new TestSection();
@@ -693,7 +638,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             activeUnit.setIsActive("Y");
             when(testSectionService.get("1")).thenReturn(activeUnit);
             when(bridgeClient.getConnection(analyzer.getBridgeConnectionId()))
-                    .thenReturn(connectionDocument(analyzer, fixture.profileBinding()));
+                    .thenReturn(connectionDocument(analyzer, fixture.revision().getProfilePin()));
 
             AtomicReference<String> runtimeState = new AtomicReference<>("INACTIVE");
             List<String> bridgeCommands = new CopyOnWriteArrayList<>();
@@ -710,8 +655,8 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                             firstActivationInBridge.countDown();
                             secondActivationFinished.await(3, TimeUnit.SECONDS);
                         }
-                        ObjectNode acknowledgement = runtimeAcknowledgement(analyzer, fixture.profileBinding(),
-                                commandId, action, state, bridgeCommands.size());
+                        ObjectNode acknowledgement = runtimeAcknowledgement(analyzer,
+                                fixture.revision().getProfilePin(), commandId, action, state, bridgeCommands.size());
                         acknowledgement.put("outcome", changed ? "APPLIED" : "ALREADY_APPLIED");
                         return acknowledgement;
                     });
@@ -720,7 +665,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
             ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
             AnalyzerActivationService activationService = new AnalyzerActivationServiceImpl(analyzerService,
-                    profileCatalogService, siteBindingService, confirmationService, testSectionService, bridgeClient,
+                    profileCatalogService, mappingService, confirmationService, testSectionService, bridgeClient,
                     new AnalyzerActivationRecordServiceImpl(activationRecordDAO, auditTrailService),
                     java.time.Clock.systemUTC(), () -> UUID.randomUUID().toString(),
                     () -> UUID.randomUUID().toString());
@@ -762,47 +707,108 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             assertEquals(Analyzer.AnalyzerStatus.ACTIVE,
                     transaction.execute(status -> analyzerDAO.get(analyzer.getId()).orElseThrow()).getStatus());
         } finally {
-            transaction.executeWithoutResult(status -> {
-                JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-                jdbc.update("UPDATE analyzer SET latest_activation_record_id = NULL WHERE id::text = ?",
-                        analyzer.getId());
-                jdbc.update("DELETE FROM analyzer_activation_record WHERE analyzer_id::text = ?", analyzer.getId());
-                jdbc.update("DELETE FROM analyzer WHERE id::text = ?", analyzer.getId());
-                jdbc.update("DELETE FROM analyzer_site_binding_confirmation WHERE id::text = ?",
-                        fixture.confirmation().getId());
-                jdbc.update("DELETE FROM analyzer_site_binding_revision WHERE id::text = ?",
-                        fixture.revision().getId());
-                jdbc.update("DELETE FROM analyzer_site_binding WHERE id::text = ?", fixture.binding().getId());
-                jdbc.update("DELETE FROM analyzer_profile_binding WHERE id::text = ?",
-                        fixture.profileBinding().getId());
-            });
+            deleteAnalyzer(transaction, analyzer.getId());
         }
     }
 
-    private record ActivationRaceFixture(Analyzer analyzer, AnalyzerProfileBinding profileBinding,
-            AnalyzerSiteBinding binding, AnalyzerMapping revision, AnalyzerMappingConfirmation confirmation) {
+    private record ActivationRaceFixture(Analyzer analyzer, AnalyzerMapping revision,
+            AnalyzerMappingConfirmation confirmation) {
     }
 
-    private record ConnectionFixture(String analyzerId, String revisionId, String bindingId, String profileBindingId) {
+    private record MappingSelectionFixture(String analyzerId, String reviewedMappingId, String reviewedFingerprint) {
     }
 
-    private record BindingSelectionFixture(String analyzerId, String initialRevisionId, String reviewedRevisionId,
-            String bindingId, String profileBindingId, String reviewedFingerprint, String confirmationId) {
+    private record ProbeFixture(String analyzerId, String connectionId, String profileId) {
     }
 
-    private record ProbeFixture(String analyzerId, String connectionId, String revisionId, String bindingId,
-            String profileBindingId, String profileId) {
+    private AuditTrailServiceImpl auditTrail() {
+        AuditTrailServiceImpl auditTrailService = new AuditTrailServiceImpl();
+        ReflectionTestUtils.setField(auditTrailService, "referenceTablesService", referenceTablesService);
+        ReflectionTestUtils.setField(auditTrailService, "historyService", historyService);
+        return auditTrailService;
     }
 
-    private AnalyzerMapping bindingRevision(AnalyzerSiteBinding binding, int revisionNumber, String fingerprint) {
+    /**
+     * The real mapping service over the real DAOs, with the Bridge catalog serving
+     * the one fixture profile.
+     */
+    private AnalyzerMappingService mappingService(TestService testService, TestResultService testResultService,
+            AnalyzerMappingCatalogService mappingCatalogService, AuditTrailServiceImpl auditTrailService,
+            String profileId) {
+        BridgeProfileCatalogService profileCatalogService = mock(BridgeProfileCatalogService.class);
+        when(profileCatalogService.getCatalog()).thenReturn(new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT,
+                List.of(new BridgeProfileCatalog.ProfileRevision(profile(profileId),
+                        new ObjectMapper().createObjectNode()))));
+        return new AnalyzerMappingServiceImpl(mappingDAO, mappingTestDAO, mappingResultDAO, auditTrailService,
+                testService, testResultService, mock(TestResultComponentService.class),
+                new AnalyzerMappingDefaults(mappingCatalogService, testResultService), profileCatalogService);
+    }
+
+    private Analyzer insertAnalyzer(String name, Analyzer.AnalyzerStatus status) {
+        Analyzer analyzer = new Analyzer();
+        analyzer.ensureFhirUuid();
+        analyzer.setName(name);
+        analyzer.setStatus(status);
+        analyzer.setActive(false);
+        analyzer.setTestUnitIds(List.of("1"));
+        analyzer.setSysUserId(TEST_SYS_USER_ID);
+        analyzerDAO.insert(analyzer);
+        return analyzer;
+    }
+
+    private AnalyzerMapping insertMapping(Analyzer analyzer, int revisionNumber, String profileId, String fingerprint) {
+        return insertMapping(analyzer, revisionNumber, profileId, 1, PROFILE_FINGERPRINT, fingerprint);
+    }
+
+    private AnalyzerMapping insertMapping(Analyzer analyzer, int revisionNumber, String profileId, int profileRevision,
+            String profileFingerprint, String fingerprint) {
         AnalyzerMapping revision = new AnalyzerMapping();
-        revision.setSiteBinding(binding);
+        revision.setAnalyzer(analyzer);
         revision.setRevisionNumber(revisionNumber);
-        revision.setBindingFingerprint(fingerprint);
+        revision.setProfileId(profileId);
+        revision.setProfileRevision(profileRevision);
+        revision.setProfileFingerprint(profileFingerprint);
+        revision.setMappingFingerprint(fingerprint);
         revision.setCreatedBy(TEST_SYS_USER_ID);
         revision.setSysUserId(TEST_SYS_USER_ID);
-        revisionDAO.insert(revision);
+        mappingDAO.insert(revision);
         return revision;
+    }
+
+    private AnalyzerMappingConfirmation insertConfirmation(AnalyzerMapping revision, String profileId) {
+        AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
+        confirmation.setMapping(revision);
+        confirmation.setProfileId(profileId);
+        confirmation.setProfileRevision(1);
+        confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
+        confirmation.setMappingFingerprint(revision.getMappingFingerprint());
+        confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
+        confirmation.setConfirmedRowsJson("[]");
+        confirmation.setExcludedRowsJson("[]");
+        confirmation.setConfirmedBy(TEST_SYS_USER_ID);
+        confirmation.setSysUserId(TEST_SYS_USER_ID);
+        confirmationDAO.insert(confirmation);
+        return confirmation;
+    }
+
+    /**
+     * An analyzer and its mapping point at each other, so the references are
+     * cleared before either is deleted.
+     */
+    private void deleteAnalyzer(TransactionTemplate transaction, String analyzerId) {
+        transaction.executeWithoutResult(status -> {
+            JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+            Long id = Long.valueOf(analyzerId);
+            jdbc.update("UPDATE analyzer SET latest_activation_record_id = NULL, mapping_id = NULL WHERE id = ?", id);
+            jdbc.update("DELETE FROM analyzer_activation_record WHERE analyzer_id = ?", id);
+            String mappingIds = "(SELECT id FROM analyzer_mapping WHERE analyzer_id = ?)";
+            jdbc.update("DELETE FROM analyzer_mapping_confirmation WHERE mapping_id IN " + mappingIds, id);
+            jdbc.update("DELETE FROM analyzer_mapping_result WHERE mapping_id IN " + mappingIds, id);
+            jdbc.update("DELETE FROM analyzer_mapping_test WHERE mapping_id IN " + mappingIds, id);
+            jdbc.update("UPDATE analyzer_mapping SET supersedes_mapping_id = NULL WHERE analyzer_id = ?", id);
+            jdbc.update("DELETE FROM analyzer_mapping WHERE analyzer_id = ?", id);
+            jdbc.update("DELETE FROM analyzer WHERE id = ?", id);
+        });
     }
 
     private static ObjectNode profile(String profileId) {
@@ -824,7 +830,8 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                           "test_code":"RAW-A",
                           "loinc":"94500-6",
                           "result_type":"qualitative",
-                          "values":["POS"]
+                          "values":["POS"],
+                          "value_codes":{"POS":{"system":"http://loinc.org","code":"LA6576-8"}}
                         }
                       ]
                     }
@@ -836,13 +843,13 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
         }
     }
 
-    private static ObjectNode runtimeAcknowledgement(Analyzer analyzer, AnalyzerProfileBinding profile,
-            String commandId, int runtimeRevision) {
+    private static ObjectNode runtimeAcknowledgement(Analyzer analyzer, AnalyzerProfilePin profile, String commandId,
+            int runtimeRevision) {
         return runtimeAcknowledgement(analyzer, profile, commandId, "ACTIVATE", "ACTIVE", runtimeRevision);
     }
 
-    private static ObjectNode runtimeAcknowledgement(Analyzer analyzer, AnalyzerProfileBinding profile,
-            String commandId, String action, String runtimeState, int runtimeRevision) {
+    private static ObjectNode runtimeAcknowledgement(Analyzer analyzer, AnalyzerProfilePin profile, String commandId,
+            String action, String runtimeState, int runtimeRevision) {
         ObjectNode acknowledgement = new ObjectMapper().createObjectNode();
         acknowledgement.put("schemaVersion", "1.0");
         acknowledgement.put("commandId", commandId);
@@ -864,7 +871,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
         return acknowledgement;
     }
 
-    private static ObjectNode connectionDocument(Analyzer analyzer, AnalyzerProfileBinding profile) {
+    private static ObjectNode connectionDocument(Analyzer analyzer, AnalyzerProfilePin profile) {
         ObjectNode connection = new ObjectMapper().createObjectNode();
         connection.put("schemaVersion", "1.0");
         connection.put("connectionId", analyzer.getBridgeConnectionId());
