@@ -63,7 +63,7 @@ public class SystemPresetReseedTest extends BaseWebContextSensitiveTest {
 
         SystemPresetSeedTest.assertPreset(dataSource, "Order Label", 30, 90, true, false, 2, 8, 0, 10);
         SystemPresetSeedTest.assertPreset(dataSource, "Specimen Label", 40, 80, false, true, 0, 10, 3, 7);
-        SystemPresetSeedTest.assertPreset(dataSource, "Block Label", 35, 70, false, true, 0, 10, 4, 6);
+        SystemPresetSeedTest.assertPreset(dataSource, "Block Label", 36, 70, false, true, 0, 10, 4, 6);
         SystemPresetSeedTest.assertPreset(dataSource, "Slide Label", 45, 85, false, true, 0, 10, 5, 9);
         SystemPresetSeedTest.assertPreset(dataSource, "Freezer Label", 50, 60, false, true, 0, 10, 2, 5);
         assertEquals(0, countAtFallbackSet());

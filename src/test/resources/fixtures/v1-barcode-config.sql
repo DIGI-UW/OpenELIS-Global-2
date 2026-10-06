@@ -19,6 +19,10 @@
 -- Mirrors siteInfo.sql's insert idiom (id via nextval, "name"/"value" quoted, value_type defaults to
 -- 'text').
 --
+-- The Block height and both Freezer dimensions carry a decimal point ('35.5', '50.0', '60.4'): the v1
+-- Barcode Configuration page stored dimensions through Float.toString, and the seed must round them
+-- (36, 50, 60) rather than skip them as non-numeric.
+--
 -- This file is idempotent: each key is DELETEd before INSERT so repeated loads across tests are safe.
 
 -- ---- Order Label (per-order scope) ----------------------------------------------------------------
@@ -52,7 +56,7 @@ INSERT INTO clinlims.site_information (id, lastupdated, "name", description, "va
 -- ---- Block Label (per-sample scope) ---------------------------------------------------------------
 DELETE FROM clinlims.site_information WHERE name = 'heightBlockLabels';
 INSERT INTO clinlims.site_information (id, lastupdated, "name", description, "value")
-    VALUES (nextval('clinlims.site_information_seq'), now(), 'heightBlockLabels', 'v1 block label height (mm)', '35');
+    VALUES (nextval('clinlims.site_information_seq'), now(), 'heightBlockLabels', 'v1 block label height (mm)', '35.5');
 DELETE FROM clinlims.site_information WHERE name = 'widthBlockLabels';
 INSERT INTO clinlims.site_information (id, lastupdated, "name", description, "value")
     VALUES (nextval('clinlims.site_information_seq'), now(), 'widthBlockLabels', 'v1 block label width (mm)', '70');
@@ -80,10 +84,10 @@ INSERT INTO clinlims.site_information (id, lastupdated, "name", description, "va
 -- ---- Freezer Label (per-sample scope) -------------------------------------------------------------
 DELETE FROM clinlims.site_information WHERE name = 'heightFreezerLabels';
 INSERT INTO clinlims.site_information (id, lastupdated, "name", description, "value")
-    VALUES (nextval('clinlims.site_information_seq'), now(), 'heightFreezerLabels', 'v1 freezer label height (mm)', '50');
+    VALUES (nextval('clinlims.site_information_seq'), now(), 'heightFreezerLabels', 'v1 freezer label height (mm)', '50.0');
 DELETE FROM clinlims.site_information WHERE name = 'widthFreezerLabels';
 INSERT INTO clinlims.site_information (id, lastupdated, "name", description, "value")
-    VALUES (nextval('clinlims.site_information_seq'), now(), 'widthFreezerLabels', 'v1 freezer label width (mm)', '60');
+    VALUES (nextval('clinlims.site_information_seq'), now(), 'widthFreezerLabels', 'v1 freezer label width (mm)', '60.4');
 DELETE FROM clinlims.site_information WHERE name = 'numDefaultFreezerLabels';
 INSERT INTO clinlims.site_information (id, lastupdated, "name", description, "value")
     VALUES (nextval('clinlims.site_information_seq'), now(), 'numDefaultFreezerLabels', 'v1 freezer default qty', '2');

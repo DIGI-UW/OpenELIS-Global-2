@@ -11,9 +11,12 @@
          This re-reads the legacy keys for every system preset that STILL carries the complete fallback
          set in its scope. A preset whose dimensions or quantities differ from the fallback set was
          changed by an administrator after the seed and is left alone. Keys that are absent or not
-         numeric keep the current value. Values are clamped the way 030 clamps them. -->
+         numeric keep the current value. Values are clamped the way 030 clamps them, and decimal values
+         (the v1 page stored dimensions through Float.toString, e.g. '40.0') are rounded. validCheckSum
+         keeps a database that ran the first text of this changeset validating. -->
 
     <changeSet id="label-preset-seed-003-reseed-from-legacy-keys" author="ogc-1219">
+        <validCheckSum>ANY</validCheckSum>
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="t">
                 SELECT EXISTS (SELECT 1 FROM clinlims.label_preset WHERE is_system = true)
@@ -26,7 +29,7 @@
             WITH normalized AS (
                 SELECT
                     name,
-                    CASE WHEN value ~ '^[0-9]+$' THEN value::INTEGER ELSE NULL END AS num
+                    CASE WHEN value ~ '^[0-9]+(\.[0-9]+)?$' THEN ROUND(value::NUMERIC)::INTEGER ELSE NULL END AS num
                 FROM clinlims.site_information
                 WHERE name ~ '^(height|width|numDefault|numMax)(Order|Specimen|Block|Slide|Freezer)Labels$'
             ),

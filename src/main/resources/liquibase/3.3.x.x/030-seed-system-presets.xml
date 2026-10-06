@@ -17,7 +17,8 @@
 
          Values outside the label_preset CHECK constraints are clamped (dimensions into 5..200 mm, max
          raised to the default when a site configured max below default) instead of failing the whole
-         upgrade on one odd legacy value. -->
+         upgrade on one odd legacy value. The v1 Barcode Configuration page stored dimensions through
+         Float.toString ('40.0', '25.4'), so decimal values are accepted and rounded. -->
 
     <changeSet id="label-preset-seed-001-system-presets" author="ogc-285">
         <validCheckSum>ANY</validCheckSum>
@@ -36,7 +37,7 @@
             ),
             normalized AS (
                 SELECT
-                    CASE WHEN value ~ '^[0-9]+$' THEN value::INTEGER ELSE NULL END AS num,
+                    CASE WHEN value ~ '^[0-9]+(\.[0-9]+)?$' THEN ROUND(value::NUMERIC)::INTEGER ELSE NULL END AS num,
                     name
                 FROM si
             ),
@@ -91,10 +92,10 @@
                     SELECT
                         substring(name from '(Order|Specimen|Block|Slide|Freezer)Labels$') AS legacy_type,
                         substring(name from '^(height|width|numDefault|numMax)') AS field,
-                        value::INTEGER AS num
+                        ROUND(value::NUMERIC)::INTEGER AS num
                     FROM clinlims.site_information
                     WHERE name ~ '^(height|width|numDefault|numMax)(Order|Specimen|Block|Slide|Freezer)Labels$'
-                      AND value ~ '^[0-9]+$'
+                      AND value ~ '^[0-9]+(\.[0-9]+)?$'
                 ),
                 seeded AS (
                     SELECT

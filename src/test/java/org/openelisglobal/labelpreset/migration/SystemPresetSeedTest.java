@@ -175,7 +175,7 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         // Specimen / Block / Slide / Freezer: per-sample scope; quantities live in the
         // per-sample columns.
         assertPreset("Specimen Label", 40, 80, false, true, 0, 10, 3, 7);
-        assertPreset("Block Label", 35, 70, false, true, 0, 10, 4, 6);
+        assertPreset("Block Label", 36, 70, false, true, 0, 10, 4, 6);
         assertPreset("Slide Label", 45, 85, false, true, 0, 10, 5, 9);
         assertPreset("Freezer Label", 50, 60, false, true, 0, 10, 2, 5);
 
