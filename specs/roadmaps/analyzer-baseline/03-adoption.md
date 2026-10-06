@@ -43,7 +43,7 @@ connectionId, request)` (`PUT /api/connections/{id}`) with
 - [ ] T3.4 Red: integration test, traffic during adoption lands on N until confirm + re-activate
 - [ ] T3.5 Red: integration test, held results on N recover via recoverHeldMappingResults after adoption
 - [x] T3.6 Service: AnalyzerAdoptionService (its own service over AnalyzerMappingService, which stays the revision store) prepareAdoption(analyzerId, revision) -> buckets; adopt(analyzerId, revision, decisions, actor) saves the reviewed mapping as a revision on N+1. Decided 6 Oct: adoption adds no state of its own; the existing Confirm records actor and time, and Apply puts the revision in force and re-pins the Bridge connection when the pin changed, so OE2 and the Bridge switch together and an abandoned adoption touches nothing outside OE2
-- [ ] T3.7 Endpoints: GET/POST /rest/analyzer/analyzers/{id}/adoption?revision=
+- [x] T3.7 Endpoints: GET/POST /rest/analyzer/analyzers/{id}/adoption?revision= (POST takes the reviewed `{tests, results}` and returns the new revision's id, number and fingerprint for Confirm)
 - [ ] T3.8 Catalog view: split updateAvailable into newerProfileRevision and newerMappingRevision; UI tag links to Adopt or Verify respectively
 - [ ] T3.9 Adoption screen: the step-2 editor in adoption mode with bucket grouping and side-by-side changed rows
 - [x] T3.10 Replace cannotReplaceTheProfileOfAConfiguredAnalyzer with tests for the new rule (a configured analyzer keeps its profile; a newer revision is reached by adoption, and the refusal says so)
