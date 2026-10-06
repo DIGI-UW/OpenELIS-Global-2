@@ -9,12 +9,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
+import org.openelisglobal.inventory.dao.InventoryUsageDAO.DailyUsage;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryOrderCycleService;
 import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryOrderCycle;
-import org.openelisglobal.inventory.valueholder.InventoryUsage;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,20 +49,18 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
         List<InventoryItem> items = includeInactive ? inventoryItemService.getAll()
                 : inventoryItemService.getAllActive();
         Map<Long, Double> usableByItem = inventoryLotDAO.getAvailableQuantityByItem();
-        Map<Long, List<InventoryUsage>> usageByItem = usageByItem(windowStart, today);
+        UsageWindow usage = usageWindow(windowStart, today);
         Map<Long, List<Integer>> cycleDaysByItem = cycleDaysByItem(today);
 
         List<InventoryProjection> board = new ArrayList<>(items.size());
         for (InventoryItem item : items) {
-            List<InventoryUsage> usage = usageByItem.getOrDefault(item.getId(), List.of());
-
             InventoryProjection row = InventoryProjectionCalculator.project(
-                    usableByItem.getOrDefault(item.getId(), 0.0), dailyUse(usage, windowStart),
+                    usableByItem.getOrDefault(item.getId(), 0.0), usage.dailyUse().getOrDefault(item.getId(), NO_USE),
                     item.getLowStockThreshold(),
                     InventoryProjectionCalculator.resolveLeadTime(item.getLeadTimeDays(),
                             InventoryProjectionCalculator
                                     .observedLeadTime(cycleDaysByItem.getOrDefault(item.getId(), List.of()))),
-                    latestUsageDate(usage), today);
+                    usage.latestUsage().get(item.getId()), today);
 
             row.setItemId(item.getId());
             row.setCode(item.getCode());
@@ -100,39 +98,29 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
         return byItem;
     }
 
-    private Map<Long, List<InventoryUsage>> usageByItem(LocalDate windowStart, LocalDate today) {
+    /**
+     * One slot per day of the window, oldest first; days with no use stay at zero.
+     */
+    private record UsageWindow(Map<Long, double[]> dailyUse, Map<Long, LocalDate> latestUsage) {
+    }
+
+    private static final double[] NO_USE = new double[InventoryProjectionCalculator.WINDOW_DAYS];
+
+    private UsageWindow usageWindow(LocalDate windowStart, LocalDate today) {
         Timestamp from = Timestamp.valueOf(windowStart.atStartOfDay());
         Timestamp to = Timestamp.valueOf(today.plusDays(1).atStartOfDay());
 
-        Map<Long, List<InventoryUsage>> byItem = new HashMap<>();
-        for (InventoryUsage usage : inventoryUsageService.getByDateRange(from, to)) {
-            if (usage.getInventoryItem() != null) {
-                byItem.computeIfAbsent(usage.getInventoryItem().getId(), key -> new ArrayList<>()).add(usage);
-            }
-        }
-        return byItem;
-    }
-
-    private double[] dailyUse(List<InventoryUsage> usage, LocalDate windowStart) {
-        double[] daily = new double[InventoryProjectionCalculator.WINDOW_DAYS];
-        for (InventoryUsage record : usage) {
-            if (record.getUsageDate() == null || record.getQuantityUsed() == null) {
+        Map<Long, double[]> dailyUse = new HashMap<>();
+        Map<Long, LocalDate> latestUsage = new HashMap<>();
+        for (DailyUsage total : inventoryUsageService.getDailyTotals(from, to)) {
+            long offset = ChronoUnit.DAYS.between(windowStart, total.day());
+            if (offset < 0 || offset >= InventoryProjectionCalculator.WINDOW_DAYS) {
                 continue;
             }
-            long offset = ChronoUnit.DAYS.between(windowStart, toLocalDate(record));
-            if (offset >= 0 && offset < daily.length) {
-                daily[(int) offset] += record.getQuantityUsed();
-            }
+            dailyUse.computeIfAbsent(total.itemId(),
+                    key -> new double[InventoryProjectionCalculator.WINDOW_DAYS])[(int) offset] += total.quantity();
+            latestUsage.merge(total.itemId(), total.day(), (left, right) -> left.isAfter(right) ? left : right);
         }
-        return daily;
-    }
-
-    private LocalDate latestUsageDate(List<InventoryUsage> usage) {
-        return usage.stream().filter(record -> record.getUsageDate() != null).map(this::toLocalDate)
-                .max(Comparator.naturalOrder()).orElse(null);
-    }
-
-    private LocalDate toLocalDate(InventoryUsage usage) {
-        return usage.getUsageDate().toLocalDateTime().toLocalDate();
+        return new UsageWindow(dailyUse, latestUsage);
     }
 }

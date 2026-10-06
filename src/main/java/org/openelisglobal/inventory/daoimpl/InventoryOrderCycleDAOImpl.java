@@ -24,7 +24,8 @@ public class InventoryOrderCycleDAOImpl extends BaseDAOImpl<InventoryOrderCycle,
     @Transactional(readOnly = true)
     public List<InventoryOrderCycle> getReceivedSince(Timestamp cutoff) throws LIMSRuntimeException {
         try {
-            String hql = "FROM InventoryOrderCycle c WHERE c.receivedAt >= :cutoff ORDER BY c.receivedAt DESC";
+            String hql = "FROM InventoryOrderCycle c JOIN FETCH c.inventoryItem WHERE c.receivedAt >= :cutoff"
+                    + " ORDER BY c.receivedAt DESC";
             Query<InventoryOrderCycle> query = entityManager.unwrap(Session.class).createQuery(hql,
                     InventoryOrderCycle.class);
             query.setParameter("cutoff", cutoff);

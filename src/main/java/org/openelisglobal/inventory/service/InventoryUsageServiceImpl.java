@@ -66,6 +66,12 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<InventoryUsageDAO.DailyUsage> getDailyTotals(Timestamp startDate, Timestamp endDate) {
+        return inventoryUsageDAO.getDailyTotals(startDate, endDate);
+    }
+
+    @Override
     @Transactional
     public InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,
             String sysUserId) {

@@ -1,6 +1,8 @@
 package org.openelisglobal.inventory.daoimpl;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
+import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -84,5 +86,35 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> imp
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting usage by date range", e);
         }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<DailyUsage> getDailyTotals(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException {
+        try {
+            String hql = "SELECT u.inventoryItem.id, cast(u.usageDate as date), SUM(u.quantityUsed)"
+                    + " FROM InventoryUsage u WHERE u.usageDate >= :startDate AND u.usageDate < :endDate"
+                    + " GROUP BY u.inventoryItem.id, cast(u.usageDate as date)";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameter("startDate", startDate);
+            query.setParameter("endDate", endDate);
+            List<DailyUsage> totals = new ArrayList<>();
+            for (Object[] row : query.list()) {
+                totals.add(new DailyUsage((Long) row[0], toLocalDate(row[1]), ((Number) row[2]).doubleValue()));
+            }
+            return totals;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting daily usage totals", e);
+        }
+    }
+
+    private static LocalDate toLocalDate(Object day) {
+        if (day instanceof LocalDate date) {
+            return date;
+        }
+        if (day instanceof java.sql.Date date) {
+            return date.toLocalDate();
+        }
+        return new java.sql.Date(((java.util.Date) day).getTime()).toLocalDate();
     }
 }
