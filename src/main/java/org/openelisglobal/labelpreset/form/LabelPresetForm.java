@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 
 /**
  * Spring form bean for creating/updating a LabelPreset. Carries @Valid
@@ -137,6 +138,24 @@ public class LabelPresetForm {
                 return false;
             }
             if (entry.getDisplayOrder() != null && !orders.add(entry.getDisplayOrder())) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
+     * Only the catalogued content fields may be stored (OGC-1218); a key the
+     * renderer does not know would print as its raw name.
+     */
+    @AssertTrue(message = "{error.labelpreset.field.key.unknown}")
+    public boolean isEveryFieldKeyKnown() {
+        if (fields == null) {
+            return true;
+        }
+        for (FieldEntry entry : fields) {
+            if (entry != null && entry.getFieldKey() != null && !entry.getFieldKey().trim().isEmpty()
+                    && !LabelFieldKey.isKnown(entry.getFieldKey())) {
                 return false;
             }
         }

@@ -428,4 +428,49 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
         form.setIsActive(true);
         return form;
     }
+
+    // ── OGC-1218: content field keys come from the catalogue ────────────────
+
+    @Test
+    public void post_unknownFieldKey_returns422NamingTheRule() throws Exception {
+        LabelPresetForm form = buildValidForm(null);
+        LabelPresetForm.FieldEntry known = new LabelPresetForm.FieldEntry();
+        known.setFieldKey("PATIENT_NAME");
+        known.setIsRequired(false);
+        known.setDisplayOrder(2);
+        LabelPresetForm.FieldEntry unknown = new LabelPresetForm.FieldEntry();
+        unknown.setFieldKey("FAVOURITE_COLOUR");
+        unknown.setIsRequired(false);
+        unknown.setDisplayOrder(3);
+        form.setFields(List.of(known, unknown));
+
+        MvcResult result = mockMvc
+                .perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(form)))
+                .andExpect(status().isUnprocessableEntity()).andReturn();
+        assertTrue(result.getResponse().getContentAsString().contains("{error.labelpreset.field.key.unknown}"));
+    }
+
+    @Test
+    public void post_cataloguedFieldKeys_areStoredWithLabNumberFirst() throws Exception {
+        LabelPresetForm form = buildValidForm(null);
+        form.setName(TEST_PREFIX + "catalogued_fields");
+        LabelPresetForm.FieldEntry tests = new LabelPresetForm.FieldEntry();
+        tests.setFieldKey("TESTS");
+        tests.setIsRequired(true);
+        tests.setDisplayOrder(4);
+        LabelPresetForm.FieldEntry specimenType = new LabelPresetForm.FieldEntry();
+        specimenType.setFieldKey("SPECIMEN_TYPE");
+        specimenType.setIsRequired(false);
+        specimenType.setDisplayOrder(2);
+        form.setFields(List.of(tests, specimenType));
+
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(form)))
+                .andExpect(status().isCreated());
+
+        List<String> stored = jdbc.queryForList(
+                "SELECT field_key FROM clinlims.label_preset_field WHERE preset_id = "
+                        + "(SELECT id FROM clinlims.label_preset WHERE name = ?) ORDER BY display_order",
+                String.class, TEST_PREFIX + "catalogued_fields");
+        assertEquals(List.of("LAB_NUMBER", "SPECIMEN_TYPE", "TESTS"), stored);
+    }
 }

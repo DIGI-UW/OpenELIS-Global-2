@@ -276,7 +276,9 @@ describe("LabelPresetEditor", () => {
       postToOpenElisServerFullResponse.mock.calls[0][1],
     );
     expect(payload.name).toBe("Mixed Case Preset");
-    expect(payload.fields).toEqual([]);
+    expect(payload.fields).toEqual([
+      { fieldKey: "LAB_NUMBER", isRequired: true, displayOrder: 1 },
+    ]);
   });
 
   test("names the server's status and reason when the save is rejected, and stays open", async () => {
