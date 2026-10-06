@@ -60,4 +60,4 @@ components are the non-primary N2 and E cycle-threshold values that
 when an instrument does not transmit per-target Ct.
 
 What remains to be qualified is tracked in the
-[analyzer roadmap](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/specs/roadmaps/ogc-1054-analyzer-feature-roadmap.md).
+[analyzer baseline roadmap](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/develop/specs/roadmaps/analyzer-baseline-roadmap.md).
