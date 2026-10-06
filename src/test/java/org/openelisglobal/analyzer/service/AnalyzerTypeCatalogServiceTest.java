@@ -3,11 +3,13 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.util.List;
+import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -87,7 +89,9 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals(List.of("Hematology - Main Lab", "Hematology - Night Bench", "Hematology - Reference Lab"),
                 active.affectedAnalyzers().stream().map(AnalyzerTypeCatalogView.AffectedAnalyzer::name).toList());
         assertEquals(List.of(false, true, true), active.affectedAnalyzers().stream()
-                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::updateAvailable).toList());
+                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::newerProfileRevision).toList());
+        assertEquals(List.of(false, false, false), active.affectedAnalyzers().stream()
+                .map(AnalyzerTypeCatalogView.AffectedAnalyzer::newerMappingRevision).toList());
         assertEquals(List.of(3, 2, 1), active.affectedAnalyzers().stream()
                 .map(AnalyzerTypeCatalogView.AffectedAnalyzer::pinnedProfileRevision).toList());
         assertEquals(List.of(2, 1, 1), active.affectedAnalyzers().stream()
@@ -187,7 +191,28 @@ public class AnalyzerTypeCatalogServiceTest {
         assertEquals("LIS2-A2", result.protocolVersion());
         assertEquals(1L, result.usedBy());
         assertEquals("Hematology - Main Lab", result.affectedAnalyzers().get(0).name());
-        assertFalse(result.affectedAnalyzers().get(0).updateAvailable());
+        assertFalse(result.affectedAnalyzers().get(0).newerProfileRevision());
+    }
+
+    @Test
+    public void aSavedRevisionNewerThanTheOneInForceIsReportedForVerification() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 2, 1)));
+        when(mappingDAO.findLatestByAnalyzerId("501")).thenReturn(Optional.of(mapping(2)));
+        when(bridgeCatalogService.getProfile("site.mock-hematology", 2))
+                .thenReturn(profileRevision(2, "Mock Hematology revision 2"));
+
+        AnalyzerTypeCatalogView.AffectedAnalyzer result = service.getType("site.mock-hematology", 2)
+                .affectedAnalyzers().get(0);
+
+        assertTrue(result.newerMappingRevision());
+        assertFalse(result.newerProfileRevision());
+    }
+
+    private static AnalyzerMapping mapping(int revisionNumber) {
+        AnalyzerMapping mapping = new AnalyzerMapping();
+        mapping.setRevisionNumber(revisionNumber);
+        return mapping;
     }
 
     private static TestResult numericResult() {
