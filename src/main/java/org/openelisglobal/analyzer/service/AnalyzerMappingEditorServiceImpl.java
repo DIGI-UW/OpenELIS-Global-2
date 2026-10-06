@@ -98,6 +98,15 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         return compose(null, revision, profile, CurrentRows.of(mappingDefaults.resolve(profile)), List.of(), null);
     }
 
+    @Override
+    public AnalyzerMappingView preview(String analyzerId, int profileRevision, AnalyzerMappingDraft decisions) {
+        Analyzer analyzer = find(analyzerId);
+        BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService
+                .getProfile(latest(analyzer).mapping().getProfileId(), profileRevision);
+        return compose(analyzer, revision, BridgeAnalyzerProfile.from(revision.profile()), CurrentRows.of(decisions),
+                List.of(), null);
+    }
+
     private Analyzer find(String analyzerId) {
         return analyzerService.getWithMapping(analyzerId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + analyzerId));
