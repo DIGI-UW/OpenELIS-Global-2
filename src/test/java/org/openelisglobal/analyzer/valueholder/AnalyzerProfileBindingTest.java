@@ -18,7 +18,7 @@ public class AnalyzerProfileBindingTest {
 
         AnalyzerSiteBinding siteBinding = new AnalyzerSiteBinding();
         siteBinding.setProfileBinding(binding);
-        AnalyzerSiteBindingRevision siteBindingRevision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping siteBindingRevision = new AnalyzerMapping();
         siteBindingRevision.setSiteBinding(siteBinding);
         Analyzer analyzer = new Analyzer();
         analyzer.setSiteBindingRevision(siteBindingRevision);

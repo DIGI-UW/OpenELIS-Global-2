@@ -16,11 +16,11 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
 
     private final AnalyzerProfileBindingDAO bindingDAO;
     private final BridgeProfileCatalogService catalogService;
-    private final AnalyzerSiteBindingService siteBindingService;
+    private final AnalyzerMappingService siteBindingService;
 
     @Autowired
     public AnalyzerProfileBindingServiceImpl(AnalyzerProfileBindingDAO bindingDAO,
-            BridgeProfileCatalogService catalogService, AnalyzerSiteBindingService siteBindingService) {
+            BridgeProfileCatalogService catalogService, AnalyzerMappingService siteBindingService) {
         super(AnalyzerProfileBinding.class);
         this.bindingDAO = bindingDAO;
         this.catalogService = catalogService;
@@ -75,7 +75,7 @@ public class AnalyzerProfileBindingServiceImpl extends BaseObjectServiceImpl<Ana
         }
 
         ResolvedProfile resolved = resolveActiveProfile(normalizedProfileId, profileRevision, sysUserId);
-        AnalyzerSiteBindingSnapshot siteBinding = siteBindingService.resolveInitialRevision(resolved.binding(),
+        AnalyzerMappingSnapshot siteBinding = siteBindingService.resolveInitialRevision(resolved.binding(),
                 resolved.profile().document(), sysUserId);
         analyzer.setSiteBindingRevision(siteBinding.revision());
         return resolved.binding();

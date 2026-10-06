@@ -26,20 +26,20 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSnapshot;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResultPK;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResultPK;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTestPK;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -55,9 +55,9 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Mock
     private AnalyzerService analyzerService;
     @Mock
-    private AnalyzerSiteBindingService siteBindingService;
+    private AnalyzerMappingService siteBindingService;
     @Mock
-    private AnalyzerSiteBindingConfirmationService confirmationService;
+    private AnalyzerMappingConfirmationService confirmationService;
     @Mock
     private AnalyzerMappingCatalogService mappingCatalogService;
     @Mock
@@ -74,7 +74,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
 
     private AnalyzerNormalizedResultImportServiceImpl service;
     private Analyzer analyzer;
-    private AnalyzerSiteBindingRevision revision;
+    private AnalyzerMapping revision;
 
     @Before
     public void setUp() {
@@ -299,17 +299,17 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @Test
     public void incomingResultKeepsTheAdoptedRevisionWhenASharedMappingIsEdited() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "702")));
-        AnalyzerSiteBindingRevision acknowledgedRevision = revision;
-        AnalyzerSiteBindingRevision currentRevision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping acknowledgedRevision = revision;
+        AnalyzerMapping currentRevision = new AnalyzerMapping();
         currentRevision.setId("revision-2");
         currentRevision.setSiteBinding(acknowledgedRevision.getSiteBinding());
         currentRevision.setRevisionNumber(2);
         currentRevision.setBindingFingerprint("sha256:" + "3".repeat(64));
-        AnalyzerSiteBindingTest test = boundTest(currentRevision, "HIV-INTERP", "601");
-        AnalyzerSiteBindingResult result = boundResult(currentRevision, "HIV-INTERP", "INDETERMINATE-VENDOR-X", "701");
+        AnalyzerMappingTest test = boundTest(currentRevision, "HIV-INTERP", "601");
+        AnalyzerMappingResult result = boundResult(currentRevision, "HIV-INTERP", "INDETERMINATE-VENDOR-X", "701");
         when(siteBindingService.findCurrentByProfileBindingId("profile-binding-1"))
-                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(currentRevision.getSiteBinding(),
-                        currentRevision, List.of(test), List.of(result))));
+                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(currentRevision.getSiteBinding(), currentRevision,
+                        List.of(test), List.of(result))));
         TestResult option = new TestResult();
         option.setId("701");
         option.setValue("9001");
@@ -330,7 +330,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
     @SuppressWarnings({ "rawtypes", "unchecked" })
     public void twoAnalyzersUseTheirOwnAdoptedMappingRevision() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")), List.of(boundResult("HIV-INTERP", "POSITIVE", "702")));
-        AnalyzerSiteBindingRevision successor = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping successor = new AnalyzerMapping();
         successor.setId("revision-2");
         successor.setSiteBinding(revision.getSiteBinding());
         successor.setRevisionNumber(2);
@@ -343,7 +343,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         when(analyzerService.findByBridgeConnectionIdForUpdate("bridge-connection-second"))
                 .thenReturn(Optional.of(second));
         when(siteBindingService.findByRevisionId("revision-2"))
-                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(successor.getSiteBinding(), successor,
+                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(successor.getSiteBinding(), successor,
                         List.of(boundTest(successor, "HIV-INTERP", "601")),
                         List.of(boundResult(successor, "HIV-INTERP", "INDETERMINATE-VENDOR-X", "701")))));
         TestResult option = new TestResult();
@@ -437,7 +437,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         binding.setId("site-binding-1");
         binding.setProfileBinding(profile);
 
-        revision = new AnalyzerSiteBindingRevision();
+        revision = new AnalyzerMapping();
         revision.setId("revision-1");
         revision.setSiteBinding(binding);
         revision.setRevisionNumber(1);
@@ -451,54 +451,53 @@ public class AnalyzerNormalizedResultImportServiceTest {
         return value;
     }
 
-    private void arrangeBinding(List<AnalyzerSiteBindingTest> tests, List<AnalyzerSiteBindingResult> results) {
-        AnalyzerSiteBindingSnapshot snapshot = new AnalyzerSiteBindingSnapshot(revision.getSiteBinding(), revision,
-                tests, results);
+    private void arrangeBinding(List<AnalyzerMappingTest> tests, List<AnalyzerMappingResult> results) {
+        AnalyzerMappingSnapshot snapshot = new AnalyzerMappingSnapshot(revision.getSiteBinding(), revision, tests,
+                results);
         when(siteBindingService.findCurrentByProfileBindingId("profile-binding-1")).thenReturn(Optional.of(snapshot));
         when(siteBindingService.findByRevisionId(revision.getId())).thenReturn(Optional.of(snapshot));
     }
 
-    private AnalyzerSiteBindingTest boundTest(String sourceRowKey, String testId) {
+    private AnalyzerMappingTest boundTest(String sourceRowKey, String testId) {
         return boundTest(revision, sourceRowKey, testId);
     }
 
-    private AnalyzerSiteBindingTest boundTest(AnalyzerSiteBindingRevision bindingRevision, String sourceRowKey,
-            String testId) {
-        AnalyzerSiteBindingTest row = new AnalyzerSiteBindingTest();
-        row.setId(new AnalyzerSiteBindingTestPK(bindingRevision.getId(), sourceRowKey));
+    private AnalyzerMappingTest boundTest(AnalyzerMapping bindingRevision, String sourceRowKey, String testId) {
+        AnalyzerMappingTest row = new AnalyzerMappingTest();
+        row.setId(new AnalyzerMappingTestPK(bindingRevision.getId(), sourceRowKey));
         row.setSiteBindingRevision(bindingRevision);
-        row.setMappingState(AnalyzerSiteBindingMappingState.BOUND);
+        row.setMappingState(AnalyzerMappingState.BOUND);
         row.setTestId(testId);
         return row;
     }
 
-    private AnalyzerSiteBindingTest excludedTest(String sourceRowKey) {
-        AnalyzerSiteBindingTest row = new AnalyzerSiteBindingTest();
-        row.setId(new AnalyzerSiteBindingTestPK(revision.getId(), sourceRowKey));
+    private AnalyzerMappingTest excludedTest(String sourceRowKey) {
+        AnalyzerMappingTest row = new AnalyzerMappingTest();
+        row.setId(new AnalyzerMappingTestPK(revision.getId(), sourceRowKey));
         row.setSiteBindingRevision(revision);
-        row.setMappingState(AnalyzerSiteBindingMappingState.EXCLUDED);
+        row.setMappingState(AnalyzerMappingState.EXCLUDED);
         return row;
     }
 
-    private AnalyzerSiteBindingResult boundResult(String sourceRowKey, String rawValue, String testResultId) {
+    private AnalyzerMappingResult boundResult(String sourceRowKey, String rawValue, String testResultId) {
         return boundResult(revision, sourceRowKey, rawValue, testResultId);
     }
 
-    private AnalyzerSiteBindingResult boundResult(AnalyzerSiteBindingRevision bindingRevision, String sourceRowKey,
-            String rawValue, String testResultId) {
-        AnalyzerSiteBindingResult row = new AnalyzerSiteBindingResult();
-        row.setId(new AnalyzerSiteBindingResultPK(bindingRevision.getId(), sourceRowKey, rawValue));
+    private AnalyzerMappingResult boundResult(AnalyzerMapping bindingRevision, String sourceRowKey, String rawValue,
+            String testResultId) {
+        AnalyzerMappingResult row = new AnalyzerMappingResult();
+        row.setId(new AnalyzerMappingResultPK(bindingRevision.getId(), sourceRowKey, rawValue));
         row.setSiteBindingRevision(bindingRevision);
-        row.setMappingState(AnalyzerSiteBindingMappingState.BOUND);
+        row.setMappingState(AnalyzerMappingState.BOUND);
         row.setTestResultId(testResultId);
         return row;
     }
 
-    private AnalyzerSiteBindingResult excludedResult(String sourceRowKey, String rawValue) {
-        AnalyzerSiteBindingResult row = new AnalyzerSiteBindingResult();
-        row.setId(new AnalyzerSiteBindingResultPK(revision.getId(), sourceRowKey, rawValue));
+    private AnalyzerMappingResult excludedResult(String sourceRowKey, String rawValue) {
+        AnalyzerMappingResult row = new AnalyzerMappingResult();
+        row.setId(new AnalyzerMappingResultPK(revision.getId(), sourceRowKey, rawValue));
         row.setSiteBindingRevision(revision);
-        row.setMappingState(AnalyzerSiteBindingMappingState.EXCLUDED);
+        row.setMappingState(AnalyzerMappingState.EXCLUDED);
         return row;
     }
 

@@ -20,13 +20,13 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationRequest;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
+import org.openelisglobal.analyzer.service.AnalyzerMappingView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingUpdate;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalog;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
@@ -53,7 +53,7 @@ public class AnalyzerTypeRestControllerTest {
     private AnalyzerMappingCatalogService mappingCatalogService;
 
     @Mock
-    private AnalyzerTypeMappingService mappingService;
+    private AnalyzerMappingEditorService mappingService;
 
     private AnalyzerTypeRestController controller;
 
@@ -108,8 +108,8 @@ public class AnalyzerTypeRestControllerTest {
     public void getMappingReturnsTheSoleSharedEditorDocumentForTheExactRevision() {
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
                 "NONE", "This analyzer interface transports no control results.", true, List.of());
-        AnalyzerTypeMappingView expected = new AnalyzerTypeMappingView("site.mock", 2, "sha256:test", "Mock Analyzer",
-                "FILE", null, 0, null, List.of(), recognition);
+        AnalyzerMappingView expected = new AnalyzerMappingView("site.mock", 2, "sha256:test", "Mock Analyzer", "FILE",
+                null, 0, null, List.of(), recognition);
         when(mappingService.getMapping("site.mock", 2)).thenReturn(expected);
 
         assertSame(expected, controller.getMapping("site.mock", 2).getBody());
@@ -120,9 +120,9 @@ public class AnalyzerTypeRestControllerTest {
     public void saveMappingUsesTheAuthenticatedUserAsTheAuditActor() {
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
                 "NONE", "This analyzer interface transports no control results.", true, List.of());
-        AnalyzerTypeMappingUpdate update = new AnalyzerTypeMappingUpdate(null, List.of(), List.of());
-        AnalyzerTypeMappingView expected = new AnalyzerTypeMappingView("site.mock", 2, "sha256:test", "Mock Analyzer",
-                "FILE", "51", 1, "sha256:binding", List.of(), recognition);
+        AnalyzerMappingUpdate update = new AnalyzerMappingUpdate(null, List.of(), List.of());
+        AnalyzerMappingView expected = new AnalyzerMappingView("site.mock", 2, "sha256:test", "Mock Analyzer", "FILE",
+                "51", 1, "sha256:binding", List.of(), recognition);
         when(mappingService.saveMapping("site.mock", 2, update, "17")).thenReturn(expected);
 
         assertSame(expected, controller.saveMapping("site.mock", 2, update, authenticatedRequest(17)).getBody());
@@ -131,10 +131,10 @@ public class AnalyzerTypeRestControllerTest {
 
     @Test
     public void confirmMappingUsesTheAuthenticatedUserAsTheAuditActor() {
-        AnalyzerSiteBindingConfirmationRequest request = new AnalyzerSiteBindingConfirmationRequest(
+        AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
                 "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
                 "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", List.of(), List.of());
-        AnalyzerSiteBindingConfirmationView expected = AnalyzerSiteBindingConfirmationView.unconfirmed();
+        AnalyzerMappingConfirmationView expected = AnalyzerMappingConfirmationView.unconfirmed();
         when(mappingService.confirmMapping("site.mock", 2, request, "17")).thenReturn(expected);
 
         assertSame(expected, controller.confirmMapping("site.mock", 2, request, authenticatedRequest(17)).getBody());
@@ -144,9 +144,9 @@ public class AnalyzerTypeRestControllerTest {
     @Test
     public void confirmationTimestampSerializesAsIso8601Text() throws Exception {
         Instant confirmedAt = Instant.parse("2026-08-22T12:00:00Z");
-        AnalyzerSiteBindingConfirmationView confirmation = new AnalyzerSiteBindingConfirmationView(
-                AnalyzerSiteBindingConfirmationView.State.CURRENT, "site.mock", 2, "sha256:binding",
-                "sha256:recognition", "17", "Lab Admin", confirmedAt, List.of(), List.of());
+        AnalyzerMappingConfirmationView confirmation = new AnalyzerMappingConfirmationView(
+                AnalyzerMappingConfirmationView.State.CURRENT, "site.mock", 2, "sha256:binding", "sha256:recognition",
+                "17", "Lab Admin", confirmedAt, List.of(), List.of());
         ObjectMapper productionMapper = new ObjectMapper().registerModule(new JavaTimeModule());
 
         JsonNode response = productionMapper.valueToTree(confirmation);

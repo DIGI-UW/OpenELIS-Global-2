@@ -61,7 +61,7 @@ public class Analyzer extends BaseObject<String> {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "site_binding_revision_id")
-    private AnalyzerSiteBindingRevision siteBindingRevision;
+    private AnalyzerMapping siteBindingRevision;
 
     @Column(name = "bridge_connection_id", length = 255)
     private String bridgeConnectionId;
@@ -111,11 +111,11 @@ public class Analyzer extends BaseObject<String> {
         this.active = active;
     }
 
-    public AnalyzerSiteBindingRevision getSiteBindingRevision() {
+    public AnalyzerMapping getSiteBindingRevision() {
         return siteBindingRevision;
     }
 
-    public void setSiteBindingRevision(AnalyzerSiteBindingRevision siteBindingRevision) {
+    public void setSiteBindingRevision(AnalyzerMapping siteBindingRevision) {
         this.siteBindingRevision = siteBindingRevision;
     }
 

@@ -30,10 +30,10 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
 
@@ -57,10 +57,10 @@ public class AnalyzerActivationServiceTest {
     private BridgeProfileCatalogService profileCatalogService;
 
     @Mock
-    private AnalyzerSiteBindingService siteBindingService;
+    private AnalyzerMappingService siteBindingService;
 
     @Mock
-    private AnalyzerSiteBindingConfirmationService confirmationService;
+    private AnalyzerMappingConfirmationService confirmationService;
 
     @Mock
     private TestSectionService testSectionService;
@@ -73,8 +73,8 @@ public class AnalyzerActivationServiceTest {
 
     private AnalyzerActivationService service;
     private Analyzer analyzer;
-    private AnalyzerSiteBindingSnapshot snapshot;
-    private AnalyzerSiteBindingConfirmation confirmation;
+    private AnalyzerMappingSnapshot snapshot;
+    private AnalyzerMappingConfirmation confirmation;
     private ObjectNode connection;
     private ObjectNode activationAcknowledgement;
     private AnalyzerActivationRecord retained;
@@ -96,7 +96,7 @@ public class AnalyzerActivationServiceTest {
         when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION)).thenReturn(profileRevision());
         when(siteBindingService.findByRevisionId(snapshot.revision().getId())).thenReturn(Optional.of(snapshot));
         when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                .thenReturn(AnalyzerSiteBindingVerificationAssessment.current(confirmation));
+                .thenReturn(AnalyzerMappingVerificationAssessment.current(confirmation));
         TestSection activeUnit = new TestSection();
         activeUnit.setId("4");
         activeUnit.setIsActive("Y");
@@ -173,7 +173,7 @@ public class AnalyzerActivationServiceTest {
     @Test
     public void requiresCurrentLocalMappingAndRecognitionVerification() {
         when(confirmationService.assessCurrent(snapshot, RECOGNITION_FINGERPRINT))
-                .thenReturn(new AnalyzerSiteBindingVerificationAssessment(false, false, confirmation));
+                .thenReturn(new AnalyzerMappingVerificationAssessment(false, false, confirmation));
 
         AnalyzerActivationResult result = service.readiness(ANALYZER_ID);
 
@@ -259,7 +259,7 @@ public class AnalyzerActivationServiceTest {
         return analyzer;
     }
 
-    private static AnalyzerSiteBindingSnapshot snapshot() {
+    private static AnalyzerMappingSnapshot snapshot() {
         AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
         profile.setId("21");
         profile.setProfileId(PROFILE_ID);
@@ -268,15 +268,15 @@ public class AnalyzerActivationServiceTest {
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setId("31");
         binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId("41");
         revision.setSiteBinding(binding);
         revision.setBindingFingerprint("sha256:" + "5".repeat(64));
-        return new AnalyzerSiteBindingSnapshot(binding, revision, List.of(), List.of());
+        return new AnalyzerMappingSnapshot(binding, revision, List.of(), List.of());
     }
 
-    private static AnalyzerSiteBindingConfirmation confirmation(AnalyzerSiteBindingRevision revision) {
-        AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
+    private static AnalyzerMappingConfirmation confirmation(AnalyzerMapping revision) {
+        AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("51");
         confirmation.setSiteBindingRevision(revision);
         confirmation.setProfileId(PROFILE_ID);

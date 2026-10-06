@@ -21,7 +21,7 @@ import org.hibernate.query.Query;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.service.AnalyzerTestCapability;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.springframework.stereotype.Component;
@@ -106,13 +106,13 @@ public class AnalyzerDAOImpl extends BaseDAOImpl<Analyzer, String> implements An
     @Transactional(readOnly = true)
     public List<AnalyzerTestCapability> findCapabilitiesByTestId(String testId) {
         String hql = "SELECT new org.openelisglobal.analyzer.service.AnalyzerTestCapability("
-                + "a.id, a.name, mapping.id.sourceRowKey) " + "FROM Analyzer a, AnalyzerSiteBindingTest mapping "
+                + "a.id, a.name, mapping.id.sourceRowKey) " + "FROM Analyzer a, AnalyzerMappingTest mapping "
                 + "WHERE a.siteBindingRevision = mapping.siteBindingRevision " + "AND mapping.testId = :testId "
                 + "AND mapping.mappingState = :mappedState " + "ORDER BY lower(a.name), mapping.id.sourceRowKey";
         Query<AnalyzerTestCapability> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerTestCapability.class);
         query.setParameter("testId", testId);
-        query.setParameter("mappedState", AnalyzerSiteBindingMappingState.BOUND);
+        query.setParameter("mappedState", AnalyzerMappingState.BOUND);
         return query.getResultList();
     }
 }

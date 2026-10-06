@@ -144,10 +144,10 @@
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerEvent</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMapping</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult</class>
+        <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord</class>
         <class>org.openelisglobal.analyzerresults.valueholder.AnalyzerResults</class>
         <class>org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt</class>

@@ -23,9 +23,9 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -40,10 +40,10 @@ public class AnalyzerInstanceLocalStateServiceTest {
     private AnalyzerProfileBindingService profileBindingService;
 
     @Mock
-    private AnalyzerSiteBindingService siteBindingService;
+    private AnalyzerMappingService siteBindingService;
 
     @Mock
-    private AnalyzerTypeMappingService typeMappingService;
+    private AnalyzerMappingEditorService typeMappingService;
 
     @Mock
     private AnalyzerResultsService analyzerResultsService;
@@ -128,15 +128,14 @@ public class AnalyzerInstanceLocalStateServiceTest {
         Analyzer analyzer = analyzer("42");
         AnalyzerProfileBinding profile = bind(analyzer);
         profile.setId("11");
-        AnalyzerSiteBindingRevision reviewedRevision = siteBindingRevision(profile, "12", "13", 2,
-                "sha256:" + "2".repeat(64));
-        AnalyzerSiteBindingRevision previousRevision = analyzer.getSiteBindingRevision();
+        AnalyzerMapping reviewedRevision = siteBindingRevision(profile, "12", "13", 2, "sha256:" + "2".repeat(64));
+        AnalyzerMapping previousRevision = analyzer.getSiteBindingRevision();
         when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
         when(siteBindingService.findCurrentByProfileBindingId("11"))
-                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(reviewedRevision.getSiteBinding(),
-                        reviewedRevision, List.of(), List.of())));
+                .thenReturn(Optional.of(new AnalyzerMappingSnapshot(reviewedRevision.getSiteBinding(), reviewedRevision,
+                        List.of(), List.of())));
         when(typeMappingService.getMapping("fixture.synthetic-connection", 3))
-                .thenReturn(mapping(reviewedRevision, AnalyzerSiteBindingConfirmationView.State.CURRENT));
+                .thenReturn(mapping(reviewedRevision, AnalyzerMappingConfirmationView.State.CURRENT));
 
         AnalyzerInstanceState result = service.selectSiteBindingRevision("42", "12", 2,
                 reviewedRevision.getBindingFingerprint(), "17");
@@ -153,12 +152,12 @@ public class AnalyzerInstanceLocalStateServiceTest {
         Analyzer analyzer = analyzer("42");
         AnalyzerProfileBinding profile = bind(analyzer);
         profile.setId("11");
-        AnalyzerSiteBindingRevision revision = siteBindingRevision(profile, "12", "13", 2, "sha256:" + "2".repeat(64));
+        AnalyzerMapping revision = siteBindingRevision(profile, "12", "13", 2, "sha256:" + "2".repeat(64));
         when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
-        when(siteBindingService.findCurrentByProfileBindingId("11")).thenReturn(Optional
-                .of(new AnalyzerSiteBindingSnapshot(revision.getSiteBinding(), revision, List.of(), List.of())));
+        when(siteBindingService.findCurrentByProfileBindingId("11")).thenReturn(
+                Optional.of(new AnalyzerMappingSnapshot(revision.getSiteBinding(), revision, List.of(), List.of())));
         when(typeMappingService.getMapping("fixture.synthetic-connection", 3))
-                .thenReturn(mapping(revision, AnalyzerSiteBindingConfirmationView.State.UNCONFIRMED));
+                .thenReturn(mapping(revision, AnalyzerMappingConfirmationView.State.UNCONFIRMED));
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.selectSiteBindingRevision("42", "12", 2, revision.getBindingFingerprint(), "17"));
@@ -171,12 +170,10 @@ public class AnalyzerInstanceLocalStateServiceTest {
         Analyzer analyzer = analyzer("42");
         AnalyzerProfileBinding profile = bind(analyzer);
         profile.setId("11");
-        AnalyzerSiteBindingRevision currentRevision = siteBindingRevision(profile, "12", "13", 3,
-                "sha256:" + "3".repeat(64));
+        AnalyzerMapping currentRevision = siteBindingRevision(profile, "12", "13", 3, "sha256:" + "3".repeat(64));
         when(analyzerService.getWithBinding("42")).thenReturn(Optional.of(analyzer));
-        when(siteBindingService.findCurrentByProfileBindingId("11"))
-                .thenReturn(Optional.of(new AnalyzerSiteBindingSnapshot(currentRevision.getSiteBinding(),
-                        currentRevision, List.of(), List.of())));
+        when(siteBindingService.findCurrentByProfileBindingId("11")).thenReturn(Optional.of(
+                new AnalyzerMappingSnapshot(currentRevision.getSiteBinding(), currentRevision, List.of(), List.of())));
 
         assertThrows(IllegalArgumentException.class,
                 () -> service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "2".repeat(64), "17"));
@@ -278,7 +275,7 @@ public class AnalyzerInstanceLocalStateServiceTest {
         profile.setProfileFingerprint(FINGERPRINT);
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setSiteBinding(binding);
         analyzer.setSiteBindingRevision(revision);
         return profile;
@@ -294,12 +291,12 @@ public class AnalyzerInstanceLocalStateServiceTest {
         return analyzer;
     }
 
-    private static AnalyzerSiteBindingRevision siteBindingRevision(AnalyzerProfileBinding profile, String bindingId,
+    private static AnalyzerMapping siteBindingRevision(AnalyzerProfileBinding profile, String bindingId,
             String revisionId, int revisionNumber, String fingerprint) {
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setId(bindingId);
         binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId(revisionId);
         revision.setSiteBinding(binding);
         revision.setRevisionNumber(revisionNumber);
@@ -307,12 +304,11 @@ public class AnalyzerInstanceLocalStateServiceTest {
         return revision;
     }
 
-    private static AnalyzerTypeMappingView mapping(AnalyzerSiteBindingRevision revision,
-            AnalyzerSiteBindingConfirmationView.State confirmationState) {
-        return new AnalyzerTypeMappingView("fixture.synthetic-connection", 3, FINGERPRINT, "Fixture", "ASTM",
+    private static AnalyzerMappingView mapping(AnalyzerMapping revision,
+            AnalyzerMappingConfirmationView.State confirmationState) {
+        return new AnalyzerMappingView("fixture.synthetic-connection", 3, FINGERPRINT, "Fixture", "ASTM",
                 revision.getSiteBinding().getId(), revision.getRevisionNumber(), revision.getBindingFingerprint(),
-                List.of(), null,
-                new AnalyzerSiteBindingConfirmationView(confirmationState, "fixture.synthetic-connection", 3,
-                        revision.getBindingFingerprint(), null, null, null, null, List.of(), List.of()));
+                List.of(), null, new AnalyzerMappingConfirmationView(confirmationState, "fixture.synthetic-connection",
+                        3, revision.getBindingFingerprint(), null, null, null, null, List.of(), List.of()));
     }
 }

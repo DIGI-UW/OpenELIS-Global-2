@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.springframework.stereotype.Service;
 
@@ -24,10 +24,10 @@ public class AnalyzerMappingDefaults {
         this.testResults = testResults;
     }
 
-    public AnalyzerSiteBindingDraft resolve(BridgeAnalyzerProfile profile) {
+    public AnalyzerMappingDraft resolve(BridgeAnalyzerProfile profile) {
         List<AnalyzerMappingCatalogService.TestOption> active = catalog.searchActiveTests(null);
-        List<AnalyzerSiteBindingTestDraft> tests = new ArrayList<>();
-        List<AnalyzerSiteBindingResultDraft> results = new ArrayList<>();
+        List<AnalyzerMappingTestDraft> tests = new ArrayList<>();
+        List<AnalyzerMappingResultDraft> results = new ArrayList<>();
         for (var definition : profile.testDefinitions()) {
             TestResolution resolution = resolve(definition, active);
             tests.add(resolution.draft());
@@ -37,11 +37,11 @@ public class AnalyzerMappingDefaults {
                         : resolveAnswer(definition, raw, resolution.options()));
             }
         }
-        return new AnalyzerSiteBindingDraft(tests, results);
+        return new AnalyzerMappingDraft(tests, results);
     }
 
     /** Resolves one profile test against the active catalog. */
-    public AnalyzerSiteBindingTestDraft resolveTest(BridgeAnalyzerProfile.TestDefinition definition,
+    public AnalyzerMappingTestDraft resolveTest(BridgeAnalyzerProfile.TestDefinition definition,
             List<AnalyzerMappingCatalogService.TestOption> activeTests) {
         return resolve(definition, activeTests).draft();
     }
@@ -50,8 +50,8 @@ public class AnalyzerMappingDefaults {
      * Resolves one declared answer of a profile test against the active answers of
      * a test, which may be one the operator chose rather than a default.
      */
-    public AnalyzerSiteBindingResultDraft resolveAnswer(BridgeAnalyzerProfile.TestDefinition definition,
-            String rawValue, List<AnalyzerMappingCatalogService.ResultOption> options) {
+    public AnalyzerMappingResultDraft resolveAnswer(BridgeAnalyzerProfile.TestDefinition definition, String rawValue,
+            List<AnalyzerMappingCatalogService.ResultOption> options) {
         BridgeAnalyzerProfile.NormalizedCoding coding = definition.valueCodes().get(rawValue);
         if (coding == null) {
             return unresolvedAnswer(definition, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
@@ -63,8 +63,8 @@ public class AnalyzerMappingDefaults {
         if (matches.isEmpty()) {
             return unresolvedAnswer(definition, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
         }
-        return new AnalyzerSiteBindingResultDraft(definition.analyzerCode(), rawValue,
-                AnalyzerSiteBindingMappingState.BOUND, matches.get(0).id());
+        return new AnalyzerMappingResultDraft(definition.analyzerCode(), rawValue, AnalyzerMappingState.BOUND,
+                matches.get(0).id());
     }
 
     private TestResolution resolve(BridgeAnalyzerProfile.TestDefinition definition,
@@ -89,8 +89,8 @@ public class AnalyzerMappingDefaults {
             return unresolvedTest(definition, AnalyzerUnresolvedReason.AMBIGUOUS);
         }
         var selected = usable.entrySet().iterator().next();
-        return new TestResolution(new AnalyzerSiteBindingTestDraft(definition.analyzerCode(),
-                AnalyzerSiteBindingMappingState.BOUND, selected.getKey().id()), selected.getValue());
+        return new TestResolution(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND,
+                selected.getKey().id()), selected.getValue());
     }
 
     private boolean canHold(BridgeAnalyzerProfile.TestDefinition definition,
@@ -107,14 +107,15 @@ public class AnalyzerMappingDefaults {
 
     private static TestResolution unresolvedTest(BridgeAnalyzerProfile.TestDefinition definition,
             AnalyzerUnresolvedReason reason) {
-        return new TestResolution(new AnalyzerSiteBindingTestDraft(definition.analyzerCode(),
-                AnalyzerSiteBindingMappingState.UNRESOLVED, null, reason), null);
+        return new TestResolution(
+                new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.UNRESOLVED, null, reason),
+                null);
     }
 
-    private static AnalyzerSiteBindingResultDraft unresolvedAnswer(BridgeAnalyzerProfile.TestDefinition definition,
+    private static AnalyzerMappingResultDraft unresolvedAnswer(BridgeAnalyzerProfile.TestDefinition definition,
             String rawValue, AnalyzerUnresolvedReason reason) {
-        return new AnalyzerSiteBindingResultDraft(definition.analyzerCode(), rawValue,
-                AnalyzerSiteBindingMappingState.UNRESOLVED, null, reason);
+        return new AnalyzerMappingResultDraft(definition.analyzerCode(), rawValue, AnalyzerMappingState.UNRESOLVED,
+                null, reason);
     }
 
     /**
@@ -125,7 +126,7 @@ public class AnalyzerMappingDefaults {
         return local != null && profile != null && !local.isBlank() && local.trim().equalsIgnoreCase(profile.trim());
     }
 
-    private record TestResolution(AnalyzerSiteBindingTestDraft draft,
+    private record TestResolution(AnalyzerMappingTestDraft draft,
             List<AnalyzerMappingCatalogService.ResultOption> options) {
     }
 }
