@@ -51,6 +51,16 @@ public class AnalyzerMappingTest extends BaseObject<AnalyzerMappingTestPK> {
     @Column(name = "call_component_id", length = 36)
     private String callComponentId;
 
+    /** On the main record: whether this instrument runs the assay. */
+    @Column(name = "enabled", nullable = false, updatable = false)
+    private boolean enabled = true;
+
+    /**
+     * On the main record: the code this instrument sends, when not the profile's.
+     */
+    @Column(name = "instrument_code", length = 64, updatable = false)
+    private String instrumentCode;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "unresolved_reason", length = 12)
     private AnalyzerUnresolvedReason unresolvedReason;
@@ -128,5 +138,21 @@ public class AnalyzerMappingTest extends BaseObject<AnalyzerMappingTestPK> {
 
     public void setTestId(String testId) {
         this.testId = testId;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public void setEnabled(boolean enabled) {
+        this.enabled = enabled;
+    }
+
+    public String getInstrumentCode() {
+        return instrumentCode;
+    }
+
+    public void setInstrumentCode(String instrumentCode) {
+        this.instrumentCode = instrumentCode;
     }
 }

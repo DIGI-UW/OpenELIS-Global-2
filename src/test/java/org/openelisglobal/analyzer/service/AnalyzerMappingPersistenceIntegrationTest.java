@@ -238,6 +238,31 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
     }
 
     @Test
+    public void anAssayTurnedOffUnderItsInstrumentCodeIsKeptByTheRevision() {
+        TransactionTemplate transaction = new TransactionTemplate(transactionManager);
+        transaction.executeWithoutResult(status -> {
+            String profileId = "site.assays." + UUID.randomUUID();
+            AnalyzerMappingService mappingService = mappingService(mock(TestService.class),
+                    mock(TestResultService.class), mock(AnalyzerMappingCatalogService.class), auditTrail(), profileId);
+            Analyzer analyzer = insertAnalyzer("Assay analyzer", Analyzer.AnalyzerStatus.SETUP);
+            mappingService.assignProfile(analyzer, profileId, 1, TEST_SYS_USER_ID);
+
+            mappingService.appendRevision(analyzer, new AnalyzerMappingDraft(
+                    List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.UNRESOLVED, null)
+                            .withAssay(false, "MTB")),
+                    List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.UNRESOLVED, null))),
+                    TEST_SYS_USER_ID);
+            entityManager.flush();
+            entityManager.clear();
+
+            var row = mappingService.findLatestByAnalyzerId(analyzer.getId()).orElseThrow().tests().get(0);
+            assertFalse(row.isEnabled());
+            assertEquals("MTB", row.getInstrumentCode());
+            status.setRollbackOnly();
+        });
+    }
+
+    @Test
     public void aMappingCanReturnToTheContentOfAnEarlierRevision() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
@@ -251,8 +276,10 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
                     List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.EXCLUDED, null)),
                     List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.EXCLUDED, null)));
             AnalyzerMappingSnapshot changed = mappingService.appendRevision(analyzer, excluded, TEST_SYS_USER_ID);
+            // RAW-A matched no local test, so the first revision has the assay off.
             AnalyzerMappingDraft restoredContent = new AnalyzerMappingDraft(
-                    List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.UNRESOLVED, null)),
+                    List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.UNRESOLVED, null)
+                            .withAssay(false, null)),
                     List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.UNRESOLVED, null)));
 
             AnalyzerMappingSnapshot restored = mappingService.appendRevision(analyzer, restoredContent,
