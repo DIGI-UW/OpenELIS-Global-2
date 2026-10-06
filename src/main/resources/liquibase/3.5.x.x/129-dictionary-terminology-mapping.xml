@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <!-- An answer (a dictionary entry used as a result option) carries codes in
+         any standard system, as tests and panels do. dictionary.loinc_code stays
+         denormalized to the answer's SAME_AS LOINC mapping. -->
+    <changeSet id="129-dictionary-terminology-mapping-table" author="oe">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists schemaName="clinlims" tableName="dictionary_terminology_mapping"/>
+            </not>
+        </preConditions>
+        <createTable schemaName="clinlims" tableName="dictionary_terminology_mapping">
+            <column name="id" type="VARCHAR(36)">
+                <constraints primaryKey="true" nullable="false" primaryKeyName="pk_dictionary_terminology_mapping"/>
+            </column>
+            <column name="dictionary_id" type="numeric(10)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="source" type="VARCHAR(20)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="code" type="VARCHAR(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="relationship" type="VARCHAR(20)"/>
+            <column name="display_name" type="VARCHAR(255)"/>
+            <column name="is_active" type="VARCHAR(2)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="lastupdated" type="TIMESTAMP" defaultValueComputed="now()">
+                <constraints nullable="false"/>
+            </column>
+            <column name="last_updated" type="TIMESTAMP"/>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="dictionary_terminology_mapping"
+            columnNames="dictionary_id, source, code" constraintName="uq_dictionary_terminology_mapping"/>
+        <addForeignKeyConstraint constraintName="fk_dictionary_terminology_mapping_dictionary"
+            baseTableSchemaName="clinlims" baseTableName="dictionary_terminology_mapping"
+            baseColumnNames="dictionary_id"
+            referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"/>
+        <rollback>
+            <dropTable schemaName="clinlims" tableName="dictionary_terminology_mapping"/>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="129-dictionary-loinc-mapping-backfill" author="oe">
+        <sql>
+            INSERT INTO clinlims.dictionary_terminology_mapping
+                (id, dictionary_id, source, code, relationship, is_active, lastupdated)
+            SELECT gen_random_uuid()::varchar, d.id, 'LOINC', trim(d.loinc_code), 'SAME_AS', 'Y', now()
+              FROM clinlims.dictionary d
+             WHERE d.loinc_code IS NOT NULL AND length(trim(d.loinc_code)) > 0
+               AND NOT EXISTS (SELECT 1 FROM clinlims.dictionary_terminology_mapping m
+                                WHERE m.dictionary_id = d.id AND m.source = 'LOINC' AND m.code = trim(d.loinc_code))
+        </sql>
+        <rollback>
+            <sql>DELETE FROM clinlims.dictionary_terminology_mapping WHERE source = 'LOINC'</sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
