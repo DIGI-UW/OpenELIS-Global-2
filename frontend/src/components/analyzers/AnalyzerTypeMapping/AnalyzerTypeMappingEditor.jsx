@@ -1120,6 +1120,13 @@ const AnalyzerTypeMappingEditor = () => {
           </div>
 
           <div className="analyzer-type-mapping__decision">
+            {test.mappingState === "UNRESOLVED" && test.unresolvedReason && (
+              <p className="analyzer-type-mapping__reason">
+                <FormattedMessage
+                  id={`analyzerType.mappingEditor.reason.test.${test.unresolvedReason.toLowerCase()}`}
+                />
+              </p>
+            )}
             <ComboBox
               id={`analyzer-test-${key}`}
               titleText={intl.formatMessage(
@@ -1301,6 +1308,14 @@ const AnalyzerTypeMappingEditor = () => {
                     >
                       <div className="analyzer-type-mapping__result-source">
                         <code>{result.rawValue}</code>
+                        {result.mappingState === "UNRESOLVED" &&
+                          result.unresolvedReason && (
+                            <span className="analyzer-type-mapping__reason">
+                              <FormattedMessage
+                                id={`analyzerType.mappingEditor.reason.result.${result.unresolvedReason.toLowerCase()}`}
+                              />
+                            </span>
+                          )}
                         {result.translationOf && (
                           <span className="analyzer-type-mapping__translation-of">
                             <FormattedMessage

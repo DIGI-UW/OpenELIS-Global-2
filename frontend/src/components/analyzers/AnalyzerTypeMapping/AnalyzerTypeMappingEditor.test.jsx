@@ -109,6 +109,7 @@ const mapping = {
         {
           rawValue: "NOT DETECTED",
           mappingState: "UNRESOLVED",
+          unresolvedReason: "NO_MATCH",
           resultOptionId: null,
           selectedOption: null,
         },
@@ -148,6 +149,7 @@ const mapping = {
       resultType: "qualitative",
       normalizedCoding: null,
       mappingState: "UNRESOLVED",
+      unresolvedReason: "AMBIGUOUS",
       testId: null,
       selectedTest: null,
       suggestedTest: null,
@@ -155,6 +157,7 @@ const mapping = {
         {
           rawValue: "HIGH",
           mappingState: "UNRESOLVED",
+          unresolvedReason: "NO_MATCH",
           resultOptionId: null,
           selectedOption: null,
         },
@@ -589,6 +592,27 @@ describe("AnalyzerTypeMappingEditor", () => {
         callComponentId: null,
       });
     });
+  });
+
+  it("says why each unmapped record and value was not mapped", async () => {
+    renderEditor();
+
+    const rawC = (
+      await screen.findAllByTestId("analyzer-type-mapping-row")
+    ).find((row) => within(row).queryByText("RAW-C"));
+    expect(
+      within(rawC).getByText(
+        "Not mapped: several tests in this lab's catalog carry its code. Choose one.",
+      ),
+    ).toBeInTheDocument();
+    const rawA = screen
+      .getAllByTestId("analyzer-type-mapping-row")
+      .find((row) => within(row).queryByText("RAW-A"));
+    expect(
+      await within(rawA).findByText(
+        "Not mapped: no answer for this test carries this value's code.",
+      ),
+    ).toBeInTheDocument();
   });
 
   it("returns to the worklist with its unsaved review choices", async () => {
