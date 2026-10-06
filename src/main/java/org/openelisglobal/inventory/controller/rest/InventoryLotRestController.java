@@ -347,7 +347,7 @@ public class InventoryLotRestController extends BaseRestController {
     }
 
     @PutMapping(value = "/{id}/status", produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryLot> updateStatus(@PathVariable String id, @RequestBody StatusRequest request,
+    public ResponseEntity<?> updateStatus(@PathVariable String id, @RequestBody StatusRequest request,
             HttpServletRequest httpRequest) {
         try {
             UserSessionData usd = (UserSessionData) httpRequest.getSession().getAttribute(USER_SESSION_DATA);
@@ -355,6 +355,8 @@ public class InventoryLotRestController extends BaseRestController {
 
             InventoryLot lot = inventoryLotService.updateLotStatus(Long.valueOf(id), request.getStatus(), sysUserId);
             return ResponseEntity.ok(lot);
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
         } catch (IllegalArgumentException e) {
             LogEvent.logError(e);
             return ResponseEntity.badRequest().build();
@@ -372,7 +374,7 @@ public class InventoryLotRestController extends BaseRestController {
             String sysUserId = String.valueOf(usd.getSystemUserId());
 
             InventoryLot lot = inventoryLotService.adjustLotQuantity(Long.valueOf(id), request.getNewQuantity(),
-                    request.getReason(), sysUserId);
+                    request.getReason(), request.getNotes(), sysUserId);
             return ResponseEntity.ok(lot);
         } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);
@@ -447,6 +449,7 @@ public class InventoryLotRestController extends BaseRestController {
     public static class AdjustQuantityRequest {
         private Double newQuantity;
         private String reason;
+        private String notes;
 
     }
 

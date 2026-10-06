@@ -99,10 +99,14 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             throw new IllegalArgumentException("Quantity needed must be greater than 0");
         }
 
+        // Locking re-reads each lot: a concurrent consumer waits, not fails.
+        List<InventoryLot> fefoLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
+        fefoLots.forEach(inventoryLotService::refreshForUpdate);
+
         // The FEFO query has no expiry predicate; isAvailableForUse is the rule
         // check-availability answers with, so it decides here too.
-        List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId).stream()
-                .filter(InventoryLot::isAvailableForUse).collect(Collectors.toList());
+        List<InventoryLot> availableLots = fefoLots.stream().filter(InventoryLot::isAvailableForUse)
+                .collect(Collectors.toList());
 
         if (availableLots == null || availableLots.isEmpty()) {
             throw noAvailableLots(itemId);

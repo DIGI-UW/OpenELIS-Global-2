@@ -72,7 +72,7 @@ public class InventoryLotRestControllerTest {
     @Test
     public void adjustQuantity_answers404WithBody_whenLotDoesNotExist() {
         stubSession();
-        when(inventoryLotService.adjustLotQuantity(999L, 3.0, "recount", "7"))
+        when(inventoryLotService.adjustLotQuantity(999L, 3.0, "recount", null, "7"))
                 .thenThrow(new ObjectNotFoundException(999L, InventoryLot.class.getName()));
 
         ResponseEntity<?> response = controller.adjustQuantity("999", adjust(3.0, "recount"), request);
@@ -84,7 +84,7 @@ public class InventoryLotRestControllerTest {
     @Test
     public void adjustQuantity_answers400WithBody_whenServiceRefuses() {
         stubSession();
-        when(inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", "7"))
+        when(inventoryLotService.adjustLotQuantity(5L, 3.0, "recount", null, "7"))
                 .thenThrow(new IllegalStateException("Cannot adjust a DISPOSED lot: LOT-5"));
 
         ResponseEntity<?> response = controller.adjustQuantity("5", adjust(3.0, "recount"), request);

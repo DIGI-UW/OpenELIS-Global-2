@@ -11,6 +11,9 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
 
     InventoryLot getForUpdate(Long lotId) throws LIMSRuntimeException;
 
+    /** Reloads the lot under a row lock, waiting for any holder. */
+    void refreshForUpdate(InventoryLot lot) throws LIMSRuntimeException;
+
     /**
      * Get all lots for a specific inventory item
      */

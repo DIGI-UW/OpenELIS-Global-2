@@ -32,6 +32,15 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
     }
 
     @Override
+    public void refreshForUpdate(InventoryLot lot) throws LIMSRuntimeException {
+        try {
+            entityManager.refresh(lot, LockModeType.PESSIMISTIC_WRITE);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error locking inventory lot for update", e);
+        }
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<InventoryLot> getByInventoryItemId(Long itemId) throws LIMSRuntimeException {
         try {

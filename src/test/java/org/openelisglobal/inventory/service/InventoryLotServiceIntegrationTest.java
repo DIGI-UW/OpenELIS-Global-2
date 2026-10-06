@@ -10,12 +10,17 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
+import org.openelisglobal.inventory.valueholder.InventoryTransaction;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.annotation.Rollback;
 
 @Rollback
 public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveTest {
+
+    @Autowired
+    private InventoryTransactionService inventoryTransactionService;
 
     @Autowired
     InventoryLotService inventoryLotService;
@@ -279,13 +284,39 @@ public class InventoryLotServiceIntegrationTest extends BaseWebContextSensitiveT
         InventoryLot lot = inventoryLotService.get(1000L);
         assertEquals(Double.valueOf(100.0), lot.getCurrentQuantity());
 
-        InventoryLot updatedLot = inventoryLotService.adjustLotQuantity(1000L, 75.0, "Test adjustment", "1");
+        InventoryLot updatedLot = inventoryLotService.adjustLotQuantity(1000L, 75.0, "Test adjustment", null, "1");
 
         assertNotNull("Updated lot should not be null", updatedLot);
         assertEquals(Double.valueOf(75.0), updatedLot.getCurrentQuantity());
 
         // Verify persisted
         assertEquals(Double.valueOf(75.0), inventoryLotService.get(1000L).getCurrentQuantity());
+    }
+
+    @Test
+    public void adjustLotQuantity_keepsTheNotesWithTheReason() {
+        inventoryLotService.adjustLotQuantity(1000L, 75.0, "DAMAGED", "One box crushed in transit", "1");
+
+        String notes = inventoryTransactionService.getByLotId(1000L).stream()
+                .filter(t -> t.getTransactionType() == TransactionType.ADJUSTMENT).map(InventoryTransaction::getNotes)
+                .findFirst().orElse(null);
+        assertEquals("Reason: DAMAGED. Notes: One box crushed in transit", notes);
+    }
+
+    @Test
+    public void updateLotStatus_refusesDisposed_whichOnlyDisposalMayRecord() {
+        assertThrows(IllegalStateException.class,
+                () -> inventoryLotService.updateLotStatus(1000L, LotStatus.DISPOSED, "1"));
+
+        assertEquals(LotStatus.ACTIVE, inventoryLotService.get(1000L).getStatus());
+    }
+
+    @Test
+    public void updateLotStatus_refusesConsumed_whileStockRemains() {
+        assertThrows(IllegalStateException.class,
+                () -> inventoryLotService.updateLotStatus(1000L, LotStatus.CONSUMED, "1"));
+
+        assertEquals(LotStatus.ACTIVE, inventoryLotService.get(1000L).getStatus());
     }
 
     @Test

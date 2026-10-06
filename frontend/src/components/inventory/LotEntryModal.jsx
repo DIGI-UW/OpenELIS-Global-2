@@ -218,6 +218,8 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
       if (isEdit) {
         await InventoryLotAPI.update(lot.id, {
           ...formData,
+          expirationDate: toStoredCalendarDate(formData.expirationDate),
+          receiptDate: toStoredCalendarDate(formData.receiptDate),
           inventoryItem: formData.inventoryItem,
           initialQuantity: lot.initialQuantity,
           version: lot.version,
