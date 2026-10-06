@@ -1,5 +1,6 @@
 package org.openelisglobal.ocl;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.fail;
@@ -26,6 +27,12 @@ public class OclInnitializerTest extends BaseWebContextSensitiveTest {
     @Autowired
     TestService testService;
 
+    @Autowired
+    private org.openelisglobal.dictionary.service.DictionaryService dictionaryService;
+
+    @Autowired
+    private org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService answerTerminology;
+
     private static String oclDirPath;
     private static String sampleType = "Whole Blood";
 
@@ -51,5 +58,16 @@ public class OclInnitializerTest extends BaseWebContextSensitiveTest {
         test = testService.getTestByLocalizedName("TEST C en", Locale.ENGLISH);
         assertNotNull("OCL import should create test 'TEST C en'", test);
         System.out.println("Test Result : " + testService.getResultType(test));
+    }
+
+    @Test
+    public void anImportedAnswerKeepsItsStandardCodesAsTerminologyMappings() throws IOException {
+        oclImportInitializer.performOclImport(oclDirPath);
+
+        org.openelisglobal.dictionary.valueholder.Dictionary answerA = dictionaryService
+                .getDictionaryByDictEntry("Answer A");
+        assertEquals(java.util.List.of("LOINC|28596-5|SAME_AS"),
+                answerTerminology.getActiveByDictionaryId(answerA.getId()).stream()
+                        .map(code -> code.getSource() + "|" + code.getCode() + "|" + code.getRelationship()).toList());
     }
 }
