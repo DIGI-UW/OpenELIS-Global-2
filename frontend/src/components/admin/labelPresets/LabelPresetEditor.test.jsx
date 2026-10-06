@@ -285,7 +285,9 @@ describe("LabelPresetEditor", () => {
         callback({
           status: 400,
           text: () =>
-            Promise.resolve('{"messageKey":"error.request.unreadable"}'),
+            Promise.resolve(
+              '{"messageKey":"error.request.unreadable","error":"Bad Request"}',
+            ),
         });
       },
     );
@@ -298,6 +300,7 @@ describe("LabelPresetEditor", () => {
     expect(notice).toHaveTextContent(messages["admin.labelPresets.saveFailed"]);
     expect(notice).toHaveTextContent("400");
     expect(notice).toHaveTextContent(messages["error.request.unreadable"]);
+    expect(notice).not.toHaveTextContent("Bad Request");
     expect(onClose).not.toHaveBeenCalled();
   });
 
@@ -308,7 +311,7 @@ describe("LabelPresetEditor", () => {
           status: 422,
           text: () =>
             Promise.resolve(
-              '{"fieldErrors":[],"globalErrors":["{error.labelpreset.fields.unique}"]}',
+              '{"fieldErrors":[{"field":"fieldKeysAndOrdersUnique","defaultMessage":"{error.labelpreset.fields.unique}"}],"globalErrors":[]}',
             ),
         });
       },

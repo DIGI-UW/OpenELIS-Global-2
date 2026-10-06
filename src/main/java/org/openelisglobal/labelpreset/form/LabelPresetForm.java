@@ -101,6 +101,23 @@ public class LabelPresetForm {
     }
 
     /**
+     * A null element in {@code fields} has no key to reconcile and would fail
+     * inside the service, so it is refused here with a 422 that names the rule.
+     */
+    @AssertTrue(message = "{error.labelpreset.field.required}")
+    public boolean isEveryFieldEntryPresent() {
+        if (fields == null) {
+            return true;
+        }
+        for (FieldEntry entry : fields) {
+            if (entry == null) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /**
      * Field keys and display orders must each be unique within one preset; the
      * database enforces both with unique indexes, so rejecting them here turns a
      * 500 into a 422 that names the problem.

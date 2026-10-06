@@ -395,6 +395,7 @@
   "admin.labelPresets.saveFailed.detail": "The server answered {status}: {message}",
   "admin.labelPresets.saveFailed.noResponse": "No response from the server. Check the connection and try again.",
   "error.labelpreset.fields.unique": "Each content field and each display position may be used only once per preset.",
+  "error.labelpreset.field.required": "Every content field entry must name a field.",
   "admin.labelPresets.created": "Preset created",
   "admin.labelPresets.updated": "Preset updated",
   "admin.labelPresets.editor.titleAdd": "Add Label Preset",

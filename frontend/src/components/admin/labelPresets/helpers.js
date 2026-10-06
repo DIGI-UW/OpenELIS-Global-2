@@ -34,10 +34,13 @@ export function describeSaveFailure(intl, status, rawBody) {
   let message = rawBody || "";
   try {
     const body = JSON.parse(rawBody);
+    const keyTranslated =
+      typeof body.messageKey === "string" &&
+      hasTranslation(intl, body.messageKey);
     const candidates = [
       body.messageKey,
       body.message,
-      body.error,
+      keyTranslated ? null : body.error,
       ...(Array.isArray(body.globalErrors) ? body.globalErrors : []),
       ...(Array.isArray(body.fieldErrors)
         ? body.fieldErrors.map((fe) => fe.defaultMessage)
@@ -62,9 +65,16 @@ export function describeSaveFailure(intl, status, rawBody) {
  * it; returns the input unchanged otherwise.
  */
 export function translateServerMessage(intl, raw) {
-  const key = raw.replace(/^\{|\}$/g, "");
-  if (intl.messages && intl.messages[key]) {
-    return intl.formatMessage({ id: key });
+  if (hasTranslation(intl, raw)) {
+    return intl.formatMessage({ id: messageId(raw) });
   }
   return raw;
+}
+
+function hasTranslation(intl, raw) {
+  return Boolean(intl.messages && intl.messages[messageId(raw)]);
+}
+
+function messageId(raw) {
+  return raw.replace(/^\{|\}$/g, "");
 }

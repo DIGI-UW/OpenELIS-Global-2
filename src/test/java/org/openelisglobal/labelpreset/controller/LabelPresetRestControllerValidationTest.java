@@ -376,6 +376,24 @@ public class LabelPresetRestControllerValidationTest extends BaseWebContextSensi
                 .content(JSON.writeValueAsString(form))).andExpect(status().isUnprocessableEntity());
     }
 
+    @Test
+    public void put_nullFieldEntry_returns422AndKeepsStoredFields() throws Exception {
+        LabelPreset created = createWithLabNumber(TEST_PREFIX + "null_entry");
+        String body = "{\"name\":\"" + TEST_PREFIX + "null_entry\",\"heightMm\":30,\"widthMm\":40,"
+                + "\"barcodeType\":\"CODE_128\",\"printsPerOrder\":false,\"printsPerSample\":true,"
+                + "\"defaultPerOrder\":0,\"maxPerOrder\":10,\"defaultPerSample\":1,\"maxPerSample\":5,"
+                + "\"isActive\":true,\"fields\":[null]}";
+
+        MvcResult result = mockMvc
+                .perform(put(BASE_URL + "/" + created.getId()).contentType(MediaType.APPLICATION_JSON).content(body))
+                .andExpect(status().isUnprocessableEntity()).andReturn();
+
+        assertTrue("422 names the rule", result.getResponse().getContentAsString().contains("field.required"));
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.label_preset_field WHERE preset_id = ?",
+                        Integer.class, created.getId()));
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private LabelPreset createWithLabNumber(String name) throws Exception {
