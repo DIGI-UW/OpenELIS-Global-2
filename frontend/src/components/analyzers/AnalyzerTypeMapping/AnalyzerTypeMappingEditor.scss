@@ -150,6 +150,10 @@
   justify-content: flex-start;
 }
 
+.analyzer-type-mapping__summary--two {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
 .analyzer-type-mapping__bucket {
   margin-bottom: spacing.$spacing-07;
 }

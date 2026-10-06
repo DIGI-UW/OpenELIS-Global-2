@@ -139,6 +139,19 @@ const sameTestDecision = (test, decision) =>
   test.mappingState === decision.test.mappingState &&
   (test.testId || null) === (decision.test.testId || null);
 
+// The draft row already holds this decision, answers included.
+const holdsDecision = (test, decision) =>
+  sameTestDecision(test, decision) &&
+  test.results.every((result) => {
+    const decided = decision.results.find(
+      (candidate) => candidate.rawValue === result.rawValue,
+    );
+    return (
+      result.mappingState === (decided?.mappingState || "UNRESOLVED") &&
+      (result.resultOptionId || null) === (decided?.testResultId || null)
+    );
+  });
+
 /**
  * What the operator changed since the last save, row by row, so Save can show
  * the effect before it is written.
@@ -911,6 +924,7 @@ const AnalyzerTypeMappingEditor = () => {
               <Button
                 kind="ghost"
                 size="sm"
+                disabled={holdsDecision(test, decision)}
                 onClick={() => takeDecision(key, decision)}
               >
                 <FormattedMessage id={`analyzerType.adoption.${action}`} />
@@ -1444,13 +1458,16 @@ const AnalyzerTypeMappingEditor = () => {
             lowContrast
             hideCloseButton
             className="analyzer-type-mapping__notice"
-            title={intl.formatMessage({
-              id: readOnly
-                ? "analyzerType.mappingEditor.defaults.title"
-                : adopting
-                  ? "analyzerType.adoption.notice.title"
-                  : "analyzerType.mappingEditor.own.title",
-            })}
+            title={intl.formatMessage(
+              {
+                id: readOnly
+                  ? "analyzerType.mappingEditor.defaults.title"
+                  : adopting
+                    ? "analyzerType.adoption.notice.title"
+                    : "analyzerType.mappingEditor.own.title",
+              },
+              { revision },
+            )}
             subtitle={intl.formatMessage(
               {
                 id: readOnly
@@ -1492,7 +1509,11 @@ const AnalyzerTypeMappingEditor = () => {
           )}
 
           <section
-            className="analyzer-type-mapping__summary"
+            className={
+              adopting
+                ? "analyzer-type-mapping__summary analyzer-type-mapping__summary--two"
+                : "analyzer-type-mapping__summary"
+            }
             aria-label={intl.formatMessage({
               id: "analyzerType.mappingEditor.summary",
             })}
@@ -1509,18 +1530,22 @@ const AnalyzerTypeMappingEditor = () => {
               </span>
               <strong>{`${counts.resultsBound} / ${counts.resultsTotal}`}</strong>
             </div>
-            <div hidden={adopting}>
-              <span>
-                <FormattedMessage id="analyzerType.mappingEditor.confirmation" />
-              </span>
-              <Tag
-                type={confirmation.state === "CURRENT" ? "green" : "warm-gray"}
-              >
-                <FormattedMessage
-                  id={`analyzerType.mappingEditor.confirmation.summary.${confirmation.state.toLowerCase()}`}
-                />
-              </Tag>
-            </div>
+            {!adopting && (
+              <div>
+                <span>
+                  <FormattedMessage id="analyzerType.mappingEditor.confirmation" />
+                </span>
+                <Tag
+                  type={
+                    confirmation.state === "CURRENT" ? "green" : "warm-gray"
+                  }
+                >
+                  <FormattedMessage
+                    id={`analyzerType.mappingEditor.confirmation.summary.${confirmation.state.toLowerCase()}`}
+                  />
+                </Tag>
+              </div>
+            )}
           </section>
 
           {adopting ? (
