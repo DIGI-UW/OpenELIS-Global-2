@@ -42,7 +42,7 @@ connectionId, request)` (`PUT /api/connections/{id}`) with
 - [ ] T3.3 Red: integration tests, override on inactive test -> BLOCKED; removed code with held results -> BLOCKED; each names the row
 - [ ] T3.4 Red: integration test, traffic during adoption lands on N until confirm + re-activate
 - [ ] T3.5 Red: integration test, held results on N recover via recoverHeldMappingResults after adoption
-- [ ] T3.6 Service: AnalyzerMappingService.prepareAdoption(analyzerId, revision) -> buckets; adopt(analyzerId, revision, decisions, actor) -> new mapping revision, Bridge re-pin, confirm record
+- [ ] T3.6 Service: AnalyzerAdoptionService (its own service over AnalyzerMappingService, which stays the revision store) prepareAdoption(analyzerId, revision) -> buckets (done); adopt(analyzerId, revision, decisions, actor) -> new mapping revision, Bridge re-pin, confirm record
 - [ ] T3.7 Endpoints: GET/POST /rest/analyzer/analyzers/{id}/adoption?revision=
 - [ ] T3.8 Catalog view: split updateAvailable into newerProfileRevision and newerMappingRevision; UI tag links to Adopt or Verify respectively
 - [ ] T3.9 Adoption screen: the step-2 editor in adoption mode with bucket grouping and side-by-side changed rows
