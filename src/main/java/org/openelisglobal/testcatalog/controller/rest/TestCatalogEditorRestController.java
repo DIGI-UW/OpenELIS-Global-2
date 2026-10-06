@@ -156,6 +156,10 @@ public class TestCatalogEditorRestController {
     @Autowired(required = false)
     private org.openelisglobal.panelterminology.service.PanelTerminologyMappingService panelTerminologyService;
 
+    // Field-injected (optional) for an answer's terminology.
+    @Autowired(required = false)
+    private org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService answerTerminologyService;
+
     public TestCatalogEditorRestController(TestService testService, TestResultComponentService componentService,
             TestResultInterpretationService interpretationService, TestResultService testResultService,
             ResultLimitService resultLimitService, RangeCoverageValidationService coverageService,
@@ -2324,6 +2328,92 @@ public class TestCatalogEditorRestController {
         for (org.openelisglobal.panelterminology.valueholder.PanelTerminologyMapping m : panelTerminologyService
                 .getActiveByPanelId(panelId)) {
             resp.mappings.add(PanelTerminologyMappingDto.of(m));
+        }
+        return resp;
+    }
+
+    /** An answer's codes come from the standard systems only. */
+    private static final Set<String> ANSWER_TERM_SOURCES = Set.of("LOINC", "SNOMED", "CIEL", "OCL");
+
+    public static class AnswerTerminologyMappingDto {
+        public String id;
+        public String source;
+        public String code;
+        public String relationship;
+        public String displayName;
+
+        // no entity-arg constructor: a second public constructor reads as an
+        // implicit Jackson creator under the strict mapper and breaks request
+        // binding (400)
+        static AnswerTerminologyMappingDto of(
+                org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping m) {
+            AnswerTerminologyMappingDto dto = new AnswerTerminologyMappingDto();
+            dto.id = m.getId();
+            dto.source = m.getSource();
+            dto.code = m.getCode();
+            dto.relationship = m.getRelationship();
+            dto.displayName = m.getDisplayName();
+            return dto;
+        }
+    }
+
+    public static class AnswerTerminologyResponse {
+        public String dictionaryId;
+        public List<AnswerTerminologyMappingDto> mappings = new ArrayList<>();
+    }
+
+    @GetMapping(value = "/answers/{dictionaryId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AnswerTerminologyResponse> getAnswerTerminology(@PathVariable String dictionaryId) {
+        if (findAnswer(dictionaryId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok(toAnswerTerminology(dictionaryId));
+    }
+
+    @PutMapping(value = "/answers/{dictionaryId}/terminology", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<AnswerTerminologyResponse> saveAnswerTerminology(@PathVariable String dictionaryId,
+            @RequestBody AnswerTerminologyResponse body, HttpServletRequest request) {
+        if (findAnswer(dictionaryId) == null) {
+            return ResponseEntity.notFound().build();
+        }
+        Set<String> seen = new HashSet<>();
+        List<org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping> desired = new ArrayList<>();
+        for (AnswerTerminologyMappingDto m : body.mappings) {
+            if (isBlank(m.source) || !ANSWER_TERM_SOURCES.contains(m.source) || isBlank(m.code)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!isBlank(m.relationship) && !TERM_RELATIONSHIPS.contains(m.relationship)) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            if (!seen.add(m.source + " " + m.code.trim())) {
+                return ResponseEntity.unprocessableEntity().build();
+            }
+            org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping e = new org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping();
+            e.setSource(m.source);
+            e.setCode(m.code.trim());
+            e.setRelationship(isBlank(m.relationship) ? null : m.relationship);
+            e.setDisplayName(isBlank(m.displayName) ? null : m.displayName.trim());
+            desired.add(e);
+        }
+        answerTerminologyService.saveMappingsForDictionary(dictionaryId, desired,
+                ControllerUtills.getSysUserId(request));
+        return ResponseEntity.ok(toAnswerTerminology(dictionaryId));
+    }
+
+    private Dictionary findAnswer(String dictionaryId) {
+        if (dictionaryService == null || answerTerminologyService == null || dictionaryId == null
+                || !dictionaryId.matches("\\d+")) {
+            return null;
+        }
+        return dictionaryService.getDictionaryById(dictionaryId);
+    }
+
+    private AnswerTerminologyResponse toAnswerTerminology(String dictionaryId) {
+        AnswerTerminologyResponse resp = new AnswerTerminologyResponse();
+        resp.dictionaryId = dictionaryId;
+        for (org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping m : answerTerminologyService
+                .getActiveByDictionaryId(dictionaryId)) {
+            resp.mappings.add(AnswerTerminologyMappingDto.of(m));
         }
         return resp;
     }
