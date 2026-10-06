@@ -108,18 +108,23 @@ function UserAddModify() {
     return "0";
   })();
 
-  const { data: readUser, isPreviousData: readUserIsPrevious } = useServerData(
+  const {
+    data: readUser,
+    isPreviousData: readUserIsPrevious,
+    isFetchedAfterMount: readUserIsFresh,
+    isError: readUserFailed,
+  } = useServerData(
     ID ? `/rest/UnifiedSystemUser?ID=${ID}&startingRecNo=1&roleFilter=` : null,
   );
   const invalidateServerData = useInvalidateServerData();
   const loadedUserFor = useRef(null);
   const reloadUser = useRef(false);
 
-  // The server payload seeds the form once per user and again after a save.
-  // Every other read (the one that follows a cached payload, for instance)
-  // arrives while the user may be typing and must not replace their input.
+  // The form is seeded once per user from a read made after mount (never from
+  // the cached copy of an earlier visit) and again after a save. Every other
+  // read arrives while the user may be typing and must not replace their input.
   useEffect(() => {
-    if (!readUser || readUserIsPrevious) {
+    if (!readUser || readUserIsPrevious || !readUserIsFresh) {
       return;
     }
     if (loadedUserFor.current === ID && !reloadUser.current) {
@@ -128,7 +133,7 @@ function UserAddModify() {
     loadedUserFor.current = ID;
     reloadUser.current = false;
     handleUserData(readUser);
-  }, [readUser, readUserIsPrevious, ID]);
+  }, [readUser, readUserIsPrevious, readUserIsFresh, ID]);
 
   useEffect(() => {
     if (!ID) {
@@ -141,16 +146,16 @@ function UserAddModify() {
       setIsLoading(true);
     } else {
       setUserData(res);
-      if (res.loginUserId) {
-        setValidation({
-          validatepassword: true,
-          password: true,
-          password2: true,
-          loginName: true,
-          firstName: true,
-          secondName: true,
-        });
-      }
+      const hasLogin = Boolean(res.loginUserId);
+      setValidation((prev) => ({
+        ...prev,
+        validatepassword: hasLogin,
+        password: hasLogin,
+        password2: hasLogin,
+        loginName: hasLogin || Boolean(res.userLoginName),
+        firstName: Boolean(res.userFirstName),
+        secondName: Boolean(res.userLastName),
+      }));
       var KeyList = [];
       Object.keys(res.selectedTestSectionLabUnits).map((key) =>
         KeyList.push(key),
@@ -322,9 +327,9 @@ function UserAddModify() {
         userDataShow.userPassword &&
         userDataShow.userPassword === userDataShow.confirmPassword
       ) {
-        setValidation({ ...validation, validatepassword: true });
+        setValidation((prev) => ({ ...prev, validatepassword: true }));
       } else {
-        setValidation({ ...validation, validatepassword: false });
+        setValidation((prev) => ({ ...prev, validatepassword: false }));
       }
     }
   }, [userDataShow]);
@@ -420,11 +425,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, loginName: false });
+      setValidation((prev) => ({ ...prev, loginName: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, loginName: true });
+      setValidation((prev) => ({ ...prev, loginName: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userLoginName: value,
@@ -457,11 +462,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, password: false });
+      setValidation((prev) => ({ ...prev, password: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, password: true });
+      setValidation((prev) => ({ ...prev, password: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userPassword: value,
@@ -494,11 +499,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, password2: false });
+      setValidation((prev) => ({ ...prev, password2: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, password2: true });
+      setValidation((prev) => ({ ...prev, password2: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         confirmPassword: value,
@@ -527,11 +532,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, firstName: false });
+      setValidation((prev) => ({ ...prev, firstName: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, firstName: true });
+      setValidation((prev) => ({ ...prev, firstName: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userFirstName: value,
@@ -560,7 +565,7 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, secondName: false });
+      setValidation((prev) => ({ ...prev, secondName: false }));
     } else {
       setNotificationVisible(false);
       setUserDataPost((prevUserDataPost) => ({
@@ -568,7 +573,7 @@ function UserAddModify() {
         userLastName: value,
       }));
       setSaveButton(false);
-      setValidation({ ...validation, secondName: true });
+      setValidation((prev) => ({ ...prev, secondName: true }));
     }
 
     setUserDataShow((prevUserData) => ({
@@ -579,7 +584,7 @@ function UserAddModify() {
 
   function handleExpirationDateChange(date) {
     setSaveButton(false);
-    setValidation({ ...validation, expDate: true });
+    setValidation((prev) => ({ ...prev, expDate: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       expirationDate: date,
@@ -592,7 +597,7 @@ function UserAddModify() {
 
   function handleTimeoutChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, timeout: true });
+    setValidation((prev) => ({ ...prev, timeout: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       timeout: e.target.value,
@@ -605,7 +610,7 @@ function UserAddModify() {
 
   function handleAccountActiveChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, active: true });
+    setValidation((prev) => ({ ...prev, active: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountActive: e.target.value,
@@ -618,7 +623,7 @@ function UserAddModify() {
 
   function handleAccountDisabledChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, disabled: true });
+    setValidation((prev) => ({ ...prev, disabled: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountDisabled: e.target.value,
@@ -631,7 +636,7 @@ function UserAddModify() {
 
   function handleAccountLockedChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, locked: true });
+    setValidation((prev) => ({ ...prev, locked: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountLocked: e.target.value,
@@ -645,14 +650,14 @@ function UserAddModify() {
   function handleCopyUserPermissionsChange() {
     if (copyUserPermission.length > 0) {
       setSaveButton(false);
-      setValidation({ ...validation, copy: true });
+      setValidation((prev) => ({ ...prev, copy: true }));
     }
   }
 
   function handleAutoCompleteCopyUserPermissionsChange(selectedUserId) {
     setCopyUserPermission(selectedUserId);
     setSaveButton(false);
-    setValidation({ ...validation, autoCopy: true });
+    setValidation((prev) => ({ ...prev, autoCopy: true }));
   }
 
   function handleCopyUserPermissionsChangeClick() {
@@ -697,7 +702,7 @@ function UserAddModify() {
       selectedRoles: updatedRoles,
     }));
     setSaveButton(false);
-    setValidation({ ...validation, checkBox: true });
+    setValidation((prev) => ({ ...prev, checkBox: true }));
   }
 
   const hasAllLabUnitsRow = Object.keys(selectedTestSectionLabUnits).includes(
@@ -726,7 +731,7 @@ function UserAddModify() {
     setSelectedTestSectionList([ALL_LAB_UNITS]);
     setPendingAllLabUnitsKey(null);
     setSaveButton(false);
-    setValidation({ ...validation, testSection: true });
+    setValidation((prev) => ({ ...prev, testSection: true }));
   }
 
   function handleTestSectionsSelectChange(e, key) {
@@ -767,7 +772,7 @@ function UserAddModify() {
 
     setSelectedTestSectionLabUnits(updatedTestSectionLabUnits);
     setSaveButton(false);
-    setValidation({ ...validation, testSection: true });
+    setValidation((prev) => ({ ...prev, testSection: true }));
   }
 
   const addRoleToSelectedUnits = (key, roleIdToAdd) => {
@@ -777,7 +782,7 @@ function UserAddModify() {
       if (!currentRoles.includes(roleIdToAdd)) {
         updatedUnits[key] = [...currentRoles, roleIdToAdd];
         setSaveButton(false);
-        setValidation({ ...validation, role: true });
+        setValidation((prev) => ({ ...prev, role: true }));
       }
       return updatedUnits;
     });
@@ -791,7 +796,7 @@ function UserAddModify() {
           (roleId) => roleId !== roleIdToRemove,
         );
         setSaveButton(false);
-        setValidation({ ...validation, removeSelected: true });
+        setValidation((prev) => ({ ...prev, removeSelected: true }));
       }
       return updatedUnits;
     });
@@ -831,7 +836,7 @@ function UserAddModify() {
     }
   };
 
-  if (!isLoading) {
+  if (!isLoading || (!userData && !readUserFailed)) {
     return (
       <>
         <Loading />
@@ -1436,7 +1441,10 @@ function UserAddModify() {
                               [key]: updatedRoles,
                             }));
                             setSaveButton(false);
-                            setValidation({ ...validation, selectedLab: true });
+                            setValidation((prev) => ({
+                              ...prev,
+                              selectedLab: true,
+                            }));
                           }}
                         />
                         <FormGroup

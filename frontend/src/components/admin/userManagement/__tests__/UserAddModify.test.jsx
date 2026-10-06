@@ -395,4 +395,68 @@ describe("UserAddModify", () => {
       expect(loginNameInput()).toHaveValue("wil");
     });
   });
+
+  describe("reopening and reactivating", () => {
+    const firstNameInput = () => document.getElementById("first-name");
+    const saveButton = () => screen.getByRole("button", { name: "Save" });
+
+    it("seeds a reopened user from a fresh read and keeps Save enabled", async () => {
+      let firstName = "Ada";
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback({ ...user("ada"), userFirstName: firstName });
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      const client = createQueryClient();
+      const firstVisit = renderAt(
+        "/MasterListsPage/userEdit?ID=5-5&startingRecNo=1",
+        client,
+      );
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Ada"));
+      expect(saveButton()).toBeEnabled();
+      firstVisit.unmount();
+
+      // Another session renames the user; the list's Modify mounts the form
+      // again on the same cache.
+      firstName = "Grace";
+      renderAt("/MasterListsPage/userEdit?ID=5-5&startingRecNo=1", client);
+
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Grace"));
+      expect(saveButton()).toBeEnabled();
+    });
+
+    it("lets a deactivated user be reactivated without retyping the names", async () => {
+      // Deactivation deletes the login row, so the payload carries the names
+      // but no login id, login name or password.
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback({
+            ...user("ada"),
+            loginUserId: "",
+            userLoginName: "",
+            userPassword: "",
+            confirmPassword: "",
+            accountActive: "N",
+          });
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      renderAt("/MasterListsPage/userEdit?ID=5-0&startingRecNo=1");
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Ada"));
+      expect(saveButton()).toBeDisabled();
+
+      await userEvent.type(document.getElementById("login-name"), "ada");
+      await userEvent.type(
+        document.getElementById("login-password"),
+        "Password**",
+      );
+      await userEvent.type(
+        document.getElementById("login-repeat-password"),
+        "Password**",
+      );
+
+      await waitFor(() => expect(saveButton()).toBeEnabled());
+    });
+  });
 });
