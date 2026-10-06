@@ -37,7 +37,7 @@ connectionId, request)` (`PUT /api/connections/{id}`) with
 ### Build
 
 ```
-- [ ] T3.1 Red: integration test, analyzer on N adopts N+1 and the operator confirms and applies it; id, activation records, lab units, bridge_connection_id unchanged; Bridge connection profileRef.revision == N+1 after Apply
+- [x] T3.1 Red: integration test, analyzer on N adopts N+1 and the operator confirms and applies it; id, activation records, lab units, bridge_connection_id unchanged; Bridge connection profileRef.revision == N+1 after Apply
 - [x] T3.2 Red: unit tests for bucketing (`AnalyzerMappingAdoption.plan`; a dropped code is RETIRED, a record no revision declares carries over UNCHANGED; derived from rule 5: a DEFAULT row compares its decision with the new default, so a catalog change surfaces as CHANGED): identical row -> UNCHANGED (both origins); changed LOINC on DEFAULT -> CHANGED with new default; changed value set on OVERRIDE -> CHANGED showing both; new code -> NEEDS_MAPPING; renamed code -> old row retired, new NEEDS_MAPPING; override == new default -> UNCHANGED, origin stays OVERRIDE, marked as now also the default
 - [ ] T3.3 Red: integration tests, override on inactive test -> BLOCKED; removed code with held results -> BLOCKED; each names the row
 - [ ] T3.4 Red: integration test, traffic during adoption lands on N until confirm + re-activate
