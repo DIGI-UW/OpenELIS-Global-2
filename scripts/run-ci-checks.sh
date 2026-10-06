@@ -247,11 +247,10 @@ run_lane() {
       e2e-scope) run_job "$job" bash -ec 'printf "code\n" > "$OE_CI_PHASE_FILE"; node --test .github/scripts/e2e-scope.test.cjs' || failed=1 ;;
       playwright-core-*) run_job "$job" bash scripts/ci/e2e-core.sh "${job##*-}" || failed=1 ;;
       playwright-analyzers-*)
-        args=()
+        args=(--project harness-foundational --project harness-demo --shard "${job##*-}/2"
+              --artifact-dir "$ARTIFACT_DIR/$job-artifacts")
         [[ -f "$ARTIFACT_DIR/analyzer-images-built" ]] || args+=(--build)
-        run_job "$job" bash scripts/ci/e2e-analyzers.sh "${args[@]}" \
-          --project harness-foundational --project harness-demo --shard "${job##*-}/2" \
-          --artifact-dir "$ARTIFACT_DIR/$job-artifacts" || failed=1
+        run_job "$job" bash scripts/ci/e2e-analyzers.sh "${args[@]}" || failed=1
         # Only successful builds reach the test phase; don't reuse incomplete images.
         [[ "$(cat "$ARTIFACT_DIR/$job.phase")" != code ]] || touch "$ARTIFACT_DIR/analyzer-images-built"
         ;;
