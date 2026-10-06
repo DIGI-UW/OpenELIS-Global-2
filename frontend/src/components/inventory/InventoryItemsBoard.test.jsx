@@ -1416,4 +1416,23 @@ describe("InventoryItemsBoard", () => {
     expect(bodyRows()).toHaveLength(9);
     expect(screen.queryByRole("button", { name: "Next Page" })).toBeNull();
   });
+
+  it("shows every row in count mode, however many pages the board has", async () => {
+    const many = Array.from({ length: 30 }, (_, index) => ({
+      ...CARTRIDGE,
+      itemId: 1000 + index,
+      name: `Paged item ${String(index + 1).padStart(2, "0")}`,
+      code: `PG-${index + 1}`,
+      tags: [],
+    }));
+    await renderBoard(many, []);
+    expect(bodyRows()).toHaveLength(25);
+
+    fireEvent.click(screen.getByRole("button", { name: "Count mode" }));
+    expect(bodyRows()).toHaveLength(30);
+    expect(screen.queryByRole("button", { name: "Next Page" })).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Leave count mode" }));
+    expect(bodyRows()).toHaveLength(25);
+  });
 });

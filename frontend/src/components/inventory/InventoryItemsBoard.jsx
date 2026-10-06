@@ -404,12 +404,13 @@ const InventoryItemsBoard = () => {
     setPage(1);
   }, [search, statusFilter, locationFilter, tagFilter, sort]);
 
+  // A stock-take covers everything in scope, so count mode shows every row.
+  const paged = !countMode && visibleRows.length > pageSize;
   const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
   const currentPage = Math.min(page, pageCount);
-  const pagedRows = visibleRows.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
+  const pagedRows = paged
+    ? visibleRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : visibleRows;
 
   const toggleSort = (key) =>
     setSort((current) =>
@@ -1184,7 +1185,7 @@ const InventoryItemsBoard = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      {visibleRows.length > pageSize && (
+      {paged && (
         <Pagination
           page={currentPage}
           pageSize={pageSize}
