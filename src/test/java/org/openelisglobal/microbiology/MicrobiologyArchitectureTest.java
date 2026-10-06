@@ -116,16 +116,20 @@ public class MicrobiologyArchitectureTest {
 
     @Test
     public void fixtureGuardOnlyExemptsMigrationVerificationTests() {
+        assertTrue(isMigrationVerificationTest(Path.of("AmrCutoverMigrationTest.java")));
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyM10LiquibaseRollbackTest.java")));
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyCulturePurposeLiquibaseRollbackTest.java")));
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyWhonetExportSelectionLiquibaseTest.java")));
         assertTrue(isMigrationVerificationTest(Path.of("MicrobiologyCulturePurposeLiquibaseTest.java")));
         assertFalse(isMigrationVerificationTest(Path.of("MicrobiologyLiquibaseFixtureTest.java")));
+        assertFalse(isMigrationVerificationTest(Path.of("AmrCutoverFixtureTest.java")));
+        assertFalse(isMigrationVerificationTest(Path.of("UnrelatedMigrationTest.java")));
     }
 
     private boolean isMigrationVerificationTest(Path path) {
         String fileName = path.getFileName().toString();
         return fileName.endsWith("LiquibaseRollbackTest.java")
+                || fileName.equals("AmrCutoverMigrationTest.java")
                 || fileName.equals("MicrobiologyWhonetExportSelectionLiquibaseTest.java")
                 || fileName.equals("MicrobiologyCulturePurposeLiquibaseTest.java");
     }
