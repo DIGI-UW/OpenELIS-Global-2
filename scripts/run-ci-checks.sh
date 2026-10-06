@@ -64,7 +64,14 @@ if [[ ${#SELECTED_JOBS[@]} != 0 ]]; then
   JOBS=("${requested[@]}")
 fi
 HEAD_SHA="$(git -C "$REPO_ROOT" rev-parse HEAD)"
-export OE_CI_BASE_SHA="$(git -C "$REPO_ROOT" rev-parse "$BASE_REF^{commit}")"
+# Only locale checks compare against the base; other selected jobs need no base ref.
+if [[ " ${JOBS[*]} " == *' i18n '* ]]; then
+  if ! OE_CI_BASE_SHA="$(git -C "$REPO_ROOT" rev-parse --verify "$BASE_REF^{commit}" 2>/dev/null)"; then
+    echo "Invalid base ref: $BASE_REF. Fetch it or pass --base with an available commit." >&2
+    exit 2
+  fi
+  export OE_CI_BASE_SHA
+fi
 export OE_CI_SOURCE_BRANCH="$(git -C "$REPO_ROOT" branch --show-current)"
 LANES=()
 for lane in backend frontend e2e; do

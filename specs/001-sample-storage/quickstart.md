@@ -1,5 +1,9 @@
 # Quickstart: Sample Storage Management POC
 
+For local development, run `scripts/dev-stack up` from the repository root,
+then `eval "$(scripts/dev-stack env)"`. Use the reported URL (including its
+assigned port) for browser steps and `$BASE_URL` for shell requests.
+
 **Date**: 2025-10-30  
 **Feature**: Sample Storage Management  
 **Branch**: 001-sample-storage  
@@ -43,19 +47,16 @@ BEFORE implementation code.
 ### TDD Workflow (Red-Green-Refactor)
 
 1. **🔴 RED**: Write a failing test
-
    - Write test for the behavior you want
    - Run test → it should FAIL (code doesn't exist yet)
    - Verify test fails for the right reason
 
 2. **🟢 GREEN**: Make the test pass
-
    - Write minimal implementation code
    - Run test → it should PASS
    - Don't write extra code beyond what's needed
 
 3. **🔵 REFACTOR**: Improve code quality
-
    - Clean up implementation
    - Remove duplication
    - Improve naming, structure
@@ -316,34 +317,31 @@ mvn jacoco:report
 
 ```bash
 # From repository root
-docker compose -f dev.docker-compose.yml up -d
+scripts/dev-stack up
+eval "$(scripts/dev-stack env)"
 
 # Watch logs
-docker logs -f oe.openelis.org
+scripts/dev-stack logs -f oe.openelis.org
 
-# Verify backend started successfully
-# Look for: "Started OpenELISApplication in X seconds"
+# The launcher waits for the login endpoint before reporting success.
 ```
 
 **Access Points**:
 
-- **Backend API**: https://localhost/rest/storage/rooms
-- **Legacy UI**: https://localhost/api/OpenELIS-Global/
-- **React UI**: https://localhost/
+- **Backend API**: the reported application URL plus `/rest/storage/rooms`
+- **Legacy UI**: the reported application URL plus `/api/OpenELIS-Global/`
+- **React UI**: the reported application URL plus `/`
 
 ### 5. Hot Reload Backend Changes
 
 After making Java code changes:
 
 ```bash
-# Rebuild WAR
-mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# Recreate backend container only
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+# Rebuild from source and reload the backend
+scripts/dev-stack up
 
 # Watch logs for startup confirmation
-docker logs -f oe.openelis.org
+scripts/dev-stack logs -f oe.openelis.org
 ```
 
 ---
@@ -435,7 +433,7 @@ Edit translation files to add storage-specific message keys:
 # From frontend/ directory
 npm start
 
-# Frontend starts with hot reload at https://localhost/
+# Native frontend prints its own development URL; the Docker frontend is already running with hot reload.
 # Changes to .jsx files auto-reload in browser
 ```
 
@@ -493,7 +491,7 @@ FHIR server runs in Docker container alongside OpenELIS:
 
 ```bash
 # Verify FHIR server running
-curl -k https://fhir.openelis.org:8443/fhir/metadata
+curl -k "${FHIR_URL}/fhir/metadata"
 
 # Expected: CapabilityStatement resource (FHIR server capabilities)
 ```
@@ -580,28 +578,26 @@ curl -k -X POST https://fhir.openelis.org:8443/fhir/Location/\$validate \
 
    ```bash
    # Using curl to create locations
-   curl -k -X POST https://localhost/rest/storage/rooms \
+   curl -k -X POST ${BASE_URL}/rest/storage/rooms \
      -H "Content-Type: application/json" \
      -d '{"name":"Main Laboratory","code":"MAIN","active":true}'
 
-   curl -k -X POST https://localhost/rest/storage/devices \
+   curl -k -X POST ${BASE_URL}/rest/storage/devices \
      -H "Content-Type: application/json" \
      -d '{"name":"Freezer Unit 1","code":"FRZ01","type":"freezer","parentRoomId":"{room_id}","active":true}'
 
    # Continue for shelf, rack, position...
    ```
 
-2. **Navigate**: https://localhost/sample-entry
+2. **Navigate**: the reported application URL plus `/sample-entry`
 
 3. **Complete Sample Entry**:
-
    - Enter accession number (e.g., "S-2025-001")
    - Fill patient information
    - Select sample type
    - Select collector (existing field)
 
 4. **Assign Storage Location** (NEW - Below "Collector" field):
-
    - **Storage Location Selector widget** appears after collector dropdown
    - **Placement**: Between collector field and sample collection time
    - **Behavior**: Optional (can leave blank and assign later)
@@ -619,7 +615,7 @@ curl -k -X POST https://fhir.openelis.org:8443/fhir/Location/\$validate \
 
    ```bash
    # Query sample location
-   curl -k https://localhost/rest/storage/samples/search?sampleId={sample_id}
+   curl -k ${BASE_URL}/rest/storage/samples/search?sampleId={sample_id}
 
    # Expected: JSON with full location hierarchy
    ```
@@ -633,15 +629,13 @@ displayed, assignment timestamp recorded.
 
 **Workflow**: Search for sample and retrieve storage location
 
-1. **Navigate**: https://localhost/logbook
+1. **Navigate**: the reported application URL plus `/logbook`
 
 2. **Search Sample**:
-
    - Enter sample ID: "S-2025-001"
    - Click Search
 
 3. **Expand Results**:
-
    - Click on sample row to expand details
    - Scroll to Storage Location section
 
@@ -655,13 +649,13 @@ displayed, assignment timestamp recorded.
 
 ```bash
 # Search by sample ID
-curl -k https://localhost/rest/storage/samples/search?sampleId=S-2025-001
+curl -k ${BASE_URL}/rest/storage/samples/search?sampleId=S-2025-001
 
 # Filter by location
-curl -k "https://localhost/rest/storage/samples?roomId={room_id}&deviceId={device_id}"
+curl -k "${BASE_URL}/rest/storage/samples?roomId={room_id}&deviceId={device_id}"
 
 # Filter by date range
-curl -k "https://localhost/rest/storage/samples?fromDate=2025-01-01&toDate=2025-01-31"
+curl -k "${BASE_URL}/rest/storage/samples?fromDate=2025-01-01&toDate=2025-01-31"
 ```
 
 **Expected Result**: Sample location retrieved in <2 seconds, hierarchical path
@@ -673,17 +667,15 @@ displayed correctly.
 
 **Workflow**: Move sample from Freezer to Refrigerator
 
-1. **Navigate**: https://localhost/logbook
+1. **Navigate**: the reported application URL plus `/logbook`
 
 2. **Find Sample**: Search for "S-2025-001"
 
 3. **Initiate Move**:
-
    - Click Actions menu (⋮) on sample row
    - Select "Move"
 
 4. **Move Dialog**:
-
    - Current location displayed: "Main Laboratory > Freezer Unit 1 > Shelf-A >
      Rack R1 > Position A5"
    - Select target location using cascading dropdowns:
@@ -705,10 +697,10 @@ displayed correctly.
 
 ```bash
 # Verify sample moved
-curl -k https://localhost/rest/storage/samples/search?sampleId=S-2025-001
+curl -k ${BASE_URL}/rest/storage/samples/search?sampleId=S-2025-001
 
 # Check audit log (if endpoint available)
-curl -k https://localhost/rest/storage/samples/S-2025-001/movements
+curl -k ${BASE_URL}/rest/storage/samples/S-2025-001/movements
 ```
 
 **Expected Result**: Sample moved to new location, previous position freed
@@ -722,15 +714,13 @@ curl -k https://localhost/rest/storage/samples/S-2025-001/movements
 
 1. **Setup**: Create multiple samples with assigned locations
 
-2. **Navigate**: https://localhost/logbook
+2. **Navigate**: the reported application URL plus `/logbook`
 
 3. **Select Samples**:
-
    - Use checkboxes to select 5 samples
    - Click Actions → "Bulk Move"
 
 4. **Bulk Move Dialog**:
-
    - Select target rack: "Main Laboratory > Refrigerator 2 > Shelf-1 > Rack R3"
    - System auto-assigns positions: A1, A2, A3, A4, A5 (preview shown)
    - User can edit positions if needed
@@ -772,13 +762,13 @@ mvn liquibase:clearCheckSums
 
 ```bash
 # Verify FHIR server running
-docker ps | grep fhir
+scripts/dev-stack status
 
 # Check FHIR server logs
-docker logs fhir.openelis.org
+scripts/dev-stack logs fhir.openelis.org
 
 # Verify FHIR server accessible
-curl -k https://fhir.openelis.org:8443/fhir/metadata
+curl -k "${FHIR_URL}/fhir/metadata"
 
 # Check OpenELIS FHIR configuration
 grep "openelisglobal.fhir" common.properties
@@ -788,13 +778,14 @@ grep "openelisglobal.fhir" common.properties
 
 ```bash
 # Check PostgreSQL running
-docker ps | grep postgres
+scripts/dev-stack status
 
 # Test connection
-psql -U clinlims -h localhost -d clinlims
+psql -U clinlims -h localhost -p "$DB_PORT" -d clinlims
 
 # Restart database container
-docker restart database.openelis.org
+scripts/dev-stack down
+scripts/dev-stack up --skip-build
 ```
 
 ### Frontend Issues
@@ -835,10 +826,10 @@ docker restart database.openelis.org
 # Look for JSESSIONID cookie
 
 # Re-login if session expired
-# Navigate to: https://localhost/login
+# Navigate to: the reported application URL plus `/login`
 
 # Check API endpoint URL
-# Verify: https://localhost/rest/storage/... (NOT http://)
+# Verify: the reported application URL plus `/rest/storage/...` (NOT http://)
 ```
 
 ### FHIR Issues
@@ -847,7 +838,7 @@ docker restart database.openelis.org
 
 ```bash
 # Check FhirPersistanceService logs
-docker logs oe.openelis.org | grep FhirPersistance
+scripts/dev-stack logs oe.openelis.org | grep FhirPersistance
 
 # Verify fhir_uuid generated for entities
 psql -U clinlims -d clinlims -c "SELECT id, fhir_uuid FROM storage_room;"
@@ -911,9 +902,8 @@ ls cypress/screenshots/
 **Backend changes**:
 
 1. Edit Java file
-2. `mvn clean install -DskipTests -pl :openelisglobal -am`
-3. `docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org`
-4. Test in browser
+2. `scripts/dev-stack up` (builds and reloads the backend)
+3. Test at the reported application URL
 
 **Frontend changes**:
 

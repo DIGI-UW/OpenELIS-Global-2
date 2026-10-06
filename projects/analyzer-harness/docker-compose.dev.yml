@@ -100,6 +100,7 @@ services:
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public
+      - ../../volume/translation:/app/public/translation
 
   proxy:
     image: nginx:1.27-alpine

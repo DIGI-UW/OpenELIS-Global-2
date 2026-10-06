@@ -6,8 +6,8 @@
 
 ## Prerequisites
 
-1. **Application URL**: https://localhost/ (or
-   http://localhost:8080/OpenELIS-Global/)
+1. **Application URL**: the URL reported by `scripts/dev-stack url` after
+   running `scripts/dev-stack up` from the repository root
 2. **Login Credentials**:
    - Username: `admin`
    - Password: `adminADMIN!`
@@ -215,7 +215,7 @@ last)
 
 **Test**: Verify header shows correct site name
 
-1. Navigate to application root: https://localhost/
+1. Navigate to application root: the URL reported by `scripts/dev-stack url`
 2. **Verify**: Header shows "OpenELIS Global" (or configured site name)
 3. **Note**: If still shows "Urine", this is a database configuration issue:
    - Access **Admin** → **Site Information**
@@ -250,16 +250,16 @@ After completing all tests above, verify:
 
 ```bash
 # Check container status
-docker ps --filter "name=openelisglobal-webapp"
+scripts/dev-stack status
 
 # View logs (real-time)
-docker logs -f openelisglobal-webapp
+scripts/dev-stack logs -f oe.openelis.org
 
 # View last 50 lines
-docker logs --tail 50 openelisglobal-webapp
+scripts/dev-stack logs oe.openelis.org | tail -n 50
 
-# Restart container if needed
-docker compose -f dev.docker-compose.yml restart oe.openelis.org
+# Rebuild and reload after code changes
+scripts/dev-stack up
 ```
 
 ---
@@ -268,23 +268,21 @@ docker compose -f dev.docker-compose.yml restart oe.openelis.org
 
 ### Application Not Starting
 
-1. Check logs: `docker logs openelisglobal-webapp`
+1. Check logs: `scripts/dev-stack logs oe.openelis.org`
 2. Verify database is running:
-   `docker ps --filter "name=openelisglobal-database"`
+   `scripts/dev-stack status`
 3. Check WAR file exists: `ls -lh target/OpenELIS-Global.war`
 
 ### Changes Not Reflecting
 
-1. Rebuild WAR: `mvn clean install -DskipTests -Dmaven.test.skip=true`
-2. Force recreate container:
-   `docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org`
+1. Rebuild and reload: `scripts/dev-stack up`
 
 ### Frontend Not Updating
 
 1. Check frontend container:
-   `docker ps --filter "name=openelisglobal-front-end"`
-2. Restart frontend:
-   `docker compose -f dev.docker-compose.yml restart frontend.openelis.org`
+   `scripts/dev-stack status`
+2. Reconcile the stack (frontend source changes normally hot reload):
+   `scripts/dev-stack up`
 
 ---
 

@@ -59,11 +59,11 @@ The frontend serves this directory at `/translation/<locale>.json` and layers
 what it finds over its bundled messages. The files are fetched at runtime rather
 than compiled in, which is what lets a deployment change them without a rebuild.
 
-**Development** — already wired. `dev.docker-compose.yml` mounts this directory
-into the frontend container:
+**Development** — already wired. `scripts/dev-stack` mounts this directory into
+the frontend container:
 
 ```yaml
-- ./volume/translation:/app/public/translation
+- ../../volume/translation:/app/public/translation
 ```
 
 **Production** — mount your own directory into the frontend service:
@@ -89,8 +89,11 @@ restarts — you will get the app's HTML instead of your JSON. Once the file
 exists, editing it needs only a reload:
 
 ```
-docker compose -f dev.docker-compose.yml restart frontend.openelis.org
+scripts/dev-stack down
+scripts/dev-stack up --skip-build
 ```
+
+These commands restart this checkout’s stack without deleting its data.
 
 Adding a locale is a rare, deliberate act, so this only bites the first time you
 introduce one.

@@ -734,8 +734,9 @@ run, review browser console logs and screenshots (especially on failures).
 
 - Project uses Docker container (`itechuw/certgen:main`) to generate
   **self-signed certificates** for development
-- Certificates are generated in the `certs` service (lines 2-15 in
-  `dev.docker-compose.yml`)
+- Certificates are generated in the `certs` service in
+  `projects/analyzer-harness/docker-compose.dev.yml`, managed by
+  `scripts/dev-stack`
 - Generated certificates include:
   - Self-signed certificate: `/etc/ssl/certs/apache-selfsigned.crt`
   - Private key: `/etc/ssl/private/apache-selfsigned.key`
@@ -1354,7 +1355,7 @@ pattern. Additional hardware testing recommended during implementation phase.
 | Barcode Printing Infrastructure  | Reuse existing iTextPDF/BarcodeLabelMaker, create StorageLocationLabel extending Label, REST endpoint for printing, extend ConfigurationProperties                                                                                                           | Existing OpenELIS barcode printing system (BarcodeLabelMaker.java, LabelMakerServlet.java) |
 | Frontend Data Fetching           | Custom `getFromOpenElisServer` utility with useState/useEffect (NOT SWR)                                                                                                                                                                                     | Existing OpenELIS hooks                                                                    |
 | Cypress E2E Setup                | Use existing Cypress 12.17.3 framework, follow patientEntry.cy.js pattern                                                                                                                                                                                    | Existing OpenELIS E2E tests                                                                |
-| Certificate Architecture         | Self-signed certs via certgen container, distributed via Docker volumes to nginx/proxy and Java services. Let's Encrypt setup requires Certbot container, nginx ACME challenge handling, and subdomain-specific server blocks                                | dev.docker-compose.yml, nginx.conf, certificate-setup-report.md                            |
+| Certificate Architecture         | Self-signed certs via certgen container, distributed via Docker volumes to nginx/proxy and Java services. Let's Encrypt setup requires Certbot container, nginx ACME challenge handling, and subdomain-specific server blocks                                | scripts/dev-stack, projects/analyzer-harness/docker-compose.dev.yml, projects/analyzer-harness/docker-compose.letsencrypt.yml                            |
 | Carbon DataTable Expandable Rows | Carbon DataTable expandableRows prop with TableExpandHeader/TableExpandRow/TableExpandedRow, React useState for single-row expansion, key-value pairs in Grid layout                                                                                         | Carbon DataTable docs, EOrder.js implementation                                            |
 | Capacity Calculation Logic       | Two-tier system: manual `capacity_limit` (if set) OR calculated from children (sum if all children have defined capacities). Racks always use rows × columns. Show "N/A" if capacity cannot be determined.                                                   | Spec FR-062a, FR-062b, FR-062c, laboratory workflow analysis                               |
 | Frontend Unit Testing Pattern    | Standard import order (React → Testing Library → jest-dom → Intl → Component → Utils → Messages), mock utilities before imports, use `renderWithIntl` helper, AAA pattern, `getBy*`/`queryBy*`/`findBy*` selection, `waitFor` for async (never `setTimeout`) | StorageDashboard.test.jsx (canonical example), React Testing Library docs                  |

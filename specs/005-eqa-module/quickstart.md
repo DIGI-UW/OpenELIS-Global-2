@@ -1,5 +1,9 @@
 # Quickstart: External Quality Assurance (EQA) Module
 
+For local development, run `scripts/dev-stack up` from the repository root,
+then `eval "$(scripts/dev-stack env)"`. Use the reported URL (including its
+assigned port) for browser steps and `$BASE_URL` for shell requests.
+
 **Date**: 2025-11-18 **Feature**: External Quality Assurance (EQA) Module
 **Branch**: `005-eqa-module` **Scope**: P1 (EQA Sample Entry, Alerts), P2
 (Distribution, Results, IC/QC), P3 (FHIR Submission, Config)
@@ -42,19 +46,16 @@ tests BEFORE implementation code.
 ### TDD Workflow (Red-Green-Refactor)
 
 1. **RED**: Write a failing test
-
    - Write test for the behavior you want
    - Run test → it should FAIL (code doesn't exist yet)
    - Verify test fails for the right reason
 
 2. **GREEN**: Make the test pass
-
    - Write minimal implementation code
    - Run test → it should PASS
    - Don't write extra code beyond what's needed
 
 3. **REFACTOR**: Improve code quality
-
    - Clean up implementation
    - Remove duplication
    - Improve naming, structure
@@ -349,34 +350,31 @@ mvn jacoco:report
 
 ```bash
 # From repository root
-docker compose -f dev.docker-compose.yml up -d
+scripts/dev-stack up
+eval "$(scripts/dev-stack env)"
 
 # Watch logs
-docker logs -f oe.openelis.org
+scripts/dev-stack logs -f oe.openelis.org
 
-# Verify backend started successfully
-# Look for: "Started OpenELISApplication in X seconds"
+# The launcher waits for the login endpoint before reporting success.
 ```
 
 **Access Points**:
 
-- **Backend API**: https://localhost/api/OpenELIS-Global/rest/eqa/programs
-- **Legacy UI**: https://localhost/api/OpenELIS-Global/
-- **React UI**: https://localhost/
+- **Backend API**: the reported application URL plus `/api/OpenELIS-Global/rest/eqa/programs`
+- **Legacy UI**: the reported application URL plus `/api/OpenELIS-Global/`
+- **React UI**: the reported application URL plus `/`
 
 ### 5. Hot Reload Backend Changes
 
 After making Java code changes:
 
 ```bash
-# Rebuild WAR
-mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# Recreate backend container only
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+# Rebuild from source and reload the backend
+scripts/dev-stack up
 
 # Watch logs for startup confirmation
-docker logs -f oe.openelis.org
+scripts/dev-stack logs -f oe.openelis.org
 ```
 
 ---
@@ -504,7 +502,7 @@ Edit translation files to add EQA-specific message keys:
 cd frontend
 npm start
 
-# Frontend starts with hot reload at https://localhost/
+# Native frontend prints its own development URL; the Docker frontend is already running with hot reload.
 # Changes to .jsx files auto-reload in browser
 ```
 
@@ -554,15 +552,13 @@ cd frontend && npm run format && cd ..
 
 **Workflow**: Register EQA sample through modified sample entry
 
-1. **Navigate**: https://localhost/sample-entry
+1. **Navigate**: the reported application URL plus `/sample-entry`
 
 2. **Select EQA Sample**:
-
    - Check "EQA Sample" checkbox on Patient Information tab
    - Verify all demographic fields become disabled with "N/A" placeholders
 
 3. **Fill EQA Fields** (Program tab):
-
    - Select EQA Provider Organization (e.g., "WHO")
    - Select EQA Program (e.g., "WHO Malaria EQA")
    - Enter Provider Sample ID (e.g., "WHO-2025-001")
@@ -571,7 +567,6 @@ cd frontend && npm run format && cd ..
    - Select Priority: "Standard"
 
 4. **Complete Sample Entry**:
-
    - Proceed through Sample tab (select sample type, tests)
    - Complete Order tab
    - Click "Save"
@@ -585,7 +580,7 @@ cd frontend && npm run format && cd ..
 
 ```bash
 # Check SampleEQA record created
-curl -k https://localhost/api/OpenELIS-Global/rest/eqa/samples?programId=1
+curl -k ${BASE_URL}/api/OpenELIS-Global/rest/eqa/samples?programId=1
 
 # Expected: JSON array with EQA sample metadata
 ```
@@ -596,23 +591,20 @@ curl -k https://localhost/api/OpenELIS-Global/rest/eqa/samples?programId=1
 
 **Workflow**: View and manage alerts dashboard
 
-1. **Navigate**: https://localhost/alerts-dashboard
+1. **Navigate**: the reported application URL plus `/alerts-dashboard`
 
 2. **View Summary Tiles**:
-
    - Critical Alerts count (red)
    - EQA Deadlines Today count
    - Overdue STAT Orders count
    - Expiring Samples count
 
 3. **View Alert Table**:
-
    - Alerts sorted by severity (critical first)
    - Color coding: Red (critical), Orange (warning), Blue (info)
    - Columns: Lab #, Type, Message, Severity, Created, Lab Section
 
 4. **Filter Alerts**:
-
    - Click "My Alerts" to filter by your lab section
    - Filter by type (EQA Deadline, Sample Expiration, etc.)
    - Search by lab number
@@ -626,13 +618,13 @@ curl -k https://localhost/api/OpenELIS-Global/rest/eqa/samples?programId=1
 
 ```bash
 # Get all alerts
-curl -k https://localhost/api/OpenELIS-Global/rest/alerts?status=OPEN
+curl -k ${BASE_URL}/api/OpenELIS-Global/rest/alerts?status=OPEN
 
 # Get alert summary counts
-curl -k https://localhost/api/OpenELIS-Global/rest/alerts/summary
+curl -k ${BASE_URL}/api/OpenELIS-Global/rest/alerts/summary
 
 # Acknowledge an alert
-curl -k -X PUT https://localhost/api/OpenELIS-Global/rest/alerts/{alertId}/acknowledge \
+curl -k -X PUT ${BASE_URL}/api/OpenELIS-Global/rest/alerts/{alertId}/acknowledge \
   -H "Content-Type: application/json" \
   -d '{"comment":"Sample being processed urgently"}'
 ```
@@ -643,26 +635,22 @@ curl -k -X PUT https://localhost/api/OpenELIS-Global/rest/alerts/{alertId}/ackno
 
 **Workflow**: Create distribution for participating laboratories
 
-1. **Navigate**: https://localhost/eqa/distributions/create
+1. **Navigate**: the reported application URL plus `/eqa/distributions/create`
 
 2. **Step 1 - Program & Details**:
-
    - Select EQA Program
    - Enter Distribution Name (e.g., "Malaria-2025-Q1")
    - Set Distribution Date and Deadline
 
 3. **Step 2 - Participants**:
-
    - Multi-select participating organizations (minimum 2)
    - Review list of selected participants
 
 4. **Step 3 - Confirmation**:
-
    - Review distribution summary
    - Click "Create Distribution"
 
 5. **Generate Barcodes**:
-
    - System creates one order per participating organization
    - Click "Generate Barcodes" for batch label generation
 
@@ -674,12 +662,12 @@ curl -k -X PUT https://localhost/api/OpenELIS-Global/rest/alerts/{alertId}/ackno
 
 ```bash
 # Create distribution
-curl -k -X POST https://localhost/api/OpenELIS-Global/rest/eqa/distributions \
+curl -k -X POST ${BASE_URL}/api/OpenELIS-Global/rest/eqa/distributions \
   -H "Content-Type: application/json" \
   -d '{"eqaProgramId":"1","distributionName":"Malaria-2025-Q1","deadline":"2025-06-30T23:59:59","participantOrganizationIds":["10","11","12"]}'
 
 # Get distribution details
-curl -k https://localhost/api/OpenELIS-Global/rest/eqa/distributions/{id}
+curl -k ${BASE_URL}/api/OpenELIS-Global/rest/eqa/distributions/{id}
 ```
 
 ---
@@ -689,21 +677,18 @@ curl -k https://localhost/api/OpenELIS-Global/rest/eqa/distributions/{id}
 **Workflow**: Enter results and view statistical analysis
 
 1. **Manual Result Entry**:
-
    - Navigate to EQA distribution detail
    - Click "Enter Results"
    - Select participant organization
    - Enter result value for each test
 
 2. **Batch Import** (CSV):
-
    - Click "Batch Import"
    - Upload CSV file with columns: participant_org_id, test_id, result_value
    - Review validation results
    - Confirm import
 
 3. **View Statistics** (requires 5+ participant results):
-
    - Navigate to distribution statistics
    - View: Mean, Standard Deviation, Target Value
    - View per-participant: Z-score, Performance Classification
@@ -721,15 +706,15 @@ curl -k https://localhost/api/OpenELIS-Global/rest/eqa/distributions/{id}
 
 ```bash
 # Submit result manually
-curl -k -X POST https://localhost/api/OpenELIS-Global/rest/eqa/results \
+curl -k -X POST ${BASE_URL}/api/OpenELIS-Global/rest/eqa/results \
   -H "Content-Type: application/json" \
   -d '{"eqaDistributionId":"1","participantOrganizationId":"10","testId":"5","resultValue":"105.0","submissionMethod":"MANUAL"}'
 
 # Get statistics for distribution
-curl -k https://localhost/api/OpenELIS-Global/rest/eqa/distributions/{id}/statistics
+curl -k ${BASE_URL}/api/OpenELIS-Global/rest/eqa/distributions/{id}/statistics
 
 # Generate PDF report
-curl -k https://localhost/api/OpenELIS-Global/rest/eqa/distributions/{id}/report \
+curl -k ${BASE_URL}/api/OpenELIS-Global/rest/eqa/distributions/{id}/report \
   -o report.pdf
 ```
 
@@ -801,10 +786,10 @@ mvn test -Dtest="EQAHibernateMappingValidationTest" -X
 
 ```bash
 # Check scheduler configuration
-docker logs oe.openelis.org | grep "EQADeadlineAlertScheduler"
+scripts/dev-stack logs oe.openelis.org | grep "EQADeadlineAlertScheduler"
 
 # Verify @Scheduled annotation picked up
-docker logs oe.openelis.org | grep "Scheduling"
+scripts/dev-stack logs oe.openelis.org | grep "Scheduling"
 
 # Check for existing alerts
 psql -U clinlims -d clinlims -c "SELECT * FROM clinlims.alert WHERE alert_type LIKE 'EQA%';"
@@ -814,13 +799,13 @@ psql -U clinlims -d clinlims -c "SELECT * FROM clinlims.alert WHERE alert_type L
 
 ```bash
 # Verify FHIR server running
-docker ps | grep fhir
+scripts/dev-stack status
 
 # Check FHIR server logs
-docker logs fhir.openelis.org
+scripts/dev-stack logs fhir.openelis.org
 
 # Verify FHIR server accessible
-curl -k https://fhir.openelis.org:8443/fhir/metadata
+curl -k "${FHIR_URL}/fhir/metadata"
 
 # Test FHIR submission
 curl -k -X POST https://fhir.openelis.org:8443/fhir/DiagnosticReport \
@@ -867,10 +852,10 @@ cd frontend && npm ls @carbon/charts-react
 # Look for JSESSIONID cookie
 
 # Re-login if session expired
-# Navigate to: https://localhost/login
+# Navigate to: the reported application URL plus `/login`
 
 # Check API endpoint URL
-# Verify: https://localhost/api/OpenELIS-Global/rest/eqa/... (NOT http://)
+# Verify: the reported application URL plus `/api/OpenELIS-Global/rest/eqa/...` (NOT http://)
 ```
 
 ### Test Issues
@@ -912,9 +897,8 @@ ls cypress/screenshots/
 **Backend changes**:
 
 1. Edit Java file
-2. `mvn clean install -DskipTests -Dmaven.test.skip=true`
-3. `docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org`
-4. Test in browser
+2. `scripts/dev-stack up` (builds and reloads the backend)
+3. Test at the reported application URL
 
 **Frontend changes**:
 
