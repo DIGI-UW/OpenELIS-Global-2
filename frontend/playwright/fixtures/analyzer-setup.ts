@@ -78,7 +78,18 @@ export class AnalyzerSetupPage {
     await expect(option).not.toBeVisible();
   }
 
+  async continueToAssays() {
+    await this.page.getByRole("button", { name: "Continue to Assays" }).click();
+    await expect(this.page).toHaveURL(
+      (url) =>
+        url.searchParams.get("setup") === "assays" &&
+        Boolean(url.searchParams.get("analyzerId")),
+    );
+  }
+
+  /** From the instrument step, through Assays as the defaults left them, to Verify. */
   async continueToVerify() {
+    await this.continueToAssays();
     await this.page.getByRole("button", { name: "Continue to Verify" }).click();
     await expect(this.page).toHaveURL(
       (url) =>

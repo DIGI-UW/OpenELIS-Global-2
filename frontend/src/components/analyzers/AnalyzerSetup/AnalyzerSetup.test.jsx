@@ -281,7 +281,7 @@ describe("AnalyzerSetup Instrument step", () => {
       await screen.findByRole("option", { name: "Molecular Biology" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     await waitFor(() =>
@@ -301,7 +301,7 @@ describe("AnalyzerSetup Instrument step", () => {
       "42",
     );
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "verify",
+      "assays",
     );
   });
 
@@ -362,7 +362,7 @@ describe("AnalyzerSetup Instrument step", () => {
     renderSetup();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Continue to Verify" }),
+      await screen.findByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(screen.getByText("Select an analyzer type")).toBeVisible();
@@ -371,7 +371,7 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(createAnalyzer).not.toHaveBeenCalled();
   });
 
-  it("persists the selected candidate and advances to URL-backed Verify", async () => {
+  it("persists the selected candidate and advances to URL-backed Assays", async () => {
     window.history.replaceState(
       {},
       "",
@@ -415,7 +415,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(createAnalyzer).toHaveBeenCalledWith(
@@ -429,12 +429,12 @@ describe("AnalyzerSetup Instrument step", () => {
     );
     const params = new URLSearchParams(window.location.search);
     expect(params.get("search")).toBe("gene");
-    expect(params.get("setup")).toBe("verify");
+    expect(params.get("setup")).toBe("assays");
     expect(params.get("analyzerId")).toBe("42");
     expect(params.get("profile")).toBe(activeType.profileId);
     expect(params.get("revision")).toBe("3");
     expect(
-      screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
+      screen.getByRole("heading", { level: 3, name: "Assays" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
     expect(screen.getByText("GX bench 1")).toBeVisible();
     expect(screen.getByText("Molecular Biology")).toBeVisible();
@@ -787,11 +787,11 @@ describe("AnalyzerSetup Instrument step", () => {
       await screen.findByRole("option", { name: "Molecular Biology" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "verify",
+      "assays",
     );
     history.goBack();
     await waitFor(() =>
@@ -808,7 +808,7 @@ describe("AnalyzerSetup Instrument step", () => {
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "GX bench A");
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(createAnalyzer).not.toHaveBeenCalled();
@@ -823,7 +823,7 @@ describe("AnalyzerSetup Instrument step", () => {
       expect.any(Function),
     );
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "verify",
+      "assays",
     );
     expect(new URLSearchParams(history.location.search).get("analyzerId")).toBe(
       "42",

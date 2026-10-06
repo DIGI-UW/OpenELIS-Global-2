@@ -70,7 +70,10 @@ const hasHeldResults = (analyzer: Analyzer) =>
 const isAnalyzerSetupStep = (
   value: string | null,
 ): value is AnalyzerSetupStep =>
-  value === "instrument" || value === "verify" || value === "connect";
+  value === "instrument" ||
+  value === "assays" ||
+  value === "verify" ||
+  value === "connect";
 
 const isAnalyzerLifecycleAction = (
   value: string | null,
