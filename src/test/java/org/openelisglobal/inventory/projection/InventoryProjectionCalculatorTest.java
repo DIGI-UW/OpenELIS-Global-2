@@ -132,11 +132,29 @@ public class InventoryProjectionCalculatorTest {
         InventoryProjection shortLead = InventoryProjectionCalculator.project(50.0, flat(4.0), 20,
                 new LeadTime(3, LeadTimeTier.SET), TODAY, TODAY);
         InventoryProjection longLead = InventoryProjectionCalculator.project(50.0, flat(4.0), 20,
-                new LeadTime(21, LeadTimeTier.SET), TODAY, TODAY);
+                new LeadTime(10, LeadTimeTier.SET), TODAY, TODAY);
 
         assertEquals("3 days to resupply, 7 days of headroom: no rush", BoardStatus.ADEQUATE, shortLead.getStatus());
-        assertEquals("21 days to resupply and 7 days of headroom: order now to arrive in time",
-                BoardStatus.REORDER_SOON, longLead.getStatus());
+        assertEquals("10 days to resupply and 7 days of headroom: order soon", BoardStatus.REORDER_SOON,
+                longLead.getStatus());
+    }
+
+    @Test
+    public void aRowPastItsOrderByDateIsReorderNowAboveItsThreshold() {
+        InventoryProjection row = InventoryProjectionCalculator.project(50.0, flat(4.0), 20,
+                new LeadTime(21, LeadTimeTier.SET), TODAY, TODAY);
+
+        assertEquals("empty in 12 days, 21 days to resupply", TODAY.minusDays(9), row.getOrderByDate());
+        assertEquals(BoardStatus.REORDER_NOW, row.getStatus());
+    }
+
+    @Test
+    public void onItsOrderByDateARowIsStillReorderSoon() {
+        InventoryProjection row = InventoryProjectionCalculator.project(50.0, flat(4.0), 20,
+                new LeadTime(12, LeadTimeTier.SET), TODAY, TODAY);
+
+        assertEquals(TODAY, row.getOrderByDate());
+        assertEquals(BoardStatus.REORDER_SOON, row.getStatus());
     }
 
     @Test

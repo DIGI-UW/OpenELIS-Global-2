@@ -63,7 +63,8 @@ public final class InventoryProjectionCalculator {
         projection.setOrderByDate(projection.getRunOutEarly().minusDays(leadTime.days()));
         projection.setTrendPercent(trendPercent(dailyUse));
 
-        if (atOrBelowThreshold) {
+        boolean pastOrderBy = projection.getOrderByDate().isBefore(today);
+        if (atOrBelowThreshold || pastOrderBy) {
             projection.setStatus(BoardStatus.REORDER_NOW);
         } else if ((onHand - floor) / fastRate <= leadTime.days()) {
             // Reaches the threshold before a replacement order could arrive.
