@@ -30,7 +30,7 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
     private static final TypeReference<List<AnalyzerMappingSourceRow>> ROW_LIST = new TypeReference<>() {
     };
     private static final Comparator<AnalyzerMappingSourceRow> ROW_ORDER = Comparator
-            .comparing(AnalyzerMappingSourceRow::sourceRowKey)
+            .comparing(AnalyzerMappingSourceRow::sourceRowKey).thenComparing(AnalyzerMappingSourceRow::subIdentity)
             .thenComparing(AnalyzerMappingSourceRow::rawValue, Comparator.nullsFirst(String::compareTo));
 
     private final AnalyzerMappingConfirmationDAO confirmationDAO;
@@ -166,12 +166,13 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
     private static RowDisposition expectedRows(AnalyzerMappingSnapshot candidate) {
         List<AnalyzerMappingSourceRow> confirmed = new ArrayList<>();
         List<AnalyzerMappingSourceRow> excluded = new ArrayList<>();
-        candidate.tests().forEach(row -> addRow(row.getMappingState(),
-                new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null), confirmed, excluded));
-        candidate.results()
+        candidate.tests()
                 .forEach(row -> addRow(row.getMappingState(),
-                        new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), row.getId().getRawValue()),
+                        new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null, row.getId().getSubIdentity()),
                         confirmed, excluded));
+        candidate.results().forEach(
+                row -> addRow(row.getMappingState(), new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(),
+                        row.getId().getRawValue(), row.getId().getSubIdentity()), confirmed, excluded));
         confirmed.sort(ROW_ORDER);
         excluded.sort(ROW_ORDER);
         return new RowDisposition(List.copyOf(confirmed), List.copyOf(excluded));
@@ -223,9 +224,9 @@ public class AnalyzerMappingConfirmationServiceImpl implements AnalyzerMappingCo
                 .validate(candidate);
         return candidate.tests().stream()
                 .allMatch(row -> row.getMappingState() == AnalyzerMappingState.UNRESOLVED
-                        || catalog.isCurrentTest(row.getId().getSourceRowKey()))
+                        || catalog.isCurrentTest(AnalyzerMappingRowKey.of(row)))
                 && candidate.results().stream().allMatch(row -> row.getMappingState() == AnalyzerMappingState.UNRESOLVED
-                        || catalog.isCurrentResult(row.getId().getSourceRowKey(), row.getId().getRawValue()));
+                        || catalog.isCurrentResult(AnalyzerMappingRowKey.of(row), row.getId().getRawValue()));
     }
 
     private boolean hasExactSavedRows(AnalyzerMappingSnapshot candidate, AnalyzerMappingConfirmation confirmation) {

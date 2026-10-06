@@ -93,12 +93,12 @@ instrument reported about the result.
 ### Build
 
 ```
-- [ ] T2b.1 Red: integration test, bundles shaped from every 303-0251 §2.1.1 outcome as step 6 emits them; the main record's number on the primary and its call on the call component, LOG (`&LOG`) on its component, analyte records (`HIV-1`, `HIV-1&Ct`) on theirs; "<40" stages <40 from the quantity; NOT DETECTED fills only the call
-- [ ] T2b.2 Red: integration test, a record with a sub-identity the mapping does not declare is held as an unknown test (rule 13); the number is never held as an unknown answer; a translated call (NON DÉTECTÉ) binds to the same answer as NOT DETECTED
+- [x] T2b.1 Red: integration test, bundles shaped from every 303-0251 §2.1.1 outcome as step 6 emits them; the main record's number on the primary and its call on the call component, LOG (`&LOG`) on its component, analyte records (`HIV-1`, `HIV-1&Ct`) on theirs; "<40" stages <40 from the quantity; NOT DETECTED fills only the call
+- [x] T2b.2 Red: integration test, a record with a sub-identity the mapping does not declare is held as an unknown test (rule 13); the number is never held as an unknown answer
 - [ ] T2b.3 Red: component test, the review row shows the instrument's flag, assay name and version and operator; a test's components (call, LOG, analytes) show beneath its main result
-- [ ] T2b.4 Changeset: mapping test and result rows keyed by (code, sub-identity); the test row gains a call target (component) for a record with both a call and a number; existing rows take the empty sub-identity, unchanged
-- [ ] T2b.5 Contract and import: read the sub-identity and the interpretation; map (code, sub-identity); the number from valueQuantity to the row's target, the call to its call target; staged number from valueQuantity, replacing the raw-text prefix
-- [ ] T2b.6 Editor and defaults: each (code, sub-identity) the profile declares is its own row; defaults resolve each to the component by its stable code, and create a result row for every declared translation
+- [x] T2b.4 Changeset: mapping test and result rows keyed by (code, sub-identity); the test row gains a call target (component) for a record with both a call and a number; existing rows take the empty sub-identity, unchanged
+- [x] T2b.5 Contract and import: read the sub-identity and the interpretation; map (code, sub-identity); the number from valueQuantity to the row's target, the call to its call target; staged number from valueQuantity, replacing the raw-text prefix
+- [ ] T2b.6 Editor and defaults: each (code, sub-identity) the profile declares is its own row; defaults resolve each to the component by its stable code, and create a result row for every declared translation; red first: a translated call (NON DÉTECTÉ) binds to the same answer as NOT DETECTED
 - [ ] T2b.7 Review row: instrument-reported fields; components grouped beneath their main result
 - [ ] T2b.8 Green; format cold; commit; stack PR on step 2
 ```

@@ -44,6 +44,13 @@ public class AnalyzerMappingTest extends BaseObject<AnalyzerMappingTestPK> {
     @Column(name = "component_id", length = 36)
     private String componentId;
 
+    /**
+     * Where the record's call goes when the record also carries a number, which
+     * goes to {@link #componentId} or the test itself.
+     */
+    @Column(name = "call_component_id", length = 36)
+    private String callComponentId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "unresolved_reason", length = 12)
     private AnalyzerUnresolvedReason unresolvedReason;
@@ -60,7 +67,11 @@ public class AnalyzerMappingTest extends BaseObject<AnalyzerMappingTestPK> {
 
     @Override
     public String getStringId() {
-        return id == null ? null : id.getMappingId() + ":" + id.getSourceRowKey();
+        if (id == null) {
+            return null;
+        }
+        String key = id.getMappingId() + ":" + id.getSourceRowKey();
+        return id.getSubIdentity().isEmpty() ? key : key + ":" + id.getSubIdentity();
     }
 
     public AnalyzerMapping getMapping() {
@@ -93,6 +104,14 @@ public class AnalyzerMappingTest extends BaseObject<AnalyzerMappingTestPK> {
 
     public void setComponentId(String componentId) {
         this.componentId = componentId;
+    }
+
+    public String getCallComponentId() {
+        return callComponentId;
+    }
+
+    public void setCallComponentId(String callComponentId) {
+        this.callComponentId = callComponentId;
     }
 
     public AnalyzerUnresolvedReason getUnresolvedReason() {

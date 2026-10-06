@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="126-analyzer-mapping-sub-identity" author="oe">
+        <comment>An instrument reports several records under one test code (a main result, its log, analyte records and their Ct), told apart by the record's sub-identity, the analyte and complementary names in the vendor's HL7 sub-ID notation (HIV-1&amp;Ct). Mapping rows are keyed by code and sub-identity; existing rows are main results, with an empty sub-identity. A test row may name a second target for the record's call when the record also carries a number.</comment>
+        <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_result"
+            constraintName="fk_analyzer_mapping_result_test"/>
+        <dropPrimaryKey schemaName="clinlims" tableName="analyzer_mapping_result"
+            constraintName="pk_analyzer_mapping_result"/>
+        <dropPrimaryKey schemaName="clinlims" tableName="analyzer_mapping_test"
+            constraintName="pk_analyzer_mapping_test"/>
+
+        <addColumn schemaName="clinlims" tableName="analyzer_mapping_test">
+            <column name="sub_identity" type="VARCHAR(255)" defaultValue="">
+                <constraints nullable="false"/>
+            </column>
+            <column name="call_component_id" type="VARCHAR(36)"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="analyzer_mapping_result">
+            <column name="sub_identity" type="VARCHAR(255)" defaultValue="">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+
+        <addPrimaryKey schemaName="clinlims" tableName="analyzer_mapping_test"
+            columnNames="mapping_id, source_row_key, sub_identity" constraintName="pk_analyzer_mapping_test"/>
+        <addPrimaryKey schemaName="clinlims" tableName="analyzer_mapping_result"
+            columnNames="mapping_id, source_row_key, sub_identity, raw_value"
+            constraintName="pk_analyzer_mapping_result"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_result_test"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_result"
+            baseColumnNames="mapping_id, source_row_key, sub_identity" referencedTableSchemaName="clinlims"
+            referencedTableName="analyzer_mapping_test"
+            referencedColumnNames="mapping_id, source_row_key, sub_identity"/>
+        <addForeignKeyConstraint constraintName="fk_analyzer_mapping_test_call_component"
+            baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_test"
+            baseColumnNames="call_component_id" referencedTableSchemaName="clinlims"
+            referencedTableName="test_result_component" referencedColumnNames="id"/>
+    </changeSet>
+</databaseChangeLog>
