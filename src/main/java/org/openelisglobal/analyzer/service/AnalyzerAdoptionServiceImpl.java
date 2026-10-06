@@ -45,20 +45,29 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
                 .decisions(decisions);
         List<AnalyzerMappingAdoption.Row> kept = plan.rows().stream()
                 .filter(row -> row.bucket() != AnalyzerMappingAdoption.Bucket.RETIRED).toList();
+        for (AnalyzerMappingAdoption.Row row : kept) {
+            if (row.blockReason() == AnalyzerMappingAdoption.BlockReason.HELD_RESULTS) {
+                throw new IllegalArgumentException(row.key().label() + " still has held results from revision "
+                        + plan.fromRevision() + "; resolve them before adopting revision " + toRevision);
+            }
+        }
         Set<AnalyzerMappingRowKey> keptKeys = kept.stream().map(AnalyzerMappingAdoption.Row::key)
                 .collect(Collectors.toSet());
         if (!decided.keySet().equals(keptKeys)) {
-            throw new IllegalArgumentException("Adoption needs one decision for each record the revision keeps");
+            String missing = kept.stream().map(AnalyzerMappingAdoption.Row::key)
+                    .filter(key -> !decided.containsKey(key)).map(AnalyzerMappingRowKey::label)
+                    .collect(Collectors.joining(", "));
+            throw new IllegalArgumentException("Adoption needs one decision for each record the revision keeps"
+                    + (missing.isEmpty() ? "" : "; missing " + missing));
         }
         List<AnalyzerMappingTestDraft> tests = new ArrayList<>();
         List<AnalyzerMappingResultDraft> results = new ArrayList<>();
         for (AnalyzerMappingAdoption.Row row : kept) {
             AnalyzerMappingAdoption.Decision decision = decided.get(row.key());
-            if (row.blockReason() == AnalyzerMappingAdoption.BlockReason.HELD_RESULTS
-                    || row.blockReason() == AnalyzerMappingAdoption.BlockReason.INACTIVE_TEST
-                            && AnalyzerMappingAdoption.sameDecision(decision, row.current())) {
-                throw new IllegalArgumentException(
-                        row.key().label() + " is blocked: " + row.blockReason().name().toLowerCase());
+            if (row.blockReason() == AnalyzerMappingAdoption.BlockReason.INACTIVE_TEST
+                    && AnalyzerMappingAdoption.sameDecision(decision, row.current())) {
+                throw new IllegalArgumentException(row.key().label()
+                        + " is mapped to a test that is no longer active; choose another test before adopting");
             }
             tests.add(withOrigin(decision.test(), originFor(decision.test(), row.proposed())));
             for (AnalyzerMappingResultDraft result : decision.results()) {

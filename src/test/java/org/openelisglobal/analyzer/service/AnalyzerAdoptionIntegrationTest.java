@@ -1,6 +1,8 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -11,6 +13,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Test;
@@ -19,7 +22,10 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
+import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -46,15 +52,25 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private DataSource dataSource;
 
+    @Autowired
+    private AnalyzerResultsService results;
+    @Autowired
+    private AnalyzerMappingCatalogService catalog;
+
     private String analyzerId;
+    private String deactivatedTestId;
 
     @After
     public void deleteAnalyzer() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        if (deactivatedTestId != null) {
+            jdbc.update("UPDATE test SET is_active = 'Y' WHERE id = ?", Long.valueOf(deactivatedTestId));
+        }
         if (analyzerId == null) {
             return;
         }
-        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         Long id = Long.valueOf(analyzerId);
+        jdbc.update("DELETE FROM analyzer_results WHERE analyzer_id = ?", id);
         jdbc.update("UPDATE analyzer SET latest_activation_record_id = NULL, mapping_id = NULL WHERE id = ?", id);
         jdbc.update("DELETE FROM analyzer_activation_record WHERE analyzer_id = ?", id);
         String mappingIds = "(SELECT id FROM analyzer_mapping WHERE analyzer_id = ?)";
@@ -99,6 +115,88 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         ArgumentCaptor<ObjectNode> repin = ArgumentCaptor.forClass(ObjectNode.class);
         verify(bridge).updateConnection(eq(CONNECTION_ID), repin.capture());
         assertEquals(2, repin.getValue().path("profileRef").path("revision").asInt());
+    }
+
+    @Test
+    public void aRemovedCodeWithHeldResultsBlocksAdoptionAndTheRefusalNamesIt() {
+        analyzerOnRevisionOne();
+        hold("ADOPT-C", 1);
+
+        AnalyzerAdoptionService.AdoptionPlan plan = adoptionService.prepareAdoption(analyzerId, 2);
+        AnalyzerMappingAdoption.Row blocked = row(plan, "ADOPT-C");
+        assertEquals(AnalyzerMappingAdoption.Bucket.BLOCKED, blocked.bucket());
+        assertEquals(AnalyzerMappingAdoption.BlockReason.HELD_RESULTS, blocked.blockReason());
+
+        IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
+                () -> adoptionService.adopt(analyzerId, 2, proposals(plan), "1"));
+        assertTrue(refusal.getMessage(), refusal.getMessage().contains("ADOPT-C still has held results"));
+        assertEquals("nothing was saved on revision 2", 1,
+                mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow().mapping().getProfileRevision());
+    }
+
+    @Test
+    public void anOverrideOnATestNoLongerActiveBlocksUntilTheOperatorChangesIt() {
+        Analyzer analyzer = analyzerOnRevisionOne();
+        String retiredTest = overrideAdoptAOnAnotherTest(analyzer);
+        deactivate(retiredTest);
+
+        AnalyzerAdoptionService.AdoptionPlan plan = adoptionService.prepareAdoption(analyzerId, 2);
+        AnalyzerMappingAdoption.Row blocked = row(plan, "ADOPT-A");
+        assertEquals(AnalyzerMappingAdoption.Bucket.BLOCKED, blocked.bucket());
+        assertEquals(AnalyzerMappingAdoption.BlockReason.INACTIVE_TEST, blocked.blockReason());
+
+        IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
+                () -> adoptionService.adopt(analyzerId, 2, proposals(plan), "1"));
+        assertTrue(refusal.getMessage(),
+                refusal.getMessage().contains("ADOPT-A is mapped to a test that is no longer active"));
+        assertEquals(1, mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow().mapping().getProfileRevision());
+    }
+
+    private String overrideAdoptAOnAnotherTest(Analyzer analyzer) {
+        AnalyzerMappingSnapshot first = mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow();
+        AnalyzerMappingDraft draft = AnalyzerMappingDraft.of(first);
+        String inForce = draft.tests().stream().filter(test -> test.sourceRowKey().equals("ADOPT-A"))
+                .map(AnalyzerMappingTestDraft::testId).filter(Objects::nonNull).findFirst().orElse(null);
+        String other = catalog.searchActiveTests(null).stream().map(AnalyzerMappingCatalogService.TestOption::id)
+                .filter(id -> !id.equals(inForce)).findFirst().orElseThrow();
+        List<AnalyzerMappingTestDraft> tests = draft.tests().stream()
+                .map(test -> test.sourceRowKey().equals("ADOPT-A")
+                        ? new AnalyzerMappingTestDraft(test.sourceRowKey(), AnalyzerMappingState.BOUND, other, null,
+                                null, AnalyzerMappingOrigin.OVERRIDE, test.subIdentity(), null)
+                        : test)
+                .toList();
+        mappingService.appendRevision(analyzer,
+                new AnalyzerMappingDraft(tests,
+                        draft.results().stream().filter(result -> !result.sourceRowKey().equals("ADOPT-A")).toList()),
+                "1");
+        return other;
+    }
+
+    private void deactivate(String testId) {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("UPDATE test SET is_active = 'N' WHERE id = ?", Long.valueOf(testId));
+        deactivatedTestId = testId;
+    }
+
+    private void hold(String code, int revision) {
+        AnalyzerResults held = new AnalyzerResults();
+        held.setAnalyzerId(analyzerId);
+        held.setAccessionNumber("ADOPT-HELD-1");
+        held.setTestName(code);
+        held.setResult("7.1");
+        held.setIsControl(false);
+        held.setRawTestCode(code);
+        held.setSourceProfileId(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID);
+        held.setSourceProfileRevision(revision);
+        held.setSourceConnectionId(CONNECTION_ID);
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
+        held.setReadOnly(true);
+        results.insertAnalyzerResults(List.of(held), "1");
+    }
+
+    private static AnalyzerMappingAdoption.Row row(AnalyzerAdoptionService.AdoptionPlan plan, String code) {
+        return plan.rows().stream().filter(row -> row.key().equals(AnalyzerMappingRowKey.main(code))).findFirst()
+                .orElseThrow(() -> new AssertionError("no adoption row for " + code));
     }
 
     private Analyzer analyzerOnRevisionOne() {
