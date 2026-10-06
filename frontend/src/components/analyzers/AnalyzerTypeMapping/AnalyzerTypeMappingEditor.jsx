@@ -24,7 +24,7 @@ import {
 import { ArrowLeft, Copy, Save } from "@carbon/icons-react";
 import { parsePath } from "history";
 import { FormattedMessage, useIntl } from "react-intl";
-import { Link, useLocation, useParams } from "react-router-dom";
+import { Link, useHistory, useLocation, useParams } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import AffectedAnalyzerList from "../AnalyzerTypeManagement/AffectedAnalyzerList";
 import {
@@ -33,8 +33,10 @@ import {
 } from "../AnalyzerTypeManagement/recognitionText";
 import { safeInternalPath } from "../../utils/UrlUtils";
 import {
+  adoptAnalyzerRevision,
   applyAnalyzerMapping,
   confirmAnalyzerMapping,
+  getAnalyzerAdoption,
   getAnalyzerMapping,
   getAnalyzerMappingComponents,
   getAnalyzerMappingResultOptions,
@@ -123,6 +125,20 @@ const stateTagType = (state) => {
 const stateMessageId = (state) =>
   `analyzerType.mappingEditor.state.${String(state || "UNRESOLVED").toLowerCase()}`;
 
+// Adoption shows rows by what adopting the newer revision does to them, the
+// ones that need the operator first.
+const ADOPTION_BUCKETS = ["BLOCKED", "NEEDS_MAPPING", "CHANGED", "UNCHANGED"];
+
+const planRowKey = (planRow) =>
+  planRow.key.subIdentity
+    ? `${planRow.key.sourceRowKey} ${planRow.key.subIdentity}`
+    : planRow.key.sourceRowKey;
+
+const sameTestDecision = (test, decision) =>
+  Boolean(decision) &&
+  test.mappingState === decision.test.mappingState &&
+  (test.testId || null) === (decision.test.testId || null);
+
 /**
  * What the operator changed since the last save, row by row, so Save can show
  * the effect before it is written.
@@ -182,7 +198,11 @@ const listChanges = (savedTests = [], draftTests = []) => {
 const AnalyzerTypeMappingEditor = () => {
   const intl = useIntl();
   const location = useLocation();
+  const history = useHistory();
   const { profileId, analyzerId } = useParams();
+  // On /analyzers/:id/adoption the editor reviews the analyzer's mapping on a
+  // newer revision of its profile before saving it there.
+  const adopting = /\/adoption$/.test(location.pathname);
   // With no analyzer the editor shows the defaults a new analyzer on the
   // profile revision would get. Each analyzer owns and edits its own mapping.
   const readOnly = !analyzerId;
@@ -212,13 +232,17 @@ const AnalyzerTypeMappingEditor = () => {
   const [applying, setApplying] = useState(false);
   const [reviewingSave, setReviewingSave] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [adoption, setAdoption] = useState(null);
   const loadedResultOptions = useRef(new Set());
   const loadedComponents = useRef(new Set());
   const focusedResultRow = useRef(null);
   const focusHandled = useRef(false);
-  const routeIsValid = readOnly
-    ? Boolean(profileId) && Number.isInteger(revision) && revision >= 1
-    : true;
+  const routeIsValid =
+    readOnly || adopting
+      ? (readOnly ? Boolean(profileId) : true) &&
+        Number.isInteger(revision) &&
+        revision >= 1
+      : true;
   const routeError = routeIsValid
     ? null
     : intl.formatMessage({ id: "analyzerType.mappingEditor.error.route" });
@@ -235,7 +259,17 @@ const AnalyzerTypeMappingEditor = () => {
     }
     const load = readOnly
       ? (callback) => getAnalyzerTypeDefaults(profileId, revision, callback)
-      : (callback) => getAnalyzerMapping(analyzerId, callback);
+      : adopting
+        ? (callback) =>
+            getAnalyzerAdoption(analyzerId, revision, (response) => {
+              if (!hasApiError(response) && response?.proposal) {
+                setAdoption(response);
+                callback(response.proposal);
+              } else {
+                callback(response);
+              }
+            })
+        : (callback) => getAnalyzerMapping(analyzerId, callback);
     load((response) => {
       setLoading(false);
       if (hasApiError(response) || !Array.isArray(response.tests)) {
@@ -269,6 +303,7 @@ const AnalyzerTypeMappingEditor = () => {
       }
     });
   }, [
+    adopting,
     applyMapping,
     intl,
     analyzerId,
@@ -297,6 +332,11 @@ const AnalyzerTypeMappingEditor = () => {
         .filter((test) => test.mappingState === "BOUND" && test.testId)
         .map((test) => test.testId),
     );
+    (adoption?.rows || [])
+      .filter((planRow) => planRow.bucket === "CHANGED")
+      .flatMap((planRow) => [planRow.current, planRow.newDefault])
+      .filter((decision) => decision?.test.testId)
+      .forEach((decision) => selectedTestIds.add(decision.test.testId));
     selectedTestIds.forEach((testId) => {
       if (loadedResultOptions.current.has(testId)) {
         return;
@@ -309,7 +349,7 @@ const AnalyzerTypeMappingEditor = () => {
         }));
       });
     });
-  }, [draftTests]);
+  }, [draftTests, adoption]);
 
   useEffect(() => {
     draftTests
@@ -472,6 +512,36 @@ const AnalyzerTypeMappingEditor = () => {
     }));
   };
 
+  // Takes one side of a changed row: the operator's current decision or the
+  // newer revision's default, answers included.
+  const takeDecision = (key, decision) => {
+    const options = resultOptionsByTest[decision.test.testId] || [];
+    updateTest(key, (test) => ({
+      ...test,
+      mappingState: decision.test.mappingState,
+      testId: decision.test.testId || null,
+      componentId: decision.test.componentId || null,
+      callComponentId: decision.test.callComponentId || null,
+      placeByCode: false,
+      selectedTest:
+        catalogTests.find(
+          (candidate) => candidate.id === decision.test.testId,
+        ) || null,
+      results: test.results.map((result) => {
+        const taken = decision.results.find(
+          (candidate) => candidate.rawValue === result.rawValue,
+        );
+        return {
+          ...result,
+          mappingState: taken?.mappingState || "UNRESOLVED",
+          resultOptionId: taken?.testResultId || null,
+          selectedOption:
+            options.find((option) => option.id === taken?.testResultId) || null,
+        };
+      }),
+    }));
+  };
+
   const updatePayload = useMemo(
     () => ({
       baseMappingFingerprint: mapping?.mappingFingerprint || null,
@@ -502,6 +572,27 @@ const AnalyzerTypeMappingEditor = () => {
   const changes = useMemo(
     () => listChanges(mapping?.tests, draftTests),
     [mapping?.tests, draftTests],
+  );
+
+  const adoptionRows = useMemo(
+    () =>
+      new Map(
+        (adoption?.rows || []).map((planRow) => [planRowKey(planRow), planRow]),
+      ),
+    [adoption],
+  );
+
+  // Adoption is refused while a dropped record has held results, or while a
+  // record still points at a test that is no longer active.
+  const adoptionBlocked = (adoption?.rows || []).some(
+    (planRow) =>
+      planRow.blockReason === "HELD_RESULTS" ||
+      (planRow.blockReason === "INACTIVE_TEST" &&
+        draftTests.some(
+          (test) =>
+            recordKey(test) === planRowKey(planRow) &&
+            sameTestDecision(test, planRow.current),
+        )),
   );
 
   const confirmable = useMemo(
@@ -560,6 +651,35 @@ const AnalyzerTypeMappingEditor = () => {
         subtitle: "",
       });
     });
+  };
+
+  const saveAdoption = () => {
+    if (saving || adoptionBlocked) {
+      return;
+    }
+    setSaving(true);
+    adoptAnalyzerRevision(
+      analyzerId,
+      revision,
+      { tests: updatePayload.tests, results: updatePayload.results },
+      (response) => {
+        setSaving(false);
+        if (hasApiError(response) || !response?.mappingId) {
+          setNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "analyzerType.adoption.error.save",
+            }),
+            subtitle: errorText(response, ""),
+          });
+          return;
+        }
+        history.push({
+          pathname: `/analyzers/${analyzerId}/mapping`,
+          state: { adoptedRevision: revision },
+        });
+      },
+    );
   };
 
   const confirm = () => {
@@ -712,8 +832,12 @@ const AnalyzerTypeMappingEditor = () => {
   }
 
   const heading = intl.formatMessage(
-    { id: "analyzerType.mappingEditor.title" },
-    { name: mapping.displayName },
+    {
+      id: adopting
+        ? "analyzerType.adoption.title"
+        : "analyzerType.mappingEditor.title",
+    },
+    { name: mapping.displayName, revision },
   );
   const currentUrl = `${location.pathname}${location.search}`;
   const duplicateParams = new URLSearchParams({
@@ -723,6 +847,174 @@ const AnalyzerTypeMappingEditor = () => {
     returnTo: currentUrl,
   });
   const confirmation = mapping.confirmation || { state: "UNCONFIRMED" };
+
+  const decisionName = (decision) =>
+    decision?.test.mappingState === "BOUND"
+      ? catalogTests.find((candidate) => candidate.id === decision.test.testId)
+          ?.name || decision.test.testId
+      : intl.formatMessage({ id: stateMessageId(decision?.test.mappingState) });
+
+  const decisionAnswers = (decision) =>
+    decision.results
+      .filter((result) => result.mappingState === "BOUND")
+      .map(
+        (result) =>
+          `${result.rawValue} → ${
+            (resultOptionsByTest[decision.test.testId] || []).find(
+              (option) => option.id === result.testResultId,
+            )?.label || result.testResultId
+          }`,
+      )
+      .join(", ");
+
+  const renderAdoptionDetail = (test, planRow) => {
+    const key = recordKey(test);
+    if (
+      planRow.blockReason === "INACTIVE_TEST" &&
+      sameTestDecision(test, planRow.current)
+    ) {
+      return (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          hideCloseButton
+          title={intl.formatMessage({
+            id: "analyzerType.adoption.blocked.inactiveTest",
+          })}
+        />
+      );
+    }
+    if (planRow.bucket !== "CHANGED") {
+      return null;
+    }
+    return (
+      <div
+        className="analyzer-type-mapping__adoption-comparison"
+        data-testid={`adoption-comparison-${key}`}
+      >
+        {[
+          ["current", planRow.current, "keepCurrent"],
+          ["newDefault", planRow.newDefault, "useNewDefault"],
+        ]
+          .filter(([, decision]) => decision)
+          .map(([side, decision, action]) => (
+            <div key={side}>
+              <strong>
+                <FormattedMessage
+                  id={`analyzerType.adoption.changed.${side}`}
+                  values={{ name: decisionName(decision) }}
+                />
+              </strong>
+              {decisionAnswers(decision) && (
+                <span>{decisionAnswers(decision)}</span>
+              )}
+              <Button
+                kind="ghost"
+                size="sm"
+                onClick={() => takeDecision(key, decision)}
+              >
+                <FormattedMessage id={`analyzerType.adoption.${action}`} />
+              </Button>
+            </div>
+          ))}
+      </div>
+    );
+  };
+
+  const renderAdoptionSections = () => {
+    const bucketOf = (test) =>
+      adoptionRows.get(recordKey(test))?.bucket || "UNCHANGED";
+    const outsideProposal = adoption.rows.filter(
+      (planRow) =>
+        !draftTests.some((test) => recordKey(test) === planRowKey(planRow)),
+    );
+    const held = outsideProposal.filter(
+      (planRow) => planRow.blockReason === "HELD_RESULTS",
+    );
+    const retired = outsideProposal.filter(
+      (planRow) => planRow.bucket === "RETIRED",
+    );
+    const bucketHeading = (bucket, id, values) => (
+      <div className="analyzer-type-mapping__section-heading">
+        <div>
+          <h2 id={id}>
+            <FormattedMessage id={`analyzerType.adoption.bucket.${bucket}`} />
+          </h2>
+          <p>
+            <FormattedMessage
+              id={`analyzerType.adoption.bucket.${bucket}.help`}
+              values={values}
+            />
+          </p>
+        </div>
+      </div>
+    );
+    return (
+      <>
+        {ADOPTION_BUCKETS.map((bucket) => {
+          const rows = draftTests.filter((test) => bucketOf(test) === bucket);
+          const heldHere = bucket === "BLOCKED" ? held : [];
+          if (rows.length === 0 && heldHere.length === 0) {
+            return null;
+          }
+          const id = `adoption-bucket-${bucket.toLowerCase()}`;
+          return (
+            <section
+              key={bucket}
+              aria-labelledby={id}
+              className="analyzer-type-mapping__bucket"
+            >
+              {bucketHeading(bucket.toLowerCase(), id)}
+              {heldHere.map((planRow) => (
+                <InlineNotification
+                  key={planRowKey(planRow)}
+                  kind="error"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage(
+                    { id: "analyzerType.adoption.blocked.heldResults" },
+                    {
+                      code: planRowKey(planRow),
+                      revision: adoption.fromRevision,
+                    },
+                  )}
+                />
+              ))}
+              {heldHere.length > 0 && (
+                <CarbonLink
+                  as={Link}
+                  to={`/AnalyzerResults?id=${encodeURIComponent(analyzerId)}`}
+                >
+                  <FormattedMessage id="analyzerType.adoption.blocked.reviewHeld" />
+                </CarbonLink>
+              )}
+              {rows.length > 0 && (
+                <Accordion align="start">{rows.map(renderRow)}</Accordion>
+              )}
+            </section>
+          );
+        })}
+        {retired.length > 0 && (
+          <section
+            aria-labelledby="adoption-bucket-retired"
+            className="analyzer-type-mapping__bucket"
+          >
+            {bucketHeading("retired", "adoption-bucket-retired", {
+              revision: adoption.toRevision,
+            })}
+            <ul className="analyzer-type-mapping__retired">
+              {retired.map((planRow) => (
+                <li key={planRowKey(planRow)}>
+                  <strong>{planRowKey(planRow)}</strong>
+                  <span>{decisionName(planRow.current)}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+      </>
+    );
+  };
 
   const renderRow = (test) => {
     const selectedTest =
@@ -739,10 +1031,13 @@ const AnalyzerTypeMappingEditor = () => {
     const components = componentsByTest[test.testId] || [];
     const key = recordKey(test);
     const label = recordLabel(test);
+    const planRow = adopting ? adoptionRows.get(key) : null;
     return (
       <AccordionItem
         key={key}
         open={
+          planRow?.bucket === "CHANGED" ||
+          planRow?.bucket === "BLOCKED" ||
           test.mappingState === "UNRESOLVED" ||
           test.results.some((result) => result.mappingState === "UNRESOLVED") ||
           test.rawCode === focusTest
@@ -783,6 +1078,7 @@ const AnalyzerTypeMappingEditor = () => {
           className="analyzer-type-mapping__row"
           data-testid="analyzer-type-mapping-row"
         >
+          {planRow && renderAdoptionDetail(test, planRow)}
           <div className="analyzer-type-mapping__source">
             <div>
               <span className="analyzer-type-mapping__label">
@@ -1114,7 +1410,7 @@ const AnalyzerTypeMappingEditor = () => {
               >
                 <FormattedMessage id="analyzerType.mappingEditor.return" />
               </Button>
-              {!readOnly && (
+              {!readOnly && !adopting && (
                 <Button
                   kind="primary"
                   disabled={
@@ -1151,14 +1447,32 @@ const AnalyzerTypeMappingEditor = () => {
             title={intl.formatMessage({
               id: readOnly
                 ? "analyzerType.mappingEditor.defaults.title"
-                : "analyzerType.mappingEditor.own.title",
+                : adopting
+                  ? "analyzerType.adoption.notice.title"
+                  : "analyzerType.mappingEditor.own.title",
             })}
-            subtitle={intl.formatMessage({
-              id: readOnly
-                ? "analyzerType.mappingEditor.defaults.subtitle"
-                : "analyzerType.mappingEditor.own.subtitle",
-            })}
+            subtitle={intl.formatMessage(
+              {
+                id: readOnly
+                  ? "analyzerType.mappingEditor.defaults.subtitle"
+                  : adopting
+                    ? "analyzerType.adoption.notice.subtitle"
+                    : "analyzerType.mappingEditor.own.subtitle",
+              },
+              { from: adoption?.fromRevision, revision },
+            )}
           />
+          {!adopting && location.state?.adoptedRevision && (
+            <InlineNotification
+              kind="success"
+              lowContrast
+              className="analyzer-type-mapping__notice"
+              title={intl.formatMessage(
+                { id: "analyzerType.adoption.adopted" },
+                { revision: location.state.adoptedRevision },
+              )}
+            />
+          )}
           {readOnly && (
             <AffectedAnalyzerList
               analyzers={currentTypeSummary?.affectedAnalyzers || []}
@@ -1195,7 +1509,7 @@ const AnalyzerTypeMappingEditor = () => {
               </span>
               <strong>{`${counts.resultsBound} / ${counts.resultsTotal}`}</strong>
             </div>
-            <div>
+            <div hidden={adopting}>
               <span>
                 <FormattedMessage id="analyzerType.mappingEditor.confirmation" />
               </span>
@@ -1209,19 +1523,23 @@ const AnalyzerTypeMappingEditor = () => {
             </div>
           </section>
 
-          <section aria-labelledby="analyzer-type-test-mappings">
-            <div className="analyzer-type-mapping__section-heading">
-              <div>
-                <h2 id="analyzer-type-test-mappings">
-                  <FormattedMessage id="analyzerType.mappingEditor.tests.heading" />
-                </h2>
-                <p>
-                  <FormattedMessage id="analyzerType.mappingEditor.tests.help" />
-                </p>
+          {adopting ? (
+            renderAdoptionSections()
+          ) : (
+            <section aria-labelledby="analyzer-type-test-mappings">
+              <div className="analyzer-type-mapping__section-heading">
+                <div>
+                  <h2 id="analyzer-type-test-mappings">
+                    <FormattedMessage id="analyzerType.mappingEditor.tests.heading" />
+                  </h2>
+                  <p>
+                    <FormattedMessage id="analyzerType.mappingEditor.tests.help" />
+                  </p>
+                </div>
               </div>
-            </div>
-            <Accordion align="start">{draftTests.map(renderRow)}</Accordion>
-          </section>
+              <Accordion align="start">{draftTests.map(renderRow)}</Accordion>
+            </section>
+          )}
 
           <section
             className="analyzer-type-mapping__recognition"
@@ -1333,7 +1651,24 @@ const AnalyzerTypeMappingEditor = () => {
               )}
             />
           )}
-          {!readOnly && (
+          {adopting && (
+            <div className="analyzer-type-mapping__actions">
+              <div />
+              <div>
+                <Button
+                  renderIcon={Save}
+                  disabled={saving || adoptionBlocked}
+                  onClick={saveAdoption}
+                >
+                  <FormattedMessage
+                    id="analyzerType.adoption.save"
+                    values={{ revision }}
+                  />
+                </Button>
+              </div>
+            </div>
+          )}
+          {!readOnly && !adopting && (
             <div className="analyzer-type-mapping__actions">
               <div>
                 {dirty && (

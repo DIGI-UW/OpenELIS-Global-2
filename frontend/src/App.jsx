@@ -1486,6 +1486,18 @@ export default function App() {
                   role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
                 />
                 <SecureRoute
+                  path="/analyzers/:analyzerId/adoption"
+                  exact
+                  component={() => (
+                    <RouteErrorBoundary {...routeErrorAnalyzers}>
+                      <Suspense fallback={null}>
+                        <AnalyzerTypeMappingPage />
+                      </Suspense>
+                    </RouteErrorBoundary>
+                  )}
+                  role={[Roles.ANALYSER_IMPORT, Roles.GLOBAL_ADMIN]}
+                />
+                <SecureRoute
                   path="/analyzers/qc/instruments/:instrumentId"
                   exact
                   render={() => <InstrumentDetailPage />}
