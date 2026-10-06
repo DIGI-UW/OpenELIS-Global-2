@@ -48,8 +48,8 @@ connectionId, request)` (`PUT /api/connections/{id}`) with
 - [x] T3.8 Catalog view: split updateAvailable into newerProfileRevision and newerMappingRevision; the affected-analyzer list links to Adopt (`/analyzers/{id}/adoption?revision=`) or Verify (`/analyzers/{id}/mapping`) respectively
 - [x] T3.9 Adoption screen: the step-2 editor in adoption mode with bucket grouping and side-by-side changed rows
 - [x] T3.10 Replace cannotReplaceTheProfileOfAConfiguredAnalyzer with tests for the new rule (a configured analyzer keeps its profile; a newer revision is reached by adoption, and the refusal says so)
-- [ ] T3.11 Red then green: E2E numeric profile revision N -> N+1 (one LOINC fix, one new code); E2E an analyzer migrated by step 2 offers no Adopt action and is set up on its baseline profile (rule 6)
-- [ ] T3.12 Format cold; commit; stack PR on step 2
+- [x] T3.11 Red then green: E2E numeric profile revision N -> N+1 (one LOINC fix, one new code), in `analyzer-adoption.spec.ts`. Decided 6 Oct: no permanent E2E for the analyzer migrated by step 2 ("this is an permanent e2e tests that's testing a one-time migration scenario?"); changeset 124's result is proven by `DatabaseUpgradeIntegrationTest`
+- [x] T3.12 Format cold; commit; stack PR on step 2
 ```
 
 ### Verify
@@ -70,7 +70,7 @@ gh pr checks <PR>
 5. T3.5 passes. (`mvn`)
 6. "Update available" is two states with two actions; the old refusal test is
    gone. (`grep`, read)
-7. Both E2E scenarios in T3.11 pass. (`pw:test`)
+7. The T3.11 E2E passes. (`pw:test`)
 8. All three CI checkpoints pass. (`gh pr checks`)
 
 ### Background (optional)
