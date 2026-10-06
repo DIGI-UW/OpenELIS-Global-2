@@ -95,11 +95,11 @@ instrument reported about the result.
 ```
 - [x] T2b.1 Red: integration test, bundles shaped from every 303-0251 §2.1.1 outcome as step 6 emits them; the main record's number on the primary and its call on the call component, LOG (`&LOG`) on its component, analyte records (`HIV-1`, `HIV-1&Ct`) on theirs; "<40" stages <40 from the quantity; NOT DETECTED fills only the call
 - [x] T2b.2 Red: integration test, a record with a sub-identity the mapping does not declare is held as an unknown test (rule 13); the number is never held as an unknown answer
-- [ ] T2b.3 Red: component test, the review row shows the instrument's flag, assay name and version and operator; a test's components (call, LOG, analytes) show beneath its main result
+- [x] T2b.3 Red: component test, the review row shows the instrument's flag, assay name and version and operator; a test's components (call, LOG, analytes) show beneath its main result
 - [x] T2b.4 Changeset: mapping test and result rows keyed by (code, sub-identity); the test row gains a call target (component) for a record with both a call and a number; existing rows take the empty sub-identity, unchanged
 - [x] T2b.5 Contract and import: read the sub-identity and the interpretation; map (code, sub-identity); the number from valueQuantity to the row's target, the call to its call target; staged number from valueQuantity, replacing the raw-text prefix
 - [x] T2b.6 Editor and defaults: each (code, sub-identity) the profile declares is its own row; defaults resolve each to the component by its stable code, and create a result row for every declared translation; red first: a translated call (NON DÉTECTÉ) binds to the same answer as NOT DETECTED. The operator places a record on a component, and the main record's call on its call component, with a picker that pre-selects the one component whose code matches the profile's when the record's test changes (decided 6 Oct); a received record the profile does not declare is placed the same way (rule 13). Staged results keep their record's sub-identity, so a held record shows as its own row
-- [ ] T2b.7 Review row: instrument-reported fields; components grouped beneath their main result
+- [x] T2b.7 Review row: instrument-reported fields; components grouped beneath their main result. Decided 6 Oct: on the analyzer results review page, decisions about the specimen (placement, redirect, specimen type) stay per accession, and Accept / Retest / Ignore are per test with its components beneath it and covered by its decision (a test's parts are one measurement; tests on one specimen succeed or fail independently, as MTB detected with rifampicin indeterminate, rule 12); Accept all stays
 - [ ] T2b.8 Green; format cold; commit; stack PR on step 2
 ```
 
@@ -118,8 +118,9 @@ cd frontend && npx vitest run src/components/analyserResults src/components/anal
 2. Nothing is held as an unknown answer because it is a number. (T2b.2)
 3. A reviewer sees the instrument's flag, assay and operator on the row,
    and each test's components beneath its main result. (T2b.3)
-4. Analyzers whose rows have one part behave exactly as before. (existing
-   import and editor tests)
+4. Analyzers whose rows have one part keep their results and placement as
+   before; on the review page their decisions move from one per accession to
+   one per test. (existing import and editor tests; review tests)
 
 ### Background (optional)
 

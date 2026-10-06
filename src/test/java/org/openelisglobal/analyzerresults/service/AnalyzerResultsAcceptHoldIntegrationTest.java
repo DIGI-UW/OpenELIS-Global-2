@@ -289,6 +289,29 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void eachTestOnOneSpecimenKeepsItsOwnReviewDecision() {
+        AnalyzerResultItem accepted = acceptedItem();
+        accepted.setTypeOfSampleId(String.valueOf(TYPE_B));
+        AnalyzerResultItem retested = stagedSibling(seedSingleTypeTest(97006L, TYPE_B));
+        retested.setIsAccepted(false);
+        retested.setIsRejected(true);
+
+        acceptService.acceptAndPersist(List.of(accepted, retested), "1");
+
+        assertEquals("42", resultValueOf(ACCESSION, MULTI_TYPE_TEST));
+        assertEquals("the sibling is sent for retest, not accepted with the first test", "XXXX",
+                resultValueOf(ACCESSION, 97006L));
+    }
+
+    private String resultValueOf(String accession, long testId) {
+        return jdbc.queryForObject(
+                "SELECT r.value FROM clinlims.result r JOIN clinlims.analysis a"
+                        + " ON r.analysis_id = a.id JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                        + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ? AND a.test_id = ?",
+                String.class, accession, testId);
+    }
+
+    @org.junit.Test
     public void aSpecimenChoiceEverySiblingCanUseIsSavedForTheNewOrder() {
         AnalyzerResultItem onlyTypeB = stagedSibling(seedSingleTypeTest(97004L, TYPE_B));
         AnalyzerResultItem chosenB = acceptedItem();

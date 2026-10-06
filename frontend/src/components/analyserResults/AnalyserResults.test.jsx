@@ -443,6 +443,79 @@ describe("AnalyserResults", () => {
     ).not.toBeInTheDocument();
   });
 
+  describe("a specimen with several tests and a test with several parts", () => {
+    const viralLoad = {
+      id: "7001",
+      analyzerId: "2001",
+      accessionNumber: "ACC-VL",
+      testId: "20",
+      testName: "HIV-1 viral load",
+      result: "1009.64",
+      testResultType: "N",
+      readOnly: false,
+      isControl: false,
+      sampleGroupingNumber: 1,
+    };
+    const part = (id, componentLabel, result, extra = {}) => ({
+      ...viralLoad,
+      id,
+      componentId: "comp-" + id,
+      componentLabel,
+      result,
+      ...extra,
+    });
+
+    it("gives each test on one specimen its own decision", async () => {
+      const mtb = { ...viralLoad, id: "7101", testId: "10", testName: "MTB" };
+      const rif = { ...viralLoad, id: "7102", testId: "11", testName: "RIF" };
+      renderResults([mtb, rif]);
+
+      expect(
+        await screen.findByText("MTB", {
+          selector: "[data-testid=sampleInfo]",
+        }),
+      ).toBeInTheDocument();
+      expect(
+        document.getElementById("resultList7101.isAccepted"),
+      ).not.toBeNull();
+      expect(
+        document.getElementById("resultList7102.isAccepted"),
+      ).not.toBeNull();
+      expect(
+        document.getElementById("resultList7102.isRejected"),
+      ).not.toBeNull();
+    });
+
+    it("shows a test's parts beneath its main result, under its decision", async () => {
+      renderResults([viralLoad, part("7002", "Log viral load", "3.00")]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      expect(parts).toHaveTextContent("Log viral load");
+      expect(parts).toHaveTextContent("3.00");
+      expect(document.getElementById("resultList7002.isAccepted")).toBeNull();
+      expect(document.getElementById("resultList7002.result")).toBeNull();
+      expect(
+        screen.queryAllByText("HIV-1 viral load", {
+          selector: "[data-testid=sampleInfo]",
+        }),
+      ).toHaveLength(1);
+    });
+
+    it("keeps a held part beneath its test, marked as held", async () => {
+      renderResults([
+        viralLoad,
+        part("7003", "Call", "NOT DETECTED", {
+          importIssueReason: "result_mapping_not_ready",
+          readOnly: true,
+        }),
+      ]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      expect(within(parts).getByText("Call")).toBeInTheDocument();
+      expect(within(parts).getByText("Held")).toBeInTheDocument();
+    });
+  });
+
   it("submits the result selected for acceptance", async () => {
     renderResults([mappedQualitativeResult]);
 

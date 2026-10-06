@@ -106,6 +106,23 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void aReviewRowOnAComponentCarriesTheComponentsLabel() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('comp-log-review', 4001, 'LOG', 'Log viral load', false, 'Y', NOW())");
+        try {
+            jdbc.update("UPDATE clinlims.analyzer_results SET component_id = 'comp-log-review' WHERE id = 1001");
+
+            mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.resultList[0].componentLabel").value("Log viral load"));
+        } finally {
+            jdbc.update("UPDATE clinlims.analyzer_results SET component_id = NULL WHERE id = 1001");
+            jdbc.update("DELETE FROM clinlims.test_result_component WHERE id = 'comp-log-review'");
+        }
+    }
+
+    @Test
     public void awaitingSpecimenKeepsItsMappedValueAvailableForReview() throws Exception {
         new JdbcTemplate(dataSource).update(
                 "UPDATE clinlims.analyzer_results SET import_issue_reason = ?" + " WHERE id = 1001",
