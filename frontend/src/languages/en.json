@@ -1001,6 +1001,7 @@
   "analyzerType.mappingEditor.componentPicker": "OpenELIS component for {code}",
   "analyzerType.mappingEditor.componentPicker.placeholder": "Choose a component",
   "analyzerType.mappingEditor.excludeTest": "Do not receive {code}",
+  "analyzerType.mappingEditor.translationOf": "Translation of {value}",
   "analyzerType.mappingEditor.partial": "{count} unresolved mappings. You can confirm and connect; affected results will be saved for correction before use.",
   "analyzerType.mappingEditor.incomplete": "Correct unavailable test or result selections before confirmation.",
   "analyzerType.mappingEditor.loading": "Loading analyzer mappings",

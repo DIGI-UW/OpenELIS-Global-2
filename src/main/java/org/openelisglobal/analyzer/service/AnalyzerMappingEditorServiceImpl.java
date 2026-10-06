@@ -293,7 +293,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
             }
             results.add(new AnalyzerMappingView.ResultRow(rawValue, resultState, resultOrigin, optionId,
                     optionId == null ? null : activeResults.get(optionId), suggestedOption, reason,
-                    observedHeldValues.contains(resultKey)));
+                    observedHeldValues.contains(resultKey), record.translationOf().get(rawValue)));
         }
         return new AnalyzerMappingView.TestRow(definition.analyzerCode(), definition.analyzerCode(),
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
@@ -323,11 +323,12 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     }
 
     /**
-     * One record a test reports. Its values are the declared values followed by
-     * their translations; a translation answers with its value's code.
+     * One record a test reports. Each declared value is followed by its
+     * translations; a translation answers with its value's code.
      */
     private record ReportedRecord(BridgeAnalyzerProfile.TestDefinition test, String componentCode, String unit,
-            String resultType, List<String> values, Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes) {
+            String resultType, List<String> values, Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes,
+            Map<String, String> translationOf) {
 
         static ReportedRecord main(BridgeAnalyzerProfile.TestDefinition test) {
             return translated(test, null, test.unit(), test.resultType(), test.resultValues(), test.valueCodes(),
@@ -342,23 +343,27 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
 
         static ReportedRecord undeclared(AnalyzerMappingRowKey key) {
             return new ReportedRecord(new BridgeAnalyzerProfile.TestDefinition(key.sourceRowKey(), List.of(), null,
-                    null, null, null, List.of(), null, Map.of()), null, null, null, List.of(), Map.of());
+                    null, null, null, List.of(), null, Map.of()), null, null, null, List.of(), Map.of(), Map.of());
         }
 
         private static ReportedRecord translated(BridgeAnalyzerProfile.TestDefinition test, String componentCode,
                 String unit, String resultType, List<String> declared,
                 Map<String, BridgeAnalyzerProfile.NormalizedCoding> codes, Map<String, List<String>> translations) {
-            List<String> values = new ArrayList<>(declared);
+            List<String> values = new ArrayList<>();
             Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes = new LinkedHashMap<>(codes);
+            Map<String, String> translationOf = new LinkedHashMap<>();
             for (String value : declared) {
+                values.add(value);
                 for (String text : translations.getOrDefault(value, List.of())) {
                     values.add(text);
+                    translationOf.put(text, value);
                     if (codes.containsKey(value)) {
                         valueCodes.put(text, codes.get(value));
                     }
                 }
             }
-            return new ReportedRecord(test, componentCode, unit, resultType, List.copyOf(values), valueCodes);
+            return new ReportedRecord(test, componentCode, unit, resultType, List.copyOf(values), valueCodes,
+                    translationOf);
         }
     }
 

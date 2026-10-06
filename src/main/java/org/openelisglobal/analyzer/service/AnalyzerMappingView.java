@@ -35,6 +35,6 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
     public record ResultRow(String rawValue, AnalyzerMappingState mappingState, AnalyzerMappingOrigin origin,
             String resultOptionId, AnalyzerMappingCatalogService.ResultOption selectedOption,
             AnalyzerMappingCatalogService.ResultOption suggestedOption, AnalyzerUnresolvedReason unresolvedReason,
-            boolean observed) {
+            boolean observed, String translationOf) {
     }
 }

@@ -176,6 +176,8 @@ export interface AnalyzerTypeMappingResultRow {
   selectedOption?: AnalyzerMappingResultOption | null;
   suggestedOption?: AnalyzerMappingResultOption | null;
   unresolvedReason?: AnalyzerUnresolvedReason | null;
+  /** The declared value this row's text translates, for a translation. */
+  translationOf?: string | null;
 }
 
 export interface AnalyzerTypeMappingTestRow {

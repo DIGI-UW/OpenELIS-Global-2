@@ -1167,7 +1167,11 @@ const AnalyzerTypeMappingEditor = () => {
                                   null;
                                 return (
                                   <div
-                                    className="analyzer-type-mapping__result-row"
+                                    className={
+                                      result.translationOf
+                                        ? "analyzer-type-mapping__result-row analyzer-type-mapping__result-row--translation"
+                                        : "analyzer-type-mapping__result-row"
+                                    }
                                     key={`${key}:${result.rawValue}`}
                                     ref={
                                       test.rawCode === focusTest &&
@@ -1178,6 +1182,16 @@ const AnalyzerTypeMappingEditor = () => {
                                   >
                                     <div className="analyzer-type-mapping__result-source">
                                       <code>{result.rawValue}</code>
+                                      {result.translationOf && (
+                                        <span className="analyzer-type-mapping__translation-of">
+                                          <FormattedMessage
+                                            id="analyzerType.mappingEditor.translationOf"
+                                            values={{
+                                              value: result.translationOf,
+                                            }}
+                                          />
+                                        </span>
+                                      )}
                                       {result.origin === "OVERRIDE" && (
                                         <Tag type="blue" size="sm">
                                           <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
