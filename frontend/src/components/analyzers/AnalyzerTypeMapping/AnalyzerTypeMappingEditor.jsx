@@ -724,6 +724,354 @@ const AnalyzerTypeMappingEditor = () => {
   });
   const confirmation = mapping.confirmation || { state: "UNCONFIRMED" };
 
+  const renderRow = (test) => {
+    const selectedTest =
+      catalogTests.find((candidate) => candidate.id === test.testId) ||
+      test.selectedTest ||
+      null;
+    const answerComponent = answerComponentId(test);
+    const resultOptions = test.testId
+      ? resultOptionsByTest[test.testId]?.filter(
+          (option) =>
+            !answerComponent || option.componentId === answerComponent,
+        )
+      : undefined;
+    const components = componentsByTest[test.testId] || [];
+    const key = recordKey(test);
+    const label = recordLabel(test);
+    return (
+      <AccordionItem
+        key={key}
+        open={
+          test.mappingState === "UNRESOLVED" ||
+          test.results.some((result) => result.mappingState === "UNRESOLVED") ||
+          test.rawCode === focusTest
+        }
+        title={
+          <div className="analyzer-type-mapping__row-title">
+            <strong>{label}</strong>
+            <span>{test.testNameHint}</span>
+            <Tag
+              type={stateTagType(
+                test.results.some(
+                  (result) => result.mappingState === "UNRESOLVED",
+                )
+                  ? "UNRESOLVED"
+                  : test.mappingState,
+              )}
+              size="sm"
+            >
+              <FormattedMessage
+                id={stateMessageId(
+                  test.results.some(
+                    (result) => result.mappingState === "UNRESOLVED",
+                  )
+                    ? "UNRESOLVED"
+                    : test.mappingState,
+                )}
+              />
+            </Tag>
+            {test.origin === "OVERRIDE" && (
+              <Tag type="blue" size="sm">
+                <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
+              </Tag>
+            )}
+          </div>
+        }
+      >
+        <div
+          className="analyzer-type-mapping__row"
+          data-testid="analyzer-type-mapping-row"
+        >
+          <div className="analyzer-type-mapping__source">
+            <div>
+              <span className="analyzer-type-mapping__label">
+                <FormattedMessage id="analyzerType.mappingEditor.sourceCode" />
+              </span>
+              <strong>{label}</strong>
+            </div>
+            {test.loinc && (
+              <div>
+                <span className="analyzer-type-mapping__label">LOINC</span>
+                <strong>{test.loinc}</strong>
+              </div>
+            )}
+            {test.normalizedCoding && (
+              <div>
+                <span className="analyzer-type-mapping__label">
+                  <FormattedMessage id="analyzerType.mappingEditor.normalized" />
+                </span>
+                <strong>
+                  {test.normalizedCoding.display || test.normalizedCoding.code}
+                </strong>
+              </div>
+            )}
+            {(test.aliases || []).map((alias) => (
+              <span className="analyzer-type-mapping__alias" key={alias}>
+                <FormattedMessage
+                  id="analyzerType.mappingEditor.alias"
+                  values={{ alias }}
+                />
+              </span>
+            ))}
+          </div>
+
+          <div className="analyzer-type-mapping__decision">
+            <ComboBox
+              id={`analyzer-test-${key}`}
+              titleText={intl.formatMessage(
+                { id: "analyzerType.mappingEditor.testPicker" },
+                { code: label },
+              )}
+              placeholder={intl.formatMessage({
+                id: "analyzerType.mappingEditor.testPicker.placeholder",
+              })}
+              items={catalogTests}
+              itemToString={testItemText}
+              shouldFilterItem={includesComboBoxText}
+              // An excluded row keeps showing its prior choice: clearing
+              // a controlled ComboBox fires onChange(null).
+              selectedItem={
+                test.mappingState === "UNRESOLVED" ? null : selectedTest
+              }
+              disabled={readOnly || test.mappingState === "EXCLUDED"}
+              onChange={({ selectedItem }) => selectTest(key, selectedItem)}
+            />
+            {test.mappingState === "BOUND" && takesComponent(test) && (
+              <Dropdown
+                id={`analyzer-component-${key}`}
+                titleText={intl.formatMessage(
+                  {
+                    id: "analyzerType.mappingEditor.componentPicker",
+                  },
+                  { code: label },
+                )}
+                label={intl.formatMessage({
+                  id: "analyzerType.mappingEditor.componentPicker.placeholder",
+                })}
+                items={components}
+                itemToString={componentItemText}
+                selectedItem={
+                  components.find(
+                    (component) => component.id === test.componentId,
+                  ) || null
+                }
+                disabled={readOnly}
+                onChange={({ selectedItem }) =>
+                  selectComponent(key, "componentId", selectedItem)
+                }
+              />
+            )}
+            {test.mappingState === "BOUND" && takesCallComponent(test) && (
+              <Dropdown
+                id={`analyzer-call-component-${key}`}
+                titleText={intl.formatMessage(
+                  {
+                    id: "analyzerType.mappingEditor.callComponentPicker",
+                  },
+                  { code: label },
+                )}
+                label={intl.formatMessage({
+                  id: "analyzerType.mappingEditor.componentPicker.placeholder",
+                })}
+                items={components}
+                itemToString={componentItemText}
+                selectedItem={
+                  components.find(
+                    (component) => component.id === test.callComponentId,
+                  ) || null
+                }
+                disabled={readOnly}
+                onChange={({ selectedItem }) =>
+                  selectComponent(key, "callComponentId", selectedItem)
+                }
+              />
+            )}
+            {!readOnly &&
+              test.suggestedTest &&
+              test.mappingState === "UNRESOLVED" && (
+                <div className="analyzer-type-mapping__suggestion">
+                  <span>
+                    <FormattedMessage
+                      id="analyzerType.mappingEditor.suggestion"
+                      values={{ name: test.suggestedTest.name }}
+                    />
+                  </span>
+                  <Button
+                    kind="ghost"
+                    size="sm"
+                    onClick={() => selectTest(key, test.suggestedTest)}
+                  >
+                    <FormattedMessage id="analyzerType.mappingEditor.useSuggestion" />
+                  </Button>
+                </div>
+              )}
+            <Checkbox
+              id={`exclude-test-${key}`}
+              aria-label={intl.formatMessage(
+                { id: "analyzerType.mappingEditor.excludeTest" },
+                { code: label },
+              )}
+              labelText={intl.formatMessage(
+                { id: "analyzerType.mappingEditor.excludeTest" },
+                { code: label },
+              )}
+              checked={test.mappingState === "EXCLUDED"}
+              disabled={readOnly}
+              onChange={(_, state) => excludeTest(key, state.checked)}
+            />
+          </div>
+
+          {test.results.length > 0 && test.mappingState !== "EXCLUDED" && (
+            <div className="analyzer-type-mapping__results">
+              <h3>
+                <FormattedMessage
+                  id="analyzerType.mappingEditor.results.heading"
+                  values={{
+                    name: selectedTest?.name || label,
+                  }}
+                />
+              </h3>
+              {test.mappingState !== "BOUND" ? (
+                <InlineNotification
+                  kind="warning"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "analyzerType.mappingEditor.results.testFirst",
+                  })}
+                />
+              ) : resultOptions === undefined ? (
+                <Loading
+                  small
+                  withOverlay={false}
+                  description={intl.formatMessage({
+                    id: "analyzerType.mappingEditor.results.loading",
+                  })}
+                />
+              ) : resultOptions.length === 0 ? (
+                <div className="analyzer-type-mapping__catalog-action">
+                  {test.results.map((result) => (
+                    <div key={result.rawValue}>
+                      <code>{result.rawValue}</code>
+                    </div>
+                  ))}
+                  <InlineNotification
+                    kind="warning"
+                    lowContrast
+                    hideCloseButton
+                    title={intl.formatMessage({
+                      id: "analyzerType.mappingEditor.results.empty",
+                    })}
+                  />
+                  <CarbonLink
+                    as={Link}
+                    to={`/MasterListsPage/TestCatalogEditor/${test.testId}/sample-results?returnTo=${encodeURIComponent(
+                      currentUrl,
+                    )}`}
+                  >
+                    <FormattedMessage id="analyzerType.mappingEditor.results.openCatalog" />
+                  </CarbonLink>
+                </div>
+              ) : (
+                test.results.map((result) => {
+                  const selectedOption =
+                    resultOptions.find(
+                      (option) => option.id === result.resultOptionId,
+                    ) ||
+                    result.selectedOption ||
+                    null;
+                  return (
+                    <div
+                      className={
+                        result.translationOf
+                          ? "analyzer-type-mapping__result-row analyzer-type-mapping__result-row--translation"
+                          : "analyzer-type-mapping__result-row"
+                      }
+                      key={`${key}:${result.rawValue}`}
+                      ref={
+                        test.rawCode === focusTest &&
+                        result.rawValue === focusValue
+                          ? focusedResultRow
+                          : null
+                      }
+                    >
+                      <div className="analyzer-type-mapping__result-source">
+                        <code>{result.rawValue}</code>
+                        {result.translationOf && (
+                          <span className="analyzer-type-mapping__translation-of">
+                            <FormattedMessage
+                              id="analyzerType.mappingEditor.translationOf"
+                              values={{
+                                value: result.translationOf,
+                              }}
+                            />
+                          </span>
+                        )}
+                        {result.origin === "OVERRIDE" && (
+                          <Tag type="blue" size="sm">
+                            <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
+                          </Tag>
+                        )}
+                        {result.observed && (
+                          <Tag type="warm-gray" size="sm">
+                            <FormattedMessage id="analyzerType.mappingEditor.observed" />
+                          </Tag>
+                        )}
+                      </div>
+                      <Dropdown
+                        id={`result-${key}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
+                        titleText={intl.formatMessage(
+                          {
+                            id: "analyzerType.mappingEditor.resultPicker",
+                          },
+                          { value: result.rawValue },
+                        )}
+                        label={intl.formatMessage({
+                          id: "analyzerType.mappingEditor.resultPicker.placeholder",
+                        })}
+                        items={resultOptions}
+                        itemToString={resultItemText}
+                        selectedItem={
+                          result.mappingState === "UNRESOLVED"
+                            ? null
+                            : selectedOption
+                        }
+                        disabled={
+                          readOnly || result.mappingState === "EXCLUDED"
+                        }
+                        onChange={({ selectedItem }) =>
+                          selectResult(key, result.rawValue, selectedItem)
+                        }
+                      />
+                      <Checkbox
+                        id={`exclude-result-${key}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
+                        aria-label={intl.formatMessage(
+                          {
+                            id: "analyzerType.mappingEditor.excludeResult",
+                          },
+                          { value: result.rawValue },
+                        )}
+                        labelText={intl.formatMessage({
+                          id: "analyzerType.mappingEditor.excludeResult.short",
+                        })}
+                        checked={result.mappingState === "EXCLUDED"}
+                        disabled={readOnly}
+                        onChange={(_, state) =>
+                          excludeResult(key, result.rawValue, state.checked)
+                        }
+                      />
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          )}
+        </div>
+      </AccordionItem>
+    );
+  };
+
   return (
     <>
       <PageBreadCrumb
@@ -872,402 +1220,7 @@ const AnalyzerTypeMappingEditor = () => {
                 </p>
               </div>
             </div>
-            <Accordion align="start">
-              {draftTests.map((test) => {
-                const selectedTest =
-                  catalogTests.find(
-                    (candidate) => candidate.id === test.testId,
-                  ) ||
-                  test.selectedTest ||
-                  null;
-                const answerComponent = answerComponentId(test);
-                const resultOptions = test.testId
-                  ? resultOptionsByTest[test.testId]?.filter(
-                      (option) =>
-                        !answerComponent ||
-                        option.componentId === answerComponent,
-                    )
-                  : undefined;
-                const components = componentsByTest[test.testId] || [];
-                const key = recordKey(test);
-                const label = recordLabel(test);
-                return (
-                  <AccordionItem
-                    key={key}
-                    open={
-                      test.mappingState === "UNRESOLVED" ||
-                      test.results.some(
-                        (result) => result.mappingState === "UNRESOLVED",
-                      ) ||
-                      test.rawCode === focusTest
-                    }
-                    title={
-                      <div className="analyzer-type-mapping__row-title">
-                        <strong>{label}</strong>
-                        <span>{test.testNameHint}</span>
-                        <Tag
-                          type={stateTagType(
-                            test.results.some(
-                              (result) => result.mappingState === "UNRESOLVED",
-                            )
-                              ? "UNRESOLVED"
-                              : test.mappingState,
-                          )}
-                          size="sm"
-                        >
-                          <FormattedMessage
-                            id={stateMessageId(
-                              test.results.some(
-                                (result) =>
-                                  result.mappingState === "UNRESOLVED",
-                              )
-                                ? "UNRESOLVED"
-                                : test.mappingState,
-                            )}
-                          />
-                        </Tag>
-                        {test.origin === "OVERRIDE" && (
-                          <Tag type="blue" size="sm">
-                            <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
-                          </Tag>
-                        )}
-                      </div>
-                    }
-                  >
-                    <div
-                      className="analyzer-type-mapping__row"
-                      data-testid="analyzer-type-mapping-row"
-                    >
-                      <div className="analyzer-type-mapping__source">
-                        <div>
-                          <span className="analyzer-type-mapping__label">
-                            <FormattedMessage id="analyzerType.mappingEditor.sourceCode" />
-                          </span>
-                          <strong>{label}</strong>
-                        </div>
-                        {test.loinc && (
-                          <div>
-                            <span className="analyzer-type-mapping__label">
-                              LOINC
-                            </span>
-                            <strong>{test.loinc}</strong>
-                          </div>
-                        )}
-                        {test.normalizedCoding && (
-                          <div>
-                            <span className="analyzer-type-mapping__label">
-                              <FormattedMessage id="analyzerType.mappingEditor.normalized" />
-                            </span>
-                            <strong>
-                              {test.normalizedCoding.display ||
-                                test.normalizedCoding.code}
-                            </strong>
-                          </div>
-                        )}
-                        {(test.aliases || []).map((alias) => (
-                          <span
-                            className="analyzer-type-mapping__alias"
-                            key={alias}
-                          >
-                            <FormattedMessage
-                              id="analyzerType.mappingEditor.alias"
-                              values={{ alias }}
-                            />
-                          </span>
-                        ))}
-                      </div>
-
-                      <div className="analyzer-type-mapping__decision">
-                        <ComboBox
-                          id={`analyzer-test-${key}`}
-                          titleText={intl.formatMessage(
-                            { id: "analyzerType.mappingEditor.testPicker" },
-                            { code: label },
-                          )}
-                          placeholder={intl.formatMessage({
-                            id: "analyzerType.mappingEditor.testPicker.placeholder",
-                          })}
-                          items={catalogTests}
-                          itemToString={testItemText}
-                          shouldFilterItem={includesComboBoxText}
-                          // An excluded row keeps showing its prior choice: clearing
-                          // a controlled ComboBox fires onChange(null).
-                          selectedItem={
-                            test.mappingState === "UNRESOLVED"
-                              ? null
-                              : selectedTest
-                          }
-                          disabled={
-                            readOnly || test.mappingState === "EXCLUDED"
-                          }
-                          onChange={({ selectedItem }) =>
-                            selectTest(key, selectedItem)
-                          }
-                        />
-                        {test.mappingState === "BOUND" &&
-                          takesComponent(test) && (
-                            <Dropdown
-                              id={`analyzer-component-${key}`}
-                              titleText={intl.formatMessage(
-                                {
-                                  id: "analyzerType.mappingEditor.componentPicker",
-                                },
-                                { code: label },
-                              )}
-                              label={intl.formatMessage({
-                                id: "analyzerType.mappingEditor.componentPicker.placeholder",
-                              })}
-                              items={components}
-                              itemToString={componentItemText}
-                              selectedItem={
-                                components.find(
-                                  (component) =>
-                                    component.id === test.componentId,
-                                ) || null
-                              }
-                              disabled={readOnly}
-                              onChange={({ selectedItem }) =>
-                                selectComponent(
-                                  key,
-                                  "componentId",
-                                  selectedItem,
-                                )
-                              }
-                            />
-                          )}
-                        {test.mappingState === "BOUND" &&
-                          takesCallComponent(test) && (
-                            <Dropdown
-                              id={`analyzer-call-component-${key}`}
-                              titleText={intl.formatMessage(
-                                {
-                                  id: "analyzerType.mappingEditor.callComponentPicker",
-                                },
-                                { code: label },
-                              )}
-                              label={intl.formatMessage({
-                                id: "analyzerType.mappingEditor.componentPicker.placeholder",
-                              })}
-                              items={components}
-                              itemToString={componentItemText}
-                              selectedItem={
-                                components.find(
-                                  (component) =>
-                                    component.id === test.callComponentId,
-                                ) || null
-                              }
-                              disabled={readOnly}
-                              onChange={({ selectedItem }) =>
-                                selectComponent(
-                                  key,
-                                  "callComponentId",
-                                  selectedItem,
-                                )
-                              }
-                            />
-                          )}
-                        {!readOnly &&
-                          test.suggestedTest &&
-                          test.mappingState === "UNRESOLVED" && (
-                            <div className="analyzer-type-mapping__suggestion">
-                              <span>
-                                <FormattedMessage
-                                  id="analyzerType.mappingEditor.suggestion"
-                                  values={{ name: test.suggestedTest.name }}
-                                />
-                              </span>
-                              <Button
-                                kind="ghost"
-                                size="sm"
-                                onClick={() =>
-                                  selectTest(key, test.suggestedTest)
-                                }
-                              >
-                                <FormattedMessage id="analyzerType.mappingEditor.useSuggestion" />
-                              </Button>
-                            </div>
-                          )}
-                        <Checkbox
-                          id={`exclude-test-${key}`}
-                          aria-label={intl.formatMessage(
-                            { id: "analyzerType.mappingEditor.excludeTest" },
-                            { code: label },
-                          )}
-                          labelText={intl.formatMessage(
-                            { id: "analyzerType.mappingEditor.excludeTest" },
-                            { code: label },
-                          )}
-                          checked={test.mappingState === "EXCLUDED"}
-                          disabled={readOnly}
-                          onChange={(_, state) =>
-                            excludeTest(key, state.checked)
-                          }
-                        />
-                      </div>
-
-                      {test.results.length > 0 &&
-                        test.mappingState !== "EXCLUDED" && (
-                          <div className="analyzer-type-mapping__results">
-                            <h3>
-                              <FormattedMessage
-                                id="analyzerType.mappingEditor.results.heading"
-                                values={{
-                                  name: selectedTest?.name || label,
-                                }}
-                              />
-                            </h3>
-                            {test.mappingState !== "BOUND" ? (
-                              <InlineNotification
-                                kind="warning"
-                                lowContrast
-                                hideCloseButton
-                                title={intl.formatMessage({
-                                  id: "analyzerType.mappingEditor.results.testFirst",
-                                })}
-                              />
-                            ) : resultOptions === undefined ? (
-                              <Loading
-                                small
-                                withOverlay={false}
-                                description={intl.formatMessage({
-                                  id: "analyzerType.mappingEditor.results.loading",
-                                })}
-                              />
-                            ) : resultOptions.length === 0 ? (
-                              <div className="analyzer-type-mapping__catalog-action">
-                                {test.results.map((result) => (
-                                  <div key={result.rawValue}>
-                                    <code>{result.rawValue}</code>
-                                  </div>
-                                ))}
-                                <InlineNotification
-                                  kind="warning"
-                                  lowContrast
-                                  hideCloseButton
-                                  title={intl.formatMessage({
-                                    id: "analyzerType.mappingEditor.results.empty",
-                                  })}
-                                />
-                                <CarbonLink
-                                  as={Link}
-                                  to={`/MasterListsPage/TestCatalogEditor/${test.testId}/sample-results?returnTo=${encodeURIComponent(
-                                    currentUrl,
-                                  )}`}
-                                >
-                                  <FormattedMessage id="analyzerType.mappingEditor.results.openCatalog" />
-                                </CarbonLink>
-                              </div>
-                            ) : (
-                              test.results.map((result) => {
-                                const selectedOption =
-                                  resultOptions.find(
-                                    (option) =>
-                                      option.id === result.resultOptionId,
-                                  ) ||
-                                  result.selectedOption ||
-                                  null;
-                                return (
-                                  <div
-                                    className={
-                                      result.translationOf
-                                        ? "analyzer-type-mapping__result-row analyzer-type-mapping__result-row--translation"
-                                        : "analyzer-type-mapping__result-row"
-                                    }
-                                    key={`${key}:${result.rawValue}`}
-                                    ref={
-                                      test.rawCode === focusTest &&
-                                      result.rawValue === focusValue
-                                        ? focusedResultRow
-                                        : null
-                                    }
-                                  >
-                                    <div className="analyzer-type-mapping__result-source">
-                                      <code>{result.rawValue}</code>
-                                      {result.translationOf && (
-                                        <span className="analyzer-type-mapping__translation-of">
-                                          <FormattedMessage
-                                            id="analyzerType.mappingEditor.translationOf"
-                                            values={{
-                                              value: result.translationOf,
-                                            }}
-                                          />
-                                        </span>
-                                      )}
-                                      {result.origin === "OVERRIDE" && (
-                                        <Tag type="blue" size="sm">
-                                          <FormattedMessage id="analyzerType.mappingEditor.origin.override" />
-                                        </Tag>
-                                      )}
-                                      {result.observed && (
-                                        <Tag type="warm-gray" size="sm">
-                                          <FormattedMessage id="analyzerType.mappingEditor.observed" />
-                                        </Tag>
-                                      )}
-                                    </div>
-                                    <Dropdown
-                                      id={`result-${key}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
-                                      titleText={intl.formatMessage(
-                                        {
-                                          id: "analyzerType.mappingEditor.resultPicker",
-                                        },
-                                        { value: result.rawValue },
-                                      )}
-                                      label={intl.formatMessage({
-                                        id: "analyzerType.mappingEditor.resultPicker.placeholder",
-                                      })}
-                                      items={resultOptions}
-                                      itemToString={resultItemText}
-                                      selectedItem={
-                                        result.mappingState === "UNRESOLVED"
-                                          ? null
-                                          : selectedOption
-                                      }
-                                      disabled={
-                                        readOnly ||
-                                        result.mappingState === "EXCLUDED"
-                                      }
-                                      onChange={({ selectedItem }) =>
-                                        selectResult(
-                                          key,
-                                          result.rawValue,
-                                          selectedItem,
-                                        )
-                                      }
-                                    />
-                                    <Checkbox
-                                      id={`exclude-result-${key}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
-                                      aria-label={intl.formatMessage(
-                                        {
-                                          id: "analyzerType.mappingEditor.excludeResult",
-                                        },
-                                        { value: result.rawValue },
-                                      )}
-                                      labelText={intl.formatMessage({
-                                        id: "analyzerType.mappingEditor.excludeResult.short",
-                                      })}
-                                      checked={
-                                        result.mappingState === "EXCLUDED"
-                                      }
-                                      disabled={readOnly}
-                                      onChange={(_, state) =>
-                                        excludeResult(
-                                          key,
-                                          result.rawValue,
-                                          state.checked,
-                                        )
-                                      }
-                                    />
-                                  </div>
-                                );
-                              })
-                            )}
-                          </div>
-                        )}
-                    </div>
-                  </AccordionItem>
-                );
-              })}
-            </Accordion>
+            <Accordion align="start">{draftTests.map(renderRow)}</Accordion>
           </section>
 
           <section
