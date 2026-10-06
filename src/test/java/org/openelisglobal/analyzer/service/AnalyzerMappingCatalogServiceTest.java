@@ -16,6 +16,7 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.openelisglobal.testterminology.valueholder.TestTerminologyMapping;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -48,6 +49,18 @@ public class AnalyzerMappingCatalogServiceTest {
     public void setUp() {
         service = new AnalyzerMappingCatalogServiceImpl(testService, testResultService, terminologyService,
                 dictionaryService, sampleTypes, sampleTypeTests, componentService);
+    }
+
+    @Test
+    public void componentOptionsCarryEachComponentsCodeAndLabel() {
+        TestResultComponent log = new TestResultComponent();
+        log.setId("c1");
+        log.setCode("LOG");
+        log.setLabel("Log viral load");
+        when(componentService.getActiveComponentsByTestId("1")).thenReturn(List.of(log));
+
+        assertEquals(List.of(new AnalyzerMappingCatalogService.ComponentOption("c1", "LOG", "Log viral load")),
+                service.getActiveComponents("1"));
     }
 
     @Test

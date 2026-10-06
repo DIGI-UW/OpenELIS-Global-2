@@ -33,6 +33,6 @@ public interface AnalyzerMappingCatalogService {
         }
     }
 
-    record ComponentOption(String id, String code) {
+    record ComponentOption(String id, String code, String label) {
     }
 }

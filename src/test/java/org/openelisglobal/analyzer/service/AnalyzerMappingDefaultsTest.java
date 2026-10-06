@@ -244,7 +244,7 @@ public class AnalyzerMappingDefaultsTest {
 
     private void viralLoadCatalog(List<String> componentCodes) {
         when(catalog.getActiveComponents("1")).thenReturn(componentCodes.stream()
-                .map(code -> new AnalyzerMappingCatalogService.ComponentOption("comp-" + code, code)).toList());
+                .map(code -> new AnalyzerMappingCatalogService.ComponentOption("comp-" + code, code, code)).toList());
         TestResult number = new TestResult();
         number.setTestResultType("N");
         when(testResults.getActiveTestResultsByTest("1")).thenReturn(List.of(number));

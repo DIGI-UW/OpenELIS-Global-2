@@ -79,6 +79,12 @@ public class AnalyzerTypeRestController extends BaseRestController {
         return ResponseEntity.ok(mappingCatalogService.getActiveResultOptions(testId));
     }
 
+    @GetMapping("/mapping-catalog/tests/{testId}/components")
+    public ResponseEntity<List<AnalyzerMappingCatalogService.ComponentOption>> getMappingComponents(
+            @PathVariable String testId) {
+        return ResponseEntity.ok(mappingCatalogService.getActiveComponents(testId));
+    }
+
     @PostMapping("/drafts")
     public ResponseEntity<JsonNode> createDraft(@RequestBody CreateDraftRequest request,
             HttpServletRequest httpRequest) {
