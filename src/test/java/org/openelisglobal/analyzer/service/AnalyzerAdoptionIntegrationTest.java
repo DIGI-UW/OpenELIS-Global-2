@@ -396,6 +396,20 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 .findFirst().orElseThrow(() -> new AssertionError("nothing staged for " + code));
     }
 
+    /**
+     * An active lab unit of this test's own; activation refuses an analyzer whose
+     * lab units are all inactive or missing.
+     */
+    private String labUnit() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO clinlims.localization (id, description) SELECT 9851, 'Adoption bench section'"
+                + " WHERE NOT EXISTS (SELECT 1 FROM clinlims.localization WHERE id = 9851)");
+        jdbc.update("INSERT INTO clinlims.test_section (id, name, description, is_external, is_active, sort_order,"
+                + " name_localization_id) SELECT 9851, 'Adoption bench', 'Adoption bench section', 'N',"
+                + " 'Y', 9851, 9851 WHERE NOT EXISTS (SELECT 1 FROM clinlims.test_section WHERE id = 9851)");
+        return "9851";
+    }
+
     private static AnalyzerMappingAdoption.Row row(AnalyzerAdoptionService.AdoptionPlan plan, String code) {
         return plan.rows().stream().filter(row -> row.key().equals(AnalyzerMappingRowKey.main(code))).findFirst()
                 .orElseThrow(() -> new AssertionError("no adoption row for " + code));
@@ -407,8 +421,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         analyzer.setName("Adoption bench");
         analyzer.setStatus(Analyzer.AnalyzerStatus.SETUP);
         analyzer.setActive(false);
-        analyzer.setTestUnitIds(List.of(new JdbcTemplate(dataSource)
-                .queryForObject("SELECT min(id)::text FROM test_section WHERE is_active = 'Y'", String.class)));
+        analyzer.setTestUnitIds(List.of(labUnit()));
         analyzer.setSysUserId("1");
         analyzerDAO.insert(analyzer);
         analyzerId = analyzer.getId();
