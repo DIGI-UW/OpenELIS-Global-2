@@ -121,6 +121,19 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     @Column(name = "instrument_note", columnDefinition = "TEXT")
     private String instrumentNote;
 
+    /** The instrument's flags as sent, never interpreted. */
+    @Column(name = "instrument_flags", length = 255)
+    private String instrumentFlags;
+
+    @Column(name = "assay_name", length = 255)
+    private String assayName;
+
+    @Column(name = "assay_version", length = 64)
+    private String assayVersion;
+
+    @Column(name = "instrument_operator", length = 255)
+    private String instrumentOperator;
+
     @Column(name = "source_message_id", length = 255)
     private String sourceMessageId;
 
@@ -214,6 +227,38 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setInstrumentPatientName(String instrumentPatientName) {
         this.instrumentPatientName = instrumentPatientName;
+    }
+
+    public String getInstrumentFlags() {
+        return instrumentFlags;
+    }
+
+    public void setInstrumentFlags(String instrumentFlags) {
+        this.instrumentFlags = instrumentFlags;
+    }
+
+    public String getAssayName() {
+        return assayName;
+    }
+
+    public void setAssayName(String assayName) {
+        this.assayName = assayName;
+    }
+
+    public String getAssayVersion() {
+        return assayVersion;
+    }
+
+    public void setAssayVersion(String assayVersion) {
+        this.assayVersion = assayVersion;
+    }
+
+    public String getInstrumentOperator() {
+        return instrumentOperator;
+    }
+
+    public void setInstrumentOperator(String instrumentOperator) {
+        this.instrumentOperator = instrumentOperator;
     }
 
     public String getInstrumentNote() {

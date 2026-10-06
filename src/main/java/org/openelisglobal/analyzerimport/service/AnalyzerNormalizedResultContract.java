@@ -37,6 +37,7 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     private static final String V2_SUBID = "http://hl7.org/fhir/StructureDefinition/observation-v2-subid";
     private static final String ORIGINAL_SUB_IDENTIFIER = "original-sub-identifier";
     private static final String INTERPRETATION = "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation";
+    private static final String ASSAY_VERSION = EXTENSION_ROOT + "analyzer-assay-version";
     /**
      * Interpretation codes that state a call (positive, negative, detected, not
      * detected, indeterminate); any other interpretation is a flag such as N, A or
@@ -174,7 +175,46 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, lotNumber, controlLevel,
                 completed, sourcePayload, patient == null ? null : patient.identifier(),
                 patient == null ? null : patient.name(), note.isEmpty() ? null : note,
-                observation.hasDataAbsentReason(), comparator, subIdentityOf(observation), number, call);
+                observation.hasDataAbsentReason(), comparator, subIdentityOf(observation), number, call,
+                flagsOf(observation), assayNameOf(observation),
+                observation.hasMethod() ? optionalExtensionText(observation.getMethod(), ASSAY_VERSION) : null,
+                operatorOf(observation));
+    }
+
+    /**
+     * The instrument's flags as sent: every interpretation that does not state a
+     * call. OpenELIS shows them and does not interpret them.
+     */
+    private static String flagsOf(Observation observation) {
+        return joined(observation.getInterpretation().stream()
+                .filter(concept -> concept.getCoding().stream().noneMatch(
+                        coding -> INTERPRETATION.equals(coding.getSystem()) && CALL_CODES.contains(coding.getCode())))
+                .map(concept -> concept.hasText() ? concept.getText()
+                        : concept.getCoding().stream().findFirst()
+                                .map(coding -> coding.hasDisplay() ? coding.getDisplay() : coding.getCode())
+                                .orElse(null)),
+                ", ");
+    }
+
+    /** The assay that produced the result ({@code Observation.method}). */
+    private static String assayNameOf(Observation observation) {
+        if (!observation.hasMethod()) {
+            return null;
+        }
+        var method = observation.getMethod();
+        return method.hasText() ? method.getText().trim()
+                : joined(method.getCoding().stream()
+                        .map(coding -> coding.hasDisplay() ? coding.getDisplay() : coding.getCode()), ", ");
+    }
+
+    private static String operatorOf(Observation observation) {
+        return joined(observation.getPerformer().stream().map(performer -> performer.getDisplay()), ", ");
+    }
+
+    private static String joined(java.util.stream.Stream<String> texts, String separator) {
+        String text = texts.filter(value -> value != null && !value.isBlank()).map(String::trim)
+                .collect(java.util.stream.Collectors.joining(separator));
+        return text.isEmpty() ? null : text;
     }
 
     /** The record's sub-identity under its code; empty for the main result. */
@@ -243,8 +283,15 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     }
 
     private static String optionalExtensionText(DomainResource resource, String url) {
-        List<Extension> matches = resource.getExtension().stream().filter(extension -> url.equals(extension.getUrl()))
-                .toList();
+        return optionalExtensionText(resource.getExtension(), url);
+    }
+
+    private static String optionalExtensionText(org.hl7.fhir.r4.model.Element element, String url) {
+        return optionalExtensionText(element.getExtension(), url);
+    }
+
+    private static String optionalExtensionText(List<Extension> extensions, String url) {
+        List<Extension> matches = extensions.stream().filter(extension -> url.equals(extension.getUrl())).toList();
         if (matches.isEmpty()) {
             return null;
         }
@@ -296,12 +343,15 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
      * One analyzer result. {@code note} is the instrument's own comments on the run
      * ({@code Observation.note}); {@code runFailed} means the run produced no value
      * ({@code Observation.dataAbsentReason}), as for an ERROR or NO RESULT.
+     * {@code flags}, {@code assayName}, {@code assayVersion} and {@code operator}
+     * are instrument-reported and shown as sent.
      */
     public record Result(String accessionNumber, String rawTestCode, String rawValue, String units, String resultType,
             String classification, String sourceTransport, String recognitionMode, String recognitionOutcome,
             String recognitionFingerprint, String lotNumber, String controlLevel, Timestamp completeDate,
             String sourcePayload, String instrumentPatientId, String instrumentPatientName, String note,
-            boolean runFailed, String comparator, String subIdentity, String number, String call) {
+            boolean runFailed, String comparator, String subIdentity, String number, String call, String flags,
+            String assayName, String assayVersion, String operator) {
 
         /**
          * The number as OpenELIS records it: a comparator the instrument reported leads

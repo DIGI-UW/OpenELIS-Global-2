@@ -92,6 +92,20 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void aReviewRowCarriesWhatTheInstrumentReportedAboutTheResult() throws Exception {
+        new JdbcTemplate(dataSource).update(
+                "UPDATE clinlims.analyzer_results SET instrument_flags = ?, assay_name = ?,"
+                        + " assay_version = ?, instrument_operator = ? WHERE id = 1001",
+                "H", "Xpert HIV-1 Viral Load", "4", "Operator 12");
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].instrumentFlags").value("H"))
+                .andExpect(jsonPath("$.resultList[0].assayName").value("Xpert HIV-1 Viral Load"))
+                .andExpect(jsonPath("$.resultList[0].assayVersion").value("4"))
+                .andExpect(jsonPath("$.resultList[0].instrumentOperator").value("Operator 12"));
+    }
+
+    @Test
     public void awaitingSpecimenKeepsItsMappedValueAvailableForReview() throws Exception {
         new JdbcTemplate(dataSource).update(
                 "UPDATE clinlims.analyzer_results SET import_issue_reason = ?" + " WHERE id = 1001",

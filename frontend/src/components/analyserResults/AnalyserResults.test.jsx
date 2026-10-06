@@ -414,6 +414,35 @@ describe("AnalyserResults", () => {
     expect(screen.queryByDisplayValue("1379")).not.toBeInTheDocument();
   });
 
+  it("shows what the instrument reported about a result, labelled as such", async () => {
+    renderResults([
+      {
+        ...mappedQualitativeResult,
+        instrumentFlags: "H",
+        assayName: "Xpert HIV-1 Viral Load",
+        assayVersion: "4",
+        instrumentOperator: "Operator 12",
+      },
+    ]);
+
+    const reported = await screen.findByTestId("instrument-reported-1005");
+    expect(reported).toHaveTextContent("Instrument reported");
+    expect(reported).toHaveTextContent("Flag: H");
+    expect(reported).toHaveTextContent(
+      "Assay: Xpert HIV-1 Viral Load, version 4",
+    );
+    expect(reported).toHaveTextContent("Operator: Operator 12");
+  });
+
+  it("shows nothing instrument-reported when the instrument sent none of it", async () => {
+    renderResults([mappedQualitativeResult]);
+
+    expect(await screen.findByText("NOT DETECTED")).toBeInTheDocument();
+    expect(
+      screen.queryByTestId("instrument-reported-1005"),
+    ).not.toBeInTheDocument();
+  });
+
   it("submits the result selected for acceptance", async () => {
     renderResults([mappedQualitativeResult]);
 
