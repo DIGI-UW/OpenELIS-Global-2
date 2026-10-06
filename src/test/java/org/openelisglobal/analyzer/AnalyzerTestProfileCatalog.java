@@ -13,13 +13,39 @@ public final class AnalyzerTestProfileCatalog {
     public static final String HL7_PROFILE_ID = "test.generic-hl7-analyzer";
     public static final int HL7_PROFILE_REVISION = 1;
     public static final String HL7_PROFILE_FINGERPRINT = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+    /**
+     * A profile with two revisions, for adoption: revision 2 fixes ADOPT-A's LOINC
+     * and adds ADOPT-B.
+     */
+    public static final String ADOPTABLE_PROFILE_ID = "test.adoptable";
+    public static final String ADOPTABLE_RECOGNITION_FINGERPRINT = "sha256:" + "6".repeat(64);
 
     private AnalyzerTestProfileCatalog() {
     }
 
     public static BridgeProfileCatalog catalog() {
-        return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT,
-                List.of(astmProfile(), hl7Profile(), unknownCapableProfile()));
+        return new BridgeProfileCatalog("1.0", PROFILE_FINGERPRINT, List.of(astmProfile(), hl7Profile(),
+                unknownCapableProfile(), adoptableProfile(1), adoptableProfile(2)));
+    }
+
+    public static String adoptableFingerprint(int revision) {
+        return "sha256:" + String.valueOf(revision).repeat(64);
+    }
+
+    private static BridgeProfileCatalog.ProfileRevision adoptableProfile(int revision) {
+        ObjectNode profile = ((ObjectNode) astmProfile().profile()).deepCopy();
+        ((ObjectNode) profile.path("profileMeta")).put("id", ADOPTABLE_PROFILE_ID);
+        ((ObjectNode) profile.path("catalog")).put("revision", revision).put("revisionFingerprint",
+                adoptableFingerprint(revision));
+        var tests = profile.putArray("default_test_mappings");
+        tests.addObject().put("test_code", "ADOPT-A").put("loinc", revision == 1 ? "2345-7" : "2339-0")
+                .put("result_type", "quantitative");
+        if (revision > 1) {
+            tests.addObject().put("test_code", "ADOPT-B").put("loinc", "2951-2").put("result_type", "quantitative");
+        }
+        return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(),
+                new BridgeProfileCatalog.ControlRecognitionSummary(ADOPTABLE_RECOGNITION_FINGERPRINT, "RULES", null,
+                        false, List.of()));
     }
 
     private static BridgeProfileCatalog.ProfileRevision unknownCapableProfile() {
