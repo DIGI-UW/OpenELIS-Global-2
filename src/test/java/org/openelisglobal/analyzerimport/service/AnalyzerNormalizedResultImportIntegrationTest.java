@@ -460,6 +460,28 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 staged.stream().noneMatch(row -> "comp-call".equals(row.getComponentId())));
     }
 
+    @Test
+    public void aStagedResultKeepsTheInstrumentsFlagAssayAndOperator() throws Exception {
+        bindViralLoadRecords();
+        Observation main = number(record(null, "^1009.64"), "1009.64", null);
+        main.addInterpretation().addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("H")
+                .setDisplay("H");
+        main.getMethod().setText("Xpert HIV-1 Viral Load").addExtension(
+                "https://openelis-global.org/fhir/StructureDefinition/analyzer-assay-version", new StringType("4"));
+        main.addPerformer().setDisplay("Operator 12");
+        Bundle bundle = viralLoadBundle(main);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        AnalyzerResults staged = stagedOn(resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)), null);
+        assertEquals("H", staged.getInstrumentFlags());
+        assertEquals("Xpert HIV-1 Viral Load", staged.getAssayName());
+        assertEquals("4", staged.getAssayVersion());
+        assertEquals("Operator 12", staged.getInstrumentOperator());
+    }
+
     // Cepheid 303-0251 §2.1.1, below range: R|1 "DETECTED^" with R.7 "<" and R.6
     // "40.00 to 10000000.00"; R|2 LOG "^" with "<" and "1.60 to 7.00".
     @Test

@@ -38,6 +38,7 @@ import ResultAlertModal, {
   acknowledgementRefusal,
 } from "../resultPage/ResultAlertModal";
 import PlacementNotice from "./PlacementNotice";
+import InstrumentReported from "./InstrumentReported";
 import DeliveryBundleModal from "./DeliveryBundleModal";
 import RedirectControl from "./RedirectControl";
 
@@ -692,48 +693,56 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        if (held && !awaitingReview) {
-          return renderHeldResult(row);
-        }
-        switch (row.testResultType) {
-          case "M":
-          case "C":
-          case "D":
-            return (
-              <>
-                {
-                  row.dictionaryResultList.find(
-                    (result) => result.id == row.result,
-                  )?.displayValue
-                }
-              </>
-            );
-          default:
-            if (row.readOnly) {
-              return row.result;
-            } else {
-              return (
-                <>
-                  <div className="result">
-                    <TextInput
-                      id={"resultList" + row.id + ".result"}
-                      name={"resultList[?(@.id == " + row.id + ")].result"}
-                      disabled={false}
-                      type="text"
-                      value={row.result}
-                      labelText=""
-                      size="lg"
-                      onChange={(e) => handleChange(e, row.id)}
-                    ></TextInput>
-                  </div>
-                </>
-              );
-            }
-        }
+        return (
+          <>
+            {renderResultValue(row, held && !awaitingReview)}
+            <InstrumentReported row={row} />
+          </>
+        );
 
       default:
     }
     return row.result;
+  };
+
+  const renderResultValue = (row, heldForMapping) => {
+    if (heldForMapping) {
+      return renderHeldResult(row);
+    }
+    switch (row.testResultType) {
+      case "M":
+      case "C":
+      case "D":
+        return (
+          <>
+            {
+              row.dictionaryResultList.find((result) => result.id == row.result)
+                ?.displayValue
+            }
+          </>
+        );
+      default:
+        if (row.readOnly) {
+          return row.result;
+        } else {
+          return (
+            <>
+              <div className="result">
+                <TextInput
+                  id={"resultList" + row.id + ".result"}
+                  name={"resultList[?(@.id == " + row.id + ")].result"}
+                  disabled={false}
+                  type="text"
+                  value={row.result}
+                  labelText=""
+                  size="lg"
+                  onChange={(e) => handleChange(e, row.id)}
+                ></TextInput>
+              </div>
+            </>
+          );
+        }
+    }
   };
 
   return (
