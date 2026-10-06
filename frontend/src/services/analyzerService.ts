@@ -140,6 +140,11 @@ export interface AnalyzerDeactivationResultView extends Omit<
 
 export type AnalyzerMappingState = "BOUND" | "EXCLUDED" | "UNRESOLVED";
 
+export type AnalyzerUnresolvedReason =
+  | "NO_MATCH"
+  | "AMBIGUOUS"
+  | "INCOMPATIBLE";
+
 export interface AnalyzerMappingTestOption {
   id: string;
   name: string;
@@ -151,6 +156,7 @@ export interface AnalyzerMappingResultOption {
   id: string;
   value: string;
   label: string;
+  answerCode?: string | null;
 }
 
 export interface AnalyzerTypeMappingResultRow {
@@ -158,6 +164,8 @@ export interface AnalyzerTypeMappingResultRow {
   mappingState: AnalyzerMappingState;
   resultOptionId?: string | null;
   selectedOption?: AnalyzerMappingResultOption | null;
+  suggestedOption?: AnalyzerMappingResultOption | null;
+  unresolvedReason?: AnalyzerUnresolvedReason | null;
 }
 
 export interface AnalyzerTypeMappingTestRow {
@@ -177,6 +185,7 @@ export interface AnalyzerTypeMappingTestRow {
   testId?: string | null;
   selectedTest?: AnalyzerMappingTestOption | null;
   suggestedTest?: AnalyzerMappingTestOption | null;
+  unresolvedReason?: AnalyzerUnresolvedReason | null;
   results: AnalyzerTypeMappingResultRow[];
 }
 

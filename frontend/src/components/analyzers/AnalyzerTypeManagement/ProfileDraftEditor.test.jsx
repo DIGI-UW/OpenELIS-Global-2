@@ -514,30 +514,24 @@ it("edits test definitions without losing aliases, named results or unrelated pr
   const row = within(screen.getByRole("group", { name: "Analyzer test 1" }));
   const name = row.getByRole("textbox", { name: "Suggested test name" });
   changeText(name, "Site tuberculosis assay");
-  changeText(
-    row.getByRole("textbox", { name: "Suggested specimen type" }),
-    "Sputum",
-  );
+  expect(
+    row.queryByRole("textbox", { name: "Suggested specimen type" }),
+  ).not.toBeInTheDocument();
   const namedValues = within(
     row.getByRole("group", { name: "Result values reported by this test" }),
   );
   await userEvent.click(namedValues.getByRole("button", { name: "Add value" }));
   const inputs = namedValues.getAllByRole("textbox");
   changeText(inputs[inputs.length - 1], "SITE REVIEW REQUIRED");
-  changeText(
-    row.getByRole("textbox", {
+  expect(
+    row.queryByRole("textbox", {
       name: "Suggested clinical answer for SITE REVIEW REQUIRED",
     }),
-    "Clinical review required",
-  );
+  ).not.toBeInTheDocument();
   await save();
   const expected = clone(authored);
   expected.default_test_mappings[0].test_name_hint = "Site tuberculosis assay";
-  expected.default_test_mappings[0].specimen_type_hint = "Sputum";
   expected.default_test_mappings[0].values.push("SITE REVIEW REQUIRED");
-  expected.default_test_mappings[0].result_value_hints = {
-    "SITE REVIEW REQUIRED": "Clinical review required",
-  };
   expect(updateAnalyzerTypeDraft).toHaveBeenCalledWith(
     "draft-file",
     expected,

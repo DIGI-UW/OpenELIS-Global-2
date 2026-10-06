@@ -82,8 +82,7 @@ public final class BridgeAnalyzerProfile {
                             nullableText(coding, "display"));
             tests.add(new TestDefinition(analyzerCode, aliases, nullableText(mapping, "test_name_hint"),
                     requiredText(mapping, "loinc"), nullableText(mapping, "unit"), nullableText(mapping, "result_type"),
-                    values, normalizedCoding, nullableText(mapping, "specimen_type_hint"),
-                    resultValueHints(mapping.path("result_value_hints"), values)));
+                    values, normalizedCoding, valueCodes(mapping.path("value_codes"), values)));
         }
 
         JsonNode lineage = catalog.path("lineage");
@@ -192,30 +191,32 @@ public final class BridgeAnalyzerProfile {
         return List.copyOf(result);
     }
 
-    private static Map<String, String> resultValueHints(JsonNode hints, List<String> values) {
-        if (hints.isMissingNode() || hints.isNull()) {
+    private static Map<String, NormalizedCoding> valueCodes(JsonNode codes, List<String> values) {
+        if (codes.isMissingNode() || codes.isNull()) {
             return Map.of();
         }
-        if (!hints.isObject()) {
-            throw new IllegalArgumentException("Bridge analyzer result value hints must be an object");
+        if (!codes.isObject()) {
+            throw new IllegalArgumentException("Bridge analyzer value codes must be an object");
         }
-        Map<String, String> result = new LinkedHashMap<>();
-        hints.fields().forEachRemaining(entry -> {
+        Map<String, NormalizedCoding> result = new LinkedHashMap<>();
+        codes.fields().forEachRemaining(entry -> {
             if (!values.contains(entry.getKey())) {
-                throw new IllegalArgumentException("Bridge analyzer result value hint must name a declared raw value");
+                throw new IllegalArgumentException("Bridge analyzer value code must name a declared raw value");
             }
-            result.put(entry.getKey(), requiredText(hints, entry.getKey()));
+            JsonNode coding = entry.getValue();
+            result.put(entry.getKey(), new NormalizedCoding(requiredText(coding, "system"),
+                    requiredText(coding, "code"), nullableText(coding, "display")));
         });
         return Map.copyOf(result);
     }
 
     public record TestDefinition(String analyzerCode, List<String> aliases, String testNameHint, String loinc,
             String unit, String resultType, List<String> resultValues, NormalizedCoding normalizedCoding,
-            String specimenTypeHint, Map<String, String> resultValueHints) {
+            Map<String, NormalizedCoding> valueCodes) {
         public TestDefinition {
+            valueCodes = valueCodes == null ? Map.of() : Map.copyOf(valueCodes);
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
             resultValues = resultValues == null ? List.of() : List.copyOf(resultValues);
-            resultValueHints = resultValueHints == null ? Map.of() : Map.copyOf(resultValueHints);
         }
     }
 
