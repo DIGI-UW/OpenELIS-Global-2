@@ -1497,5 +1497,39 @@ describe("RequesterSection", () => {
 
       expect(lastOrderUpdate(setOrderData).providerTitleCode).toBe("HEO");
     });
+
+    it("an inactive facility is listed as a possible match but cannot be used", async () => {
+      getFromOpenElisServerMock.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/organization/search")) {
+          callback({ organizations: [] });
+        }
+      });
+      possibleMatchesMock.mockReturnValue({
+        matches: [
+          {
+            id: "70",
+            kind: "facility",
+            name: "Tokarara Health Centre",
+            active: false,
+            matchedOn: ["name"],
+          },
+        ],
+      });
+      renderSection({ workflowType: "clinical" });
+
+      fireEvent.change(screen.getByLabelText(/Site Name/), {
+        target: { value: "Tokarara Health Center" },
+      });
+      await waitFor(() =>
+        screen.getByText('+ Add new organization "Tokarara Health Center"'),
+      );
+      fireEvent.click(
+        screen.getByText('+ Add new organization "Tokarara Health Center"'),
+      );
+
+      const row = await screen.findByTestId("possible-match-70");
+      expect(within(row).getByText("Inactive")).toBeInTheDocument();
+      expect(screen.getByTestId("possible-match-use-70")).toBeDisabled();
+    });
   });
 });

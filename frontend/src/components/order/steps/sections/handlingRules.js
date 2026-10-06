@@ -72,6 +72,26 @@ const outside = (condition, degrees) => {
   return (low !== null && degrees < low) || (high !== null && degrees > high);
 };
 
+export const MIN_ARRIVAL_TEMPERATURE = -100;
+export const MAX_ARRIVAL_TEMPERATURE = 60;
+
+/**
+ * Whether a measured arrival temperature can be stored: blank, or a number
+ * (decimal comma accepted) from -100 to 60 °C, the same bounds the server
+ * keeps.
+ */
+export function isPlausibleTemperature(value) {
+  if (value === null || value === undefined || String(value).trim() === "") {
+    return true;
+  }
+  const degrees = toNumber(value);
+  return (
+    degrees !== null &&
+    degrees >= MIN_ARRIVAL_TEMPERATURE &&
+    degrees <= MAX_ARRIVAL_TEMPERATURE
+  );
+}
+
 /** The distinct catalog storage conditions of a sample's tests. */
 export function requiredConditions(requirements = []) {
   return [

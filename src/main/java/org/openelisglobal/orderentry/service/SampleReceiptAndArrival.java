@@ -34,10 +34,13 @@ public final class SampleReceiptAndArrival {
             item.setReceivedById(receivedById.trim());
         } else if (item.getReceivedDate() != null && GenericValidator.isInt(savingUser)) {
             item.setReceivedById(savingUser);
+            item.setReceivedByDefaulted(true);
         }
         ArrivalCondition condition = ArrivalCondition.fromValue(arrivalCondition);
         item.setArrivalCondition(condition == null ? null : condition.name());
         item.setArrivalTemperature(plausibleTemperature(arrivalTemperature));
+        item.setArrivalTemperatureRejected(
+                StringUtils.isNotBlank(arrivalTemperature) && item.getArrivalTemperature() == null);
         if (item.getArrivalCondition() != null || item.getArrivalTemperature() != null) {
             item.setArrivalRecordedById(GenericValidator.isInt(savingUser) ? savingUser : null);
             item.setArrivalRecordedAt(now);

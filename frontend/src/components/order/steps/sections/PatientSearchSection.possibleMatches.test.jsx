@@ -157,4 +157,24 @@ describe("Create patient runs the possible-match check (OGC-1424, FR-B6a)", () =
     ]);
     expect(latest.patientProperties.patientPK).toBeUndefined();
   });
+
+  it("a second check after Create new anyway shows the matches again, not the confirmation", async () => {
+    serverGet.mockReturnValue({ matches: [MATCH] });
+    postFull.mockImplementation((url, body, callback) =>
+      callback({ ok: true, status: 201, json: () => Promise.resolve({}) }),
+    );
+    enterNewPatient();
+
+    fireEvent.click(screen.getByTestId("order-create-patient"));
+    await screen.findByTestId("possible-match-77");
+    fireEvent.click(screen.getByText("Create new anyway"));
+    fireEvent.click(screen.getByText("Create new record"));
+    await screen.findByTestId("order-new-patient-confirmed");
+
+    fireEvent.click(screen.getByTestId("order-create-patient"));
+
+    expect(await screen.findByTestId("possible-match-77")).toBeVisible();
+    expect(screen.getByTestId("possible-match-use-77")).toBeInTheDocument();
+    expect(screen.queryByTestId("possible-matches-confirm")).toBeNull();
+  });
 });

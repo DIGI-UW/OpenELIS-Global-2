@@ -223,4 +223,16 @@ describe("SampleCollectionCard handling (OGC-1424, FR-C9, FR-C9a)", () => {
     expect(legacy).toHaveTextContent("Sample Temperature: 4 C");
     expect(within(legacy).queryByRole("textbox")).toBeNull();
   });
+
+  it("flags a measured temperature that cannot be stored", () => {
+    renderCard({ sample: { ...SAMPLE, arrivalTemperature: "999" } });
+
+    expect(screen.getByLabelText("Measured temperature (°C)")).toHaveAttribute(
+      "aria-invalid",
+      "true",
+    );
+    expect(
+      screen.getByText("Enter a temperature from -100 to 60 °C."),
+    ).toBeInTheDocument();
+  });
 });

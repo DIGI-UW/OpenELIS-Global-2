@@ -96,6 +96,15 @@ test.describe("Order entry clean-up (OGC-1424)", () => {
         { timeout: UI_TIMEOUT },
       );
     });
+
+    await test.step("a second check shows the matches again, not the confirmation", async () => {
+      await page.getByTestId("order-create-patient").click();
+      await expect(
+        page.getByTestId(`possible-match-${existing.patientPK}`),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(page.getByTestId("possible-matches-confirm")).toHaveCount(0);
+      await page.getByRole("button", { name: "Cancel" }).click();
+    });
   });
 
   test("Add new provider runs the check, fax stays hidden by default, and a new provider takes a title", async ({
@@ -274,6 +283,32 @@ test.describe("Order entry clean-up (OGC-1424)", () => {
         expect(stored.arrivalCondition).toBe("ROOM_TEMPERATURE");
         expect(stored.arrivalTemperature).toBe("22");
         expect(stored.receivedById).not.toBe("");
+      });
+
+      await test.step("a temperature that cannot be stored is flagged and never clears the saved one", async () => {
+        await page.goto(
+          `/order/clinical/collect?labNumber=${encodeURIComponent(accessionNumber)}`,
+          { timeout: NAV_TIMEOUT },
+        );
+        const temperature = page.locator("#arrivalTemperature-0");
+        await expect(temperature).toHaveValue("22", { timeout: NAV_TIMEOUT });
+        await temperature.fill("999");
+        await expect(
+          page.getByText("Enter a temperature from -100 to 60 °C."),
+        ).toBeVisible();
+        const saved = page.waitForResponse(
+          (r) =>
+            /rest\/SamplePatientEntry$/.test(r.url()) &&
+            r.request().method() === "POST",
+        );
+        await page.getByRole("button", { name: "Save and exit" }).click();
+        expect((await saved).status()).toBe(200);
+        const order = await (
+          await page.request.get(
+            `${API}/rest/order/search?labNumber=${encodeURIComponent(accessionNumber)}`,
+          )
+        ).json();
+        expect(order.samples[0].arrivalTemperature).toBe("22");
       });
 
       await test.step("Mark tested elsewhere from the test row's menu", async () => {

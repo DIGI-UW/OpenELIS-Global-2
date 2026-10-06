@@ -35,6 +35,7 @@ import {
   customConditions,
   describeMismatch,
   handlingMismatches,
+  isPlausibleTemperature,
   requiredConditions,
   shortestHoldingMinutes,
   storageConditionLabelId,
@@ -702,6 +703,10 @@ const SampleCollectionCard = ({
                 min="-100"
                 max="60"
                 value={sample.arrivalTemperature ?? ""}
+                invalid={!isPlausibleTemperature(sample.arrivalTemperature)}
+                invalidText={intl.formatMessage({
+                  id: "sample.handling.measuredTemp.invalid",
+                })}
                 onChange={(e) =>
                   handleFieldChange("arrivalTemperature", e.target.value)
                 }

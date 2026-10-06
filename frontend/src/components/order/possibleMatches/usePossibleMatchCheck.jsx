@@ -24,6 +24,7 @@ export default function usePossibleMatchCheck() {
     failed: false,
   });
   const [checking, setChecking] = useState(false);
+  const [checkCount, setCheckCount] = useState(0);
   const [recording, setRecording] = useState(false);
   const [recordError, setRecordError] = useState("");
   const pending = useRef(null);
@@ -36,6 +37,7 @@ export default function usePossibleMatchCheck() {
 
   const check = useCallback((kind, params, entered, handlers) => {
     pending.current = { kind, entered, ...handlers };
+    setCheckCount((count) => count + 1);
     setChecking(true);
     setRecordError("");
     findPossibleMatches(kind, params)
@@ -95,6 +97,7 @@ export default function usePossibleMatchCheck() {
 
   const dialog = (
     <PossibleMatchesDialog
+      key={checkCount}
       open={state.open}
       kind={state.kind}
       matches={state.matches}

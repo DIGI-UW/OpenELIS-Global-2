@@ -59,6 +59,8 @@ public class SampleReceiptAndArrivalTest {
 
         assertNull(item.getArrivalCondition());
         assertNull(item.getArrivalTemperature());
+        assertEquals("a rejected temperature is flagged so a later save keeps the stored one", true,
+                item.isArrivalTemperatureRejected());
         assertNull(item.getArrivalRecordedById());
         assertNull(item.getArrivalRecordedAt());
     }

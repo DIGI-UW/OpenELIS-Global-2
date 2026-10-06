@@ -576,9 +576,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     savedItem.setQuantity(sampleTestCollection.item.getQuantity());
                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
+                    copyHandlingDetails(sampleTestCollection.item, savedItem);
                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
                     savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
-                    copyHandlingDetails(sampleTestCollection.item, savedItem);
                     // Keep existing typeOfSample if incoming is null (don't change sample type
                     // during collection)
                     if (sampleTestCollection.item.getTypeOfSample() != null) {
@@ -982,9 +982,12 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
      * Carries the collection and handling details a step save sends for a sample
      * that already exists. Before OGC-1424 only some of them were copied, so an
      * edited collection method, GPS position or legacy temperature on a saved
-     * sample was silently dropped. The receiver and the arrival condition follow
-     * the incoming sample; the arrival keeps its original recorder and time while
-     * the condition and temperature are unchanged.
+     * sample was silently dropped. A chosen receiver is stored; a receiver that
+     * only defaulted to the saving user is stored when the receipt is recorded in
+     * this save, never on a sample received earlier. Called before the receipt date
+     * is copied. The arrival keeps its original recorder and time while the
+     * condition and temperature are unchanged, and a rejected temperature never
+     * clears the stored one.
      */
     static void copyHandlingDetails(SampleItem incoming, SampleItem saved) {
         saved.setCollectionMethod(incoming.getCollectionMethod());
@@ -994,14 +997,17 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         saved.setLocationDetails(incoming.getLocationDetails());
         saved.setGpsLatitude(incoming.getGpsLatitude());
         saved.setGpsLongitude(incoming.getGpsLongitude());
-        if (incoming.getReceivedById() != null) {
+        boolean receiptRecordedNow = saved.getReceivedDate() == null && incoming.getReceivedDate() != null;
+        if (incoming.getReceivedById() != null && (!incoming.isReceivedByDefaulted() || receiptRecordedNow)) {
             saved.setReceivedById(incoming.getReceivedById());
         }
+        java.math.BigDecimal temperature = incoming.isArrivalTemperatureRejected() ? saved.getArrivalTemperature()
+                : incoming.getArrivalTemperature();
         boolean arrivalChanged = !java.util.Objects.equals(incoming.getArrivalCondition(), saved.getArrivalCondition())
-                || !sameTemperature(incoming.getArrivalTemperature(), saved.getArrivalTemperature());
+                || !sameTemperature(temperature, saved.getArrivalTemperature());
         if (arrivalChanged) {
             saved.setArrivalCondition(incoming.getArrivalCondition());
-            saved.setArrivalTemperature(incoming.getArrivalTemperature());
+            saved.setArrivalTemperature(temperature);
             saved.setArrivalRecordedById(incoming.getArrivalRecordedById());
             saved.setArrivalRecordedAt(incoming.getArrivalRecordedAt());
         }

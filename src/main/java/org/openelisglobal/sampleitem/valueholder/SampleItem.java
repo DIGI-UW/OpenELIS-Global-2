@@ -71,6 +71,8 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private BigDecimal arrivalTemperature;
     private String arrivalRecordedById;
     private Timestamp arrivalRecordedAt;
+    private transient boolean arrivalTemperatureRejected;
+    private transient boolean receivedByDefaulted;
 
     private String collectionLocationId;
     private String collectionNotes;
@@ -427,6 +429,32 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setArrivalRecordedById(String arrivalRecordedById) {
         this.arrivalRecordedById = arrivalRecordedById;
+    }
+
+    /**
+     * Set when a step save sent a measured temperature that could not be stored
+     * (not a number, or outside -100 to 60 °C), so the save keeps the stored value
+     * instead of clearing it. Not persisted.
+     */
+    /**
+     * Set when the receiver was not chosen but defaulted to the saving user, so an
+     * update only keeps it when the receipt itself is recorded in that save. Not
+     * persisted.
+     */
+    public boolean isReceivedByDefaulted() {
+        return receivedByDefaulted;
+    }
+
+    public void setReceivedByDefaulted(boolean receivedByDefaulted) {
+        this.receivedByDefaulted = receivedByDefaulted;
+    }
+
+    public boolean isArrivalTemperatureRejected() {
+        return arrivalTemperatureRejected;
+    }
+
+    public void setArrivalTemperatureRejected(boolean arrivalTemperatureRejected) {
+        this.arrivalTemperatureRejected = arrivalTemperatureRejected;
     }
 
     public Timestamp getArrivalRecordedAt() {

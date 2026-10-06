@@ -1,4 +1,5 @@
 import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
+import { isPlausibleTemperature } from "./sections/handlingRules";
 
 /**
  * The complete level of Prepare Samples (FR-A7, FR-D7): what the "To
@@ -43,6 +44,16 @@ export function prepareSamplesToContinue({
             { sample: sampleName(entry) },
           ),
           targetId: `collectionDate-${index}`,
+        });
+      }
+      if (!isPlausibleTemperature(sample.arrivalTemperature)) {
+        items.push({
+          id: `arrivalTemperature-${index}`,
+          label: intl.formatMessage(
+            { id: "order.continue.item.arrivalTemperature" },
+            { sample: sampleName(entry) },
+          ),
+          targetId: `arrivalTemperature-${index}`,
         });
       }
       if (!sample.collectionDate || !sample.collectionTime) {

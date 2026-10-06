@@ -195,6 +195,7 @@ const PossibleMatchesDialog = ({
                     <Button
                       kind="tertiary"
                       size="sm"
+                      disabled={match.active === false}
                       onClick={() => {
                         setConfirming(false);
                         onUse(match);

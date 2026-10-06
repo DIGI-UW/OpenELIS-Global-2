@@ -94,6 +94,46 @@
         </createTable>
     </changeSet>
 
+    <changeSet id="3.6.0.0-payment-status-labels" author="OGC-1424">
+        <preConditions onFail="MARK_RAN">
+            <tableExists tableName="localization_value"/>
+            <tableExists tableName="dictionary_category"/>
+        </preConditions>
+        <comment>
+            The order-level Payment status (FR-B28) read raw codes such as "normalCash": the generic
+            localization backfill (3.5.0-009) copied each dictionary code in as its English name.
+            Gives the patientPayment entries the labels their message keys always carried, in English
+            and French. A name an administrator has already changed is left alone.
+        </comment>
+        <sql splitStatements="false">
+            WITH labels(dict_entry, en, fr) AS (VALUES
+                ('paidInFull',       'Paid in Full',              'Payé en Entier'),
+                ('paidPartial',      'Partial Payment',           'Partiellement Payé'),
+                ('paidNone',         'No payment',                'Pas Payé'),
+                ('normalCash',       'Normal cash payment',       'Tarif normal payment liquide'),
+                ('reducedCash',      'Reduced cash payment',      'Tarif reduit payment liquide'),
+                ('normalInsurance',  'Normal insurance payment',  'Tarif normal payment assurance'),
+                ('reducedInsurance', 'Reduced insurance payment', 'Tarif reduit payment assurance')
+            ), entries AS (
+                SELECT d.name_localization_id AS localization_id, d.dict_entry, l.en, l.fr
+                FROM clinlims.dictionary d
+                JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id
+                JOIN labels l ON l.dict_entry = d.dict_entry
+                WHERE c.name = 'patientPayment' AND d.name_localization_id IS NOT NULL
+            ), english AS (
+                UPDATE clinlims.localization_value v SET value = e.en, last_updated = now()
+                FROM entries e
+                WHERE v.localization_id = e.localization_id AND v.locale = 'en' AND v.value = e.dict_entry
+                RETURNING v.id
+            )
+            INSERT INTO clinlims.localization_value (id, localization_id, locale, value, last_updated)
+            SELECT nextval('clinlims.localization_value_seq'), e.localization_id, 'fr', e.fr, now()
+            FROM entries e
+            WHERE NOT EXISTS (SELECT 1 FROM clinlims.localization_value v
+                              WHERE v.localization_id = e.localization_id AND v.locale = 'fr');
+        </sql>
+    </changeSet>
+
     <changeSet id="3.6.0.0-show-fax-fields-setting" author="OGC-1424">
         <preConditions onFail="MARK_RAN">
             <sqlCheck expectedResult="0">

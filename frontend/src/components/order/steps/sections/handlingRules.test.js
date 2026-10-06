@@ -4,6 +4,7 @@ import {
   customConditions,
   describeMismatch,
   handlingMismatches,
+  isPlausibleTemperature,
   requiredConditions,
   shortestHoldingMinutes,
 } from "./handlingRules";
@@ -100,5 +101,17 @@ describe("handling rules (OGC-1424, FR-C9a)", () => {
         actual: "ROOM_TEMPERATURE",
       }),
     ).toBe("Needs Refrigerated (2–8°C); arrived as Room temperature");
+  });
+});
+
+describe("measured arrival temperature (OGC-1424 review)", () => {
+  test("only blank or a number from -100 to 60 °C can be stored", () => {
+    expect(isPlausibleTemperature("")).toBe(true);
+    expect(isPlausibleTemperature("4,5")).toBe(true);
+    expect(isPlausibleTemperature("-100")).toBe(true);
+    expect(isPlausibleTemperature("60")).toBe(true);
+    expect(isPlausibleTemperature("999")).toBe(false);
+    expect(isPlausibleTemperature("-100.5")).toBe(false);
+    expect(isPlausibleTemperature("warm")).toBe(false);
   });
 });

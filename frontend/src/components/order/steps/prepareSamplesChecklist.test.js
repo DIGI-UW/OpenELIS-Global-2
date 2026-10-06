@@ -69,3 +69,25 @@ describe("prepareSamplesToContinue (OGC-1419)", () => {
     ).toEqual(["collectionConflict-0"]);
   });
 });
+
+describe("prepareSamplesToContinue measured temperature (OGC-1424)", () => {
+  it("lists a measured temperature that cannot be stored and points at its field", () => {
+    const items = itemsFor([serum({ arrivalTemperature: "999" })]);
+
+    expect(items).toEqual([
+      expect.objectContaining({
+        id: "arrivalTemperature-0",
+        targetId: "arrivalTemperature-0",
+      }),
+    ]);
+  });
+
+  it("lets a blank or plausible temperature continue", () => {
+    expect(
+      itemsFor([
+        serum({ arrivalTemperature: "" }),
+        serum({ arrivalTemperature: "4,5" }),
+      ]),
+    ).toEqual([]);
+  });
+});

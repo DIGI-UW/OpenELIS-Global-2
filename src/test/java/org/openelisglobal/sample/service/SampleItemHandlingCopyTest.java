@@ -71,6 +71,48 @@ public class SampleItemHandlingCopyTest {
     }
 
     @Test
+    public void aDefaultedReceiverIsNeverWrittenOnASampleReceivedEarlier() {
+        SampleItem incoming = new SampleItem();
+        incoming.setReceivedDate(NOW);
+        incoming.setReceivedById("9");
+        incoming.setReceivedByDefaulted(true);
+        SampleItem saved = saved();
+        saved.setReceivedById(null);
+        saved.setReceivedDate(EARLIER);
+
+        SamplePatientEntryServiceImpl.copyHandlingDetails(incoming, saved);
+
+        assertEquals(null, saved.getReceivedById());
+    }
+
+    @Test
+    public void aDefaultedReceiverIsStoredWhenTheReceiptIsRecordedInThisSave() {
+        SampleItem incoming = new SampleItem();
+        incoming.setReceivedDate(NOW);
+        incoming.setReceivedById("9");
+        incoming.setReceivedByDefaulted(true);
+        SampleItem saved = saved();
+        saved.setReceivedById(null);
+
+        SamplePatientEntryServiceImpl.copyHandlingDetails(incoming, saved);
+
+        assertEquals("9", saved.getReceivedById());
+    }
+
+    @Test
+    public void aRejectedTemperatureNeverClearsTheStoredOne() {
+        SampleItem incoming = new SampleItem();
+        incoming.setArrivalCondition("REFRIGERATED");
+        incoming.setArrivalTemperatureRejected(true);
+        SampleItem saved = saved();
+
+        SamplePatientEntryServiceImpl.copyHandlingDetails(incoming, saved);
+
+        assertEquals(new BigDecimal("4.0"), saved.getArrivalTemperature());
+        assertEquals(EARLIER, saved.getArrivalRecordedAt());
+    }
+
+    @Test
     public void aChangedArrivalIsRecordedAgainByTheSavingUser() {
         SampleItem incoming = new SampleItem();
         incoming.setReceivedById("9");
