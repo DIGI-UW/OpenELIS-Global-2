@@ -88,6 +88,38 @@
 
 .analyzer-setup__verify-heading,
 .analyzer-setup__verify-recognition-heading,
+// One row per assay, like the instrument's host test code table: whether it
+// runs here, how the catalog matched it, and the code it sends.
+.analyzer-setup__assays {
+  display: grid;
+  gap: spacing.$spacing-05;
+}
+
+.analyzer-setup__assays-count {
+  @include type.type-style("label-01");
+  color: var(--cds-text-secondary);
+}
+
+.analyzer-setup__assay-list {
+  display: grid;
+  gap: 1px;
+  background: var(--cds-border-subtle-01);
+
+  li {
+    align-items: center;
+    background: var(--cds-layer-01);
+    display: grid;
+    gap: spacing.$spacing-04;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 2fr) minmax(0, 1.5fr);
+    padding: spacing.$spacing-03 spacing.$spacing-04;
+  }
+}
+
+.analyzer-setup__assay-match {
+  @include type.type-style("helper-text-01");
+  color: var(--cds-text-secondary);
+}
+
 .analyzer-setup__verify-actions {
   align-items: center;
   display: flex;
@@ -319,6 +351,10 @@
 
   .analyzer-setup__verify-heading,
   .analyzer-setup__verify-recognition-heading,
+  .analyzer-setup__assay-list li {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
   .analyzer-setup__verify-actions {
     align-items: flex-start;
     flex-direction: column;

@@ -28,13 +28,14 @@ import {
 } from "../AnalyzerTypeManagement/recognitionText";
 import { analyzerErrorText } from "../analyzerErrors";
 import { includesComboBoxText } from "../comboBoxSearch";
+import AnalyzerAssaysSetup from "./AnalyzerAssaysSetup";
 import AnalyzerConnectionSetup, {
   needsMappingVerification,
 } from "./AnalyzerConnectionSetup";
 
 import "./AnalyzerSetup.scss";
 
-const SETUP_STEPS = ["instrument", "verify", "connect"];
+const SETUP_STEPS = ["instrument", "assays", "verify", "connect"];
 
 const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const intl = useIntl();
@@ -320,11 +321,11 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
         search: instrumentParams.toString(),
       });
 
-      const verifyParams = new URLSearchParams(instrumentParams);
-      verifyParams.set("setup", "verify");
+      const assaysParams = new URLSearchParams(instrumentParams);
+      assaysParams.set("setup", "assays");
       history.push({
         pathname: location.pathname,
-        search: verifyParams.toString(),
+        search: assaysParams.toString(),
       });
     };
 
@@ -582,6 +583,12 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     </dd>
                   </div>
                 </dl>
+              )}
+              {state === "current" && step === "assays" && candidate && (
+                <AnalyzerAssaysSetup
+                  analyzerId={String(candidate.id)}
+                  onContinue={() => editStep("verify")}
+                />
               )}
               {state === "current" && step === "verify" && (
                 <div className="analyzer-setup__verify">
