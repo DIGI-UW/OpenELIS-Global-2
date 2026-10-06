@@ -104,9 +104,10 @@ working lab unit or case Program. `MicroOrderRoutingServiceImpl` can create
 `UNASSIGNED` cases from Program selection alone; its case-analysis links do not
 establish a unique working lab unit. Current access checks inspect every analysis
 on the specimen. For the AC-V2-42 boundary for cases with missing or conflicting
-ownership and for mappings from workflow to Program that are not unique, the implementer confirmed explicit
-per-case mappings and an abort before changing clinical data when any mapping is
-unresolved. Existing case identities and separate membership are preserved.
+ownership and for mappings from workflow to Program that are not unique, the
+implementer confirmed explicit per-case mappings and an abort before changing
+clinical data when any mapping is unresolved. Existing case identities and
+separate membership are preserved.
 
 - [x] Write the disposable fresh/upgrade rehearsal, preserving clinical records,
       IDs, reports and audit; prove collision failure and rollback/reapply.
@@ -125,6 +126,14 @@ fixed the Timeline rollback guard; its focused regression failed before the fix.
 Prettier, Spotless and whitespace checks pass. No browser gate applies to this
 slice because it changes no user-facing runtime behavior. CI, deployment and
 clinical acceptance are separate evidence.
+
+Tested code revision:
+[`38cfcff62396a867d93a94e8090b9a4a24d22bac`](https://github.com/DIGI-UW/OpenELIS-Global-2/commit/38cfcff62396a867d93a94e8090b9a4a24d22bac).
+The exact V01 command passed again on that committed revision on 2026-10-06:
+10 tests, 0 failures, 0 errors, 0 skipped (124.1 seconds). This evidence-only
+roadmap update changes no tested code. [OGC-1426](https://uwdigi.atlassian.net/browse/OGC-1426)
+holds the review link and matching evidence; V02/V12 dependent verification is
+still required for full AC-V2-42 acceptance.
 
 **Acceptance:** fresh install and upgrade yield the same V2 relationships;
 historical meaning survives without a production legacy reader.

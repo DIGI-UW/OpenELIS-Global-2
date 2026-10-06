@@ -187,8 +187,9 @@ The confirmed migration contract is:
   usage remain attributable and retain their IDs. V10 still owns replacing the
   current whole-run reporting selection with per-agent selection.
 - Structural rollback restores the pre-cutover representation from that history
-  only when clinical values, memberships, migration Timeline entries and catalog case settings still match
-  the migrated snapshot. It refuses to erase work recorded after cutover.
+  only when clinical values, memberships, migration Timeline entries and catalog
+  case settings still match the migrated snapshot. It refuses to erase work
+  recorded after cutover.
   Subsequent corrections use V2 clinical/amendment workflows, not a compatibility
   path. Reapply must preserve the same identities and relationships.
 
