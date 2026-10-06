@@ -10,6 +10,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
+import org.openelisglobal.terminology.TerminologySystems;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -36,11 +38,12 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     private final TypeOfSampleService sampleTypes;
     private final TypeOfSampleTestService sampleTypeTests;
     private final TestResultComponentService componentService;
+    private final DictionaryTerminologyMappingService answerTerminology;
 
     public AnalyzerMappingCatalogServiceImpl(TestService testService, TestResultService testResultService,
             TestTerminologyMappingService terminologyService, DictionaryService dictionaryService,
             TypeOfSampleService sampleTypes, TypeOfSampleTestService sampleTypeTests,
-            TestResultComponentService componentService) {
+            TestResultComponentService componentService, DictionaryTerminologyMappingService answerTerminology) {
         this.testService = testService;
         this.testResultService = testResultService;
         this.terminologyService = terminologyService;
@@ -48,6 +51,7 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
         this.sampleTypes = sampleTypes;
         this.sampleTypeTests = sampleTypeTests;
         this.componentService = componentService;
+        this.answerTerminology = answerTerminology;
     }
 
     @Override
@@ -99,7 +103,7 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
             }
             String value = option.getValue();
             Dictionary dictionary = findDictionary(value);
-            choices.add(new ResultOption(option.getId(), value, label(dictionary, value), answerCode(dictionary),
+            choices.add(new ResultOption(option.getId(), value, label(dictionary, value), codingsOf(dictionary),
                     option.getComponentId()));
         }
         choices.sort(Comparator.comparing(ResultOption::label, String.CASE_INSENSITIVE_ORDER)
@@ -138,8 +142,15 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
         return dictionary != null && !isBlank(dictionary.getDictEntry()) ? dictionary.getDictEntry() : value;
     }
 
-    private static String answerCode(Dictionary dictionary) {
-        return dictionary == null || isBlank(dictionary.getLoincCode()) ? null : dictionary.getLoincCode().trim();
+    private List<AnswerCoding> codingsOf(Dictionary dictionary) {
+        if (dictionary == null) {
+            return List.of();
+        }
+        return answerTerminology.getActiveByDictionaryId(dictionary.getId()).stream()
+                .filter(mapping -> TerminologySystems.urlOf(mapping.getSource()) != null && !isBlank(mapping.getCode()))
+                .map(mapping -> new AnswerCoding(TerminologySystems.urlOf(mapping.getSource()),
+                        mapping.getCode().trim()))
+                .toList();
     }
 
     private static boolean contains(String value, String query) {

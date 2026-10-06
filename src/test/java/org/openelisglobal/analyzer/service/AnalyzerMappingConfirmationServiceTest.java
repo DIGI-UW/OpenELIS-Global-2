@@ -70,7 +70,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.TestOption("1", "Mock Test", "MOCK", List.of("1234-5"))));
         when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(
-                List.of(new AnalyzerMappingCatalogService.ResultOption("11", "DETECTED", "Detected", null)));
+                List.of(new AnalyzerMappingCatalogService.ResultOption("11", "DETECTED", "Detected", List.of())));
         when(confirmationDAO.insert(any(AnalyzerMappingConfirmation.class))).thenAnswer(invocation -> {
             AnalyzerMappingConfirmation confirmation = invocation.getArgument(0);
             confirmation.setId("71");

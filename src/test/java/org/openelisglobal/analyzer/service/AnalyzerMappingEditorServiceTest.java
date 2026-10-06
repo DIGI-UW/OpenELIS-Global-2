@@ -511,7 +511,7 @@ public class AnalyzerMappingEditorServiceTest {
         when(mappingCatalogService.getActiveComponents("9701"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG", "Log viral load")));
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", "LA11882-0",
+                new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", loinc("LA11882-0"),
                         "comp-qualitative")));
 
         AnalyzerMappingView.TestRow main = recordRow(service.getDefaults("site.viral-load", 1), "");
@@ -580,7 +580,7 @@ public class AnalyzerMappingEditorServiceTest {
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-call", "call", "Call"),
                         new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG", "Log viral load")));
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(
-                new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", "LA11882-0",
+                new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", loinc("LA11882-0"),
                         "comp-call")));
     }
 
@@ -602,7 +602,7 @@ public class AnalyzerMappingEditorServiceTest {
                       "unit":"copies/mL",
                       "result_type":"quantitative",
                       "values":["DETECTED"],
-                      "value_codes":{"DETECTED":{"system":"http://loinc.org","code":"LA11882-0"}},
+                      "value_codes":{"DETECTED":[{"system":"http://loinc.org","code":"LA11882-0"}]},
                       "translations":{"DETECTED":["DÉTECTÉ"]},
                       "call_component":"call",
                       "components":[
@@ -674,16 +674,17 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     private static AnalyzerMappingCatalogService.ResultOption positive() {
-        return new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive", null);
+        return new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive", List.of());
     }
 
     private static List<AnalyzerMappingCatalogService.ResultOption> positiveAndNegative() {
-        return List.of(positive(), new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Negative", null));
+        return List.of(positive(),
+                new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Negative", List.of()));
     }
 
     private static List<AnalyzerMappingCatalogService.ResultOption> coveredAnswers() {
-        return List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Reactive", "LA6576-8"),
-                new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Non-reactive", "LA6577-6"));
+        return List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Reactive", loinc("LA6576-8")),
+                new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Non-reactive", loinc("LA6577-6")));
     }
 
     private static TestResult numericResult() {
@@ -717,8 +718,8 @@ public class AnalyzerMappingEditorServiceTest {
                       "result_type":"qualitative",
                       "values":["POS","NEG"],
                       "value_codes":{
-                        "POS":{"system":"http://loinc.org","code":"LA6576-8"},
-                        "NEG":{"system":"http://loinc.org","code":"LA6577-6"}
+                        "POS":[{"system":"http://loinc.org","code":"LA6576-8"}],
+                        "NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]
                       },
                       "normalized_coding":{
                         "system":"https://loinc.org",
@@ -825,5 +826,9 @@ public class AnalyzerMappingEditorServiceTest {
                 new AnalyzerMappingCatalogService.TestOption("9701", "SARS-CoV-2 RNA", "COVID19", List.of("94500-6")),
                 new AnalyzerMappingCatalogService.TestOption("9702", "Ambiguous one", "AMB-1", List.of("77777-7")),
                 new AnalyzerMappingCatalogService.TestOption("9703", "Ambiguous two", "AMB-2", List.of("77777-7")));
+    }
+
+    private static List<AnalyzerMappingCatalogService.AnswerCoding> loinc(String code) {
+        return List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", code));
     }
 }

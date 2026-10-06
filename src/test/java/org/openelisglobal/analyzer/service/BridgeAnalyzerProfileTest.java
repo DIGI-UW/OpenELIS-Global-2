@@ -37,8 +37,8 @@ public class BridgeAnalyzerProfileTest {
                       "result_type":"qualitative",
                       "values":["POS","NEG"],
                       "value_codes":{
-                        "POS":{"system":"http://loinc.org","code":"LA6576-8","display":"Detected"},
-                        "NEG":{"system":"http://loinc.org","code":"LA6577-6"}
+                        "POS":[{"system":"http://loinc.org","code":"LA6576-8","display":"Detected"}],
+                        "NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]
                       },
                       "normalized_coding":{
                         "system":"https://loinc.org",
@@ -68,10 +68,10 @@ public class BridgeAnalyzerProfileTest {
         assertEquals("copies/mL", first.unit());
         assertEquals("qualitative", first.resultType());
         assertEquals(List.of("POS", "NEG"), first.resultValues());
-        assertEquals("LA6576-8", first.valueCodes().get("POS").code());
-        assertEquals("http://loinc.org", first.valueCodes().get("POS").system());
-        assertEquals("Detected", first.valueCodes().get("POS").display());
-        assertEquals("LA6577-6", first.valueCodes().get("NEG").code());
+        assertEquals("LA6576-8", first.valueCodes().get("POS").get(0).code());
+        assertEquals("http://loinc.org", first.valueCodes().get("POS").get(0).system());
+        assertEquals("Detected", first.valueCodes().get("POS").get(0).display());
+        assertEquals("LA6577-6", first.valueCodes().get("NEG").get(0).code());
         assertEquals(java.util.Map.of(), profile.testDefinitions().get(1).valueCodes());
         assertEquals("https://loinc.org", first.normalizedCoding().system());
         assertEquals("94500-6", first.normalizedCoding().code());
@@ -98,7 +98,7 @@ public class BridgeAnalyzerProfileTest {
                       "loinc":"94500-6",
                       "result_type":"qualitative",
                       "values":["POS"],
-                      "value_codes":{"NEG":{"system":"http://loinc.org","code":"LA6577-6"}}
+                      "value_codes":{"NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]}
                     }
                   ]
                 }
