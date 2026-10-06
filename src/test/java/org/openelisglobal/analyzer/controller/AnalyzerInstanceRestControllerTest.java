@@ -40,6 +40,9 @@ public class AnalyzerInstanceRestControllerTest {
     @Mock
     private AnalyzerInstanceService service;
 
+    @Mock
+    private org.openelisglobal.analyzer.service.AnalyzerAdoptionService adoptionService;
+
     private AnalyzerInstanceRestController controller;
     private MockMvc mockMvc;
     private AnalyzerInstanceRequest input;
@@ -47,7 +50,7 @@ public class AnalyzerInstanceRestControllerTest {
 
     @Before
     public void setUp() {
-        controller = new AnalyzerInstanceRestController(service);
+        controller = new AnalyzerInstanceRestController(service, adoptionService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ControllerSetup()).build();
         input = new AnalyzerInstanceRequest();
         input.setName("Synthetic bench 1");
@@ -100,6 +103,42 @@ public class AnalyzerInstanceRestControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("42", response.getBody().get("id"));
         verify(service).update("42", input, "17");
+    }
+
+    @Test
+    public void adoptionIsPlannedForTheRequestedRevision() throws Exception {
+        when(adoptionService.prepareAdoption("42", 4)).thenReturn(
+                new org.openelisglobal.analyzer.service.AnalyzerAdoptionService.AdoptionPlan("42",
+                        "fixture.synthetic-connection", 3, 4, List.of()));
+
+        mockMvc.perform(get("/rest/analyzer/analyzers/42/adoption").param("revision", "4")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.fromRevision").value(3)).andExpect(jsonPath("$.toRevision").value(4));
+    }
+
+    @Test
+    public void adoptionSavesTheReviewedDecisionsAndNamesTheRevisionToConfirm() {
+        org.openelisglobal.analyzer.service.AnalyzerMappingUpdate decisions = new org.openelisglobal.analyzer.service.AnalyzerMappingUpdate(
+                null, List.of(new org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft("RAW-A",
+                        org.openelisglobal.analyzer.valueholder.AnalyzerMappingState.BOUND, "t1")),
+                List.of());
+        org.openelisglobal.analyzer.valueholder.AnalyzerMapping adopted = new org.openelisglobal.analyzer.valueholder.AnalyzerMapping();
+        adopted.setId("13");
+        adopted.setRevisionNumber(3);
+        adopted.setMappingFingerprint("sha256:" + "4".repeat(64));
+        when(adoptionService.adopt(org.mockito.ArgumentMatchers.eq("42"), org.mockito.ArgumentMatchers.eq(4),
+                org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.eq("17"))).thenReturn(
+                        new org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot(adopted, List.of(), List.of()));
+
+        ResponseEntity<Map<String, Object>> response = controller.adopt("42", 4, decisions, request);
+
+        org.mockito.ArgumentCaptor<org.openelisglobal.analyzer.service.AnalyzerMappingDraft> sent = org.mockito.ArgumentCaptor
+                .forClass(org.openelisglobal.analyzer.service.AnalyzerMappingDraft.class);
+        verify(adoptionService).adopt(org.mockito.ArgumentMatchers.eq("42"), org.mockito.ArgumentMatchers.eq(4),
+                sent.capture(), org.mockito.ArgumentMatchers.eq("17"));
+        assertEquals("t1", sent.getValue().tests().get(0).testId());
+        assertEquals("13", response.getBody().get("mappingId"));
+        assertEquals(3, response.getBody().get("mappingRevision"));
+        assertEquals("sha256:" + "4".repeat(64), response.getBody().get("mappingFingerprint"));
     }
 
     @Test
