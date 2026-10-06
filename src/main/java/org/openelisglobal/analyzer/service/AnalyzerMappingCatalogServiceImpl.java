@@ -111,7 +111,8 @@ public class AnalyzerMappingCatalogServiceImpl implements AnalyzerMappingCatalog
     @Transactional(readOnly = true)
     public List<ComponentOption> getActiveComponents(String testId) {
         return componentService.getActiveComponentsByTestId(testId).stream()
-                .map(component -> new ComponentOption(component.getId(), component.getCode())).toList();
+                .map(component -> new ComponentOption(component.getId(), component.getCode(), component.getLabel()))
+                .toList();
     }
 
     private static boolean matches(TestOption option, String query) {

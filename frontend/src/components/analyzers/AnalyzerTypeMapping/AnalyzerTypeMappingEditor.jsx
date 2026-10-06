@@ -36,6 +36,7 @@ import {
   applyAnalyzerMapping,
   confirmAnalyzerMapping,
   getAnalyzerMapping,
+  getAnalyzerMappingComponents,
   getAnalyzerMappingResultOptions,
   getAnalyzerMappingTests,
   getAnalyzerTypeDefaults,
@@ -58,6 +59,42 @@ const cloneTests = (tests = []) =>
     results: (test.results || []).map((result) => ({ ...result })),
   }));
 
+// A test can report several records under one code; each is its own row,
+// named by its code and the vendor's sub-identity.
+const recordKey = (test) =>
+  test.subIdentity
+    ? `${test.sourceRowKey} ${test.subIdentity}`
+    : test.sourceRowKey;
+
+const recordLabel = (test) =>
+  test.subIdentity ? `${test.rawCode} ${test.subIdentity}` : test.rawCode;
+
+// A record lands on a component of its test; the main record of a test that
+// reports a call sends the call to one.
+const takesComponent = (test) =>
+  Boolean(test.subIdentity || test.componentCode);
+
+const takesCallComponent = (test) =>
+  !test.subIdentity && Boolean(test.callComponentCode || test.callComponentId);
+
+const answerComponentId = (test) =>
+  test.subIdentity ? test.componentId : test.callComponentId;
+
+const componentWithCode = (components, code) => {
+  const matches = code
+    ? components.filter((component) => component.code === code)
+    : [];
+  return matches.length === 1 ? matches[0].id : null;
+};
+
+const unresolvedResults = (results) =>
+  results.map((result) => ({
+    ...result,
+    mappingState: "UNRESOLVED",
+    resultOptionId: null,
+    selectedOption: null,
+  }));
+
 const testItemText = (test) => {
   if (!test) {
     return "";
@@ -69,6 +106,9 @@ const testItemText = (test) => {
 };
 
 const resultItemText = (option) => option?.label || "";
+
+const componentItemText = (component) =>
+  component?.label || component?.code || "";
 
 const stateTagType = (state) => {
   if (state === "BOUND") {
@@ -95,18 +135,20 @@ const changeSide = (state, targetName) => ({
 });
 
 const listChanges = (savedTests = [], draftTests = []) => {
-  const saved = new Map(savedTests.map((test) => [test.sourceRowKey, test]));
+  const saved = new Map(savedTests.map((test) => [recordKey(test), test]));
   const changes = [];
   draftTests.forEach((test) => {
-    const before = saved.get(test.sourceRowKey);
+    const before = saved.get(recordKey(test));
     if (
       before &&
       (before.mappingState !== test.mappingState ||
-        (before.testId || null) !== (test.testId || null))
+        (before.testId || null) !== (test.testId || null) ||
+        (before.componentId || null) !== (test.componentId || null) ||
+        (before.callComponentId || null) !== (test.callComponentId || null))
     ) {
       changes.push({
-        key: test.sourceRowKey,
-        label: test.rawCode,
+        key: recordKey(test),
+        label: recordLabel(test),
         from: changeSide(before.mappingState, before.selectedTest?.name),
         to: changeSide(test.mappingState, test.selectedTest?.name),
       });
@@ -123,8 +165,8 @@ const listChanges = (savedTests = [], draftTests = []) => {
             (result.resultOptionId || null))
       ) {
         changes.push({
-          key: `${test.sourceRowKey}:${result.rawValue}`,
-          label: `${test.rawCode} / ${result.rawValue}`,
+          key: `${recordKey(test)}:${result.rawValue}`,
+          label: `${recordLabel(test)} / ${result.rawValue}`,
           from: changeSide(
             beforeResult.mappingState,
             beforeResult.selectedOption?.label,
@@ -161,6 +203,7 @@ const AnalyzerTypeMappingEditor = () => {
   const [draftTests, setDraftTests] = useState([]);
   const [catalogTests, setCatalogTests] = useState([]);
   const [resultOptionsByTest, setResultOptionsByTest] = useState({});
+  const [componentsByTest, setComponentsByTest] = useState({});
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(null);
   const [dirty, setDirty] = useState(false);
@@ -170,6 +213,7 @@ const AnalyzerTypeMappingEditor = () => {
   const [reviewingSave, setReviewingSave] = useState(false);
   const [notification, setNotification] = useState(null);
   const loadedResultOptions = useRef(new Set());
+  const loadedComponents = useRef(new Set());
   const focusedResultRow = useRef(null);
   const focusHandled = useRef(false);
   const routeIsValid = readOnly
@@ -206,8 +250,10 @@ const AnalyzerTypeMappingEditor = () => {
         return;
       }
       loadedResultOptions.current = new Set();
+      loadedComponents.current = new Set();
       focusHandled.current = false;
       setResultOptionsByTest({});
+      setComponentsByTest({});
       applyMapping(response);
     });
     if (readOnly) {
@@ -266,6 +312,57 @@ const AnalyzerTypeMappingEditor = () => {
   }, [draftTests]);
 
   useEffect(() => {
+    draftTests
+      .filter(
+        (test) =>
+          test.mappingState === "BOUND" &&
+          test.testId &&
+          (takesComponent(test) || takesCallComponent(test)),
+      )
+      .forEach(({ testId }) => {
+        if (loadedComponents.current.has(testId)) {
+          return;
+        }
+        loadedComponents.current.add(testId);
+        getAnalyzerMappingComponents(testId, (response) => {
+          setComponentsByTest((current) => ({
+            ...current,
+            [testId]: Array.isArray(response) ? response : [],
+          }));
+        });
+      });
+  }, [draftTests]);
+
+  // A record moved to another test lands on that test's component with the
+  // code the profile declares, once the test's components have loaded.
+  useEffect(() => {
+    if (
+      !draftTests.some(
+        (test) => test.placeByCode && componentsByTest[test.testId],
+      )
+    ) {
+      return;
+    }
+    setDraftTests((current) =>
+      current.map(({ placeByCode, ...test }) => {
+        const components = componentsByTest[test.testId];
+        if (!placeByCode || !components) {
+          return placeByCode ? { ...test, placeByCode } : test;
+        }
+        return {
+          ...test,
+          componentId: takesComponent(test)
+            ? componentWithCode(components, test.componentCode)
+            : null,
+          callComponentId: takesCallComponent(test)
+            ? componentWithCode(components, test.callComponentCode)
+            : null,
+        };
+      }),
+    );
+  }, [draftTests, componentsByTest]);
+
+  useEffect(() => {
     if (
       focusHandled.current ||
       !focusTest ||
@@ -283,41 +380,45 @@ const AnalyzerTypeMappingEditor = () => {
     focusHandled.current = true;
   }, [draftTests, focusTest, focusValue, resultOptionsByTest]);
 
-  const updateTest = (sourceRowKey, transform) => {
+  const updateTest = (key, transform) => {
     setDraftTests((current) =>
-      current.map((test) =>
-        test.sourceRowKey === sourceRowKey ? transform(test) : test,
-      ),
+      current.map((test) => (recordKey(test) === key ? transform(test) : test)),
     );
     setDirty(true);
     setNotification(null);
   };
 
-  const selectTest = (sourceRowKey, selectedTest) => {
-    updateTest(sourceRowKey, (test) => {
+  const selectTest = (key, selectedTest) => {
+    updateTest(key, (test) => {
       const changed = test.testId !== selectedTest?.id;
       return {
         ...test,
         mappingState: selectedTest ? "BOUND" : "UNRESOLVED",
         testId: selectedTest?.id || null,
         componentId: changed ? null : test.componentId || null,
+        callComponentId: changed ? null : test.callComponentId || null,
+        placeByCode: changed ? Boolean(selectedTest) : test.placeByCode,
         selectedTest: selectedTest || null,
-        results: changed
-          ? test.results.map((result) => ({
-              ...result,
-              mappingState: "UNRESOLVED",
-              resultOptionId: null,
-              selectedOption: null,
-            }))
-          : test.results,
+        results: changed ? unresolvedResults(test.results) : test.results,
       };
+    });
+  };
+
+  // Answers belong to the component a record lands on, so moving the record
+  // to another component clears them.
+  const selectComponent = (key, field, component) => {
+    updateTest(key, (test) => {
+      const next = { ...test, [field]: component?.id || null };
+      return answerComponentId(next) === answerComponentId(test)
+        ? next
+        : { ...next, results: unresolvedResults(test.results) };
     });
   };
 
   // Excluding keeps the row's selections and each result's own state, so that
   // un-excluding before Save restores them. A saved excluded row has no target.
-  const excludeTest = (sourceRowKey, checked) => {
-    updateTest(sourceRowKey, (test) => ({
+  const excludeTest = (key, checked) => {
+    updateTest(key, (test) => ({
       ...test,
       mappingState: checked ? "EXCLUDED" : test.testId ? "BOUND" : "UNRESOLVED",
       results: test.results.map(({ stateBeforeExclusion, ...result }) =>
@@ -337,8 +438,8 @@ const AnalyzerTypeMappingEditor = () => {
     }));
   };
 
-  const selectResult = (sourceRowKey, rawValue, selectedOption) => {
-    updateTest(sourceRowKey, (test) => ({
+  const selectResult = (key, rawValue, selectedOption) => {
+    updateTest(key, (test) => ({
       ...test,
       results: test.results.map((result) =>
         result.rawValue === rawValue
@@ -353,8 +454,8 @@ const AnalyzerTypeMappingEditor = () => {
     }));
   };
 
-  const excludeResult = (sourceRowKey, rawValue, checked) => {
-    updateTest(sourceRowKey, (test) => ({
+  const excludeResult = (key, rawValue, checked) => {
+    updateTest(key, (test) => ({
       ...test,
       results: test.results.map((result) =>
         result.rawValue === rawValue
@@ -376,14 +477,18 @@ const AnalyzerTypeMappingEditor = () => {
       baseMappingFingerprint: mapping?.mappingFingerprint || null,
       tests: draftTests.map((test) => ({
         sourceRowKey: test.sourceRowKey,
+        subIdentity: test.subIdentity || "",
         mappingState: test.mappingState,
         testId: test.mappingState === "BOUND" ? test.testId : null,
         componentId:
           test.mappingState === "BOUND" ? test.componentId || null : null,
+        callComponentId:
+          test.mappingState === "BOUND" ? test.callComponentId || null : null,
       })),
       results: draftTests.flatMap((test) =>
         test.results.map((result) => ({
           sourceRowKey: test.sourceRowKey,
+          subIdentity: test.subIdentity || "",
           rawValue: result.rawValue,
           mappingState: result.mappingState,
           testResultId:
@@ -473,7 +578,11 @@ const AnalyzerTypeMappingEditor = () => {
       if (test.mappingState !== "UNRESOLVED") {
         const destination =
           test.mappingState === "BOUND" ? confirmedRows : excludedRows;
-        destination.push({ sourceRowKey: test.sourceRowKey, rawValue: null });
+        destination.push({
+          sourceRowKey: test.sourceRowKey,
+          subIdentity: test.subIdentity || "",
+          rawValue: null,
+        });
       }
       test.results.forEach((result) => {
         if (result.mappingState === "UNRESOLVED") return;
@@ -481,6 +590,7 @@ const AnalyzerTypeMappingEditor = () => {
           result.mappingState === "BOUND" ? confirmedRows : excludedRows;
         resultDestination.push({
           sourceRowKey: test.sourceRowKey,
+          subIdentity: test.subIdentity || "",
           rawValue: result.rawValue,
         });
       });
@@ -769,12 +879,20 @@ const AnalyzerTypeMappingEditor = () => {
                   ) ||
                   test.selectedTest ||
                   null;
+                const answerComponent = answerComponentId(test);
                 const resultOptions = test.testId
-                  ? resultOptionsByTest[test.testId]
+                  ? resultOptionsByTest[test.testId]?.filter(
+                      (option) =>
+                        !answerComponent ||
+                        option.componentId === answerComponent,
+                    )
                   : undefined;
+                const components = componentsByTest[test.testId] || [];
+                const key = recordKey(test);
+                const label = recordLabel(test);
                 return (
                   <AccordionItem
-                    key={test.sourceRowKey}
+                    key={key}
                     open={
                       test.mappingState === "UNRESOLVED" ||
                       test.results.some(
@@ -784,7 +902,7 @@ const AnalyzerTypeMappingEditor = () => {
                     }
                     title={
                       <div className="analyzer-type-mapping__row-title">
-                        <strong>{test.rawCode}</strong>
+                        <strong>{label}</strong>
                         <span>{test.testNameHint}</span>
                         <Tag
                           type={stateTagType(
@@ -824,7 +942,7 @@ const AnalyzerTypeMappingEditor = () => {
                           <span className="analyzer-type-mapping__label">
                             <FormattedMessage id="analyzerType.mappingEditor.sourceCode" />
                           </span>
-                          <strong>{test.rawCode}</strong>
+                          <strong>{label}</strong>
                         </div>
                         {test.loinc && (
                           <div>
@@ -860,10 +978,10 @@ const AnalyzerTypeMappingEditor = () => {
 
                       <div className="analyzer-type-mapping__decision">
                         <ComboBox
-                          id={`analyzer-test-${test.sourceRowKey}`}
+                          id={`analyzer-test-${key}`}
                           titleText={intl.formatMessage(
                             { id: "analyzerType.mappingEditor.testPicker" },
-                            { code: test.rawCode },
+                            { code: label },
                           )}
                           placeholder={intl.formatMessage({
                             id: "analyzerType.mappingEditor.testPicker.placeholder",
@@ -882,9 +1000,71 @@ const AnalyzerTypeMappingEditor = () => {
                             readOnly || test.mappingState === "EXCLUDED"
                           }
                           onChange={({ selectedItem }) =>
-                            selectTest(test.sourceRowKey, selectedItem)
+                            selectTest(key, selectedItem)
                           }
                         />
+                        {test.mappingState === "BOUND" &&
+                          takesComponent(test) && (
+                            <Dropdown
+                              id={`analyzer-component-${key}`}
+                              titleText={intl.formatMessage(
+                                {
+                                  id: "analyzerType.mappingEditor.componentPicker",
+                                },
+                                { code: label },
+                              )}
+                              label={intl.formatMessage({
+                                id: "analyzerType.mappingEditor.componentPicker.placeholder",
+                              })}
+                              items={components}
+                              itemToString={componentItemText}
+                              selectedItem={
+                                components.find(
+                                  (component) =>
+                                    component.id === test.componentId,
+                                ) || null
+                              }
+                              disabled={readOnly}
+                              onChange={({ selectedItem }) =>
+                                selectComponent(
+                                  key,
+                                  "componentId",
+                                  selectedItem,
+                                )
+                              }
+                            />
+                          )}
+                        {test.mappingState === "BOUND" &&
+                          takesCallComponent(test) && (
+                            <Dropdown
+                              id={`analyzer-call-component-${key}`}
+                              titleText={intl.formatMessage(
+                                {
+                                  id: "analyzerType.mappingEditor.callComponentPicker",
+                                },
+                                { code: label },
+                              )}
+                              label={intl.formatMessage({
+                                id: "analyzerType.mappingEditor.componentPicker.placeholder",
+                              })}
+                              items={components}
+                              itemToString={componentItemText}
+                              selectedItem={
+                                components.find(
+                                  (component) =>
+                                    component.id === test.callComponentId,
+                                ) || null
+                              }
+                              disabled={readOnly}
+                              onChange={({ selectedItem }) =>
+                                selectComponent(
+                                  key,
+                                  "callComponentId",
+                                  selectedItem,
+                                )
+                              }
+                            />
+                          )}
                         {!readOnly &&
                           test.suggestedTest &&
                           test.mappingState === "UNRESOLVED" && (
@@ -899,10 +1079,7 @@ const AnalyzerTypeMappingEditor = () => {
                                 kind="ghost"
                                 size="sm"
                                 onClick={() =>
-                                  selectTest(
-                                    test.sourceRowKey,
-                                    test.suggestedTest,
-                                  )
+                                  selectTest(key, test.suggestedTest)
                                 }
                               >
                                 <FormattedMessage id="analyzerType.mappingEditor.useSuggestion" />
@@ -910,19 +1087,19 @@ const AnalyzerTypeMappingEditor = () => {
                             </div>
                           )}
                         <Checkbox
-                          id={`exclude-test-${test.sourceRowKey}`}
+                          id={`exclude-test-${key}`}
                           aria-label={intl.formatMessage(
                             { id: "analyzerType.mappingEditor.excludeTest" },
-                            { code: test.rawCode },
+                            { code: label },
                           )}
                           labelText={intl.formatMessage(
                             { id: "analyzerType.mappingEditor.excludeTest" },
-                            { code: test.rawCode },
+                            { code: label },
                           )}
                           checked={test.mappingState === "EXCLUDED"}
                           disabled={readOnly}
                           onChange={(_, state) =>
-                            excludeTest(test.sourceRowKey, state.checked)
+                            excludeTest(key, state.checked)
                           }
                         />
                       </div>
@@ -934,7 +1111,7 @@ const AnalyzerTypeMappingEditor = () => {
                               <FormattedMessage
                                 id="analyzerType.mappingEditor.results.heading"
                                 values={{
-                                  name: selectedTest?.name || test.rawCode,
+                                  name: selectedTest?.name || label,
                                 }}
                               />
                             </h3>
@@ -991,7 +1168,7 @@ const AnalyzerTypeMappingEditor = () => {
                                 return (
                                   <div
                                     className="analyzer-type-mapping__result-row"
-                                    key={`${test.sourceRowKey}:${result.rawValue}`}
+                                    key={`${key}:${result.rawValue}`}
                                     ref={
                                       test.rawCode === focusTest &&
                                       result.rawValue === focusValue
@@ -1013,7 +1190,7 @@ const AnalyzerTypeMappingEditor = () => {
                                       )}
                                     </div>
                                     <Dropdown
-                                      id={`result-${test.sourceRowKey}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
+                                      id={`result-${key}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
                                       titleText={intl.formatMessage(
                                         {
                                           id: "analyzerType.mappingEditor.resultPicker",
@@ -1036,14 +1213,14 @@ const AnalyzerTypeMappingEditor = () => {
                                       }
                                       onChange={({ selectedItem }) =>
                                         selectResult(
-                                          test.sourceRowKey,
+                                          key,
                                           result.rawValue,
                                           selectedItem,
                                         )
                                       }
                                     />
                                     <Checkbox
-                                      id={`exclude-result-${test.sourceRowKey}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
+                                      id={`exclude-result-${key}-${result.rawValue.replace(/[^a-z0-9]/gi, "-")}`}
                                       aria-label={intl.formatMessage(
                                         {
                                           id: "analyzerType.mappingEditor.excludeResult",
@@ -1059,7 +1236,7 @@ const AnalyzerTypeMappingEditor = () => {
                                       disabled={readOnly}
                                       onChange={(_, state) =>
                                         excludeResult(
-                                          test.sourceRowKey,
+                                          key,
                                           result.rawValue,
                                           state.checked,
                                         )

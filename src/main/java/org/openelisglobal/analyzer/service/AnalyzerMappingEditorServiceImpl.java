@@ -298,7 +298,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         return new AnalyzerMappingView.TestRow(definition.analyzerCode(), definition.analyzerCode(),
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
                 definition.normalizedCoding(), state, origin, testId, componentId, selected, suggested, testReason,
-                results, key.subIdentity(), callComponentId);
+                results, key.subIdentity(), callComponentId, record.componentCode(),
+                key.subIdentity().isEmpty() ? definition.callComponent() : null);
     }
 
     private static AnalyzerMappingRowKey recordOf(AnalyzerResults staged) {
@@ -325,28 +326,28 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
      * One record a test reports. Its values are the declared values followed by
      * their translations; a translation answers with its value's code.
      */
-    private record ReportedRecord(BridgeAnalyzerProfile.TestDefinition test, String unit, String resultType,
-            List<String> values, Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes) {
+    private record ReportedRecord(BridgeAnalyzerProfile.TestDefinition test, String componentCode, String unit,
+            String resultType, List<String> values, Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes) {
 
         static ReportedRecord main(BridgeAnalyzerProfile.TestDefinition test) {
-            return translated(test, test.unit(), test.resultType(), test.resultValues(), test.valueCodes(),
+            return translated(test, null, test.unit(), test.resultType(), test.resultValues(), test.valueCodes(),
                     test.translations());
         }
 
         static ReportedRecord of(BridgeAnalyzerProfile.TestDefinition test,
                 BridgeAnalyzerProfile.ComponentDefinition component) {
-            return translated(test, component.unit(), component.resultType(), component.resultValues(),
-                    component.valueCodes(), component.translations());
+            return translated(test, component.code(), component.unit(), component.resultType(),
+                    component.resultValues(), component.valueCodes(), component.translations());
         }
 
         static ReportedRecord undeclared(AnalyzerMappingRowKey key) {
             return new ReportedRecord(new BridgeAnalyzerProfile.TestDefinition(key.sourceRowKey(), List.of(), null,
-                    null, null, null, List.of(), null, Map.of()), null, null, List.of(), Map.of());
+                    null, null, null, List.of(), null, Map.of()), null, null, null, List.of(), Map.of());
         }
 
-        private static ReportedRecord translated(BridgeAnalyzerProfile.TestDefinition test, String unit,
-                String resultType, List<String> declared, Map<String, BridgeAnalyzerProfile.NormalizedCoding> codes,
-                Map<String, List<String>> translations) {
+        private static ReportedRecord translated(BridgeAnalyzerProfile.TestDefinition test, String componentCode,
+                String unit, String resultType, List<String> declared,
+                Map<String, BridgeAnalyzerProfile.NormalizedCoding> codes, Map<String, List<String>> translations) {
             List<String> values = new ArrayList<>(declared);
             Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes = new LinkedHashMap<>(codes);
             for (String value : declared) {
@@ -357,7 +358,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                     }
                 }
             }
-            return new ReportedRecord(test, unit, resultType, List.copyOf(values), valueCodes);
+            return new ReportedRecord(test, componentCode, unit, resultType, List.copyOf(values), valueCodes);
         }
     }
 

@@ -435,6 +435,10 @@ public class AnalyzerMappingEditorServiceTest {
         AnalyzerMappingView.TestRow log = recordRow(view, "&LOG");
         assertEquals("HIVVL", log.rawCode());
         assertEquals("comp-LOG", log.componentId());
+        assertEquals("call", main.callComponentCode());
+        assertNull(main.componentCode());
+        assertEquals("LOG", log.componentCode());
+        assertNull(log.callComponentCode());
     }
 
     @Test
@@ -484,7 +488,7 @@ public class AnalyzerMappingEditorServiceTest {
                         List.of("20447-9"))));
         when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
         when(mappingCatalogService.getActiveComponents("9701"))
-                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG")));
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG", "Log viral load")));
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(
                 new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", "LA11882-0",
                         "comp-qualitative")));
@@ -552,8 +556,8 @@ public class AnalyzerMappingEditorServiceTest {
                         List.of("20447-9"))));
         when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
         when(mappingCatalogService.getActiveComponents("9701"))
-                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-call", "call"),
-                        new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG")));
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-call", "call", "Call"),
+                        new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG", "Log viral load")));
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(
                 new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", "LA11882-0",
                         "comp-call")));

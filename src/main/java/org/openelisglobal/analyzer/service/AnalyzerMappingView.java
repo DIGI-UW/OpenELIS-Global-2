@@ -23,7 +23,8 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
             AnalyzerMappingState mappingState, AnalyzerMappingOrigin origin, String testId, String componentId,
             AnalyzerMappingCatalogService.TestOption selectedTest,
             AnalyzerMappingCatalogService.TestOption suggestedTest, AnalyzerUnresolvedReason unresolvedReason,
-            List<ResultRow> results, String subIdentity, String callComponentId) {
+            List<ResultRow> results, String subIdentity, String callComponentId, String componentCode,
+            String callComponentCode) {
 
         public TestRow {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
