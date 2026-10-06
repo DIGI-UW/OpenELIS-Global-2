@@ -64,13 +64,13 @@ sample_type_id)` (changesets 043, 053, 057, 060 in `3.5.x.x`); 043
 
 ```
 - [x] T2c.1 Red: integration test, a changeset backfills one LOINC SAME_AS row per dictionary entry with loinc_code; saving an answer's LOINC mapping keeps loinc_code in step
-- [ ] T2c.2 Red: integration test, config import of an answer terminology CSV adds LOINC, SNOMED and CIEL rows to one answer and merges on re-import
+- [x] T2c.2 Red: integration test, config import of an answer terminology CSV adds LOINC, SNOMED and CIEL rows to one answer and merges on re-import
 - [ ] T2c.3 Red: unit test, a coded result's FHIR valueCodeableConcept carries every mapped system, SAME_AS first, plus the dictionary_entry coding
 - [x] T2c.4 Red: unit tests, resolveAnswer binds when the profile value and the answer share any (system, code); two answers sharing it is AMBIGUOUS; a SNOMED-only value binds to an answer carrying that SNOMED code
 - [ ] T2c.5 Red: integration test, OCL import writes an answer's CIEL concept and its LOINC and SNOMED mappings as terminology rows
 - [x] T2c.6 Changeset (129 in 3.5.x.x): dictionary_terminology_mapping(id, dictionary_id, source, code, relationship, display_name, is_active, lastupdated, last_updated), unique (dictionary_id, source, code), backfill from dictionary.loinc_code
 - [x] T2c.7 Package org.openelisglobal.dictionaryterminology mirroring panelterminology (the unscoped mirror with a denormalized legacy LOINC column, `panel.loinc`), with syncLegacyLoinc
-- [ ] T2c.8 Config import domain `answer-terminology`: category,dictEntry,source,code,relationship,displayName; the dictionary CSV's loincCode column keeps working through syncLegacyLoinc
+- [x] T2c.8 Config import domain `answer-terminology`: category,dictEntry,source,code,relationship,displayName; the dictionary CSV's loincCode column keeps working through syncLegacyLoinc (only a row that carries a loincCode syncs, so a dictionary re-import never clears codes the answer-terminology import added); load order 310, after dictionaries
 - [ ] T2c.9 FHIR output, OCL import and analyzer defaults per Facts; ResultOption carries the answer's codings; BridgeAnalyzerProfile reads a list of codings per value (analyzer defaults, ResultOption and the profile done; the source-to-system URIs moved to `TerminologySystems`, shared with FHIR output)
 - [ ] T2c.10 REST GET/PUT /rest/test-catalog/answers/{dictionaryId}/terminology; Dictionary Management edits mappings with the TerminologySection pattern; the catalog option table shows each answer's codes read-only
 - [ ] T2c.11 Green; format cold; commit; stack PR on step 2b (backend T2c.1-T2c.9 and the UI T2c.10 as two PRs if one exceeds a reviewable size)
