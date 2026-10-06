@@ -174,7 +174,7 @@ test.describe("Print Bar Code Labels", () => {
       await expect(labels.getByTestId("print-all-labels")).toBeVisible();
       await expect(
         labels.getByText(
-          /Prints \d+ order labels and \d+ labels per specimen\./,
+          /Prints \d+ order labels? and \d+ labels? per specimen\./,
         ),
       ).toBeVisible();
     });
