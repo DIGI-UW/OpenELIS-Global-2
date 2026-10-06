@@ -36,15 +36,25 @@ operator fix it in place, and never shows raw server text.
   current Result Option", blocker codes `analyzer.activation.blocker.*`,
   Bridge `connectionErrorKey`.
 
+### Decided 6 Oct
+
+Setup mirrors the instrument's own Host Test Code table ("Yes, mirror the instrument"). A
+generic profile declares every assay the vendor documents; a lab enables the
+few its instrument runs, as it does on the GeneXpert itself, and Verify maps
+only those. Researched: GeneXpert Dx Operator Manual 301-0045 Rev L §2.11.5-2.11.6
+(per assay "Enable" and "Host Test Code"), Cepheid 303-3003 (assays come from
+imported definition files), HL7 LIVD (labs map the tests they perform from the
+vendor's full catalog).
+
 ### Build
 
 ```
 - [x] T4.1 Red: component tests, each listed server message renders its en.json string, never raw text
-- [ ] T4.2 Red: E2E on a populated catalog (answerless COVID duplicate, legacy RIF answers): Verify lists each unresolved row with reason; resolve in place; Continue enabled only when remaining unresolved rows are acknowledged
+- [ ] T4.2 Red: E2E on a populated catalog (answerless COVID duplicate, legacy RIF answers): the Assays step pre-ticks the assays the catalog can bind; Verify lists each enabled assay that is unresolved, with its reason; resolve in place; Continue enabled only when every enabled assay is mapped
 - [ ] T4.3 Red: E2E, a changed instrument code is used for result translation and an outbound order
-- [ ] T4.4 Verify step: render step-1 reasons per row; inline resolve controls (same components as the editor); acknowledge-unresolved checkbox per row; gate = confirmed AND all unresolved acknowledged; counts derive from the same rows
-- [ ] T4.5 Instrument step: code column per profile row, editable, stored as override
-- [ ] T4.5b Red then green: E2E, a result under a code the profile does not declare is held as an unknown test; the operator adds it to the analyzer's mapping from the held row (test, and answers when categorical), stored as OVERRIDE; the held result recovers (rule 13)
+- [ ] T4.4 Verify step: covers the enabled assays only; render step-1 reasons per row; inline resolve controls (same components as the editor); gate = confirmed AND every enabled assay mapped; counts derive from the same rows. No per-row acknowledgement: an assay the lab does not run is not enabled
+- [ ] T4.5 Assays step, between Instrument and Verify, mirroring the GeneXpert Host Test Code table (Operator Manual 301-0045 Rev L §2.11.5-2.11.6: per assay, Enable and Host Test Code): one row per profile assay with Enable and its instrument code (default the profile's `test_code`, editable). Pre-ticked when the catalog binds the assay or has candidates for it (BOUND, AMBIGUOUS, INCOMPATIBLE); unticked on NO_MATCH. Stored per analyzer assay on the mapping (`enabled`, `instrument_code`); a change is a new mapping revision. Not enabled is not EXCLUDED: a result for an assay that is not enabled is held as `assay_not_enabled`, never dropped. The code is sent to the Bridge as a per-connection override in `values` (Bridge support lands in step 6)
+- [ ] T4.5b Red then green: E2E, a result under a code the profile does not declare is held as an unknown test, and a result for an assay that is not enabled is held as not enabled; the operator enables or adds it from the held row (test, and answers when categorical), stored as OVERRIDE; the held result recovers (rule 13)
 - [x] T4.6 Error mapping: one errorKeyFor(response) helper; every path uses it; add keys to en.json. The server names an operator-facing refusal with `messageKey` and `messageArgs` (`AnalyzerRequestException`); setup, Verify, the mapping editor, adoption and the lifecycle modal show its words or their own message. Derived 6 Oct: analyzer type authoring keeps showing the Bridge's profile validation text, which is the author's only detail, until step 6 gives the Bridge's profile contract keyed errors
 - [ ] T4.7 Hand-offs: editor link carries analyzerId; return label from returnTo; roles on the mapping route match /analyzers; edit title; Activate action for SETUP; zero-test type explanation
 - [ ] T4.8 Green; format cold; commit; stack PR on step 2

@@ -132,7 +132,10 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
 13. Instrument codes are a per-analyzer override. The profile ships the
     vendor's suggested codes; setup lets the operator change what this
     instrument uses; the Bridge uses the override for result translation and
-    outbound orders. A code the profile does not declare (a cartridge or test
+    outbound orders. Setup lists the profile's assays the way the instrument's
+    host test code table does: the lab enables the ones this instrument runs
+    and sets each code, and only enabled assays are mapped. A result for an
+    assay that is not enabled is held, never dropped. A code the profile does not declare (a cartridge or test
     the default profile does not cover) reaches OE2 and is held as an unknown
     test; the operator maps it like any other override, from the held row or
     the editor, as a row of that analyzer's mapping. What the default profile
