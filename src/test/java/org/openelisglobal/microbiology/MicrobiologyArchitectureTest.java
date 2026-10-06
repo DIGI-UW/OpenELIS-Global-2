@@ -128,8 +128,7 @@ public class MicrobiologyArchitectureTest {
 
     private boolean isMigrationVerificationTest(Path path) {
         String fileName = path.getFileName().toString();
-        return fileName.endsWith("LiquibaseRollbackTest.java")
-                || fileName.equals("AmrCutoverMigrationTest.java")
+        return fileName.endsWith("LiquibaseRollbackTest.java") || fileName.equals("AmrCutoverMigrationTest.java")
                 || fileName.equals("MicrobiologyWhonetExportSelectionLiquibaseTest.java")
                 || fileName.equals("MicrobiologyCulturePurposeLiquibaseTest.java");
     }
