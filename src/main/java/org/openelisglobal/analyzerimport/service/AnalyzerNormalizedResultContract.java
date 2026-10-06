@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Device;
 import org.hl7.fhir.r4.model.DomainResource;
@@ -33,6 +34,15 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
     private static final String PATIENT_SOURCE = EXTENSION_ROOT + "analyzer-patient-source";
     private static final String LOT_NUMBER = "http://openelis-global.org/fhir/qc/lot-number";
     private static final String CONTROL_LEVEL = "http://openelis-global.org/fhir/qc/control-level";
+    private static final String V2_SUBID = "http://hl7.org/fhir/StructureDefinition/observation-v2-subid";
+    private static final String ORIGINAL_SUB_IDENTIFIER = "original-sub-identifier";
+    private static final String INTERPRETATION = "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation";
+    /**
+     * Interpretation codes that state a call (positive, negative, detected, not
+     * detected, indeterminate); any other interpretation is a flag such as N, A or
+     * H.
+     */
+    private static final Set<String> CALL_CODES = Set.of("POS", "NEG", "DET", "ND", "IND");
 
     public AnalyzerNormalizedResultContract {
         results = List.copyOf(results);
@@ -117,8 +127,11 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
             throw new IllegalArgumentException("Every analyzer Observation requires one raw analyzer code");
         }
 
-        String rawValue = requireExtensionText(observation, RAW_VALUE,
-                "Every analyzer Observation requires its raw value");
+        String rawValue = optionalExtensionText(observation, RAW_VALUE);
+        if ((rawValue == null || rawValue.isBlank()) && !observation.hasValue()) {
+            throw new IllegalArgumentException("Every analyzer Observation requires its raw value");
+        }
+        rawValue = rawValue == null ? "" : rawValue.trim();
         String sourceTransport = requireExtensionText(observation, SOURCE_TRANSPORT,
                 "Every analyzer Observation requires its source transport");
         String classification = requireExtensionText(observation, CLASSIFICATION,
@@ -140,6 +153,10 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String comparator = observation.hasValueQuantity() && observation.getValueQuantity().hasComparator()
                 ? observation.getValueQuantity().getComparator().toCode()
                 : null;
+        String number = observation.hasValueQuantity() && observation.getValueQuantity().hasValue()
+                ? observation.getValueQuantity().getValue().toPlainString()
+                : null;
+        String call = number != null ? callInterpretation(observation) : callValue(observation, rawValue);
         String resultType = observation.hasValueQuantity() ? "N" : "A";
         Timestamp completed = observation.hasEffectiveDateTimeType()
                 ? new Timestamp(observation.getEffectiveDateTimeType().getValue().getTime())
@@ -157,7 +174,52 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, lotNumber, controlLevel,
                 completed, sourcePayload, patient == null ? null : patient.identifier(),
                 patient == null ? null : patient.name(), note.isEmpty() ? null : note,
-                observation.hasDataAbsentReason(), comparator);
+                observation.hasDataAbsentReason(), comparator, subIdentityOf(observation), number, call);
+    }
+
+    /** The record's sub-identity under its code; empty for the main result. */
+    private static String subIdentityOf(Observation observation) {
+        List<Extension> subIds = observation.getExtension().stream()
+                .filter(extension -> V2_SUBID.equals(extension.getUrl())).toList();
+        if (subIds.isEmpty()) {
+            return "";
+        }
+        if (subIds.size() != 1) {
+            throw new IllegalArgumentException("An analyzer Observation has at most one sub-identity");
+        }
+        Extension original = subIds.get(0).getExtensionByUrl(ORIGINAL_SUB_IDENTIFIER);
+        String value = original != null && original.getValue() instanceof PrimitiveType<?> primitive
+                ? primitive.getValueAsString()
+                : null;
+        return value == null ? "" : value.trim();
+    }
+
+    /**
+     * The call of a record that also carries a number: its call interpretation, as
+     * the instrument wrote it.
+     */
+    private static String callInterpretation(Observation observation) {
+        return observation.getInterpretation().stream()
+                .filter(concept -> concept.getCoding().stream().anyMatch(
+                        coding -> INTERPRETATION.equals(coding.getSystem()) && CALL_CODES.contains(coding.getCode())))
+                .map(concept -> concept.hasText() ? concept.getText()
+                        : concept.getCoding().stream().filter(coding -> INTERPRETATION.equals(coding.getSystem()))
+                                .findFirst().map(coding -> coding.hasDisplay() ? coding.getDisplay() : coding.getCode())
+                                .orElse(null))
+                .filter(text -> text != null && !text.isBlank()).map(String::trim).findFirst().orElse(null);
+    }
+
+    /**
+     * The call of a record without a number: its value as text, else the raw text.
+     */
+    private static String callValue(Observation observation, String rawValue) {
+        if (observation.hasValueStringType() && observation.getValueStringType().hasValue()) {
+            return observation.getValueStringType().getValue().trim();
+        }
+        if (observation.hasValueCodeableConcept() && observation.getValueCodeableConcept().hasText()) {
+            return observation.getValueCodeableConcept().getText().trim();
+        }
+        return rawValue.isEmpty() ? null : rawValue;
     }
 
     private static String nameOf(Patient patient) {
@@ -236,15 +298,23 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
             String classification, String sourceTransport, String recognitionMode, String recognitionOutcome,
             String recognitionFingerprint, String lotNumber, String controlLevel, Timestamp completeDate,
             String sourcePayload, String instrumentPatientId, String instrumentPatientName, String note,
-            boolean runFailed, String comparator) {
+            boolean runFailed, String comparator, String subIdentity, String number, String call) {
 
         /**
-         * The value as OpenELIS records it: a comparator the instrument reported leads
-         * the number, as in "<40", so a result beyond the measuring range is never
-         * stored as the bare limit.
+         * The number as OpenELIS records it: a comparator the instrument reported leads
+         * it, as in "<40", so a result beyond the measuring range is never stored as
+         * the bare limit. Null when the record carries no number.
+         */
+        public String reportedNumber() {
+            return number == null ? null : comparator == null ? number : comparator + number;
+        }
+
+        /**
+         * The value staged when the record is held whole: its number, else its call,
+         * else the raw text.
          */
         public String reportedValue() {
-            return comparator == null || rawValue.startsWith(comparator) ? rawValue : comparator + rawValue;
+            return number != null ? reportedNumber() : call != null ? call : rawValue;
         }
     }
 

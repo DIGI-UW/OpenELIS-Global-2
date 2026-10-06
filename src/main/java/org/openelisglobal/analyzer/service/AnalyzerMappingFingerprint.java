@@ -23,20 +23,27 @@ public final class AnalyzerMappingFingerprint {
 
         ObjectNode canonical = JSON.createObjectNode();
         ArrayNode tests = canonical.putArray("tests");
-        draft.tests().stream().sorted(Comparator.comparing(AnalyzerMappingTestDraft::sourceRowKey)).forEach(row -> {
-            ObjectNode value = tests.addObject();
-            value.put("sourceRowKey", row.sourceRowKey());
-            value.put("mappingState", row.mappingState().name());
-            value.put("origin", row.origin().name());
-            putNullable(value, "testId", row.testId());
-            putNullable(value, "componentId", row.componentId());
-        });
+        draft.tests().stream().sorted(Comparator.comparing(AnalyzerMappingTestDraft::sourceRowKey)
+                .thenComparing(AnalyzerMappingTestDraft::subIdentity)).forEach(row -> {
+                    ObjectNode value = tests.addObject();
+                    value.put("sourceRowKey", row.sourceRowKey());
+                    value.put("subIdentity", row.subIdentity());
+                    value.put("mappingState", row.mappingState().name());
+                    value.put("origin", row.origin().name());
+                    putNullable(value, "testId", row.testId());
+                    putNullable(value, "componentId", row.componentId());
+                    putNullable(value, "callComponentId", row.callComponentId());
+                });
 
         ArrayNode results = canonical.putArray("results");
-        draft.results().stream().sorted(Comparator.comparing(AnalyzerMappingResultDraft::sourceRowKey)
-                .thenComparing(AnalyzerMappingResultDraft::rawValue)).forEach(row -> {
+        draft.results().stream()
+                .sorted(Comparator.comparing(AnalyzerMappingResultDraft::sourceRowKey)
+                        .thenComparing(AnalyzerMappingResultDraft::subIdentity)
+                        .thenComparing(AnalyzerMappingResultDraft::rawValue))
+                .forEach(row -> {
                     ObjectNode value = results.addObject();
                     value.put("sourceRowKey", row.sourceRowKey());
+                    value.put("subIdentity", row.subIdentity());
                     value.put("rawValue", row.rawValue());
                     value.put("mappingState", row.mappingState().name());
                     value.put("origin", row.origin().name());

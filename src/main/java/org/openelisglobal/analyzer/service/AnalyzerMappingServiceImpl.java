@@ -143,10 +143,12 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         mappingDAO.insert(mapping);
 
         List<AnalyzerMappingTest> tests = draft.tests().stream()
-                .sorted(Comparator.comparing(AnalyzerMappingTestDraft::sourceRowKey))
+                .sorted(Comparator.comparing(AnalyzerMappingTestDraft::sourceRowKey)
+                        .thenComparing(AnalyzerMappingTestDraft::subIdentity))
                 .map(row -> persistTest(mapping, row)).toList();
         List<AnalyzerMappingResult> results = draft.results().stream()
                 .sorted(Comparator.comparing(AnalyzerMappingResultDraft::sourceRowKey)
+                        .thenComparing(AnalyzerMappingResultDraft::subIdentity)
                         .thenComparing(AnalyzerMappingResultDraft::rawValue))
                 .map(row -> persistResult(mapping, row)).toList();
         auditTrailService.saveNewHistory(mapping, actor, AUDIT_TABLE);
@@ -155,12 +157,13 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
 
     private AnalyzerMappingTest persistTest(AnalyzerMapping mapping, AnalyzerMappingTestDraft row) {
         AnalyzerMappingTest entity = new AnalyzerMappingTest();
-        entity.setId(new AnalyzerMappingTestPK(mapping.getId(), row.sourceRowKey()));
+        entity.setId(new AnalyzerMappingTestPK(mapping.getId(), row.sourceRowKey(), row.subIdentity()));
         entity.setMapping(mapping);
         entity.setMappingState(row.mappingState());
         entity.setOrigin(row.origin());
         entity.setTestId(row.testId());
         entity.setComponentId(row.componentId());
+        entity.setCallComponentId(row.callComponentId());
         entity.setUnresolvedReason(row.unresolvedReason());
         testDAO.insert(entity);
         return entity;
@@ -168,7 +171,8 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
 
     private AnalyzerMappingResult persistResult(AnalyzerMapping mapping, AnalyzerMappingResultDraft row) {
         AnalyzerMappingResult entity = new AnalyzerMappingResult();
-        entity.setId(new AnalyzerMappingResultPK(mapping.getId(), row.sourceRowKey(), row.rawValue()));
+        entity.setId(
+                new AnalyzerMappingResultPK(mapping.getId(), row.sourceRowKey(), row.subIdentity(), row.rawValue()));
         entity.setMapping(mapping);
         entity.setMappingState(row.mappingState());
         entity.setOrigin(row.origin());
@@ -182,14 +186,14 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         if (draft == null) {
             throw new IllegalArgumentException("Mapping draft is required");
         }
-        Set<String> testRows = new HashSet<>();
+        Set<AnalyzerMappingRowKey> testRows = new HashSet<>();
         for (AnalyzerMappingTestDraft row : draft.tests()) {
-            String sourceRowKey = requireText(row.sourceRowKey(), "test source row");
-            if (!testRows.add(sourceRowKey)) {
+            String sourceRowKey = label(requireText(row.sourceRowKey(), "test source row"), row.subIdentity());
+            if (!testRows.add(row.rowKey())) {
                 throw new IllegalArgumentException("Duplicate test source row: " + sourceRowKey);
             }
             validateTarget("test row " + sourceRowKey, row.mappingState(), row.testId());
-            if (row.componentId() != null && !row.componentId().isBlank()
+            if ((hasText(row.componentId()) || hasText(row.callComponentId()))
                     && row.mappingState() != AnalyzerMappingState.BOUND) {
                 throw new IllegalArgumentException(
                         row.mappingState() + " test row " + sourceRowKey + " cannot have a component");
@@ -198,31 +202,36 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
 
         Set<ResultSourceKey> resultRows = new HashSet<>();
         for (AnalyzerMappingResultDraft row : draft.results()) {
-            String sourceRowKey = requireText(row.sourceRowKey(), "result source row");
+            String sourceRowKey = label(requireText(row.sourceRowKey(), "result source row"), row.subIdentity());
             String rawValue = requireText(row.rawValue(), "result raw value");
-            if (!testRows.contains(sourceRowKey)) {
+            if (!testRows.contains(row.rowKey())) {
                 throw new IllegalArgumentException("Result row has no matching test row: " + sourceRowKey);
             }
-            if (!resultRows.add(new ResultSourceKey(sourceRowKey, rawValue))) {
+            if (!resultRows.add(new ResultSourceKey(row.rowKey(), rawValue))) {
                 throw new IllegalArgumentException("Duplicate result source row: " + sourceRowKey + "/" + rawValue);
             }
             validateTarget("result row " + sourceRowKey + "/" + rawValue, row.mappingState(), row.testResultId());
         }
 
-        Map<String, AnalyzerMappingTestDraft> testsBySourceRow = draft.tests().stream()
-                .collect(Collectors.toMap(AnalyzerMappingTestDraft::sourceRowKey, Function.identity()));
+        Map<AnalyzerMappingRowKey, AnalyzerMappingTestDraft> testsBySourceRow = draft.tests().stream()
+                .collect(Collectors.toMap(AnalyzerMappingTestDraft::rowKey, Function.identity()));
         for (AnalyzerMappingTestDraft row : draft.tests()) {
             if (row.mappingState() == AnalyzerMappingState.BOUND) {
-                requireActiveTest(row.sourceRowKey(), row.testId());
-                if (row.componentId() != null && !row.componentId().isBlank()) {
-                    requireComponentOfTest(row.sourceRowKey(), row.testId(), row.componentId());
+                String sourceRowKey = label(row.sourceRowKey(), row.subIdentity());
+                requireActiveTest(sourceRowKey, row.testId());
+                if (hasText(row.componentId())) {
+                    requireComponentOfTest(sourceRowKey, row.testId(), row.componentId());
+                }
+                if (hasText(row.callComponentId())) {
+                    requireComponentOfTest(sourceRowKey, row.testId(), row.callComponentId());
                 }
             }
         }
         for (AnalyzerMappingResultDraft row : draft.results()) {
             if (row.mappingState() == AnalyzerMappingState.BOUND) {
-                AnalyzerMappingTestDraft mappedTest = testsBySourceRow.get(row.sourceRowKey());
-                requireActiveOwnedResultOption(row.sourceRowKey(), row.rawValue(), mappedTest, row.testResultId());
+                AnalyzerMappingTestDraft mappedTest = testsBySourceRow.get(row.rowKey());
+                requireActiveOwnedResultOption(label(row.sourceRowKey(), row.subIdentity()), row.rawValue(), mappedTest,
+                        row.testResultId());
             }
         }
     }
@@ -279,6 +288,14 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         return value.trim();
     }
 
-    private record ResultSourceKey(String sourceRowKey, String rawValue) {
+    private record ResultSourceKey(AnalyzerMappingRowKey record, String rawValue) {
+    }
+
+    private static String label(String sourceRowKey, String subIdentity) {
+        return subIdentity == null || subIdentity.isEmpty() ? sourceRowKey : sourceRowKey + " " + subIdentity;
+    }
+
+    private static boolean hasText(String value) {
+        return value != null && !value.isBlank();
     }
 }

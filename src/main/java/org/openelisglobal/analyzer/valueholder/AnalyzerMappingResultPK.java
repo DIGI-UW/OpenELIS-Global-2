@@ -19,6 +19,13 @@ public class AnalyzerMappingResultPK implements Serializable {
     @Column(name = "source_row_key", length = 255)
     private String sourceRowKey;
 
+    /**
+     * The sub-identity of the record this answer belongs to; empty for the main
+     * result.
+     */
+    @Column(name = "sub_identity", length = 255, nullable = false)
+    private String subIdentity = "";
+
     @Column(name = "raw_value", length = 255)
     private String rawValue;
 
@@ -26,8 +33,13 @@ public class AnalyzerMappingResultPK implements Serializable {
     }
 
     public AnalyzerMappingResultPK(String mappingId, String sourceRowKey, String rawValue) {
+        this(mappingId, sourceRowKey, "", rawValue);
+    }
+
+    public AnalyzerMappingResultPK(String mappingId, String sourceRowKey, String subIdentity, String rawValue) {
         this.mappingId = mappingId;
         this.sourceRowKey = sourceRowKey;
+        this.subIdentity = subIdentity == null ? "" : subIdentity;
         this.rawValue = rawValue;
     }
 
@@ -47,6 +59,14 @@ public class AnalyzerMappingResultPK implements Serializable {
         this.sourceRowKey = sourceRowKey;
     }
 
+    public String getSubIdentity() {
+        return subIdentity;
+    }
+
+    public void setSubIdentity(String subIdentity) {
+        this.subIdentity = subIdentity == null ? "" : subIdentity;
+    }
+
     public String getRawValue() {
         return rawValue;
     }
@@ -64,11 +84,11 @@ public class AnalyzerMappingResultPK implements Serializable {
             return false;
         }
         return Objects.equals(mappingId, that.mappingId) && Objects.equals(sourceRowKey, that.sourceRowKey)
-                && Objects.equals(rawValue, that.rawValue);
+                && Objects.equals(subIdentity, that.subIdentity) && Objects.equals(rawValue, that.rawValue);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(mappingId, sourceRowKey, rawValue);
+        return Objects.hash(mappingId, sourceRowKey, subIdentity, rawValue);
     }
 }

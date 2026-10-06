@@ -8,10 +8,17 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
  * with its reason.
  */
 public record AnalyzerMappingResultDraft(String sourceRowKey, String rawValue, AnalyzerMappingState mappingState,
-        String testResultId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin) {
+        String testResultId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin,
+        String subIdentity) {
 
     public AnalyzerMappingResultDraft {
         origin = origin == null ? AnalyzerMappingOrigin.DEFAULT : origin;
+        subIdentity = subIdentity == null ? "" : subIdentity;
+    }
+
+    public AnalyzerMappingResultDraft(String sourceRowKey, String rawValue, AnalyzerMappingState mappingState,
+            String testResultId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin) {
+        this(sourceRowKey, rawValue, mappingState, testResultId, unresolvedReason, origin, "");
     }
 
     public AnalyzerMappingResultDraft(String sourceRowKey, String rawValue, AnalyzerMappingState mappingState,
@@ -22,5 +29,9 @@ public record AnalyzerMappingResultDraft(String sourceRowKey, String rawValue, A
     public AnalyzerMappingResultDraft(String sourceRowKey, String rawValue, AnalyzerMappingState mappingState,
             String testResultId) {
         this(sourceRowKey, rawValue, mappingState, testResultId, null, AnalyzerMappingOrigin.DEFAULT);
+    }
+
+    public AnalyzerMappingRowKey rowKey() {
+        return new AnalyzerMappingRowKey(sourceRowKey, subIdentity);
     }
 }
