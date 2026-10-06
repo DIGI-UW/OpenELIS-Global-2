@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -22,11 +23,13 @@ import org.openelisglobal.analyzer.form.AnalyzerMappingSelectionRequest;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.config.ControllerSetup;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.test.web.servlet.MockMvc;
@@ -154,6 +157,21 @@ public class AnalyzerInstanceRestControllerTest {
         assertEquals(HttpStatus.OK, response.getStatusCode());
         assertEquals("42", response.getBody().get("id"));
         verify(service).applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17");
+    }
+
+    @Test
+    public void anApplyTheBridgeCannotFollowIsReportedAsNothingApplied() throws Exception {
+        when(service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
+
+        mockMvc.perform(put("/rest/analyzer/analyzers/42/mapping/apply").session(
+                (org.springframework.mock.web.MockHttpSession) request.getSession()).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"mappingId\":\"13\",\"revision\":3,\"mappingFingerprint\":\"sha256:" + "4".repeat(64)
+                        + "\"}"))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.error").value(
+                        "The Analyzer Bridge could not switch with this mapping, so nothing was applied. Try again when it is reachable."))
+                .andExpect(jsonPath("$.messageKey").value("analyzer.bridge.connection.unreachable"));
     }
 
     @Test

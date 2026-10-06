@@ -38,6 +38,9 @@ public class AnalyzerInstanceServiceTest {
     @Mock
     private BridgeAnalyzerConnectionClient bridgeClient;
 
+    @Mock
+    private AnalyzerActivationService activationService;
+
     private AnalyzerInstanceService service;
     private AnalyzerInstanceRequest request;
     private AnalyzerInstanceState localState;
@@ -64,7 +67,7 @@ public class AnalyzerInstanceServiceTest {
                 .thenReturn(localState.withBridgeConnectionId("bridge-connection-42"));
 
         Supplier<String> requestIds = () -> "create-connection-42";
-        service = new AnalyzerInstanceServiceImpl(localStateService, bridgeClient, requestIds);
+        service = new AnalyzerInstanceServiceImpl(localStateService, bridgeClient, activationService, requestIds);
     }
 
     @Test

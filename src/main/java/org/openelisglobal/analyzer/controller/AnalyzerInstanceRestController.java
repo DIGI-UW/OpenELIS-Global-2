@@ -14,6 +14,7 @@ import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -111,6 +112,19 @@ public class AnalyzerInstanceRestController extends BaseRestController {
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(IllegalArgumentException exception) {
         String message = exception.getMessage() == null ? "Invalid analyzer request" : exception.getMessage();
         return ResponseEntity.badRequest().body(Map.of("error", message));
+    }
+
+    /**
+     * Apply switches OE2 and the Bridge together, so a Bridge failure there means
+     * nothing was applied.
+     */
+    @ExceptionHandler(BridgeAnalyzerConnectionException.class)
+    public ResponseEntity<Map<String, Object>> handleBridgeFailure(BridgeAnalyzerConnectionException exception) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "The Analyzer Bridge could not switch with this mapping, so nothing was applied."
+                + " Try again when it is reachable.");
+        body.put("messageKey", exception.messageKey());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
 
     private static Map<String, Object> toMap(AnalyzerInstanceView view) {
