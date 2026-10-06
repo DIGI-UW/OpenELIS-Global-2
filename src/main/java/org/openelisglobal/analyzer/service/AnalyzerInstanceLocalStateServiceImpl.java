@@ -108,9 +108,11 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         } else if (profile == null && isInactiveWithoutMapping(analyzer)) {
             analyzer.setMapping(mappingService
                     .assignProfile(analyzer, requestedProfileId, requestedRevision, exactActor).mapping());
-        } else if (profile == null || !requestedProfileId.equals(profile.getProfileId())
-                || requestedRevision != profile.getProfileRevision()) {
-            throw new IllegalArgumentException("A configured analyzer cannot be moved to another profile revision");
+        } else if (profile == null || !requestedProfileId.equals(profile.getProfileId())) {
+            throw new IllegalArgumentException("A configured analyzer keeps its profile");
+        } else if (requestedRevision != profile.getProfileRevision()) {
+            throw new IllegalArgumentException("Adopt revision " + requestedRevision + " of " + requestedProfileId
+                    + " to move this analyzer to it");
         }
         analyzer.setName(name);
         analyzer.setTestUnitIds(labUnitIds);
