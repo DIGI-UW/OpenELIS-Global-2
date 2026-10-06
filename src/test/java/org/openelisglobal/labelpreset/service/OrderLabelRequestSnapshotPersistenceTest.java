@@ -229,6 +229,23 @@ public class OrderLabelRequestSnapshotPersistenceTest extends BaseWebContextSens
     }
 
     @Test
+    public void persistRequest_capturesTheTestLinkForAnItemKeyedRow() {
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow(
+                "item-" + sampleItemId);
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 2));
+        payload.getSampleRows().add(row);
+
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), payload,
+                TEST_SYS_USER_ID, Map.of("item-" + sampleItemId, List.of("1")));
+
+        assertEquals(1, persisted.size());
+        PresetSnapshotDto snapshot = persisted.get(0).getPresetSnapshot();
+        assertNotNull("an item-keyed row keeps the driving test link in its snapshot", snapshot.getTestLink());
+        assertEquals(Integer.valueOf(1), snapshot.getTestLink().getTestId());
+    }
+
+    @Test
     public void persistRequest_ignoresASampleItemIdThatIsNotOnTheOrder() {
         OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
         OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow("item-999999999");

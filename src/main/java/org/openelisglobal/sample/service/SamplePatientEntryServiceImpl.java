@@ -1425,6 +1425,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     }
                 }
                 testIdsBySampleLocal.put(local, testIds);
+                String itemId = sampleIdMap.get(local);
+                if (itemId != null) {
+                    testIdsBySampleLocal.put("item-" + itemId, testIds);
+                }
             }
         }
 

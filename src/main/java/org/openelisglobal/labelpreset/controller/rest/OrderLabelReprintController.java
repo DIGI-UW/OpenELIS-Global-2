@@ -67,6 +67,9 @@ public class OrderLabelReprintController {
 
     @GetMapping("/api/orders/{id}/labels")
     public ResponseEntity<List<OrderLabelRequestView>> getOrderLabels(@PathVariable("id") String orderId) {
+        if (!isNumericId(orderId)) {
+            return ResponseEntity.badRequest().build();
+        }
         return ResponseEntity.ok(orderLabelReprintService.listByOrder(orderId));
     }
 
@@ -115,7 +118,14 @@ public class OrderLabelReprintController {
             @RequestParam(name = "presetId", required = false) Integer presetId,
             @RequestParam(name = "sampleItemId", required = false) String sampleItemId,
             @RequestParam(name = "scope", required = false) String scope) {
+        if (!isNumericId(orderId) || (sampleItemId != null && !isNumericId(sampleItemId))) {
+            return ResponseEntity.badRequest().build();
+        }
         return pdfResponse(orderLabelReprintService.renderFromSnapshot(orderId, presetId, sampleItemId, scope));
+    }
+
+    private static boolean isNumericId(String id) {
+        return id != null && id.matches("\\d+");
     }
 
     private ResponseEntity<byte[]> pdfResponse(ByteArrayOutputStream pdf) {

@@ -162,6 +162,7 @@ const SOURCE_TAG = {
     id: "orderEntry.labels.source.presetDefault",
     type: "gray",
   },
+  saved: { id: "orderEntry.labels.source.saved", type: "green" },
 };
 
 // ---------------------------------------------------------------------------

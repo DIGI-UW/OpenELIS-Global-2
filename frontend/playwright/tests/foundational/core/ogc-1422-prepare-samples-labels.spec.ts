@@ -97,6 +97,74 @@ test.describe("Prepare Samples label printing (OGC-1422)", () => {
       ).toBe(true);
     });
 
+    await test.step("reopening the step shows the saved quantities and a plain save keeps them", async () => {
+      const tubeRowId = (await storedLabelRows(page, accessionNumber)).find(
+        (row) => row.sampleItemId,
+      )!.sampleItemId;
+      const tubeInputs = section.locator(
+        `input[id^="sample-label-item-${tubeRowId}-"]`,
+      );
+      await expect(tubeInputs.first()).toBeVisible({ timeout: UI_TIMEOUT });
+      await tubeInputs.first().fill("3");
+      const savedAgain = page.waitForResponse(
+        (r) =>
+          /rest\/SamplePatientEntry$/.test(r.url()) &&
+          r.request().method() === "POST",
+      );
+      const popup = context.waitForEvent("page");
+      await section
+        .getByRole("button", { name: "Print all labels", exact: true })
+        .click();
+      await savedAgain;
+      await (await popup).close();
+      await expect
+        .poll(
+          async () =>
+            (await storedLabelRows(page, accessionNumber)).find(
+              (row) => row.sampleItemId === tubeRowId,
+            )?.qty,
+          { timeout: UI_TIMEOUT },
+        )
+        .toBe(3);
+
+      // Before the fix the reopened step proposed the defaults again and the
+      // next save wrote them over the saved rows.
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expect(section).toBeVisible({ timeout: NAV_TIMEOUT });
+      await expect(tubeInputs.first()).toHaveValue("3", {
+        timeout: UI_TIMEOUT,
+      });
+      await expect(
+        section.getByText("Saved", { exact: true }).first(),
+      ).toBeVisible();
+      await expect(section.getByTestId("labels-pending-save")).toHaveCount(0);
+
+      const plainSave = page.waitForResponse(
+        (r) =>
+          /rest\/SamplePatientEntry$/.test(r.url()) &&
+          r.request().method() === "POST",
+      );
+      await page
+        .locator("main")
+        .getByRole("button", { name: "Save and exit", exact: true })
+        .click();
+      await plainSave;
+      await expect
+        .poll(
+          async () =>
+            (await storedLabelRows(page, accessionNumber)).find(
+              (row) => row.sampleItemId === tubeRowId,
+            )?.qty,
+          { timeout: UI_TIMEOUT },
+        )
+        .toBe(3);
+      await page.goto(
+        `/order/clinical/collect?labNumber=${encodeURIComponent(accessionNumber)}`,
+        { timeout: NAV_TIMEOUT },
+      );
+      await expect(section).toBeVisible({ timeout: NAV_TIMEOUT });
+    });
+
     await test.step("the sample card's Print Labels prints that tube's labels", async () => {
       const pdf = page.waitForResponse(
         (r) =>

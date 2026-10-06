@@ -140,6 +140,14 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void printOrderLabels_nonNumericIds_return400() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", "not-an-id")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", "abc"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels", "not-an-id")).andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void printFromSnapshot_returnsApplicationPdf() throws Exception {
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
                 .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));

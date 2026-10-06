@@ -13,7 +13,10 @@ import LabelsSection, {
   seedPersistPayload,
 } from "../../../barcodeWorkflow/LabelsSection";
 import { useOrderContext, SaveStatus } from "../../OrderContext";
-import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import { NotificationKinds } from "../../../common/CustomNotification";
 import config from "../../../../config.json";
@@ -58,6 +61,68 @@ export const buildLabelRequestBody = (labelSamples) => ({
     test_ids: testIdsOf(entry.sample),
   })),
 });
+
+const clampToMax = (qty, max) =>
+  max > 0 ? Math.min(Math.max(0, qty), max) : Math.max(0, qty);
+
+/**
+ * The quantities the order already saved take the place of the presets'
+ * proposals: an order row per order-level preset, a tube row per saved sample
+ * item and preset. A cell with a saved row is marked "saved"; a cell without
+ * one (a new tube, a preset added since) keeps its proposal and leaves the
+ * section pending until the next save.
+ */
+export const applySavedQuantities = (labelRequest, savedRows) => {
+  // The saved rows arrive with snake_case wire keys (preset_id, sample_item_id).
+  const rows = (Array.isArray(savedRows) ? savedRows : []).map((row) => ({
+    presetId: row.preset_id ?? row.presetId,
+    sampleItemId: row.sample_item_id ?? row.sampleItemId ?? null,
+    qty: row.qty,
+  }));
+  let pending = false;
+  const orderRowFor = (presetId) =>
+    rows.find(
+      (row) => !row.sampleItemId && String(row.presetId) === String(presetId),
+    );
+  const sampleRowFor = (sampleIdLocal, presetId) => {
+    if (!String(sampleIdLocal).startsWith("item-")) {
+      return undefined;
+    }
+    const itemId = String(sampleIdLocal).slice("item-".length);
+    return rows.find(
+      (row) =>
+        String(row.sampleItemId) === itemId &&
+        String(row.presetId) === String(presetId),
+    );
+  };
+  const applyCell = (cell, saved) => {
+    if (!saved) {
+      pending = true;
+      return cell;
+    }
+    return {
+      ...cell,
+      default: clampToMax(Number(saved.qty) || 0, cell.max),
+      source: "saved",
+    };
+  };
+  const applied = {
+    ...labelRequest,
+    order_row: {
+      ...(labelRequest.order_row || {}),
+      cells: (labelRequest.order_row?.cells || []).map((cell) =>
+        applyCell(cell, orderRowFor(cell.preset_id)),
+      ),
+    },
+    sample_rows: (labelRequest.sample_rows || []).map((row) => ({
+      ...row,
+      cells: (row.cells || []).map((cell) =>
+        applyCell(cell, sampleRowFor(row.sample_id_local, cell.preset_id)),
+      ),
+    })),
+  };
+  return { labelRequest: applied, pending };
+};
 
 const buildPdfUrl = (orderId, target) => {
   const params = new URLSearchParams();
@@ -111,6 +176,7 @@ const PrepareLabelsSection = ({
   latestSamplesRef.current = samples;
   const latestOrderIdRef = useRef(orderId);
   latestOrderIdRef.current = orderId;
+  const seededPendingRef = useRef(true);
 
   const labelSamples = useMemo(() => labelSamplesOf(samples), [samples]);
   const signature = useMemo(
@@ -134,6 +200,14 @@ const PrepareLabelsSection = ({
     let cancelled = false;
     setLoading(true);
     setLoadFailed(false);
+    const seed = (response, savedRows) => {
+      const { labelRequest: applied, pending } = applySavedQuantities(
+        response,
+        savedRows,
+      );
+      seededPendingRef.current = pending;
+      setLabelRequest(applied);
+    };
     postToOpenElisServerJsonResponse(
       "/api/orderEntry/labelRequest",
       JSON.stringify(buildLabelRequestBody(labelSamples)),
@@ -141,26 +215,43 @@ const PrepareLabelsSection = ({
         if (cancelled) {
           return;
         }
-        setLoading(false);
-        if (response && !response.error && response.order_row) {
-          setLabelRequest(response);
-        } else {
+        if (!response || response.error || !response.order_row) {
+          setLoading(false);
           setLoadFailed(true);
+          return;
         }
+        const savedOrderId = latestOrderIdRef.current;
+        if (!savedOrderId) {
+          setLoading(false);
+          seed(response, []);
+          return;
+        }
+        getFromOpenElisServer(
+          `/api/orders/${encodeURIComponent(savedOrderId)}/labels`,
+          (savedRows) => {
+            if (cancelled) {
+              return;
+            }
+            setLoading(false);
+            seed(response, savedRows);
+          },
+        );
       },
     );
     return () => {
       cancelled = true;
     };
+    // The order id can arrive after the tubes (the step is opened by lab
+    // number), and the saved rows are only readable once it has.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [signature]);
+  }, [signature, orderId]);
 
   useEffect(() => {
     if (!labelRequest) {
       return;
     }
     setLabelPersistRequest(seedPersistPayload(labelRequest));
-    setQuantitiesPending(true);
+    setQuantitiesPending(seededPendingRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [labelRequest]);
 

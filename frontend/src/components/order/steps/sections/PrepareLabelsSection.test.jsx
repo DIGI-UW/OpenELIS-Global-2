@@ -7,6 +7,7 @@ import { vi } from "vitest";
 import messages from "../../../../languages/en.json";
 
 vi.mock("../../../utils/Utils", () => ({
+  getFromOpenElisServer: vi.fn(),
   postToOpenElisServerJsonResponse: vi.fn(),
 }));
 
@@ -39,7 +40,10 @@ vi.mock("../../../layout/Layout", async () => {
   };
 });
 
-import { postToOpenElisServerJsonResponse } from "../../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  postToOpenElisServerJsonResponse,
+} from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import PrepareLabelsSection, {
   buildLabelRequestBody,
@@ -148,10 +152,110 @@ describe("PrepareLabelsSection", () => {
     postToOpenElisServerJsonResponse.mockImplementation((url, body, cb) =>
       cb(aggregation()),
     );
+    getFromOpenElisServer.mockImplementation((url, cb) => cb([]));
   });
 
   afterEach(() => {
     vi.restoreAllMocks();
+  });
+
+  test("seeds the quantities the order already saved and does not mark them pending", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      expect(url).toBe("/api/orders/77/labels");
+      cb([
+        { preset_id: 1, sample_item_id: null, qty: 4 },
+        { preset_id: 2, sample_item_id: "501", qty: 3 },
+      ]);
+    });
+    renderSection();
+
+    // Before this, reopening the step proposed the presets' defaults again and
+    // the next save or print wrote them over the saved rows.
+    await waitFor(() =>
+      expect(orderContext.setLabelPersistRequest).toHaveBeenLastCalledWith({
+        order_cells: [{ preset_id: 1, qty: 4 }],
+        sample_rows: [
+          { sample_id_local: "item-501", cells: [{ preset_id: 2, qty: 3 }] },
+        ],
+      }),
+    );
+    expect(
+      screen.getAllByText(messages["orderEntry.labels.source.saved"]),
+    ).toHaveLength(2);
+    expect(screen.queryByTestId("labels-pending-save")).toBeNull();
+  });
+
+  test("a tube without a saved row keeps its proposal and leaves the section pending", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([{ preset_id: 1, sample_item_id: null, qty: 4 }]),
+    );
+    renderSection();
+
+    await waitFor(() =>
+      expect(orderContext.setLabelPersistRequest).toHaveBeenLastCalledWith({
+        order_cells: [{ preset_id: 1, qty: 4 }],
+        sample_rows: [
+          { sample_id_local: "item-501", cells: [{ preset_id: 2, qty: 1 }] },
+        ],
+      }),
+    );
+    expect(
+      screen.getAllByText(messages["orderEntry.labels.source.saved"]),
+    ).toHaveLength(1);
+    expect(screen.getByTestId("labels-pending-save")).toBeInTheDocument();
+  });
+
+  test("an order that is not saved yet does not ask for saved rows", async () => {
+    orderContext.orderId = null;
+    renderSection();
+
+    await waitFor(() =>
+      expect(orderContext.setLabelPersistRequest).toHaveBeenLastCalledWith({
+        order_cells: [{ preset_id: 1, qty: 2 }],
+        sample_rows: [
+          { sample_id_local: "item-501", cells: [{ preset_id: 2, qty: 1 }] },
+        ],
+      }),
+    );
+    expect(getFromOpenElisServer).not.toHaveBeenCalled();
+    expect(screen.getByTestId("labels-pending-save")).toBeInTheDocument();
+  });
+
+  test("reads the saved rows once the order id arrives after the tubes", async () => {
+    orderContext.orderId = null;
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([{ preset_id: 1, sample_item_id: null, qty: 4 }]),
+    );
+    const { rerender } = renderSection();
+    await waitFor(() =>
+      expect(orderContext.setLabelPersistRequest).toHaveBeenLastCalledWith(
+        expect.objectContaining({ order_cells: [{ preset_id: 1, qty: 2 }] }),
+      ),
+    );
+
+    // Opening the step by lab number sets the tubes before the order id.
+    orderContext.orderId = "77";
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider
+          value={{ addNotification: vi.fn(), setNotificationVisible: vi.fn() }}
+        >
+          <PrepareLabelsSection />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(getFromOpenElisServer).toHaveBeenCalledWith(
+        "/api/orders/77/labels",
+        expect.any(Function),
+      ),
+    );
+    await waitFor(() =>
+      expect(orderContext.setLabelPersistRequest).toHaveBeenLastCalledWith(
+        expect.objectContaining({ order_cells: [{ preset_id: 1, qty: 4 }] }),
+      ),
+    );
   });
 
   test("shows the empty hint when the order has no tube yet", () => {
