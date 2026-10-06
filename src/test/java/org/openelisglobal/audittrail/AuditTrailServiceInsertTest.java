@@ -11,7 +11,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.audittrail.daoimpl.AuditTrailServiceImpl;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.history.service.HistoryService;
@@ -38,7 +38,7 @@ public class AuditTrailServiceInsertTest {
         when(referenceTablesService.getReferenceTableByName(any(ReferenceTables.class))).thenReturn(referenceTable);
         when(historyService.insert(any(History.class))).thenReturn("91");
 
-        AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
+        AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("71");
 
         String historyId = auditTrailService.saveNewHistory(confirmation, "17", "analyzer_site_binding_confirmation");

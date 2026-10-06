@@ -22,10 +22,10 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -109,10 +109,10 @@ public class AnalyzerActivationRecordServiceTest {
         profile.setProfileFingerprint(PROFILE_FINGERPRINT);
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId("61");
         revision.setSiteBinding(binding);
-        AnalyzerSiteBindingConfirmation confirmation = new AnalyzerSiteBindingConfirmation();
+        AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("71");
         confirmation.setSiteBindingRevision(revision);
         Analyzer analyzer = new Analyzer();
@@ -128,7 +128,6 @@ public class AnalyzerActivationRecordServiceTest {
         return (ObjectNode) JSON.readTree(json);
     }
 
-    private record Fixture(Analyzer analyzer, AnalyzerSiteBindingRevision revision,
-            AnalyzerSiteBindingConfirmation confirmation) {
+    private record Fixture(Analyzer analyzer, AnalyzerMapping revision, AnalyzerMappingConfirmation confirmation) {
     }
 }

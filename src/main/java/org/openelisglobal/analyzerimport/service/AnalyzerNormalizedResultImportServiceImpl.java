@@ -15,17 +15,17 @@ import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Observation;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogState;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingCatalogState;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSnapshot;
 import org.openelisglobal.analyzer.service.QCResultProcessingService;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
@@ -43,8 +43,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private static final String CLASS_NAME = "AnalyzerNormalizedResultImportServiceImpl";
 
     private final AnalyzerService analyzerService;
-    private final AnalyzerSiteBindingService siteBindingService;
-    private final AnalyzerSiteBindingConfirmationService confirmationService;
+    private final AnalyzerMappingService siteBindingService;
+    private final AnalyzerMappingConfirmationService confirmationService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final AnalyzerResultsService analyzerResultsService;
     private final TestResultService testResultService;
@@ -54,11 +54,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private final AnalyzerResultPlacementService placementService;
 
     public AnalyzerNormalizedResultImportServiceImpl(AnalyzerService analyzerService,
-            AnalyzerSiteBindingService siteBindingService, AnalyzerResultsService analyzerResultsService,
+            AnalyzerMappingService siteBindingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
             FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
-            AnalyzerSiteBindingConfirmationService confirmationService,
-            AnalyzerMappingCatalogService mappingCatalogService, AnalyzerResultPlacementService placementService) {
+            AnalyzerMappingConfirmationService confirmationService, AnalyzerMappingCatalogService mappingCatalogService,
+            AnalyzerResultPlacementService placementService) {
         this.analyzerService = analyzerService;
         this.siteBindingService = siteBindingService;
         this.analyzerResultsService = analyzerResultsService;
@@ -189,17 +189,16 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             throw new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingSiteBinding",
                     "Analyzer has no profile-scoped site binding");
         }
-        AnalyzerSiteBindingSnapshot binding = siteBindingService
-                .findByRevisionId(analyzer.getSiteBindingRevision().getId())
+        AnalyzerMappingSnapshot binding = siteBindingService.findByRevisionId(analyzer.getSiteBindingRevision().getId())
                 .orElseThrow(() -> new AnalyzerNormalizedResultImportException(
                         "analyzer.fhirImport.error.missingSiteBinding", "Analyzer site binding does not exist"));
-        Map<String, AnalyzerSiteBindingTest> testsBySource = binding.tests().stream()
+        Map<String, AnalyzerMappingTest> testsBySource = binding.tests().stream()
                 .collect(Collectors.toMap(row -> row.getId().getSourceRowKey(), row -> row));
-        Map<ResultKey, AnalyzerSiteBindingResult> resultsBySource = binding.results().stream().collect(Collectors
+        Map<ResultKey, AnalyzerMappingResult> resultsBySource = binding.results().stream().collect(Collectors
                 .toMap(row -> new ResultKey(row.getId().getSourceRowKey(), row.getId().getRawValue()), row -> row));
         Set<String> sourcesWithResultMappings = binding.results().stream().map(row -> row.getId().getSourceRowKey())
                 .collect(Collectors.toSet());
-        AnalyzerSiteBindingCatalogState.Validation catalog = AnalyzerSiteBindingCatalogState.load(mappingCatalogService)
+        AnalyzerMappingCatalogState.Validation catalog = AnalyzerMappingCatalogState.load(mappingCatalogService)
                 .validate(binding);
         Map<String, Boolean> confirmedByRecognition = new HashMap<>();
         return contract.results().stream().map(result -> {
@@ -212,9 +211,9 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
 
     private Optional<AnalyzerResults> toStagedResult(AnalyzerNormalizedResultContract contract,
             AnalyzerNormalizedResultContract.Result result, Analyzer analyzer,
-            Map<String, AnalyzerSiteBindingTest> testsBySource,
-            Map<ResultKey, AnalyzerSiteBindingResult> resultsBySource, Set<String> sourcesWithResultMappings,
-            boolean mappingConfirmed, AnalyzerSiteBindingCatalogState.Validation catalog) {
+            Map<String, AnalyzerMappingTest> testsBySource, Map<ResultKey, AnalyzerMappingResult> resultsBySource,
+            Set<String> sourcesWithResultMappings, boolean mappingConfirmed,
+            AnalyzerMappingCatalogState.Validation catalog) {
         AnalyzerResults row = new AnalyzerResults();
         row.setAnalyzerId(analyzer.getId());
         row.setInstrumentSpecimenId(result.accessionNumber());
@@ -231,7 +230,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setLotNumber(result.lotNumber());
         row.setControlLevel(result.controlLevel());
         copySourceContext(row, contract, result);
-        AnalyzerSiteBindingTest testMapping = testsBySource.get(result.rawTestCode());
+        AnalyzerMappingTest testMapping = testsBySource.get(result.rawTestCode());
         if (testMapping == null) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
             return Optional.of(row);
@@ -241,10 +240,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return Optional.of(row);
         }
 
-        if (testMapping.getMappingState() == AnalyzerSiteBindingMappingState.EXCLUDED) {
+        if (testMapping.getMappingState() == AnalyzerMappingState.EXCLUDED) {
             return Optional.empty();
         }
-        if (testMapping.getMappingState() != AnalyzerSiteBindingMappingState.BOUND
+        if (testMapping.getMappingState() != AnalyzerMappingState.BOUND
                 || !catalog.isCurrentBoundTest(result.rawTestCode())) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
             return Optional.of(row);
@@ -252,18 +251,17 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setTestId(testMapping.getTestId());
 
         ResultKey resultKey = new ResultKey(result.rawTestCode(), result.rawValue());
-        AnalyzerSiteBindingResult resultMapping = resultsBySource.get(resultKey);
+        AnalyzerMappingResult resultMapping = resultsBySource.get(resultKey);
         if (resultMapping == null) {
             if (sourcesWithResultMappings.contains(result.rawTestCode())) {
                 hold(row, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
             }
             return Optional.of(row);
         }
-        if (resultMapping.getMappingState() == AnalyzerSiteBindingMappingState.EXCLUDED) {
+        if (resultMapping.getMappingState() == AnalyzerMappingState.EXCLUDED) {
             return Optional.empty();
         }
-        if (resultMapping.getMappingState() != AnalyzerSiteBindingMappingState.BOUND
-                || resultMapping.getTestResultId() == null) {
+        if (resultMapping.getMappingState() != AnalyzerMappingState.BOUND || resultMapping.getTestResultId() == null) {
             hold(row, AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY);
             return Optional.of(row);
         }

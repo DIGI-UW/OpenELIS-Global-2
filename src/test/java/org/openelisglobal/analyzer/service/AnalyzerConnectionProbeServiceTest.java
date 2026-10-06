@@ -17,9 +17,9 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerConnectionProbeServiceTest {
@@ -112,7 +112,7 @@ public class AnalyzerConnectionProbeServiceTest {
         profile.setProfileFingerprint(PROFILE_FINGERPRINT);
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setProfileBinding(profile);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setSiteBinding(binding);
         Analyzer analyzer = new Analyzer();
         analyzer.setId(ANALYZER_ID);

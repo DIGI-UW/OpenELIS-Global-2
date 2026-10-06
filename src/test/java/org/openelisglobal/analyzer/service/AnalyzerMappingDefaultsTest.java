@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 
@@ -36,7 +36,7 @@ public class AnalyzerMappingDefaultsTest {
         when(catalog.getActiveResultOptions("2"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", DETECTED)));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
-        assertEquals(AnalyzerSiteBindingMappingState.BOUND, draft.tests().get(0).mappingState());
+        assertEquals(AnalyzerMappingState.BOUND, draft.tests().get(0).mappingState());
         assertEquals("2", draft.tests().get(0).testId());
         assertNull(draft.tests().get(0).unresolvedReason());
         assertEquals("21", draft.results().get(0).testResultId());
@@ -50,7 +50,7 @@ public class AnalyzerMappingDefaultsTest {
                     List.of(new AnalyzerMappingCatalogService.ResultOption("2" + id, "99" + id, "Detected", DETECTED)));
         }
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
-        assertEquals(AnalyzerSiteBindingMappingState.UNRESOLVED, draft.tests().get(0).mappingState());
+        assertEquals(AnalyzerMappingState.UNRESOLVED, draft.tests().get(0).mappingState());
         assertNull(draft.tests().get(0).testId());
         assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, draft.tests().get(0).unresolvedReason());
         assertNull(draft.results().get(0).testResultId());
@@ -79,7 +79,7 @@ public class AnalyzerMappingDefaultsTest {
     @Test
     public void reportsIncompatibleWhenEveryCandidateCannotHoldACategoricalResult() throws Exception {
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
-        assertEquals(AnalyzerSiteBindingMappingState.UNRESOLVED, draft.tests().get(0).mappingState());
+        assertEquals(AnalyzerMappingState.UNRESOLVED, draft.tests().get(0).mappingState());
         assertEquals(AnalyzerUnresolvedReason.INCOMPATIBLE, draft.tests().get(0).unresolvedReason());
         assertEquals(AnalyzerUnresolvedReason.INCOMPATIBLE, draft.results().get(0).unresolvedReason());
     }
@@ -160,7 +160,7 @@ public class AnalyzerMappingDefaultsTest {
         var definition = new BridgeAnalyzerProfile.TestDefinition("OBSERVED", List.of(), null, null, null, null,
                 List.of(), null, Map.of());
         var row = defaults.resolveTest(definition, List.of(test("1")));
-        assertEquals(AnalyzerSiteBindingMappingState.UNRESOLVED, row.mappingState());
+        assertEquals(AnalyzerMappingState.UNRESOLVED, row.mappingState());
         assertEquals(AnalyzerUnresolvedReason.NO_MATCH, row.unresolvedReason());
     }
 
@@ -169,7 +169,7 @@ public class AnalyzerMappingDefaultsTest {
         var definition = profile("qualitative", codes("DETECTED", DETECTED)).testDefinitions().get(0);
         var options = List.of(new AnalyzerMappingCatalogService.ResultOption("21", "991", "Whatever", DETECTED));
         var row = defaults.resolveAnswer(definition, "DETECTED", options);
-        assertEquals(AnalyzerSiteBindingMappingState.BOUND, row.mappingState());
+        assertEquals(AnalyzerMappingState.BOUND, row.mappingState());
         assertEquals("21", row.testResultId());
         assertEquals("RAW-A", row.sourceRowKey());
     }

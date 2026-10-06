@@ -16,14 +16,14 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResultPK;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResultPK;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTestPK;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerTypeCatalogServiceTest {
@@ -37,7 +37,7 @@ public class AnalyzerTypeCatalogServiceTest {
     private AnalyzerProfileBindingDAO bindingDAO;
 
     @Mock
-    private AnalyzerSiteBindingService siteBindingService;
+    private AnalyzerMappingService siteBindingService;
 
     @Mock
     private AnalyzerMappingCatalogService mappingCatalogService;
@@ -69,9 +69,9 @@ public class AnalyzerTypeCatalogServiceTest {
                         analyzer("502", "Hematology - Night Bench", binding, 1),
                         analyzer("503", "Hematology - Reference Lab", previousBinding, 1)));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional
+                .of(siteBindingSnapshot(binding, List.of(AnalyzerMappingState.EXCLUDED, AnalyzerMappingState.BOUND),
+                        List.of(AnalyzerMappingState.BOUND, AnalyzerMappingState.EXCLUDED))));
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
 
         AnalyzerTypeCatalogView result = service.getCatalog();
@@ -134,9 +134,9 @@ public class AnalyzerTypeCatalogServiceTest {
         when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
                 .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.UNRESOLVED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.UNRESOLVED))));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional
+                .of(siteBindingSnapshot(binding, List.of(AnalyzerMappingState.UNRESOLVED, AnalyzerMappingState.BOUND),
+                        List.of(AnalyzerMappingState.BOUND, AnalyzerMappingState.UNRESOLVED))));
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
 
         AnalyzerTypeCatalogView result = service.getCatalog();
@@ -161,9 +161,9 @@ public class AnalyzerTypeCatalogServiceTest {
         when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
                 .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional
+                .of(siteBindingSnapshot(binding, List.of(AnalyzerMappingState.EXCLUDED, AnalyzerMappingState.BOUND),
+                        List.of(AnalyzerMappingState.BOUND, AnalyzerMappingState.EXCLUDED))));
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
@@ -181,9 +181,9 @@ public class AnalyzerTypeCatalogServiceTest {
         when(bindingDAO.findAnalyzersByProfileId("site.mock-hematology"))
                 .thenReturn(List.of(analyzer("501", "Hematology - Main Lab")));
         when(bindingDAO.findAnalyzersByProfileId("site.retired-file")).thenReturn(List.of());
-        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBindingSnapshot(binding,
-                List.of(AnalyzerSiteBindingMappingState.EXCLUDED, AnalyzerSiteBindingMappingState.BOUND),
-                List.of(AnalyzerSiteBindingMappingState.BOUND, AnalyzerSiteBindingMappingState.EXCLUDED))));
+        when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional
+                .of(siteBindingSnapshot(binding, List.of(AnalyzerMappingState.EXCLUDED, AnalyzerMappingState.BOUND),
+                        List.of(AnalyzerMappingState.BOUND, AnalyzerMappingState.EXCLUDED))));
         when(bridgeCatalogService.getCatalog()).thenReturn(catalog());
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(activeTest()));
         when(mappingCatalogService.getActiveResultOptions("100")).thenReturn(List.of());
@@ -245,7 +245,7 @@ public class AnalyzerTypeCatalogServiceTest {
         analyzer.setActive(true);
         AnalyzerSiteBinding siteBinding = new AnalyzerSiteBinding();
         siteBinding.setProfileBinding(profileBinding);
-        AnalyzerSiteBindingRevision siteBindingRevision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping siteBindingRevision = new AnalyzerMapping();
         siteBindingRevision.setSiteBinding(siteBinding);
         siteBindingRevision.setRevisionNumber(mappingRevision);
         analyzer.setSiteBindingRevision(siteBindingRevision);
@@ -324,42 +324,41 @@ public class AnalyzerTypeCatalogServiceTest {
         return new BridgeProfileCatalog.ProfileRevision(profile, publication);
     }
 
-    private static AnalyzerSiteBindingSnapshot siteBindingSnapshot(AnalyzerProfileBinding profileBinding,
-            List<AnalyzerSiteBindingMappingState> testStates, List<AnalyzerSiteBindingMappingState> resultStates) {
+    private static AnalyzerMappingSnapshot siteBindingSnapshot(AnalyzerProfileBinding profileBinding,
+            List<AnalyzerMappingState> testStates, List<AnalyzerMappingState> resultStates) {
         AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
         binding.setId("51");
         binding.setProfileBinding(profileBinding);
-        AnalyzerSiteBindingRevision revision = new AnalyzerSiteBindingRevision();
+        AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId("61");
         revision.setSiteBinding(binding);
         revision.setRevisionNumber(2);
 
-        AnalyzerSiteBindingTest wbc = test(revision, "WBC", testStates.get(0));
-        AnalyzerSiteBindingTest flag = test(revision, "FLAG", testStates.get(1));
-        AnalyzerSiteBindingResult positive = result(revision, "FLAG", "POS", resultStates.get(0));
-        AnalyzerSiteBindingResult negative = result(revision, "FLAG", "NEG", resultStates.get(1));
-        return new AnalyzerSiteBindingSnapshot(binding, revision, List.of(wbc, flag), List.of(positive, negative));
+        AnalyzerMappingTest wbc = test(revision, "WBC", testStates.get(0));
+        AnalyzerMappingTest flag = test(revision, "FLAG", testStates.get(1));
+        AnalyzerMappingResult positive = result(revision, "FLAG", "POS", resultStates.get(0));
+        AnalyzerMappingResult negative = result(revision, "FLAG", "NEG", resultStates.get(1));
+        return new AnalyzerMappingSnapshot(binding, revision, List.of(wbc, flag), List.of(positive, negative));
     }
 
-    private static AnalyzerSiteBindingTest test(AnalyzerSiteBindingRevision revision, String sourceRowKey,
-            AnalyzerSiteBindingMappingState state) {
-        AnalyzerSiteBindingTest row = new AnalyzerSiteBindingTest();
-        row.setId(new AnalyzerSiteBindingTestPK(revision.getId(), sourceRowKey));
+    private static AnalyzerMappingTest test(AnalyzerMapping revision, String sourceRowKey, AnalyzerMappingState state) {
+        AnalyzerMappingTest row = new AnalyzerMappingTest();
+        row.setId(new AnalyzerMappingTestPK(revision.getId(), sourceRowKey));
         row.setSiteBindingRevision(revision);
         row.setMappingState(state);
-        if (state == AnalyzerSiteBindingMappingState.BOUND) {
+        if (state == AnalyzerMappingState.BOUND) {
             row.setTestId("100");
         }
         return row;
     }
 
-    private static AnalyzerSiteBindingResult result(AnalyzerSiteBindingRevision revision, String sourceRowKey,
-            String rawValue, AnalyzerSiteBindingMappingState state) {
-        AnalyzerSiteBindingResult row = new AnalyzerSiteBindingResult();
-        row.setId(new AnalyzerSiteBindingResultPK(revision.getId(), sourceRowKey, rawValue));
+    private static AnalyzerMappingResult result(AnalyzerMapping revision, String sourceRowKey, String rawValue,
+            AnalyzerMappingState state) {
+        AnalyzerMappingResult row = new AnalyzerMappingResult();
+        row.setId(new AnalyzerMappingResultPK(revision.getId(), sourceRowKey, rawValue));
         row.setSiteBindingRevision(revision);
         row.setMappingState(state);
-        if (state == AnalyzerSiteBindingMappingState.BOUND) {
+        if (state == AnalyzerMappingState.BOUND) {
             row.setTestResultId("200");
         }
         return row;

@@ -5,13 +5,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationRequest;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
+import org.openelisglobal.analyzer.service.AnalyzerMappingView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingUpdate;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingView;
 import org.openelisglobal.analyzer.service.BridgeProfileCatalogException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementException;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
@@ -38,12 +38,12 @@ public class AnalyzerTypeRestController extends BaseRestController {
     private final AnalyzerTypeCatalogService catalogService;
     private final BridgeProfileManagementService managementService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
-    private final AnalyzerTypeMappingService mappingService;
+    private final AnalyzerMappingEditorService mappingService;
 
     @Autowired
     public AnalyzerTypeRestController(AnalyzerTypeCatalogService catalogService,
             BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService,
-            AnalyzerTypeMappingService mappingService) {
+            AnalyzerMappingEditorService mappingService) {
         this.catalogService = catalogService;
         this.managementService = managementService;
         this.mappingCatalogService = mappingCatalogService;
@@ -62,20 +62,19 @@ public class AnalyzerTypeRestController extends BaseRestController {
     }
 
     @GetMapping("/{profileId}/mapping")
-    public ResponseEntity<AnalyzerTypeMappingView> getMapping(@PathVariable String profileId,
-            @RequestParam int revision) {
+    public ResponseEntity<AnalyzerMappingView> getMapping(@PathVariable String profileId, @RequestParam int revision) {
         return ResponseEntity.ok(mappingService.getMapping(profileId, revision));
     }
 
     @PutMapping("/{profileId}/mapping")
-    public ResponseEntity<AnalyzerTypeMappingView> saveMapping(@PathVariable String profileId,
-            @RequestParam int revision, @RequestBody AnalyzerTypeMappingUpdate update, HttpServletRequest httpRequest) {
+    public ResponseEntity<AnalyzerMappingView> saveMapping(@PathVariable String profileId, @RequestParam int revision,
+            @RequestBody AnalyzerMappingUpdate update, HttpServletRequest httpRequest) {
         return ResponseEntity.ok(mappingService.saveMapping(profileId, revision, update, getSysUserId(httpRequest)));
     }
 
     @PostMapping("/{profileId}/mapping/confirm")
-    public ResponseEntity<AnalyzerSiteBindingConfirmationView> confirmMapping(@PathVariable String profileId,
-            @RequestParam int revision, @RequestBody AnalyzerSiteBindingConfirmationRequest request,
+    public ResponseEntity<AnalyzerMappingConfirmationView> confirmMapping(@PathVariable String profileId,
+            @RequestParam int revision, @RequestBody AnalyzerMappingConfirmationRequest request,
             HttpServletRequest httpRequest) {
         return ResponseEntity
                 .ok(mappingService.confirmMapping(profileId, revision, request, getSysUserId(httpRequest)));

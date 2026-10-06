@@ -18,7 +18,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
-import org.openelisglobal.analyzer.form.AnalyzerSiteBindingSelectionRequest;
+import org.openelisglobal.analyzer.form.AnalyzerMappingSelectionRequest;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
@@ -104,7 +104,7 @@ public class AnalyzerInstanceRestControllerTest {
 
     @Test
     public void selectsTheExactReviewedSiteBindingRevision() {
-        AnalyzerSiteBindingSelectionRequest selection = new AnalyzerSiteBindingSelectionRequest();
+        AnalyzerMappingSelectionRequest selection = new AnalyzerMappingSelectionRequest();
         selection.setSiteBindingId("12");
         selection.setRevision(2);
         selection.setBindingFingerprint("sha256:" + "3".repeat(64));

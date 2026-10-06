@@ -10,9 +10,9 @@ import java.util.regex.Pattern;
 import org.openelisglobal.analyzer.dao.AnalyzerActivationRecordDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -36,9 +36,8 @@ public class AnalyzerActivationRecordServiceImpl implements AnalyzerActivationRe
 
     @Override
     @Transactional
-    public AnalyzerActivationRecord retain(Analyzer analyzer, AnalyzerSiteBindingRevision siteBindingRevision,
-            AnalyzerSiteBindingConfirmation confirmation, ObjectNode runtimeAcknowledgement, String intent,
-            String actor) {
+    public AnalyzerActivationRecord retain(Analyzer analyzer, AnalyzerMapping siteBindingRevision,
+            AnalyzerMappingConfirmation confirmation, ObjectNode runtimeAcknowledgement, String intent, String actor) {
         String analyzerId = requireText(analyzer == null ? null : analyzer.getId(), "analyzer ID");
         String connectionId = requireText(analyzer.getBridgeConnectionId(), "Bridge connection ID");
         String actorId = requireText(actor, "actor");

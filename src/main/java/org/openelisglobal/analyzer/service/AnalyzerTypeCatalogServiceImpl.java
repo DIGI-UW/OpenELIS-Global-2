@@ -9,8 +9,8 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerProfileBindingDAO;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,12 +23,12 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
 
     private final BridgeProfileCatalogService bridgeCatalogService;
     private final AnalyzerProfileBindingDAO bindingDAO;
-    private final AnalyzerSiteBindingService siteBindingService;
+    private final AnalyzerMappingService siteBindingService;
     private final AnalyzerMappingCatalogService mappingCatalogService;
 
     @Autowired
     public AnalyzerTypeCatalogServiceImpl(BridgeProfileCatalogService bridgeCatalogService,
-            AnalyzerProfileBindingDAO bindingDAO, AnalyzerSiteBindingService siteBindingService,
+            AnalyzerProfileBindingDAO bindingDAO, AnalyzerMappingService siteBindingService,
             AnalyzerMappingCatalogService mappingCatalogService) {
         this.bridgeCatalogService = bridgeCatalogService;
         this.bindingDAO = bindingDAO;
@@ -46,7 +46,7 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         Map<String, List<Analyzer>> analyzersByProfileId = bridgeCatalog.profiles().stream()
                 .map(revision -> BridgeAnalyzerProfile.from(revision.profile()).profileId()).distinct()
                 .collect(Collectors.toMap(Function.identity(), this::affectedAnalyzers));
-        AnalyzerSiteBindingCatalogState catalogState = AnalyzerSiteBindingCatalogState.load(mappingCatalogService);
+        AnalyzerMappingCatalogState catalogState = AnalyzerMappingCatalogState.load(mappingCatalogService);
 
         List<AnalyzerTypeCatalogView.TypeSummary> types = bridgeCatalog.profiles().stream().map(revision -> {
             BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
@@ -72,20 +72,20 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
         AnalyzerProfileBinding binding = bindingDAO.findByProfileIdAndRevision(profile.profileId(), profile.revision())
                 .orElse(null);
         return summarize(profileRevision, binding, affectedAnalyzers(profile.profileId()),
-                AnalyzerSiteBindingCatalogState.load(mappingCatalogService));
+                AnalyzerMappingCatalogState.load(mappingCatalogService));
     }
 
     private AnalyzerTypeCatalogView.TypeSummary summarize(BridgeProfileCatalog.ProfileRevision revision,
-            AnalyzerProfileBinding binding, List<Analyzer> analyzers, AnalyzerSiteBindingCatalogState catalogState) {
+            AnalyzerProfileBinding binding, List<Analyzer> analyzers, AnalyzerMappingCatalogState catalogState) {
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
-        AnalyzerSiteBindingSnapshot siteBinding = binding == null ? null
+        AnalyzerMappingSnapshot siteBinding = binding == null ? null
                 : siteBindingService.findCurrentByProfileBindingId(binding.getId()).orElse(null);
         List<AnalyzerTypeCatalogView.AffectedAnalyzer> affectedAnalyzers = analyzers.stream()
                 .map(analyzer -> affectedAnalyzer(analyzer, profile, siteBinding)).toList();
         int testTotal = profile.testDefinitions().size();
         int resultTotal = profile.testDefinitions().stream().mapToInt(test -> test.resultValues().size()).sum();
         String status = profile.status();
-        AnalyzerSiteBindingCatalogState.Validation catalogValidation = catalogState.validate(siteBinding);
+        AnalyzerMappingCatalogState.Validation catalogValidation = catalogState.validate(siteBinding);
         AnalyzerTypeCatalogView.MappingSummary testMappings = testMappingSummary(profile, catalogValidation);
         AnalyzerTypeCatalogView.MappingSummary resultMappings = resultMappingSummary(profile, catalogValidation);
         String readiness = readiness(status, testMappings, resultMappings);
@@ -104,8 +104,8 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     }
 
     private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer, BridgeAnalyzerProfile profile,
-            AnalyzerSiteBindingSnapshot currentSiteBinding) {
-        AnalyzerSiteBindingRevision pinnedMapping = analyzer.getSiteBindingRevision();
+            AnalyzerMappingSnapshot currentSiteBinding) {
+        AnalyzerMapping pinnedMapping = analyzer.getSiteBindingRevision();
         int pinnedProfileRevision = pinnedMapping.getSiteBinding().getProfileBinding().getProfileRevision();
         int pinnedMappingRevision = pinnedMapping.getRevisionNumber();
         boolean newerProfileRevision = pinnedProfileRevision < profile.revision();
@@ -116,7 +116,7 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     }
 
     private static AnalyzerTypeCatalogView.MappingSummary testMappingSummary(BridgeAnalyzerProfile profile,
-            AnalyzerSiteBindingCatalogState.Validation catalogValidation) {
+            AnalyzerMappingCatalogState.Validation catalogValidation) {
         long mapped = profile.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
                 .filter(catalogValidation::isCurrentBoundTest).count();
         long excluded = profile.testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
@@ -125,7 +125,7 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     }
 
     private static AnalyzerTypeCatalogView.MappingSummary resultMappingSummary(BridgeAnalyzerProfile profile,
-            AnalyzerSiteBindingCatalogState.Validation catalogValidation) {
+            AnalyzerMappingCatalogState.Validation catalogValidation) {
         int total = profile.testDefinitions().stream().mapToInt(test -> test.resultValues().size()).sum();
         long mapped = profile.testDefinitions().stream()
                 .flatMap(test -> test.resultValues().stream()
