@@ -174,7 +174,7 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
             mockMvc.perform(
                     post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body)))
                     .andExpect(status().isOk());
-            assertEquals(good, readSettings().getPrePrintAltAccessionPrefix());
+            assertEquals(good.toUpperCase(), readSettings().getPrePrintAltAccessionPrefix());
         }
     }
 
@@ -199,6 +199,24 @@ public class SiteWideBarcodeSettingsRestControllerTest extends BaseWebContextSen
         mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body)))
                 .andExpect(status().isOk());
         assertEquals("AB12", readSettings().getPrePrintAltAccessionPrefix());
+    }
+
+    @Test
+    public void postSettings_storesThePrefixInCapitalsLikeTheCardShowsIt() throws Exception {
+        SiteBarcodePreprintSettings body = new SiteBarcodePreprintSettings();
+        body.setPrePrintUseAltAccession(true);
+        body.setPrePrintAltAccessionPrefix("abcd");
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(body)))
+                .andExpect(status().isOk());
+        assertEquals("lab numbers are compared exactly, so the stored prefix is what the card produces", "ABCD",
+                readSettings().getPrePrintAltAccessionPrefix());
+
+        SiteBarcodePreprintSettings kept = new SiteBarcodePreprintSettings();
+        kept.setPrePrintUseAltAccession(false);
+        kept.setPrePrintAltAccessionPrefix("ab");
+        mockMvc.perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(JSON.writeValueAsString(kept)))
+                .andExpect(status().isOk());
+        assertEquals("AB", readSettings().getPrePrintAltAccessionPrefix());
     }
 
     private SiteBarcodePreprintSettings readSettings() throws Exception {

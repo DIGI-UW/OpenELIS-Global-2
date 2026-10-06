@@ -3,6 +3,7 @@ package org.openelisglobal.labelpreset.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -64,7 +65,7 @@ public class SiteWideBarcodeSettingsRestController {
     public ResponseEntity<Object> saveSettings(HttpServletRequest request,
             @RequestBody @Valid SiteBarcodePreprintSettings body, BindingResult result) {
         String prefix = body.getPrePrintAltAccessionPrefix() == null ? null
-                : body.getPrePrintAltAccessionPrefix().trim();
+                : body.getPrePrintAltAccessionPrefix().trim().toUpperCase(Locale.ROOT);
         body.setPrePrintAltAccessionPrefix(prefix);
         if (Boolean.TRUE.equals(body.getPrePrintUseAltAccession())
                 && (prefix == null || !PREFIX_PATTERN.matcher(prefix).matches())) {
