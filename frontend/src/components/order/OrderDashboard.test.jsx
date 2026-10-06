@@ -91,6 +91,32 @@ const ORDERS = [
     priority: "routine",
     stepProgress: { enter: true, collect: true, label: true, qa: true },
   },
+  {
+    id: "5",
+    labNumber: "LAB-REFERRED",
+    patientName: "Dorothy Vaughan",
+    priority: "routine",
+    workflowType: "clinical",
+    progressStatus: "SAMPLES_PREPARED",
+    complete: true,
+    status: "referred_out",
+    referralSummary: { referredTests: 2, totalTests: 2, referredTo: "CEDRES" },
+    stepProgress: { enter: true, collect: true, label: true },
+    sampleCheckEnabled: true,
+  },
+  {
+    id: "6",
+    labNumber: "LAB-SPLIT",
+    patientName: "Annie Easley",
+    priority: "routine",
+    workflowType: "clinical",
+    progressStatus: "SAMPLES_PREPARED",
+    complete: false,
+    status: "pending_qa",
+    referralSummary: { referredTests: 1, totalTests: 3, referredTo: "CEDRES" },
+    stepProgress: { enter: true, collect: true, label: true },
+    sampleCheckEnabled: true,
+  },
 ];
 
 const renderDashboard = () =>
@@ -327,5 +353,40 @@ describe("arriving from a step", () => {
 
     expect(screen.getByText("Order LAB-DONE complete")).toBeInTheDocument();
     expect(rowOf("LAB-DONE")).toHaveClass("order-highlighted");
+  });
+});
+
+// OGC-1423: the dashboard tells a fully referred order from a split one.
+describe("referred orders", () => {
+  it("shows Referred out for an order whose every test is referred, and the referral line on a split order", async () => {
+    renderDashboard();
+    await listed("LAB-REFERRED");
+    const referred = rowOf("LAB-REFERRED");
+    expect(within(referred).getByText("Referred out")).toBeInTheDocument();
+    expect(
+      within(referred).getByTestId("order-referral-line"),
+    ).toHaveTextContent("All 2 tests referred to CEDRES");
+    const split = rowOf("LAB-SPLIT");
+    expect(within(split).queryByText("Referred out")).toBeNull();
+    expect(within(split).getByTestId("order-referral-line")).toHaveTextContent(
+      "1 of 3 tests referred to CEDRES",
+    );
+    expect(
+      within(rowOf("LAB-ENTERED")).queryByTestId("order-referral-line"),
+    ).toBeNull();
+  });
+
+  it("offers Has referred tests next to Referred Out in the status filter", async () => {
+    renderDashboard();
+    await listed("LAB-ENTERED");
+    await userEvent.click(
+      document.getElementById("status-filter").querySelector("button"),
+    );
+    const labels = screen
+      .getAllByRole("option")
+      .map((option) => option.textContent.trim());
+    expect(labels).toEqual(
+      expect.arrayContaining(["Has referred tests", "Referred Out"]),
+    );
   });
 });

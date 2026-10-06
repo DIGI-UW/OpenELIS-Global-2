@@ -38,6 +38,19 @@ public interface OrderProgressService {
     boolean isComplete(OrderProgressStatus status, String workflowType);
 
     /**
+     * Whether every test on the order has an open referral to a reference
+     * laboratory. Such an order has nothing left for the in-house Sample check.
+     */
+    boolean isFullyReferred(String sampleId);
+
+    /**
+     * {@link #isComplete(OrderProgressStatus, String)}, or Samples prepared on an
+     * order whose every test is referred out: in-house Sample check does not apply
+     * to it.
+     */
+    boolean isComplete(Sample sample, OrderProgressStatus status, String workflowType);
+
+    /**
      * Releases the order for testing from the Sample check step. Under Mandatory
      * acceptance the gate must be satisfied; under Optional a release with items
      * unanswered needs a note, which is recorded with who released and when.

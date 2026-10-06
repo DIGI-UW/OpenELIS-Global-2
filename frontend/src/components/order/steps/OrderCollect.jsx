@@ -10,6 +10,7 @@ import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import PrepareStorageSection from "./sections/PrepareStorageSection";
 import OrderReferOutSection from "./referOut/OrderReferOutSection";
+import { isFullyReferred } from "./referralState";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -236,12 +237,15 @@ const OrderCollect = () => {
   };
 
   // Save and next opens Sample check when the laboratory uses it; otherwise
-  // this save finishes order entry (FR-K15) and the dashboard says so.
+  // this save finishes order entry (FR-K15) and the dashboard says so. An
+  // order whose every tube is referred out has nothing for the in-house
+  // Sample check, so it finishes here too (OGC-1423).
+  const fullyReferred = isFullyReferred(samples);
   const handleSaveAndNext = async () => {
     try {
       await saveOrder(false, false, null, false, progressStep);
       markStepComplete("collect");
-      if (sampleCheckEnabled) {
+      if (sampleCheckEnabled && !fullyReferred) {
         history.push(
           labNumber
             ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`

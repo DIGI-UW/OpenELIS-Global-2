@@ -70,8 +70,10 @@ const STATUS_OPTIONS = [
   { id: "in_progress", label: "In Progress" },
   { id: "pending_qa", label: "Awaiting sample check" },
   { id: "completed", label: "Completed" },
-  // Driven by the order's referral rather than a sample status column: the
+  // Driven by the order's referrals rather than a sample status column: the
   // FHIR-aligned ReferralStatus already models the lifecycle (OGC-1201 U).
+  // "Has referred tests" is any referral; "Referred Out" is every test.
+  { id: "has_referred", label: "Has referred tests" },
   { id: "referred_out", label: "Referred Out" },
   // Cancelled orders are hidden from every other filter (FR-A4).
   { id: "cancelled", label: "Cancelled" },
@@ -530,16 +532,47 @@ const OrderDashboardContent = () => {
       if (!tag) {
         return "---";
       }
+      const referredOut = order.status === "referred_out";
       const completeLabel =
         order.complete && order.progressStatus !== "CANCELLED"
           ? intl.formatMessage({ id: "order.status.complete" })
           : null;
+      const label = referredOut
+        ? intl.formatMessage({ id: "order.status.referredOut" })
+        : completeLabel && order.progressStatus === "SAMPLES_PREPARED"
+          ? completeLabel
+          : intl.formatMessage({ id: tag.labelId });
+      const summary = order.referralSummary;
+      const referralLine =
+        summary && summary.referredTests > 0
+          ? intl.formatMessage(
+              {
+                id:
+                  summary.referredTests >= summary.totalTests
+                    ? "order.referral.fully"
+                    : "order.referral.partial",
+              },
+              {
+                referred: summary.referredTests,
+                total: summary.totalTests,
+                lab: summary.referredTo,
+              },
+            )
+          : null;
       return (
-        <Tag type={tag.type} size="sm">
-          {completeLabel && order.progressStatus === "SAMPLES_PREPARED"
-            ? completeLabel
-            : intl.formatMessage({ id: tag.labelId })}
-        </Tag>
+        <div className="order-status-cell">
+          <Tag type={referredOut ? "purple" : tag.type} size="sm">
+            {label}
+          </Tag>
+          {referralLine ? (
+            <div
+              className="order-referral-line"
+              data-testid="order-referral-line"
+            >
+              {referralLine}
+            </div>
+          ) : null}
+        </div>
       );
     })(),
     progress: (
