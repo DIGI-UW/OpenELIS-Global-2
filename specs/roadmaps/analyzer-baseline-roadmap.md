@@ -75,8 +75,13 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
    Renamed, split or merged codes do not carry; they resolve fresh. Adoption
    blocks only when an override targets an inactive local test or a removed
    code has held results. The existing confirm records actor and time. An
-   active analyzer keeps receiving on the old revision until confirm and
-   re-activate. Held results stay on the revision they arrived under.
+   active analyzer keeps receiving on the old revision until Apply, which
+   switches OE2 and the Bridge together; if the Bridge cannot be reached,
+   neither switches. A result from another revision of the same profile is
+   never refused: it maps when the analyzer's revision reads its record the
+   same way (same parts, result type and unit), otherwise it is held with
+   the revision it arrived under for a person. Held results recover on
+   Apply by the same rule and keep the revision they arrived under.
 8. Placement of a result is never silent and never blocked. A result is
    pre-ticked for one-click save only when its instrument ID resolves without
    inference: a tube ID (`SampleItem.externalId`, shape `<accession>-<n>`) to
