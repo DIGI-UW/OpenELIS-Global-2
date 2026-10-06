@@ -508,7 +508,7 @@
   "alerts.type.freezer_humidity": "Freezer Humidity",
   "alerts.type.freezer_offline": "Freezer Offline",
   "alerts.type.freezer_temperature": "Freezer Temperature",
-  "alerts.type.inventory_low": "Inventory Low",
+  "alerts.type.inventory_low": "Low stock",
   "alerts.type.other": "Other",
   "alerts.type.referral_critical_result": "Referral Critical Result",
   "alerts.type.referral_rejected": "Referral Rejected",
