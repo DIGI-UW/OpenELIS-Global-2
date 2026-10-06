@@ -615,6 +615,56 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).toBeInTheDocument();
   });
 
+  it("embedded in Verify, shows only the assays this instrument runs and reports its mapping", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        tests: mapping.tests.map((test) =>
+          test.sourceRowKey === "RAW-B" ? { ...test, enabled: false } : test,
+        ),
+      }),
+    );
+    const onMappingChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analyzers?setup=verify"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <AnalyzerTypeMappingEditor
+            analyzerId="501"
+            embedded
+            onMappingChange={onMappingChange}
+          />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    const rows = await screen.findAllByTestId("analyzer-type-mapping-row");
+    expect(rows.map((row) => within(row).queryByText("RAW-B"))).toEqual([
+      null,
+      null,
+    ]);
+    expect(getAnalyzerMapping).toHaveBeenCalledWith(
+      "501",
+      expect.any(Function),
+    );
+    expect(document.querySelector("h1")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "Apply mappings and retry held results",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Confirm mappings and control recognition",
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(onMappingChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ mappingId: mapping.mappingId }),
+        false,
+      ),
+    );
+  });
+
   it("returns to the worklist with its unsaved review choices", async () => {
     const worklistDraft = {
       analyzerId: "501",
