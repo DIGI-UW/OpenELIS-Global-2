@@ -16,6 +16,7 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.service.TestService;
@@ -35,6 +36,8 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
     private DictionaryService dictionaryService;
     @Autowired
     private DictionaryCategoryService dictionaryCategoryService;
+    @Autowired
+    private DictionaryTerminologyMappingService answerTerminology;
     @Autowired
     private TestService testService;
     @Autowired
@@ -116,6 +119,9 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
 
         dictionary.setLocalizedDictionaryName(localization);
         dictionary = dictionaryService.save(dictionary);
+        if (form.getLoincCode() != null && !form.getLoincCode().isBlank()) {
+            answerTerminology.syncLegacyLoinc(dictionary.getId(), form.getLoincCode(), currentUserId);
+        }
 
         String s = form.getTestSelectListJson();
 
