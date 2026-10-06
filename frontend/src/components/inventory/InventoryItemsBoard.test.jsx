@@ -1393,4 +1393,27 @@ describe("InventoryItemsBoard", () => {
       expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
     });
   });
+  it("pages the board at 25 rows and returns to page 1 when the search changes", async () => {
+    const many = Array.from({ length: 30 }, (_, index) => ({
+      ...CARTRIDGE,
+      itemId: 1000 + index,
+      name: `Paged item ${String(index + 1).padStart(2, "0")}`,
+      code: `PG-${index + 1}`,
+      tags: [],
+    }));
+    await renderBoard(many, []);
+
+    expect(bodyRows()).toHaveLength(25);
+    expect(screen.getByText(/1-25 of 30 items/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next Page" }));
+    expect(bodyRows()).toHaveLength(5);
+    expect(rowNamed("Paged item 30")).toBeTruthy();
+
+    fireEvent.change(screen.getByRole("searchbox"), {
+      target: { value: "Paged item 0" },
+    });
+    expect(bodyRows()).toHaveLength(9);
+    expect(screen.queryByRole("button", { name: "Next Page" })).toBeNull();
+  });
 });
