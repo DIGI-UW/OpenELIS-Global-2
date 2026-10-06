@@ -67,7 +67,31 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
             String mappingFingerprint, String actor) {
         AnalyzerInstanceState state = localStateService.applyMapping(analyzerId, mappingId, revision,
                 mappingFingerprint, actor);
-        return compose(state);
+        if (state.bridgeConnectionId() == null) {
+            return compose(state);
+        }
+        // An adopted revision moves the pin: the Bridge connection follows it here, so
+        // both switch together. The Bridge carries the connection's values forward.
+        try {
+            ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
+            if (pinnedTo(state, current)) {
+                requireExactConnection(state, current);
+                return new AnalyzerInstanceView(state, current, null);
+            }
+            ObjectNode repinned = bridgeClient.updateConnection(state.bridgeConnectionId(),
+                    updateConnectionRequest(state, new AnalyzerInstanceRequest(), current));
+            requireExactConnection(state, repinned);
+            return new AnalyzerInstanceView(state, repinned, null);
+        } catch (BridgeAnalyzerConnectionException exception) {
+            return new AnalyzerInstanceView(state, null, exception.messageKey());
+        }
+    }
+
+    private static boolean pinnedTo(AnalyzerInstanceState state, ObjectNode connection) {
+        JsonNode profileRef = connection.path("profileRef");
+        return Objects.equals(state.profileId(), profileRef.path("profileId").asText(null))
+                && state.profileRevision() == profileRef.path("revision").asInt(0)
+                && Objects.equals(state.profileFingerprint(), profileRef.path("fingerprint").asText(null));
     }
 
     private AnalyzerInstanceView compose(AnalyzerInstanceState state) {

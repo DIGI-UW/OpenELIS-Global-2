@@ -28,6 +28,8 @@ import org.openelisglobal.analyzer.valueholder.Analyzer;
 public class AnalyzerInstanceServiceTest {
 
     private static final String PROFILE_FINGERPRINT = "sha256:" + "1".repeat(64);
+
+    private static final String ADOPTED_FINGERPRINT = "sha256:" + "5".repeat(64);
     private static final ObjectMapper JSON = new ObjectMapper();
 
     @Mock
@@ -183,6 +185,32 @@ public class AnalyzerInstanceServiceTest {
         assertEquals(bridgeConnection, result.connection());
         verify(bridgeClient).getConnection("bridge-connection-42");
         verify(bridgeClient, never()).updateConnection(any(), any());
+    }
+
+    @Test
+    public void applyingAnAdoptedRevisionRepinsTheBridgeConnectionCarryingItsValues() {
+        AnalyzerInstanceState adopted = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
+                "fixture.synthetic-connection", 4, ADOPTED_FINGERPRINT, "bridge-connection-42",
+                Analyzer.AnalyzerStatus.SETUP, 0L);
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted);
+        ObjectNode repinned = bridgeConnection.deepCopy();
+        repinned.with("profileRef").put("revision", 4).put("fingerprint", ADOPTED_FINGERPRINT);
+        repinned.put("configRevision", 2);
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class))).thenReturn(repinned);
+
+        AnalyzerInstanceView result = service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17");
+
+        ArgumentCaptor<ObjectNode> updateRequest = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(bridgeClient).updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                updateRequest.capture());
+        ObjectNode sent = updateRequest.getValue();
+        assertEquals(4, sent.path("profileRef").path("revision").asInt());
+        assertEquals(ADOPTED_FINGERPRINT, sent.path("profileRef").path("fingerprint").asText());
+        assertEquals(1, sent.path("expectedConfigRevision").asInt());
+        assertTrue("the Bridge carries the connection's values forward", sent.path("values").isEmpty());
+        assertTrue(result.connected());
+        assertEquals(repinned, result.connection());
     }
 
     private static ObjectNode connection(String connectionId) {
