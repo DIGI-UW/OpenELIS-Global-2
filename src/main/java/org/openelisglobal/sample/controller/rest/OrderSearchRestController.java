@@ -526,14 +526,14 @@ public class OrderSearchRestController extends BaseRestController {
         }
         boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
         return new StepState(collectComplete, labelComplete, qaComplete, progress,
-                orderProgressService.isComplete(sample, progress, workflowType), fullyReferred);
+                orderProgressService.isComplete(progress, workflowType, fullyReferred), fullyReferred);
     }
 
     /**
      * How much of the order is referred out, for the dashboard row: the referred
      * and total test counts and the receiving laboratories.
      */
-    private Map<String, Object> referralSummary(List<SampleItem> sampleItems) {
+    Map<String, Object> referralSummary(List<SampleItem> sampleItems) {
         int total = 0;
         int referred = 0;
         java.util.Set<String> laboratories = new java.util.LinkedHashSet<>();
@@ -544,7 +544,7 @@ public class OrderSearchRestController extends BaseRestController {
                 }
                 total++;
                 Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
-                if (referral == null || referral.getId() == null || referral.isCanceled()) {
+                if (!orderProgressService.isOpenReferral(referral)) {
                     continue;
                 }
                 referred++;
@@ -609,16 +609,18 @@ public class OrderSearchRestController extends BaseRestController {
             facilityName = referringOrg.getOrganizationName();
         orderData.put("facilityName", facilityName.isEmpty() ? "---" : facilityName);
 
+        boolean finished = steps.complete && steps.progress != OrderProgressStatus.CANCELLED;
         Map<String, Boolean> stepProgress = new HashMap<>();
         stepProgress.put("enter", isEnterComplete(sample));
-        stepProgress.put("collect", steps.collect);
-        stepProgress.put("label", steps.label);
-        stepProgress.put("qa", steps.qa);
+        stepProgress.put("collect", steps.collect || finished);
+        stepProgress.put("label", steps.label || finished);
+        stepProgress.put("qa", steps.qa || finished);
         orderData.put("stepProgress", stepProgress);
         orderData.put("status", steps.status());
         orderData.put("referralSummary", referralSummary(sampleItems));
         putProgress(orderData, sample,
-                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress);
+                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress,
+                steps.complete, steps.fullyReferred);
         orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
         if (sampleWorkflowType != null) {
@@ -1081,9 +1083,16 @@ public class OrderSearchRestController extends BaseRestController {
 
     private void putProgress(Map<String, Object> target, Sample sample, String workflowType,
             OrderProgressStatus status) {
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
+        putProgress(target, sample, workflowType, status,
+                orderProgressService.isComplete(status, workflowType, fullyReferred), fullyReferred);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType, OrderProgressStatus status,
+            boolean complete, boolean fullyReferred) {
         target.put("progressStatus", status.name());
-        target.put("complete", orderProgressService.isComplete(sample, status, workflowType));
-        target.put("fullyReferred", orderProgressService.isFullyReferred(sample.getId()));
+        target.put("complete", complete);
+        target.put("fullyReferred", fullyReferred);
         target.put("sampleCheckEnabled", orderProgressService.sampleCheckEnabled(workflowType));
         Map<String, Object> progress = new HashMap<>();
         progress.put("enteredAt", timestampText(sample.getOrderEnteredAt()));
@@ -1129,11 +1138,13 @@ public class OrderSearchRestController extends BaseRestController {
         }
     }
 
-    private boolean hasReferral(List<SampleItem> sampleItems) {
+    boolean hasReferral(List<SampleItem> sampleItems) {
         for (SampleItem sampleItem : sampleItems) {
             for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
-                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
-                if (referral != null && referral.getId() != null) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                if (orderProgressService.isOpenReferral(referralService.getReferralByAnalysisId(analysis.getId()))) {
                     return true;
                 }
             }

@@ -140,10 +140,7 @@ public class OrderProgressServiceImpl implements OrderProgressService {
                 continue;
             }
             anyActive = true;
-            Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
-            if (referral == null || referral.getId() == null || referral.isCanceled()
-                    || referral.getStatus() == ReferralStatus.CANCELLED
-                    || referral.getStatus() == ReferralStatus.REJECTED) {
+            if (!isOpenReferral(referralService.getReferralByAnalysisId(analysis.getId()))) {
                 return false;
             }
         }
@@ -151,12 +148,25 @@ public class OrderProgressServiceImpl implements OrderProgressService {
     }
 
     @Override
+    public boolean isOpenReferral(Referral referral) {
+        return referral != null && referral.getId() != null && referral.getStatus() != ReferralStatus.CANCELLED
+                && referral.getStatus() != ReferralStatus.REJECTED;
+    }
+
+    @Override
     public boolean isComplete(Sample sample, OrderProgressStatus status, String workflowType) {
         if (isComplete(status, workflowType)) {
             return true;
         }
-        return status != null && status.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED) && sample != null
-                && isFullyReferred(sample.getId());
+        return sample != null && isComplete(status, workflowType, isFullyReferred(sample.getId()));
+    }
+
+    @Override
+    public boolean isComplete(OrderProgressStatus status, String workflowType, boolean fullyReferred) {
+        if (isComplete(status, workflowType)) {
+            return true;
+        }
+        return fullyReferred && status != null && status.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
     }
 
     @Override

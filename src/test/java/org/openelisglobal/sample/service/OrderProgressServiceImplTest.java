@@ -389,4 +389,36 @@ public class OrderProgressServiceImplTest {
         when(analysisService.getAnalysesBySampleId("43")).thenReturn(List.of());
         assertFalse("no tests, nothing referred", service.isFullyReferred("43"));
     }
+
+    @Test
+    public void oneOpenReferralRuleServesTheDashboardCountsAndTheFullyReferredCheck() {
+        assertTrue(service.isOpenReferral(openReferral("r1")));
+        Referral requested = openReferral("r2");
+        requested.setStatus(ReferralStatus.REQUESTED);
+        assertTrue(service.isOpenReferral(requested));
+
+        Referral rejected = openReferral("r3");
+        rejected.setStatus(ReferralStatus.REJECTED);
+        assertFalse("a referral the reference lab rejected is back in-house", service.isOpenReferral(rejected));
+        Referral cancelled = openReferral("r4");
+        cancelled.setStatus(ReferralStatus.CANCELLED);
+        assertFalse(service.isOpenReferral(cancelled));
+        assertFalse(service.isOpenReferral(null));
+        assertFalse("an unsaved referral does not count", service.isOpenReferral(new Referral()));
+
+        when(analysisService.getAnalysesBySampleId("44")).thenReturn(List.of(analysis("a1"), analysis("a2")));
+        when(referralService.getReferralByAnalysisId("a1")).thenReturn(openReferral("r1"));
+        when(referralService.getReferralByAnalysisId("a2")).thenReturn(rejected);
+        assertFalse("a rejected referral leaves the order partially referred", service.isFullyReferred("44"));
+    }
+
+    @Test
+    public void aPrecomputedFullyReferredAnswerCompletesOnlyAPreparedOrder() {
+        when(acceptanceChecklistService.getEnforcement("clinical")).thenReturn("OPTIONAL");
+        assertTrue(service.isComplete(OrderProgressStatus.SAMPLES_PREPARED, "clinical", true));
+        assertFalse(service.isComplete(OrderProgressStatus.ENTERED, "clinical", true));
+        assertFalse(service.isComplete(OrderProgressStatus.SAMPLES_PREPARED, "clinical", false));
+        assertTrue("a released order is complete whatever the referrals say",
+                service.isComplete(OrderProgressStatus.READY_FOR_TESTING, "clinical", false));
+    }
 }

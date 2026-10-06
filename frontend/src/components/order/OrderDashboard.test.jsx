@@ -389,4 +389,52 @@ describe("referred orders", () => {
       expect.arrayContaining(["Has referred tests", "Referred Out"]),
     );
   });
+
+  it("keeps the rows the server returned for a typed search", async () => {
+    renderDashboard();
+    await listed("LAB-REFERRED");
+    const search = screen.getByRole("searchbox", { name: /filter table/i });
+    await userEvent.type(search, "LAB-REFERRED");
+
+    await waitFor(() => {
+      expect(
+        getFromOpenElisServer.mock.calls.some(([url]) =>
+          url.includes("search=LAB-REFERRED"),
+        ),
+      ).toBe(true);
+    });
+    // Before the fix the table also ran Carbon's own text filter over cells
+    // that are rendered elements, so every row the server matched was hidden.
+    expect(await listed("LAB-REFERRED")).toBeInTheDocument();
+    expect(screen.queryByText("No orders found")).toBeNull();
+  });
+
+  it("takes the filter labels from the message bundle", async () => {
+    render(
+      <IntlProvider
+        locale="en"
+        messages={{
+          ...messages,
+          "order.dashboard.status.hasReferred": "Avec tests référés",
+          "order.dashboard.priority.routine": "Routinier",
+        }}
+      >
+        <OrderDashboard />
+      </IntlProvider>,
+    );
+    await listed("LAB-ENTERED");
+    await userEvent.click(
+      document.getElementById("status-filter").querySelector("button"),
+    );
+    expect(
+      screen.getByRole("option", { name: "Avec tests référés" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      document.getElementById("priority-filter").querySelector("button"),
+    );
+    expect(
+      screen.getByRole("option", { name: "Routinier" }),
+    ).toBeInTheDocument();
+  });
 });
