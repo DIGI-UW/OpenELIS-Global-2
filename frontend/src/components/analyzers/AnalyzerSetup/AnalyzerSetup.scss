@@ -93,6 +93,7 @@
 .analyzer-setup__assays {
   display: grid;
   gap: spacing.$spacing-05;
+  padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
 }
 
 .analyzer-setup__assays-count {
