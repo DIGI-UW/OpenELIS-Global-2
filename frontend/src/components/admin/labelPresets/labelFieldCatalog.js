@@ -103,20 +103,28 @@ export function toggleRequired(fields, key) {
 }
 
 /**
- * Soft fit hint (OGC-1218): roughly how many text rows the configured height
- * leaves above the barcode. The renderer gives the barcode about a third of the
- * label and each text row about 3 mm, so a 25 mm label fits about five rows.
- * This never blocks a save; the real check belongs to the preview pane.
+ * Soft fit hint (OGC-1218): roughly how many content rows stay readable on a
+ * label of this height. The renderer stacks the text rows and the barcode and
+ * scales the whole stack to the label, so more rows only shrink everything: a
+ * row takes about 10 points, the barcode gives up 3 points per row, and a row
+ * has to come out at about 2 mm to stay readable. Beyond eight rows the barcode
+ * itself becomes too short to scan. Lab Number is not a row: it is the
+ * barcode's own text. This never blocks a save; the real check belongs to the
+ * preview pane.
  */
 export function estimateFittingRows(heightMm) {
   const height = Number(heightMm);
   if (!Number.isFinite(height) || height <= 0) {
     return null;
   }
-  return Math.max(1, Math.floor((height * 0.66) / 3));
+  return Math.min(8, Math.max(1, Math.floor((5 * height - 40) / 7)));
+}
+
+export function selectableCount(fields) {
+  return fields.filter((f) => f.fieldKey !== LAB_NUMBER).length;
 }
 
 export function fieldsLikelyOverflow(fields, heightMm) {
   const rows = estimateFittingRows(heightMm);
-  return rows != null && fields.length > rows;
+  return rows != null && selectableCount(fields) > rows;
 }

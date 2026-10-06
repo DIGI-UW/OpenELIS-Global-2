@@ -431,7 +431,7 @@
   "admin.labelPresets.fields.add.placeholder": "Choose a field",
   "admin.labelPresets.fields.add.button": "Add",
   "admin.labelPresets.fields.allAdded": "Every available field is on this label.",
-  "admin.labelPresets.fields.fitHint": "{count} fields may not fit a {height} mm label; about {rows} rows fit above the barcode. You can still save.",
+  "admin.labelPresets.fields.fitHint": "The {count, plural, one {selected field} other {# selected fields}} may not fit a {height} mm label; about {rows, plural, one {# row fits} other {# rows fit}} above the barcode. You can still save.",
   "admin.labelPresets.fields.position": "Position {position}",
   "admin.labelPresets.fieldKey.LAB_NUMBER": "Lab Number",
   "admin.labelPresets.fieldKey.PATIENT_NAME": "Patient Name",

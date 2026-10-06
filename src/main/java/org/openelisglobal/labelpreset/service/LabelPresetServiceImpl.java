@@ -3,10 +3,12 @@ package org.openelisglobal.labelpreset.service;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
@@ -185,6 +187,27 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
             return "";
         }
         return input.trim().toLowerCase(Locale.ROOT);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> systemPresetFieldKeys(String systemPresetName) {
+        String wanted = normalizeName(systemPresetName);
+        if (wanted.isEmpty()) {
+            return null;
+        }
+        Optional<LabelPreset> preset = getAll().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsSystem()) && normalizeName(p.getName()).equals(wanted))
+                .findFirst();
+        if (preset.isEmpty()) {
+            return null;
+        }
+        Set<String> keys = new LinkedHashSet<>();
+        preset.get().getFields().stream()
+                .sorted(Comparator.comparing(LabelPresetField::getDisplayOrder,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(LabelPresetField::getFieldKey).forEach(keys::add);
+        return keys;
     }
 
     // ── Private helpers ──────────────────────────────────────────────────────

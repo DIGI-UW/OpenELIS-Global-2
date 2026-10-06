@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -352,6 +353,27 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
 
         assertEquals(List.of("LAB_NUMBER", "PATIENT_ID", "PATIENT_DOB"), storedFieldKeys(preset.getId()));
         assertEquals(labNumberId, fieldId(updated, "LAB_NUMBER"));
+    }
+
+    @Test
+    public void systemPresetFieldKeys_answersByNameInDisplayOrder_ignoringCaseAndSpace() {
+        Set<String> keys = labelPresetService.systemPresetFieldKeys("  order label ");
+
+        assertNotNull(keys);
+        assertEquals("LAB_NUMBER", keys.iterator().next());
+        assertTrue(keys.contains("PATIENT_NAME"));
+        assertTrue(keys.contains("SITE_ID"));
+    }
+
+    @Test
+    public void systemPresetFieldKeys_isNullForAnUnknownNameAndForAUserPreset() {
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "Not A System Preset");
+        labelPresetService.create(form, SYS_USER);
+
+        assertNull(labelPresetService.systemPresetFieldKeys("No Such Label"));
+        assertNull("a user preset never drives the legacy renderers",
+                labelPresetService.systemPresetFieldKeys(TEST_PREFIX + "Not A System Preset"));
+        assertNull(labelPresetService.systemPresetFieldKeys("  "));
     }
 
     @Test

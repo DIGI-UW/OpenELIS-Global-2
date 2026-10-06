@@ -117,7 +117,7 @@ describe("LabelPresetFieldsEditor (OGC-1218)", () => {
 
   test("warns softly when the fields are unlikely to fit the height, without blocking", () => {
     renderEditor({
-      heightMm: 15,
+      heightMm: 12,
       fields: normalizeFields(
         ["PATIENT_NAME", "PATIENT_ID", "PATIENT_DOB", "TESTS", "SITE_ID"].map(
           (fieldKey, index) => ({ fieldKey, displayOrder: index + 2 }),
@@ -125,8 +125,28 @@ describe("LabelPresetFieldsEditor (OGC-1218)", () => {
       ),
     });
     const hint = screen.getByTestId("label-fields-fit-hint");
-    expect(hint).toHaveTextContent("6 fields may not fit a 15 mm label");
+    expect(hint).toHaveTextContent(
+      "The 5 selected fields may not fit a 12 mm label; about 2 rows fit above the barcode.",
+    );
     expect(hint).toHaveTextContent("You can still save.");
+  });
+
+  test("the shipped Specimen default opens without a fit warning at 25 mm", () => {
+    renderEditor({
+      heightMm: 25,
+      fields: normalizeFields(
+        [
+          "PATIENT_NAME",
+          "PATIENT_DOB",
+          "PATIENT_ID",
+          "PATIENT_SEX",
+          "COLLECTION_DATETIME",
+          "COLLECTED_BY",
+          "TESTS",
+        ].map((fieldKey, index) => ({ fieldKey, displayOrder: index + 2 })),
+      ),
+    });
+    expect(screen.queryByTestId("label-fields-fit-hint")).toBeNull();
   });
 
   test("shows no hint for a short list", () => {

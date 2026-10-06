@@ -3,6 +3,7 @@ import {
   SELECTABLE_FIELD_KEYS,
   addField,
   estimateFittingRows,
+  selectableCount,
   fieldLabelId,
   fieldsLikelyOverflow,
   moveField,
@@ -93,9 +94,12 @@ describe("labelFieldCatalog (OGC-1218)", () => {
     expect(toggleRequired(fields, LAB_NUMBER)).toBe(fields);
   });
 
-  test("the fit hint is a soft estimate from the height", () => {
-    expect(estimateFittingRows(25)).toBe(5);
-    expect(estimateFittingRows(15)).toBe(3);
+  test("the fit hint is a soft estimate from the height that leaves Lab Number out", () => {
+    expect(estimateFittingRows(25)).toBe(8);
+    expect(estimateFittingRows(15)).toBe(5);
+    expect(estimateFittingRows(12)).toBe(2);
+    expect(estimateFittingRows(8)).toBe(1);
+    expect(estimateFittingRows(60)).toBe(8);
     expect(estimateFittingRows("")).toBeNull();
     const six = normalizeFields(
       ["PATIENT_NAME", "PATIENT_ID", "PATIENT_DOB", "TESTS", "SITE_ID"].map(
@@ -103,9 +107,27 @@ describe("labelFieldCatalog (OGC-1218)", () => {
       ),
     );
     expect(six).toHaveLength(6);
-    expect(fieldsLikelyOverflow(six, 15)).toBe(true);
-    expect(fieldsLikelyOverflow(six, 25)).toBe(true);
-    expect(fieldsLikelyOverflow(six, 40)).toBe(false);
+    expect(selectableCount(six)).toBe(5);
+    expect(fieldsLikelyOverflow(six, 12)).toBe(true);
+    expect(fieldsLikelyOverflow(six, 15)).toBe(false);
+    expect(fieldsLikelyOverflow(six, 25)).toBe(false);
     expect(fieldsLikelyOverflow(normalizeFields([]), 10)).toBe(false);
+  });
+
+  test("the shipped Specimen default fits its 25 mm label without a warning", () => {
+    const specimen = normalizeFields(
+      [
+        "PATIENT_NAME",
+        "PATIENT_DOB",
+        "PATIENT_ID",
+        "PATIENT_SEX",
+        "COLLECTION_DATETIME",
+        "COLLECTED_BY",
+        "TESTS",
+      ].map((fieldKey, index) => ({ fieldKey, displayOrder: index + 2 })),
+    );
+    expect(specimen).toHaveLength(8);
+    expect(fieldsLikelyOverflow(specimen, 25)).toBe(false);
+    expect(fieldsLikelyOverflow(specimen, 15)).toBe(true);
   });
 });

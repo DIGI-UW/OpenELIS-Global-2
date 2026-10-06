@@ -20,6 +20,7 @@ import {
   fieldLabelId,
   fieldsLikelyOverflow,
   estimateFittingRows,
+  selectableCount,
   moveField,
   removeField,
   toggleRequired,
@@ -200,7 +201,7 @@ function LabelPresetFieldsEditor({ fields, heightMm, onChange, disabled }) {
           title={intl.formatMessage(
             { id: "admin.labelPresets.fields.fitHint" },
             {
-              count: fields.length,
+              count: selectableCount(fields),
               height: heightMm,
               rows: estimateFittingRows(heightMm),
             },
