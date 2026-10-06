@@ -38,7 +38,9 @@ import { priorities } from "../data/orderOptions";
 import { NotificationKinds } from "../common/CustomNotification";
 import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
-import LabelsSection from "../barcodeWorkflow/LabelsSection";
+import LabelsSection, {
+  seedPersistPayload,
+} from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 import MicrobiologyOrderEntrySection from "../microbiology/MicrobiologyOrderEntrySection";
@@ -793,6 +795,7 @@ const AddOrder = (props) => {
   useEffect(() => {
     if (orderLabelSamples.length === 0) {
       setLabelRequest(null);
+      setOrderFormValues((prev) => ({ ...prev, labelPersistRequest: null }));
       return;
     }
     const testIds = [
@@ -815,6 +818,10 @@ const AddOrder = (props) => {
       (response) => {
         if (response && !response.error) {
           setLabelRequest(response);
+          setOrderFormValues((prev) => ({
+            ...prev,
+            labelPersistRequest: seedPersistPayload(response),
+          }));
         }
       },
     );

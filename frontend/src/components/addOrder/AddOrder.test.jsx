@@ -274,6 +274,29 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
       { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
     ]);
   });
+
+  test("carries the proposed quantities as labelPersistRequest when the section is left untouched", async () => {
+    wireAggregationResponse(labelRequestFixture());
+    const { setOrderFormValues } = renderAddOrder();
+    expect(await screen.findByTestId("labels-section-root")).toBeVisible();
+
+    // A save made without touching the section used to carry no label request
+    // at all, so the presets' defaults never reached the order (OGC-1219).
+    const updater = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => typeof arg === "function");
+    expect(updater).toBeTruthy();
+
+    const next = updater(baseOrderFormValues());
+    expect(next.labelPersistRequest.order_cells).toEqual([
+      { preset_id: 1, qty: 2 },
+    ]);
+    expect(next.labelPersistRequest.sample_rows).toEqual([
+      { sample_id_local: "0", cells: [{ preset_id: 17, qty: 1 }] },
+      { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
+    ]);
+  });
 });
 
 // ---------------------------------------------------------------------------
