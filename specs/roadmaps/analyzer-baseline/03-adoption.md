@@ -46,7 +46,7 @@ connectionId, request)` (`PUT /api/connections/{id}`) with
 - [ ] T3.7 Endpoints: GET/POST /rest/analyzer/analyzers/{id}/adoption?revision=
 - [ ] T3.8 Catalog view: split updateAvailable into newerProfileRevision and newerMappingRevision; UI tag links to Adopt or Verify respectively
 - [ ] T3.9 Adoption screen: the step-2 editor in adoption mode with bucket grouping and side-by-side changed rows
-- [ ] T3.10 Replace cannotReplaceTheProfileOfAConfiguredAnalyzer with tests for the new rule
+- [x] T3.10 Replace cannotReplaceTheProfileOfAConfiguredAnalyzer with tests for the new rule (a configured analyzer keeps its profile; a newer revision is reached by adoption, and the refusal says so)
 - [ ] T3.11 Red then green: E2E numeric profile revision N -> N+1 (one LOINC fix, one new code); E2E an analyzer migrated by step 2 offers no Adopt action and is set up on its baseline profile (rule 6)
 - [ ] T3.12 Format cold; commit; stack PR on step 2
 ```
