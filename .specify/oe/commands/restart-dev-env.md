@@ -35,5 +35,4 @@ Supported options:
 
 Stop and report a failed build, readiness or certificate operation. Show relevant
 logs through `scripts/dev-stack logs`; do not report success after a failed step.
-For CI reproduction, use `scripts/run-ci-checks.sh` or the owning isolated lane
-runner. A development restart is not CI validation.
+For CI reproduction, use `scripts/run-ci-checks.sh --job NAME`. A development restart is not CI validation.

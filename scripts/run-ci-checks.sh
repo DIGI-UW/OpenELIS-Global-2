@@ -89,12 +89,14 @@ done
 NEEDS_DOCKER=false
 NEEDS_JAVA=false
 NEEDS_NODE20=false
+NEEDS_BROWSER=false
 for job in "${JOBS[@]}"; do
   case "$job" in
     backend-tests|frontend-image|playwright-*|cypress-*) NEEDS_DOCKER=true ;;
   esac
   case "$job" in backend-format|backend-tests) NEEDS_JAVA=true ;; esac
   case "$job" in frontend-static|e2e-scope|playwright-*|cypress-*) NEEDS_NODE20=true ;; esac
+  case "$job" in playwright-*|cypress-*) NEEDS_BROWSER=true ;; esac
 done
 if [[ "$NEEDS_DOCKER" == true ]]; then
   command -v docker >/dev/null
@@ -223,7 +225,7 @@ run_lane() {
     "$ARTIFACT_DIR/backend-python/bin/python" -m pip install --disable-pip-version-check PyYAML==6.0.2 > "$ARTIFACT_DIR/backend-python-dependencies.log" 2>&1
     export PATH="$ARTIFACT_DIR/backend-python/bin:$PATH"
   fi
-  if [[ "$lane" == e2e ]]; then
+  if [[ "$lane" == e2e && "$NEEDS_BROWSER" == true ]]; then
     # The same browser dependencies and Chromium installation as the CI executor.
     python3 -m venv "$ARTIFACT_DIR/python"
     "$ARTIFACT_DIR/python/bin/python" -m pip install --disable-pip-version-check PyYAML==6.0.2 > "$ARTIFACT_DIR/python-dependencies.log" 2>&1

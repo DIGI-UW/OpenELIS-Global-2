@@ -41,7 +41,8 @@ development principles.
 scripts/dev-stack up
 
 # Focused interactive browser check
-npm run pw:test -- <spec-path>
+eval "$(scripts/dev-stack env)"
+(cd frontend && npm run pw:test -- <spec-path>)
 
 # Full local CI for the committed candidate, in parallel with GitHub after push
 scripts/run-ci-checks.sh
