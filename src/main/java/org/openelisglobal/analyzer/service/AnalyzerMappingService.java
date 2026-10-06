@@ -21,6 +21,13 @@ public interface AnalyzerMappingService {
     AnalyzerMappingSnapshot appendRevision(Analyzer analyzer, AnalyzerMappingDraft draft, String actor);
 
     /**
+     * Saves the draft as the analyzer's next revision, pinned to a newer active
+     * revision of its profile. Does not move the analyzer's mapping in force.
+     */
+    AnalyzerMappingSnapshot adoptRevision(Analyzer analyzer, int profileRevision, AnalyzerMappingDraft draft,
+            String actor);
+
+    /**
      * The analyzer's newest revision: its working draft, or the one in force when
      * nothing is newer.
      */

@@ -14,6 +14,11 @@ public record AnalyzerMappingRowKey(String sourceRowKey, String subIdentity) {
         subIdentity = subIdentity == null ? "" : subIdentity;
     }
 
+    /** The record as an operator reads it: its code, then its sub-identity. */
+    public String label() {
+        return subIdentity.isEmpty() ? sourceRowKey : sourceRowKey + " " + subIdentity;
+    }
+
     public static AnalyzerMappingRowKey main(String sourceRowKey) {
         return new AnalyzerMappingRowKey(sourceRowKey, "");
     }

@@ -2,7 +2,12 @@ package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -10,9 +15,11 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.openelisglobal.analyzer.service.AnalyzerMappingAdoption.BlockReason;
 import org.openelisglobal.analyzer.service.AnalyzerMappingAdoption.Bucket;
 import org.openelisglobal.analyzer.service.AnalyzerMappingAdoption.Row;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
@@ -29,8 +36,10 @@ public class AnalyzerAdoptionServiceTest {
     private final AnalyzerMappingDefaults defaults = mock(AnalyzerMappingDefaults.class);
     private final AnalyzerMappingCatalogService catalog = mock(AnalyzerMappingCatalogService.class);
     private final AnalyzerResultsService results = mock(AnalyzerResultsService.class);
+    private final AnalyzerService analyzers = mock(AnalyzerService.class);
     private final AnalyzerAdoptionService service = new AnalyzerAdoptionServiceImpl(mappingService, profiles, defaults,
-            catalog, results);
+            catalog, results, analyzers);
+    private final Analyzer analyzer = new Analyzer();
 
     private AnalyzerMapping mapping;
 
@@ -45,6 +54,8 @@ public class AnalyzerAdoptionServiceTest {
         when(catalog.searchActiveTests(null))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.TestOption("t1", "One", null, List.of())));
         when(results.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of());
+        analyzer.setId("42");
+        when(analyzers.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
     }
 
     @Test
@@ -88,6 +99,67 @@ public class AnalyzerAdoptionServiceTest {
         current(row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT));
 
         assertThrows(IllegalArgumentException.class, () -> service.prepareAdoption("42", 1));
+    }
+
+    @Test
+    public void adoptSavesTheReviewedMappingOnTheNewRevisionKeepingProposedOrigins() {
+        current(row("RAW-A", "t1", AnalyzerMappingOrigin.OVERRIDE), row("RAW-B", "t1", AnalyzerMappingOrigin.DEFAULT));
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+
+        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+
+        AnalyzerMappingDraft saved = savedDraft();
+        assertEquals("the retired RAW-B is not carried", 1, saved.tests().size());
+        assertEquals("an override equal to the new default stays an override", AnalyzerMappingOrigin.OVERRIDE,
+                saved.tests().get(0).origin());
+    }
+
+    @Test
+    public void aDecisionTheOperatorChangedBecomesAnOverride() {
+        current(row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT));
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+
+        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.EXCLUDED, null)),
+                "17");
+
+        assertEquals(AnalyzerMappingOrigin.OVERRIDE, savedDraft().tests().get(0).origin());
+    }
+
+    @Test
+    public void adoptionIsRefusedWhileARecordIsBlockedOrMissing() {
+        current(row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT), row("RAW-B", "t1", AnalyzerMappingOrigin.DEFAULT));
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+        when(results.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held("RAW-B", 1)));
+
+        assertThrows("RAW-B still has held results", IllegalArgumentException.class, () -> service.adopt("42", 2,
+                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17"));
+
+        when(results.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of());
+        assertThrows("every adopted record needs a decision", IllegalArgumentException.class,
+                () -> service.adopt("42", 2, reviewed(), "17"));
+        verify(mappingService, never()).adoptRevision(any(), anyInt(), any(), any());
+    }
+
+    @Test
+    public void anOverrideOnAnInactiveTestMustBeChangedBeforeAdoption() {
+        current(row("RAW-A", "t9", AnalyzerMappingOrigin.OVERRIDE));
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+
+        assertThrows(IllegalArgumentException.class, () -> service.adopt("42", 2,
+                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t9")), "17"));
+
+        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+        assertEquals("t1", savedDraft().tests().get(0).testId());
+    }
+
+    private static AnalyzerMappingDraft reviewed(AnalyzerMappingTestDraft... tests) {
+        return new AnalyzerMappingDraft(List.of(tests), List.of());
+    }
+
+    private AnalyzerMappingDraft savedDraft() {
+        ArgumentCaptor<AnalyzerMappingDraft> saved = ArgumentCaptor.forClass(AnalyzerMappingDraft.class);
+        verify(mappingService).adoptRevision(eq(analyzer), eq(2), saved.capture(), eq("17"));
+        return saved.getValue();
     }
 
     private void current(AnalyzerMappingTest... rows) {
