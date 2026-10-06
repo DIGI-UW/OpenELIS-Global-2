@@ -41,7 +41,9 @@ import org.openelisglobal.common.rest.provider.bean.PatientInfoBean;
 import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.common.services.DisplayListService;
 import org.openelisglobal.common.services.DisplayListService.ListType;
+import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.RequesterService;
+import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
@@ -198,11 +200,15 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private SampleComplianceStandardService sampleComplianceStandardService;
 
-    /** Dashboard filter value for orders that have been referred out. */
+    /** Dashboard filter value for orders whose every test is referred out. */
     private static final String REFERRED_OUT_FILTER = "referred_out";
+    /** Dashboard filter value for orders with at least one referred test. */
+    private static final String HAS_REFERRED_FILTER = "has_referred";
 
     @Autowired
     private ReferralService referralService;
+    @Autowired
+    private IStatusService statusService;
 
     @Autowired
     private PanelItemService panelItemService;
@@ -264,18 +270,24 @@ public class OrderSearchRestController extends BaseRestController {
         final boolean qa;
         final OrderProgressStatus progress;
         final boolean complete;
+        final boolean fullyReferred;
 
-        StepState(boolean collect, boolean label, boolean qa, OrderProgressStatus progress, boolean complete) {
+        StepState(boolean collect, boolean label, boolean qa, OrderProgressStatus progress, boolean complete,
+                boolean fullyReferred) {
             this.collect = collect;
             this.label = label;
             this.qa = qa;
             this.progress = progress;
             this.complete = complete;
+            this.fullyReferred = fullyReferred;
         }
 
         String status() {
             if (progress == OrderProgressStatus.CANCELLED) {
                 return CANCELLED_FILTER;
+            }
+            if (fullyReferred && progress.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED)) {
+                return REFERRED_OUT_FILTER;
             }
             if (complete) {
                 return "completed";
@@ -401,7 +413,7 @@ public class OrderSearchRestController extends BaseRestController {
                     continue;
                 } else {
                     List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(sample.getId());
-                    if (REFERRED_OUT_FILTER.equals(status)) {
+                    if (HAS_REFERRED_FILTER.equals(status)) {
                         if (!hasReferral(sampleItems)) {
                             continue;
                         }
@@ -512,8 +524,40 @@ public class OrderSearchRestController extends BaseRestController {
             labelComplete = prepared;
             qaComplete = progress == OrderProgressStatus.READY_FOR_TESTING;
         }
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
         return new StepState(collectComplete, labelComplete, qaComplete, progress,
-                orderProgressService.isComplete(progress, workflowType));
+                orderProgressService.isComplete(progress, workflowType, fullyReferred), fullyReferred);
+    }
+
+    /**
+     * How much of the order is referred out, for the dashboard row: the referred
+     * and total test counts and the receiving laboratories.
+     */
+    Map<String, Object> referralSummary(List<SampleItem> sampleItems) {
+        int total = 0;
+        int referred = 0;
+        java.util.Set<String> laboratories = new java.util.LinkedHashSet<>();
+        for (SampleItem sampleItem : sampleItems) {
+            for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                total++;
+                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
+                if (!orderProgressService.isOpenReferral(referral)) {
+                    continue;
+                }
+                referred++;
+                if (referral.getOrganization() != null) {
+                    laboratories.add(referral.getOrganization().getOrganizationName());
+                }
+            }
+        }
+        Map<String, Object> summary = new HashMap<>();
+        summary.put("referredTests", referred);
+        summary.put("totalTests", total);
+        summary.put("referredTo", String.join(", ", laboratories));
+        return summary;
     }
 
     /** One dashboard row, built only for the samples on the page shown. */
@@ -565,15 +609,18 @@ public class OrderSearchRestController extends BaseRestController {
             facilityName = referringOrg.getOrganizationName();
         orderData.put("facilityName", facilityName.isEmpty() ? "---" : facilityName);
 
+        boolean finished = steps.complete && steps.progress != OrderProgressStatus.CANCELLED;
         Map<String, Boolean> stepProgress = new HashMap<>();
         stepProgress.put("enter", isEnterComplete(sample));
-        stepProgress.put("collect", steps.collect);
-        stepProgress.put("label", steps.label);
-        stepProgress.put("qa", steps.qa);
+        stepProgress.put("collect", steps.collect || finished);
+        stepProgress.put("label", steps.label || finished);
+        stepProgress.put("qa", steps.qa || finished);
         orderData.put("stepProgress", stepProgress);
         orderData.put("status", steps.status());
+        orderData.put("referralSummary", referralSummary(sampleItems));
         putProgress(orderData, sample,
-                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress);
+                GenericValidator.isBlankOrNull(sampleWorkflowType) ? "clinical" : sampleWorkflowType, steps.progress,
+                steps.complete, steps.fullyReferred);
         orderData.put("storageSkipped", Boolean.TRUE.equals(sample.getStorageSkipped()));
 
         if (sampleWorkflowType != null) {
@@ -1036,8 +1083,16 @@ public class OrderSearchRestController extends BaseRestController {
 
     private void putProgress(Map<String, Object> target, Sample sample, String workflowType,
             OrderProgressStatus status) {
+        boolean fullyReferred = orderProgressService.isFullyReferred(sample.getId());
+        putProgress(target, sample, workflowType, status,
+                orderProgressService.isComplete(status, workflowType, fullyReferred), fullyReferred);
+    }
+
+    private void putProgress(Map<String, Object> target, Sample sample, String workflowType, OrderProgressStatus status,
+            boolean complete, boolean fullyReferred) {
         target.put("progressStatus", status.name());
-        target.put("complete", orderProgressService.isComplete(status, workflowType));
+        target.put("complete", complete);
+        target.put("fullyReferred", fullyReferred);
         target.put("sampleCheckEnabled", orderProgressService.sampleCheckEnabled(workflowType));
         Map<String, Object> progress = new HashMap<>();
         progress.put("enteredAt", timestampText(sample.getOrderEnteredAt()));
@@ -1083,11 +1138,13 @@ public class OrderSearchRestController extends BaseRestController {
         }
     }
 
-    private boolean hasReferral(List<SampleItem> sampleItems) {
+    boolean hasReferral(List<SampleItem> sampleItems) {
         for (SampleItem sampleItem : sampleItems) {
             for (Analysis analysis : analysisService.getAnalysesBySampleItem(sampleItem)) {
-                Referral referral = referralService.getReferralByAnalysisId(analysis.getId());
-                if (referral != null && referral.getId() != null) {
+                if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                    continue;
+                }
+                if (orderProgressService.isOpenReferral(referralService.getReferralByAnalysisId(analysis.getId()))) {
                     return true;
                 }
             }

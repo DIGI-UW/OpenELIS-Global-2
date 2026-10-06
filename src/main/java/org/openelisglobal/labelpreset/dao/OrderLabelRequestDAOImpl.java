@@ -36,4 +36,10 @@ public class OrderLabelRequestDAOImpl extends BaseDAOImpl<OrderLabelRequest, Int
                 .createQuery("FROM OrderLabelRequest o WHERE o.preset.id = :presetId", OrderLabelRequest.class)
                 .setParameter("presetId", presetId).getResultList();
     }
+
+    @Override
+    public int deleteByParentSampleId(String parentSampleId) {
+        return entityManager.createQuery("DELETE FROM OrderLabelRequest o WHERE o.parentSample.id = :parentSampleId")
+                .setParameter("parentSampleId", parentSampleId).executeUpdate();
+    }
 }

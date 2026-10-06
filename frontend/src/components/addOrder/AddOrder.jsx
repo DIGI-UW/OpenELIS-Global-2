@@ -38,7 +38,9 @@ import { priorities } from "../data/orderOptions";
 import { NotificationKinds } from "../common/CustomNotification";
 import AutoComplete from "../common/AutoComplete";
 import OrderResultReporting from "./OrderResultReporting";
-import LabelsSection from "../barcodeWorkflow/LabelsSection";
+import LabelsSection, {
+  seedPersistPayload,
+} from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
 import MicrobiologyOrderEntrySection from "../microbiology/MicrobiologyOrderEntrySection";
@@ -789,10 +791,17 @@ const AddOrder = (props) => {
 
   // Fetch POST /api/orderEntry/labelRequest with all selected test ids + the
   // filtered samples (each carrying its positional sample_id_local). Renders via
-  // LabelsSection's API mode. Clears when no sample carries tests.
+  // LabelsSection's API mode. Clears when no sample carries tests. Modify Order
+  // shares this component but its save (/rest/SampleEdit) carries no label
+  // request, so the section is not offered there.
   useEffect(() => {
+    if (isModifyOrder) {
+      setLabelRequest(null);
+      return;
+    }
     if (orderLabelSamples.length === 0) {
       setLabelRequest(null);
+      setOrderFormValues((prev) => ({ ...prev, labelPersistRequest: null }));
       return;
     }
     const testIds = [
@@ -815,11 +824,15 @@ const AddOrder = (props) => {
       (response) => {
         if (response && !response.error) {
           setLabelRequest(response);
+          setOrderFormValues((prev) => ({
+            ...prev,
+            labelPersistRequest: seedPersistPayload(response),
+          }));
         }
       },
     );
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [orderLabelSignature]);
+  }, [orderLabelSignature, isModifyOrder]);
 
   // Human-facing row label for the sample table: the sample type name, falling
   // back to "Sample N" (the filtered position the backend correlates by).
@@ -838,6 +851,9 @@ const AddOrder = (props) => {
   // as OrderLabelPersistRequest) and lift it onto orderFormValues so Index.jsx's
   // save POST body carries it as the top-level labelPersistRequest.
   const handleOrderLabelsChange = ({ persistPayload }) => {
+    if (isModifyOrder) {
+      return;
+    }
     setOrderFormValues((prev) => ({
       ...prev,
       labelPersistRequest: persistPayload,

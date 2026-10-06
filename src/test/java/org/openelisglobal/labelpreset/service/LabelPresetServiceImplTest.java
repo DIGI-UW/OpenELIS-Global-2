@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.util.List;
+import java.util.Locale;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -252,7 +253,149 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
                 activeList.stream().anyMatch(p -> p.getId().equals(inactive.getId())));
     }
 
+    // ── Content fields on save (OGC-1227) ────────────────────────────────────
+
+    @Test
+    public void update_sameFieldsTwice_succeedsAndKeepsFieldRowId() {
+        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_idem", entry("LAB_NUMBER", true, 1));
+        Integer fieldId = preset.getFields().get(0).getId();
+
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_idem");
+        form.setFields(List.of(entry("LAB_NUMBER", true, 1)));
+        form.setHeightMm(31);
+        labelPresetService.update(preset.getId(), form, SYS_USER);
+        form.setHeightMm(32);
+        LabelPreset updated = labelPresetService.update(preset.getId(), form, SYS_USER);
+
+        assertEquals(Integer.valueOf(32), updated.getHeightMm());
+        assertEquals(List.of("LAB_NUMBER"), storedFieldKeys(preset.getId()));
+        assertEquals("The retained field keeps its row", fieldId, updated.getFields().get(0).getId());
+    }
+
+    @Test
+    public void update_withoutFields_leavesStoredFieldsUntouched() {
+        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_null", entry("LAB_NUMBER", true, 1));
+
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_null");
+        form.setFields(null);
+        form.setHeightMm(30);
+        LabelPreset updated = labelPresetService.update(preset.getId(), form, SYS_USER);
+
+        assertEquals(Integer.valueOf(30), updated.getHeightMm());
+        assertEquals(List.of("LAB_NUMBER"), storedFieldKeys(preset.getId()));
+    }
+
+    @Test
+    public void update_withEmptyFields_clearsStoredFields() {
+        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_clear", entry("LAB_NUMBER", true, 1));
+
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_clear");
+        form.setFields(List.of());
+        labelPresetService.update(preset.getId(), form, SYS_USER);
+
+        assertEquals(List.of(), storedFieldKeys(preset.getId()));
+    }
+
+    @Test
+    public void update_swappedDisplayOrders_isApplied() {
+        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_swap", entry("LAB_NUMBER", true, 1),
+                entry("PATIENT_NAME", false, 2));
+
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_swap");
+        form.setFields(List.of(entry("LAB_NUMBER", true, 2), entry("PATIENT_NAME", false, 1)));
+        labelPresetService.update(preset.getId(), form, SYS_USER);
+
+        assertEquals(List.of("PATIENT_NAME", "LAB_NUMBER"), storedFieldKeys(preset.getId()));
+    }
+
+    @Test
+    public void update_addsAndRemovesFields_keepingRetainedRowIds() {
+        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_diff", entry("LAB_NUMBER", true, 1),
+                entry("PATIENT_NAME", false, 2));
+        Integer labNumberId = fieldId(preset, "LAB_NUMBER");
+
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_diff");
+        form.setFields(
+                List.of(entry("LAB_NUMBER", true, 1), entry("PATIENT_ID", false, 2), entry("PATIENT_DOB", false, 3)));
+        LabelPreset updated = labelPresetService.update(preset.getId(), form, SYS_USER);
+
+        assertEquals(List.of("LAB_NUMBER", "PATIENT_ID", "PATIENT_DOB"), storedFieldKeys(preset.getId()));
+        assertEquals(labNumberId, fieldId(updated, "LAB_NUMBER"));
+    }
+
+    @Test
+    public void update_systemPreset_lowerCasedName_keepsStoredName() {
+        LabelPreset systemPreset = labelPresetService.list(null, null).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsSystem())).findFirst().orElse(null);
+        assertNotNull("System presets (5 seeded by Liquibase) must be present", systemPreset);
+        String storedName = systemPreset.getName();
+        try {
+            LabelPresetForm form = mirrorForm(systemPreset);
+            form.setName(storedName.toLowerCase(Locale.ROOT));
+            LabelPreset updated = labelPresetService.update(systemPreset.getId(), form, SYS_USER);
+
+            assertEquals(storedName, updated.getName());
+            assertEquals(storedName, jdbc.queryForObject("SELECT name FROM clinlims.label_preset WHERE id = ?",
+                    String.class, systemPreset.getId()));
+        } finally {
+            jdbc.update("UPDATE clinlims.label_preset SET name = ? WHERE id = ?", storedName, systemPreset.getId());
+        }
+    }
+
+    @Test
+    public void update_userPreset_storesNameAsTyped() {
+        LabelPreset preset = createPreset(TEST_PREFIX + "typed name");
+
+        LabelPresetForm form = buildMinimalForm("  " + TEST_PREFIX + "Typed Name  ");
+        LabelPreset updated = labelPresetService.update(preset.getId(), form, SYS_USER);
+
+        assertEquals(TEST_PREFIX + "Typed Name", updated.getName());
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private LabelPresetForm.FieldEntry entry(String key, boolean required, int order) {
+        LabelPresetForm.FieldEntry entry = new LabelPresetForm.FieldEntry();
+        entry.setFieldKey(key);
+        entry.setIsRequired(required);
+        entry.setDisplayOrder(order);
+        return entry;
+    }
+
+    private LabelPreset createPresetWithFields(String name, LabelPresetForm.FieldEntry... entries) {
+        LabelPresetForm form = buildMinimalForm(name);
+        form.setFields(List.of(entries));
+        return labelPresetService.create(form, SYS_USER);
+    }
+
+    private List<String> storedFieldKeys(Integer presetId) {
+        return jdbc.queryForList(
+                "SELECT field_key FROM clinlims.label_preset_field WHERE preset_id = ? ORDER BY display_order",
+                String.class, presetId);
+    }
+
+    private Integer fieldId(LabelPreset preset, String key) {
+        return preset.getFields().stream().filter(f -> key.equals(f.getFieldKey())).findFirst()
+                .orElseThrow(() -> new AssertionError("field " + key + " missing")).getId();
+    }
+
+    private LabelPresetForm mirrorForm(LabelPreset preset) {
+        LabelPresetForm form = buildMinimalForm(preset.getName());
+        form.setPrintsPerOrder(preset.getPrintsPerOrder());
+        form.setPrintsPerSample(preset.getPrintsPerSample());
+        form.setHeightMm(preset.getHeightMm());
+        form.setWidthMm(preset.getWidthMm());
+        form.setBarcodeType(preset.getBarcodeType());
+        form.setDefaultPerOrder(preset.getDefaultPerOrder());
+        form.setMaxPerOrder(preset.getMaxPerOrder());
+        form.setDefaultPerSample(preset.getDefaultPerSample());
+        form.setMaxPerSample(preset.getMaxPerSample());
+        form.setIsActive(preset.getIsActive());
+        form.setFields(preset.getFields().stream()
+                .map(f -> entry(f.getFieldKey(), Boolean.TRUE.equals(f.getIsRequired()), f.getDisplayOrder()))
+                .collect(java.util.stream.Collectors.toList()));
+        return form;
+    }
 
     private LabelPreset createPreset(String name) {
         LabelPresetForm form = buildMinimalForm(name);

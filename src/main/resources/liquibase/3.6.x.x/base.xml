@@ -13,5 +13,7 @@
   <include relativeToChangelogFile="true" file="005-menu-presentation.xml"/>
   <include relativeToChangelogFile="true" file="006-analysis-sample-type-name.xml"/>
   <include relativeToChangelogFile="true" file="007-backfill-fhir-uuids-again.xml"/>
+  <!-- OGC-1219: repair system label presets seeded from fallbacks by the wrong site_information key names -->
+  <include relativeToChangelogFile="true" file="008-reseed-system-presets-from-legacy-keys.xml"/>
 
 </databaseChangeLog>

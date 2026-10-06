@@ -10,6 +10,9 @@ import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.observationhistory.service.ObservationHistoryServiceImpl.ObservationType;
+import org.openelisglobal.referral.service.ReferralService;
+import org.openelisglobal.referral.valueholder.Referral;
+import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.sample.valueholder.OrderProgressStatus;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleacceptance.service.SampleAcceptanceChecklistService;
@@ -19,6 +22,7 @@ import org.openelisglobal.sampleacceptance.valueholder.SampleAcceptanceRecord;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +45,9 @@ public class OrderProgressServiceImpl implements OrderProgressService {
     private SampleAcceptanceChecklistService acceptanceChecklistService;
     @Autowired
     private SampleAcceptanceRecordService acceptanceRecordService;
+    @Autowired
+    @Lazy
+    private ReferralService referralService;
     @Autowired
     private ObservationHistoryService observationHistoryService;
 
@@ -122,6 +129,47 @@ public class OrderProgressServiceImpl implements OrderProgressService {
     }
 
     @Override
+    public boolean isFullyReferred(String sampleId) {
+        List<Analysis> analyses = analysisService.getAnalysesBySampleId(sampleId);
+        if (analyses == null) {
+            return false;
+        }
+        boolean anyActive = false;
+        for (Analysis analysis : analyses) {
+            if (statusService.matches(analysis.getStatusId(), AnalysisStatus.Canceled)) {
+                continue;
+            }
+            anyActive = true;
+            if (!isOpenReferral(referralService.getReferralByAnalysisId(analysis.getId()))) {
+                return false;
+            }
+        }
+        return anyActive;
+    }
+
+    @Override
+    public boolean isOpenReferral(Referral referral) {
+        return referral != null && referral.getId() != null && referral.getStatus() != ReferralStatus.CANCELLED
+                && referral.getStatus() != ReferralStatus.REJECTED;
+    }
+
+    @Override
+    public boolean isComplete(Sample sample, OrderProgressStatus status, String workflowType) {
+        if (isComplete(status, workflowType)) {
+            return true;
+        }
+        return sample != null && isComplete(status, workflowType, isFullyReferred(sample.getId()));
+    }
+
+    @Override
+    public boolean isComplete(OrderProgressStatus status, String workflowType, boolean fullyReferred) {
+        if (isComplete(status, workflowType)) {
+            return true;
+        }
+        return fullyReferred && status != null && status.isAtLeast(OrderProgressStatus.SAMPLES_PREPARED);
+    }
+
+    @Override
     @Transactional
     public Sample release(String sampleId, String releaseNote, String sysUserId) {
         Sample sample = sampleService.get(sampleId);
@@ -168,7 +216,7 @@ public class OrderProgressServiceImpl implements OrderProgressService {
         if (current == OrderProgressStatus.CANCELLED) {
             throw new IllegalStateException("order.cancelled");
         }
-        if (isComplete(current, workflowTypeOf(sample))) {
+        if (isComplete(sample, current, workflowTypeOf(sample))) {
             throw new IllegalStateException("order.cancel.complete");
         }
         List<Analysis> analyses = analysisService.getAnalysesBySampleId(sampleId);

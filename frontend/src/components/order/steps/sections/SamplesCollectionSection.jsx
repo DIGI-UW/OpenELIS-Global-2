@@ -24,6 +24,8 @@ const SamplesCollectionSection = ({
   updateSampleCollectionDetails,
   isReadOnly,
   admissionDate,
+  onPrintLabels,
+  printDisabled = false,
 }) => {
   const intl = useIntl();
   // The laboratory's "now" when the page opens: the default collection and
@@ -45,8 +47,10 @@ const SamplesCollectionSection = ({
   };
 
   // Handle print labels for a specific sample
-  const handlePrintLabels = (_sampleIndex) => {
-    // TODO: Implement label printing
+  const handlePrintLabels = (sampleIndex) => {
+    if (onPrintLabels) {
+      onPrintLabels(sampleIndex);
+    }
   };
 
   // Handle add new sample
@@ -58,11 +62,6 @@ const SamplesCollectionSection = ({
       receivedTime: currentLocalTime(),
     };
     setSamples([...samples, newSample]);
-  };
-
-  // Handle print more sample labels
-  const handlePrintMoreLabels = () => {
-    // TODO: Implement printing additional labels
   };
 
   return (
@@ -88,6 +87,7 @@ const SamplesCollectionSection = ({
                 onUpdate={handleSampleUpdate}
                 onRemove={handleSampleRemove}
                 onPrintLabels={handlePrintLabels}
+                printDisabled={printDisabled}
                 isReadOnly={isReadOnly}
                 canRemove={!isReadOnly}
                 admissionDate={admissionDate}
@@ -184,19 +184,6 @@ const SamplesCollectionSection = ({
             <FormattedMessage
               id="collect.addSample.button"
               defaultMessage="+ Add Another Sample"
-            />
-          </Button>
-
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Printer}
-            onClick={handlePrintMoreLabels}
-            disabled={isReadOnly}
-          >
-            <FormattedMessage
-              id="collect.printMoreLabels.button"
-              defaultMessage="Print More Sample Labels"
             />
           </Button>
         </div>

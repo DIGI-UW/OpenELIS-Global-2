@@ -24,7 +24,11 @@ import {
   postToOpenElisServerFullResponse,
   putToOpenElisServerFullResponse,
 } from "../../utils/Utils";
-import { normalizeName } from "./helpers";
+import {
+  describeSaveFailure,
+  toFieldEntries,
+  translateServerMessage,
+} from "./helpers";
 
 const BARCODE_TYPES = ["CODE_128", "QR", "DATAMATRIX"];
 
@@ -124,6 +128,20 @@ function LabelPresetEditor({ preset, onClose }) {
     return errs;
   };
 
+  const applyServerFieldErrors = (body) => {
+    if (!body || !Array.isArray(body.fieldErrors)) {
+      return;
+    }
+    const serverErrs = {};
+    body.fieldErrors.forEach((fe) => {
+      serverErrs[fe.field] = translateServerMessage(
+        intl,
+        fe.defaultMessage || "",
+      );
+    });
+    setErrors(serverErrs);
+  };
+
   const handleSubmit = () => {
     const errs = validate();
     if (Object.keys(errs).length > 0) {
@@ -135,31 +153,36 @@ function LabelPresetEditor({ preset, onClose }) {
 
     const payload = {
       ...form,
-      name: normalizeName(form.name),
+      name: form.name.trim(),
+      fields: toFieldEntries(form.fields),
     };
 
     const handleResponse = (response) => {
       setSubmitting(false);
       if (response && (response.status === 200 || response.status === 201)) {
         onClose(true);
-      } else if (response && response.status === 422) {
-        response.json().then((body) => {
-          if (body && body.fieldErrors) {
-            const serverErrs = {};
-            body.fieldErrors.forEach((fe) => {
-              serverErrs[fe.field] = fe.defaultMessage;
-            });
-            setErrors(serverErrs);
-          }
-          if (body && body.globalErrors && body.globalErrors.length > 0) {
-            setApiError(body.globalErrors.join("; "));
-          }
-        });
-      } else {
-        setApiError(
-          intl.formatMessage({ id: "admin.labelPresets.saveFailed" }),
-        );
+        return;
       }
+      if (!response) {
+        setApiError(
+          intl.formatMessage({
+            id: "admin.labelPresets.saveFailed.noResponse",
+          }),
+        );
+        return;
+      }
+      response.text().then((text) => {
+        if (response.status === 422) {
+          let body = null;
+          try {
+            body = JSON.parse(text);
+          } catch (e) {
+            body = null;
+          }
+          applyServerFieldErrors(body);
+        }
+        setApiError(describeSaveFailure(intl, response.status, text));
+      });
     };
 
     if (isEdit) {
@@ -194,14 +217,6 @@ function LabelPresetEditor({ preset, onClose }) {
         </Heading>
       </ModalHeader>
       <ModalBody>
-        {apiError && (
-          <InlineNotification
-            kind="error"
-            title={apiError}
-            lowContrast
-            style={{ marginBottom: "1rem" }}
-          />
-        )}
         {submitting && <Loading small withOverlay={false} />}
         <Form>
           {/* Section 1: Basic Info */}
@@ -411,6 +426,21 @@ function LabelPresetEditor({ preset, onClose }) {
           </Section>
         </Form>
       </ModalBody>
+      {apiError && (
+        <div
+          style={{ padding: "0 1rem" }}
+          data-testid="label-preset-editor-error"
+        >
+          <InlineNotification
+            kind="error"
+            role="alert"
+            lowContrast
+            title={intl.formatMessage({ id: "admin.labelPresets.saveFailed" })}
+            subtitle={apiError}
+            onCloseButtonClick={() => setApiError(null)}
+          />
+        </div>
+      )}
       <ModalFooter>
         <Button kind="secondary" onClick={() => onClose(false)}>
           <FormattedMessage id="label.button.cancel" />

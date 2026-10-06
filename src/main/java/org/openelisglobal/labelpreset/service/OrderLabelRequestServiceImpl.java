@@ -63,6 +63,8 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
             throw new IllegalArgumentException("Cannot persist label requests: no Sample with id " + orderId);
         }
 
+        orderLabelRequestDAO.deleteByParentSampleId(orderId);
+
         Map<String, String> resolvedSampleIds = sampleIdMap == null ? Map.of() : sampleIdMap;
         Map<String, List<String>> testIdsByLocal = testIdsBySampleLocal == null ? Map.of() : testIdsBySampleLocal;
 
@@ -81,12 +83,10 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         for (OrderLabelPersistRequest.PersistSampleRow row : payload.getSampleRows()) {
             String localId = row.getSampleIdLocal();
             String sampleItemId = resolvedSampleIds.get(localId);
-            if (sampleItemId == null) {
-                // No persisted sample item for this local id — skip (cannot anchor the row).
-                continue;
-            }
-            SampleItem sampleItem = sampleItemService.get(sampleItemId);
+            SampleItem sampleItem = sampleItemId != null ? sampleItemService.get(sampleItemId)
+                    : existingSampleItemOfOrder(orderId, localId);
             if (sampleItem == null) {
+                // No persisted sample item for this local id — skip (cannot anchor the row).
                 continue;
             }
             List<String> testIds = testIdsByLocal.getOrDefault(localId, List.of());
@@ -103,6 +103,23 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         }
 
         return persisted;
+    }
+
+    /**
+     * A client that already holds the saved sample items (Prepare Samples on a
+     * saved order) may key a row by the sample item's own id instead of a
+     * positional local id. Only an item of this order is accepted.
+     */
+    private SampleItem existingSampleItemOfOrder(String orderId, String candidateId) {
+        if (candidateId == null) {
+            return null;
+        }
+        String id = candidateId.startsWith("item-") ? candidateId.substring("item-".length()) : candidateId;
+        if (!id.matches("\\d+")) {
+            return null;
+        }
+        return sampleItemService.getSampleItemsBySampleId(orderId).stream().filter(item -> id.equals(item.getId()))
+                .findFirst().orElse(null);
     }
 
     private OrderLabelRequest insertRow(Sample parentSample, SampleItem sampleItem, LabelPreset preset, int qty,

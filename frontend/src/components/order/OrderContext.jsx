@@ -286,6 +286,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   // Persisted to backend via /rest/order/storage-skipped endpoint
   const [storageSkipped, setStorageSkippedState] = useState(false);
 
+  // Label quantities chosen in the Labels section (OGC-1422, FR-E5). They
+  // travel with the step's save as labelPersistRequest and replace the order's
+  // saved label requests; printing then reads the saved rows (FR-I6).
+  const [labelPersistRequest, setLabelPersistRequest] = useState(null);
+
   // Where the order stands in order entry (OGC-1266 FR-F5), as the server
   // records it: the status, the time each step was completed, and whether
   // order entry is finished for this laboratory's Sample check setting.
@@ -905,6 +910,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         ),
         initialSampleConditionList: [],
         testSectionList: [],
+        ...(labelPersistRequest ? { labelPersistRequest } : {}),
       };
 
       const save = new Promise((resolve, reject) => {
@@ -1067,6 +1073,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       buildSampleXML,
       buildReferralItems,
       dateLocale,
+      labelPersistRequest,
     ],
   );
 
@@ -1600,6 +1607,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     fieldErrors,
     stepProgress,
     storageSkipped,
+    labelPersistRequest,
     progress,
     acceptanceMode,
     sampleCheckEnabled,
@@ -1622,6 +1630,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     markStepComplete,
     setStorageSkipped,
     stageStorageSkipped,
+    setLabelPersistRequest,
     adoptProgress,
     // Test assignment actions (Step 2)
     assignTestToSample,
