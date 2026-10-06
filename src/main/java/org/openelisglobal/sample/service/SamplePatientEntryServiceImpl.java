@@ -1413,6 +1413,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 String local = String.valueOf(i);
                 if (stc.item != null && stc.item.getId() != null) {
                     sampleIdMap.put(local, stc.item.getId());
+                } else if (stc.existingSampleItemId != null && !stc.existingSampleItemId.isBlank()) {
+                    sampleIdMap.put(local, stc.existingSampleItemId);
                 }
                 List<String> testIds = new ArrayList<>();
                 if (stc.tests != null) {

@@ -13,6 +13,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -97,7 +98,27 @@ public class OrderLabelReprintController {
     @GetMapping("/api/barcode/print/{orderId}/{presetId}")
     public ResponseEntity<byte[]> printFromSnapshot(@PathVariable("orderId") String orderId,
             @PathVariable("presetId") Integer presetId) {
-        ByteArrayOutputStream pdf = orderLabelReprintService.renderFromSnapshot(orderId, presetId);
+        return pdfResponse(orderLabelReprintService.renderFromSnapshot(orderId, presetId));
+    }
+
+    // ── GET /api/orders/{id}/labels/pdf ───────────────────────────────────────
+
+    /**
+     * The order's saved labels as one PDF, narrowed by any of {@code presetId} (one
+     * label type), {@code sampleItemId} (one tube) and {@code scope} ({@code order}
+     * or {@code sample}). With no filter, every saved label of the order. Backs the
+     * Print row / Print column / Print all actions of the Labels section on Prepare
+     * Samples (OGC-1422, FR-I6, FR-I7); {@code 404} when nothing matches.
+     */
+    @GetMapping("/api/orders/{id}/labels/pdf")
+    public ResponseEntity<byte[]> printOrderLabels(@PathVariable("id") String orderId,
+            @RequestParam(name = "presetId", required = false) Integer presetId,
+            @RequestParam(name = "sampleItemId", required = false) String sampleItemId,
+            @RequestParam(name = "scope", required = false) String scope) {
+        return pdfResponse(orderLabelReprintService.renderFromSnapshot(orderId, presetId, sampleItemId, scope));
+    }
+
+    private ResponseEntity<byte[]> pdfResponse(ByteArrayOutputStream pdf) {
         if (pdf == null || pdf.size() == 0) {
             return ResponseEntity.notFound().build();
         }

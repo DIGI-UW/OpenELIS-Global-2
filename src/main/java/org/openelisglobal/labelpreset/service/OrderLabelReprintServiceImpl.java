@@ -48,12 +48,19 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
     @Override
     @Transactional(readOnly = true)
     public ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId) {
+        return renderFromSnapshot(orderId, presetId, null, null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId,
+            String scope) {
         ArrayList<Label> labels = new ArrayList<>();
         BarcodeLabelMaker.BarcodeType barcodeType = BarcodeLabelMaker.BarcodeType.BARCODE;
 
-        if (orderId != null && presetId != null) {
+        if (orderId != null) {
             for (OrderLabelRequest row : orderLabelRequestDAO.listByParentSampleId(orderId)) {
-                if (row.getPreset() == null || !presetId.equals(row.getPreset().getId())) {
+                if (!matches(row, presetId, sampleItemId, scope)) {
                     continue;
                 }
                 PresetSnapshotDto snapshot = row.getPresetSnapshot();
@@ -80,6 +87,23 @@ public class OrderLabelReprintServiceImpl implements OrderLabelReprintService {
         BarcodeLabelMaker maker = new BarcodeLabelMaker(labels);
         maker.setBarcodeType(barcodeType);
         return maker.createLabelsAsStream();
+    }
+
+    private boolean matches(OrderLabelRequest row, Integer presetId, String sampleItemId, String scope) {
+        if (presetId != null && (row.getPreset() == null || !presetId.equals(row.getPreset().getId()))) {
+            return false;
+        }
+        boolean perOrder = row.getSampleItem() == null;
+        if ("order".equalsIgnoreCase(scope) && !perOrder) {
+            return false;
+        }
+        if ("sample".equalsIgnoreCase(scope) && perOrder) {
+            return false;
+        }
+        if (sampleItemId != null && (perOrder || !sampleItemId.equals(row.getSampleItem().getId()))) {
+            return false;
+        }
+        return true;
     }
 
     @Override

@@ -25,6 +25,7 @@ import { getEnforcement } from "../api/sampleAcceptanceApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import CollectTestPickerSection from "./sections/CollectTestPickerSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
+import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
 import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
@@ -45,6 +46,9 @@ const OrderCollect = () => {
   const history = useHistory();
   const workflowPrefix = useWorkflowPrefix();
   const componentMounted = useRef(true);
+  // The Labels section registers its row printer here so a sample card's
+  // Print Labels button prints that tube's labels (FR-C6).
+  const printLabelsRowRef = useRef(null);
 
   const {
     orderId,
@@ -384,6 +388,22 @@ const OrderCollect = () => {
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
           admissionDate={admissionDate}
+          onPrintLabels={(sampleIndex) => {
+            if (printLabelsRowRef.current) {
+              printLabelsRowRef.current(sampleIndex);
+            }
+          }}
+        />
+
+        {/* Labels for the order and every tube, from the presets and the test
+            catalog (FR-I2). The quantities travel with this step's save and
+            printing reads the saved rows (FR-I6, FR-I7). */}
+        <PrepareLabelsSection
+          isReadOnly={isReadOnly && !isEditMode}
+          onSaveBeforePrint={handleSave}
+          registerPrintRow={(printRow) => {
+            printLabelsRowRef.current = printRow;
+          }}
         />
 
         {/* Storage and referral, per sample, saved with this step (FR-E1,

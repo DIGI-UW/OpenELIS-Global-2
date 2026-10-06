@@ -192,6 +192,55 @@ public class OrderLabelRequestSnapshotPersistenceTest extends BaseWebContextSens
                 orderLabelRequestDAO.listByParentSampleId(sampleId).isEmpty());
     }
 
+    // ── OGC-1422: a save replaces the order's earlier rows; a saved sample item
+    // may be addressed by its own id ──────────────────────────────────────────
+
+    @Test
+    public void persistRequest_replacesTheOrdersEarlierRows() {
+        OrderLabelPersistRequest first = new OrderLabelPersistRequest();
+        first.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(orderPreset.getId(), 2));
+        orderLabelRequestService.persistRequest(sampleId, Map.of(), first, TEST_SYS_USER_ID, Map.of());
+
+        OrderLabelPersistRequest second = new OrderLabelPersistRequest();
+        second.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(orderPreset.getId(), 3));
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), second,
+                TEST_SYS_USER_ID, Map.of());
+
+        List<OrderLabelRequest> rows = orderLabelRequestDAO.listByParentSampleId(sampleId);
+        assertEquals("the latest save's choices are the order's only label requests", 1, rows.size());
+        assertEquals(Integer.valueOf(3), rows.get(0).getQty());
+        assertEquals(persisted.get(0).getId(), rows.get(0).getId());
+    }
+
+    @Test
+    public void persistRequest_acceptsASavedSampleItemIdAsLocalId() {
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow(
+                "item-" + sampleItemId);
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 2));
+        payload.getSampleRows().add(row);
+
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), payload,
+                TEST_SYS_USER_ID, Map.of());
+
+        assertEquals(1, persisted.size());
+        assertEquals(sampleItemId, persisted.get(0).getSampleItem().getId());
+        assertEquals(Integer.valueOf(2), persisted.get(0).getQty());
+    }
+
+    @Test
+    public void persistRequest_ignoresASampleItemIdThatIsNotOnTheOrder() {
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow("item-999999999");
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 2));
+        payload.getSampleRows().add(row);
+
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), payload,
+                TEST_SYS_USER_ID, Map.of());
+
+        assertTrue("an unknown sample item id anchors nothing", persisted.isEmpty());
+    }
+
     private LabelPreset savePreset(String name, boolean perSample, boolean perOrder, int defaultPerSample,
             int maxPerSample) {
         LabelPreset preset = new LabelPreset();
