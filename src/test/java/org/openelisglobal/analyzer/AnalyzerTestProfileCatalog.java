@@ -15,7 +15,7 @@ public final class AnalyzerTestProfileCatalog {
     public static final String HL7_PROFILE_FINGERPRINT = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
     /**
      * A profile with two revisions, for adoption: revision 2 fixes ADOPT-A's LOINC,
-     * adds ADOPT-B and drops ADOPT-C.
+     * reports ADOPT-D in another unit, adds ADOPT-B and drops ADOPT-C.
      */
     public static final String ADOPTABLE_PROFILE_ID = "test.adoptable";
     public static final String ADOPTABLE_RECOGNITION_FINGERPRINT = "sha256:" + "6".repeat(64);
@@ -40,6 +40,8 @@ public final class AnalyzerTestProfileCatalog {
         var tests = profile.putArray("default_test_mappings");
         tests.addObject().put("test_code", "ADOPT-A").put("loinc", revision == 1 ? "2345-7" : "2339-0")
                 .put("result_type", "quantitative");
+        tests.addObject().put("test_code", "ADOPT-D").put("loinc", "2160-0").put("result_type", "quantitative")
+                .put("unit", revision == 1 ? "mg/dL" : "umol/L");
         if (revision == 1) {
             tests.addObject().put("test_code", "ADOPT-C").put("loinc", "2947-0").put("result_type", "quantitative");
         }

@@ -156,9 +156,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer connection not found"));
         AnalyzerProfilePin pin = analyzer.getPinnedProfile();
         int recoveredCount = 0;
+        // A row held under another revision of this profile is retried like a new
+        // delivery from that revision: it maps only where both revisions read it alike.
         for (AnalyzerResults held : analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzerId)) {
             if (pin == null || !pin.getProfileId().equals(held.getSourceProfileId())
-                    || !Integer.valueOf(pin.getProfileRevision()).equals(held.getSourceProfileRevision())
+                    || held.getSourceProfileRevision() == null
                     || !analyzer.getBridgeConnectionId().equals(held.getSourceConnectionId())
                     || held.getSourcePayload() == null) {
                 continue;

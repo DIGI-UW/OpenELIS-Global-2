@@ -259,7 +259,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         analyzerOnRevisionOne();
         String testId = catalog.searchActiveTests(null).get(0).id();
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                bindAdoptA(proposals(adoptionService.prepareAdoption(analyzerId, 2)), testId), "1");
+                bind(proposals(adoptionService.prepareAdoption(analyzerId, 2)), "ADOPT-A", testId), "1");
         confirm(adopted);
         bridgeOn(1);
         apply(adopted);
@@ -275,6 +275,35 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertTrue(dropped.isReadOnly());
         assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, dropped.getImportIssueReason());
         assertEquals(Integer.valueOf(1), dropped.getSourceProfileRevision());
+    }
+
+    @Test
+    public void resultsHeldOnTheOldRevisionRecoverOnApplyWhenTheNewOneReadsThemAlike() throws Exception {
+        analyzerOnRevisionOne();
+        importService.importBundle(delivery(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID, 1, "ADOPT-A", "ADOPT-D"),
+                "1");
+        AnalyzerResults heldA = staged("ADOPT-A");
+        assertTrue("ADOPT-A has no test on revision 1", heldA.isReadOnly());
+        assertTrue(staged("ADOPT-D").isReadOnly());
+        List<AnalyzerMappingCatalogService.TestOption> tests = catalog.searchActiveTests(null);
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+                bind(bind(proposals(adoptionService.prepareAdoption(analyzerId, 2)), "ADOPT-A", tests.get(0).id()),
+                        "ADOPT-D", tests.get(1).id()),
+                "1");
+        confirm(adopted);
+        bridgeOn(1);
+
+        apply(adopted);
+
+        AnalyzerResults recovered = staged("ADOPT-A");
+        assertEquals(heldA.getId(), recovered.getId());
+        assertFalse("only ADOPT-A's LOINC changed", recovered.isReadOnly());
+        assertEquals(tests.get(0).id(), recovered.getTestId());
+        assertEquals(Integer.valueOf(1), recovered.getSourceProfileRevision());
+        AnalyzerResults otherUnit = staged("ADOPT-D");
+        assertTrue("revision 2 reports ADOPT-D in another unit", otherUnit.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_OTHER_REVISION, otherUnit.getImportIssueReason());
+        assertEquals(Integer.valueOf(1), otherUnit.getSourceProfileRevision());
     }
 
     @Test
@@ -329,9 +358,9 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         results.insertAnalyzerResults(List.of(held), "1");
     }
 
-    private static AnalyzerMappingDraft bindAdoptA(AnalyzerMappingDraft decisions, String testId) {
+    private static AnalyzerMappingDraft bind(AnalyzerMappingDraft decisions, String code, String testId) {
         return new AnalyzerMappingDraft(decisions.tests().stream()
-                .map(test -> test.sourceRowKey().equals("ADOPT-A")
+                .map(test -> test.sourceRowKey().equals(code)
                         ? new AnalyzerMappingTestDraft(test.sourceRowKey(), AnalyzerMappingState.BOUND, testId, null,
                                 null, AnalyzerMappingOrigin.OVERRIDE, test.subIdentity(), null)
                         : test)
