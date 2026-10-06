@@ -86,8 +86,6 @@
   padding: 0 0 spacing.$spacing-06 calc(1.5rem + #{spacing.$spacing-04});
 }
 
-.analyzer-setup__verify-heading,
-.analyzer-setup__verify-recognition-heading,
 // One row per assay, like the instrument's host test code table: whether it
 // runs here, how the catalog matched it, and the code it sends.
 .analyzer-setup__assays {
@@ -126,70 +124,6 @@
   display: flex;
   gap: spacing.$spacing-05;
   justify-content: space-between;
-}
-
-.analyzer-setup__verify-heading {
-  h4 {
-    @include type.type-style("heading-02");
-    color: var(--cds-text-primary);
-    margin: 0 0 spacing.$spacing-02;
-  }
-
-  p {
-    @include type.type-style("body-compact-01");
-    color: var(--cds-text-secondary);
-    margin: 0;
-  }
-}
-
-.analyzer-setup__verify-counts {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  margin: 0;
-
-  div {
-    border-block: 1px solid var(--cds-border-subtle-01);
-    min-width: 0;
-    padding: spacing.$spacing-04;
-  }
-
-  div + div {
-    border-left: 1px solid var(--cds-border-subtle-01);
-  }
-
-  dt {
-    @include type.type-style("label-01");
-    color: var(--cds-text-secondary);
-    margin-bottom: spacing.$spacing-02;
-  }
-
-  dd {
-    @include type.type-style("heading-compact-01");
-    color: var(--cds-text-primary);
-    margin: 0;
-  }
-}
-
-.analyzer-setup__verify-recognition {
-  border-bottom: 1px solid var(--cds-border-subtle-01);
-  padding-bottom: spacing.$spacing-05;
-
-  h4 {
-    @include type.type-style("heading-compact-01");
-    color: var(--cds-text-primary);
-    margin: 0;
-  }
-
-  p,
-  ul {
-    @include type.type-style("body-compact-01");
-    color: var(--cds-text-secondary);
-    margin: spacing.$spacing-04 0 0;
-  }
-
-  ul {
-    padding-left: spacing.$spacing-06;
-  }
 }
 
 .analyzer-setup__connect {
@@ -350,8 +284,6 @@
     grid-template-columns: 1fr;
   }
 
-  .analyzer-setup__verify-heading,
-  .analyzer-setup__verify-recognition-heading,
   .analyzer-setup__assay-list li {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -359,14 +291,5 @@
   .analyzer-setup__verify-actions {
     align-items: flex-start;
     flex-direction: column;
-  }
-
-  .analyzer-setup__verify-counts {
-    grid-template-columns: 1fr;
-
-    div + div {
-      border-left: 0;
-      border-top: 0;
-    }
   }
 }
