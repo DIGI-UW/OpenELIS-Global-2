@@ -64,7 +64,7 @@ jobs:
             specs: ""
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.head_sha || github.sha }}
           repository: ${{github.repository}}
@@ -77,7 +77,7 @@ jobs:
           allow-unsafe-pr-checkout: true
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: 20
           cache: npm
@@ -112,7 +112,7 @@ jobs:
 
       - name: Download image map from build workflow (non-fork)
         if: inputs.is_fork != 'true' && inputs.build_run_id != ''
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
@@ -121,7 +121,7 @@ jobs:
 
       - name: Download image map from fork-rebuild (fork)
         if: inputs.is_fork == 'true' || inputs.build_run_id == ''
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
@@ -197,7 +197,7 @@ jobs:
 
       - name: Upload Cypress screenshots (${{ matrix.shard }})
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: cypress-screenshots-${{ matrix.shard }}
           path: frontend/cypress/screenshots/**/*.png

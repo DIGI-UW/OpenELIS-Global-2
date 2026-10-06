@@ -42,7 +42,7 @@ jobs:
     steps:
       - name: Checkout scope script
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           sparse-checkout: .github/scripts
           persist-credentials: false
@@ -52,7 +52,7 @@ jobs:
       - name: Decide E2E scope
         id: scope
         if: github.event_name == 'pull_request'
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             const scope = require('./.github/scripts/e2e-scope.cjs');
@@ -70,7 +70,7 @@ jobs:
           echo "${{ github.event.pull_request.number }}" > /tmp/e2e-scope-context/pr_number
       - name: Upload triggering pull request
         if: github.event_name == 'pull_request'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-scope-context
           path: /tmp/e2e-scope-context/
@@ -92,13 +92,13 @@ jobs:
       image_transfer: ${{ steps.transfer-mode.outputs.mode }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v6
+        uses: actions/setup-node@v7
         with:
           node-version: "20"
           cache: npm
@@ -138,7 +138,7 @@ jobs:
           echo "Early context: event=${{ github.event_name }} fork=$IS_FORK pr=#$PR_NUMBER"
 
       - name: Upload early build context
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-build-context-core
           path: /tmp/e2e-build-context-core/
@@ -310,7 +310,7 @@ jobs:
 
       - name: Upload transfer state for E2E wrapper workflow
         if: always()
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-build-transfer-state
           path: /tmp/e2e-transfer-state/
@@ -318,7 +318,7 @@ jobs:
 
       - name: Upload fork image handoff artifact
         if: steps.transfer-mode.outputs.mode == 'fork-handoff'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-image-handoff
           path: /tmp/e2e-image-handoff/
@@ -326,7 +326,7 @@ jobs:
 
       - name: Upload Docker image map artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map.txt
@@ -335,7 +335,7 @@ jobs:
 
       - name: Upload base Docker image map artifact
         if: steps.transfer-mode.outputs.mode == 'ghcr'
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map-base.txt
