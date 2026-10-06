@@ -6,7 +6,6 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.List;
 import java.util.UUID;
-import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Identifier;
@@ -309,31 +308,11 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
             } else if (TypeOfTestResultServiceImpl.ResultType.isMultiSelectVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
-                CodeableConcept codeableConcept = new CodeableConcept();
-                if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
-                    codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
-                            dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                    : dictionary.getLocalizedDictionaryName().getEnglish()));
-                }
-                codeableConcept.addCoding(
-                        new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
-                                dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
-                observation.setValue(codeableConcept);
+                observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
             } else if (TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(result.getResultType())
                     && !"0".equals(result.getValue())) {
                 Dictionary dictionary = dictionaryService.getDataForId(result.getValue());
-                CodeableConcept codeableConcept = new CodeableConcept();
-                if (dictionary.getLoincCode() != null && !dictionary.getLoincCode().isEmpty()) {
-                    codeableConcept.addCoding(new Coding("http://loinc.org", dictionary.getLoincCode(),
-                            dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                    : dictionary.getLocalizedDictionaryName().getEnglish()));
-                }
-                codeableConcept.addCoding(
-                        new Coding(fhirConfig.getOeFhirSystem() + "/dictionary_entry", dictionary.getDictEntry(),
-                                dictionary.getLocalizedDictionaryName() == null ? dictionary.getDictEntry()
-                                        : dictionary.getLocalizedDictionaryName().getEnglish()));
-                observation.setValue(codeableConcept);
+                observation.setValue(terminologyTransformService.transformAnswerToCodeableConcept(dictionary));
             } else if (TypeOfTestResultServiceImpl.ResultType.isNumeric(result.getResultType())) {
                 Quantity quantity = new Quantity();
                 quantity.setValue(new BigDecimal(result.getValue(true)));
