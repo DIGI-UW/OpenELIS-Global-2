@@ -194,6 +194,8 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
         name: "Adopt revision 2 of Chemistry analyzer",
       }),
     ).toBeInTheDocument();
+    expect(screen.getByText("Adopting revision 2")).toBeInTheDocument();
+    expect(screen.queryByText("Confirmation")).not.toBeInTheDocument();
     expect(getAnalyzerAdoption).toHaveBeenCalledWith(
       "501",
       2,
@@ -210,7 +212,9 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
       within(section("No longer sent")).getByText("OLD"),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Apply to analyzer" }),
+      screen.queryByRole("button", {
+        name: "Apply mappings and retry held results",
+      }),
     ).not.toBeInTheDocument();
   });
 
@@ -232,9 +236,18 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
     expect(
       within(changed).getByText("New default: Glucose"),
     ).toBeInTheDocument();
+    expect(
+      within(changed).getByRole("button", { name: "Keep current" }),
+    ).toBeDisabled();
     await userEvent.click(
       within(changed).getByRole("button", { name: "Use new default" }),
     );
+    expect(
+      within(changed).getByRole("button", { name: "Use new default" }),
+    ).toBeDisabled();
+    expect(
+      within(changed).getByRole("button", { name: "Keep current" }),
+    ).toBeEnabled();
     await userEvent.click(
       screen.getByRole("button", { name: "Save as revision 2" }),
     );
