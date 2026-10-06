@@ -1,8 +1,10 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -429,7 +431,11 @@ public class AnalyzerMappingEditorServiceTest {
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
 
-        AnalyzerMappingView view = service.preview("42", 3, validDraft());
+        AnalyzerMappingDraft valid = validDraft();
+        AnalyzerMappingDraft draft = new AnalyzerMappingDraft(List.of(valid.tests().get(0), valid.tests().get(1),
+                valid.tests().get(2).withAssay(false, "RAW-C-LOCAL")), valid.results());
+
+        AnalyzerMappingView view = service.preview("42", 3, draft);
 
         assertEquals("42", view.analyzerId());
         assertNull("nothing is saved", view.mappingId());
@@ -438,6 +444,9 @@ public class AnalyzerMappingEditorServiceTest {
         assertEquals("SARS-CoV-2 RNA", first.selectedTest().name());
         assertEquals("Positive", first.results().get(0).selectedOption().label());
         assertEquals(AnalyzerMappingState.EXCLUDED, view.tests().get(1).mappingState());
+        assertTrue(first.enabled());
+        assertFalse("an assay this instrument does not run", view.tests().get(2).enabled());
+        assertEquals("RAW-C-LOCAL", view.tests().get(2).instrumentCode());
         verify(bridgeProfileCatalogService).getProfile("site.mock-analyzer", 3);
         verify(mappingService, never()).appendRevision(any(), any(), any());
     }

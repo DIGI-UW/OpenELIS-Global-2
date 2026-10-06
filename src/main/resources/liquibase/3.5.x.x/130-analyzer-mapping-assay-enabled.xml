@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
+
+    <changeSet id="130-analyzer-mapping-assay-enabled" author="oe">
+        <comment>An analyzer's mapping says, per assay, whether the instrument runs it and the code it sends, as the instrument's own host test code table does. Both sit on the assay's main record row. Existing rows were all received, so they stay on, under the profile's code.</comment>
+        <addColumn schemaName="clinlims" tableName="analyzer_mapping_test">
+            <column name="enabled" type="BOOLEAN" defaultValueBoolean="true">
+                <constraints nullable="false"/>
+            </column>
+            <column name="instrument_code" type="VARCHAR(64)"/>
+        </addColumn>
+    </changeSet>
+</databaseChangeLog>

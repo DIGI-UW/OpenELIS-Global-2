@@ -295,6 +295,22 @@ public class AnalyzerNormalizedResultImportServiceTest {
     }
 
     @Test
+    public void aResultForAnAssayThisInstrumentDoesNotRunIsHeldNotDropped() throws IOException {
+        AnalyzerMappingTest off = boundTest(revision, "WBC", "501");
+        off.setEnabled(false);
+        arrangeBinding(List.of(off), List.of());
+
+        AnalyzerNormalizedResultImportSummary summary = service.importBundle(fixture("normalized-known-test.fhir.json"),
+                "7");
+
+        assertEquals(1, summary.resultsHeld());
+        ArgumentCaptor<List<AnalyzerResults>> staged = ArgumentCaptor.forClass(List.class);
+        verify(analyzerResultsService).insertAnalyzerResults(staged.capture(), eq("7"));
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_ASSAY_NOT_ENABLED, staged.getValue().get(0).getImportIssueReason());
+        assertTrue(AnalyzerResults.MAPPING_IMPORT_ISSUES.contains(AnalyzerResults.IMPORT_ISSUE_ASSAY_NOT_ENABLED));
+    }
+
+    @Test
     public void intentionallyExcludedQualitativeValueIsNotStagedForReview() throws IOException {
         arrangeBinding(List.of(boundTest("HIV-INTERP", "601")),
                 List.of(excludedResult("HIV-INTERP", "INDETERMINATE-VENDOR-X")));

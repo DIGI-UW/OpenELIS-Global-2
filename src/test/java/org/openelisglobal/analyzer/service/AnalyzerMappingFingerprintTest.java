@@ -58,6 +58,30 @@ public class AnalyzerMappingFingerprintTest {
         assertNotEquals(AnalyzerMappingFingerprint.calculate(plain), AnalyzerMappingFingerprint.calculate(logRecord));
     }
 
+    @Test
+    public void aMappingSavedBeforeAssaysCouldBeTurnedOffKeepsItsFingerprint() {
+        AnalyzerMappingDraft saved = new AnalyzerMappingDraft(
+                List.of(test("MTB-RIF", AnalyzerMappingState.BOUND, "9701"),
+                        test("HIV-VL", AnalyzerMappingState.UNRESOLVED, null)),
+                List.of(result("MTB-RIF", "DETECTED", AnalyzerMappingState.BOUND, "811")));
+
+        assertEquals("sha256:4e6dc804327db0cbfa3b724e2ff68481022e7d1b1e6eb50d5defe6a52ebe00e6",
+                AnalyzerMappingFingerprint.calculate(saved));
+    }
+
+    @Test
+    public void turningAnAssayOffOrChangingItsInstrumentCodeChangesTheFingerprint() {
+        AnalyzerMappingTestDraft main = test("MTB-RIF", AnalyzerMappingState.BOUND, "9701");
+        String on = AnalyzerMappingFingerprint.calculate(new AnalyzerMappingDraft(List.of(main), List.of()));
+
+        assertNotEquals(on, AnalyzerMappingFingerprint
+                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(false, null)), List.of())));
+        assertNotEquals(on, AnalyzerMappingFingerprint
+                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(true, "MTB")), List.of())));
+        assertEquals("an assay on under its profile code is the default", on, AnalyzerMappingFingerprint
+                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(true, null)), List.of())));
+    }
+
     private static AnalyzerMappingTestDraft test(String sourceRowKey, AnalyzerMappingState state, String testId) {
         return new AnalyzerMappingTestDraft(sourceRowKey, state, testId);
     }

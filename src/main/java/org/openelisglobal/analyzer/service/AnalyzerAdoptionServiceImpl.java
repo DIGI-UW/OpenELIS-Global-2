@@ -142,7 +142,8 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
 
     private static AnalyzerMappingTestDraft withOrigin(AnalyzerMappingTestDraft row, AnalyzerMappingOrigin origin) {
         return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
-                row.unresolvedReason(), origin, row.subIdentity(), row.callComponentId());
+                row.unresolvedReason(), origin, row.subIdentity(), row.callComponentId(), row.enabled(),
+                row.instrumentCode());
     }
 
     private static AnalyzerMappingResultDraft withOrigin(AnalyzerMappingResultDraft row, AnalyzerMappingOrigin origin) {

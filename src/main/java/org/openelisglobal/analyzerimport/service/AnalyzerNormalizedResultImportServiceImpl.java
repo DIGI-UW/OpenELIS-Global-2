@@ -258,6 +258,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         if (testMapping == null) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST));
         }
+        AnalyzerMappingTest assay = mapping.tests().get(AnalyzerMappingRowKey.main(result.rawTestCode()));
+        if (assay != null && !assay.isEnabled()) {
+            return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_ASSAY_NOT_ENABLED));
+        }
         if (!mappingConfirmed) {
             return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
         }

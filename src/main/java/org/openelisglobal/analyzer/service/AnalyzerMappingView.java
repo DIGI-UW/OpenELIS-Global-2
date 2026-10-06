@@ -18,13 +18,18 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
         confirmation = confirmation == null ? AnalyzerMappingConfirmationView.unconfirmed() : confirmation;
     }
 
+    /**
+     * One record of the mapping. On a main record, {@code enabled} and
+     * {@code instrumentCode} say whether this instrument runs the assay and the
+     * code it sends (null for the profile's own).
+     */
     public record TestRow(String sourceRowKey, String rawCode, List<String> aliases, String testNameHint, String loinc,
             String unit, String resultType, BridgeAnalyzerProfile.NormalizedCoding normalizedCoding,
             AnalyzerMappingState mappingState, AnalyzerMappingOrigin origin, String testId, String componentId,
             AnalyzerMappingCatalogService.TestOption selectedTest,
             AnalyzerMappingCatalogService.TestOption suggestedTest, AnalyzerUnresolvedReason unresolvedReason,
             List<ResultRow> results, String subIdentity, String callComponentId, String componentCode,
-            String callComponentCode) {
+            String callComponentCode, boolean enabled, String instrumentCode) {
 
         public TestRow {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);
