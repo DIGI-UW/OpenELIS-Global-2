@@ -495,3 +495,47 @@ describe("LotEntryModal — barcode on a lot that has none", () => {
     });
   });
 });
+
+describe("LotEntryModal — calendar dates on an edited lot", () => {
+  const originalTz = process.env.TZ;
+  beforeAll(() => {
+    process.env.TZ = "Africa/Kampala";
+  });
+  afterAll(() => {
+    process.env.TZ = originalTz;
+  });
+
+  it("saves the expiry and receipt days it shows, not the day before", async () => {
+    InventoryLotAPI.update.mockResolvedValue({});
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={{
+          id: 21,
+          inventoryItem: { id: "MALARIA_RDT" },
+          lotNumber: "LOT-21",
+          barcode: "BC-21",
+          currentQuantity: 4,
+          status: "ACTIVE",
+          qcStatus: "PASSED",
+          expirationDate: Date.UTC(2027, 2, 31),
+          receiptDate: Date.UTC(2026, 9, 5),
+        }}
+      />,
+    );
+
+    fireEvent.click(screen.getByText("Save"));
+
+    await waitFor(() => {
+      expect(InventoryLotAPI.update).toHaveBeenCalledWith(
+        21,
+        expect.objectContaining({
+          expirationDate: "2027-03-31T00:00:00.000Z",
+          receiptDate: "2026-10-05T00:00:00.000Z",
+        }),
+      );
+    });
+  });
+});
