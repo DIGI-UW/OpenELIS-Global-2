@@ -173,11 +173,15 @@ test.describe("Prepare Samples label printing (OGC-1422)", () => {
           r.url().includes("sampleItemId="),
       );
       const popup = context.waitForEvent("page");
-      await page
+      // The card's button stays disabled until the order has loaded; before
+      // that gate the click saved an order without a lab number (400) and no
+      // PDF followed.
+      const cardPrint = page
         .locator("main")
         .getByRole("button", { name: "Print Labels", exact: true })
-        .first()
-        .click();
+        .first();
+      await expect(cardPrint).toBeEnabled({ timeout: UI_TIMEOUT });
+      await cardPrint.click();
       const pdfResponse = await pdf;
       expect(pdfResponse.status()).toBe(200);
       const printWindow = await popup;

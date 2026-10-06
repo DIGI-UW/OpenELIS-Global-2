@@ -25,6 +25,7 @@ const SamplesCollectionSection = ({
   isReadOnly,
   admissionDate,
   onPrintLabels,
+  printDisabled = false,
 }) => {
   const intl = useIntl();
   // The laboratory's "now" when the page opens: the default collection and
@@ -86,6 +87,7 @@ const SamplesCollectionSection = ({
                 onUpdate={handleSampleUpdate}
                 onRemove={handleSampleRemove}
                 onPrintLabels={handlePrintLabels}
+                printDisabled={printDisabled}
                 isReadOnly={isReadOnly}
                 canRemove={!isReadOnly}
                 admissionDate={admissionDate}

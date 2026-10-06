@@ -159,6 +159,7 @@ const PrepareLabelsSection = ({
     labNumber,
     samples,
     isDirty,
+    isLoading,
     saveStatus,
     setLabelPersistRequest,
   } = useOrderContext();
@@ -176,6 +177,8 @@ const PrepareLabelsSection = ({
   latestSamplesRef.current = samples;
   const latestOrderIdRef = useRef(orderId);
   latestOrderIdRef.current = orderId;
+  const latestLoadingRef = useRef(isLoading);
+  latestLoadingRef.current = isLoading;
   const seededPendingRef = useRef(true);
 
   const labelSamples = useMemo(() => labelSamplesOf(samples), [samples]);
@@ -297,6 +300,11 @@ const PrepareLabelsSection = ({
 
   const print = useCallback(
     async (target) => {
+      // An order opened by lab number has no id until its load completes;
+      // saving before that would post an order without a lab number.
+      if (latestLoadingRef.current) {
+        return;
+      }
       setPrintError(null);
       // Open the window inside the click so popup blockers let it through,
       // then point it at the PDF once the labels are ready.
@@ -461,7 +469,7 @@ const PrepareLabelsSection = ({
             onPrintRow={isReadOnly ? undefined : print}
             onPrintColumn={isReadOnly ? undefined : print}
             onPrintAll={isReadOnly ? undefined : () => print({})}
-            printDisabled={printing}
+            printDisabled={printing || isLoading}
             pendingSave={isDirty || quantitiesPending}
           />
         </>

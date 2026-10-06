@@ -61,6 +61,7 @@ const OrderCollect = () => {
     markStepComplete,
     isReadOnly,
     isEditMode,
+    isLoading,
     testSampleAssignments,
     assignTestToSample,
     removeTestFromSample,
@@ -392,6 +393,7 @@ const OrderCollect = () => {
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
           admissionDate={admissionDate}
+          printDisabled={isLoading}
           onPrintLabels={(sampleIndex) => {
             if (printLabelsRowRef.current) {
               printLabelsRowRef.current(sampleIndex);

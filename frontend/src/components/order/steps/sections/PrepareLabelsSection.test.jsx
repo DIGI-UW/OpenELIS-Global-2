@@ -145,6 +145,7 @@ describe("PrepareLabelsSection", () => {
     orderContext.isDirty = false;
     orderContext.saveStatus = "idle";
     orderContext.orderId = "77";
+    orderContext.isLoading = false;
     openedWindow = { location: { href: "" }, close: vi.fn() };
     vi.spyOn(window, "open").mockReturnValue(openedWindow);
     global.URL.createObjectURL = vi.fn(() => "blob:labels");
@@ -465,6 +466,34 @@ describe("PrepareLabelsSection", () => {
         { credentials: "include" },
       ),
     );
+  });
+
+  test("while the order is still loading nothing prints and nothing is saved", async () => {
+    orderContext.orderId = null;
+    orderContext.isLoading = true;
+    const onSaveBeforePrint = vi.fn().mockResolvedValue(true);
+    let printRow;
+    renderSection({
+      onSaveBeforePrint,
+      registerPrintRow: (fn) => {
+        printRow = fn;
+      },
+    });
+    const printAll = await screen.findByTestId("labels-print-all");
+    expect(printAll).toBeDisabled();
+    expect(
+      screen.getByTestId("sample-label-print-row-item-501"),
+    ).toBeDisabled();
+
+    // The sample card's Print Labels reaches the printer through this hook;
+    // before the fix it saved an order that had not loaded yet (400, labNo
+    // blank) and no PDF ever came.
+    printRow(0);
+    await new Promise((resolve) => setTimeout(resolve, 0));
+
+    expect(onSaveBeforePrint).not.toHaveBeenCalled();
+    expect(global.fetch).not.toHaveBeenCalled();
+    expect(window.open).not.toHaveBeenCalled();
   });
 
   test("read-only renders the quantities without print actions", async () => {

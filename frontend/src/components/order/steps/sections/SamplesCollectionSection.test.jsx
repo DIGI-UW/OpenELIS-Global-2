@@ -68,4 +68,15 @@ describe("SamplesCollectionSection print labels (OGC-1422)", () => {
       ),
     ).not.toThrow();
   });
+
+  test("printDisabled keeps every card's Print Labels button disabled", () => {
+    const onPrintLabels = vi.fn();
+    renderSection({ onPrintLabels, printDisabled: true });
+    const button = screen.getByRole("button", {
+      name: messages["collect.sample.printLabels"],
+    });
+    expect(button).toBeDisabled();
+    fireEvent.click(button);
+    expect(onPrintLabels).not.toHaveBeenCalled();
+  });
 });
