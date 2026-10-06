@@ -78,11 +78,9 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
     static final String SEED_CHANGESET = "liquibase/3.3.x.x/030-seed-system-presets.xml";
     /**
      * Field-seed changeset (031). The Liquibase init run executes 030 THEN 031, so
-     * the pristine baseline has every system preset carrying its {@code LAB_NUMBER}
-     * field row. {@link #clearSystemPresets()} cascade-deletes those field rows, so
-     * {@code @After} must re-run 031 (not just 030) to truly restore the baseline
-     * for sibling tests on this feature branch that read
-     * {@code label_preset_field}.
+     * every preset initially receives its required {@code LAB_NUMBER} field.
+     * {@link #clearSystemPresets()} cascade-deletes those rows, so cleanup must
+     * restore 031 before the later content-field migration.
      */
     static final String FIELD_SEED_CHANGESET = "liquibase/3.3.x.x/031-seed-system-preset-fields.xml";
     /**
@@ -117,6 +115,23 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
     @After
     public void restoreCanonicalSeed() throws Exception {
         restoreCanonicalSeed(dataSource);
+    }
+
+    @Test
+    public void restoreCanonicalSeedRestoresTheDefaultOrderLabelFields() throws Exception {
+        restoreCanonicalSeed(dataSource);
+
+        List<String> fields = new ArrayList<>();
+        try (Connection conn = dataSource.getConnection();
+                Statement stmt = conn.createStatement();
+                ResultSet rs = stmt.executeQuery("SELECT f.field_key FROM clinlims.label_preset_field f"
+                        + " JOIN clinlims.label_preset p ON p.id = f.preset_id"
+                        + " WHERE p.is_system = true AND p.name = 'Order Label' ORDER BY f.display_order")) {
+            while (rs.next()) {
+                fields.add(rs.getString(1));
+            }
+        }
+        assertEquals(List.of("LAB_NUMBER", "PATIENT_NAME", "PATIENT_DOB", "PATIENT_ID", "SITE_ID"), fields);
     }
 
     /**
@@ -399,10 +414,8 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * Rebuilds the canonical system presets the way the Liquibase init run leaves
-     * them, for a test that cleared them: 030 re-inserts the presets, 031 re-adds
-     * the LAB_NUMBER field rows {@link #clearSystemPresets(DataSource)}
-     * cascade-deleted, and 032 re-marks Specimen Label universal.
+     * Rebuilds the complete boot state after a test cleared the system presets,
+     * including the default content fields added by the later 009 changeset.
      *
      * <p>
      * The Testcontainer is shared and committed ({@code NOT_SUPPORTED}), so an
@@ -411,6 +424,12 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
      * conditions the seeded presets.
      */
     static void restoreCanonicalSeed(DataSource dataSource) throws Exception {
+        restoreLabNumberOnlySeed(dataSource);
+        executeSeedSql(dataSource, SystemPresetFieldSeedTest.FIELD_DEFAULTS_CHANGESET);
+    }
+
+    /** The earlier state that the content-field migration upgrades. */
+    static void restoreLabNumberOnlySeed(DataSource dataSource) throws Exception {
         restoreLegacyLabelKeys(dataSource);
         clearSystemPresets(dataSource);
         executeSeedSql(dataSource, SEED_CHANGESET);

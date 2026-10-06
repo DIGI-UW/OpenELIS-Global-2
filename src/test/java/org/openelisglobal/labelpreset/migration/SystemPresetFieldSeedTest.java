@@ -40,15 +40,15 @@ public class SystemPresetFieldSeedTest extends BaseWebContextSensitiveTest {
     @Before
     public void startFromLabNumberOnly() throws Exception {
         deleteElementKeys();
-        SystemPresetSeedTest.restoreCanonicalSeed(dataSource);
-        assertEquals("the canonical seed carries LAB_NUMBER alone", List.of("LAB_NUMBER"), fieldKeys("Specimen Label"));
+        SystemPresetSeedTest.restoreLabNumberOnlySeed(dataSource);
+        assertEquals("the pre-upgrade seed carries LAB_NUMBER alone", List.of("LAB_NUMBER"),
+                fieldKeys("Specimen Label"));
     }
 
     @After
     public void restoreBootState() throws Exception {
         deleteElementKeys();
         SystemPresetSeedTest.restoreCanonicalSeed(dataSource);
-        runFieldDefaults();
     }
 
     @Test
