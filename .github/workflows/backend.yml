@@ -111,8 +111,6 @@ jobs:
               - 'Dockerfile'
               - 'build.docker-compose.yml'
               - 'docker-compose.yml'
-              - 'dev.docker-compose.yml'
-              - 'docker-compose.letsencrypt.yml'
               - '.github/ci/ci.analyzer-harness.yml'
               - '.github/workflows/backend.yml'
               - '.github/scripts/publish-checkpoints*.cjs'

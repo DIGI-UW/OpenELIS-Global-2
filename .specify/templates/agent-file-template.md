@@ -15,8 +15,8 @@ development principles.
   Hibernate + JPA + PostgreSQL 14+
 - Frontend: React 17 + **Carbon Design System v1.15** (OFFICIAL UI framework)
 - FHIR: HAPI FHIR R4 v6.6.2 + IHE mCSD profile
-- Testing: JUnit 4 + Mockito (backend), Jest + React Testing Library (frontend
-  unit), Cypress (frontend E2E)
+- Testing: JUnit 4 + Mockito (backend), Vitest + React Testing Library (frontend
+  unit), Playwright (new frontend E2E; Cypress is retained during migration)
 - Build: Maven 3.8+ (backend), npm (frontend), Docker Compose (deployment)
 
 ## Project Structure
@@ -37,17 +37,18 @@ development principles.
 **OpenELIS Development Commands**:
 
 ```bash
-# Backend formatting + build
-mvn spotless:apply && mvn clean install -DskipTests -Dmaven.test.skip=true
+# Build and run the current source stack
+scripts/dev-stack up
 
-# Frontend formatting + dev server
-cd frontend && npm run format && npm start
+# Focused interactive browser check
+npm run pw:test -- <spec-path>
 
-# Run E2E tests
-cd frontend && npm run cy:run
+# Full local CI for the committed candidate, in parallel with GitHub after push
+scripts/run-ci-checks.sh
 
-# Hot reload backend (rebuild + restart container)
-mvn clean install -DskipTests -Dmaven.test.skip=true && docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+# Formatting before commit
+scripts/run-java21 mvn spotless:apply
+(cd frontend && npm run format)
 ```
 
 ## Code Style
@@ -63,7 +64,7 @@ mvn clean install -DskipTests -Dmaven.test.skip=true && docker compose -f dev.do
 - **FHIR**: Extend `FhirTransformService` for entity↔FHIR conversion, sync via
   `FhirPersistanceService`
 - **Database**: Liquibase changesets ONLY (NO direct DDL/DML)
-- **Tests**: JUnit 4 for backend, Jest + Cypress for frontend, >80% backend
+- **Tests**: JUnit 4 for backend, Vitest + Playwright for frontend, >80% backend
   coverage goal, >70% frontend coverage goal
 
 ## Recent Changes

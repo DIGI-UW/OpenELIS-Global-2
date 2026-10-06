@@ -91,44 +91,7 @@ def build_environment(context: StackContext) -> dict[str, str]:
     digest = int(hashlib.sha256(str(context.repo_root).encode("utf-8")).hexdigest()[:8], 16)
     environment["ANALYZER_NETWORK_NAMESPACE"] = context.project
     environment["ANALYZER_SUBNET_PREFIX"] = f"10.{64 + digest % 160}"
-    if frontend_dependencies_changed(context, environment):
-        environment["DEV_STACK_FRONTEND_IMAGE"] = f"{context.project}-frontend:dev"
-        environment["DEV_STACK_BUILD_FRONTEND"] = "true"
-    else:
-        environment.setdefault(
-            "DEV_STACK_FRONTEND_IMAGE",
-            "itechuw/openelis-global-2-frontend-dev:develop",
-        )
-        environment.setdefault("DEV_STACK_BUILD_FRONTEND", "false")
     return environment
-
-
-def frontend_dependencies_changed(
-    context: StackContext, environment: dict[str, str]
-) -> bool:
-    override = environment.get("DEV_STACK_BUILD_FRONTEND")
-    if override is not None:
-        return override.lower() == "true"
-    paths = (
-        "frontend/.dockerignore",
-        "frontend/.npmrc",
-        "frontend/Dockerfile",
-        "frontend/index.html",
-        "frontend/package-lock.json",
-        "frontend/package.json",
-        "frontend/tsconfig.json",
-        "frontend/vite.config.ts",
-    )
-    try:
-        result = subprocess.run(
-            ["git", "diff", "--quiet", "origin/develop", "--", *paths],
-            cwd=context.repo_root,
-            env=environment,
-            check=False,
-        )
-        return result.returncode != 0
-    except OSError:
-        return True
 
 
 def compose_command(context: StackContext, *arguments: str) -> list[str]:
@@ -368,9 +331,7 @@ def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str
 
 
 def build_images(context: StackContext, environment: dict[str, str]) -> None:
-    services = ["oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"]
-    if environment["DEV_STACK_BUILD_FRONTEND"] == "true":
-        services.insert(0, "frontend.openelis.org")
+    services = ["frontend.openelis.org", "oe.openelis.org", "astm-simulator", "openelis-analyzer-bridge"]
     run(
         compose_command(context, "build", *services),
         cwd=context.project_dir,
@@ -523,6 +484,9 @@ def cleanup_analyzer_networks(context: StackContext, environment: dict[str, str]
 
 
 def doctor(context: StackContext, environment: dict[str, str]) -> None:
+    for command in ("git", "docker", "mvn", "bash", "curl", "envsubst"):
+        if not shutil.which(command, path=environment.get("PATH")):
+            raise RuntimeError(f"Missing source-build prerequisite: {command}")
     for path in context.compose_files:
         if not path.is_file():
             raise RuntimeError(f"Missing compose file: {path}")
@@ -573,13 +537,14 @@ def main(argv: Sequence[str] | None = None) -> int:
     environment = build_environment(context)
 
     if args.command == "doctor":
-        bootstrap_analyzer_harness(context, environment)
         doctor(context, environment)
     elif args.command == "config":
         bootstrap_analyzer_harness(context, environment)
         run(compose_command(context, "config"), cwd=context.project_dir, environment=environment)
     elif args.command == "up":
         ensure_local_env(context)
+        environment = build_environment(context)
+        doctor(context, environment)
         ensure_submodules(context, environment)
         bootstrap_analyzer_harness(context, environment)
         backend_was_running = service_is_running(
@@ -591,6 +556,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             build_images(context, environment)
         elif not (context.repo_root / "target" / "OpenELIS-Global.war").is_file():
             raise RuntimeError("--skip-build requires target/OpenELIS-Global.war")
+        else:
+            images = [f"{context.project}-{name}:dev" for name in ("frontend", "backend", "analyzer-mock", "analyzer-bridge")]
+            run(["docker", "image", "inspect", *images], cwd=context.repo_root, environment=environment, capture=True)
         start_services(
             context,
             environment,

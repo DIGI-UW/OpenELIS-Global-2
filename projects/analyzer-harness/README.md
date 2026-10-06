@@ -2,37 +2,22 @@
 
 This directory now follows a single authoritative path for analyzer E2E parity.
 
-## Authoritative Base (required for CI parity)
+## Development and CI
 
-The analyzer harness CI gate runs from the repository root using:
+Start source development with `scripts/dev-stack up`. Export
+`eval "$(scripts/dev-stack env)"` from the repository root, then use the native
+Playwright/npm commands in `frontend`. Development data persists until an
+explicit reset.
 
-- `projects/analyzer-harness/docker-compose.base.yml`
-- `build.docker-compose.yml`
-- `.github/ci/ci.analyzer-harness.yml`
-- `.github/workflows/e2e-playwright-reusable.yml`
+Use `scripts/run-ci-checks.sh` for isolated CI. Select a CI job through that
+same command, for example `--job playwright-analyzers-1`. `--list-jobs` lists
+the supported choices. Selected jobs include their setup and produce a partial
+result. Internal lane scripts under `scripts/ci/` are implementation details.
+They use the workflow's Compose inputs, fixture loader and test projects, with
+local overrides for isolated identities and ports.
 
-Use `ci-parity-test.sh` to run that path locally. The extra local Compose
-override keeps CI images and service settings. Each run gets fresh containers,
-networks, volumes, and random loopback ports; its image tags are scoped to the
-worktree.
-
-```bash
-./projects/analyzer-harness/ci-parity-test.sh --build
-```
-
-`--build` rebuilds the WAR and isolated images from the current checkout before
-testing. Without it, the runner reuses this worktree's existing parity images;
-use that only when those images are already current. Neither mode stops other
-Docker projects or removes their volumes. The runner removes its own test stack
-and volumes when it exits; pass `--keep-stack` to leave that run available for
-inspection.
-
-The script performs:
-
-- strict preflight validation (no silent assumptions)
-- exact CI step order (compose up, readiness, fixtures, seed, permissions,
-  Playwright)
-- deterministic evidence capture in `/tmp/oe-ci-parity-<timestamp>/`
+See [the development guide](../../docs/dev_setup.md) for the authoritative
+commands, prerequisites and separation from published-image deployment.
 
 ## Workflow wait policy
 
@@ -82,6 +67,7 @@ local-only overrides layered on top:
 - `docker-compose.dev.yml`
 - `docker-compose.analyzer-test.yml`
 - `docker-compose.letsencrypt.yml`
+- `docker-compose.worktree.yml`
 
 These files must not drift behaviorally from the authoritative CI harness path
 for critical analyzer flows.
@@ -123,17 +109,11 @@ classes):
 Re-run `scripts/dev-stack up`. The command rebuilds the WAR and recreates the
 changed application services. Frontend changes hot-reload automatically.
 
-## Resetting the test environment
+## Resetting development data
 
-For exact CI parity, prefer:
-
-```bash
-./projects/analyzer-harness/ci-parity-test.sh --build
-```
-
-The old reset wrapper was removed. Use `scripts/dev-stack down --volumes --yes`
-for an explicit local data reset, then `scripts/dev-stack up`. Use
-`ci-parity-test.sh` to reproduce CI; it is a separate validation command.
+Use `scripts/dev-stack down --volumes --yes`, then `scripts/dev-stack up`. The
+isolated CI runner creates fresh test state and cleans up its own resources; it
+does not reset the development stack.
 
 ## Let's Encrypt (analyzers.openelis-global.org)
 

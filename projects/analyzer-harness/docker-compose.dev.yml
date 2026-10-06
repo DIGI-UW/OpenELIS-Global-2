@@ -18,9 +18,7 @@ services:
       - ./volume/database/dbInit:/docker-entrypoint-initdb.d
 
   oe.openelis.org:
-    image: itechuw/openelis-global-2-dev:develop
-    # scripts/dev-stack builds this image from the branch's Dockerfile.dev so local
-    # source drives the webapp, overriding the pulled :develop image tag.
+    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-backend:dev
     build:
       context: ../..
       dockerfile: Dockerfile.dev
@@ -87,7 +85,7 @@ services:
       start_period: 60s
 
   frontend.openelis.org:
-    image: itechuw/openelis-global-2-frontend-dev:develop
+    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-frontend:dev
     # Local-dev default: `target: dev` selects the Vite dev-server stage
     # of the single multi-stage Dockerfile — HMR + unminified React for
     # legible errors during iteration. For CI-parity (ship-artifact) mode,
