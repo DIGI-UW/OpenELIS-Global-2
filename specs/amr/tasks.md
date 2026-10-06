@@ -51,24 +51,41 @@ remain with their owners and are linked, not copied into new specifications.
 
 ## 00 — source and cutover gate
 
+**Tracking:** [OGC-1425](https://uwdigi.atlassian.net/browse/OGC-1425).
+
 **Prerequisites:** None; execute the approved documentation cleanup.
 
 **Removals:** Superseded engineering/design guidance and registrations.
 
-**Status:** `[*]` — documentation and tracking synchronization in progress; scope settled.
+**Status:** `[x]` — documentation and tracking gate verified on 2026-10-06.
 Sources: [grouping][routing], [preservation][preserved], [mock][mock].
 
-- [ ] Align the three engineering documents and paired design sources to draft
+- [x] Align the three engineering documents and paired design sources to draft
       10.4 with separate transfers and deferred joining.
-- [ ] Remove the mapped superseded guidance without replacement archives.
-- [ ] Verify gallery source/generated output, rendered mocks, all 112 criterion
+- [x] Remove the mapped superseded guidance without replacement archives.
+- [x] Verify gallery source/generated output, rendered mocks, all 112 criterion
       owners, Jira replacement links/dependencies and archived Confluence history.
-- [ ] Pass [V00](plan.md#v00--documentation-and-sources).
+- [x] Pass [V00](plan.md#v00--documentation-and-sources).
+
+**Evidence:** [paired engineering review](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4605)
+and [design review](https://github.com/DIGI-UW/openelis-work/pull/354). Gallery tests
+276/276 and build passed; source/generated retirement scan had zero hits.
+828 links/anchors checked: zero current errors, 17 pre-existing unrelated missing
+targets. Chrome rendered review covered both V2 mocks and shared reception, catalog,
+inventory and report specifications. All 112 criteria have one primary owner.
+Jira readback verified 31 superseded closures, 29 aligned shared/future issues,
+17 roadmap tasks, 35 dependency links and the unchanged 1383-blocks-1382 direction.
+Retained owners/statuses and independent catalog work were preserved. Confluence
+1315209256 and its obsolete graph/phase-diagram copies are archived; walkthrough
+versions 1–6 remain available. Breakpoint research and proposed personas were
+preserved as sibling pages. Prettier and whitespace checks passed.
 
 **Acceptance:** one functional baseline, one engineering roadmap and tracking
 that points to them. Documentation completion is not application acceptance.
 
 ## 01 — migration rehearsal
+
+**Tracking:** [OGC-1426](https://uwdigi.atlassian.net/browse/OGC-1426).
 
 **Prerequisites:** V00 accepted at its gate; shared owners linked before changing their behavior.
 
@@ -86,6 +103,8 @@ historical meaning survives without a production legacy reader.
 
 ## 02 — case routing and access
 
+**Tracking:** [OGC-1427](https://uwdigi.atlassian.net/browse/OGC-1427).
+
 **Prerequisites:** V01 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** Workflow classification, protocol routing, Program guards and obsolete routing expectations.
@@ -102,6 +121,8 @@ opens a case, CBC opens none, resave is idempotent, Program is unlocked and a
 forbidden write changes nothing.
 
 ## 03 — case information
+
+**Tracking:** [OGC-1428](https://uwdigi.atlassian.net/browse/OGC-1428).
 
 **Prerequisites:** V02 accepted at its gate; shared owners linked before changing their behavior.
 
@@ -121,6 +142,8 @@ cases; changing one specimen's purpose does not alter its sibling's purpose.
 Admission stays optional without fabricating infection origin.
 
 ## 04 — case results and notes
+
+**Tracking:** [OGC-1429](https://uwdigi.atlassian.net/browse/OGC-1429).
 
 **Prerequisites:** V03 accepted at its gate; shared owners linked before changing their behavior.
 
@@ -142,6 +165,8 @@ Its component values remain correctly bound; report choices follow the draft rol
 
 ## 05 — culture media
 
+**Tracking:** [OGC-1430](https://uwdigi.atlassian.net/browse/OGC-1430).
+
 **Prerequisites:** V04 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** Culture protocol defaults and culture stock-consumption paths.
@@ -160,6 +185,8 @@ and untracked rows behave as designed; culture setup leaves stock unchanged.
 
 ## 06 — independent culture readings
 
+**Tracking:** [OGC-1431](https://uwdigi.atlassian.net/browse/OGC-1431).
+
 **Prerequisites:** V05 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** Case-wide culture clocks/outcomes and setup-derived timing.
@@ -175,6 +202,8 @@ and untracked rows behave as designed; culture setup leaves stock unchanged.
 recording does not publish final; due times survive reload and a pinned boundary.
 
 ## 09 — isolates and referral
+
+**Tracking:** [OGC-1432](https://uwdigi.atlassian.net/browse/OGC-1432).
 
 **Prerequisites:** V06 accepted at its gate; shared owners linked before changing their behavior.
 
@@ -193,6 +222,8 @@ primary inoculation and preserves the producer of each identification/result.
 
 ## 10 — AST reporting
 
+**Tracking:** [OGC-1433](https://uwdigi.atlassian.net/browse/OGC-1433).
+
 **Prerequisites:** V09 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** Workflow panel defaults and whole-run reporting selection where agents overlap.
@@ -210,6 +241,8 @@ both attempts and their original measurements remain attributable.
 
 ## 11 — DST rules
 
+**Tracking:** [OGC-1434](https://uwdigi.atlassian.net/browse/OGC-1434).
+
 **Prerequisites:** V10 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** TB-profile execution assumptions; no hard-coded instrument behavior.
@@ -225,6 +258,8 @@ both attempts and their original measurements remain attributable.
 the MTB cascade nor its resistance classification.
 
 ## 08 — incoming results
+
+**Tracking:** [OGC-1435](https://uwdigi.atlassian.net/browse/OGC-1435).
 
 **Prerequisites:** V11 accepted at its gate; shared owners linked before changing their behavior.
 
@@ -247,6 +282,8 @@ Placement cannot silently transfer ownership to the wrong specimen or isolate.
 
 ## 12 — releases and reports
 
+**Tracking:** [OGC-1436](https://uwdigi.atlassian.net/browse/OGC-1436).
+
 **Prerequisites:** V08 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** Printed REMARK/mapping dependence after electronic continuity proof; linear release/work-state assumptions.
@@ -268,6 +305,8 @@ and patient results show the current amended version.
 
 ## 13 — critical callbacks
 
+**Tracking:** [OGC-1437](https://uwdigi.atlassian.net/browse/OGC-1437).
+
 **Prerequisites:** V12 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** Duplicate call entry and disconnected callback reporting.
@@ -283,6 +322,8 @@ and patient results show the current amended version.
 follow-up and acknowledgement.
 
 ## 07 — bench work and labels
+
+**Tracking:** [OGC-1438](https://uwdigi.atlassian.net/browse/OGC-1438).
 
 **Prerequisites:** V13 accepted at its gate; shared owners linked before changing their behavior.
 
@@ -300,6 +341,8 @@ affects only eligible authorized rows; a label locates its case row.
 
 ## 14 — patient history
 
+**Tracking:** [OGC-1439](https://uwdigi.atlassian.net/browse/OGC-1439).
+
 **Prerequisites:** V07 accepted at its gate; shared owners linked before changing their behavior.
 
 **Removals:** Competing history/matching queries and automatic repeat suppression.
@@ -316,6 +359,8 @@ affects only eligible authorized rows; a label locates its case row.
 reviewable/audited, and the technician can still order a new panel.
 
 ## 15 — environmental and export populations
+
+**Tracking:** [OGC-1440](https://uwdigi.atlassian.net/browse/OGC-1440).
 
 **Prerequisites:** V14 accepted at its gate; shared owners linked before changing their behavior.
 
@@ -336,6 +381,8 @@ reviewable/audited, and the technician can still order a new panel.
 referred-in local work preserves original specimen identity; exclusions explain why.
 
 ## 16 — complete cutover acceptance
+
+**Tracking:** [OGC-1441](https://uwdigi.atlassian.net/browse/OGC-1441).
 
 **Prerequisites:** V15 accepted at its gate; shared owners linked before changing their behavior.
 

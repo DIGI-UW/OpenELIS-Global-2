@@ -146,7 +146,7 @@ below is represented as already passing. Do not disable assertions or skip tests
 
 ```bash
 git diff --check
-(cd frontend && npx --no-install prettier ../specs/amr/spec.md ../specs/amr/plan.md ../specs/amr/tasks.md --check)
+npm exec --yes --package=prettier@3.4.2 -- prettier --check specs/amr/spec.md specs/amr/plan.md specs/amr/tasks.md
 ```
 
 In the paired design worktree run `npm test` and `npm run build`. Check source
