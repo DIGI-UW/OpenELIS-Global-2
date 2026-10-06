@@ -9,6 +9,9 @@ services:
     restart: "no"
 
   db.openelis.org:
+    networks:
+      default:
+        aliases: [db]
     image: postgres:14.4
     restart: always
     env_file:
@@ -52,6 +55,9 @@ services:
       - source: common.properties
 
   fhir.openelis.org:
+    networks:
+      default:
+        aliases: [fhir]
     image: hapiproject/hapi:v6.6.0-tomcat
     depends_on:
       db.openelis.org:
@@ -61,6 +67,11 @@ services:
     restart: always
     environment:
       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+      CATALINA_OPTS: >-
+        -Dhapi.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore}
+        -Dhapi.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
+        -Dhapi.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore}
+        -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       TZ: Africa/Nairobi
       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
         -Djavax.net.ssl.trustStorePassword=tspass
