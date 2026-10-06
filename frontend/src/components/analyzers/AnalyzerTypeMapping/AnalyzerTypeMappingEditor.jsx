@@ -206,11 +206,22 @@ const listChanges = (savedTests = [], draftTests = []) => {
   return changes;
 };
 
-const AnalyzerTypeMappingEditor = () => {
+/**
+ * The mapping editor page. Embedded (in setup's Verify step) it edits the named
+ * analyzer's mapping without page chrome, shows only the assays the instrument
+ * runs, and reports the mapping and whether it has unsaved edits.
+ */
+const AnalyzerTypeMappingEditor = ({
+  analyzerId: embeddedAnalyzerId,
+  embedded = false,
+  onMappingChange,
+} = {}) => {
   const intl = useIntl();
   const location = useLocation();
   const history = useHistory();
-  const { profileId, analyzerId } = useParams();
+  const params = useParams();
+  const profileId = params.profileId;
+  const analyzerId = embeddedAnalyzerId || params.analyzerId;
   // On /analyzers/:id/adoption the editor reviews the analyzer's mapping on a
   // newer revision of its profile before saving it there.
   const adopting = /\/adoption$/.test(location.pathname);
@@ -615,20 +626,40 @@ const AnalyzerTypeMappingEditor = () => {
     [draftTests],
   );
 
+  // Embedded in Verify, only the assays this instrument runs are mapped here.
+  const visibleTests = useMemo(() => {
+    if (!embedded) {
+      return draftTests;
+    }
+    const enabledCodes = new Set(
+      draftTests
+        .filter((test) => !test.subIdentity && test.enabled !== false)
+        .map((test) => test.sourceRowKey),
+    );
+    return draftTests.filter((test) => enabledCodes.has(test.sourceRowKey));
+  }, [draftTests, embedded]);
+
+  useEffect(() => {
+    if (onMappingChange && mapping) {
+      onMappingChange(mapping, dirty);
+    }
+  }, [mapping, dirty, onMappingChange]);
+
   const counts = useMemo(() => {
-    const results = draftTests.flatMap((test) => test.results);
+    const results = visibleTests.flatMap((test) => test.results);
     return {
-      testsBound: draftTests.filter((test) => test.mappingState === "BOUND")
+      testsBound: visibleTests.filter((test) => test.mappingState === "BOUND")
         .length,
-      testsTotal: draftTests.length,
+      testsTotal: visibleTests.length,
       unresolved:
-        draftTests.filter((test) => test.mappingState === "UNRESOLVED").length +
+        visibleTests.filter((test) => test.mappingState === "UNRESOLVED")
+          .length +
         results.filter((result) => result.mappingState === "UNRESOLVED").length,
       resultsBound: results.filter((result) => result.mappingState === "BOUND")
         .length,
       resultsTotal: results.length,
     };
-  }, [draftTests]);
+  }, [visibleTests]);
 
   const save = () => {
     if (!dirty || saving) {
@@ -1390,104 +1421,124 @@ const AnalyzerTypeMappingEditor = () => {
     );
   };
 
-  return (
-    <>
-      <PageBreadCrumb
-        breadcrumbs={
-          readOnly
-            ? [
-                { label: "home.label", link: "/" },
-                { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-                { label: "analyzerType.page.title", link: returnDestination },
-                { label: heading, isCurrentPage: true },
-              ]
-            : [
-                { label: "home.label", link: "/" },
-                { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
-                { label: heading, isCurrentPage: true },
-              ]
-        }
-      />
+  // Embedded in setup, the page chrome and the way out belong to the wizard.
+  const frame = (content) =>
+    embedded ? (
+      <div className="analyzer-type-mapping analyzer-type-mapping--embedded">
+        {content}
+      </div>
+    ) : (
       <Grid fullWidth className="analyzer-type-mapping">
         <Column lg={16} md={8} sm={4}>
-          <div className="analyzer-type-mapping__heading">
-            <div>
-              <h1>{heading}</h1>
-              <p>
-                <FormattedMessage
-                  id="analyzerType.mappingEditor.subtitle"
-                  values={{
-                    protocol: mapping.protocol,
-                    revision: mapping.profileRevision,
-                  }}
-                />
-              </p>
-            </div>
-            <div className="analyzer-type-mapping__heading-actions">
-              <Button
-                as={Link}
-                kind="ghost"
-                renderIcon={ArrowLeft}
-                to={returnDestination}
-              >
-                <FormattedMessage id="analyzerType.mappingEditor.return" />
-              </Button>
-              {!readOnly && !adopting && (
-                <Button
-                  kind="primary"
-                  disabled={
-                    dirty ||
-                    saving ||
-                    applying ||
-                    !mapping.mappingId ||
-                    !mapping.mappingFingerprint ||
-                    confirmation.state !== "CURRENT"
-                  }
-                  onClick={applyToAnalyzer}
-                >
-                  <FormattedMessage id="analyzerType.mappingEditor.applyToAnalyzer" />
-                </Button>
-              )}
-              {readOnly && (
+          {content}
+        </Column>
+      </Grid>
+    );
+
+  return (
+    <>
+      {!embedded && (
+        <PageBreadCrumb
+          breadcrumbs={
+            readOnly
+              ? [
+                  { label: "home.label", link: "/" },
+                  { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+                  { label: "analyzerType.page.title", link: returnDestination },
+                  { label: heading, isCurrentPage: true },
+                ]
+              : [
+                  { label: "home.label", link: "/" },
+                  { label: "analyzer.page.hierarchy.root", link: "/analyzers" },
+                  { label: heading, isCurrentPage: true },
+                ]
+          }
+        />
+      )}
+      {frame(
+        <>
+          {!embedded && (
+            <div className="analyzer-type-mapping__heading">
+              <div>
+                <h1>{heading}</h1>
+                <p>
+                  <FormattedMessage
+                    id="analyzerType.mappingEditor.subtitle"
+                    values={{
+                      protocol: mapping.protocol,
+                      revision: mapping.profileRevision,
+                    }}
+                  />
+                </p>
+              </div>
+              <div className="analyzer-type-mapping__heading-actions">
                 <Button
                   as={Link}
-                  kind="secondary"
-                  renderIcon={Copy}
-                  to={`/analyzers/types?${duplicateParams.toString()}`}
+                  kind="ghost"
+                  renderIcon={ArrowLeft}
+                  to={returnDestination}
                 >
-                  <FormattedMessage id="analyzerType.button.duplicate" />
+                  <FormattedMessage id="analyzerType.mappingEditor.return" />
                 </Button>
-              )}
+                {!readOnly && !adopting && (
+                  <Button
+                    kind="primary"
+                    disabled={
+                      dirty ||
+                      saving ||
+                      applying ||
+                      !mapping.mappingId ||
+                      !mapping.mappingFingerprint ||
+                      confirmation.state !== "CURRENT"
+                    }
+                    onClick={applyToAnalyzer}
+                  >
+                    <FormattedMessage id="analyzerType.mappingEditor.applyToAnalyzer" />
+                  </Button>
+                )}
+                {readOnly && (
+                  <Button
+                    as={Link}
+                    kind="secondary"
+                    renderIcon={Copy}
+                    to={`/analyzers/types?${duplicateParams.toString()}`}
+                  >
+                    <FormattedMessage id="analyzerType.button.duplicate" />
+                  </Button>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
-          <InlineNotification
-            kind="info"
-            lowContrast
-            hideCloseButton
-            className="analyzer-type-mapping__notice"
-            title={intl.formatMessage(
-              {
-                id: readOnly
-                  ? "analyzerType.mappingEditor.defaults.title"
-                  : adopting
-                    ? "analyzerType.adoption.notice.title"
-                    : "analyzerType.mappingEditor.own.title",
-              },
-              { revision },
-            )}
-            subtitle={intl.formatMessage(
-              {
-                id: readOnly
-                  ? "analyzerType.mappingEditor.defaults.subtitle"
-                  : adopting
-                    ? "analyzerType.adoption.notice.subtitle"
-                    : "analyzerType.mappingEditor.own.subtitle",
-              },
-              { from: adoption?.fromRevision, revision },
-            )}
-          />
-          {!adopting && location.state?.adoptedRevision && (
+          {!embedded && (
+            <InlineNotification
+              kind="info"
+              lowContrast
+              hideCloseButton
+              className="analyzer-type-mapping__notice"
+              title={intl.formatMessage(
+                {
+                  id: readOnly
+                    ? "analyzerType.mappingEditor.defaults.title"
+                    : adopting
+                      ? "analyzerType.adoption.notice.title"
+                      : "analyzerType.mappingEditor.own.title",
+                },
+                { revision },
+              )}
+              subtitle={intl.formatMessage(
+                {
+                  id: readOnly
+                    ? "analyzerType.mappingEditor.defaults.subtitle"
+                    : adopting
+                      ? "analyzerType.adoption.notice.subtitle"
+                      : "analyzerType.mappingEditor.own.subtitle",
+                },
+                { from: adoption?.fromRevision, revision },
+              )}
+            />
+          )}
+          {!embedded && !adopting && location.state?.adoptedRevision && (
             <InlineNotification
               kind="success"
               lowContrast
@@ -1570,7 +1621,7 @@ const AnalyzerTypeMappingEditor = () => {
                   </p>
                 </div>
               </div>
-              <Accordion align="start">{draftTests.map(renderRow)}</Accordion>
+              <Accordion align="start">{visibleTests.map(renderRow)}</Accordion>
             </section>
           )}
 
@@ -1778,8 +1829,8 @@ const AnalyzerTypeMappingEditor = () => {
               </ul>
             )}
           </Modal>
-        </Column>
-      </Grid>
+        </>,
+      )}
     </>
   );
 };
