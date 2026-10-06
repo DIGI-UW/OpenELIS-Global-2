@@ -748,6 +748,84 @@ const mutateAnalyzerType = <T>(
     });
 };
 
+/** One record's decision in an adoption plan. */
+export interface AnalyzerAdoptionDecision {
+  test: {
+    sourceRowKey: string;
+    subIdentity: string;
+    mappingState: AnalyzerMappingState;
+    testId?: string | null;
+    componentId?: string | null;
+    callComponentId?: string | null;
+    origin?: string | null;
+  };
+  results: Array<{
+    sourceRowKey: string;
+    subIdentity: string;
+    rawValue: string;
+    mappingState: AnalyzerMappingState;
+    testResultId?: string | null;
+  }>;
+}
+
+export type AnalyzerAdoptionBucket =
+  | "UNCHANGED"
+  | "CHANGED"
+  | "NEEDS_MAPPING"
+  | "BLOCKED"
+  | "RETIRED";
+
+/** What adopting a newer profile revision does to each record. */
+export interface AnalyzerAdoptionReview {
+  analyzerId: string;
+  profileId: string;
+  fromRevision: number;
+  toRevision: number;
+  rows: Array<{
+    key: { sourceRowKey: string; subIdentity: string };
+    bucket: AnalyzerAdoptionBucket;
+    current: AnalyzerAdoptionDecision | null;
+    newDefault: AnalyzerAdoptionDecision | null;
+    proposed: AnalyzerAdoptionDecision | null;
+    alsoDefault: boolean;
+    blockReason: "INACTIVE_TEST" | "HELD_RESULTS" | null;
+  }>;
+  /** The mapping adoption saves if the operator changes nothing. */
+  proposal: AnalyzerTypeMappingView;
+}
+
+export const getAnalyzerAdoption = (
+  analyzerId: string,
+  revision: number,
+  callback: DataCallback<AnalyzerAdoptionReview | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/adoption?revision=${revision}`,
+    callback,
+  );
+};
+
+/** Saves the reviewed decisions as the analyzer's next revision on the newer profile revision. */
+export const adoptAnalyzerRevision = (
+  analyzerId: string,
+  revision: number,
+  update: AnalyzerTypeMappingUpdate,
+  callback: ApiCallback<
+    {
+      mappingId: string;
+      mappingRevision: number;
+      mappingFingerprint: string;
+    } & AnalyzerApiError
+  >,
+) => {
+  mutateAnalyzerType(
+    `/rest/analyzer/analyzers/${encodeURIComponent(analyzerId)}/adoption?revision=${revision}`,
+    "POST",
+    update as unknown as JsonObject,
+    callback,
+  );
+};
+
 export const getAnalyzerMapping = (
   analyzerId: string,
   callback: DataCallback<AnalyzerTypeMappingView | undefined>,
