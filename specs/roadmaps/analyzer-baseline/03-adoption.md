@@ -40,9 +40,10 @@ connectionId, request)` (`PUT /api/connections/{id}`) with
 - [x] T3.1 Red: integration test, analyzer on N adopts N+1 and the operator confirms and applies it; id, activation records, lab units, bridge_connection_id unchanged; Bridge connection profileRef.revision == N+1 after Apply
 - [x] T3.2 Red: unit tests for bucketing (`AnalyzerMappingAdoption.plan`; a dropped code is RETIRED, a record no revision declares carries over UNCHANGED; derived from rule 5: a DEFAULT row compares its decision with the new default, so a catalog change surfaces as CHANGED): identical row -> UNCHANGED (both origins); changed LOINC on DEFAULT -> CHANGED with new default; changed value set on OVERRIDE -> CHANGED showing both; new code -> NEEDS_MAPPING; renamed code -> old row retired, new NEEDS_MAPPING; override == new default -> UNCHANGED, origin stays OVERRIDE, marked as now also the default
 - [ ] T3.3 Red: integration tests, override on inactive test -> BLOCKED; removed code with held results -> BLOCKED; each names the row
-- [ ] T3.4 Red: integration test, traffic during adoption lands on N until confirm + re-activate
-- [ ] T3.5 Red: integration test, held results on N recover via recoverHeldMappingResults after adoption
-- [x] T3.6 Service: AnalyzerAdoptionService (its own service over AnalyzerMappingService, which stays the revision store) prepareAdoption(analyzerId, revision) -> buckets; adopt(analyzerId, revision, decisions, actor) saves the reviewed mapping as a revision on N+1. Decided 6 Oct: adoption adds no state of its own; the existing Confirm records actor and time, and Apply puts the revision in force and re-pins the Bridge connection when the pin changed, so OE2 and the Bridge switch together and an abandoned adoption touches nothing outside OE2
+- [ ] T3.4 Red: integration test, an active analyzer receives on N until Apply; Apply re-pins and re-activates the Bridge connection in one action, and a Bridge failure leaves OE2 on N
+- [ ] T3.4b Red: integration test, a result stamped N arriving after Apply maps through N+1 when N+1 reads its record the same way (parts, result type, unit), and is held with reason "arrived under revision N" when it does not; a different profile is still refused
+- [ ] T3.5 Red: integration test, held results on N recover on Apply through N+1 by the same rule (a LOINC fix or an added value recovers; a changed part or unit stays held) and keep source_profile_revision N
+- [x] T3.6 Service: AnalyzerAdoptionService (its own service over AnalyzerMappingService, which stays the revision store) prepareAdoption(analyzerId, revision) -> buckets; adopt(analyzerId, revision, decisions, actor) saves the reviewed mapping as a revision on N+1. Decided 6 Oct: adoption adds no state of its own; the existing Confirm records actor and time, and Apply puts the revision in force and re-pins the Bridge connection when the pin changed, so OE2 and the Bridge switch together and an abandoned adoption touches nothing outside OE2. Decided 6 Oct, later: for an active analyzer Apply also re-activates the connection, so there is no second step to forget
 - [x] T3.7 Endpoints: GET/POST /rest/analyzer/analyzers/{id}/adoption?revision= (POST takes the reviewed `{tests, results}` and returns the new revision's id, number and fingerprint for Confirm)
 - [x] T3.8 Catalog view: split updateAvailable into newerProfileRevision and newerMappingRevision; the affected-analyzer list links to Adopt (`/analyzers/{id}/adoption?revision=`) or Verify (`/analyzers/{id}/mapping`) respectively
 - [ ] T3.9 Adoption screen: the step-2 editor in adoption mode with bucket grouping and side-by-side changed rows
@@ -65,7 +66,7 @@ gh pr checks <PR>
 1. T3.1 passes. (`mvn`)
 2. T3.2 passes for every bucket case. (`mvn`)
 3. T3.3 passes; nothing else blocks. (`mvn`)
-4. T3.4 passes. (`mvn`)
+4. T3.4 and T3.4b pass; no result is refused for its revision alone. (`mvn`)
 5. T3.5 passes. (`mvn`)
 6. "Update available" is two states with two actions; the old refusal test is
    gone. (`grep`, read)
