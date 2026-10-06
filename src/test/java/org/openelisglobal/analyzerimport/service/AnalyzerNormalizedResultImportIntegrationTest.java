@@ -24,6 +24,7 @@ import javax.sql.DataSource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.StringType;
@@ -556,8 +557,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void aRecordWhoseSubIdentityIsNotMappedIsHeldAsAnUnknownTest() throws Exception {
         bindViralLoadRecords();
-        Bundle bundle = viralLoadBundle(number(record(null, "^1009.64"), "1009.64", null),
-                number(record("HIV-1&EndPt", "^257.0"), "257.0", null));
+        // An instrument completes every record of a run at the same time (R.13).
+        DateTimeType completed = new DateTimeType("2026-10-06T09:15:00Z");
+        Bundle bundle = viralLoadBundle(
+                number(record(null, "^1009.64"), "1009.64", null).setEffective(completed.copy()),
+                number(record("HIV-1&EndPt", "^257.0"), "257.0", null).setEffective(completed.copy()));
         confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
 
         importService.importBundle(bundle, "1");

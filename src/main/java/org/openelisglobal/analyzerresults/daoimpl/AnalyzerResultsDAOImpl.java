@@ -50,14 +50,18 @@ public class AnalyzerResultsDAOImpl extends BaseDAOImpl<AnalyzerResults, String>
             // OGC-1129: a multiplex test stages one row per component, all sharing the
             // same testName. Include component_id so distinct components of one test are
             // not treated as duplicates of each other (null = PRIMARY, today's behavior).
+            // The records of one run share a completion time, so two records held on the
+            // same target are told apart by their sub-identity.
             String sql = "from AnalyzerResults a where a.analyzerId = :analyzerId and "
                     + "a.accessionNumber = :assessionNumber and a.testName = :testName and "
-                    + "((:componentId is null and a.componentId is null) or a.componentId = :componentId)";
+                    + "((:componentId is null and a.componentId is null) or a.componentId = :componentId) and "
+                    + "a.rawSubIdentity = :rawSubIdentity";
             Query<AnalyzerResults> query = entityManager.unwrap(Session.class).createQuery(sql, AnalyzerResults.class);
             query.setParameter("analyzerId", result.getAnalyzerId());
             query.setParameter("assessionNumber", result.getAccessionNumber());
             query.setParameter("testName", result.getTestName());
             query.setParameter("componentId", result.getComponentId());
+            query.setParameter("rawSubIdentity", result.getRawSubIdentity());
 
             list = query.list();
 
