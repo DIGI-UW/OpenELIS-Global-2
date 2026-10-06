@@ -6,6 +6,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.commons.beanutils.PropertyUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.common.controller.BaseController;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.exception.LIMSFrozenRecordException;
@@ -23,6 +24,7 @@ import org.openelisglobal.dictionary.validator.DictionaryFormValidator;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.owasp.encoder.Encode;
@@ -53,6 +55,8 @@ public class DictionaryController extends BaseController {
     private DictionaryService dictionaryService;
     @Autowired
     private DictionaryCategoryService dictionaryCategoryService;
+    @Autowired
+    private DictionaryTerminologyMappingService answerTerminology;
 
     @ModelAttribute("form")
     public DictionaryForm form() {
@@ -158,6 +162,7 @@ public class DictionaryController extends BaseController {
 
         setDefaultButtonAttributes(request);
 
+        String previousLoinc = isBlankOrZero(form.getId()) ? null : dictionaryService.get(form.getId()).getLoincCode();
         Dictionary dictionary = setupDictionary(form);
 
         try {
@@ -169,8 +174,9 @@ public class DictionaryController extends BaseController {
                 dictionaryService.update(dictionary, isDictionaryFrozenCheckRequired);
             } else {
                 // INSERT
-                dictionaryService.insert(dictionary);
+                dictionary.setId(dictionaryService.insert(dictionary));
             }
+            syncLoincIfChanged(dictionary, previousLoinc);
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
@@ -312,5 +318,17 @@ public class DictionaryController extends BaseController {
     @Override
     protected String getPageSubtitleKey() {
         return "dictionary.edit.title";
+    }
+
+    private static boolean isBlankOrZero(String id) {
+        return StringUtils.isBlank(id) || "0".equals(id);
+    }
+
+    /** A LOINC code changed here reaches the answer's terminology mappings. */
+    private void syncLoincIfChanged(Dictionary dictionary, String previousLoinc) {
+        String loinc = StringUtils.trimToNull(dictionary.getLoincCode());
+        if (!java.util.Objects.equals(StringUtils.trimToNull(previousLoinc), loinc)) {
+            answerTerminology.syncLegacyLoinc(dictionary.getId(), loinc, dictionary.getSysUserId());
+        }
     }
 }

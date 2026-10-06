@@ -75,7 +75,7 @@ sample_type_id)` (changesets 043, 053, 057, 060 in `3.5.x.x`); 043
 - [x] T2c.7 Package org.openelisglobal.dictionaryterminology mirroring panelterminology (the unscoped mirror with a denormalized legacy LOINC column, `panel.loinc`), with syncLegacyLoinc
 - [x] T2c.8 Config import domain `answer-terminology`: category,dictEntry,source,code,relationship,displayName; the dictionary CSV's loincCode column keeps working through syncLegacyLoinc (only a row that carries a loincCode syncs, so a dictionary re-import never clears codes the answer-terminology import added); load order 310, after dictionaries
 - [x] T2c.9 FHIR output, OCL import and analyzer defaults per Facts; ResultOption carries the answer's codings; BridgeAnalyzerProfile reads a list of codings per value (analyzer defaults, ResultOption, the profile and FHIR output done; the source-to-system URIs moved to `TerminologySystems`; a coded result's value is `TerminologyTransformService.transformAnswerToCodeableConcept`, with the legacy loinc_code still a LOINC SAME_AS candidate as test.loinc is; OCL import merges an answer's codes into its mappings)
-- [ ] T2c.10 REST GET/PUT /rest/test-catalog/answers/{dictionaryId}/terminology; Dictionary Management edits mappings with the TerminologySection pattern; the catalog option table shows each answer's codes read-only
+- [x] T2c.10 REST GET/PUT /rest/test-catalog/answers/{dictionaryId}/terminology; every writer of `dictionary.loinc_code` (Dictionary Management, the legacy Dictionary page, test-setup result select lists) syncs a changed code into the mappings. Decided 6 Oct: the Dictionary Management editor and the read-only codes in the catalog option table are deferred to [the analyzer roadmap](../../analyzers/roadmap.md) (item 5)
 - [ ] T2c.11 Green; format cold; commit; stack PR on step 2b (backend T2c.1-T2c.9 and the UI T2c.10 as two PRs if one exceeds a reviewable size)
 ```
 
@@ -92,7 +92,8 @@ gh pr checks <PR>
 1. Every answer with a LOINC code has a matching terminology row, and the
    legacy column stays in step. (T2c.1)
 2. An answer holds codes in LOINC, SNOMED, CIEL and OCL, from config import,
-   OCL import or the editor. (T2c.2, T2c.5, T2c.10)
+   OCL import or the API, and a LOINC code saved through any existing screen
+   reaches them. (T2c.2, T2c.5, T2c.10)
 3. A coded result in FHIR carries every system the answer has. (T2c.3)
 4. Analyzer defaults bind on any shared (system, code), so a value with only
    a SNOMED or CIEL code binds out of the box. (T2c.4)

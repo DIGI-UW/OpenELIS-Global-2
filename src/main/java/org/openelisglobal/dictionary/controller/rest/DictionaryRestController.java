@@ -25,6 +25,7 @@ import org.openelisglobal.dictionary.validator.DictionaryFormValidator;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory;
+import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.owasp.encoder.Encode;
@@ -55,6 +56,8 @@ public class DictionaryRestController extends BaseController {
     private DictionaryService dictionaryService;
     @Autowired
     private DictionaryCategoryService dictionaryCategoryService;
+    @Autowired
+    private DictionaryTerminologyMappingService answerTerminology;
 
     @ModelAttribute("form")
     public DictionaryForm form() {
@@ -192,6 +195,7 @@ public class DictionaryRestController extends BaseController {
 
         setDefaultButtonAttributes(request);
 
+        String previousLoinc = isBlankOrZero(form.getId()) ? null : dictionaryService.get(form.getId()).getLoincCode();
         Dictionary dictionary = setupDictionary(form);
 
         try {
@@ -203,8 +207,9 @@ public class DictionaryRestController extends BaseController {
                 dictionaryService.update(dictionary);
             } else {
                 // INSERT
-                dictionaryService.insert(dictionary);
+                dictionary.setId(dictionaryService.insert(dictionary));
             }
+            syncLoincIfChanged(dictionary, previousLoinc);
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
@@ -353,5 +358,17 @@ public class DictionaryRestController extends BaseController {
     public static class DictionaryEntryDTO {
         private final String code;
         private final String label;
+    }
+
+    private static boolean isBlankOrZero(String id) {
+        return StringUtils.isBlank(id) || "0".equals(id);
+    }
+
+    /** A LOINC code changed here reaches the answer's terminology mappings. */
+    private void syncLoincIfChanged(Dictionary dictionary, String previousLoinc) {
+        String loinc = StringUtils.trimToNull(dictionary.getLoincCode());
+        if (!java.util.Objects.equals(StringUtils.trimToNull(previousLoinc), loinc)) {
+            answerTerminology.syncLegacyLoinc(dictionary.getId(), loinc, dictionary.getSysUserId());
+        }
     }
 }
