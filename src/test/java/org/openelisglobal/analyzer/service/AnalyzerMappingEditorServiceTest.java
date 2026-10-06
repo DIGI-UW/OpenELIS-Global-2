@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -478,6 +479,26 @@ public class AnalyzerMappingEditorServiceTest {
         assertEquals(List.of("", "&LOG"),
                 saved.getValue().tests().stream().map(AnalyzerMappingTestDraft::subIdentity).toList());
         assertEquals("comp-call", saved.getValue().tests().get(0).callComponentId());
+    }
+
+    @Test
+    public void aTranslationIsShownRightAfterTheValueItTranslates() throws Exception {
+        BridgeProfileCatalog.ProfileRevision revision = viralLoadRevision();
+        var viralLoad = (com.fasterxml.jackson.databind.node.ObjectNode) revision.profile()
+                .path("default_test_mappings").get(0);
+        viralLoad.set("values", objectMapper.readTree("[\"DETECTED\",\"NOT DETECTED\"]"));
+        viralLoad.set("translations",
+                objectMapper.readTree("{\"DETECTED\":[\"DÉTECTÉ\"],\"NOT DETECTED\":[\"NON DÉTECTÉ\"]}"));
+        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(revision);
+        viralLoadCatalog();
+
+        List<AnalyzerMappingView.ResultRow> results = recordRow(service.getDefaults("site.viral-load", 1), "")
+                .results();
+
+        assertEquals(List.of("DETECTED", "DÉTECTÉ", "NOT DETECTED", "NON DÉTECTÉ"),
+                results.stream().map(AnalyzerMappingView.ResultRow::rawValue).toList());
+        assertEquals(Arrays.asList(null, "DETECTED", null, "NOT DETECTED"),
+                results.stream().map(AnalyzerMappingView.ResultRow::translationOf).toList());
     }
 
     @Test

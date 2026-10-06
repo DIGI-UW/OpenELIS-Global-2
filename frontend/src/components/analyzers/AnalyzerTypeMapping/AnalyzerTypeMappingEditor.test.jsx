@@ -499,6 +499,43 @@ describe("AnalyzerTypeMappingEditor", () => {
       });
     });
 
+    it("shows a translation under the value it translates", async () => {
+      getAnalyzerMapping.mockImplementation((_id, callback) =>
+        callback({
+          ...viralLoadMapping,
+          tests: [
+            {
+              ...viralLoadMapping.tests[0],
+              results: [
+                ...viralLoadMapping.tests[0].results,
+                {
+                  rawValue: "NON DÉTECTÉ",
+                  mappingState: "UNRESOLVED",
+                  resultOptionId: null,
+                  selectedOption: null,
+                  translationOf: "NOT DETECTED",
+                },
+              ],
+            },
+            viralLoadMapping.tests[1],
+          ],
+        }),
+      );
+      renderEditor();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Cepheid GeneXpert MTB/RIF mappings",
+      });
+
+      const main = rowFor("HIVVL");
+      expect(
+        within(main).getByText("Translation of NOT DETECTED"),
+      ).toBeVisible();
+      expect(
+        within(main).queryByText("Translation of NON DÉTECTÉ"),
+      ).not.toBeInTheDocument();
+    });
+
     it("lets the operator place a received record the profile does not declare", async () => {
       getAnalyzerMapping.mockImplementation((_id, callback) =>
         callback({
