@@ -158,6 +158,40 @@ Formatting alone does not close V00. No application tests run for this cleanup.
 
 ### V01 — migration
 
+The candidate is
+`src/main/resources/liquibase/3.6.x.x/20261006-OGC-1426-amr-v2-cutover.xml`.
+It is deliberately absent from the active application changelog until its
+runtime consumers are replaced. Rehearsal uses the complete current application
+changelog, then this candidate on disposable PostgreSQL databases.
+
+The confirmed migration contract is:
+
+- Supply `amr.cutover.mappingFile`: a CSV with `case_id,test_section_id,program_id`
+  and one explicit mapping for every existing case. Require existing lab-unit and
+  Program references, including for old UNASSIGNED and Program-only cases.
+  Unresolved, duplicate or unknown mappings abort the transaction before any
+  committed clinical changes. Supply an existing `amr.cutover.actorId` and an
+  explicit `amr.cutover.at` timestamp for attributable migration activity.
+- Preserve case IDs and their existing specimen/result ownership. Add
+  `MicroCase` order/sample-type/working-unit/Program references and
+  `micro_case_specimen` membership. The grouping index is not unique: existing
+  matching cases remain separate, receive a migration Timeline entry and require
+  review. New-case grouping and the review experience belong to V02/V03/V07.
+- Remove case/test/panel workflow columns, case protocol selection,
+  `micro_culture_setup` and reception draft ownership. Retain case clinical
+  context; retain retired draft values, actors and timestamps in the existing
+  `configuration_import_run` history with source `AMR_V2_CUTOVER`. That historical
+  payload is used only by the migration's rollback, never a production resolver
+  or configuration reader. Measurements, repeat attempts, overrides, panel and
+  breakpoint versions, report versions, amendments, original results and lot
+  usage remain attributable and retain their IDs. V10 still owns replacing the
+  current whole-run reporting selection with per-agent selection.
+- Structural rollback restores the pre-cutover representation from that history
+  only when clinical values, memberships, migration Timeline entries and catalog case settings still match
+  the migrated snapshot. It refuses to erase work recorded after cutover.
+  Subsequent corrections use V2 clinical/amendment workflows, not a compatibility
+  path. Reapply must preserve the same identities and relationships.
+
 ```bash
 scripts/run-java21 mvn -B -ntp -Dtest=AmrCutoverMigrationTest test
 ```

@@ -91,12 +91,40 @@ that points to them. Documentation completion is not application acceptance.
 
 **Removals:** Obsolete final-schema storage after required clinical/audit transformation; never applied migration history.
 
-**Status:** `[ ]`. Sources: [migration intent][catalog], [mock][mock].
+**Status:** `[x]` local rehearsal passed; repository review pending. Sources:
+[migration intent][catalog], [mock][mock].
 
-- [ ] Write the disposable fresh/upgrade rehearsal, preserving clinical records,
+Implementation investigation started from `8c8d31aba30def3f6232475238fa19754523b9a8`
+on `feat/1383-ogc-1383-microbiology-v2-v01-migration`, stacked above the
+documentation baseline. The candidate is not registered in the active application
+changelog; runtime rollout and deployment are outside this rehearsal.
+
+The current `MicroCase` stores one `sampleItemId` and `workflowType`, but no
+working lab unit or case Program. `MicroOrderRoutingServiceImpl` can create
+`UNASSIGNED` cases from Program selection alone; its case-analysis links do not
+establish a unique working lab unit. Current access checks inspect every analysis
+on the specimen. For the AC-V2-42 boundary for cases with missing or conflicting
+ownership and for mappings from workflow to Program that are not unique, the implementer confirmed explicit
+per-case mappings and an abort before changing clinical data when any mapping is
+unresolved. Existing case identities and separate membership are preserved.
+
+- [x] Write the disposable fresh/upgrade rehearsal, preserving clinical records,
       IDs, reports and audit; prove collision failure and rollback/reapply.
-- [ ] Prove the target schema has no legacy runtime/configuration authority.
-- [ ] Pass [V01](plan.md#v01--migration); do not roll out runtime in this slice.
+- [x] Prove the target schema has no legacy runtime/configuration authority.
+- [x] Pass [V01](plan.md#v01--migration); do not roll out runtime in this slice.
+
+Local gate: `AmrCutoverMigrationTest` ran 10 tests with no failures, errors or
+skips on disposable PostgreSQL 14.4 databases. Coverage includes fresh install,
+clinical upgrade, incomplete/duplicate/invalid mappings, audit-ID collision,
+1,004 existing cases, rollback/reapply, and refusal to erase later measurements
+or edited migration Timeline entries. Each database first applies the complete
+current application changelog. Historical Liquibase rows, clinical IDs, original
+and amended reports, identification history, repeat measurements, overrides,
+panel versions, lot quantities and audit remain unchanged. Diff review found and
+fixed the Timeline rollback guard; its focused regression failed before the fix.
+Prettier, Spotless and whitespace checks pass. No browser gate applies to this
+slice because it changes no user-facing runtime behavior. CI, deployment and
+clinical acceptance are separate evidence.
 
 **Acceptance:** fresh install and upgrade yield the same V2 relationships;
 historical meaning survives without a production legacy reader.

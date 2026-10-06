@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  logicalFilePath="liquibase/3.6.x.x/20261006-OGC-1426-amr-v2-cutover.xml"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <!-- V01 candidate only. Register after the consuming runtime is replaced.
+       One transaction validates all mappings, records attributable history and
+       removes obsolete authority. No production compatibility reader exists. -->
+  <changeSet id="20261006-OGC-1426-amr-v2-cutover" author="OpenELIS" dbms="postgresql" runInTransaction="true">
+    <createTable schemaName="clinlims" tableName="amr_cutover_case_map">
+      <column name="case_id" type="varchar(36)">
+        <constraints primaryKey="true" primaryKeyName="amr_cutover_case_map_pkey" nullable="false"/>
+      </column>
+      <column name="test_section_id" type="numeric(10)"/>
+      <column name="program_id" type="numeric(10)"/>
+    </createTable>
+    <loadData schemaName="clinlims" tableName="amr_cutover_case_map" file="${amr.cutover.mappingFile}" separator=",">
+      <column header="case_id" name="case_id" type="STRING"/>
+      <column header="test_section_id" name="test_section_id" type="NUMERIC"/>
+      <column header="program_id" name="program_id" type="NUMERIC"/>
+    </loadData>
+    <sqlFile path="amr-cutover-fingerprint.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <sqlFile path="amr-cutover-forward.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <rollback>
+      <sqlFile path="amr-cutover-fingerprint.sql" relativeToChangelogFile="true" splitStatements="false"/>
+      <sqlFile path="amr-cutover-rollback.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

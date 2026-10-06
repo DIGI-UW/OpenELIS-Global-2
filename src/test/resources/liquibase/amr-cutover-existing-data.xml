@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- Disposable upgrade data; never loaded by the interactive application. -->
+    <changeSet id="amr-cutover-owned-clinical-fixture"
+        author="OpenELIS-test">
+        <sql splitStatements="false"><![CDATA[
+      INSERT INTO clinlims.test_section(id,name,description,name_localization_id)
+      SELECT n,'AMR unit '||n,'AMR owned unit '||n,(SELECT min(id) FROM clinlims.localization)
+      FROM generate_series(990001,990002) n;
+      INSERT INTO clinlims.program(id,code,name,manually_changed,domain)
+      VALUES (990001,'AMR-BACTERIAL','AMR bacterial',false,'CLINICAL'),
+             (990002,'AMR-TB','AMR TB',false,'CLINICAL'),
+             (990003,'AMR-REVIEW','AMR chosen after review',false,'CLINICAL');
+      INSERT INTO clinlims.sample(id,accession_number,domain,entered_date,received_date)
+      SELECT n,'AMR-V01-'||n,'H',timestamp '2026-09-01 09:00:00',timestamp '2026-09-01 09:00:00'
+      FROM generate_series(990001,990003) n;
+      INSERT INTO clinlims.sample_item(id,sort_order,samp_id,typeosamp_id,status_id,collection_date)
+      SELECT n,1,n,(SELECT min(id) FROM clinlims.type_of_sample),(SELECT min(id) FROM clinlims.status_of_sample),
+             timestamptz '2026-09-01 08:00:00+00'
+      FROM generate_series(990001,990003) n;
+      INSERT INTO clinlims.test(id,name,description,guid,test_section_id,culture_workflow_type)
+      VALUES (990010,'AMR culture','AMR culture','amr-v01-culture',990001,'BACTERIOLOGY'),
+             (990011,'AMR TB culture','AMR TB culture','amr-v01-tb',990001,'MYCOBACTERIOLOGY_TB'),
+             (990012,'AMR direct','AMR direct','amr-v01-direct',990002,NULL);
+      INSERT INTO clinlims.analysis(id,sampitem_id,test_id,test_sect_id,analysis_type)
+      VALUES (990010,990001,990010,990001,'MANUAL'),(990011,990001,990011,990001,'MANUAL'),
+             (990012,990002,990010,990001,'MANUAL'),(990013,990002,990012,990002,'MANUAL');
+      INSERT INTO clinlims.result(id,analysis_id,result_type,value)
+      VALUES (990001,990010,'A','Original clinical result'),(990002,990011,'A','Original TB result');
+      INSERT INTO clinlims.micro_case(id,sample_item_id,workflow_type,stage,created_at,created_by,final_release_state)
+      VALUES ('case-bacteria',990001,'BACTERIOLOGY','FINAL_RELEASED',timestamp '2026-09-01 09:00:00','1','FINAL_RELEASED'),
+             ('case-tb',990001,'MYCOBACTERIOLOGY_TB','RECEIVED',timestamp '2026-09-01 09:00:00','1','NOT_READY'),
+             ('case-unassigned',990002,'UNASSIGNED','RECEIVED',timestamp '2026-09-01 09:00:00','1','NOT_READY'),
+             ('case-no-analysis',990003,'UNASSIGNED','RECEIVED',timestamp '2026-09-01 09:00:00','1','NOT_READY');
+      INSERT INTO clinlims.micro_case_analysis(id,case_id,analysis_id,projected_result_id)
+      VALUES ('link-bacteria','case-bacteria',990010,990001),('link-tb','case-tb',990011,990002),
+             ('link-ambiguous-a','case-unassigned',990012,NULL),('link-ambiguous-b','case-unassigned',990013,NULL);
+      INSERT INTO clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by,note,structured_data)
+      VALUES ('activity-inoculation','case-bacteria','INOCULATION_RECORDED',timestamp '2026-09-01 10:00:00','1',
+              'Original setup','{"media":"Blood agar","lot":"original-lot"}');
+      INSERT INTO clinlims.micro_case_inoculation(id,case_id,activity_id,container_identifier,media,occurred_at,performed_by)
+      VALUES ('inoculation-original','case-bacteria','activity-inoculation','AMR-V01-PLATE','Blood agar',
+              timestamp '2026-09-01 10:00:00','1');
+      INSERT INTO clinlims.micro_case_order_detail(id,case_id,clinical_history,created_at,created_by,admission_date,culture_purpose)
+      VALUES ('detail-original','case-bacteria','Original patient history',timestamp '2026-09-01 09:00:00','1',NULL,'DIAGNOSTIC');
+      INSERT INTO clinlims.micro_case_order_detail(id,sample_id,clinical_history,created_at,created_by,discarded_at,discarded_by)
+      VALUES ('draft-original',990003,'Original pre-case clinical history',timestamp '2026-09-01 09:00:00','1',
+              timestamp '2026-09-01 09:05:00','1');
+      INSERT INTO clinlims.micro_culture_setup(id,method_id,name,workflow_type,media_defaults,incubation_hours,last_updated_by)
+      VALUES ('setup-original',(SELECT min(id) FROM clinlims.method),'Original setup','BACTERIOLOGY','Blood agar',24,'1');
+      INSERT INTO clinlims.micro_organism(id,display_name) VALUES ('organism-original','AMR owned organism');
+      INSERT INTO clinlims.micro_antibiotic(id,display_name) VALUES ('antibiotic-original','AMR owned antibiotic');
+      INSERT INTO clinlims.micro_ast_panel(id,name,workflow_type,logical_key,version_number,is_current)
+      VALUES ('panel-v1','AMR panel v1','BACTERIOLOGY','panel-logical',1,'N'),
+             ('panel-v2','AMR panel v2','BACTERIOLOGY','panel-logical',2,'Y');
+      INSERT INTO clinlims.micro_isolate(id,case_id,isolate_label,organism_id,significance,identification_status)
+      VALUES ('isolate-original','case-bacteria','1','organism-original','CLINICALLY_SIGNIFICANT','CONFIRMED');
+      INSERT INTO clinlims.micro_isolate_identification_event(id,isolate_id,event_type,previous_organism_text,new_organism_id,reason,changed_at,changed_by)
+      VALUES ('identification-original','isolate-original','IDENTIFIED','Original preliminary name','organism-original',
+              'Original identification',timestamp '2026-09-02 09:00:00','1');
+      INSERT INTO clinlims.micro_ast_run(id,isolate_id,panel_id,status,panel_version,breakpoint_version,started_at,reportable,technique)
+      VALUES ('run-original','isolate-original','panel-v1','REVIEWED',1,'2025',timestamp '2026-09-02 10:00:00',true,'ETEST');
+      INSERT INTO clinlims.micro_ast_run(id,isolate_id,panel_id,status,panel_version,breakpoint_version,started_at,attempt_type,source_run_id,attempt_reason,technique)
+      VALUES ('run-repeat','isolate-original','panel-v2','IN_PROGRESS',2,'2026',timestamp '2026-09-03 10:00:00',
+              'REPEAT','run-original','Unexpected resistance','VITEK_2');
+      INSERT INTO clinlims.micro_ast_reading(id,ast_run_id,antibiotic_id,method,raw_value,interpretation,source,created_at,created_by)
+      VALUES ('reading-original','run-original','antibiotic-original','MIC',0.5,'SUSCEPTIBLE','MANUAL_ENTRY',timestamp '2026-09-02 11:00:00','1'),
+             ('reading-repeat','run-repeat','antibiotic-original','MIC',2.0,'RESISTANT','ANALYZER_AUTO',timestamp '2026-09-03 11:00:00','1');
+      INSERT INTO clinlims.micro_ast_override_event(id,reading_id,action,from_interpretation,to_interpretation,reason,performed_at,performed_by)
+      VALUES ('override-original','reading-original','OVERRIDE','SUSCEPTIBLE','RESISTANT','Original reason',timestamp '2026-09-02 12:00:00','1');
+      INSERT INTO clinlims.micro_case_amendment(id,case_id,sequence_number,status,reason,opened_at,opened_by,closed_at,closed_by)
+      VALUES ('amendment-original','case-bacteria',1,'RELEASED','Original correction',timestamp '2026-09-04 12:00:00','1',
+              timestamp '2026-09-05 12:00:00','1');
+      INSERT INTO clinlims.micro_report_version(id,case_id,version_number,release_type,content,released_at,released_by)
+      VALUES ('report-original','case-bacteria',1,'FINAL','Original immutable report',timestamp '2026-09-03 12:00:00','1');
+      INSERT INTO clinlims.micro_report_version(id,case_id,amendment_id,version_number,release_type,content,released_at,released_by,corrects_version_id)
+      VALUES ('report-amended','case-bacteria','amendment-original',2,'AMENDED','Original amended report',
+              timestamp '2026-09-05 12:00:00','1','report-original');
+      INSERT INTO clinlims.micro_report_version_source(id,report_version_id,analysis_id,result_id)
+      VALUES ('report-source','report-original',990010,990001);
+      INSERT INTO clinlims.inventory_item(id,fhir_uuid,name,item_type,units,code)
+      VALUES (990001,'99000100-0000-0000-0000-000000000001','AMR original medium','REAGENT','plates','AMR-V01-MEDIA');
+      INSERT INTO clinlims.inventory_lot(id,fhir_uuid,inventory_item_id,lot_number,initial_quantity,current_quantity,qc_status)
+      VALUES (990001,'99000100-0000-0000-0000-000000000002',990001,'AMR-original-lot',100,99,'PASSED');
+      INSERT INTO clinlims.inventory_usage(id,inventory_item_id,lot_id,quantity_used,usage_date,performed_by_user)
+      VALUES (990001,990001,990001,1,timestamp '2026-09-01 10:00:00',1);
+      INSERT INTO clinlims.micro_inventory_usage_link(id,case_id,inventory_usage_id,usage_context,activity_id,test_reagent_link_id)
+      VALUES ('lot-link-original','case-bacteria',990001,'CULTURE_SETUP','activity-inoculation','original-reagent-link');
+      INSERT INTO clinlims.history(id,sys_user_id,reference_id,reference_table,timestamp,activity,changes)
+      VALUES (990001,1,990001,(SELECT min(id) FROM clinlims.reference_tables),timestamp '2026-09-01 09:00:00','I',decode('010203','hex'));
+    ]]></sql>
+    </changeSet>
+</databaseChangeLog>

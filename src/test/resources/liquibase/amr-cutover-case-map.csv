@@ -1,0 +1,5 @@
+case_id,test_section_id,program_id
+case-bacteria,990001,990001
+case-tb,990001,990002
+case-unassigned,990002,990003
+case-no-analysis,990001,990003
