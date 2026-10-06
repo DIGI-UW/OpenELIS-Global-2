@@ -481,6 +481,21 @@ const AnalyserResults = (props) => {
             <FormattedMessage id="analyzer.results.failedRun.dismiss" />
           </Button>
         )}
+        {row.importIssueReason === "assay_not_enabled" && (
+          <>
+            <div>
+              <FormattedMessage id="analyzer.results.held.assayNotEnabled" />
+            </div>
+            {props.analyzerId && (
+              <CarbonLink
+                as={RouterLink}
+                to={`/analyzers?setup=assays&analyzerId=${encodeURIComponent(props.analyzerId)}`}
+              >
+                <FormattedMessage id="analyzer.results.held.enableAssay" />
+              </CarbonLink>
+            )}
+          </>
+        )}
         {row.importIssueReason === "arrived_under_other_revision" && (
           <div>
             <FormattedMessage

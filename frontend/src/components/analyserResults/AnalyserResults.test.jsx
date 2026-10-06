@@ -319,6 +319,24 @@ describe("AnalyserResults", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("explains a result for an assay this instrument's setup has off and links to turn it on", async () => {
+    renderResults([
+      {
+        ...heldResult,
+        importIssueReason: "assay_not_enabled",
+      },
+    ]);
+
+    expect(
+      await screen.findByText(
+        /This assay is off in the analyzer's setup, so its result was held/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Turn the assay on" }),
+    ).toHaveAttribute("href", expect.stringContaining("setup=assays"));
+  });
+
   it("explains a result sent under another profile revision and asks for a rerun", async () => {
     renderResults([
       {
