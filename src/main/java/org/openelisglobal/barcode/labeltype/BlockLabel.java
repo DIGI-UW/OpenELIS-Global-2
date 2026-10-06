@@ -1,6 +1,7 @@
 package org.openelisglobal.barcode.labeltype;
 
 import java.util.ArrayList;
+import java.util.Set;
 import org.apache.commons.lang3.StringUtils;
 import org.openelisglobal.barcode.LabelField;
 import org.openelisglobal.barcode.util.BarcodeConfigUtil;
@@ -8,6 +9,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.internationalization.MessageUtil;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -30,14 +32,15 @@ public class BlockLabel extends Label {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.BLOCK_LABEL_BARCODE_WIDTH), 2.0f);
         height = BarcodeConfigUtil.parseFloatSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.BLOCK_LABEL_BARCODE_HEIGHT), 2.0f);
-        boolean usePatientId = "true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.BLOCK_LABEL_FIELD_PATIENT_ID));
-        boolean useBlockId = "true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.BLOCK_LABEL_FIELD_BLOCK_ID));
-        boolean useSpecimenType = "true".equals(
-                ConfigurationProperties.getInstance().getPropertyValue(Property.BLOCK_LABEL_FIELD_SPECIMEN_TYPE));
-        boolean useCaseNumber = "true"
-                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.BLOCK_LABEL_FIELD_CASE_NUMBER));
+        Set<String> presetFields = LabelFieldPolicy.printedFields(LabelFieldPolicy.BLOCK);
+        boolean usePatientId = LabelFieldPolicy.prints(presetFields, LabelFieldKey.PATIENT_ID,
+                Property.BLOCK_LABEL_FIELD_PATIENT_ID);
+        boolean useBlockId = LabelFieldPolicy.prints(presetFields, LabelFieldKey.BLOCK_ID,
+                Property.BLOCK_LABEL_FIELD_BLOCK_ID);
+        boolean useSpecimenType = LabelFieldPolicy.prints(presetFields, LabelFieldKey.SPECIMEN_TYPE,
+                Property.BLOCK_LABEL_FIELD_SPECIMEN_TYPE);
+        boolean useCaseNumber = LabelFieldPolicy.prints(presetFields, LabelFieldKey.CASE_NUMBER,
+                Property.BLOCK_LABEL_FIELD_CASE_NUMBER);
 
         // adding fields above bar code
         aboveFields = new ArrayList<>();

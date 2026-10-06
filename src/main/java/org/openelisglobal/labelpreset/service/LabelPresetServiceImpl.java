@@ -1,16 +1,21 @@
 package org.openelisglobal.labelpreset.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
 import org.openelisglobal.labelpreset.form.LabelPresetForm;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.FieldSourceType;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.openelisglobal.labelpreset.valueholder.LabelPresetField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -184,6 +189,27 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
         return input.trim().toLowerCase(Locale.ROOT);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> systemPresetFieldKeys(String systemPresetName) {
+        String wanted = normalizeName(systemPresetName);
+        if (wanted.isEmpty()) {
+            return null;
+        }
+        Optional<LabelPreset> preset = getAll().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsSystem()) && normalizeName(p.getName()).equals(wanted))
+                .findFirst();
+        if (preset.isEmpty()) {
+            return null;
+        }
+        Set<String> keys = new LinkedHashSet<>();
+        preset.get().getFields().stream()
+                .sorted(Comparator.comparing(LabelPresetField::getDisplayOrder,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(LabelPresetField::getFieldKey).forEach(keys::add);
+        return keys;
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private LabelPreset requireExists(Integer id) {
@@ -229,9 +255,42 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
         preset.setMaxPerSample(form.getMaxPerSample() != null ? form.getMaxPerSample() : 10);
         preset.setIsActive(form.getIsActive() != null ? form.getIsActive() : true);
 
-        if (form.getFields() != null) {
-            replaceFields(preset, form.getFields());
+        if (form.getFields() != null || preset.getId() == null) {
+            replaceFields(preset, form.getFields() == null ? List.of() : form.getFields());
         }
+    }
+
+    /**
+     * Lab Number is on every preset, required and first (FR-008, OGC-1218); the
+     * selectable fields follow in the requested order, renumbered from 2 without
+     * gaps, so the unique display orders always hold whatever a client sent.
+     */
+    static List<LabelPresetForm.FieldEntry> withLabNumberFirst(List<LabelPresetForm.FieldEntry> entries) {
+        List<LabelPresetForm.FieldEntry> others = new ArrayList<>();
+        for (LabelPresetForm.FieldEntry entry : entries) {
+            if (entry == null || entry.getFieldKey() == null
+                    || LabelFieldKey.LAB_NUMBER.name().equals(entry.getFieldKey().trim())) {
+                continue;
+            }
+            others.add(entry);
+        }
+        others.sort(Comparator
+                .comparing(entry -> entry.getDisplayOrder() == null ? Integer.MAX_VALUE : entry.getDisplayOrder()));
+        List<LabelPresetForm.FieldEntry> ordered = new ArrayList<>();
+        LabelPresetForm.FieldEntry labNumber = new LabelPresetForm.FieldEntry();
+        labNumber.setFieldKey(LabelFieldKey.LAB_NUMBER.name());
+        labNumber.setIsRequired(true);
+        labNumber.setDisplayOrder(1);
+        ordered.add(labNumber);
+        int position = 2;
+        for (LabelPresetForm.FieldEntry entry : others) {
+            LabelPresetForm.FieldEntry copy = new LabelPresetForm.FieldEntry();
+            copy.setFieldKey(entry.getFieldKey().trim());
+            copy.setIsRequired(Boolean.TRUE.equals(entry.getIsRequired()));
+            copy.setDisplayOrder(position++);
+            ordered.add(copy);
+        }
+        return ordered;
     }
 
     /**
@@ -250,8 +309,8 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
      */
     private void replaceFields(LabelPreset preset, List<LabelPresetForm.FieldEntry> entries) {
         Map<String, LabelPresetForm.FieldEntry> requested = new LinkedHashMap<>();
-        for (LabelPresetForm.FieldEntry entry : entries) {
-            requested.put(entry.getFieldKey().trim(), entry);
+        for (LabelPresetForm.FieldEntry entry : withLabNumberFirst(entries)) {
+            requested.put(entry.getFieldKey(), entry);
         }
 
         List<LabelPresetField> current = preset.getFields();

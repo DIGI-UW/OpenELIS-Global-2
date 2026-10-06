@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
 import org.openelisglobal.labelpreset.dao.OrderLabelRequestDAO;
 import org.openelisglobal.labelpreset.dao.TestLabelPresetLinkDAO;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.openelisglobal.labelpreset.valueholder.LabelPresetField;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
@@ -195,7 +197,7 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         for (LabelPresetField field : preset.getFields()) {
             PresetSnapshotDto.PresetSnapshotField snapField = new PresetSnapshotDto.PresetSnapshotField();
             snapField.setFieldKey(field.getFieldKey());
-            snapField.setFieldLabel(field.getFieldKey());
+            snapField.setFieldLabel(fieldLabel(field.getFieldKey()));
             snapField.setIsRequired(field.getIsRequired());
             snapField.setDisplayOrder(field.getDisplayOrder());
             fields.add(snapField);
@@ -212,6 +214,20 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         }
 
         return snapshot;
+    }
+
+    /**
+     * The name a field prints under, frozen into the snapshot in the language of
+     * the person saving the order; an unknown key keeps its raw name so nothing is
+     * hidden.
+     */
+    static String fieldLabel(String fieldKey) {
+        LabelFieldKey key = LabelFieldKey.fromKey(fieldKey);
+        if (key == null) {
+            return fieldKey;
+        }
+        String label = MessageUtil.getMessage(key.getMessageKey());
+        return label == null || label.isBlank() ? fieldKey : label;
     }
 
     /**

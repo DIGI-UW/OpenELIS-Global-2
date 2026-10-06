@@ -33,6 +33,7 @@ import {
 } from "../../common/CustomNotification";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import LabelPresetEditor from "./LabelPresetEditor";
+import SiteWideBarcodeSettings from "./SiteWideBarcodeSettings";
 
 const breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -238,6 +239,7 @@ function LabelPresetList() {
         <Heading>
           <FormattedMessage id="admin.labelPresets.title" />
         </Heading>
+        <SiteWideBarcodeSettings />
       </Section>
 
       {loading ? (

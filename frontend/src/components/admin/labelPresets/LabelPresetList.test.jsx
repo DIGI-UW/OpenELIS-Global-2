@@ -189,7 +189,45 @@ describe("LabelPresetList", () => {
         title: messages["admin.labelPresets.created"],
       });
     });
-    expect(getFromOpenElisServer).toHaveBeenCalledTimes(2);
+    const presetLoads = getFromOpenElisServer.mock.calls.filter(
+      ([url]) => url === "/api/labelPresets",
+    );
+    expect(presetLoads).toHaveLength(2);
+  });
+
+  // ── Site-wide barcode settings (OGC-1217) ────────────────────────────────
+
+  test("renders the site-wide barcode settings card above the preset table", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/api/siteSettings/barcode") {
+        callback({
+          prePrintUseAltAccession: true,
+          prePrintAltAccessionPrefix: "ABCD",
+        });
+      } else {
+        callback(mockPresets);
+      }
+    });
+    renderWithProviders(<LabelPresetList />);
+
+    const card = await screen.findByTestId("site-wide-barcode-settings");
+    await waitFor(() => {
+      expect(screen.getByText("standard order")).toBeInTheDocument();
+    });
+    const table = screen.getByRole("table");
+    expect(
+      card.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      within(card).getByLabelText(
+        messages["admin.labelPresets.siteWide.prePrint.separate"],
+      ),
+    ).toBeChecked();
+    expect(
+      within(card).getByLabelText(
+        messages["admin.labelPresets.siteWide.prefix.label"],
+      ),
+    ).toHaveValue("ABCD");
   });
 
   test("Deactivate sends a PATCH to the activate endpoint", async () => {
