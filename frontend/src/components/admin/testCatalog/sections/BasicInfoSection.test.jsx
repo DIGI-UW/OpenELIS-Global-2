@@ -87,7 +87,9 @@ beforeEach(() => {
         domain: "CLINICAL",
         // OGC-1145: an active test must carry ≥1 sample type or Save disables
         sampleTypeIds: ["2"],
-        cultureWorkflowType: "",
+        opensMicrobiologyCase: false,
+        microbiologyCaseRole: "DIRECT",
+        collectedInSets: false,
         antimicrobialResistance: false,
         active: true,
         orderable: true,
@@ -152,21 +154,61 @@ describe("BasicInfoSection domain-switch modal", () => {
     ).toBe(true);
   });
 
-  it("persists the culture workflow selection", async () => {
+  it("persists case opening independently of the AMR flag", async () => {
     renderSection();
     await screen.findByLabelText("Clinical");
-
-    fireEvent.change(screen.getByLabelText("Culture workflow"), {
-      target: { value: "BACTERIOLOGY" },
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Microbiology role"), {
+      target: { value: "CULTURE" },
     });
+    fireEvent.click(screen.getByRole("switch", { name: /Collected in sets/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-
     await waitFor(() =>
       expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
     );
     expect(
       JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]),
-    ).toMatchObject({ cultureWorkflowType: "BACTERIOLOGY" });
+    ).toMatchObject({
+      opensMicrobiologyCase: true,
+      microbiologyCaseRole: "CULTURE",
+      collectedInSets: true,
+      antimicrobialResistance: false,
+    });
+    expect(screen.queryByLabelText("Culture workflow")).not.toBeInTheDocument();
+  });
+
+  it("clears collection in sets when changing a culture to a direct test", async () => {
+    renderSection();
+    await screen.findByLabelText("Clinical");
+    fireEvent.click(
+      screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
+    );
+    fireEvent.change(screen.getByLabelText("Microbiology role"), {
+      target: { value: "CULTURE" },
+    });
+    fireEvent.click(screen.getByRole("switch", { name: /Collected in sets/ }));
+    fireEvent.change(screen.getByLabelText("Microbiology role"), {
+      target: { value: "DIRECT" },
+    });
+    expect(
+      screen.getByRole("switch", { name: /Collected in sets/ }),
+    ).not.toBeChecked();
+    expect(
+      screen.getByRole("switch", { name: /Collected in sets/ }),
+    ).toBeDisabled();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() =>
+      expect(putToOpenElisServerJsonResponse).toHaveBeenCalled(),
+    );
+    expect(
+      JSON.parse(putToOpenElisServerJsonResponse.mock.calls[0][1]),
+    ).toMatchObject({
+      opensMicrobiologyCase: true,
+      microbiologyCaseRole: "DIRECT",
+      collectedInSets: false,
+    });
   });
 
   it("persists the Active toggle (boolean → Y/N)", async () => {
@@ -222,7 +264,9 @@ describe("BasicInfoSection domain-switch modal", () => {
           code: "GLU",
           description: "",
           domain: "CLINICAL",
-          cultureWorkflowType: "",
+          opensMicrobiologyCase: false,
+          microbiologyCaseRole: "DIRECT",
+          collectedInSets: false,
           antimicrobialResistance: false,
           active: false,
           orderable: true,
@@ -304,7 +348,9 @@ describe("BasicInfoSection domain-switch modal", () => {
           description: "",
           domain: "CLINICAL",
           sampleTypeIds: ["2"],
-          cultureWorkflowType: "",
+          opensMicrobiologyCase: false,
+          microbiologyCaseRole: "DIRECT",
+          collectedInSets: false,
           antimicrobialResistance: false,
           active: false,
           orderable: false,

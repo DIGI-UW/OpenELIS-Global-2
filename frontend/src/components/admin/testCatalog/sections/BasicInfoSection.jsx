@@ -73,12 +73,6 @@ const sampleTypeMatchesDomain = (type, domain) => {
   return normalized === null || normalized === domain;
 };
 
-const CULTURE_WORKFLOW_TYPES = [
-  "BACTERIOLOGY",
-  "MYCOBACTERIOLOGY_TB",
-  "MYCOLOGY",
-];
-
 const QC_THRESHOLD_FIELDS = [
   { field: "qcBlankThreshold", labelKey: "test.qc.blankThreshold" },
   { field: "qcRpdThreshold", labelKey: "test.qc.rpdThreshold" },
@@ -783,32 +777,60 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
-      <Select
-        id="basic-info-culture-workflow-type"
+      <Toggle
+        id="basic-info-opens-microbiology-case"
         labelText={intl.formatMessage({
-          id: "label.testCatalog.basicInfo.cultureWorkflowType",
+          id: "label.testCatalog.basicInfo.opensMicrobiologyCase",
         })}
-        value={form.cultureWorkflowType || ""}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.opensMicrobiologyCase}
+        onToggle={(checked) =>
+          update({
+            opensMicrobiologyCase: checked,
+            ...(!checked ? { collectedInSets: false } : {}),
+          })
+        }
+      />
+      <Select
+        id="basic-info-microbiology-role"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.microbiologyCaseRole",
+        })}
+        value={form.microbiologyCaseRole || "DIRECT"}
+        disabled={!form.opensMicrobiologyCase}
         onChange={(event) =>
-          update({ cultureWorkflowType: event.target.value || "" })
+          update({
+            microbiologyCaseRole: event.target.value,
+            ...(event.target.value !== "CULTURE"
+              ? { collectedInSets: false }
+              : {}),
+          })
         }
       >
-        <SelectItem
-          value=""
-          text={intl.formatMessage({
-            id: "label.testCatalog.basicInfo.cultureWorkflowType.none",
-          })}
-        />
-        {CULTURE_WORKFLOW_TYPES.map((workflowType) => (
+        {["CULTURE", "DIRECT", "CASE"].map((role) => (
           <SelectItem
-            key={workflowType}
-            value={workflowType}
+            key={role}
+            value={role}
             text={intl.formatMessage({
-              id: `label.testCatalog.basicInfo.cultureWorkflowType.${workflowType}`,
+              id: `label.testCatalog.basicInfo.microbiologyCaseRole.${role}`,
             })}
           />
         ))}
       </Select>
+      <Toggle
+        id="basic-info-collected-in-sets"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.collectedInSets",
+        })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.collectedInSets}
+        disabled={
+          !form.opensMicrobiologyCase || form.microbiologyCaseRole !== "CULTURE"
+        }
+        onToggle={(checked) => update({ collectedInSets: checked })}
+      />
       <TextInput
         id="basic-info-time-holding"
         labelText={intl.formatMessage({ id: "test.timeHolding" })}

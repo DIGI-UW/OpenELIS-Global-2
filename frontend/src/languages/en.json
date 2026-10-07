@@ -12286,5 +12286,11 @@
   "compliance.linkedTest.unlinked": "Test removed from the parameter group.",
   "compliance.linkedTest.unlinkError": "Could not remove this test from the group.",
   "compliance.threshold.testLinked": "Test linked to the parameter group.",
-  "compliance.inlineEdit.editingLimits": "editing all limits"
+  "compliance.inlineEdit.editingLimits": "editing all limits",
+  "label.testCatalog.basicInfo.opensMicrobiologyCase": "Opens a Microbiology case",
+  "label.testCatalog.basicInfo.microbiologyCaseRole": "Microbiology role",
+  "label.testCatalog.basicInfo.microbiologyCaseRole.CULTURE": "Culture",
+  "label.testCatalog.basicInfo.microbiologyCaseRole.DIRECT": "Direct",
+  "label.testCatalog.basicInfo.microbiologyCaseRole.CASE": "Case",
+  "label.testCatalog.basicInfo.collectedInSets": "Collected in sets"
 }
