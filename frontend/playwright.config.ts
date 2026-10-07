@@ -43,7 +43,6 @@ const CORE_LIVE_UAT_TESTS = ["**/manual-only/core/**/*.spec.ts"];
 const HARNESS_FOUNDATIONAL_TESTS = [
   "**/foundational/harness/**/*.spec.ts",
   "**/demo/harness/ogc-1054-m1-analyzer-types.spec.ts",
-  "**/demo/harness/ogc-1054-m2-shared-mapping.spec.ts",
 ];
 const HARNESS_DEMO_TESTS = ["**/demo/harness/ogc-1054-m3-guided-setup.spec.ts"];
 const HARNESS_VIDEO_TESTS = [

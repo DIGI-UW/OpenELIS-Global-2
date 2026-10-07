@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Device;
@@ -32,6 +33,7 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
@@ -79,8 +81,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private AnalyzerResultsService results;
     @Autowired
-    private AnalyzerMappingCatalogService catalog;
-    @Autowired
     private AnalyzerInstanceService instances;
     @Autowired
     private AnalyzerActivationService activations;
@@ -88,8 +88,23 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     private AnalyzerNormalizedResultImportService importService;
 
     private String analyzerId;
-    private String deactivatedTestId;
     private BridgeAnalyzerConnectionClient realBridge;
+    /**
+     * Active catalog tests of this class's own; other suites may leave the catalog
+     * empty.
+     */
+    private final List<String> catalogTests = List.of("98201", "98202");
+
+    @Before
+    public void createCatalogTests() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        for (String id : catalogTests) {
+            jdbc.update(
+                    "INSERT INTO test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                            + " VALUES (?, ?, ?, 'Y', ?, 'CLINICAL', true, NOW())",
+                    Long.valueOf(id), "Adoption IT " + id, "Adoption IT " + id, UUID.randomUUID().toString());
+        }
+    }
 
     @After
     public void deleteAnalyzer() {
@@ -97,13 +112,15 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
             useBridge(realBridge);
         }
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        if (deactivatedTestId != null) {
-            jdbc.update("UPDATE test SET is_active = 'Y' WHERE id = ?", Long.valueOf(deactivatedTestId));
+        if (analyzerId != null) {
+            deleteAnalyzerRows(jdbc, Long.valueOf(analyzerId));
         }
-        if (analyzerId == null) {
-            return;
+        for (String id : catalogTests) {
+            jdbc.update("DELETE FROM test WHERE id = ?", Long.valueOf(id));
         }
-        Long id = Long.valueOf(analyzerId);
+    }
+
+    private void deleteAnalyzerRows(JdbcTemplate jdbc, Long id) {
         jdbc.update("DELETE FROM analyzer_results WHERE analyzer_id = ?", id);
         jdbc.update("DELETE FROM analyzer_delivery_receipt WHERE connection_id = ?", CONNECTION_ID);
         jdbc.update("UPDATE analyzer SET latest_activation_record_id = NULL, mapping_id = NULL WHERE id = ?", id);
@@ -256,7 +273,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void aResultStampedWithTheOldRevisionMapsWhenTheNewOneReadsItAlikeAndIsHeldWhenNot() throws Exception {
         analyzerOnRevisionOne();
-        String testId = catalog.searchActiveTests(null).get(0).id();
+        String testId = catalogTests.get(0);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
                 bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", testId), "1");
         confirm(adopted);
@@ -284,10 +301,9 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerResults heldA = staged("ADOPT-A");
         assertTrue("ADOPT-A has no test on revision 1", heldA.isReadOnly());
         assertTrue(staged("ADOPT-D").isReadOnly());
-        List<AnalyzerMappingCatalogService.TestOption> tests = catalog.searchActiveTests(null);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", tests.get(0).id()),
-                        "ADOPT-D", tests.get(1).id()),
+                bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)),
+                        "ADOPT-D", catalogTests.get(1)),
                 "1");
         confirm(adopted);
         bridgeOn(1);
@@ -297,7 +313,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerResults recovered = staged("ADOPT-A");
         assertEquals(heldA.getId(), recovered.getId());
         assertFalse("only ADOPT-A's LOINC changed", recovered.isReadOnly());
-        assertEquals(tests.get(0).id(), recovered.getTestId());
+        assertEquals(catalogTests.get(0), recovered.getTestId());
         assertEquals(Integer.valueOf(1), recovered.getSourceProfileRevision());
         AnalyzerResults otherUnit = staged("ADOPT-D");
         assertTrue("revision 2 reports ADOPT-D in another unit", otherUnit.isReadOnly());
@@ -320,8 +336,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerMappingDraft draft = AnalyzerMappingDraft.of(first);
         String inForce = draft.tests().stream().filter(test -> test.sourceRowKey().equals("ADOPT-A"))
                 .map(AnalyzerMappingTestDraft::testId).filter(Objects::nonNull).findFirst().orElse(null);
-        String other = catalog.searchActiveTests(null).stream().map(AnalyzerMappingCatalogService.TestOption::id)
-                .filter(id -> !id.equals(inForce)).findFirst().orElseThrow();
+        String other = catalogTests.stream().filter(id -> !id.equals(inForce)).findFirst().orElseThrow();
         List<AnalyzerMappingTestDraft> tests = draft.tests().stream()
                 .map(test -> test.sourceRowKey().equals("ADOPT-A")
                         ? new AnalyzerMappingTestDraft(test.sourceRowKey(), AnalyzerMappingState.BOUND, other, null,
@@ -338,7 +353,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     private void deactivate(String testId) {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         jdbc.update("UPDATE test SET is_active = 'N' WHERE id = ?", Long.valueOf(testId));
-        deactivatedTestId = testId;
     }
 
     private void hold(String code, int revision) {
