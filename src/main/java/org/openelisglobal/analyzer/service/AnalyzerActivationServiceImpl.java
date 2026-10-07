@@ -184,8 +184,10 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         if (analyzer.getMapping() == null) {
             return;
         }
-        boolean unavailable = validateActivation(analyzer).blockers().stream().anyMatch(
-                blocker -> PROFILE_BLOCKER.equals(blocker.code()) || BRIDGE_PROFILE_UNAVAILABLE.equals(blocker.code()));
+        // Only the Bridge's own report counts: an unreachable Bridge also fails the
+        // profile lookup, and a reset must not follow a passing outage.
+        boolean unavailable = validateActivation(analyzer).blockers().stream()
+                .anyMatch(blocker -> BRIDGE_PROFILE_UNAVAILABLE.equals(blocker.code()));
         if (!unavailable) {
             throw new AnalyzerRequestException("analyzer.reset.error.profileAvailable",
                     "The analyzer type is still available. Adopt a newer revision to move this analyzer to it.");

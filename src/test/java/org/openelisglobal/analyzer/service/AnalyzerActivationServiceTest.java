@@ -264,8 +264,9 @@ public class AnalyzerActivationServiceTest {
 
     @Test
     public void resetsAnAnalyzerWhoseProfileTheBridgeNoLongerHasAsTheUpgradeMigrationDoes() {
-        when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION))
-                .thenThrow(new BridgeProfileCatalogException("profile revision is gone"));
+        connection.putObject("readiness").put("ready", false).putArray("blockers").addObject()
+                .put("key", "profile-unavailable")
+                .put("messageKey", "analyzer.connection.readiness.profileUnavailable");
         analyzer.setStatus(Analyzer.AnalyzerStatus.ACTIVE);
         analyzer.setActive(true);
         analyzer.setLatestActivationRecord(retained);
@@ -293,6 +294,19 @@ public class AnalyzerActivationServiceTest {
                 () -> service.resetUnavailableProfile(ANALYZER_ID, ACTOR));
 
         assertEquals("analyzer.reset.error.profileAvailable", refused.messageKey());
+        assertEquals(snapshot.mapping(), analyzer.getMapping());
+        verify(analyzerService, never()).update(any());
+    }
+
+    @Test
+    public void refusesToResetAnAnalyzerWhileTheBridgeIsOnlyUnreachable() {
+        when(bridgeClient.getConnection(CONNECTION_ID))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.connection.unreachable"));
+        when(profileCatalogService.getProfile(PROFILE_ID, PROFILE_REVISION))
+                .thenThrow(new BridgeProfileCatalogException("Bridge is down"));
+
+        assertThrows(AnalyzerRequestException.class, () -> service.resetUnavailableProfile(ANALYZER_ID, ACTOR));
+
         assertEquals(snapshot.mapping(), analyzer.getMapping());
         verify(analyzerService, never()).update(any());
     }
