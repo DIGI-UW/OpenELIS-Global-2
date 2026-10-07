@@ -2,3 +2,4 @@
 analyzer-cutover
 analyzer-unmigrated
 analyzer-window-schema
+pathology-stage-descriptions

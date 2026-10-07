@@ -52,6 +52,9 @@ let nextReasonId = 0;
  * rather than quietly losing its warning, and the message it throws names
  * the Prompt and not this component.
  *
+ * Save draft is disabled while a save is in flight, because a save that has
+ * been sent and not yet answered must not be sent a second time.
+ *
  * primary shape: { labelKey, disabledReasonKey, disabledReasonValues,
  * onClick }. It is always rendered as the Carbon primary button kind, so the
  * bar's one-primary hierarchy cannot be undermined by a caller choosing a
@@ -60,6 +63,7 @@ let nextReasonId = 0;
 const CaseActionBar = ({
   status = null,
   dirty = false,
+  saving = false,
   onDiscard,
   onSaveDraft,
   primary,
@@ -93,7 +97,9 @@ const CaseActionBar = ({
         message={intl.formatMessage({ id: "caseView.banner.unsavedChanges" })}
       />
       <div className="case-view__action-bar-status">
-        <span>
+        {/* The control in the slot carries this word as its own label, so the
+            visible copy is not read out a second time. */}
+        <span aria-hidden="true">
           <FormattedMessage id="common.status" />
         </span>
         {status}
@@ -107,7 +113,7 @@ const CaseActionBar = ({
         <Button kind="ghost" disabled={!dirty} onClick={onDiscard}>
           <FormattedMessage id="caseView.action.discard" />
         </Button>
-        <Button kind="secondary" onClick={onSaveDraft}>
+        <Button kind="secondary" disabled={saving} onClick={onSaveDraft}>
           <FormattedMessage id="caseView.action.saveDraft" />
         </Button>
         {primary && (
