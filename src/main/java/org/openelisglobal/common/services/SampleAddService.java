@@ -179,6 +179,11 @@ public class SampleAddService {
                 item.setCultureSetNumber(GenericValidator.isBlankOrNull(cultureSetNumber) ? null
                         : Integer.valueOf(cultureSetNumber.trim()));
                 item.setContainer(sampleItem.attributeValue("container"));
+                String bodySite = sampleItem.attributeValue("bodySite");
+                if (bodySite != null && bodySite.length() > 40) {
+                    throw new IllegalArgumentException("Body site must not exceed 40 characters");
+                }
+                item.setSourceOther(bodySite);
                 item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
                 item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
                 item.setGpsLongitude(sampleItem.attributeValue("gpsLongitude"));
@@ -251,6 +256,7 @@ public class SampleAddService {
                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
                 stc.existingSampleItemId = existingSampleItemId;
                 stc.sampleTypeRequestId = sampleItem.attributeValue("sampleTypeRequestId");
+                stc.collectionDateSubmitted = sampleItem.attribute("date") != null;
                 stc.storageNotes = storageNotes;
                 stc.panelIds = splitIds(panelIDs);
 
@@ -424,6 +430,7 @@ public class SampleAddService {
         // Existing sample item ID - for updates, identifies which sample_item to update
         public String existingSampleItemId;
         public String sampleTypeRequestId;
+        public boolean collectionDateSubmitted;
 
         // Panels selected on this sample; a test is attributed only to one of these
         public List<String> panelIds = new ArrayList<>();

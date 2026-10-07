@@ -1,3 +1,4 @@
+import CultureBottleFields from "./CultureBottleFields";
 import { useContext, useEffect, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { ConfigurationContext } from "../../../layout/Layout";
@@ -290,6 +291,16 @@ const SampleCollectionCard = ({
               disabled={isReadOnly}
             />
           </Column>
+        )}
+
+        {(needsSet || sample.cultureSetNumber) && (
+          <CultureBottleFields
+            sample={sample}
+            sampleIndex={sampleIndex}
+            isReadOnly={isReadOnly}
+            includeTime={false}
+            onChange={handleFieldChange}
+          />
         )}
 
         {/* Quantity */}

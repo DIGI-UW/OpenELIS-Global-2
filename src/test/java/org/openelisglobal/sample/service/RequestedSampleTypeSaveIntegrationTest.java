@@ -105,6 +105,35 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
+    public void bottleDetailsSurviveRequestReloadCollectionAndExplicitCorrection() {
+        var requested = requested("1");
+        requested.setCultureSetNumber(2);
+        requested.setContainer("Aerobic");
+        requested.setBodySite("Left arm");
+        requested.setCollectionDate("2026-10-07");
+        requested.setCollectionTime("07:25");
+        Sample order = newSample();
+        persist(order, List.of(requested));
+        var request = sampleTypeRequestService.getRequestsBySampleId(order.getId()).get(0);
+        var reloaded = new SampleTypeRequestDTO(request);
+        assertEquals("Aerobic", reloaded.getContainer());
+        assertEquals("Left arm", reloaded.getBodySite());
+        assertEquals("2026-10-07", reloaded.getCollectionDate());
+        assertEquals("07:25", reloaded.getCollectionTime());
+        persist(order, new SamplePatientEntryForm(), bottleXml("", "sampleTypeRequestId='" + request.getId() + "'"));
+        var item = sampleItemService.getSampleItemsBySampleId(order.getId()).get(0);
+        assertEquals("Aerobic", item.getContainer());
+        assertEquals("Left arm", item.getSourceOther());
+        assertEquals(Timestamp.valueOf("2026-10-07 07:25:00"), item.getCollectionDate());
+        persist(order, new SamplePatientEntryForm(),
+                bottleXml("", "sampleItemId='" + item.getId() + "' bodySite='Right arm' container='Anaerobic'"));
+        item = sampleItemService.get(item.getId());
+        assertEquals("Right arm", item.getSourceOther());
+        assertEquals("Anaerobic", item.getContainer());
+        assertEquals(Timestamp.valueOf("2026-10-07 07:25:00"), item.getCollectionDate());
+    }
+
+    @Test
     public void collectionWithoutBottleSetRollsBackTheWholeOrder() {
         var test = bottleTest();
         Sample order = newSample();

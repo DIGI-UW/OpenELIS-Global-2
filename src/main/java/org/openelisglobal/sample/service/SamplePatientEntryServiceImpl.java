@@ -561,8 +561,16 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     // Update existing sample item with new collection data
                     savedItem.setSysUserId(sampleTestCollection.item.getSysUserId());
                     // Copy collection details from the incoming item
-                    savedItem.setCollectionDate(sampleTestCollection.item.getCollectionDate());
+                    if (sampleTestCollection.collectionDateSubmitted) {
+                        savedItem.setCollectionDate(sampleTestCollection.item.getCollectionDate());
+                    }
                     savedItem.setCollector(sampleTestCollection.item.getCollector());
+                    if (sampleTestCollection.item.getSourceOther() != null) {
+                        savedItem.setSourceOther(sampleTestCollection.item.getSourceOther());
+                    }
+                    if (sampleTestCollection.item.getContainer() != null) {
+                        savedItem.setContainer(sampleTestCollection.item.getContainer());
+                    }
                     if (sampleTestCollection.item.getCultureSetNumber() != null) {
                         savedItem.setCultureSetNumber(sampleTestCollection.item.getCultureSetNumber());
                     }
@@ -861,6 +869,15 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setSortOrder(sortOrder);
             request.setRequestedQuantity(requested.getRequestedQuantity());
             request.setCultureSetNumber(requested.getCultureSetNumber());
+            request.setContainer(requested.getContainer());
+            if (requested.getBodySite() != null && requested.getBodySite().length() > 40) {
+                throw new IllegalArgumentException("Body site must not exceed 40 characters");
+            }
+            request.setBodySite(requested.getBodySite());
+            request.setCollectionDate(GenericValidator.isBlankOrNull(requested.getCollectionDate()) ? null
+                    : java.sql.Date.valueOf(java.time.LocalDate.parse(requested.getCollectionDate())));
+            request.setCollectionTime(GenericValidator.isBlankOrNull(requested.getCollectionTime()) ? null
+                    : java.time.LocalTime.parse(requested.getCollectionTime()).toString());
             request.setRequestedTests(requested.getRequestedTests());
             request.setRequestedPanels(requested.getRequestedPanels());
             request.setStatus(SampleTypeRequest.Status.REQUESTED);
@@ -983,8 +1000,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             if (request == null) {
                 continue;
             }
-            if (item.getCultureSetNumber() == null && request.getCultureSetNumber() != null) {
-                item.setCultureSetNumber(request.getCultureSetNumber());
+            if (org.openelisglobal.sampletyperequest.service.RequestedSpecimenDetails.apply(request, item)) {
                 item.setSysUserId(updateData.getCurrentUserId());
                 sampleItemService.update(item);
             }

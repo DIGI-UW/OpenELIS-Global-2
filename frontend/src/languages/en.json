@@ -1,4 +1,6 @@
 {
+  "order.bottle.container": "Container type",
+  "order.bottle.bodySite": "Body site",
   "microbiology.sets.warning.SINGLE_BOTTLE": "Only one bottle in this set",
   "microbiology.sets.warning.REPEATED_CONTAINER": "Repeated container type in this set",
   "microbiology.sets.warning.DIFFERENT_SITES": "Different collection sites in this set",

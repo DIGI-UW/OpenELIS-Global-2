@@ -63,3 +63,16 @@ it("prevents read-only collection edits", async () => {
     await screen.findByRole("spinbutton", { name: "Set number" }),
   ).toBeDisabled();
 });
+
+it("lets collection record a body site and container without altering the set", async () => {
+  const onUpdate = renderBottle(2);
+  fireEvent.change(await screen.findByRole("textbox", { name: "Body site" }), {
+    target: { value: "Left arm" },
+  });
+  expect(onUpdate).toHaveBeenLastCalledWith(0, { bodySite: "Left arm" });
+  fireEvent.change(screen.getByRole("textbox", { name: "Container type" }), {
+    target: { value: "Aerobic" },
+  });
+  expect(onUpdate).toHaveBeenLastCalledWith(0, { container: "Aerobic" });
+  expect(screen.getByRole("spinbutton", { name: "Set number" })).toHaveValue(2);
+});

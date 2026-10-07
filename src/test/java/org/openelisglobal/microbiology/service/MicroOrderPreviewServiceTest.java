@@ -205,6 +205,16 @@ public class MicroOrderPreviewServiceTest {
         assertEquals(List.of(1, 2), preview.cases().get(0).setWarnings().stream().map(w -> w.setNumber()).toList());
         second.cultureSetNumber = 1;
         assertTrue(service.preview(request, "user").cases().get(0).setWarnings().isEmpty());
+        var first = request.specimens.get(0);
+        first.container = "Aerobic";
+        second.container = "Aerobic";
+        first.bodySite = "Left arm";
+        second.bodySite = "Right arm";
+        first.collectionDate = second.collectionDate = "2026-10-07";
+        first.collectionTime = "07:00";
+        second.collectionTime = "07:31";
+        assertEquals(List.of("REPEATED_CONTAINER", "DIFFERENT_SITES", "COLLECTION_INTERVAL"),
+                service.preview(request, "user").cases().get(0).setWarnings().stream().map(w -> w.code()).toList());
         verifyZeroInteractions(cases, links);
     }
 

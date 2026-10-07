@@ -810,6 +810,8 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleItemData.put("collectorId", sampleItem.getCollector() != null ? sampleItem.getCollector() : "");
                 sampleItemData.put("labPerformedSampling", sampleItem.isLabPerformedSampling());
                 sampleItemData.put("cultureSetNumber", sampleItem.getCultureSetNumber());
+                sampleItemData.put("bodySite", sampleItem.getSourceOther());
+                sampleItemData.put("container", sampleItem.getContainer());
                 sampleItemData.put("collectionConditions",
                         sampleItem.getCollectionConditions() != null ? sampleItem.getCollectionConditions() : "");
                 sampleItemData.put("collectionMethod",
@@ -836,6 +838,7 @@ public class OrderSearchRestController extends BaseRestController {
                         sampleItem.getUnitOfMeasure() != null ? sampleItem.getUnitOfMeasure().getId() : "");
                 sampleXML.put("collector", sampleItem.getCollector());
                 sampleXML.put("cultureSetNumber", sampleItem.getCultureSetNumber());
+                sampleXML.put("bodySite", sampleItem.getSourceOther());
                 sampleXML.put("collectionMethod",
                         sampleItem.getCollectionMethod() != null ? sampleItem.getCollectionMethod() : "");
                 sampleXML.put("sampleTemperature",

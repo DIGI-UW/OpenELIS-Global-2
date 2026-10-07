@@ -160,3 +160,17 @@ it("round-trips bottle identity and set number through pending entry", () => {
     { id: "81", cultureSetNumber: 2 },
   ]);
 });
+
+it("round-trips recorded bottle details without converting the lab date or time", () => {
+  const detail = {
+    container: "Aerobic",
+    bodySite: "Left arm",
+    collectionDate: "2026-10-07",
+    collectionTime: "07:25",
+  };
+  const restored = convertRequestsToSamples([
+    { id: "81", typeOfSampleId: "5", cultureSetNumber: 2, ...detail },
+  ]);
+  expect(restored[0]).toMatchObject(detail);
+  expect(toRequestedSampleTypes(restored)[0]).toMatchObject(detail);
+});

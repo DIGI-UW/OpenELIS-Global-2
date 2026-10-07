@@ -20,6 +20,14 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
       .filter((sample) => sample.sampleTypeId)
       .map((sample) => ({
         sampleTypeId: sample.sampleTypeId,
+        ...(sample.container != null ? { container: sample.container } : {}),
+        ...(sample.bodySite != null ? { bodySite: sample.bodySite } : {}),
+        ...(sample.collectionDate
+          ? { collectionDate: sample.collectionDate }
+          : {}),
+        ...(sample.collectionTime
+          ? { collectionTime: sample.collectionTime }
+          : {}),
         ...(Number.isInteger(Number(sample.cultureSetNumber)) &&
         Number(sample.cultureSetNumber) > 0
           ? { cultureSetNumber: Number(sample.cultureSetNumber) }

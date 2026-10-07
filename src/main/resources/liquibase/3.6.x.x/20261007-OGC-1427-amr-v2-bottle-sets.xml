@@ -7,6 +7,10 @@
         <sqlFile path="amr-v2-bottle-sets-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
         <addColumn schemaName="clinlims" tableName="sample_type_request">
             <column name="culture_set_number" type="integer"/>
+            <column name="container" type="varchar(255)"/>
+            <column name="body_site" type="varchar(40)"/>
+            <column name="collection_date" type="date"/>
+            <column name="collection_time" type="varchar(8)"/>
         </addColumn>
         <addColumn schemaName="clinlims" tableName="sample_item">
             <column name="culture_set_number" type="integer"/>
@@ -18,7 +22,8 @@
         <rollback>
             <sql splitStatements="false"><![CDATA[
                 DO $$ BEGIN
-                    IF EXISTS (SELECT 1 FROM clinlims.sample_type_request WHERE culture_set_number IS NOT NULL)
+                    IF EXISTS (SELECT 1 FROM clinlims.sample_type_request WHERE culture_set_number IS NOT NULL
+                        OR container IS NOT NULL OR body_site IS NOT NULL OR collection_date IS NOT NULL OR collection_time IS NOT NULL)
                        OR EXISTS (SELECT 1 FROM clinlims.sample_item WHERE culture_set_number IS NOT NULL) THEN
                         RAISE EXCEPTION 'Cannot roll back bottle sets while recorded set assignments exist';
                     END IF;
@@ -26,6 +31,10 @@
             ]]></sql>
             <dropColumn schemaName="clinlims" tableName="sample_item" columnName="culture_set_number"/>
             <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="culture_set_number"/>
+            <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="container"/>
+            <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="body_site"/>
+            <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="collection_date"/>
+            <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="collection_time"/>
         </rollback>
     </changeSet>
 </databaseChangeLog>

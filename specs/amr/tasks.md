@@ -409,8 +409,22 @@ Remaining V02c2 implementation and acceptance:
       remains read-only. Missing assignments remain unassigned. Fourteen backend
       preview/HTTP/warning tests, 13 frontend tests and the production build pass
       for this connection; these are not persisted browser parity evidence.
-      Still required: complete container/site/time capture and its pending-request
-      round trip before all set warnings can be evaluated at entry, Referred and
+      The bottle-detail increment now captures container type, body site and
+      lab-local collection date/time at entry, preserves them on pending requests
+      and reload, and carries omitted details into collection. Explicit collection
+      corrections win. Body site uses the existing specimen source field (40
+      characters); no historical values are inferred. The same draft fields now
+      drive repeated-container, differing-site and collection-interval warnings.
+      The unregistered fourth migration adds nullable request-detail columns,
+      checks collisions before retirement and refuses rollback with recorded
+      metadata, including requests without set numbers.
+      Initial validation passed 64 backend tests, 54 frontend tests and the build.
+      Three additional preservation checks passed: metadata-only rollback refusal,
+      early metadata-column collision and correction/clearing precedence. A
+      correction omitting the collection-date field now preserves its timestamp;
+      all 16 shared order-save tests passed again after that correction.
+      This does not replace saved browser/video parity or the full migration gate.
+      Still required: Referred and
       Tested elsewhere handling, saved-order ownership,
       environmental site grouping, placement beside the Ordered tests table,
       and persisted browser/video comparison. AC-V2-103 remains unaccepted.
@@ -468,8 +482,8 @@ Remaining V02c2 implementation and acceptance:
       Warning validation passed 15 backend tests, 42 frontend tests and the
       frontend production build, including the exact interval boundary, a lab
       override, midnight crossing, missing details and per-set tag placement.
-      Required next: complete warning presentation during shared save and all
-      collection-detail inputs in the preview, define and
+      Required next: complete warning presentation during shared save (including
+      saved-order editing), define and
       persist catalog classification for pediatric/adult container compatibility
       (do not infer it from translated display names), audit other fulfillment
       entry points, environmental presentation, final-schema retirement and

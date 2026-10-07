@@ -118,6 +118,15 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
                         if (bottle.cultureSetNumber != null && bottle.cultureSetNumber < 1) {
                             throw new IllegalArgumentException("Set number must be positive");
                         }
+                        var input = request.specimens.get(i);
+                        bottle.containerType = input.container;
+                        bottle.bodySite = input.bodySite;
+                        if (hasText(input.collectionDate)) {
+                            var date = java.time.LocalDate.parse(input.collectionDate);
+                            var time = hasText(input.collectionTime) ? java.time.LocalTime.parse(input.collectionTime)
+                                    : java.time.LocalTime.MIDNIGHT;
+                            bottle.collectionDate = java.sql.Timestamp.valueOf(date.atTime(time));
+                        }
                         bottle.specimenType = sampleNames.get(i);
                         return bottle;
                     }).toList();

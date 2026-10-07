@@ -103,8 +103,7 @@ public class SampleTypeRequestServiceImpl extends AuditableBaseObjectServiceImpl
                 || !request.getTypeOfSample().getId().equals(sampleItem.getTypeOfSampleId())) {
             throw new IllegalArgumentException("Collected specimen must belong to the requested order and sample type");
         }
-        if (sampleItem.getCultureSetNumber() == null && request.getCultureSetNumber() != null) {
-            sampleItem.setCultureSetNumber(request.getCultureSetNumber());
+        if (RequestedSpecimenDetails.apply(request, sampleItem)) {
             sampleItem.setSysUserId(org.openelisglobal.spring.util.SpringContext
                     .getBean(org.openelisglobal.common.util.UserContextHolder.class).getCurrentSysUserId());
             sampleItemService.update(sampleItem);

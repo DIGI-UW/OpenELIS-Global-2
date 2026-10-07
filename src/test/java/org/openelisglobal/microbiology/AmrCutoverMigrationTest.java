@@ -814,6 +814,44 @@ public class AmrCutoverMigrationTest {
     }
 
     @Test
+    public void requestedBottleDetailCollisionFailsBeforeRetirement() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("alter table clinlims.sample_type_request add column body_site varchar(40)");
+        }
+        connection.commit();
+        String history = allHistory();
+        var before = clinicalSnapshot();
+        expectFailure(completeSequence(), "requested bottle-detail target columns");
+        assertTrue(tableExists("micro_culture_setup"));
+        assertEquals(history, allHistory());
+        assertEquals(before, clinicalSnapshot());
+    }
+
+    @Test
+    public void rollbackPreservesRequestDetailsEvenWithoutASetNumber() throws Exception {
+        seed();
+        Liquibase migration = completeSequence();
+        migration.update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.sample_type_request"
+                    + " (id,sample_id,type_of_sample_id,sort_order,status,created_date,body_site)"
+                    + " select 990019,samp_id,typeosamp_id,0,'REQUESTED',current_timestamp,'Left arm'"
+                    + " from clinlims.sample_item where id=990001");
+        }
+        connection.commit();
+        String history = allHistory();
+        try {
+            migration.rollback(1, "default");
+            fail("Rollback must preserve recorded bottle details");
+        } catch (LiquibaseException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("recorded set assignments"));
+        }
+        assertEquals("Left arm", scalar("select body_site from clinlims.sample_type_request where id=990019"));
+        assertEquals(history, allHistory());
+    }
+
+    @Test
     public void bottleSetRollbackRefusesToDiscardRecordedAssignments() throws Exception {
         seed();
         Liquibase migration = completeSequence();

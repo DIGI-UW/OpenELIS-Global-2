@@ -69,6 +69,15 @@ public class SampleTypeRequest extends BaseObject<Integer> {
     @Column(name = "culture_set_number")
     private Integer cultureSetNumber;
 
+    @Column(name = "container", length = 255)
+    private String container;
+    @Column(name = "body_site", length = 40)
+    private String bodySite;
+    @Column(name = "collection_date")
+    private java.sql.Date collectionDate;
+    @Column(name = "collection_time", length = 8)
+    private String collectionTime;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_of_measure_id")
     private UnitOfMeasure unitOfMeasure;
@@ -208,6 +217,38 @@ public class SampleTypeRequest extends BaseObject<Integer> {
             throw new IllegalArgumentException("Culture set number must be positive");
         }
         this.cultureSetNumber = cultureSetNumber;
+    }
+
+    public String getContainer() {
+        return container;
+    }
+
+    public void setContainer(String value) {
+        container = value;
+    }
+
+    public String getBodySite() {
+        return bodySite;
+    }
+
+    public void setBodySite(String value) {
+        bodySite = value;
+    }
+
+    public java.sql.Date getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(java.sql.Date value) {
+        collectionDate = value;
+    }
+
+    public String getCollectionTime() {
+        return collectionTime;
+    }
+
+    public void setCollectionTime(String value) {
+        collectionTime = value;
     }
 
 }

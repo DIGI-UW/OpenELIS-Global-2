@@ -1,3 +1,4 @@
+import CultureBottleFields from "./CultureBottleFields";
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -1438,6 +1439,16 @@ const SampleTestSection = ({
                 </Select>
               </Column>
 
+              {hasSetTest(sample, sampleIndex) && (
+                <CultureBottleFields
+                  sample={sample}
+                  sampleIndex={sampleIndex}
+                  isReadOnly={isReadOnly}
+                  onChange={(field, value) =>
+                    handleEnvFieldChange(sampleIndex, field, value)
+                  }
+                />
+              )}
               {hasSetTest(sample, sampleIndex) && (
                 <Column lg={8} md={4} sm={4}>
                   <TextInput

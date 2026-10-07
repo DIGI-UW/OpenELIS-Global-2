@@ -73,6 +73,14 @@ export const toRequestedSampleTypes = (samples = []) =>
       ...(sample.cultureSetNumber != null && sample.cultureSetNumber !== ""
         ? { cultureSetNumber: Number(sample.cultureSetNumber) }
         : {}),
+      ...(sample.container != null ? { container: sample.container } : {}),
+      ...(sample.bodySite != null ? { bodySite: sample.bodySite } : {}),
+      ...(sample.collectionDate
+        ? { collectionDate: sample.collectionDate }
+        : {}),
+      ...(sample.collectionTime
+        ? { collectionTime: sample.collectionTime }
+        : {}),
       requestedQuantity: parseFloat(sample.quantity) || null,
       unitOfMeasureId: sample.quantityUnit || null,
       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
@@ -172,8 +180,10 @@ export const convertRequestsToSamples = (pendingRequests) => {
           : String(request.requestedQuantity),
       quantityUnit: request.unitOfMeasureId || "",
       collectionConditions: "",
-      collectionDate: "",
-      collectionTime: "",
+      container: request.container ?? "",
+      bodySite: request.bodySite ?? "",
+      collectionDate: request.collectionDate ?? "",
+      collectionTime: request.collectionTime ?? "",
       collectorId: "",
       labPerformedSampling: false,
       receivedDate: "",
