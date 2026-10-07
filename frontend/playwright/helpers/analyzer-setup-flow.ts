@@ -12,12 +12,14 @@ export const GENEXPERT = {
 
 /**
  * Set up a GeneXpert on the shipped baseline profile through the setup screens:
- * its shipped mapping confirmed, its sender set, and the connection active.
+ * the assays named in `assaysOff` turned off, its shipped mapping confirmed, its
+ * sender set, and the connection active.
  */
 export async function activateShippedGeneXpert(
   page: Page,
   name: string,
   senderId: string,
+  assaysOff: string[] = [],
 ): Promise<Analyzer> {
   const list = new AnalyzerListPage(page);
   const setup = new AnalyzerSetupPage(page);
@@ -27,7 +29,7 @@ export async function activateShippedGeneXpert(
   await setup.selectProfile(GENEXPERT.displayName, GENEXPERT);
   await setup.fillName(name);
   await setup.selectLabUnit("Molecular Biology");
-  await setup.continueToVerify();
+  await setup.continueToVerify(assaysOff);
   const mapping = (await (
     await page.request.get(
       `${API}/analyzer-types/${GENEXPERT.profileId}/mapping?revision=${GENEXPERT.revision}`,

@@ -97,9 +97,17 @@ export class AnalyzerSetupPage {
     );
   }
 
-  /** From the instrument step, through Assays as the defaults left them, to Verify. */
-  async continueToVerify() {
+  /**
+   * From the instrument step, through Assays as the defaults left them (less
+   * the assays named in `assaysOff`), to Verify.
+   */
+  async continueToVerify(assaysOff: string[] = []) {
     await this.continueToAssays();
+    for (const code of assaysOff) {
+      const assay = this.page.getByTestId(`analyzer-assay-${code}`);
+      await assay.locator("label").first().click();
+      await expect(assay.getByRole("checkbox")).not.toBeChecked();
+    }
     await this.page.getByRole("button", { name: "Continue to Verify" }).click();
     await expect(this.page).toHaveURL(
       (url) =>

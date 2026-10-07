@@ -251,7 +251,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(duplicateRow).toBeVisible();
     await expect(duplicateRow).toContainText("Site-created");
     await expect(duplicateRow).toContainText(
-      `Derived from genexpert-astm revision ${sourceRevision}`,
+      `Derived from cepheid-genexpert-astm revision ${sourceRevision}`,
     );
     await expect(duplicateRow).toContainText("revision 1");
     await expect(duplicateRow).toContainText("Not in use");
