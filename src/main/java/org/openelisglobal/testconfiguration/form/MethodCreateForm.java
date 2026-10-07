@@ -3,6 +3,7 @@ package org.openelisglobal.testconfiguration.form;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.validation.annotations.SafeHtml;
@@ -13,6 +14,9 @@ public class MethodCreateForm extends BaseForm {
 
     // for display
     private List inactiveMethodList;
+
+    // for display: each method's id, English and French names, code and status
+    private List<Map<String, String>> methods;
 
     // for display
     private String existingEnglishNames;
@@ -50,6 +54,14 @@ public class MethodCreateForm extends BaseForm {
 
     public void setInactiveMethodList(List inactiveMethodList) {
         this.inactiveMethodList = inactiveMethodList;
+    }
+
+    public List<Map<String, String>> getMethods() {
+        return methods;
+    }
+
+    public void setMethods(List<Map<String, String>> methods) {
+        this.methods = methods;
     }
 
     public String getExistingEnglishNames() {

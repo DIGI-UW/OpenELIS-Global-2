@@ -152,6 +152,16 @@ regardless of implementation are scaffolding, not tests.
   elements with explicit guards.
 - **E4. API-first data setup.** Test data via API in beforeAll/beforeEach, not
   UI interactions.
+- **E5. Read only your own data.** Scope every list, count, rate, or derived
+  enabled state to the spec's seeded IDs, or assert a before and after delta. A
+  date window alone is not a scope. Never loosen an assertion because other data
+  might be present; narrow the read.
+- **E6. No clock or time zone dependence.** Use explicit dates and freeze or
+  inject the clock used by the code under test when it reads the current time,
+  including the server clock when applicable. A live server's "today" is not
+  pinned time. For current-date behavior, set that clock to the dates or
+  boundaries being exercised. A spec must give the same result in any browser
+  time zone.
 
 ### Universal
 
@@ -161,6 +171,9 @@ regardless of implementation are scaffolding, not tests.
   test.
 - **U3. No `any()` without justification.** Mockito `any()` in verify/when calls
   must have a comment explaining why.
+- **U4. Isolation.** A test's result depends only on the code under test and
+  the data it created: not on other tests' data, order, sharding, or the clock
+  (Constitution V.7).
 
 ### LLM-Generated Anti-Patterns
 
@@ -197,6 +210,8 @@ Before approving any test:
 14. Are edge cases tested (null, empty, boundary, negative)?
 15. Do tests cover the same categories as known bugs? (status names, precision,
     auth ordering, filter pass-through)
+16. Is every count, list, rate, or enabled state asserted against the test's own
+    data, and would the test pass in any order and in any browser time zone?
 
 ### For AI Agents
 

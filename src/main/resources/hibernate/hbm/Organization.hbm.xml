@@ -49,7 +49,7 @@
             <column name="STREET_ADDRESS" length="30" />
         </property>
         <property name="state" type="java.lang.String">
-            <column name="STATE" length="2" />
+            <column name="STATE" length="100" />
         </property>
         <property name="internetAddress" type="java.lang.String">
             <column name="INTERNET_ADDRESS" length="40" />

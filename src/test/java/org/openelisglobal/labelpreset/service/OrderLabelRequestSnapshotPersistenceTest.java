@@ -1,6 +1,7 @@
 package org.openelisglobal.labelpreset.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
@@ -12,11 +13,13 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
 import org.openelisglobal.labelpreset.dao.OrderLabelRequestDAO;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
+import org.openelisglobal.labelpreset.valueholder.LabelPresetField;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
 import org.openelisglobal.labelpreset.valueholder.TestLabelPresetLink;
@@ -190,6 +193,118 @@ public class OrderLabelRequestSnapshotPersistenceTest extends BaseWebContextSens
         assertTrue("a sample row whose local id is not in the id map is skipped", persisted.isEmpty());
         assertTrue("no order_label_request rows written for an unmapped-only payload",
                 orderLabelRequestDAO.listByParentSampleId(sampleId).isEmpty());
+    }
+
+    // ── OGC-1422: a save replaces the order's earlier rows; a saved sample item
+    // may be addressed by its own id ──────────────────────────────────────────
+
+    @Test
+    public void persistRequest_replacesTheOrdersEarlierRows() {
+        OrderLabelPersistRequest first = new OrderLabelPersistRequest();
+        first.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(orderPreset.getId(), 2));
+        orderLabelRequestService.persistRequest(sampleId, Map.of(), first, TEST_SYS_USER_ID, Map.of());
+
+        OrderLabelPersistRequest second = new OrderLabelPersistRequest();
+        second.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(orderPreset.getId(), 3));
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), second,
+                TEST_SYS_USER_ID, Map.of());
+
+        List<OrderLabelRequest> rows = orderLabelRequestDAO.listByParentSampleId(sampleId);
+        assertEquals("the latest save's choices are the order's only label requests", 1, rows.size());
+        assertEquals(Integer.valueOf(3), rows.get(0).getQty());
+        assertEquals(persisted.get(0).getId(), rows.get(0).getId());
+    }
+
+    @Test
+    public void persistRequest_acceptsASavedSampleItemIdAsLocalId() {
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow(
+                "item-" + sampleItemId);
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 2));
+        payload.getSampleRows().add(row);
+
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), payload,
+                TEST_SYS_USER_ID, Map.of());
+
+        assertEquals(1, persisted.size());
+        assertEquals(sampleItemId, persisted.get(0).getSampleItem().getId());
+        assertEquals(Integer.valueOf(2), persisted.get(0).getQty());
+    }
+
+    @Test
+    public void persistRequest_capturesTheTestLinkForAnItemKeyedRow() {
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow(
+                "item-" + sampleItemId);
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 2));
+        payload.getSampleRows().add(row);
+
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), payload,
+                TEST_SYS_USER_ID, Map.of("item-" + sampleItemId, List.of("1")));
+
+        assertEquals(1, persisted.size());
+        PresetSnapshotDto snapshot = persisted.get(0).getPresetSnapshot();
+        assertNotNull("an item-keyed row keeps the driving test link in its snapshot", snapshot.getTestLink());
+        assertEquals(Integer.valueOf(1), snapshot.getTestLink().getTestId());
+    }
+
+    @Test
+    public void persistRequest_ignoresASampleItemIdThatIsNotOnTheOrder() {
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        OrderLabelPersistRequest.PersistSampleRow row = new OrderLabelPersistRequest.PersistSampleRow("item-999999999");
+        row.getCells().add(new OrderLabelPersistRequest.PersistCell(specimenPreset.getId(), 2));
+        payload.getSampleRows().add(row);
+
+        List<OrderLabelRequest> persisted = orderLabelRequestService.persistRequest(sampleId, Map.of(), payload,
+                TEST_SYS_USER_ID, Map.of());
+
+        assertTrue("an unknown sample item id anchors nothing", persisted.isEmpty());
+    }
+
+    // ── OGC-1218: the snapshot freezes the field names a label prints ─────────
+
+    @Test
+    public void persistRequest_freezesHumanFieldLabelsIntoTheSnapshot() {
+        LabelPreset withFields = new LabelPreset();
+        withFields.setName("T134-FieldLabels");
+        withFields.setHeightMm(30);
+        withFields.setWidthMm(60);
+        withFields.setBarcodeType(BarcodeType.CODE_128);
+        withFields.setPrintsPerSample(false);
+        withFields.setPrintsPerOrder(true);
+        withFields.setDefaultPerSample(0);
+        withFields.setMaxPerSample(10);
+        withFields.setDefaultPerOrder(1);
+        withFields.setMaxPerOrder(10);
+        withFields.setIsSystem(false);
+        withFields.setIsActive(true);
+        withFields.getFields().add(fieldOf(withFields, "LAB_NUMBER", true, 1));
+        withFields.getFields().add(fieldOf(withFields, "PATIENT_NAME", false, 2));
+        labelPresetDAO.insert(withFields);
+
+        OrderLabelPersistRequest payload = new OrderLabelPersistRequest();
+        payload.getOrderCells().add(new OrderLabelPersistRequest.PersistCell(withFields.getId(), 1));
+        orderLabelRequestService.persistRequest(sampleId, Map.of(), payload, TEST_SYS_USER_ID, Map.of());
+
+        OrderLabelRequest row = orderLabelRequestDAO.listByParentSampleId(sampleId).stream()
+                .filter(r -> withFields.getId().equals(r.getPreset().getId())).findFirst()
+                .orElseThrow(() -> new AssertionError("missing row"));
+        List<PresetSnapshotDto.PresetSnapshotField> fields = row.getPresetSnapshot().getFields();
+        assertEquals(2, fields.size());
+        assertEquals("LAB_NUMBER", fields.get(0).getFieldKey());
+        assertEquals(MessageUtil.getMessage("barcode.label.info.labNumber"), fields.get(0).getFieldLabel());
+        assertEquals("PATIENT_NAME", fields.get(1).getFieldKey());
+        assertEquals(MessageUtil.getMessage("barcode.label.info.patientName"), fields.get(1).getFieldLabel());
+        assertNotEquals("the label is a name, not the key", "PATIENT_NAME", fields.get(1).getFieldLabel());
+    }
+
+    private static LabelPresetField fieldOf(LabelPreset preset, String key, boolean required, int order) {
+        LabelPresetField field = new LabelPresetField();
+        field.setPreset(preset);
+        field.setFieldKey(key);
+        field.setIsRequired(required);
+        field.setDisplayOrder(order);
+        return field;
     }
 
     private LabelPreset savePreset(String name, boolean perSample, boolean perOrder, int defaultPerSample,

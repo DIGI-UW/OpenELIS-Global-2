@@ -10,6 +10,7 @@ import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import PrepareStorageSection from "./sections/PrepareStorageSection";
 import OrderReferOutSection from "./referOut/OrderReferOutSection";
+import { isFullyReferred } from "./referralState";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -25,9 +26,11 @@ import { getEnforcement } from "../api/sampleAcceptanceApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import CollectTestPickerSection from "./sections/CollectTestPickerSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
+import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
 import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
+import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
 
 /**
  * OrderCollect - Step 2: Collect Sample
@@ -44,6 +47,9 @@ const OrderCollect = () => {
   const history = useHistory();
   const workflowPrefix = useWorkflowPrefix();
   const componentMounted = useRef(true);
+  // The Labels section registers its row printer here so a sample card's
+  // Print Labels button prints that tube's labels (FR-C6).
+  const printLabelsRowRef = useRef(null);
 
   const {
     orderId,
@@ -55,6 +61,7 @@ const OrderCollect = () => {
     markStepComplete,
     isReadOnly,
     isEditMode,
+    isLoading,
     testSampleAssignments,
     assignTestToSample,
     removeTestFromSample,
@@ -174,10 +181,9 @@ const OrderCollect = () => {
 
   // Two levels of required (FR-A7, FR-D7). Save and exit needs the save
   // level: a sample with a sample type and no collection date before the
-  // admission date. Save and next needs the complete level as well: collection
-  // date and collector for every sample, and consent where the laboratory
-  // requires it. Informed consent stays advisory by default (FRS FR-5-001/
-  // FR-5-002); a site whose regulator requires it turns
+  // admission date. Save and next needs the complete level as well (see
+  // prepareSamplesToContinue). Informed consent stays advisory by default (FRS
+  // FR-5-001/FR-5-002); a site whose regulator requires it turns
   // consentRequiredForCollection on. Environmental and vector samples have no
   // human subject, so consent never applies to them.
   const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
@@ -188,65 +194,17 @@ const OrderCollect = () => {
   const consentRequired =
     configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
   const consentSatisfied = !consentRequired || consentData.consentGiven;
-  const liveSamples = samples
-    .map((sample, index) => ({ sample, index }))
-    .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected);
-  const sampleName = ({ sample, index }) =>
-    `${labNumber || ""}-${index + 1} ${sample.sampleTypeName || ""}`.trim();
   const canSave =
     samples?.length > 0 &&
     samples.some((s) => s.sampleTypeId) &&
     !hasCollectionDateConflict;
-  const toContinue = [];
-  if (!samples.some((s) => s.sampleTypeId)) {
-    toContinue.push({
-      id: "order.continue.item.sampleType",
-      label: intl.formatMessage({ id: "order.continue.item.sampleType" }),
-      targetId: "sampleType-0",
-    });
-  }
-  liveSamples.forEach((entry) => {
-    const { sample, index } = entry;
-    if (
-      isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate)
-    ) {
-      toContinue.push({
-        id: `collectionConflict-${index}`,
-        label: intl.formatMessage(
-          { id: "order.continue.item.collectionConflict" },
-          { sample: sampleName(entry) },
-        ),
-        targetId: `collectionDate-${index}`,
-      });
-    }
-    if (!sample.collectionDate || !sample.collectionTime) {
-      toContinue.push({
-        id: `collectionTime-${index}`,
-        label: intl.formatMessage(
-          { id: "order.continue.item.collectionTime" },
-          { sample: sampleName(entry) },
-        ),
-        targetId: `collectionDate-${index}`,
-      });
-    }
-    if (!sample.collectorId && !sample.labPerformedSampling) {
-      toContinue.push({
-        id: `collector-${index}`,
-        label: intl.formatMessage(
-          { id: "order.continue.item.collector" },
-          { sample: sampleName(entry) },
-        ),
-        targetId: `collector-${index}`,
-      });
-    }
+  const toContinue = prepareSamplesToContinue({
+    samples,
+    labNumber,
+    admissionDate,
+    consentSatisfied,
+    intl,
   });
-  if (!consentSatisfied) {
-    toContinue.push({
-      id: "order.continue.item.consent",
-      label: intl.formatMessage({ id: "order.continue.item.consent" }),
-      targetId: "consent-section",
-    });
-  }
   const canProceed = canSave && toContinue.length === 0;
 
   // Check if we have any tests ordered
@@ -280,12 +238,15 @@ const OrderCollect = () => {
   };
 
   // Save and next opens Sample check when the laboratory uses it; otherwise
-  // this save finishes order entry (FR-K15) and the dashboard says so.
+  // this save finishes order entry (FR-K15) and the dashboard says so. An
+  // order whose every tube is referred out has nothing for the in-house
+  // Sample check, so it finishes here too (OGC-1423).
+  const fullyReferred = isFullyReferred(samples);
   const handleSaveAndNext = async () => {
     try {
       await saveOrder(false, false, null, false, progressStep);
       markStepComplete("collect");
-      if (sampleCheckEnabled) {
+      if (sampleCheckEnabled && !fullyReferred) {
         history.push(
           labNumber
             ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
@@ -392,6 +353,15 @@ const OrderCollect = () => {
           removeTestFromSample={removeTestFromSample}
           sampleTypes={sampleTypes}
           isReadOnly={isReadOnly && !isEditMode}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
+          referringSite={
+            orderData?.sampleOrderItems?.referringSiteId
+              ? {
+                  id: orderData.sampleOrderItems.referringSiteId,
+                  name: orderData.sampleOrderItems.referringSiteName || "",
+                }
+              : null
+          }
         />
 
         {/* A: the collector could see the ordered tests but not add one. */}
@@ -432,6 +402,25 @@ const OrderCollect = () => {
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
           admissionDate={admissionDate}
+          printDisabled={isLoading}
+          workflowType={workflowType}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
+          onPrintLabels={(sampleIndex) => {
+            if (printLabelsRowRef.current) {
+              printLabelsRowRef.current(sampleIndex);
+            }
+          }}
+        />
+
+        {/* Labels for the order and every tube, from the presets and the test
+            catalog (FR-I2). The quantities travel with this step's save and
+            printing reads the saved rows (FR-I6, FR-I7). */}
+        <PrepareLabelsSection
+          isReadOnly={isReadOnly && !isEditMode}
+          onSaveBeforePrint={handleSave}
+          registerPrintRow={(printRow) => {
+            printLabelsRowRef.current = printRow;
+          }}
         />
 
         {/* Storage and referral, per sample, saved with this step (FR-E1,

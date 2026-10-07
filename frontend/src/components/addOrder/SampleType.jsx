@@ -540,12 +540,12 @@ const SampleType = (props) => {
   }, [selectedSampleType.id, testsRetry]);
 
   useEffect(() => {
-    getFromOpenElisServer(`/rest/UomCreate`, fetchUomCreate);
+    getFromOpenElisServer("/rest/uom", fetchUomList);
   }, []);
 
-  const fetchUomCreate = (res) => {
-    if (componentMounted.current && res) {
-      setUomList(res.existingUomList || []);
+  const fetchUomList = (res) => {
+    if (componentMounted.current) {
+      setUomList(Array.isArray(res) ? res : []);
     }
   };
 

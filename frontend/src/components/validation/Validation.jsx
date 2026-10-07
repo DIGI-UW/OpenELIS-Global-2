@@ -47,6 +47,11 @@ import {
   triageRows,
 } from "./validationTriage";
 import ValidationReviewPanel from "./ValidationReviewPanel";
+import {
+  isSingleLabNumber,
+  parseLabNumberSearch,
+  searchFromLocation,
+} from "./validationSearch";
 import { flagFor } from "./validationReview";
 import { FlagChip, accentClass } from "../resultPage/unified/flags";
 import "../resultPage/unified/unified-results.scss";
@@ -363,15 +368,11 @@ const Validation = (props) => {
    * OGC-1030 (FR-A4) — the accession's auto-validated results, fetched only when
    * the validator asks for them; an accession search is the only scope served.
    */
-  const accessionSearch = new URLSearchParams(
-    (props.params || "").replace(/^\?/, ""),
-  );
-  const autoValidatedAccession =
-    accessionSearch.get("type") === "order"
-      ? props.results?.accessionNumber ||
-        accessionSearch.get("accessionNumber") ||
-        ""
-      : "";
+  const currentSearch = searchFromLocation("/validation", props.params);
+  const autoValidatedAccession = isSingleLabNumber(currentSearch)
+    ? props.results?.accessionNumber ||
+      parseLabNumberSearch(currentSearch.labNumber).labNumberFrom
+    : "";
   useEffect(() => {
     if (!includeAutoValidated || !autoValidatedAccession) {
       return;

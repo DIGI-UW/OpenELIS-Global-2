@@ -1,9 +1,12 @@
 import React, { useContext, useState } from "react";
 import { FormattedMessage } from "react-intl";
-import { Tile, Button, Tag, Link } from "@carbon/react";
+import { Tile, Button, Tag, Link, InlineNotification } from "@carbon/react";
 import SearchPatientForm from "../../../patient/SearchPatientForm";
 import CreatePatientForm from "../../../patient/CreatePatientForm";
 import { OrderContext, SaveStatus } from "../../OrderContext";
+import { getFromOpenElisServer } from "../../../utils/Utils";
+import usePossibleMatchCheck from "../../possibleMatches/usePossibleMatchCheck";
+import { RECORD_KIND } from "../../api/orderEntryCleanupApi";
 
 /**
  * PatientSearchSection - Patient search with results table and selection card
@@ -41,6 +44,12 @@ const PatientSearchSection = ({
   const [activeTab, setActiveTab] = useState("search");
   const [locallySelectedPatient, setSelectedPatient] = useState(null);
   const [searchInstance, setSearchInstance] = useState(0);
+  const [newPatientConfirmed, setNewPatientConfirmed] = useState(false);
+  const {
+    check: checkPossibleMatches,
+    checking,
+    dialog: possibleMatchesDialog,
+  } = usePossibleMatchCheck();
 
   // The patient the order holds, as it was when it became the order's patient
   // (chosen from the search, loaded with the order) or as it was last saved.
@@ -104,6 +113,35 @@ const PatientSearchSection = ({
 
   const showSearchForm =
     activeTab === "search" && !selectedPatient && !isReadOnly;
+
+  // FR-B6a, D-216: Create patient asks the server for patients that look like
+  // the one being entered (names misspelled, sounding alike or swapped, a
+  // birth date within a year, an identifier one character off). Use this one
+  // puts the existing patient on the order; otherwise the new patient is
+  // created when the order is saved.
+  const handleCreatePatient = () => {
+    const entered = orderData?.patientProperties || {};
+    const params = {
+      firstName: entered.firstName,
+      lastName: entered.lastName,
+      birthDate: entered.birthDateForDisplay,
+      identifier: entered.nationalId || entered.subjectNumber,
+    };
+    checkPossibleMatches(RECORD_KIND.PATIENT, params, params, {
+      onCreate: () => setNewPatientConfirmed(true),
+      onUse: (match) =>
+        getFromOpenElisServer(
+          `/rest/patient-details?patientID=${encodeURIComponent(match.id)}`,
+          (details) => {
+            if (details) {
+              setNewPatientConfirmed(false);
+              handleSelectPatient(details);
+              setActiveTab("search");
+            }
+          },
+        ),
+    });
+  };
 
   return (
     <Tile
@@ -219,8 +257,40 @@ const PatientSearchSection = ({
             error={() => null}
             setPhoneValidation={setPhoneValidation}
           />
+          {!selectedPatient && !isReadOnly && (
+            <div className="create-patient-actions">
+              <Button
+                kind="primary"
+                size="md"
+                onClick={handleCreatePatient}
+                disabled={
+                  checking ||
+                  !(
+                    orderData?.patientProperties?.firstName ||
+                    orderData?.patientProperties?.lastName
+                  )
+                }
+                data-testid="order-create-patient"
+              >
+                <FormattedMessage id="order.entry.patient.create" />
+              </Button>
+              {newPatientConfirmed && (
+                <InlineNotification
+                  kind="success"
+                  lowContrast
+                  hideCloseButton
+                  title=""
+                  subtitle={
+                    <FormattedMessage id="order.entry.patient.willBeCreated" />
+                  }
+                  data-testid="order-new-patient-confirmed"
+                />
+              )}
+            </div>
+          )}
         </div>
       )}
+      {possibleMatchesDialog}
     </Tile>
   );
 };

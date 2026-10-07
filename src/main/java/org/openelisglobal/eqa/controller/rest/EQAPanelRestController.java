@@ -6,6 +6,8 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.ObjectNotFoundException;
 import org.openelisglobal.common.log.LogEvent;
@@ -125,11 +127,14 @@ public class EQAPanelRestController extends BaseRestController {
         panel.setHomogeneityQcPassed(Boolean.parseBoolean(String.valueOf(body.get("homogeneityQcPassed"))));
         panel.setHomogeneityQcNotes(stringField(body, "homogeneityQcNotes"));
 
+        Set<String> schemeTests = programService.getTestAssignments(schemeId).stream()
+                .filter(assignment -> !Boolean.FALSE.equals(assignment.getIsActive()))
+                .map(assignment -> String.valueOf(assignment.getTestId())).collect(Collectors.toSet());
         List<EQAPanelSample> samples = new ArrayList<>();
         if (body.get("samples") instanceof List<?> rows) {
             for (Object row : rows) {
                 if (row instanceof Map<?, ?> spec) {
-                    samples.add(toSample(spec));
+                    samples.add(toSample(spec, schemeTests));
                 }
             }
         }
@@ -142,13 +147,17 @@ public class EQAPanelRestController extends BaseRestController {
         return dto;
     }
 
-    private EQAPanelSample toSample(Map<?, ?> spec) {
+    private EQAPanelSample toSample(Map<?, ?> spec, Set<String> schemeTests) {
         EQAPanelSample sample = new EQAPanelSample();
         sample.setSampleCode(stringOrNull(spec.get("sampleCode")));
         sample.setBlindCode(stringOrNull(spec.get("blindCode")));
+        String testId = stringOrNull(spec.get("testId"));
+        if (testId != null && !schemeTests.contains(testId)) {
+            throw new IllegalArgumentException("Test " + testId + " is not assigned to this scheme");
+        }
         Long analyteId = longOrNull(spec.get("analyteId"));
         if (analyteId == null) {
-            analyteId = panelService.analyteIdForTest(stringOrNull(spec.get("testId")));
+            analyteId = panelService.analyteIdForTest(testId);
         }
         if (analyteId == null) {
             throw new IllegalArgumentException("Every panel sample needs an analyte");

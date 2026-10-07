@@ -28,7 +28,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Temporal;
 import jakarta.persistence.TemporalType;
-import jakarta.persistence.Transient;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -102,17 +101,6 @@ public class Analyzer extends BaseObject<String> {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    /**
-     * Compile-only compatibility for generic CI artifacts. The profile revision on
-     * the Bridge-backed site binding is authoritative, so no OpenELIS analyzer type
-     * is returned.
-     */
-    @Deprecated(forRemoval = true)
-    @Transient
-    public AnalyzerType getAnalyzerType() {
-        return null;
     }
 
     public boolean isActive() {

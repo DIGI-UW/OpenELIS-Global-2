@@ -23,6 +23,7 @@ import {
   getDeepestLocationSelection,
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
+import { labNow } from "../utils/labClock";
 
 // Calendar dates are stored as midnight UTC so the day holds in every time zone.
 const toStoredCalendarDate = (date) =>
@@ -62,7 +63,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
     lotNumber: "",
     currentQuantity: 0,
     expirationDate: null,
-    receiptDate: new Date(),
+    receiptDate: labNow(),
     qcStatus: "PENDING",
     status: "ACTIVE",
     barcode: "",
@@ -110,7 +111,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
         lotNumber: lot.lotNumber || "",
         currentQuantity: lot.currentQuantity || 0,
         expirationDate: fromStoredCalendarDate(lot.expirationDate),
-        receiptDate: fromStoredCalendarDate(lot.receiptDate) || new Date(),
+        receiptDate: fromStoredCalendarDate(lot.receiptDate) || labNow(),
         qcStatus: lot.qcStatus || "PENDING",
         status: lot.status || "ACTIVE",
         barcode: lot.barcode || "",

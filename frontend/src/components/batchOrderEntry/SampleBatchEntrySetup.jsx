@@ -28,6 +28,32 @@ import {
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import SampleBatchEntry from "./SampleBatchEntry";
 
+// Each study form maps its checkbox ids to project-data flags; the study's
+// single test is ordered exactly when its own flag is ticked.
+const STUDY_FORMS = {
+  EID: {
+    dataKey: "_ProjectDataEID",
+    flags: {
+      eid_dryTubeTaken: "dryTubeTaken",
+      eid_dbsTaken: "dbsTaken",
+      eid_dnaPCR: "dnaPCR",
+    },
+    testFlag: "dnaPCR",
+    test: { value: "DNA PCR", id: "eid_dnaPCR" },
+  },
+  viralLoad: {
+    dataKey: "_ProjectDataVL",
+    flags: {
+      vl_dryTubeTaken: "dryTubeTaken",
+      vl_edtaTubeTaken: "edtaTubeTaken",
+      vl_dbsTaken: "dbsTaken",
+      vl_viralLoadTest: "viralLoadTest",
+    },
+    testFlag: "viralLoadTest",
+    test: { id: "vl_viralLoadTest", value: "Viral Load Test" },
+  },
+};
+
 const SampleBatchEntrySetup = () => {
   const [orderFormValues, setOrderFormValues] = useState(
     BatchOrderEntryFormValues,
@@ -231,64 +257,20 @@ const SampleBatchEntrySetup = () => {
 
   const handleCheckboxChange = (event) => {
     const { id, checked } = event.target;
-
-    let updatedOrderFormValues = { ...orderFormValues };
-
-    switch (selectedForm) {
-      case "EID":
-        updatedOrderFormValues.tests = checked
-          ? [{ value: "DNA PCR", id: "eid_dnaPCR" }]
-          : [];
-        updatedOrderFormValues.testSectionList = checked
-          ? [{ value: "DNA PCR", id: "eid_dnaPCR" }]
-          : [];
-        break;
-      case "viralLoad":
-        updatedOrderFormValues.tests = checked
-          ? [{ id: "vl_viralLoadTest", value: "Viral Load Test" }]
-          : [];
-        updatedOrderFormValues.testSectionList = checked
-          ? [{ id: "vl_viralLoadTest", value: "Viral Load Test" }]
-          : [];
-        break;
-      default:
-        break;
+    const study = STUDY_FORMS[selectedForm];
+    const flag = study?.flags[id];
+    if (!flag) {
+      return;
     }
 
-    if (selectedForm === "EID") {
-      switch (id) {
-        case "eid_dryTubeTaken":
-          updatedOrderFormValues._ProjectDataEID.dryTubeTaken = checked;
-          break;
-        case "eid_dbsTaken":
-          updatedOrderFormValues._ProjectDataEID.dbsTaken = checked;
-          break;
-        case "eid_dnaPCR":
-          updatedOrderFormValues._ProjectDataEID.dnaPCR = checked;
-          break;
-        default:
-          break;
-      }
-    } else if (selectedForm === "viralLoad") {
-      switch (id) {
-        case "vl_dryTubeTaken":
-          updatedOrderFormValues._ProjectDataVL.dryTubeTaken = checked;
-          break;
-        case "vl_edtaTubeTaken":
-          updatedOrderFormValues._ProjectDataVL.edtaTubeTaken = checked;
-          break;
-        case "vl_dbsTaken":
-          updatedOrderFormValues._ProjectDataVL.dbsTaken = checked;
-          break;
-        case "vl_viralLoadTest":
-          updatedOrderFormValues._ProjectDataVL.viralLoadTest = checked;
-          break;
-        default:
-          break;
-      }
-    }
-
-    setOrderFormValues(updatedOrderFormValues);
+    const projectData = { ...orderFormValues[study.dataKey], [flag]: checked };
+    const tests = projectData[study.testFlag] ? [study.test] : [];
+    setOrderFormValues({
+      ...orderFormValues,
+      [study.dataKey]: projectData,
+      tests,
+      testSectionList: tests,
+    });
   };
 
   function handleReceptionTime(e) {

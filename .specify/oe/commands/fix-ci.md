@@ -33,27 +33,25 @@ user text directly into shell commands. Support these patterns:
 
 **Behavior options:**
 
-| Flag                    | Default                | Description                                                                                                       |
-| ----------------------- | ---------------------- | ----------------------------------------------------------------------------------------------------------------- |
-| `--max-iterations N`    | 5                      | Max fix-push-check cycles before escalating                                                                       |
-| `--dry-run`             | off                    | Diagnose only — no fixes, no pushes                                                                               |
-| `--local-e2e`           | off                    | Run full local E2E suite in parallel with CI after push                                                           |
-| `--reset-env`           | off                    | Reset local E2E environment (fixtures) before local runs                                                          |
-| `--compose-file <path>` | dev.docker-compose.yml | Docker Compose file for local E2E (use `build.docker-compose.yml` to match CI exactly)                            |
-| `--flaky-retry N`       | 0                      | Re-run suspected flaky tests N times before diagnosing                                                            |
-| `--skip-local-validate` | off                    | Skip local validation (push immediately after fix)                                                                |
-| `--jobs <job-names>`    | all                    | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
-| `--notify`              | off                    | Force NOTIFY level (always summarize, even for AUTO)                                                              |
-| `--report-to-pr`        | off                    | Post resolution report as a PR comment when done                                                                  |
+| Flag                    | Default     | Description                                                                                                       |
+| ----------------------- | ----------- | ----------------------------------------------------------------------------------------------------------------- |
+| `--max-iterations N`    | 5           | Max fix-push-check cycles before escalating                                                                       |
+| `--dry-run`             | off         | Diagnose only — no fixes, no pushes                                                                               |
+| `--local-e2e`           | deprecated  | Full local CI always runs in parallel after push; this legacy flag is unnecessary                                 |
+| `--reset-env`           | deprecated  | Isolated lane runners own their fresh databases; never reset the interactive stack                                |
+| `--compose-file <path>` | unsupported | Use the isolated repository runners; do not override Compose layering                                             |
+| `--flaky-retry N`       | 0           | Re-run suspected flaky tests N times before diagnosing                                                            |
+| `--skip-local-validate` | unsupported | Do not skip local validation                                                                                      |
+| `--jobs <job-names>`    | all         | Only fix specific jobs (e.g., `--jobs "E2E / Playwright / Core"` or `--jobs "E2E / Cypress (Deprecated) / Core"`) |
+| `--notify`              | off         | Force NOTIFY level (always summarize, even for AUTO)                                                              |
+| `--report-to-pr`        | off         | Post resolution report as a PR comment when done                                                                  |
 
 **Examples:**
 
 ```
 /fix-ci                                    # Basic: fix current branch
-/fix-ci --pr 123 --local-e2e              # Fix PR 123, run local E2E in parallel
+/fix-ci --pr 123                           # Fix PR 123; full local CI runs in parallel
 /fix-ci --dry-run                          # Diagnose only, show what would be fixed
-/fix-ci --local-e2e --reset-env            # Full local replication + CI in parallel
-/fix-ci --local-e2e --compose-file build.docker-compose.yml  # Match CI exactly
 /fix-ci --flaky-retry 2                    # Retry suspected flaky tests twice
 /fix-ci --max-iterations 2 --jobs "E2E / Cypress (Deprecated) / Core"  # Fix deprecated Cypress core shard only
 /fix-ci --notify --report-to-pr            # Verbose + post report to PR
@@ -145,14 +143,19 @@ branch. Please switch to a feature branch first."
 **Holistic CI status check (MANDATORY):**
 
 Before diving into specific failures, get the full picture across ALL workflows
-— not just E2E. This matches what the user sees in the GitHub PR UI:
+— not just E2E. Read only what GitHub shows, the commit's `statusCheckRollup`:
 
 ```bash
-# If PR exists, use gh pr checks for the same view as the GitHub UI
-gh pr checks $PR_NUMBER 2>/dev/null || \
-  gh run list --branch $BRANCH --limit 10 --json name,status,conclusion,workflowName \
-    --jq '.[] | "\(.workflowName) / \(.name): \(.conclusion // .status)"'
+# A PR: the same checks as the PR page
+gh pr checks $PR_NUMBER
+
+# No PR: the runs behind the checks on the branch's newest commit
+./scripts/download-ci-logs.sh --branch $BRANCH --list
 ```
+
+If the user linked a run or job, diagnose that job first
+(`gh run view <run-id> --job <job-id> --log`); widen to other checks only from
+the rollup above.
 
 **Check ALL workflows**, not just the one you expect to fail:
 
@@ -192,14 +195,21 @@ This project uses a **two-stage E2E pipeline**:
 
 **Critical gotchas:**
 
-- `E2E / Tests` always shows `head_branch: develop` in the API because
-  `workflow_run` events inherit the base branch. It tests the **PR's code** via
+- `E2E / Tests` runs on develop because `workflow_run` runs on the default
+  branch. GitHub files every PR's `E2E / Tests` run (and every Dependabot run)
+  under develop's name and newest commit, while it tests the **PR's code** via
   the `e2e-build-context` artifact (which contains `pr_number` and `head_sha`).
+  So any listing by branch or commit shows other PRs' E2E failures as
+  develop's, and finds no E2E run on the PR's own branch. The only view that
+  matches GitHub is the commit's `statusCheckRollup`: `gh pr checks` for a PR,
+  `scripts/download-ci-logs.sh --branch <branch> --list` for a branch tip.
 - `gh run watch --exit-status` **does NOT work** for `E2E / Tests` runs. It
   reports exit code 0 even when the run fails. **Never use it for E2E
   monitoring.**
-- `gh run list --branch <pr-branch>` will NOT find `E2E / Tests` runs because
-  they show as `develop`. Use `gh pr checks` instead.
+- Listing runs by branch or commit (`gh run list --branch`/`--commit`,
+  `gh api .../actions/runs?head_sha=`/`?branch=`), `check-runs`, `check-suites`
+  and `commits/<sha>/status` all differ from what GitHub shows. The combined
+  status endpoint leaves out check runs entirely.
 
 **How to find the E2E Tests run for a PR:**
 
@@ -212,6 +222,10 @@ gh pr checks $PR_NUMBER
 # Extract it if needed:
 gh pr checks $PR_NUMBER 2>&1 | grep "03 Checkpoint - E2E[^-]"
 ```
+
+`03 Checkpoint - E2E` stays pending until every suite finishes, so a shard can
+fail long before the checkpoint does. While it is pending, open the run it links
+(`gh run view <RUN_ID>`) and start on any failed job instead of waiting.
 
 **How to verify CI status (MANDATORY — replace all `gh run watch` usage):**
 
@@ -234,7 +248,10 @@ fi
 **Never use these for E2E status:**
 
 - `gh run watch <run-id> --exit-status` — exits 0 on failure for workflow_run
-- `gh run list --branch <pr-branch>` — misses E2E / Tests runs
+- `gh run list --branch` / `--commit` — misses the PR's E2E / Tests run and
+  shows other PRs' runs on develop
+- `gh api` on `check-runs`, `check-suites`, `commits/<sha>/status` or
+  `actions/runs?head_sha=` — same problem, or leaves out check runs
 - `gh run view <run-id> --json conclusion` on the `03 - E2E` run — this is the
   build, not the tests
 
@@ -300,13 +317,6 @@ re-run the failed CI job before diagnosing:
 
 ```bash
 gh run rerun $RUN_ID --failed
-```
-
-Check if the same test passed in recent runs on this branch:
-
-```bash
-gh run list --branch $BRANCH --limit 5 \
-  --json databaseId,conclusion --jq '.[] | select(.conclusion=="success")'
 ```
 
 If the test passes on re-run → classify as **flaky**, log it, and move on. If it
@@ -437,7 +447,7 @@ the failure was an E2E test).
 cd frontend && npm run check-format
 
 # Unit tests (fast — always run)
-cd frontend && npm test -- --watchAll=false --coverage=false
+cd frontend && npm test -- <test-file>
 ```
 
 **Backend changes:**
@@ -453,56 +463,28 @@ If the diagnosed failure was a Cypress or Playwright E2E test, replicate the CI
 environment locally and run the specific failing test **before pushing**. This
 catches fixes that pass unit tests but fail in the full browser context.
 
-**Step 1 — Reset local E2E environment to match CI:**
+**Step 1 — Use an isolated source-built CI stack:**
 
-If `--reset-env` is set, or if containers are unhealthy/stopped, reset the local
-environment using the project's existing fixture scripts:
-
-```bash
-# Load the exact same fixtures CI loads (works with both dev and build compose)
-./src/test/resources/load-ci-fixtures.sh
-
-# OR for a full environment reset (if containers are stale/unhealthy):
-./scripts/reset-dev-env.sh --skip-build
-```
-
-If containers are not running or are unhealthy, restart them first:
+Use the single isolated runner for a CI reproduction:
 
 ```bash
-# Quick restart using configured compose file (preserves DB, reloads fixtures)
-# Default: dev.docker-compose.yml. Use --compose-file build.docker-compose.yml
-# to match CI exactly (builds from source instead of using pre-built images).
-docker compose -f $COMPOSE_FILE up -d
-./src/test/resources/load-ci-fixtures.sh
+scripts/run-ci-checks.sh --list-jobs
+scripts/run-ci-checks.sh --job playwright-core-1
+scripts/run-ci-checks.sh --job playwright-analyzers-1
+scripts/run-ci-checks.sh --job cypress-core
 ```
 
-Without `--reset-env`, only reload fixtures if the test failure suggests stale
-data (e.g., missing patient, missing analyzer config).
-
-**Step 2 — Run the specific failing E2E test locally:**
-
-```bash
-# Cypress (MUST use npm scripts, never raw npx — see CLAUDE.md)
-cd frontend && npm run cy:spec "cypress/e2e/<failing-test>.cy.js"
-
-# Playwright
-cd frontend && npm run pw:test -- <failing-test>.spec.ts
-
-# For broader validation: run full Cypress suite with fail-fast
-cd frontend && npm run cy:failfast
-```
-
-**Step 3 — Interpret local E2E result:**
-
-- **Local passes** → Fix is likely correct. Proceed to push.
-- **Local fails with same error** → Fix didn't work. Go back to Phase 3.
-- **Local fails with different error** → New issue introduced. Investigate.
+A selected job includes its stack, dependencies and fixtures. Its result is
+partial. For focused development, boot `scripts/dev-stack up`, export its
+`env`, and select a file with native Maven/npm/Playwright/Cypress tools.
+Do not start internal CI executors directly or load CI fixtures into a persistent
+development stack. No test deadline increases are a default remedy.
 
 #### Validation checklist
 
 - [ ] Formatting passes (no diffs)
 - [ ] Relevant unit tests pass
-- [ ] If E2E failure: local environment reset via `load-ci-fixtures.sh`
+- [ ] If E2E failure: reproduced through the owning isolated lane runner
 - [ ] If E2E failure: specific test passes locally against reset environment
 - [ ] No new warnings or errors introduced
 
@@ -550,44 +532,34 @@ git push
 **Post-push holistic check (MANDATORY):**
 
 After pushing, immediately check ALL workflow statuses — not just the one you
-fixed:
+fixed. Same two sources as the preflight check:
 
 ```bash
-gh pr checks $PR_NUMBER 2>/dev/null || \
-  gh run list --branch $BRANCH --limit 5
+if [ -n "$PR_NUMBER" ]; then
+  gh pr checks $PR_NUMBER
+else
+  ./scripts/download-ci-logs.sh --branch $BRANCH --list
+fi
 ```
 
 This catches cascading failures (e.g., a test fix that breaks formatting) before
 waiting 30 minutes for E2E to report back.
 
-#### Parallel tracks: Local E2E + CI monitoring
+#### Parallel tracks: Full local CI and GitHub monitoring
 
-After pushing, always monitor CI. If `--local-e2e` is set, **also** run the full
-local E2E suite in parallel — local results arrive in minutes while CI takes
-15-30 minutes.
-
-**Track A — Local E2E (only with `--local-e2e` flag):**
-
-Reset the environment and run the **full E2E suite** (not just the single test)
-to catch regressions before CI reports back.
+After every push, start `scripts/run-ci-checks.sh` on that committed revision
+while GitHub CI runs. Backend, frontend and E2E checks run through the one
+public entrypoint; passing a targeted suite is never a full-parity result.
+Preserve the printed artifact directory and report all lanes, including failures
+and checks that did not run. Use `--base REF` when the PR targets another branch.
 
 ```bash
-# Reset fixtures to match CI (include if --reset-env is set, or always
-# when --local-e2e is used for the first time in this iteration)
-./src/test/resources/load-ci-fixtures.sh
-
-# Run full Cypress suite with fail-fast (stops on first failure for faster feedback)
-cd frontend && npm run cy:failfast
-
-# Or full Playwright suite (background)
-cd frontend && npm run pw:test
+scripts/run-ci-checks.sh --artifact-dir /tmp/openelis-local-ci
 ```
 
-Run this in the background while monitoring CI. If local E2E fails before CI
-completes, you have early signal to start diagnosing the next failure without
-waiting for CI.
-
-**Without `--local-e2e`:** Skip Track A entirely and only monitor CI.
+The runner creates its own isolated checkouts and test stacks. Do not pass an
+interactive development URL or reuse its database. Only stop a previous local
+run after confirming that it is superseded by the newer committed candidate.
 
 **Track B — CI monitoring (poll `gh pr checks`):**
 
@@ -731,21 +703,21 @@ fi
 
 Use this to rapidly classify failures in Phase 1:
 
-| Log Pattern                                       | Category | Strategy               |
-| ------------------------------------------------- | -------- | ---------------------- |
-| `FATAL: password authentication failed`           | config   | Check .env / env vars  |
-| `container ... is unhealthy`                      | config   | Check .env / Docker    |
-| `Cannot find module`                              | build    | Fix import path        |
-| `TypeError: Cannot read properties of undefined`  | build    | Fix null reference     |
-| `expected ... to be 'visible'`                    | test     | Fix selector / timing  |
-| `is being covered by`                             | test     | Fix z-index / overlay  |
-| `Timed out after waiting`                         | test     | Increase timeout / fix |
-| `No such file or directory`                       | config   | Check paths / fixtures |
-| `Exit code 137` (OOM)                             | infra    | Suggest re-run         |
-| `::error::The runner has received a shutdown`     | infra    | Suggest re-run         |
-| `Object with guid response@ was not bound`        | infra    | Playwright browser GC  |
-| `Target page, context or browser has been closed` | infra    | Playwright browser GC  |
-| `page.reload: Target page, context or browser`    | infra    | Playwright browser GC  |
+| Log Pattern                                       | Category | Strategy                              |
+| ------------------------------------------------- | -------- | ------------------------------------- |
+| `FATAL: password authentication failed`           | config   | Check .env / env vars                 |
+| `container ... is unhealthy`                      | config   | Check .env / Docker                   |
+| `Cannot find module`                              | build    | Fix import path                       |
+| `TypeError: Cannot read properties of undefined`  | build    | Fix null reference                    |
+| `expected ... to be 'visible'`                    | test     | Fix selector / timing                 |
+| `is being covered by`                             | test     | Fix z-index / overlay                 |
+| `Timed out after waiting`                         | test     | Diagnose readiness or isolation / fix |
+| `No such file or directory`                       | config   | Check paths / fixtures                |
+| `Exit code 137` (OOM)                             | infra    | Suggest re-run                        |
+| `::error::The runner has received a shutdown`     | infra    | Suggest re-run                        |
+| `Object with guid response@ was not bound`        | infra    | Playwright browser GC                 |
+| `Target page, context or browser has been closed` | infra    | Playwright browser GC                 |
+| `page.reload: Target page, context or browser`    | infra    | Playwright browser GC                 |
 
 ## Iteration State Tracking
 

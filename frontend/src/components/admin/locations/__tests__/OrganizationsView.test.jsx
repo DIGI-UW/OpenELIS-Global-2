@@ -25,6 +25,7 @@ const { api, notify } = vi.hoisted(() => ({
     moveWard: vi.fn(),
     getHistory: vi.fn(),
     getLists: vi.fn(),
+    listIdentifierCollisions: vi.fn(() => Promise.resolve([])),
     getAreaLevels: vi.fn(),
     listAreas: vi.fn(),
     searchAreas: vi.fn(),
@@ -106,6 +107,7 @@ describe("OrganizationsView (OGC-1363)", () => {
   beforeEach(() => {
     Object.values(api).forEach((fn) => fn.mockReset && fn.mockReset());
     notify.mockReset();
+    api.listIdentifierCollisions.mockResolvedValue([]);
     api.searchAreas.mockResolvedValue([]);
     api.listOrganizations.mockResolvedValue({
       items: [row()],
@@ -282,7 +284,7 @@ describe("OrganizationsView (OGC-1363)", () => {
     expect(
       await screen.findByText("No records match these filters."),
     ).toBeInTheDocument();
-    const link = await screen.findByText("2 matches in Sampling Sites");
+    const link = await screen.findByText("In Sampling Sites: 2 matches");
     fireEvent.click(link);
     expect(go).toHaveBeenCalledWith("sites", "?q=trap");
   });
@@ -305,5 +307,80 @@ describe("OrganizationsView (OGC-1363)", () => {
     fireEvent.click(screen.getByTestId("locations-edit-4"));
     expect(await screen.findByTestId("locations-form-4")).toBeInTheDocument();
     await waitFor(() => expect(api.getOrganization).toHaveBeenCalledWith("4"));
+  });
+  const detailOf = (overrides = {}) => ({
+    row: row(overrides),
+    parentId: "9101",
+    identifiers: [{ id: 1, label: "Code", value: "HSI002", reporting: true }],
+    wards: [{ id: "77", name: "Maternity Ward", code: "", active: true }],
+    contactName: "Peter",
+    referral: null,
+    site: null,
+    lastupdated: 1,
+    historyCount: 0,
+  });
+
+  it("asks before closing a form with unsaved changes (OGC-1420 5c)", async () => {
+    api.getOrganization.mockResolvedValue(detailOf());
+    const confirm = vi.spyOn(window, "confirm").mockReturnValue(false);
+    renderView("/MasterListsPage/locations?id=4");
+    expect(await screen.findByDisplayValue("Peter")).toBeInTheDocument();
+    fireEvent.change(screen.getByLabelText("Contact name"), {
+      target: { value: "Grace" },
+    });
+    fireEvent.click(screen.getByTestId("locations-edit-4"));
+
+    expect(confirm).toHaveBeenCalled();
+    expect(screen.getByLabelText("Contact name")).toHaveValue("Grace");
+    confirm.mockRestore();
+  });
+
+  it("opens a record named in the address even when it is not on this page (OGC-1420 7a)", async () => {
+    api.getOrganization.mockResolvedValue(
+      detailOf({ id: "88", name: "Page Two Clinic" }),
+    );
+    renderView("/MasterListsPage/locations?id=88");
+    expect(
+      await screen.findByTestId("locations-pinned-form"),
+    ).toBeInTheDocument();
+    expect(await screen.findByTestId("locations-form-88")).toBeInTheDocument();
+    await waitFor(() => expect(api.getOrganization).toHaveBeenCalledWith("88"));
+  });
+
+  it("opens the organization a ward-name search found, with the ward highlighted (OGC-1420 7c)", async () => {
+    api.listOrganizations.mockResolvedValue({
+      items: [row({ matchNote: "ward:Maternity Ward" })],
+      total: 1,
+      page: 1,
+      pageSize: 25,
+    });
+    api.getOrganization.mockResolvedValue(detailOf());
+    renderView("/MasterListsPage/locations?q=Maternity");
+    expect(await screen.findByTestId("locations-form-4")).toBeInTheDocument();
+    expect(await screen.findByTestId("locations-ward-77")).toHaveClass(
+      "lo-highlight",
+    );
+  });
+
+  it("lists identifiers two records share so an admin can resolve them (OGC-1420 8)", async () => {
+    api.listIdentifierCollisions.mockResolvedValue([
+      {
+        label: "Code",
+        value: "QADUP1",
+        records: [
+          { id: "4", name: "Health Services Inc", kind: "facility" },
+          { id: "9", name: "QA Referring Clinic", kind: "facility" },
+        ],
+      },
+    ]);
+    renderView();
+    const list = await screen.findByTestId("locations-identifier-collisions");
+    expect(list).toHaveTextContent(
+      "Code QADUP1: Health Services Inc, QA Referring Clinic",
+    );
+    expect(
+      list.closest(".cds--inline-notification"),
+      "Carbon notifications may not hold the record links",
+    ).toBeNull();
   });
 });

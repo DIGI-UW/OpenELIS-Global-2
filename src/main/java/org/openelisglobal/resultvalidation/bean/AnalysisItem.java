@@ -51,6 +51,11 @@ public class AnalysisItem implements Serializable {
     @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { ResultValidationForm.ResultValidation.class })
     private String result;
 
+    // OGC-1417: the validator correcting the value has acknowledged it as
+    // critical, or confirmed it although it lies outside the valid range
+    private boolean criticalAcknowledged = false;
+    private boolean invalidResultConfirmed = false;
+
     private String receivedDate;
 
     private boolean isAccepted = false;
@@ -1179,5 +1184,21 @@ public class AnalysisItem implements Serializable {
     @JsonIgnore
     public boolean isRangeNotApplied() {
         return rangeNotAppliedReason != null;
+    }
+
+    public boolean isCriticalAcknowledged() {
+        return criticalAcknowledged;
+    }
+
+    public void setCriticalAcknowledged(boolean criticalAcknowledged) {
+        this.criticalAcknowledged = criticalAcknowledged;
+    }
+
+    public boolean isInvalidResultConfirmed() {
+        return invalidResultConfirmed;
+    }
+
+    public void setInvalidResultConfirmed(boolean invalidResultConfirmed) {
+        this.invalidResultConfirmed = invalidResultConfirmed;
     }
 }

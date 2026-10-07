@@ -3,12 +3,15 @@ package org.openelisglobal.labelpreset.migration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import javax.sql.DataSource;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -105,15 +108,58 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
     @Before
     public void seedFromFixture() throws Exception {
         clearSystemPresets();
-        clearBarcodeSiteInformation();
+        stashLegacyLabelKeys(dataSource);
         loadFixture(FIXTURE);
         runRealSeedChangesetSql();
+        runRealSeedGuardSql();
     }
 
     @After
     public void restoreCanonicalSeed() throws Exception {
-        clearBarcodeSiteInformation();
         restoreCanonicalSeed(dataSource);
+    }
+
+    /**
+     * AC-22a (FRS v2.6): on a database carrying v1 barcode configuration no seeded
+     * preset may end up with the fallback dimensions, because the keys were read.
+     */
+    @Test
+    public void noSeededPresetCarriesTheFallbackDimensionsWhenV1ConfigurationExists() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT name FROM clinlims.label_preset"
+                        + " WHERE is_system = true AND height_mm = ? AND width_mm = ?")) {
+            stmt.setInt(1, FALLBACK_HEIGHT);
+            stmt.setInt(2, FALLBACK_WIDTH);
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<String> onFallback = new ArrayList<>();
+                while (rs.next()) {
+                    onFallback.add(rs.getString(1));
+                }
+                assertTrue("system presets seeded from the fallback dimensions although the site configured its own: "
+                        + onFallback, onFallback.isEmpty());
+            }
+        }
+    }
+
+    /**
+     * MG-6 (FRS v2.6): the seed fails loudly when v1 configuration exists and a
+     * preset did not take it. Reproduces OGC-1219 by hand (a preset put back on the
+     * fallbacks while its keys are present) and expects the guard to raise.
+     */
+    @Test
+    public void seedGuardRaisesWhenAPresetIgnoredItsLegacyKeys() throws Exception {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute("UPDATE clinlims.label_preset SET height_mm = " + FALLBACK_HEIGHT + ", width_mm = "
+                    + FALLBACK_WIDTH + " WHERE name = 'Slide Label'");
+        }
+        try {
+            runRealSeedGuardSql();
+            fail("the MG-6 guard must raise when v1 configuration exists and a preset was seeded from fallbacks");
+        } catch (java.sql.SQLException e) {
+            assertTrue("guard names the ticket: " + e.getMessage(), e.getMessage().contains("OGC-1219"));
+            assertTrue("guard names the ignored key: " + e.getMessage(),
+                    e.getMessage().contains("heightSlideLabels=45"));
+        }
     }
 
     @Test
@@ -129,7 +175,7 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         // Specimen / Block / Slide / Freezer: per-sample scope; quantities live in the
         // per-sample columns.
         assertPreset("Specimen Label", 40, 80, false, true, 0, 10, 3, 7);
-        assertPreset("Block Label", 35, 70, false, true, 0, 10, 4, 6);
+        assertPreset("Block Label", 36, 70, false, true, 0, 10, 4, 6);
         assertPreset("Slide Label", 45, 85, false, true, 0, 10, 5, 9);
         assertPreset("Freezer Label", 50, 60, false, true, 0, 10, 2, 5);
 
@@ -204,6 +250,13 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
 
     private void assertPreset(String name, int height, int width, boolean printsPerOrder, boolean printsPerSample,
             int defaultPerOrder, int maxPerOrder, int defaultPerSample, int maxPerSample) throws Exception {
+        assertPreset(dataSource, name, height, width, printsPerOrder, printsPerSample, defaultPerOrder, maxPerOrder,
+                defaultPerSample, maxPerSample);
+    }
+
+    static void assertPreset(DataSource dataSource, String name, int height, int width, boolean printsPerOrder,
+            boolean printsPerSample, int defaultPerOrder, int maxPerOrder, int defaultPerSample, int maxPerSample)
+            throws Exception {
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement stmt = conn.prepareStatement("SELECT height_mm, width_mm, prints_per_order, "
                         + "prints_per_sample, default_per_order, max_per_order, default_per_sample, max_per_sample, "
@@ -264,12 +317,12 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         executeSeedSql(dataSource, SEED_CHANGESET);
     }
 
-    private void clearSystemPresets() throws Exception {
-        clearSystemPresets(dataSource);
+    private void runRealSeedGuardSql() throws Exception {
+        executeGuardSql(dataSource, SEED_CHANGESET);
     }
 
-    private void clearBarcodeSiteInformation() throws Exception {
-        clearBarcodeSiteInformation(dataSource);
+    private void clearSystemPresets() throws Exception {
+        clearSystemPresets(dataSource);
     }
 
     private void loadFixture(String fixture) throws Exception {
@@ -285,7 +338,18 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         executeChangesetSql(dataSource, changesetPath, "INSERT INTO");
     }
 
-    /** Runs the {@code UPDATE} block of a changeset, such as 032's backfill. */
+    /**
+     * Runs the MG-6 guard block of the seed changeset, the {@code DO} block that
+     * raises when v1 configuration exists and a seeded preset did not take it.
+     */
+    static void executeGuardSql(DataSource dataSource, String changesetPath) throws Exception {
+        executeChangesetSql(dataSource, changesetPath, "RAISE EXCEPTION");
+    }
+
+    /**
+     * Runs the {@code UPDATE} block of a changeset, such as 032's backfill or 008's
+     * re-seed.
+     */
     static void executeUpdateSql(DataSource dataSource, String changesetPath) throws Exception {
         executeChangesetSql(dataSource, changesetPath, "UPDATE CLINLIMS.LABEL_PRESET");
     }
@@ -347,6 +411,7 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
      * conditions the seeded presets.
      */
     static void restoreCanonicalSeed(DataSource dataSource) throws Exception {
+        restoreLegacyLabelKeys(dataSource);
         clearSystemPresets(dataSource);
         executeSeedSql(dataSource, SEED_CHANGESET);
         executeSeedSql(dataSource, FIELD_SEED_CHANGESET);
@@ -361,11 +426,51 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    static void clearBarcodeSiteInformation(DataSource dataSource) throws Exception {
+    /**
+     * The real per-type label keys the seed reads (ConfigurationProperties.Property
+     * names).
+     */
+    static final String LEGACY_KEY_PATTERN = "^(height|width|numDefault|numMax)(Order|Specimen|Block|Slide|Freezer)Labels$";
+
+    private static final String LEGACY_KEY_BACKUP_TABLE = "label_key_backup_seed_test";
+
+    /**
+     * Moves the database's own legacy label keys into a backup table so a fixture
+     * can be the sole source of truth. The 2.5.x.x changelog seeds
+     * {@code numDefaultOrderLabels} and {@code numDefaultSpecimenLabels} on every
+     * database, so these rows exist in the shared test container and must come back
+     * afterwards ({@link #restoreLegacyLabelKeys}). An existing backup (a previous
+     * test that died before restoring) is kept, never overwritten.
+     */
+    static void stashLegacyLabelKeys(DataSource dataSource) throws Exception {
         try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute("DELETE FROM clinlims.site_information WHERE name LIKE 'barcode.order.%' "
-                    + "OR name LIKE 'barcode.specimen.%' OR name LIKE 'barcode.block.%' "
-                    + "OR name LIKE 'barcode.slide.%' OR name LIKE 'barcode.freezer.%'");
+            if (!backupTableExists(conn)) {
+                stmt.execute("CREATE TABLE clinlims." + LEGACY_KEY_BACKUP_TABLE
+                        + " AS SELECT * FROM clinlims.site_information WHERE name ~ '" + LEGACY_KEY_PATTERN + "'");
+            }
+            stmt.execute("DELETE FROM clinlims.site_information WHERE name ~ '" + LEGACY_KEY_PATTERN + "'");
+        }
+    }
+
+    /** Puts the stashed legacy label keys back and drops the fixture's rows. */
+    static void restoreLegacyLabelKeys(DataSource dataSource) throws Exception {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            if (!backupTableExists(conn)) {
+                return;
+            }
+            stmt.execute("DELETE FROM clinlims.site_information WHERE name ~ '" + LEGACY_KEY_PATTERN + "'");
+            stmt.execute("INSERT INTO clinlims.site_information SELECT * FROM clinlims." + LEGACY_KEY_BACKUP_TABLE);
+            stmt.execute("DROP TABLE clinlims." + LEGACY_KEY_BACKUP_TABLE);
+        }
+    }
+
+    private static boolean backupTableExists(Connection conn) throws Exception {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT to_regclass(?) IS NOT NULL")) {
+            stmt.setString(1, "clinlims." + LEGACY_KEY_BACKUP_TABLE);
+            try (ResultSet rs = stmt.executeQuery()) {
+                rs.next();
+                return rs.getBoolean(1);
+            }
         }
     }
 

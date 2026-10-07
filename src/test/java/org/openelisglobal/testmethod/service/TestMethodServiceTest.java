@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 
 import java.sql.Date;
 import java.util.List;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -14,6 +15,7 @@ import org.openelisglobal.testmethod.service.TestMethodService.InlineCreateData;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.testmethod.valueholder.TestMethod;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
 
@@ -22,6 +24,9 @@ public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private MethodService methodService;
+
+    @Autowired
+    private DataSource dataSource;
 
     @Before
     public void init() throws Exception {
@@ -261,6 +266,42 @@ public class TestMethodServiceTest extends BaseWebContextSensitiveTest {
         // Verify active methods for test 10 increased to 3
         List<TestMethod> activeLinks = testMethodService.getActiveTestMethodsByTestId("10");
         assertEquals(3, activeLinks.size());
+    }
+
+    /**
+     * A method added on Manage Methods starts inactive and becomes active once a
+     * test uses it; linking it to a test is that moment.
+     */
+    @Test
+    public void linkMethod_activatesAnInactiveMethod() {
+        deactivate("300");
+
+        TestMethod link = new TestMethod();
+        link.setTestId("20");
+        link.setMethodId("300");
+        link.setIsDefaultMethod(false);
+        link.setEffectiveDate(Date.valueOf("2025-03-01"));
+        link.setIsActive("Y");
+        link.setSysUserId("1");
+        testMethodService.linkMethod(link);
+
+        assertEquals("Y", methodService.get("300").getIsActive());
+    }
+
+    @Test
+    public void copyMethodsFromTest_activatesAnInactiveMethodItCopies() {
+        deactivate("100");
+
+        testMethodService.copyMethodsFromTest("10", "20", "1");
+
+        assertEquals("Y", methodService.get("100").getIsActive());
+    }
+
+    private void deactivate(String methodId) {
+        new JdbcTemplate(dataSource).update(
+                "UPDATE clinlims.method SET is_active = 'N', lastupdated = NOW() WHERE id = CAST(? AS numeric)",
+                methodId);
+        assertEquals("N", methodService.get(methodId).getIsActive());
     }
 
     @Test

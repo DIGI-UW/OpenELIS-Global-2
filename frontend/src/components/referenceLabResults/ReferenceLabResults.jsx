@@ -38,7 +38,7 @@ import React, {
   useState,
 } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
-import { useHistory, useLocation } from "react-router-dom";
+import { Link as RouterLink, useHistory, useLocation } from "react-router-dom";
 import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
 import { NotificationContext } from "../layout/Layout";
@@ -850,7 +850,8 @@ const OutstandingTable = ({
                 <Button
                   kind="tertiary"
                   size="sm"
-                  href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                  as={RouterLink}
+                  to={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
                   className="reference-lab-results__enter-result"
                 >
                   <FormattedMessage id="referral.action.enterResult" />
@@ -1155,7 +1156,8 @@ const ExpandPanel = ({
               <Button
                 kind="primary"
                 size="sm"
-                href={`/result?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
+                as={RouterLink}
+                to={`/Results?accessionNumber=${encodeURIComponent(row.labNumber || "")}`}
               >
                 <FormattedMessage id="referral.action.enterResult" />
               </Button>
@@ -1217,7 +1219,7 @@ const ExpandPanel = ({
             </div>
             {row.labNumber && (
               <CarbonLink
-                href={`/result?accessionNumber=${row.labNumber}`}
+                href={`/Results?accessionNumber=${encodeURIComponent(row.labNumber)}`}
                 className="reference-lab-results__result-entry-link"
               >
                 <FormattedMessage id="referral.action.openResultEntry" />

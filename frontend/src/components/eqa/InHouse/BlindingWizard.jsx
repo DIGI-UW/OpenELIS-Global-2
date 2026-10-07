@@ -110,16 +110,32 @@ const BlindingWizard = () => {
 
   useEffect(() => {
     fetchInHouseSchemes(setSchemes);
-    fetchTests(setTests);
     fetchLabUsers(setLabUsers);
   }, []);
 
   useEffect(() => {
+    setRoster([]);
+    setTests([]);
     if (!cycle.schemeId) {
-      setRoster([]);
       return;
     }
-    fetchAnalysts(cycle.schemeId, setRoster);
+    let current = true;
+    fetchAnalysts(cycle.schemeId, (rows) => current && setRoster(rows));
+    fetchTests(cycle.schemeId, (schemeTests) => {
+      if (!current) {
+        return;
+      }
+      const offered = new Set(schemeTests.map((test) => String(test.id)));
+      setTests(schemeTests);
+      setSamples((rows) =>
+        rows.map((row) =>
+          offered.has(String(row.testId)) ? row : { ...row, testId: "" },
+        ),
+      );
+    });
+    return () => {
+      current = false;
+    };
   }, [cycle.schemeId]);
 
   const step1Ready = cycle.schemeId && cycle.unblindDate;
@@ -439,6 +455,17 @@ const BlindingWizard = () => {
                 { count: samples.length },
               )}
             </p>
+            {tests.length === 0 && (
+              <InlineNotification
+                kind="warning"
+                lowContrast
+                hideCloseButton
+                title={intl.formatMessage({
+                  id: "eqa.wizard.noSchemeTests",
+                  defaultMessage: "This scheme has no tests a panel can use.",
+                })}
+              />
+            )}
             <Table size="sm">
               <TableHead>
                 <TableRow>

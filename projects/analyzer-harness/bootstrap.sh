@@ -18,12 +18,10 @@ NC='\033[0m'
 
 FORCE_RELOAD_CONFIG=false
 LOCAL_MODE=false
-SKIP_PLUGINS=false
 for arg in "$@"; do
   case $arg in
     --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
     --local) LOCAL_MODE=true ;;
-    --skip-plugins) SKIP_PLUGINS=true ;;
   esac
 done
 
@@ -158,7 +156,7 @@ fi
 # --- WAR check ---
 WAR="$REPO_ROOT/target/OpenELIS-Global.war"
 if [ ! -f "$WAR" ]; then
-  echo -e "  ${YELLOW}WARN: $WAR not found. Run ./build.sh or mvn clean install -DskipTests -Dmaven.test.skip=true from repo root.${NC}"
+  echo -e "  ${YELLOW}INFO: $WAR not found yet. scripts/dev-stack up builds it from source.${NC}"
 else
   echo -e "  ${GREEN}✓ WAR found${NC}"
 fi

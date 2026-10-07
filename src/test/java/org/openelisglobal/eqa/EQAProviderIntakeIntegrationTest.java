@@ -4,6 +4,9 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.itextpdf.text.pdf.PdfReader;
 import com.itextpdf.text.pdf.parser.PdfTextExtractor;
@@ -12,8 +15,12 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.hamcrest.CoreMatchers;
 import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.config.ControllerSetup;
+import org.openelisglobal.eqa.controller.rest.EQAResultRestController;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
 import org.openelisglobal.eqa.service.EQAPerformanceReportPDFService;
 import org.openelisglobal.eqa.service.EQAProviderScoringService;
@@ -23,7 +30,12 @@ import org.openelisglobal.eqa.valueholder.EQAPanelSample;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionMethod;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
+import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 /**
  * Provider-side intake of participant results (OGC-613): phoned and emailed
@@ -433,6 +445,25 @@ public class EQAProviderIntakeIntegrationTest extends EQASpineTestBase {
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage(), expected.getMessage().contains("PLANNED"));
         }
+        assertEquals(Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_result", Integer.class));
+    }
+
+    @Test
+    public void resultEntryOnAClosedCycleAnswersAConflictThatNamesTheState() throws Exception {
+        EQAResultRestController controller = new EQAResultRestController();
+        ReflectionTestUtils.setField(controller, "scoringService", scoringService);
+        MockMvc rest = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ControllerSetup()).build();
+        UserSessionData session = new UserSessionData();
+        session.setSytemUserId(1);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        rest.perform(post("/rest/eqa/cycles/" + cycle.getId() + "/results")
+                .sessionAttr(IActionConstants.USER_SESSION_DATA, session).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"organizationId\": " + FIRST_ORG + ", \"results\": [{\"testId\": " + TEST_VL
+                        + ", \"value\": \"1\"}]}"))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.error").value(CoreMatchers.containsString("CLOSED")));
         assertEquals(Integer.valueOf(0),
                 jdbc.queryForObject("SELECT count(*) FROM clinlims.eqa_result", Integer.class));
     }

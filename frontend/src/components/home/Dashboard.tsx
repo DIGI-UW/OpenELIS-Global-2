@@ -23,6 +23,7 @@ import {
   InlineNotification,
   Stack,
 } from "@carbon/react";
+import useInAppNavigation from "../common/useInAppNavigation";
 import ServerPageArrows from "../common/ServerPageArrows";
 import "./Dashboard.css";
 import {
@@ -117,6 +118,12 @@ const ALL_SECTIONS = "all";
 
 const HomeDashBoard: React.FC<DashBoardProps> = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
+  const orderLink = (type: string, labNumber: string) =>
+    type == "ORDERS_IN_PROGRESS"
+      ? "/Results?accessionNumber=" + encodeURIComponent(labNumber)
+      : "/validation?type=order&accessionNumber=" +
+        encodeURIComponent(labNumber);
 
   const [counts, setCounts] = useState({
     ordersInProgress: 0,
@@ -453,12 +460,8 @@ const HomeDashBoard: React.FC<DashBoardProps> = () => {
               selectedTile.type == "ORDERS_READY_FOR_VALIDATION" ? (
                 <Link
                   style={{ color: "blue" }}
-                  href={
-                    selectedTile.type == "ORDERS_IN_PROGRESS"
-                      ? "/result?type=order&doRange=false&accessionNumber=" +
-                        cell.value
-                      : "validation?type=order&accessionNumber=" + cell.value
-                  }
+                  href={orderLink(selectedTile.type, cell.value)}
+                  onClick={navigate(orderLink(selectedTile.type, cell.value))}
                 >
                   <u>{convertAlphaNumLabNumForDisplay(cell.value)}</u>
                 </Link>

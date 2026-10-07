@@ -161,7 +161,10 @@ const ImportExportView = () => {
         setBusy(false);
       })
       .catch((e) => {
-        setError(e.message);
+        setError(
+          e.message ||
+            intl.formatMessage({ id: "error.locations.request.failed" }),
+        );
         setBusy(false);
       });
   };
@@ -190,7 +193,10 @@ const ImportExportView = () => {
         notify(intl.formatMessage({ id: "label.locations.import.complete" }));
       })
       .catch((e) => {
-        setError(e.message);
+        setError(
+          e.message ||
+            intl.formatMessage({ id: "error.locations.request.failed" }),
+        );
         setConfirming(false);
         setBusy(false);
       });
@@ -207,6 +213,17 @@ const ImportExportView = () => {
 
   const outcomeLabel = (outcome) =>
     intl.formatMessage({ id: `label.locations.import.outcome.${outcome}` });
+
+  const countsText = (summary) => {
+    try {
+      const parsed = JSON.parse(summary || "{}");
+      return COUNT_KEYS.filter((key) => parsed[key])
+        .map((key) => `${parsed[key]} ${outcomeLabel(key)}`)
+        .join(", ");
+    } catch {
+      return "";
+    }
+  };
 
   return (
     <Stack gap={6} className="locationsImport" data-testid="locations-import">
@@ -342,6 +359,30 @@ const ImportExportView = () => {
 
       {stage === "preview" && plan && (
         <>
+          {(plan.errors || []).map((message) => (
+            <InlineNotification
+              key={message}
+              kind="error"
+              lowContrast
+              hideCloseButton
+              title=""
+              subtitle={message}
+              data-testid="locations-import-file-error"
+            />
+          ))}
+          {(plan.ignoredColumns || []).length > 0 && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title=""
+              data-testid="locations-import-ignored"
+              subtitle={intl.formatMessage(
+                { id: "warning.locations.import.ignoredColumns" },
+                { columns: plan.ignoredColumns.join(", ") },
+              )}
+            />
+          )}
           <InlineNotification
             kind="info"
             lowContrast
@@ -590,11 +631,29 @@ const ImportExportView = () => {
           >
             <TableBody>
               {recent.map((run) => (
-                <TableRow key={run.id}>
+                <TableRow
+                  key={run.id}
+                  data-testid={`locations-import-run-${run.id}`}
+                >
                   <TableCell>{run.startedAt}</TableCell>
                   <TableCell>{run.user}</TableCell>
-                  <TableCell>{run.mode}</TableCell>
-                  <TableCell>{run.summary}</TableCell>
+                  <TableCell>
+                    <Tag
+                      type={run.action === "apply" ? "green" : "gray"}
+                      size="sm"
+                    >
+                      <FormattedMessage
+                        id={
+                          run.action === "apply"
+                            ? "label.locations.import.run.applied"
+                            : "label.locations.import.run.preview"
+                        }
+                      />
+                    </Tag>{" "}
+                    {run.mode}
+                  </TableCell>
+                  <TableCell>{(run.files || []).join(", ")}</TableCell>
+                  <TableCell>{countsText(run.summary)}</TableCell>
                   <TableCell>
                     <Button
                       kind="ghost"

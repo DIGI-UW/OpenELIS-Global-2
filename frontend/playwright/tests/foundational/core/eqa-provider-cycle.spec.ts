@@ -12,6 +12,7 @@ import {
   PROVIDER_PARTICIPANT_COUNT,
 } from "../../../helpers/seed-eqa-data";
 import { pickCalendarDay } from "../../../helpers/carbon-date-picker";
+import { csrfToken } from "../../../helpers/api-session";
 
 /**
  * EQA provider cycle lifecycle (OGC-613).
@@ -34,6 +35,7 @@ import { pickCalendarDay } from "../../../helpers/carbon-date-picker";
 
 const RUN = Date.now().toString(36);
 const N = PROVIDER_PARTICIPANT_COUNT;
+const API = "/api/OpenELIS-Global/rest";
 
 let seed: ProviderSchemeSeed;
 
@@ -62,6 +64,28 @@ test.describe("EQA provider cycle lifecycle", () => {
       expect(page.getByText(state, { exact: true }).first()).toBeVisible({
         timeout: UI_TIMEOUT,
       });
+
+    await test.step("the scheme admin assigns the scheme a testable test", async () => {
+      const headers = { "X-CSRF-Token": await csrfToken(page) };
+      const testable = await page.request.get(`${API}/eqa/testable-tests`, {
+        headers,
+      });
+      const catalog = await page.request.get(`${API}/displayList/ALL_TESTS`, {
+        headers,
+      });
+      expect(testable.ok(), `testable-tests: ${testable.status()}`).toBe(true);
+      expect(catalog.ok(), `ALL_TESTS: ${catalog.status()}`).toBe(true);
+      const usable = new Set((await testable.json()).map(String));
+      const picked = ((await catalog.json()) as { id: string }[]).find((row) =>
+        usable.has(String(row.id)),
+      );
+      expect(picked, "a catalog test with a sample type").toBeTruthy();
+      const assigned = await page.request.put(
+        `${API}/eqa/programs/${seed.programId}/tests`,
+        { headers, data: { testIds: [Number(picked!.id)] } },
+      );
+      expect(assigned.ok(), `assign test: ${assigned.status()}`).toBe(true);
+    });
 
     await test.step("scheme board lists the seeded scheme", async () => {
       await page.goto("/qa/eqa/provider/schemes", { timeout: NAV_TIMEOUT });
@@ -94,8 +118,12 @@ test.describe("EQA provider cycle lifecycle", () => {
       await page.locator("#cycle-number").fill("1");
       // The step-1 relabel: the range picker collects the dates the FRS
       // names, not "planned start/end".
-      await expect(page.getByText("Distribution date")).toBeVisible();
-      await expect(page.getByText("Submission deadline")).toBeVisible();
+      await expect(
+        page.getByText("Distribution date", { exact: true }),
+      ).toBeVisible();
+      await expect(
+        page.getByText("Submission deadline", { exact: true }),
+      ).toBeVisible();
       // Both inputs take no keystrokes, so the range is chosen on the
       // calendar: distribution on the 1st of next month and the deadline on
       // its 15th, which keeps the cycle ahead of today whenever the spec runs.
@@ -296,7 +324,7 @@ test.describe("EQA provider cycle lifecycle", () => {
       ).toBeVisible();
     });
 
-    await test.step("scores leave the system as CSV and over FHIR", async () => {
+    await test.step("a CSV cycle returns its scores as CSV only", async () => {
       const outlierRow = page.locator("tr", {
         hasText: seed.organizationNames[0],
       });
@@ -325,46 +353,11 @@ test.describe("EQA provider cycle lifecycle", () => {
       expect(csv).toHaveLength(2);
       expect(csv[1]).toContain("UNACCEPTABLE");
 
-      // The return must succeed. The FHIR endpoint answers HTTP 200 even
-      // when the store refuses the bundle — the page reads the body's
-      // success flag — so accepting either message would leave a broken
-      // egress path permanently green.
-      await outlierRow.getByRole("button", { name: "Send scores" }).click();
+      // Send scores writes only to the FHIR store, which a CSV cycle's
+      // participants never read.
       await expect(
-        page
-          .getByText(
-            "Scores placed in the FHIR store for the participant to collect.",
-          )
-          .first(),
-      ).toBeVisible({ timeout: LONG_TIMEOUT });
-    });
-
-    await test.step("a repeat panel is dispatched from the reserve", async () => {
-      const outlierRow = page.locator("tr", {
-        hasText: seed.organizationNames[0],
-      });
-      await outlierRow.getByRole("button", { name: "Send repeat" }).click();
-      // Prep reserved five aliquots for a one-sample panel, so the reserve
-      // covers this repeat and no override note is required.
-      await expect(
-        page.getByRole("heading", { name: "Send a repeat panel" }),
-      ).toBeVisible({ timeout: UI_TIMEOUT });
-      await page
-        .locator("#eqa-repeat-override-note")
-        .fill(`E2E ${RUN}: reserve covers this repeat`);
-      await page.getByRole("button", { name: "Send repeat" }).last().click();
-      await expect(
-        page.getByText("Repeat panel dispatched.").first(),
-      ).toBeVisible({ timeout: UI_TIMEOUT });
-      // The monitor follows the newest box, so the row reverts to in transit
-      // and is marked as a repeat.
-      await expect(outlierRow.getByText("Repeat shipment")).toBeVisible({
-        timeout: UI_TIMEOUT,
-      });
-      await expect(outlierRow.getByText("In transit")).toBeVisible();
-      await expect(
-        outlierRow.getByRole("button", { name: "Mark received" }),
-      ).toBeVisible();
+        outlierRow.getByRole("button", { name: "Send scores" }),
+      ).toHaveCount(0);
     });
 
     await test.step("a pre-approved comment is attached to the report", async () => {
@@ -401,7 +394,9 @@ test.describe("EQA provider cycle lifecycle", () => {
 
     await test.step("cycle history carries the manual create and system walks", async () => {
       await page.getByRole("button", { name: "Cycle history" }).click();
-      await expect(page.getByText("Manual override").first()).toBeVisible({
+      await expect(
+        page.getByText("Manual", { exact: true }).first(),
+      ).toBeVisible({
         timeout: UI_TIMEOUT,
       });
       await expect(
@@ -427,6 +422,42 @@ test.describe("EQA provider cycle lifecycle", () => {
       await expect(
         page.locator("tr", { hasText: seed.organizationNames[1] }),
       ).toHaveCount(0);
+    });
+
+    await test.step("after scoring, the register sends the repeat and Shipments follows it", async () => {
+      const registerRow = page.locator("tr", {
+        hasText: seed.organizationNames[0],
+      });
+      await registerRow.getByRole("button", { name: "Triage" }).click();
+      await page.getByRole("button", { name: "Flag for repeat" }).click();
+      await expect(
+        page.getByRole("heading", { name: "Send a repeat panel" }),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      // Prep reserved five aliquots for a one-sample panel, so the reserve
+      // covers this repeat and no override note is required.
+      await page.locator("#eqa-repeat-courier").fill("E2E repeat courier");
+      await page.locator("#eqa-repeat-tracking").fill(`E2E-${RUN}-R1`);
+      await page.getByRole("button", { name: "Confirm" }).click();
+      await expect(
+        page
+          .getByText(`Repeat panel dispatched to ${seed.organizationNames[0]}.`)
+          .first(),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+
+      await page.goto(`/qa/eqa/provider/cycles/${cycleId}/workbench`, {
+        timeout: NAV_TIMEOUT,
+      });
+      await expect(page.getByRole("tab", { name: "Prep" })).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await page.getByRole("tab", { name: "Shipments" }).click();
+      const tracking = page.locator(`#tracking-${seed.organizationIds[0]}`);
+      await expect(tracking).toHaveValue(`E2E-${RUN}-R1`, {
+        timeout: UI_TIMEOUT,
+      });
+      await expect(page.locator("tr", { has: tracking })).toContainText(
+        `EQA-C${cycleId}-${seed.organizationIds[0]}-R1`,
+      );
     });
   });
 });

@@ -187,7 +187,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         prepAndDispatch(6, 2, null);
         Integer originalShipment = shipmentId(ORG_A);
 
-        Map<String, Object> repeat = shipmentService.sendRepeat(cycle.getId(), ORG_A, null, USER);
+        Map<String, Object> repeat = shipmentService.sendRepeat(cycle.getId(), ORG_A, null, null, null, null, USER);
 
         assertEquals("EQA-C" + cycle.getId() + "-" + ORG_A + "-R1", repeat.get("boxCode"));
         assertEquals("the repeat records the shipment it replaces", originalShipment, repeat.get("repeatOfShipmentId"));
@@ -211,7 +211,7 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         prepAndDispatch(8, 1, null);
 
         try {
-            shipmentService.sendRepeat(cycle.getId(), ORG_A, null, USER);
+            shipmentService.sendRepeat(cycle.getId(), ORG_A, null, null, null, null, USER);
             fail("dipping into unreserved material takes a justification");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage(), expected.getMessage().contains("override note"));
@@ -219,7 +219,8 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         assertEquals("a refused repeat consumes nothing", Integer.valueOf(1), aliquots("aliquots_reserved"));
         assertEquals(Integer.valueOf(4), aliquots("aliquots_shipped"));
 
-        shipmentService.sendRepeat(cycle.getId(), ORG_A, "Courier lost the box; replacement authorised", USER);
+        shipmentService.sendRepeat(cycle.getId(), ORG_A, "Courier lost the box; replacement authorised", null, null,
+                null, USER);
 
         assertEquals(Integer.valueOf(0), aliquots("aliquots_reserved"));
         assertEquals(Integer.valueOf(6), aliquots("aliquots_shipped"));
@@ -231,7 +232,8 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
         prepAndDispatch(4, 0, null);
 
         try {
-            shipmentService.sendRepeat(cycle.getId(), ORG_A, "Authorised by the scheme manager", USER);
+            shipmentService.sendRepeat(cycle.getId(), ORG_A, "Authorised by the scheme manager", null, null, null,
+                    USER);
             fail("a repeat cannot be sent from material that does not exist");
         } catch (IllegalStateException expected) {
             assertTrue(expected.getMessage(), expected.getMessage().contains("no aliquots left"));
@@ -242,11 +244,49 @@ public class EQAProviderCycleOversightIntegrationTest extends EQASpineTestBase {
     @Test
     public void thereIsNothingToRepeatBeforeAnythingWasDispatched() {
         try {
-            shipmentService.sendRepeat(cycle.getId(), ORG_A, null, USER);
+            shipmentService.sendRepeat(cycle.getId(), ORG_A, null, null, null, null, USER);
             fail("a repeat replaces a shipment, so one has to exist");
         } catch (IllegalArgumentException expected) {
             assertTrue(expected.getMessage(), expected.getMessage().contains("Nothing has been dispatched"));
         }
+    }
+
+    @Test
+    public void aRepeatGoesOutWithTheCourierDetailsGivenForIt() {
+        prepAndDispatch(6, 2, null);
+
+        Map<String, Object> repeat = shipmentService.sendRepeat(cycle.getId(), ORG_A, null, "DHL", "DHL-4471",
+                java.sql.Date.valueOf("2026-10-09"), USER);
+
+        Map<String, Object> stored = jdbc.queryForMap(
+                "SELECT s.courier, s.tracking_number,"
+                        + " s.estimated_delivery_date::date AS expected FROM clinlims.shipment s"
+                        + " JOIN clinlims.shipping_box b ON b.id = s.shipping_box_id WHERE b.box_id = ?",
+                repeat.get("boxCode"));
+        assertEquals("DHL", stored.get("courier"));
+        assertEquals("DHL-4471", stored.get("tracking_number"));
+        assertEquals(java.sql.Date.valueOf("2026-10-09"), stored.get("expected"));
+        assertEquals("2026-10-09", String.valueOf(receiptRow(ORG_A).get("estimatedDeliveryDate")).substring(0, 10));
+        Map<String, Object> shipmentRow = shipmentService.getShipmentRows(cycle.getId()).stream()
+                .filter(row -> Long.valueOf(ORG_A).equals(row.get("organizationId"))).findFirst()
+                .orElseThrow(AssertionError::new);
+        assertEquals(repeat.get("boxCode"), shipmentRow.get("boxCode"));
+        assertEquals("DHL-4471", shipmentRow.get("trackingNumber"));
+    }
+
+    @Test
+    public void aClosedCycleSendsNoRepeat() {
+        prepAndDispatch(6, 2, null);
+        jdbc.update("UPDATE clinlims.eqa_cycle SET status = 'CLOSED' WHERE id = ?", cycle.getId());
+
+        try {
+            shipmentService.sendRepeat(cycle.getId(), ORG_A, null, null, null, null, USER);
+            fail("a closed cycle is final");
+        } catch (IllegalStateException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("closed"));
+        }
+        assertEquals("a refused repeat consumes nothing", Integer.valueOf(2), aliquots("aliquots_reserved"));
+        assertEquals(Integer.valueOf(4), aliquots("aliquots_shipped"));
     }
 
     // ---- scoring and score return ----

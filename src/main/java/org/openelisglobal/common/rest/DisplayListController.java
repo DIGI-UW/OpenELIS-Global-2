@@ -31,6 +31,7 @@ import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.common.util.LabelValuePair;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -43,6 +44,7 @@ import org.openelisglobal.project.valueholder.Project;
 import org.openelisglobal.provider.service.ProviderService;
 import org.openelisglobal.provider.valueholder.Provider;
 import org.openelisglobal.reports.action.implementation.ExportTrendsByDate;
+import org.openelisglobal.result.service.ResultEntryAcknowledgementService;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
@@ -90,6 +92,9 @@ public class DisplayListController extends BaseRestController {
 
     @Autowired
     private ProviderService providerService;
+
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
 
     @Autowired
     private PersonService personService;
@@ -140,6 +145,21 @@ public class DisplayListController extends BaseRestController {
 
     protected static List<Integer> statusList;
     protected static List<String> nfsTestIdList;
+
+    /**
+     * The localized text behind a localization id, or "" when the id is blank or
+     * unknown (the shipped default for a label setting is "-1").
+     */
+    private String localizedOrBlank(String localizationId) {
+        if (GenericValidator.isBlankOrNull(localizationId)) {
+            return "";
+        }
+        try {
+            return StringUtil.blankIfNull(localizationService.getLocalizedValueById(localizationId));
+        } catch (RuntimeException e) {
+            return "";
+        }
+    }
 
     private String escapeRegexChars(String regex) {
         // TODO Auto-generated method stub
@@ -322,6 +342,14 @@ public class DisplayListController extends BaseRestController {
 
         configs.put(Property.allowResultRejection.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.allowResultRejection));
+        configs.put(Property.SHOW_FAX_FIELDS.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.SHOW_FAX_FIELDS));
+        configs.put(Property.TRACK_PATIENT_PAYMENT.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.TRACK_PATIENT_PAYMENT));
+        configs.put(Property.USE_BILLING_REFERENCE_NUMBER.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.USE_BILLING_REFERENCE_NUMBER));
+        configs.put(Property.BILLING_REFERENCE_NUMBER_LABEL.toString(), localizedOrBlank(
+                ConfigurationProperties.getInstance().getPropertyValue(Property.BILLING_REFERENCE_NUMBER_LABEL)));
 
         configs.put(Property.AccessionFormat.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.AccessionFormat));
@@ -329,10 +357,20 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.USE_ALPHANUM_ACCESSION_PREFIX));
         configs.put(Property.ALERT_FOR_INVALID_RESULTS.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.ALERT_FOR_INVALID_RESULTS));
+        configs.put(Property.customCriticalMessage.toString(),
+                StringUtil.blankIfNull(acknowledgementService.getCustomCriticalMessage()));
         configs.put(Property.DEFAULT_DATE_LOCALE.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_DATE_LOCALE));
         configs.put(Property.UseExternalPatientInfo.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.UseExternalPatientInfo));
+        configs.put(Property.DEFAULT_ORDER_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_ORDER_LABEL_PRINTED));
+        configs.put(Property.MAX_ORDER_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_ORDER_LABEL_PRINTED));
+        configs.put(Property.DEFAULT_SPECIMEN_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_SPECIMEN_LABEL_PRINTED));
+        configs.put(Property.MAX_SPECIMEN_LABEL_PRINTED.toString(),
+                ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_SPECIMEN_LABEL_PRINTED));
         configs.put("DEFAULT_PAGE_SIZE",
                 ConfigurationProperties.getInstance().getPropertyValue("page.defaultPageSize"));
         configs.put("FIRST_NAME_REGEX", FIRST_NAME_REGEX);
@@ -351,8 +389,6 @@ public class DisplayListController extends BaseRestController {
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ALIAS_LABEL));
         configs.put(Property.PATIENT_ID_DOCUMENTS_LABEL.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.PATIENT_ID_DOCUMENTS_LABEL));
-        configs.put(Property.RESULTS_ENTRY_UNIFIED_ROUTE.toString(),
-                ConfigurationProperties.getInstance().getPropertyValue(Property.RESULTS_ENTRY_UNIFIED_ROUTE));
         configs.put(Property.REQUESTER_REQUIRED.toString(),
                 ConfigurationProperties.getInstance().getPropertyValue(Property.REQUESTER_REQUIRED));
         configs.put(Property.notesRequiredForModifyResults.toString(),

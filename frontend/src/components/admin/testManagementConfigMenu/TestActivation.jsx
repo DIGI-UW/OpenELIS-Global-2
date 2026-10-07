@@ -1215,7 +1215,7 @@ function TestActivation() {
       <Modal
         open={isConfirmModalOpen}
         size="md"
-        modalHeading={<FormattedMessage id="label.test.order.confirm" />}
+        modalHeading={<FormattedMessage id="label.test.activation.confirm" />}
         primaryButtonText={<FormattedMessage id="column.name.accept" />}
         secondaryButtonText={<FormattedMessage id="back.action.button" />}
         onRequestSubmit={() => {

@@ -186,3 +186,51 @@ test("configuration-only groups stay compact while their database children remai
     within(screen.getByTestId("menu-fields-custom")).getByLabelText("Icon"),
   ).toBeEnabled();
 });
+
+test("OGC-1418: does not offer the retired Validation entries, so they cannot be switched back on", async () => {
+  const validation = {
+    menu: {
+      elementId: "menu_resultvalidation",
+      displayKey: "banner.menu.resultvalidation",
+      isActive: true,
+      actionURL: "/validation",
+      icon: null,
+      presentationStyle: null,
+      configurationFields: [],
+    },
+    childMenus: [
+      {
+        menu: {
+          elementId: "menu_resultvalidation_routine",
+          displayKey: "banner.menu.resultvalidation.routine",
+          isActive: false,
+          actionURL: "/ResultValidation?type=&test=",
+          configurationFields: [],
+        },
+        childMenus: [],
+      },
+      {
+        menu: {
+          elementId: "menu_accession_validation",
+          displayKey: "banner.menu.accession.validation",
+          isActive: false,
+          actionURL: "/AccessionValidation",
+          configurationFields: [],
+        },
+        childMenus: [],
+      },
+    ],
+  };
+  fetchFromOpenElisServer.mockResolvedValue([validation]);
+  mount();
+
+  expect(
+    await screen.findByTestId("menu-settings-menu_resultvalidation"),
+  ).toBeTruthy();
+  expect(
+    screen.queryByTestId("menu-settings-menu_resultvalidation_routine"),
+  ).toBeNull();
+  expect(
+    screen.queryByTestId("menu-settings-menu_accession_validation"),
+  ).toBeNull();
+});

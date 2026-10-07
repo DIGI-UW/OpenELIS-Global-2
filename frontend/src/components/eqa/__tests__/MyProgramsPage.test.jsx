@@ -113,7 +113,7 @@ describe("MyProgramsPage", () => {
   test("renders page subtitle", () => {
     renderPage();
     expect(
-      screen.getByText("Programs this laboratory participates in"),
+      screen.getByText("Schemes this laboratory participates in"),
     ).toBeTruthy();
   });
 
@@ -256,7 +256,7 @@ describe("MyProgramsPage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save Enrollment" }));
 
     expect(
-      screen.getByText("Program enrollment created successfully"),
+      screen.getByText("Scheme enrollment created successfully"),
     ).toBeInTheDocument();
   });
 

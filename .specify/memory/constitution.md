@@ -1,6 +1,46 @@
 # OpenELIS Global 2.0 Constitution
 
 <!--
+SYNC IMPACT REPORT - Test isolation becomes a MUST
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Version Change: 1.11.2 → 1.12.0
+Change Type: MINOR - New section V.7 (Test Isolation); materially expanded guidance
+Date: 2026-09-29
+
+Modified Sections:
+  - Principle V > V.5 > Debugging and Maintenance > Test Isolation
+    * "Prefer isolated tests" replaced by a pointer to V.7. The only isolation
+      mechanism named was shared authentication state, and nothing addressed
+      data shared through the database.
+  - Principle V > V.6 > Universal
+    * Added U4, pointing at V.7.
+
+Added Sections:
+  - Principle V > V.7 Test Isolation (MANDATORY)
+    * One invariant for every test level: a test's result depends only on the
+      code under test and the data the test itself created.
+    * Rules for owning data, scoping reads, never widening an assertion, and
+      pinning time.
+
+Rationale:
+  The Playwright suites share one database per stack. workers: 1 and CI
+  sharding stop concurrent writers from colliding, but neither stops a spec
+  from reading another spec's rows, and sharding makes which specs share a
+  database depend on how the shards happen to split. Specs that read "everything
+  from today" passed for weeks and failed when an unrelated spec was added.
+
+Templates Requiring Updates:
+  ✅ .specify/guides/testing-roadmap.md - U4, E5, E6 and checklist item
+  ✅ .specify/guides/playwright-best-practices.md - "Keep Tests Isolated"
+  ✅ .ai/skills/playwright/SKILL.md - non-negotiables
+  ✅ .specify/templates/plan-template.md - Constitution Check and Test Data Management
+
+Follow-up TODOs:
+  - Scheduled unsharded and shuffled-order guard runs (separate PR).
+  - Backend counterpart is tracked in OGC-1391.
+-->
+
+<!--
 SYNC IMPACT REPORT - Branch strategy: main and release branches
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 Version Change: 1.11.1 → 1.11.2
@@ -1069,11 +1109,9 @@ npm run cy:failfast:spec "cypress/e2e/AdminE2E/*.cy.js"
 
 **Debugging and Maintenance**:
 
-- **Test Isolation**: Prefer isolated tests that can run independently
+- **Test Isolation**: Tests MUST be isolated as defined in Section V.7
   - Use setup projects (Playwright) or cy.session() (Cypress) for shared
     authentication state
-  - If shared state needed beyond authentication, document rationale in test
-    file header
 - **Performance Monitoring**: Track test execution time and optimize as needed
   - Individual tests should complete without user-perceived delay
   - Full suite should complete in reasonable time for CI/CD context
@@ -1153,11 +1191,47 @@ catch-and-continue in @Transactional. HQL/SQL param tests required.
 fetch() in components. Use waitFor (not deprecated wait). i18n assertions for
 user-visible text.
 
-**E2E (E1–E4):** Every test step must have an assertion. No deprecated
+**E2E (E1–E6):** Every test step must have an assertion. No deprecated
 isVisible({timeout}). No .catch(() => false) on locators. API-first data setup.
+Read only your own data. No clock or time zone dependence (V.7).
 
-**Universal (U1–U3):** Inversion Test mandatory. One bug = one regression test.
-No any() without justification.
+**Universal (U1–U4):** Inversion Test mandatory. One bug = one regression test.
+No any() without justification. Tests are isolated (V.7).
+
+### V.7 Test Isolation (MANDATORY)
+
+**Invariant, for every test at every level**: a test's result MUST depend only
+on the code under test and on data that test created. It MUST NOT depend on data
+created by other tests, on test order, on how tests are sharded or parallelized,
+or on the wall clock.
+
+Rules:
+
+- **Write only data you own.** Create the records a test needs, with unique
+  identifiers, through the API or seed helpers.
+- **Read only data you own.** Every list, count, total, rate, or state derived
+  from one (for example an enabled button) MUST be scoped to the test's own
+  records, or measured as a before and after difference. A date window alone is
+  not a scope.
+- **Never widen an assertion because other data might be present.** Narrow the
+  read instead.
+- **Pin time.** Use explicit dates and freeze or inject the clock used by the
+  code under test when it reads the current time, including the server clock
+  when applicable. A live server's "today" is not pinned time. Tests of
+  current-date behavior MUST set that clock to the dates or boundaries being
+  exercised. A test MUST NOT pass or fail depending on the wall clock or the
+  browser's time zone.
+- **Exempt: shared read-only reference data**, such as the configured test
+  catalog and authentication state. A test that changes reference data MUST
+  restore it or run against its own copy.
+
+**Rationale**: A test is evidence only if nothing outside the code under test can
+change its result. Tests that read shared state pass or fail by scheduling luck,
+and sharding makes that luck depend on how the suite happens to split. Each
+failure of this kind costs a CI investigation that finds no defect.
+
+**Verification**: Scheduled runs of each lane, unsharded in one database and in
+shuffled order, report tests that pass in CI but fail there.
 
 ---
 
@@ -1649,34 +1723,20 @@ All checks MUST pass before merge.
 **Quick Start** (from [README.md](README.md)):
 
 ```bash
-# Clone + submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-git submodule update --init --recursive
-
-# Build DataExport submodule
-cd dataexport && mvn clean install -DskipTests && cd ..
-
-# Build OpenELIS WAR
-mvn clean install -DskipTests
-
-# Start development containers
-docker compose -f dev.docker-compose.yml up -d
+bash scripts/setup-workspace.sh
+scripts/dev-stack doctor
+scripts/dev-stack up
+scripts/dev-stack url
 ```
 
-**Access Points**:
-
-- React UI: https://localhost/
-- Legacy UI: https://localhost/api/OpenELIS-Global/
-- FHIR Server: https://fhir.openelis.org:8443/fhir/
-
-**Hot Reload**:
-
-- Frontend: Changes in `frontend/src/` auto-reload (Webpack HMR)
-- Backend: Rebuild WAR (`mvn clean install -DskipTests`) + recreate container:
-  ```bash
-  docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
-  ```
+Use the endpoints printed by the launcher. Frontend source changes hot reload;
+re-run `scripts/dev-stack up` after backend or dependency changes. Run
+`scripts/run-ci-checks.sh` for the committed candidate while GitHub CI runs.
+Native builds and published-image deployments remain separate modes described
+in the setup guide. These operational commands do not alter the constitutional
+principles above.
 
 **Reference**: [dev_setup.md](docs/dev_setup.md)
 
@@ -1767,7 +1827,7 @@ sync.
 
 ---
 
-**Version**: 1.11.2 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-25
+**Version**: 1.12.0 | **Ratified**: 2025-10-30 | **Last Amended**: 2026-09-29
 
 <!--
   Ratification Signatories: OpenELIS Global Core Team

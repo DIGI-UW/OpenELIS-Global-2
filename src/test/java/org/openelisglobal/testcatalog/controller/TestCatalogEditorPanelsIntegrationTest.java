@@ -6,6 +6,7 @@ import static org.junit.Assert.assertTrue;
 import java.util.UUID;
 import org.junit.After;
 import org.junit.Before;
+import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.services.DisplayListService;
@@ -1030,5 +1031,34 @@ public class TestCatalogEditorPanelsIntegrationTest extends BaseWebContextSensit
                 }
             }
         }
+    }
+
+    /**
+     * Renaming a panel on Basic Info changes its English name only; the French
+     * name, set on Localization, is kept. It used to be overwritten with the
+     * English one.
+     */
+    @Test
+    public void renamingAPanelKeepsItsFrenchName() {
+        org.springframework.test.util.ReflectionTestUtils.setField(controller, "localizationService",
+                localizationService);
+        jdbc.update(
+                "UPDATE clinlims.localization_value SET value = 'PanelsITAlpha FR' WHERE locale = 'fr'"
+                        + " AND localization_id = (SELECT name_localization_id FROM clinlims.panel WHERE id = ?)",
+                PANEL_A_ID);
+
+        TestCatalogEditorRestController.PanelBasicInfoRequest body = new TestCatalogEditorRestController.PanelBasicInfoRequest();
+        body.name = "PanelsITAlphaRenamed";
+        assertEquals(200, controller.savePanelBasicInfo(panelAId, body, authedRequest()).getStatusCode().value());
+
+        assertEquals("PanelsITAlphaRenamed", panelName(PANEL_A_ID, "en"));
+        assertEquals("PanelsITAlpha FR", panelName(PANEL_A_ID, "fr"));
+    }
+
+    private String panelName(long panelId, String locale) {
+        return jdbc.queryForObject(
+                "SELECT lv.value FROM clinlims.panel p JOIN clinlims.localization_value lv"
+                        + " ON lv.localization_id = p.name_localization_id WHERE p.id = ? AND lv.locale = ?",
+                String.class, panelId, locale);
     }
 }

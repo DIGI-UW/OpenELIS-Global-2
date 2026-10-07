@@ -60,7 +60,25 @@ await expect(page.getByRole("button", { name: "Submit" })).toBeVisible();
 
 ### 2. Keep Tests Isolated
 
-Each test runs in a fresh browser context. Don't rely on state from other tests.
+A spec's result depends only on the code under test and the data the spec
+created. Not on another spec's browser state, another spec's data, run order,
+sharding, or the clock (Constitution V.7).
+
+All specs in a run share one webapp and one database. `workers: 1` and CI
+sharding keep concurrent writers from colliding; they do not stop a spec from
+reading rows another spec wrote, and which specs share a database changes
+whenever a spec is added.
+
+- **Write only data you own.** Seed through the API with unique identifiers.
+- **Read only data you own.** Scope every list, count, rate, or state derived
+  from one to your seeded IDs, or assert a before and after delta. A date
+  window alone is not a scope.
+- **Never widen an assertion because other data might be present.** Narrow the
+  read: filter by your specimen, patient, or accession.
+- **Pin time.** Use explicit dates and freeze or inject the clock used by the
+  code under test when it reads the current time, including the server clock
+  when applicable. A live server's "today" is not pinned time. For current-date
+  behavior, set that clock to the dates or boundaries being exercised.
 
 ```typescript
 // ❌ BAD: Test depends on previous test's state
@@ -68,11 +86,14 @@ test("step 2", async ({ page }) => {
   // Assumes 'step 1' already ran
 });
 
-// ✅ GOOD: Test is self-contained
-test("complete workflow", async ({ page }) => {
-  await page.goto("/storage/samples");
-  // All setup within this test
-});
+// ❌ BAD: Counts everything in the window, including other specs' data
+await expect(rows).toHaveCount(2);
+await expect(rate).toHaveText(/\d+\.\d{2}%/); // widened because others exist
+
+// ✅ GOOD: Self-contained, reads only its own seeded records
+const seeded = await seedOrders(request, { count: 2 });
+await filterBy(page, { accession: seeded.accessions });
+await expect(rows).toHaveCount(2);
 ```
 
 ### 3. Use Auto-Retrying Assertions

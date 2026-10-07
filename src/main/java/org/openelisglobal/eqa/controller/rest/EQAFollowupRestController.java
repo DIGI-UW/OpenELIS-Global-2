@@ -95,8 +95,11 @@ public class EQAFollowupRestController extends BaseRestController {
         if (followup.getCycle() == null) {
             throw new IllegalArgumentException("This follow-up names no cycle, so nothing can be reprovisioned");
         }
+        Map<String, Object> fields = body == null ? Map.of() : body;
         return shipmentService.sendRepeat(followup.getCycle().getId(), followup.getParticipantOrgId(),
-                body == null ? null : stringField(body, "overrideNote"), getSysUserId(request));
+                stringField(fields, "overrideNote"), stringField(fields, "courier"),
+                stringField(fields, "trackingNumber"), dateField(fields, "estimatedDeliveryDate"),
+                getSysUserId(request));
     }
 
     @PostMapping(value = "/followups/{followupId}/escalate", produces = MediaType.APPLICATION_JSON_VALUE)

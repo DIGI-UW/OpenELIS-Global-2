@@ -38,6 +38,7 @@ import QITile from "./QITile";
 import useQiConfig from "./useQiConfig";
 import { rateTone, thresholdParts } from "./qiThresholds";
 import "../common/QAStyles.css";
+import { labNow } from "../../utils/labClock";
 
 const WINDOW_STORAGE_KEY = "qa.qi.dashboard.window";
 const REFRESH_COOLDOWN_MS = 30000;
@@ -50,8 +51,8 @@ const WINDOWS = [
 ];
 
 function windowDates(windowId) {
-  const to = new Date();
-  const from = new Date();
+  const to = labNow();
+  const from = labNow();
   const days = WINDOWS.find((w) => w.id === windowId)?.days;
   if (days) {
     from.setDate(from.getDate() - days);

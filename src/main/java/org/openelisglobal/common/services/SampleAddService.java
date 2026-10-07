@@ -38,6 +38,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
+import org.openelisglobal.orderentry.service.SampleReceiptAndArrival;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -201,6 +202,9 @@ public class SampleAddService {
                                 "Failed to parse receivedDateTime=" + receivedDateTime + ": " + e.getMessage());
                     }
                 }
+                SampleReceiptAndArrival.apply(item, sampleItem.attributeValue("receivedById"),
+                        sampleItem.attributeValue("arrivalCondition"), sampleItem.attributeValue("arrivalTemperature"),
+                        currentUserId, new Timestamp(System.currentTimeMillis()));
 
                 String quantityStr = sampleItem.attributeValue("quantity");
                 if (quantityStr != null && !quantityStr.trim().isEmpty()) {

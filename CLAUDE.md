@@ -5,12 +5,19 @@
 
 ---
 
+## Development and CI entrypoints
+
+Follow [the setup guide](docs/dev_setup.md): `scripts/dev-stack up` builds the
+current source stack; `scripts/run-ci-checks.sh` runs the complete committed
+candidate locally in parallel with GitHub after every push. A targeted green
+suite is not full CI parity. Published-image deployment is a separate mode.
+
 ## Documentation Hierarchy
 
 When working on this project, follow this documentation order:
 
 1. **[constitution.md](.specify/memory/constitution.md)** - AUTHORITATIVE
-   governance (v1.11.2, 10 core principles)
+   governance (v1.12.0, 10 core principles)
 2. **[AGENTS.md](AGENTS.md)** - Comprehensive agent onboarding (works for ALL AI
    tools)
 3. **[quickstart.md](specs/001-sample-storage/quickstart.md)** - Step-by-step
@@ -57,12 +64,6 @@ mvn clean install -DskipTests
 - `-DskipTests`: Skips Surefire unit test execution
 - `-Dmaven.test.skip=true`: Skips test compilation AND execution (including
   Failsafe)
-
-**Exception — CI shared-build root project:** The E2E `shared-build` step in
-`e2e-playwright.yml` intentionally omits `-Dmaven.test.skip=true` on the root
-project build because the `test-jar` artifact must be produced for plugin
-compilation (GenericASTM, GenericFile, GenericHL7 depend on it). The
-`dataexport` and `plugins` sub-builds still use both flags.
 
 ### Pre-Commit Formatting (MANDATORY)
 
@@ -123,11 +124,12 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 
 ### Git Worktrees (MANDATORY)
 
-> Worktrees go in `.worktrees/<short-name>`, never `/tmp` or `/private/tmp`, and
-> every new one needs `scripts/setup-workspace.sh` run inside it
-> (`git worktree add` does not initialize the 11 submodules, several of which
-> are build inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) §
-> "Git Worktrees".
+> Durable feature worktrees go in `.worktrees/<short-name>`. Disposable CI
+> checkouts are created and removed by `scripts/run-ci-checks.sh`; do not use
+> those for feature edits. Every durable new worktree needs
+> `scripts/setup-workspace.sh` run inside it (`git worktree add` does not
+> initialize the submodules, several of which are build inputs). Full rules and
+> the reasoning: see [AGENTS.md](AGENTS.md) § "Git Worktrees".
 
 ### Post-Compaction Context Recovery (MANDATORY)
 
@@ -204,7 +206,7 @@ report:** `.specify/guides/playwright-e2e-quality-report.md`
 - PostgreSQL 14+ via JPA/Hibernate, Liquibase 4.8.0 for migrations
   (005-eqa-module)
 
-**Last Updated:** 2026-04-06 **Constitution Version:** 1.11.2
+**Last Updated:** 2026-04-06 **Constitution Version:** 1.12.0
 
 ## Recent Changes
 

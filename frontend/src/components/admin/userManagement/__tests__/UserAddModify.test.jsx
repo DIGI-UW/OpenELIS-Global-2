@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen, within } from "@testing-library/react";
+import { act, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import userEvent from "@testing-library/user-event";
 import { IntlProvider } from "react-intl";
@@ -79,11 +79,11 @@ describe("UserAddModify", () => {
   let assign;
   let addNotification;
 
-  const renderAt = (path) =>
+  const renderAt = (path, client = createQueryClient()) =>
     render(
       <MemoryRouter initialEntries={[path]}>
         <IntlProvider locale="en" messages={messages}>
-          <QueryClientProvider client={createQueryClient()}>
+          <QueryClientProvider client={client}>
             <ConfigurationContext.Provider
               value={{
                 reloadConfiguration: vi.fn(),
@@ -346,6 +346,117 @@ describe("UserAddModify", () => {
       expect(notification.message).toBe(
         messages["systemuserrole.allLabUnits.exclusive.error"],
       );
+    });
+  });
+
+  describe("add form", () => {
+    // GET /rest/UnifiedSystemUser?ID=0 stamps systemUserLastupdated with the
+    // current time, so no two reads of the blank form are equal.
+    const blankUser = (stamp) => ({
+      ...user(""),
+      systemUserId: "",
+      loginUserId: "",
+      userFirstName: "",
+      userLastName: "",
+      userPassword: "",
+      confirmPassword: "",
+      systemUserLastupdated: stamp,
+      selectedTestSectionLabUnits: {},
+    });
+    const loginNameInput = () => document.getElementById("login-name");
+
+    it("keeps what was typed when the blank form is read again", async () => {
+      let reads = 0;
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback(blankUser(++reads));
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      const client = createQueryClient();
+      renderAt(
+        "/MasterListsPage/userEdit?ID=0&startingRecNo=1&roleFilter=",
+        client,
+      );
+      await waitFor(() => expect(loginNameInput()).not.toBeNull());
+      await waitFor(() => expect(reads).toBe(1));
+
+      await userEvent.type(loginNameInput(), "wil");
+      expect(loginNameInput()).toHaveValue("wil");
+
+      // Opening the form from the list serves the cached payload and reads it
+      // again; that second read used to land mid-typing and replace every field.
+      await act(async () => {
+        await client.refetchQueries();
+        await new Promise((resolve) => setTimeout(resolve, 0));
+      });
+
+      expect(reads).toBe(2);
+      expect(loginNameInput()).toHaveValue("wil");
+    });
+  });
+
+  describe("reopening and reactivating", () => {
+    const firstNameInput = () => document.getElementById("first-name");
+    const saveButton = () => screen.getByRole("button", { name: "Save" });
+
+    it("seeds a reopened user from a fresh read and keeps Save enabled", async () => {
+      let firstName = "Ada";
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback({ ...user("ada"), userFirstName: firstName });
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      const client = createQueryClient();
+      const firstVisit = renderAt(
+        "/MasterListsPage/userEdit?ID=5-5&startingRecNo=1",
+        client,
+      );
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Ada"));
+      expect(saveButton()).toBeEnabled();
+      firstVisit.unmount();
+
+      // Another session renames the user; the list's Modify mounts the form
+      // again on the same cache.
+      firstName = "Grace";
+      renderAt("/MasterListsPage/userEdit?ID=5-5&startingRecNo=1", client);
+
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Grace"));
+      expect(saveButton()).toBeEnabled();
+    });
+
+    it("lets a deactivated user be reactivated without retyping the names", async () => {
+      // Deactivation deletes the login row, so the payload carries the names
+      // but no login id, login name or password.
+      getFromOpenElisServer.mockImplementation((url, callback) => {
+        if (url.startsWith("/rest/UnifiedSystemUser"))
+          return callback({
+            ...user("ada"),
+            loginUserId: "",
+            userLoginName: "",
+            userPassword: "",
+            confirmPassword: "",
+            accountActive: "N",
+          });
+        if (url.startsWith("/rest/users")) return callback([]);
+        return callback(undefined);
+      });
+      renderAt("/MasterListsPage/userEdit?ID=5-0&startingRecNo=1");
+      await waitFor(() => expect(firstNameInput()).toHaveValue("Ada"));
+      expect(saveButton()).toBeDisabled();
+
+      await userEvent.type(document.getElementById("login-name"), "ada");
+      await userEvent.type(
+        document.getElementById("login-password"),
+        "Password**",
+      );
+      await userEvent.type(
+        document.getElementById("login-repeat-password"),
+        "Password**",
+      );
+
+      await waitFor(() => expect(saveButton()).toBeEnabled());
     });
   });
 });

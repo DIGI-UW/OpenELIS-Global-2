@@ -13,6 +13,7 @@ import {
 import { Search, Reset } from "@carbon/react/icons";
 import { FormattedMessage, useIntl } from "react-intl";
 import { getFromOpenElisServer, toLocalIsoDate } from "../../utils/Utils";
+import { labNow } from "../../utils/labClock";
 
 export const SEGMENTS = [
   { id: "RECEIPT_TO_VALIDATION", labelKey: "reports.tat.segment.receiptToValidation" },
@@ -25,31 +26,31 @@ export const SEGMENTS = [
 ];
 
 const DATE_PRESETS = [
-  { labelKey: "reports.tat.preset.today", compute: () => ({ from: new Date(), to: new Date() }) },
-  { labelKey: "reports.tat.preset.7days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 7); return { from, to }; } },
-  { labelKey: "reports.tat.preset.30days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 30); return { from, to }; } },
-  { labelKey: "reports.tat.preset.90days", compute: () => { const to = new Date(); const from = new Date(); from.setDate(from.getDate() - 90); return { from, to }; } },
+  { labelKey: "reports.tat.preset.today", compute: () => ({ from: labNow(), to: labNow() }) },
+  { labelKey: "reports.tat.preset.7days", compute: () => { const to = labNow(); const from = labNow(); from.setDate(from.getDate() - 7); return { from, to }; } },
+  { labelKey: "reports.tat.preset.30days", compute: () => { const to = labNow(); const from = labNow(); from.setDate(from.getDate() - 30); return { from, to }; } },
+  { labelKey: "reports.tat.preset.90days", compute: () => { const to = labNow(); const from = labNow(); from.setDate(from.getDate() - 90); return { from, to }; } },
   { labelKey: "reports.tat.preset.thisMonth", compute: () => {
-    const now = new Date();
+    const now = labNow();
     return { from: new Date(now.getFullYear(), now.getMonth(), 1), to: now };
   }},
   { labelKey: "reports.tat.preset.lastMonth", compute: () => {
-    const now = new Date();
+    const now = labNow();
     return {
       from: new Date(now.getFullYear(), now.getMonth() - 1, 1),
       to: new Date(now.getFullYear(), now.getMonth(), 0),
     };
   }},
   { labelKey: "reports.tat.preset.thisQuarter", compute: () => {
-    const now = new Date();
+    const now = labNow();
     const q = Math.floor(now.getMonth() / 3);
     return { from: new Date(now.getFullYear(), q * 3, 1), to: now };
   }},
 ];
 
 function getDefaultDates() {
-  const to = new Date();
-  const from = new Date();
+  const to = labNow();
+  const from = labNow();
   from.setDate(from.getDate() - 30);
   return {
     fromDate: toLocalIsoDate(from),

@@ -64,9 +64,9 @@ on:
 
 jobs:
   # ─── Pre-warm Playwright browser cache ─────────────────────────────────────
-  # Runs once per workflow invocation so the 4 parallel shards (2 here × 2
-  # callers — core and harness) don't all hammer the Playwright CDN on a cold
-  # cache. On a warm cache this job finishes in ~10s with no network I/O
+  # Runs once per suite invocation so its parallel shards do not all hammer
+  # the Playwright CDN on a cold cache. On a warm cache this job finishes in
+  # ~10s with no network I/O
   # beyond the cache backend. The shards' own `actions/cache` step restores
   # the key this job saves.
   pre-warm-playwright:

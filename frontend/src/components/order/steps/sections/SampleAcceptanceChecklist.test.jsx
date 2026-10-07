@@ -267,6 +267,95 @@ describe("SampleAcceptanceChecklist", () => {
     ).not.toBeInTheDocument();
   });
 
+  test("the resampled-to banner shows the replacement's lab number after a reload", async () => {
+    apiMock.getSampleItemEvaluation = vi.fn(() =>
+      Promise.resolve(
+        evaluation({
+          resample: {
+            resampledToSampleId: 99,
+            resampledToAccession: "ENV-2026-00231-R1",
+          },
+        }),
+      ),
+    );
+    renderChecklist({ rejected: true });
+    await screen.findByText("Container intact");
+
+    expect(
+      screen.getByText("This sample was rejected and resampled.", {
+        exact: false,
+      }),
+    ).toHaveTextContent("Replacement order: ENV-2026-00231-R1.");
+    expect(screen.queryByText(/#99/)).not.toBeInTheDocument();
+  });
+
+  test("the replacement's banner shows the original's lab number, not its id", async () => {
+    apiMock.getSampleItemEvaluation = vi.fn(() =>
+      Promise.resolve(
+        evaluation({
+          resample: {
+            resampledFromSampleId: 41,
+            resampledFromAccession: "ENV-2026-00230",
+          },
+        }),
+      ),
+    );
+    renderChecklist();
+    await screen.findByText("Container intact");
+
+    expect(
+      screen.getByText(
+        "This is a replacement created by a resample of sample ENV-2026-00230.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/#41/)).not.toBeInTheDocument();
+  });
+
+  test("a committed resample makes the original read-only immediately, without a reload", async () => {
+    const Host = () => {
+      const [rejected, setRejected] = React.useState(false);
+      return (
+        <IntlProvider locale="en" messages={messages}>
+          <SampleAcceptanceChecklist
+            sampleItemId="42"
+            labNumber="ENV-2026-00231"
+            rejected={rejected}
+            onRejected={() => setRejected(true)}
+          />
+        </IntlProvider>
+      );
+    };
+    render(<Host />);
+    await screen.findByText("Container intact");
+
+    // After the commit the reloaded evaluation carries the link.
+    apiMock.getSampleItemEvaluation = vi.fn(() =>
+      Promise.resolve(
+        evaluation({
+          resample: {
+            resampledToSampleId: 99,
+            resampledToAccession: "ENV-2026-00231-R1",
+          },
+        }),
+      ),
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: /Resample/i }));
+    fireEvent.click(await screen.findByText("commit-mock"));
+
+    expect(await screen.findByText("Rejected")).toBeInTheDocument();
+    expect(
+      await screen.findByText(/Replacement order: ENV-2026-00231-R1/i),
+    ).toBeInTheDocument();
+    expect(screen.getAllByRole("radio", { name: "Pass" })[0]).toBeDisabled();
+    expect(
+      screen.queryByRole("button", { name: "Accept sample" }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /Resample/i }),
+    ).not.toBeInTheDocument();
+  });
+
   test("a rejected specimen is read-only: shows Rejected + the resample banner and hides actions", async () => {
     apiMock.getSampleItemEvaluation = vi.fn(() =>
       Promise.resolve(evaluation({ resample: { resampledToSampleId: 99 } })),
