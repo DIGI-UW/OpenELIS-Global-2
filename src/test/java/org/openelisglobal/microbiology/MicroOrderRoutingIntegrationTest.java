@@ -4,7 +4,10 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 
 import java.sql.Timestamp;
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -12,6 +15,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
+import org.openelisglobal.microbiology.service.MicroOrderDraftGrouping;
 import org.openelisglobal.microbiology.service.MicroOrderRoutingService;
 import org.openelisglobal.microbiology.valueholder.MicroCaseTestRole;
 import org.openelisglobal.sampleitem.service.SampleItemService;
@@ -42,6 +46,62 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     @Override
     public void setUp() throws Exception {
         super.setUp();
+    }
+
+    @Test
+    public void draftGroupingMatchesSavedBottleAndSplitUnitMembershipWithoutWritingCases() {
+        var first = fixtures.createSampleWithSampleItem("AMRV2PREVIEW");
+        var second = new SampleItem();
+        second.setSample(first.getSample());
+        second.setTypeOfSample(fixtures.createTypeOfSample());
+        second.setSortOrder("2");
+        second.setStatusId(first.getStatusId());
+        second.setSysUserId(fixtures.defaultUserId());
+        sampleItemService.insert(second);
+        var unit = fixtures.createLabUnit();
+        var otherUnit = fixtures.createLabUnit();
+        var sets = fixtures.createCatalogCultureTest(fixtures.createMethodId(), unit);
+        sets.setCollectedInSets(true);
+        testService.update(sets);
+        var direct = fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, unit);
+        var other = fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, otherUnit);
+        var ordinary = fixtures.createCatalogTest();
+        List<SampleItem> items = List.of(first, second);
+        var testLists = List.of(List.of(direct, sets, ordinary), List.of(direct, sets, other));
+        List<MicroOrderDraftGrouping.Selection> draft = new ArrayList<>();
+        for (int i = 0; i < items.size(); i++) {
+            SampleItem unsaved = new SampleItem();
+            unsaved.setTypeOfSample(items.get(i).getTypeOfSample());
+            draft.add(new MicroOrderDraftGrouping.Selection(unsaved, testLists.get(i)));
+        }
+
+        var preview = routingService.previewNewOrder(draft);
+        assertEquals(2, preview.size());
+        assertEquals(List.of(0, 1), preview.get(0).specimenIndexes());
+        assertEquals(List.of(1), preview.get(1).specimenIndexes());
+        assertEquals(List.of(sets.getId(), direct.getId()), preview.get(0).testIds());
+        assertEquals(0, caseDAO.getByOrder(first.getSample().getId()).size());
+
+        for (int i = 0; i < items.size(); i++) {
+            var item = items.get(i);
+            var analyses = testLists.get(i).stream().map(test -> fixtures.createAnalysis(item, test)).toList();
+            routingService.routeAnalysesForSampleItem(item, analyses, fixtures.defaultUserId());
+        }
+        var saved = caseDAO.getByOrder(first.getSample().getId());
+        assertEquals(preview.size(), saved.size());
+        for (var group : preview) {
+            var owner = saved.stream().filter(c -> c.getTestSectionId().equals(group.key().testSectionId())).findFirst()
+                    .orElseThrow();
+            Set<String> expectedMembers = group.specimenIndexes().stream().map(i -> items.get(i).getId())
+                    .collect(Collectors.toSet());
+            assertEquals(expectedMembers, Set.copyOf(caseService.getSpecimenIds(owner.getId())));
+            assertEquals(owner.getTestSectionId().equals(unit.getId()) ? 4 : 1,
+                    caseAnalysisService.getCaseAnalyses(owner.getId()).size());
+        }
+        var withoutOtherUnit = List.of(draft.get(0),
+                new MicroOrderDraftGrouping.Selection(draft.get(1).specimen(), List.of(direct, sets)));
+        assertEquals(1, routingService.previewNewOrder(withoutOtherUnit).size());
+        assertEquals(2, caseDAO.getByOrder(first.getSample().getId()).size());
     }
 
     @Test

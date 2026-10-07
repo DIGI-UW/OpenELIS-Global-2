@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -38,6 +39,41 @@ public class MicroOrderRoutingServiceTest {
         Sample order = new Sample();
         order.setId("2001");
         specimen.setSample(order);
+    }
+
+    @Test
+    public void draftPreviewUsesCatalogFlagsAndNeverCallsPersistenceServices() {
+        SampleItem draft = new SampleItem();
+        org.openelisglobal.test.valueholder.Test catalog = catalog("41", "DIRECT", false);
+        catalog.setOpensMicrobiologyCase(false);
+        org.openelisglobal.test.valueholder.Test submitted = new org.openelisglobal.test.valueholder.Test();
+        submitted.setId("41");
+        submitted.setOpensMicrobiologyCase(true);
+
+        assertTrue(service.previewNewOrder(List.of(new MicroOrderDraftGrouping.Selection(draft, List.of(submitted))))
+                .isEmpty());
+        Mockito.verifyZeroInteractions(caseService, caseAnalysisService);
+    }
+
+    @Test
+    public void savedSpecimensCannotBeMisrepresentedAsNewOrderPreview() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.previewNewOrder(List.of(new MicroOrderDraftGrouping.Selection(specimen, List.of()))));
+        SampleItem unsavedMemberOfSavedOrder = new SampleItem();
+        unsavedMemberOfSavedOrder.setSample(specimen.getSample());
+        assertThrows(IllegalArgumentException.class, () -> service
+                .previewNewOrder(List.of(new MicroOrderDraftGrouping.Selection(unsavedMemberOfSavedOrder, List.of()))));
+        Mockito.verifyZeroInteractions(caseService, caseAnalysisService, testService);
+    }
+
+    @Test
+    public void draftPreviewRejectsUnknownCatalogTestsRatherThanOmittingTheirCases() {
+        SampleItem draft = new SampleItem();
+        org.openelisglobal.test.valueholder.Test unknown = new org.openelisglobal.test.valueholder.Test();
+        unknown.setId("missing");
+        assertThrows(IllegalArgumentException.class,
+                () -> service.previewNewOrder(List.of(new MicroOrderDraftGrouping.Selection(draft, List.of(unknown)))));
+        Mockito.verifyZeroInteractions(caseService, caseAnalysisService);
     }
 
     @Test

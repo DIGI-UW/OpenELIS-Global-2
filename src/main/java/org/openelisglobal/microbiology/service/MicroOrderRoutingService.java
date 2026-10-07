@@ -12,5 +12,10 @@ public interface MicroOrderRoutingService {
      */
     boolean isMicrobiologyOrder(List<Test> tests);
 
+    /**
+     * New-order grouping only; existing-order preview must retain saved ownership.
+     */
+    List<MicroOrderDraftGrouping.Group> previewNewOrder(List<MicroOrderDraftGrouping.Selection> selections);
+
     List<MicroCase> routeAnalysesForSampleItem(SampleItem sampleItem, List<Analysis> analyses, String performedBy);
 }

@@ -381,7 +381,14 @@ Remaining V02c2 implementation and acceptance:
 - [ ] Implement the unsaved What this order will open panel using the same
       authoritative catalog/grouping rules as save, with ordinary Results lines,
       split-lab-unit warnings and applicable named reflex rules (AC-V2-103).
-      `MicroCaseRoutingKey` exists, but no preview caller currently uses it.
+      `previewNewOrder` now uses `MicroCaseRoutingKey` and catalog-owned test
+      flags to group an unsaved draft without writes. Database parity coverage
+      compares its bottle membership and split-unit groups with actual saves.
+      The focused routing gate passed 17 tests (five persisted, twelve service),
+      with zero failures/errors/skips; no browser acceptance is claimed.
+      This is the grouping foundation only: endpoint/UI, ordinary Results and
+      reflex descriptions, saved-order ownership and environmental site grouping
+      remain unimplemented; AC-V2-103 is not accepted.
 - [ ] Implement explicit bottle set numbers in shared order entry/save and derive
       the case set count, per-set header lines and nonblocking set warnings
       (AC-V2-104). The existing editable number-of-sets field is not acceptance

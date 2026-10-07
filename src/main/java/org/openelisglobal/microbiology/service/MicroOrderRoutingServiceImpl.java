@@ -76,6 +76,30 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<MicroOrderDraftGrouping.Group> previewNewOrder(List<MicroOrderDraftGrouping.Selection> selections) {
+        Map<String, Test> catalog = new LinkedHashMap<>();
+        List<MicroOrderDraftGrouping.Selection> resolved = selections.stream().map(selection -> {
+            if (selection.specimen() == null || selection.specimen().getId() != null
+                    || (selection.specimen().getSample() != null && selection.specimen().getSample().getId() != null)) {
+                throw new IllegalArgumentException("New-order preview requires unsaved specimens and order");
+            }
+            List<Test> tests = selection.tests().stream().map(test -> {
+                if (test == null || test.getId() == null) {
+                    throw new IllegalArgumentException("Preview tests require catalog IDs");
+                }
+                Test authoritative = catalog.computeIfAbsent(test.getId(), testService::get);
+                if (authoritative == null) {
+                    throw new IllegalArgumentException("Unknown preview test");
+                }
+                return authoritative;
+            }).toList();
+            return new MicroOrderDraftGrouping.Selection(selection.specimen(), tests);
+        }).toList();
+        return MicroOrderDraftGrouping.group(resolved);
+    }
+
+    @Override
     public boolean isMicrobiologyOrder(List<Test> tests) {
         return tests != null && tests.stream().anyMatch(test -> test != null && test.isOpensMicrobiologyCase());
     }
