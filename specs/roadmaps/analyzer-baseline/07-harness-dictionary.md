@@ -58,6 +58,7 @@ significantDigits,flags,significance`). Dictionary rows carry `loincCode`.
 - [ ] T7.5 Pins first, tags later: the submodule pins point at the Bridge #75 and mock #53 heads (done 6 Oct; OE2 builds both from the submodules, so the harness E2E runs against them). The image tags in `docker-compose.analyzers.yml` follow the releases a maintainer cuts after review; until then the `deployment-contract` check is red by design
 - [ ] T7.6 Remove per-message overrides from analyzer-native-traffic.ts; use mock fixtures
 - [ ] T7.7 Green; format cold; commit; top of stack PR
+- [ ] T7.8 Finish line (set 6 Oct: "full remediation proved with a re-recording of the Analyzer workflow evidence package for the full set of analyzer e2e workflows"): the `harness-demo-video` project covers every analyzer E2E workflow of T7.1 to T7.2b (setup with assays, verify and apply, adoption, every vendor outcome landing or held, each placement state, delivery issues, the FILE lane), recorded on the assembled stack at the top of the stack and packaged with `tools/code-qa/skills/evidence-bundle` per `frontend/playwright/README.md` "Stakeholder Evidence Format" (MP4, manifest with app SHA and checksums, screenshot contact sheet checked)
 ```
 
 ### Verify
