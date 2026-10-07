@@ -50,9 +50,9 @@ if [ "${DEV_STACK_TLS:-self-signed}" = "self-signed" ]; then
   CURL_TLS_FLAG=--insecure
 fi
 
-GENEXPERT_PROFILE_ID="genexpert-astm"
-FLUOROCYCLER_PROFILE_ID="fluorocycler-xt"
-QUANTSTUDIO_PROFILE_ID="quantstudio"
+GENEXPERT_PROFILE_ID="cepheid-genexpert-astm"
+FLUOROCYCLER_PROFILE_ID="hain-fluorocycler-xt"
+QUANTSTUDIO_PROFILE_ID="thermo-quantstudio"
 
 CATALOG_FILE="$(mktemp)"
 ANALYZERS_FILE="$(mktemp)"
@@ -294,18 +294,22 @@ PY
 
 verify_profile_pins() {
   fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
-  python3 - "$ANALYZERS_FILE" "$GENEXPERT_REVISION" "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_REVISION" <<'PY'
+  python3 - "$ANALYZERS_FILE" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$QUANTSTUDIO_PROFILE_ID" \
+    "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     analyzers = json.load(handle).get("analyzers", [])
 
+genexpert = (sys.argv[2], int(sys.argv[3]))
+quantstudio = (sys.argv[4], int(sys.argv[5]))
+fluorocycler = (sys.argv[6], int(sys.argv[7]))
 expected = {
-    "Cepheid GeneXpert (ASTM Mode)": ("genexpert-astm", int(sys.argv[2])),
-    "QuantStudio 5": ("quantstudio", int(sys.argv[3])),
-    "QuantStudio 7": ("quantstudio", int(sys.argv[3])),
-    "FluoroCycler XT": ("fluorocycler-xt", int(sys.argv[4])),
+    "Cepheid GeneXpert (ASTM Mode)": genexpert,
+    "QuantStudio 5": quantstudio,
+    "QuantStudio 7": quantstudio,
+    "FluoroCycler XT": fluorocycler,
 }
 problems = []
 for name, pin in expected.items():
