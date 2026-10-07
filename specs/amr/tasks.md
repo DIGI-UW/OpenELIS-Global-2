@@ -386,9 +386,19 @@ Remaining V02c2 implementation and acceptance:
       compares its bottle membership and split-unit groups with actual saves.
       The focused routing gate passed 17 tests (five persisted, twelve service),
       with zero failures/errors/skips; no browser acceptance is claimed.
-      This is the grouping foundation only: endpoint/UI, ordinary Results and
-      reflex descriptions, saved-order ownership and environmental site grouping
-      remain unimplemented; AC-V2-103 is not accepted.
+      The preview follow-on branch `feat/1383-ogc-1427-v02c2-preview` is a
+      separate review increment above runtime PR #4620 within V02c2. It connects
+      new clinical orders to a read-only preview endpoint, checks reception lab
+      units, and displays case groups, ordinary Results lines, split-unit warnings
+      and named active reflex rules. Changed selections hide stale responses;
+      failed requests show an error and Retry. Its 18 backend and 36 frontend
+      checks pass, as does the frontend production build. The standalone HTTP
+      tests cover session-actor propagation, serialization and 400/403 responses;
+      the service test covers a missing actor, not the full security filter chain.
+      Still required: exact reflex conditions, bottle set summaries, Referred and
+      Tested elsewhere handling, the new-unit warning, saved-order ownership,
+      environmental site grouping, placement beside the Ordered tests table,
+      and persisted browser/video comparison. AC-V2-103 remains unaccepted.
 - [ ] Implement explicit bottle set numbers in shared order entry/save and derive
       the case set count, per-set header lines and nonblocking set warnings
       (AC-V2-104). The existing editable number-of-sets field is not acceptance

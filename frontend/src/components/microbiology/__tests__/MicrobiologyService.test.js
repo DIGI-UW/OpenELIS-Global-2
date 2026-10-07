@@ -1,5 +1,6 @@
 import MicrobiologyService, {
   getAstPanels,
+  previewMicrobiologyOrder,
   createIsolate,
   updateIsolateIdentification,
   recordCaseActivity,
@@ -22,6 +23,19 @@ vi.mock("../../utils/Utils", () => ({
 }));
 
 describe("MicrobiologyService", () => {
+  it.each([
+    undefined,
+    { status: 403 },
+    { error: "offline" },
+    {},
+    { cases: [] },
+  ])("rejects failed or malformed order previews %o", async (response) => {
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (url, body, callback) => callback(response),
+    );
+    await expect(previewMicrobiologyOrder({ specimens: [] })).rejects.toThrow();
+  });
+
   it.each([undefined, { status: 0 }, { status: 403 }, { status: 409 }])(
     "rejects a failed culture outcome response %o",
     async (response) => {

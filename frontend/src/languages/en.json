@@ -12304,5 +12304,17 @@
   "microbiology.worklist.filter.labUnit": "Lab unit",
   "microbiology.worklist.filter.allLabUnits": "All permitted lab units",
   "microbiology.worklist.sort.labUnit": "Lab unit",
-  "microbiology.worklist.linkedCases": "Linked · {count} cases"
+  "microbiology.worklist.linkedCases": "Linked · {count} cases",
+  "order.microPreview.title": "What this order will open",
+  "order.microPreview.loading": "Updating order preview…",
+  "order.microPreview.failed": "Order preview unavailable",
+  "order.microPreview.failedDetail": "The preview could not be updated. Check your connection and try again.",
+  "order.microPreview.opens": "Opens a case",
+  "order.microPreview.ordinary": "Stays in Results",
+  "order.microPreview.case": "{tests} case in {unit}: {samples}",
+  "order.microPreview.sample": "{type} sample {number}",
+  "order.microPreview.stays": "{test} stays in Results",
+  "order.microPreview.splitTag": "Separate cases",
+  "order.microPreview.split": "Sample {number} opens {count} cases: {units}.",
+  "order.microPreview.reflex": "{name}: may add {tests} when its conditions are met."
 }

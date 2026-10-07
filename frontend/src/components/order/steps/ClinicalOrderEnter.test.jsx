@@ -123,6 +123,8 @@ vi.mock("./sections/RequesterSection", () => ({
   },
 }));
 
+vi.mock("./sections/MicroOrderPreview", () => ({ default: () => null }));
+
 vi.mock("./sections/SampleTestSection", () => ({
   default: () => null,
 }));
