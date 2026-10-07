@@ -22,4 +22,6 @@
   <!-- OGC-1383: retired V1 microbiology workflow columns become nullable (columns kept unread, spec D2) -->
   <include relativeToChangelogFile="true" file="011-microbiology-v1-retired-columns-nullable.xml"/>
 
+  <include relativeToChangelogFile="true" file="012-microbiology-v2-case-structure.xml"/>
+
 </databaseChangeLog>

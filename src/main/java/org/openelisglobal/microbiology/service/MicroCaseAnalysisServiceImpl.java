@@ -24,10 +24,15 @@ public class MicroCaseAnalysisServiceImpl implements MicroCaseAnalysisService {
             throw new IllegalArgumentException(
                     "A persisted microbiology case and analysis are required for report linkage");
         }
+        MicroCaseAnalysis owner = caseAnalysisDAO.getActiveByAnalysisId(analysis.getId());
+        if (owner != null && !microCase.getId().equals(owner.getCaseId())) {
+            throw new IllegalArgumentException("Analysis already belongs to another case");
+        }
         MicroCaseAnalysis existing = caseAnalysisDAO.getByCaseAndAnalysis(microCase.getId(), analysis.getId());
         if (existing != null) {
             return existing;
         }
+        MicroCaseMutationGuard.requireMutable(microCase);
         MicroCaseAnalysis link = new MicroCaseAnalysis();
         link.setCaseId(microCase.getId());
         link.setAnalysisId(analysis.getId());

@@ -7,6 +7,8 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 
 public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
 
+    MicroCase getForUpdate(String caseId);
+
     List<MicroCase> getBySampleItem(String sampleItemId);
 
     List<MicroCase> getOpenCases();
