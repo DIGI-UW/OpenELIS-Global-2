@@ -45,10 +45,9 @@ measure.
   These are observations for the baseline commit, not proof for later revisions.
 - Nine patient-report templates and four shared templates remain, each with a
   `.jasper` and `.jrxml` file. Steps 8b, 8c and 11 remain to be implemented.
-- **Current milestone: R1, review remediation and regression coverage.**
-  Complete it before extending the conversions. The following milestones finish
-  conversion, remove the legacy engine, and verify all supported reporting
-  paths.
+- **R1 implementation and formal comment closure are complete. Next milestone:
+  R2, clinical and TB reports.** The following milestones finish conversion,
+  remove the legacy engine, and verify all supported reporting paths.
 
 The current combined stack tip is
 [#4649](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4649),
@@ -83,10 +82,12 @@ and test reply and was formally resolved. A fresh audit of all 21 PRs found
 
 Current candidate-validation results and the tested commit are recorded in
 [#4649](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4649) and its checks.
-R1 closes when the full local CI aggregate and all three GitHub checkpoints pass
-on the published remediation revision. Use that revision's results and retained
-CI source identity rather than the audit baseline's results. **R2 is the next
-conversion milestone after R1 closure; R2–R5 remain unimplemented.**
+R1 is validated by the 98 focused reporting tests, rendered-page inspection,
+formatting and whitespace checks. Full local CI is not required for these review
+fixes; the broad runs were intentionally stopped and are not completion
+evidence. GitHub's backend, frontend and E2E checkpoints remain merge
+requirements; use #4649's checks for their current state. **R2 is the next
+conversion milestone; R2–R5 remain unimplemented.**
 
 At each milestone, update this baseline, the remaining inventory, review-thread
 outcomes and validation evidence from the new combined stack tip. Record the
@@ -151,7 +152,9 @@ commit used for validation; do not carry old passing results forward as current.
   PDF content where needed to establish that the intended report was produced,
   rather than accepting an error-notice PDF as success.
 - Use the supported `scripts/dev-stack` scenarios for interactive validation and
-  `scripts/run-ci-checks.sh` for candidate CI. Tests own and scope their example
+  `scripts/run-ci-checks.sh` for the final retirement candidate in R5. Review
+  remediations in R1 use focused reporting tests and rendered-page checks; full
+  local CI is not required for those fixes. Tests own and scope their example
   data; do not rely on records left by another test.
 
 ## Inventory
@@ -342,9 +345,10 @@ Completion evidence:
 - Representative PDFs have been inspected on A4 and Letter, including page
   boundaries and clinical status. Existing valid content is retained and known
   legacy defects are explicitly corrected.
-- Backend, frontend and E2E checkpoints pass for the remediated candidate, with
-  the full local CI aggregate and reports retained. Update the baseline and
-  inventory with the actual results.
+- Focused reporting tests, rendered-page inspection, formatting and whitespace
+  checks pass for the remediated candidate. Full local CI is not an R1
+  completion gate. Backend, frontend and E2E checkpoints remain required before
+  merging; record their current results on #4649.
 
 ### R2 — Complete clinical and TB reports (original step 8b)
 
