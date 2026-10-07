@@ -1,5 +1,6 @@
 package org.openelisglobal.barcode.labeltype;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -125,6 +126,7 @@ public class BlockLabelTest {
         List<LabelField> fields = collect(label.getAboveFields());
         assertTrue(fields.stream().anyMatch(field -> "A1".equals(field.getValue())));
         assertFalse(fields.stream().anyMatch(field -> "3".equals(field.getValue())));
+        assertEquals("the barcode still carries the lab number", "ACC-1", label.getCode());
     }
 
     private List<LabelField> collect(Iterable<LabelField> fields) {

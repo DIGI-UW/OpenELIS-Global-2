@@ -31,6 +31,12 @@ public interface PathologySampleService extends BaseObjectService<PathologySampl
 
     Long getCountWithOpenRequests();
 
+    /**
+     * The case's slides, copied inside a transaction so a caller holding the case
+     * outside any session can still iterate them.
+     */
+    List<PathologySlide> getSlides(Integer pathologySampleId);
+
     Long getCountWithStatusBetweenDates(List<PathologyStatus> statuses, Timestamp from, Timestamp to);
 
     void updateWithFormValues(Integer pathologySampleId, PathologySampleForm form);

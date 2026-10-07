@@ -261,7 +261,7 @@ public class BarcodeLabelMakerTest {
         slide.setId(30);
         slide.setSlideNumber(1);
         slide.setBlockId(20);
-        pathologySample.setSlides(java.util.Collections.singletonList(slide));
+        when(pathologySampleService.getSlides(99)).thenReturn(java.util.Collections.singletonList(slide));
 
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
 
@@ -308,7 +308,7 @@ public class BarcodeLabelMakerTest {
         PathologySlide slide = new PathologySlide();
         slide.setId(30);
         slide.setSlideNumber(1);
-        pathologySample.setSlides(java.util.Collections.singletonList(slide));
+        when(pathologySampleService.getSlides(99)).thenReturn(java.util.Collections.singletonList(slide));
 
         BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
 

@@ -182,6 +182,13 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         return baseObjectDAO.getCountWithOpenRequests();
     }
 
+    @Transactional
+    @Override
+    public List<PathologySlide> getSlides(Integer pathologySampleId) {
+        return baseObjectDAO.get(pathologySampleId).map(pathologySample -> new ArrayList<>(pathologySample.getSlides()))
+                .orElseGet(ArrayList::new);
+    }
+
     private PathologySample copyPathologySample(PathologySample oldPathologySample) {
         PathologySample pathologySample = new PathologySample();
         pathologySample.setBlocks(new ArrayList<>(oldPathologySample.getBlocks()));

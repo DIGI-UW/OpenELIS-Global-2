@@ -129,4 +129,16 @@ public class SlideLabel extends Label {
         return BarcodeConfigUtil.parseIntSafe(
                 ConfigurationProperties.getInstance().getPropertyValue(Property.MAX_SLIDE_LABEL_PRINTED), 10);
     }
+
+    // The order, block and slide labels all print the lab number, so they shared
+    // one print count and the first kind printed used up the other two.
+    @Override
+    protected String labelInfoCode() {
+        return getCode() + "-S";
+    }
+
+    @Override
+    protected String labelInfoType() {
+        return "slide";
+    }
 }

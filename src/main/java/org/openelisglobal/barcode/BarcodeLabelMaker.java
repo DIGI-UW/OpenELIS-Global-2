@@ -378,7 +378,8 @@ public class BarcodeLabelMaker {
             List<PathologySample> pathologySamples = pathologySampleService.getAllMatching("sample.id", sample.getId());
             for (PathologySample pathologySample : pathologySamples) {
                 String caseNumber = pathologySample.getId() != null ? String.valueOf(pathologySample.getId()) : "";
-                for (PathologySlide slide : pathologySample.getSlides()) {
+                // slides are lazy and this case was loaded in a transaction that has closed
+                for (PathologySlide slide : pathologySampleService.getSlides(pathologySample.getId())) {
                     if (!slide.isActive()) {
                         continue;
                     }
