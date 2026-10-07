@@ -3,10 +3,16 @@
 This document describes OpenELIS Global 2 once Microbiology V2 is complete: what
 exists, how it fits the rest of OpenELIS, and the rules it must always obey.
 It integrates the V2 functional design into this codebase. The
-[roadmap](roadmap.md) orders the work.
+[roadmap](roadmap.md) orders the work as one dependent PR stack for the complete
+replacement, with one PR per outlined implementation milestone. Each milestone
+carries its schema, backend, frontend, tests and documentation together.
+Individual tasks, fixes and shared prerequisites do not create extra PRs. The
+assembled final revision passes clinical migration and integrated acceptance
+before the stack merges in dependency order; intermediate PRs are review units,
+not independent releases.
 
 **Design source:** `DIGI-UW/openelis-work` at
-`516c88efbdd2edbc9ea108f69d7b57f4ceb9ec9b` —
+`c9722f07304c3170913d565876a6dd085c388a7d` —
 `designs/microbiology/amr-micro-v2-amendments.md` (draft 10.4),
 `designs/microbiology/m-18-environmental-microbiology.md` (v0.9),
 `designs/sample-collection/clinical-order-entry-v4.md`,
@@ -54,16 +60,16 @@ state, reception Microbiology section, or micro-only report template.
 
 ## 2. Engineering decisions
 
-| ID  | Decision                                                                                                                                                                                                                                     |
-| --- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| D1  | V2 replaces the front of V1 and evolves the back (§10). Tables whose concept V2 keeps are extended in place; tables V2 reshapes are restructured in place; new concepts get new tables.                                                      |
-| D2  | What V2 retires is deleted first. Retired columns and tables keep their data until the clinical migration (§11) has used them, then they are dropped; meanwhile they are made nullable so new rows never fabricate a value, and no code writes them. |
-| D8  | A schema change ships registered in the application changelog in the same change as the code that needs it, and that change boots on a fresh and an upgraded database. Each change is written once against this model, never per increment.  |
-| D3  | Case tests are ordinary `Analysis`/`Result` rows on member sample items. V2 stores their case placement, not their values (FR-06.2, FR-06.5).                                                                                                |
-| D4  | Work stage, culture outcome, related cases, number of sets, needs-attention reasons and due times are computed from case parts. They may be cached for queries but are never edited directly (FR-17.1, FR-17.2, FR-02.4a, FR-04.1, FR-12.1). |
-| D5  | The case timeline is an append-only event log on the case (actor, time, event, reason, before/after). The shared audit trail continues to record row changes.                                                                                |
-| D6  | Every write checks the case lab unit and the final-release lock on the server (Access, FR-17.7).                                                                                                                                             |
-| D7  | One routing rule produces the order-entry preview and the saved cases (FR-02.3b).                                                                                                                                                            |
+| ID  | Decision                                                                                                                                                                                                                                                                                                                                                  |
+| --- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| D1  | V2 replaces the front of V1 and evolves the back (§10). Tables whose concept V2 keeps are extended in place; tables V2 reshapes are restructured in place; new concepts get new tables.                                                                                                                                                                   |
+| D2  | What V2 retires is deleted first. Retired columns and tables keep their data until the clinical migration (§11) has used them, then they are dropped; meanwhile they are made nullable so new rows never fabricate a value, and production case creation never writes them. The temporary WHONET read and UAT-only stamp described in §10 end at step 15. |
+| D8  | A schema change ships registered in the application changelog in the same change as the code that needs it, and that change boots on a fresh and an upgraded database. Each change is written once against this model, never per increment.                                                                                                               |
+| D3  | Case tests are ordinary `Analysis`/`Result` rows on member sample items. V2 stores their case placement, not their values (FR-06.2, FR-06.5).                                                                                                                                                                                                             |
+| D4  | Work stage, culture outcome, related cases, number of sets, needs-attention reasons and due times are computed from case parts. They may be cached for queries but are never edited directly (FR-17.1, FR-17.2, FR-02.4a, FR-04.1, FR-12.1).                                                                                                              |
+| D5  | The case timeline is an append-only event log on the case (actor, time, event, reason, before/after). The shared audit trail continues to record row changes.                                                                                                                                                                                             |
+| D6  | Every write checks the case lab unit and the final-release lock on the server (Access, FR-17.7).                                                                                                                                                                                                                                                          |
+| D7  | One routing rule produces the order-entry preview and the saved cases (FR-02.3b).                                                                                                                                                                                                                                                                         |
 
 ## 3. Catalog, configuration and dictionaries
 
@@ -108,20 +114,34 @@ culture on that bottle, not In lab only", an ordinary reflex rule
 
 ## 4. Domain model
 
-Everything listed under a case belongs to exactly one case. §10 maps each V1
-concept to its disposition.
+Each case-owned record belongs to exactly one case. Shared samples, order
+clinical details and Program questionnaire responses can be referenced by
+several cases as specified below. §10 maps each V1 concept to its disposition.
 
 ### 4.1 Case
 
-| Concept                    | Holds                                                                                                                                                                                                                                                                                            | Rules                                                                                                                                                                                                              |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Case**                   | order, sample type, case lab unit, domain, subject (patient, or site for environmental), site (environmental), Program, culture purpose, collection method, original specimen type (received isolates), status (active, cancelled, rejected), released-final flag, opened by (test or case test) | Grouping key = order + sample type + lab unit (+ site when environmental) at the time it opened (FR-02.4, M18-FR-C1). Identity never changes on transfer (FR-02.6). Cancelled and rejected are terminal (FR-17.8). |
-| **Case member sample**     | case, sample item, joined at/by, split-out at/by/reason                                                                                                                                                                                                                                          | A sample item belongs to at most one case per lab unit. Aliquots (TB decontamination) belong to their parent's case and are not members of a related case (FR-05.8).                                               |
-| **Case analysis**          | case, analysis, role snapshot, collected-in-sets snapshot, placement (§4.3), added by (order, user, rule + rule id, incoming placement), cancelled at/by/reason                                                                                                                                  | An analysis has at most one active case. Cancelled ownership is kept; only active ownership is unique (FR-02.8, FR-07.5).                                                                                          |
-| **Order clinical details** | order, patient origin, admission date, clinical diagnosis, reason for test, clinical history (≤ 4000 chars), prior antibiotics (agent + date, repeatable), replicates (environmental)                                                                                                            | One record per order, shared by every case on that order (FR-03.3a, M18-FR-C5a). Admission date is optional and never inferred (FR-03.5). Clinical fields never exist for environmental cases (M18-FR-C7).         |
-| **Related cases**          | —                                                                                                                                                                                                                                                                                                | Computed: cases sharing a member sample, in other lab units (FR-04.1).                                                                                                                                             |
-| **Number of sets**         | —                                                                                                                                                                                                                                                                                                | Computed: distinct set numbers on member samples carrying a collected-in-sets test (FR-02.4a).                                                                                                                     |
-| **Timeline event**         | case, actor, time, type, reason, details                                                                                                                                                                                                                                                         | Append-only. Every case write records one (FR-01.7, FR-12.6).                                                                                                                                                      |
+| Concept                    | Holds                                                                                                                                                                                                                                                                                            | Rules                                                                                                                                                                                                                                                                                                                                                                              |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Case**                   | order, sample type, case lab unit, domain, subject (patient, or site for environmental), site (environmental), Program, culture purpose, collection method, original specimen type (received isolates), status (active, cancelled, rejected), released-final flag, opened by (test or case test) | Opening grouping = order + requested sample type + lab unit (+ site when environmental), with the collected-in-sets exception in §5. This groups new work, not a permanent uniqueness constraint: transfer, split and migrated cases can leave separate cases with the same grouping. Identity never changes on transfer (FR-02.6). Cancelled and rejected are terminal (FR-17.8). |
+| **Case member sample**     | case, sample item, joined at/by, split-out at/by/reason                                                                                                                                                                                                                                          | A sample item has at most one active membership in a given case. Separate cases can share it, including in the same current lab unit after transfer; membership is not unique by sample and current lab unit. Aliquots (TB decontamination) belong to their parent's case and are not members of a related case (FR-05.8).                                                         |
+| **Case analysis**          | case, analysis, role snapshot, collected-in-sets snapshot, placement (§4.3), added by (order, user, rule + rule id, incoming placement), cancelled at/by/reason                                                                                                                                  | An analysis has at most one active case. Cancelled ownership is kept; only active ownership is unique (FR-02.8, FR-07.5).                                                                                                                                                                                                                                                          |
+| **Order clinical details** | order, patient origin, admission date, clinical diagnosis, reason for test, clinical history (≤ 4000 chars), prior antibiotics (agent + date, repeatable), replicates (environmental)                                                                                                            | One record per order, shared by every case on that order (FR-03.3a, M18-FR-C5a). Admission date is optional and never inferred (FR-03.5). Clinical fields never exist for environmental cases (M18-FR-C7).                                                                                                                                                                         |
+| **Related cases**          | —                                                                                                                                                                                                                                                                                                | Cases sharing a member sample, plus cases linked by a recorded split. The switcher identifies each case, its samples and its current lab unit, including cases in the same unit and after transfers (FR-04.1, AC-V2-63). Sharing an order alone does not create this relationship.                                                                                                 |
+| **Number of sets**         | —                                                                                                                                                                                                                                                                                                | Computed: distinct set numbers on member samples carrying a collected-in-sets test (FR-02.4a).                                                                                                                                                                                                                                                                                     |
+| **Timeline event**         | case, actor, time, type, reason, details                                                                                                                                                                                                                                                         | Append-only. Every case write records one (FR-01.7, FR-12.6).                                                                                                                                                                                                                                                                                                                      |
+
+**Requested-test ownership** links the case to the saved requested sample/test
+before a physical sample or analysis exists. It keeps the requested sample type,
+ordered test, role, collected-in-sets choice and cancellation history needed by
+routing and later collection. Recording the actual sample resolves that explicit
+request into the case membership and analysis ownership; retries reuse those
+links. No placeholder physical sample, analysis, collection time or receipt time
+is fabricated to open a case. Cancellation and reorder preserve the earlier
+request history and do not reactivate cancelled ownership.
+
+A split records the source and resulting case, moved memberships, actor, time
+and reason. This relationship remains available when the cases no longer share
+a sample or a lab unit.
 
 Program questionnaire answers stay in the existing questionnaire storage, one
 response per order and Program, shared with order entry and its FHIR mirror
@@ -240,8 +260,13 @@ never adds a test already on the case or waiting here (FR-07.4c).
 
 ## 5. Routing and case membership
 
-1. Saving an order (manual or electronic) runs one routing rule inside the
-   order's all-or-nothing save (FR-02.3, FR-02.9, M18-FR-C8).
+1. Saving an order (or accepting an electronic order) runs one routing rule
+   inside the order's all-or-nothing save (FR-02.3, FR-02.9, M18-FR-C8). A
+   physical sample is not required: eligible requested work opens or joins its
+   case using the requested sample type. The responsible lab unit sees that
+   case as **Awaiting sample**, without implying collection or receipt. Later
+   sample recording attaches to that same case through requested-test
+   ownership; it does not create a second case or duplicate a sample.
 2. A test joins a case only when `opensMicroCase` is on. Its key is order +
    sample type + the test's lab unit (+ site when environmental). An existing
    active case with that key is reused; otherwise a case opens (FR-02.4,
@@ -253,9 +278,9 @@ never adds a test already on the case or waiting here (FR-07.4c).
 5. A test in another lab unit on the same sample opens that unit's related case
    (FR-02.4, AC-V2-03). When a test could join two related cases, it joins the
    one opened first (FR-02.5).
-6. Program is never read or written by routing (FR-02.2). The case Program
-   defaults from the order's Program only when that Program has
-   `showOnMicroCase`.
+6. Program never determines routing (FR-02.2). Independently of choosing the
+   case, its initial Program defaults from the order's Program only when that
+   Program has `showOnMicroCase`; routing never changes the order's Program.
 7. Resaving is idempotent: no duplicate case, membership or analysis ownership.
 8. Reflex: a rule adding a micro test of another lab unit opens that unit's
    related case; an ordinary test added by a rule joins the case whose result
@@ -284,7 +309,9 @@ merges with a destination case that has the same key. Refused after final
 release unless an amendment is open. Recorded on the timeline.
 
 **Split** (FR-02.5, AC-V2-63): a member sample with no results moves to its own
-related case, with a reason on both timelines. Not offered for a sample with
+related case, with a reason on both timelines and a retained split relationship
+for navigation. Both cases remain linked in the switcher even within one lab
+unit, without needing to share a remaining sample. Not offered for a sample with
 results. Joining and regrouping are deferred.
 
 ## 6. Case work rules
@@ -407,11 +434,17 @@ and reception model as retired.
 - creation of the Unassigned state;
 - V1 specifications under `specs/782-*`.
 
-Retired later, with the step that replaces them: the linear stage table and
-Unassigned value (step 12, once no stored case uses them); the inventory stock
-usage link (step 8); Growth work-up, Mark checked and the "No change" reading
-(steps 8 and 13); Previous report fields (step 7); the remark projection as
-printed output (step 12).
+The temporary exceptions are the read-only `MicroCase.workflowType` mapping
+and WHONET bacteriology filter, plus the UAT seeder stamp for WHONET scenarios
+representing stored V1 cases. They do not route new clinical work. Step 15
+replaces them with purpose/Program-track populations and removes both exceptions.
+
+Retired runtime behavior is replaced in its owning step: linear stage and
+Unassigned behavior (step 12); the inventory stock usage link (step 8); Growth
+work-up, Mark checked and the "No change" reading (steps 8 and 13); Previous
+report fields (step 7); and the remark projection as printed output (step 12).
+Retired stored values and tables needed to preserve clinical meaning remain
+until the clinical migration has consumed them (step 16, D2).
 
 **Restructure in place**:
 
@@ -447,7 +480,14 @@ and restructured tables keep their rows, existing cases keep their identities,
 results, isolates, identification history, AST readings and attempts, issued
 reports, amendments, calls and history without a copy step.
 
-One dedicated clinical migration, before V2 is released, handles what needs
+Structural changes are rehearsed throughout the stack against the real
+application changelog and a V1 database copy. Preserving rows alone is not proof
+that V2 can read or authorize them correctly. Each milestone identifies the
+existing-data requirements of its new behavior and keeps their verification in
+its upgrade evidence. No intermediate stack revision is deployed as a completed
+cutover.
+
+One dedicated clinical migration (roadmap step 16), before V2 is released, handles what needs
 meaning rather than structure (FR-01.6, FR-01.7, A-16, AC-V2-42):
 
 - give every case a lab unit; assign a Program mapped from its retired workflow
@@ -459,6 +499,13 @@ meaning rather than structure (FR-01.6, FR-01.7, A-16, AC-V2-42):
   program (FR-02.12);
 - refuse to run when a mapping is ambiguous, changing nothing;
 - then drop the retired columns and tables.
+
+Before the migrated application serves case work, every mapping and membership
+required by V2 routing, lab-unit access and reporting must be established. The
+complete stack is accepted only after this migration on an upgraded database as
+well as a fresh installation (roadmap step 17). Ambiguous clinical mappings stop
+the migration without partial clinical changes; they never trigger a legacy
+fallback or a fabricated assignment.
 
 Applied Liquibase changesets are never edited.
 
@@ -487,43 +534,71 @@ supplies their population rules.
 Environmental work uses its own lab unit with the Environmental domain
 (M18-FR-A1). The case subject is a site (a sampling site until Locations &
 Organizations lands) with sampling points per sample (M18-FR-C9, M18-FR-D1). The
-layout is the same; clinical-only fields are absent (M18-FR-D3). Expert rules
+layout is the same; clinical-only fields are absent (M18-FR-D3). Purpose belongs
+to each case: changing one case from Routine monitoring to Outbreak
+investigation does not change another case on that order. Replicates belong to
+the order and update all of its cases, with a timeline entry on each. The
+"Applies to all cases on this order" helper belongs to Replicates, not Purpose
+(M18-FR-C5a, corrected AC-M18-07b). Expert rules
 needing patient data are skipped and shown as skipped (M18-FR-D4). Critical
 notifications go to the order's requester contact (M18-FR-D5). Case search also
 matches site name, site code and sampling point (M18-FR-E3).
 
 ## 14. Shared OpenELIS dependencies
 
-Status is what a name search of `develop` (53a8f78d68) found; the roadmap's
-first step confirms each.
+The status column records the original name search of `develop` at
+`53a8f78d68`; it is not a verified current capability assessment. Before its
+consumer is implemented, the owning milestone verifies the actual shared code
+path and records the revision, behavior evidence and any existing delivery PR
+in that milestone's PR. Where the capability is absent, that milestone delivers
+the required reusable portion in the shared module before its consumer. This
+work stays within the outlined milestones and the same implementation stack.
+The target behavior is not reduced because a dependency is unfinished, and no
+microbiology-only duplicate substitutes for a shared capability.
 
-| Dependency                                                     | Used for                                                                     | Status on develop                                   |
-| -------------------------------------------------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------- |
-| Multi-component results (OGC-1126/1127)                        | Gram stain, Xpert, LPA (FR-06.1a)                                            | present                                             |
-| Program questionnaires + FHIR mirror                           | Case information questions (FR-03.6)                                         | present                                             |
-| Critical callback log (OGC-714)                                | Calls (A-18)                                                                 | present                                             |
-| Order entry Tested elsewhere (OGC-1424)                        | Received isolates, tested-elsewhere case tests (FR-02.11, FR-02.13, FR-06.3) | present                                             |
-| Referral on sample items                                       | Refer out (A-08)                                                             | present                                             |
-| Reflex rules                                                   | Rule-added tests (FR-07.4)                                                   | present                                             |
-| Label presets (per order / per sample)                         | Labels; needs a new per-container scope (FR-20.2)                            | present; scope to add                               |
-| Inventory items and lots                                       | Media and lots (FR-05.1b)                                                    | present                                             |
-| Inventory _Track lots_ property and type tags (Inventory v1.9) | Tracked media (FR-05.1d)                                                     | not found                                           |
-| Result run / run of one (OGC-1200)                             | QC holds on typed results (FR-17.5)                                          | not found                                           |
-| "Used as" sample types                                         | Chooser filtering (FR-07.1)                                                  | not found                                           |
-| Block self-validation                                          | Validation (FR-17.5)                                                         | not found                                           |
-| Report versions / print queue (OGC-1031 r4)                    | Releases (FR-17.6)                                                           | present by name; confirm it is shared, not V1-micro |
-| Redesigned patient report (OGC-1111)                           | Micro report block (A-11)                                                    | not found                                           |
-| Workplan print record                                          | Bench sheet (FR-12.7)                                                        | partial; confirm                                    |
-| Order entry v4 per-sample body site/time/set (section N)       | Sets and sample details (FR-02.4a)                                           | partial; confirm                                    |
-| Sampling sites; Laporan Hasil certificate                      | Environmental subject and report                                             | present                                             |
+| Dependency                                                          | Required behavior                                                                          | Original search result                        | Owning milestone                                                    |
+| ------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ | --------------------------------------------- | ------------------------------------------------------------------- |
+| Multi-component results (OGC-1126/1127)                             | Gram stain, Xpert, LPA (FR-06.1a)                                                          | present                                       | 7 — case tests/results                                              |
+| Program questionnaires + FHIR mirror                                | Case information questions (FR-03.6)                                                       | present                                       | 6 — case information                                                |
+| Critical callback log (OGC-714)                                     | Calls (A-18)                                                                               | present                                       | 12 — releases/report/calls                                          |
+| Order entry Tested elsewhere (OGC-1424)                             | Sampleless external tests and received isolates (FR-02.11, FR-02.13); case tests (FR-06.3) | present                                       | 5 — routing; extended use in 7 and 9                                |
+| Referral on sample items                                            | Refer out (A-08)                                                                           | present                                       | 9 — isolates/referral                                               |
+| Reflex rules                                                        | Rule-added tests (FR-07.4)                                                                 | present                                       | 5 — routing; culture rule in 8 and incoming de-duplication in 11    |
+| Label presets                                                       | Existing per-order/per-sample scopes plus per-container scope (FR-20.2)                    | present; scope to add                         | 13 — worklist/bench/labels                                          |
+| Inventory items and lots                                            | Media and lot selection without stock consumption (FR-05.1b)                               | present                                       | 8 — cultures/media                                                  |
+| Inventory Track lots and type tags (Inventory v1.9)                 | Shared per-item lot tracking and medium tag (FR-05.1d)                                     | not found                                     | 8 — shared Inventory support before culture entry                   |
+| Result run / run of one (OGC-1200)                                  | Reagent/control policy and QC holds on typed results (FR-17.5)                             | not found                                     | 7 — shared result processing before case entry                      |
+| "Used as" sample types                                              | Shared compatible-type chooser behavior (FR-07.1)                                          | not found                                     | 5 — order-entry routing/chooser; reused in 7                        |
+| Block self-validation                                               | Same rule on case and ordinary Validation screens (FR-17.5)                                | not found                                     | 7 — shared validation                                               |
+| Report versions / print queue (OGC-1031 r4)                         | Shared version and release behavior (FR-17.6)                                              | present by name; shared ownership unconfirmed | 12 — shared reporting before case release                           |
+| Redesigned patient report (OGC-1111)                                | Required microbiology report block (A-11)                                                  | not found                                     | 12 — shared report support                                          |
+| Workplan print record                                               | Persisted bench sheet and Open sheet (FR-12.7)                                             | partial; confirm                              | 13 — shared Workplan support                                        |
+| Order-entry per-sample body site/time/set and bottle classification | Culture sets and all nonblocking warnings (FR-02.4a)                                       | partial; classification not found             | 5 — shared order entry/catalog                                      |
+| Sampling sites; Laporan Hasil certificate                           | Environmental subject and report                                                           | present                                       | 5 — site routing; report in 12; full environmental acceptance in 15 |
 
-## 15. Open decisions
+## 15. Clarified behavior and delivery
 
-1. **Paediatric/adult bottle warning** (FR-02.4a): the catalog has no container
-   classification. Add one, or drop the warning with product agreement.
-2. **Missing shared dependencies** in §14 marked _not found_: build each as
-   shared OpenELIS work, or agree a reduced V2 behavior with product, before the
-   slice that needs it.
+- **Environmental scope:** purpose is per case; replicates are per order. The
+  environmental requirement, acceptance criterion and mock helper must say the
+  same thing (§13).
+- **Related-case navigation:** retain shared-sample and split relationships
+  across transfers, including within one current lab unit (§4.1, §5).
+- **Before sample arrival:** saving eligible requested work opens its case and
+  shows Awaiting sample; later recording attaches the actual sample to that
+  case (§4.1, §5). Order saving never depends on a physical sample existing.
+- **Bottle warnings:** retain the specified paediatric/adult warning. Verify or
+  add configured container classification in the shared catalog in milestone 5;
+  do not infer it from a display name or silently omit the warning.
+- **Shared dependencies:** verify and deliver the required shared behavior in
+  the assigned milestone (§14), without task-sized extra PRs or unapproved
+  scope reductions.
+- **One stack:** baseline #4646 followed by one PR per outlined implementation
+  milestone. Validate each contribution, then clinical migration and full
+  integrated acceptance at the final stack revision before merging in order.
+  Final acceptance includes every core and environmental criterion, complete
+  cross-milestone journeys, retained clinical history, access, offline behavior,
+  localization, accessibility, ordinary laboratory workflow continuity and the
+  pinned nonfunctional performance requirements.
 
 ## 16. Deferred and out of scope
 
