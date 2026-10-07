@@ -31,6 +31,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,12 +50,15 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     private final SampleOrganizationService sampleOrganizationService;
     private final SystemUserService systemUserService;
     private final NceSpecimenService nceSpecimenService;
+    private final TestSectionService testSectionService;
 
     public MicroCaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroIsolateDAO isolateDAO,
             MicroCaseOrderDetailDAO orderDetailDAO, SampleItemService sampleItemService,
             SampleHumanService sampleHumanService, PatientService patientService,
             SampleOrganizationService sampleOrganizationService, SystemUserService systemUserService,
-            NceSpecimenService nceSpecimenService, MicroCaseSpecimenDAO specimenDAO) {
+            NceSpecimenService nceSpecimenService, MicroCaseSpecimenDAO specimenDAO,
+            TestSectionService testSectionService) {
+        this.testSectionService = testSectionService;
         this.caseDAO = caseDAO;
         this.specimenDAO = specimenDAO;
         this.activityDAO = activityDAO;
@@ -238,6 +242,8 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         form.id = microCase.getId();
         form.sampleId = microCase.getSampleId();
         form.testSectionId = microCase.getTestSectionId();
+        var labUnit = testSectionService.getTestSectionById(microCase.getTestSectionId());
+        form.testSectionName = labUnit == null ? null : labUnit.getTestSectionName();
         form.stage = microCase.getStage();
         form.priority = microCase.getPriority();
         form.programId = microCase.getProgramId();
@@ -300,6 +306,8 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         form.id = microCase.getId();
         form.sampleId = microCase.getSampleId();
         form.testSectionId = microCase.getTestSectionId();
+        var labUnit = testSectionService.getTestSectionById(microCase.getTestSectionId());
+        form.testSectionName = labUnit == null ? null : labUnit.getTestSectionName();
         form.stage = microCase.getStage();
         form.priority = microCase.getPriority();
         return form;

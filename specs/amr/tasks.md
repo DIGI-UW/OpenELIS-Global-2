@@ -327,6 +327,11 @@ verification remains pending. Identification saves now reject unsuccessful HTTP
 responses and malformed success bodies, and restore saving controls on rejection.
 Two regressions reproduced false success; 57 affected panel/service/case checks
 pass, including retention of the identification draft after denied writes.
+The case header now renders member specimen labels and case-unit names; related
+case links use lab-unit display names instead of retired workflow classification.
+The backend compiles names into the response within its transaction. A visible
+header regression failed before the fix; 39 case-screen and seven case-service
+tests pass. Worklist filter/query/display retirement is still pending.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,

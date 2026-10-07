@@ -74,6 +74,9 @@ public class MicroCaseServiceTest {
     private SystemUserService systemUserService;
 
     @Mock
+    private org.openelisglobal.test.service.TestSectionService testSectionService;
+
+    @Mock
     private NceSpecimenService nceSpecimenService;
 
     @Test
@@ -240,12 +243,20 @@ public class MicroCaseServiceTest {
         when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
         when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
         when(caseDAO.getByOrder("100")).thenReturn(java.util.List.of(microCase, sibling));
+        TestSection sourceUnit = new TestSection();
+        sourceUnit.setTestSectionName("Bacteriology bench");
+        TestSection relatedUnit = new TestSection();
+        relatedUnit.setTestSectionName("Reference bench");
+        when(testSectionService.getTestSectionById("9")).thenReturn(sourceUnit);
+        when(testSectionService.getTestSectionById("10")).thenReturn(relatedUnit);
 
         MicroCaseDetailForm form = service().getCaseDetail("case-1");
 
         assertEquals(1, form.siblingCases.size());
         assertEquals("case-2", form.siblingCases.get(0).id);
         assertEquals("10", form.siblingCases.get(0).testSectionId);
+        assertEquals("Bacteriology bench", form.testSectionName);
+        assertEquals("Reference bench", form.siblingCases.get(0).testSectionName);
     }
 
     private MicroCaseSpecimen member(String caseId, String sampleItemId) {
@@ -281,6 +292,6 @@ public class MicroCaseServiceTest {
     private MicroCaseService service() {
         return new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO, sampleItemService,
                 sampleHumanService, patientService, sampleOrganizationService, systemUserService, nceSpecimenService,
-                specimenDAO);
+                specimenDAO, testSectionService);
     }
 }

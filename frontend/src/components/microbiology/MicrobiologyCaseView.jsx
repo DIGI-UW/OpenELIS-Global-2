@@ -592,14 +592,16 @@ const MicrobiologyCaseView = ({
             <h1>{intl.formatMessage({ id: "microbiology.case.title" })}</h1>
             <div className="microbiology-workbench__meta">
               <span>
-                {intl.formatMessage({ id: "microbiology.case.sampleItem" })}:{" "}
-                <strong>{caseDetail.sampleItemId}</strong>
+                {intl.formatMessage({ id: "microbiology.case.specimens" })}:{" "}
+                <strong>
+                  {(caseDetail.specimens || [])
+                    .map((sample) => sample.label || sample.sampleItemId)
+                    .join(", ")}
+                </strong>
               </span>
               <span>
-                {intl.formatMessage({ id: "microbiology.case.workflow" })}:{" "}
-                <strong>
-                  {formatMicrobiologyEnum(caseDetail.workflowType, intl)}
-                </strong>
+                {intl.formatMessage({ id: "microbiology.case.labUnit" })}:{" "}
+                <strong>{caseDetail.testSectionName || "—"}</strong>
               </span>
               {caseDetail.patientName && (
                 <span>
@@ -645,28 +647,25 @@ const MicrobiologyCaseView = ({
               <nav
                 className="microbiology-sibling-links"
                 aria-label={intl.formatMessage({
-                  id: "microbiology.case.relatedWorkflows",
+                  id: "microbiology.case.relatedCases",
                 })}
               >
                 <span>
                   {intl.formatMessage({
-                    id: "microbiology.case.relatedWorkflows",
+                    id: "microbiology.case.relatedCases",
                   })}
                   :
                 </span>
                 {(caseDetail.siblingCases || []).map((sibling) => (
                   <RouterLink
                     key={sibling.id}
-                    aria-label={`${formatMicrobiologyEnum(
-                      sibling.workflowType,
-                      intl,
-                    )} (${formatMicrobiologyEnum(sibling.stage, intl)})`}
+                    aria-label={`${sibling.testSectionName || sibling.id} (${formatMicrobiologyEnum(sibling.stage, intl)})`}
                     to={getMicrobiologyCaseUrl(sibling.id, {
                       ...routeState,
                       section: "case-info",
                     })}
                   >
-                    {formatMicrobiologyEnum(sibling.workflowType, intl)} (
+                    {sibling.testSectionName || sibling.id} (
                     {formatMicrobiologyEnum(sibling.stage, intl)})
                   </RouterLink>
                 ))}

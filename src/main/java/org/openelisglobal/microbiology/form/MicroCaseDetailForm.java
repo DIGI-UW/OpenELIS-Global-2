@@ -9,6 +9,7 @@ public class MicroCaseDetailForm {
     public String id;
     public String sampleId;
     public String testSectionId;
+    public String testSectionName;
     public String programId;
     public boolean migrationReviewRequired;
     public boolean canEnterResults;

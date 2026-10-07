@@ -1065,6 +1065,38 @@ describe("MicrobiologyCaseView", () => {
     expect(service.getCaseDetail).toHaveBeenCalledTimes(1);
   });
 
+  it("shows member specimen labels and lab-unit case links without workflow classification", async () => {
+    const { workflowType, sampleItemId, ...canonicalCase } = caseDetail;
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...canonicalCase,
+        testSectionName: "Bacteriology bench",
+        specimens: [
+          { sampleItemId: "1001", label: "OWN-TUBE-1" },
+          { sampleItemId: "1002", label: "OWN-TUBE-2" },
+        ],
+        siblingCases: [
+          {
+            id: "case-related",
+            testSectionName: "Reference bench",
+            stage: "RECEIVED",
+          },
+        ],
+      }),
+    };
+    renderCase(service, "/Microbiology/cases/case-1?section=case-info");
+    expect(await screen.findByText("Bacteriology bench")).toBeInTheDocument();
+    expect(screen.getByText("OWN-TUBE-1, OWN-TUBE-2")).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Reference bench (Received)" }),
+    ).toHaveAttribute(
+      "href",
+      "/Microbiology/cases/case-related?section=case-info",
+    );
+    expect(screen.queryByText("Workflow:")).not.toBeInTheDocument();
+  });
+
   it("shows a final case as read-only and disables isolate mutation", async () => {
     const finalCase = {
       ...caseDetail,
