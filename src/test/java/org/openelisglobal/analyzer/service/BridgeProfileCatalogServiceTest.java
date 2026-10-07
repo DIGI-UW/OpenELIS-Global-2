@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.time.Duration;
+import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -53,6 +54,21 @@ public class BridgeProfileCatalogServiceTest {
         assertEquals("Specimen ID",
                 catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).sourceLabel());
         assertEquals("QC-", catalog.profiles().get(0).controlRecognitionSummary().conditions().get(0).value());
+    }
+
+    @Test
+    public void getCatalogKeepsTheProfilesTheBridgeSetAsideVisible() throws Exception {
+        ObjectNode catalog = (ObjectNode) new ObjectMapper().readTree(validCatalog());
+        catalog.putArray("issues").addObject().put("source", "file [/app/analyzer-profiles/broken.json]").put("reason",
+                "Cannot load shipped profile: Unexpected character");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalog loaded = service.getCatalog();
+
+        assertEquals(1, loaded.profiles().size());
+        assertEquals(List.of(new BridgeProfileCatalog.CatalogIssue("file [/app/analyzer-profiles/broken.json]",
+                "Cannot load shipped profile: Unexpected character")), loaded.issues());
     }
 
     @Test
