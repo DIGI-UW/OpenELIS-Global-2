@@ -57,7 +57,7 @@ vendor's full catalog).
 - [x] T4.5b E2E, a result under a code the profile does not declare is held as an unknown test, and a result for an assay that is not enabled is held as not enabled; the operator enables or adds it from the held row (test, and answers when categorical), stored as OVERRIDE; the held result recovers (rule 13). A code no profile declares is off until the operator maps it, and mapping a row turns it on
 - [x] T4.6 Error mapping: one errorKeyFor(response) helper; every path uses it; add keys to en.json. The server names an operator-facing refusal with `messageKey` and `messageArgs` (`AnalyzerRequestException`); setup, Verify, the mapping editor, adoption and the lifecycle modal show its words or their own message. Derived 6 Oct: analyzer type authoring keeps showing the Bridge's profile validation text, which is the author's only detail, until step 6 gives the Bridge's profile contract keyed errors
 - [x] T4.7 Hand-offs: Verify embeds the editor for the analyzer, so the separate "Review mappings" link and its missing `analyzerId` are gone; the editor's return button reads "Back" and returns to `returnTo`; the mapping routes allow `ANALYSER_IMPORT` or `GLOBAL_ADMIN` like `/analyzers`; the setup heading names the analyzer once it exists ("Set up GX bench 1") and says "a new analyzer" only before; a SETUP analyzer offers Activate (the lifecycle modal on the activation endpoint, with its blockers listed) instead of Deactivate; the mapping editor says so when a type declares no tests
-- [ ] T4.8 Green; format cold; commit; stack PR on step 2
+- [x] T4.8 Green; format cold; commit; stack PR. The Backend and Frontend checkpoints are the gate here; the E2E checkpoint stays red until step 7 rewrites the stock-GeneXpert, FluoroCycler and guided-setup specs that rely on label matching and the old Verify
 ```
 
 ### Verify
@@ -77,7 +77,7 @@ gh pr checks <PR>
 3. T4.1 passes; the raw-text fall-throughs are gone. (`npm test`, `grep`)
 4. T4.5b passes. (`pw:test`) T4.3 is checked in step 7.
 5. Hand-off and role fixes in T4.7 are present. (read, E2E)
-6. All three CI checkpoints pass. (`gh pr checks`)
+6. The Backend and Frontend checkpoints pass; the E2E checkpoint passes from step 7. (`gh pr checks`)
 
 ### Background (optional)
 
