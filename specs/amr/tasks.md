@@ -318,8 +318,12 @@ failed before integration; the 44 affected culture/case-screen checks now pass.
 Culture-outcome writes also reject failed/network responses through the existing
 service error handler. Four regressions reproduced false success; 45 service,
 case-screen and transition checks now pass, including specimen retention after
-rejection and completion only after a successful retry. Isolate creation still
-needs explicit specimen integration.
+rejection and completion only after a successful retry. Isolate creation now
+requires an explicit member specimen, awaits completion, and retains its draft
+and restores controls on rejection. Two panel checks failed before the change;
+53 affected panel/service/case-screen checks pass, including denied creation
+through the case screen and successful timeline refresh. Persisted browser
+verification remains pending.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,

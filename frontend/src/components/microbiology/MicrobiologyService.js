@@ -61,11 +61,11 @@ export const addCaseNote = (caseId, text) =>
   });
 
 export const createIsolate = (payload) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     postToOpenElisServerJsonResponse(
       "/rest/microbiology/isolates",
       JSON.stringify(payload),
-      resolve,
+      settleJsonResponse(resolve, reject),
     );
   });
 

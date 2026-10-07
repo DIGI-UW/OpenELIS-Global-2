@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
   Button,
+  InlineNotification,
   NumberInput,
   Select,
   SelectItem,
@@ -31,6 +32,7 @@ const IDENTIFICATION_METHOD_OPTIONS = [
 const IsolatePanel = ({
   caseId,
   isolates = [],
+  specimens = [],
   onCreateIsolate,
   onUpdateIdentification,
   saving,
@@ -40,6 +42,9 @@ const IsolatePanel = ({
   service = MicrobiologyService,
 }) => {
   const intl = useIntl();
+  const [sourceSampleItemId, setSourceSampleItemId] = useState("");
+  const [saveError, setSaveError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [isolateLabel, setIsolateLabel] = useState("ISO-1");
   const [gramStain, setGramStain] = useState("");
   const [colonyMorphology, setColonyMorphology] = useState("");
@@ -103,6 +108,7 @@ const IsolatePanel = ({
 
   const resetForm = () => {
     setEditingIsolateId("");
+    setSourceSampleItemId("");
     setIsolateLabel("ISO-1");
     setGramStain("");
     setColonyMorphology("");
@@ -114,31 +120,40 @@ const IsolatePanel = ({
     setIdentificationReason("");
   };
 
-  const submit = () => {
-    const payload = {
-      caseId,
-      isolateLabel,
-      gramStain,
-      colonyMorphology,
-      significance,
-    };
-    if (editingIsolateId) {
-      onUpdateIdentification(editingIsolateId, {
-        organismId,
-        preliminaryOrganismText:
-          organismLabels[organismId] || preliminaryOrganismText,
+  const submit = async () => {
+    if (submitDisabled) return;
+    setSaveError(false);
+    setSubmitting(true);
+    try {
+      const payload = {
+        caseId,
+        isolateLabel,
+        gramStain,
+        colonyMorphology,
         significance,
-        identificationStatus: "CONFIRMED",
-        identificationMethod,
-        identificationConfidence: Number(identificationConfidence),
-        ...(amendmentOpen
-          ? { identificationReason: identificationReason.trim() }
-          : {}),
-      });
-    } else {
-      onCreateIsolate(payload);
+      };
+      if (editingIsolateId) {
+        await onUpdateIdentification(editingIsolateId, {
+          organismId,
+          preliminaryOrganismText:
+            organismLabels[organismId] || preliminaryOrganismText,
+          significance,
+          identificationStatus: "CONFIRMED",
+          identificationMethod,
+          identificationConfidence: Number(identificationConfidence),
+          ...(amendmentOpen
+            ? { identificationReason: identificationReason.trim() }
+            : {}),
+        });
+      } else {
+        await onCreateIsolate({ ...payload, sourceSampleItemId });
+      }
+      resetForm();
+    } catch {
+      setSaveError(true);
+    } finally {
+      setSubmitting(false);
     }
-    resetForm();
   };
 
   const editIsolate = (isolate) => {
@@ -155,9 +170,14 @@ const IsolatePanel = ({
 
   const submitDisabled = Boolean(
     saving ||
+    submitting ||
     readOnly ||
     !isolateLabel.trim() ||
-    (!editingIsolateId && !gramStain.trim()) ||
+    (!editingIsolateId &&
+      (!gramStain.trim() ||
+        !specimens.some(
+          (sample) => sample.sampleItemId === sourceSampleItemId,
+        ))) ||
     (editingIsolateId &&
       (!organismId ||
         !identificationMethod ||
@@ -332,7 +352,40 @@ const IsolatePanel = ({
             ))}
           </ul>
         )}
+        {saveError && (
+          <InlineNotification
+            kind="error"
+            hideCloseButton
+            title={intl.formatMessage({ id: "microbiology.isolate.saveError" })}
+          />
+        )}
         <div className="microbiology-form-grid microbiology-form-grid--three">
+          {!editingIsolateId && (
+            <Select
+              id="microbiology-isolate-sample"
+              labelText={intl.formatMessage({
+                id: "microbiology.inoculation.sample",
+              })}
+              value={sourceSampleItemId}
+              disabled={readOnly || saving || submitting}
+              onChange={(event) => setSourceSampleItemId(event.target.value)}
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: "microbiology.inoculation.samplePlaceholder",
+                })}
+              />
+              {specimens.map((sample) => (
+                <SelectItem
+                  key={sample.sampleItemId}
+                  value={sample.sampleItemId}
+                  text={sample.label || sample.sampleItemId}
+                />
+              ))}
+            </Select>
+          )}
+
           <TextInput
             id="microbiology-isolate-label"
             labelText={intl.formatMessage({

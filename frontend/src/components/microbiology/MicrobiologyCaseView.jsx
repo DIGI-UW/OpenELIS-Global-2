@@ -371,12 +371,11 @@ const MicrobiologyCaseView = ({
 
   const createIsolate = (payload) => {
     setSaving(true);
-    service.createIsolate(payload).then(() => {
-      service.getCaseDetail(caseId).then((detail) => {
-        setCaseDetail(detail);
-        setSaving(false);
-      });
-    });
+    return service
+      .createIsolate(payload)
+      .then(() => service.getCaseDetail(caseId))
+      .then(setCaseDetail)
+      .finally(() => setSaving(false));
   };
 
   const updateIdentification = (isolateId, payload) => {
@@ -990,6 +989,7 @@ const MicrobiologyCaseView = ({
                   label={intl.formatMessage({ id: sectionLabelIds.isolates })}
                 >
                   <IsolatePanel
+                    specimens={caseDetail.specimens}
                     caseId={caseDetail.id}
                     isolates={caseDetail.isolates}
                     onCreateIsolate={createIsolate}

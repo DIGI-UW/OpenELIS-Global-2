@@ -1,5 +1,6 @@
 import MicrobiologyService, {
   getAstPanels,
+  createIsolate,
   recordCaseActivity,
   logCriticalCommunication,
   releaseFinalReport,
@@ -33,6 +34,15 @@ describe("MicrobiologyService", () => {
       ).rejects.toThrow();
     },
   );
+
+  it("rejects a denied isolate creation instead of completing the form", async () => {
+    postToOpenElisServerJsonResponse.mockImplementationOnce(
+      (url, body, callback) => callback({ status: 403 }),
+    );
+    await expect(
+      createIsolate({ caseId: "case-1", sourceSampleItemId: "sample-1" }),
+    ).rejects.toThrow();
+  });
 
   it("loads panel options without the retired workflow query parameter", async () => {
     const panels = [{ id: "panel-1", label: "Gram negative panel" }];

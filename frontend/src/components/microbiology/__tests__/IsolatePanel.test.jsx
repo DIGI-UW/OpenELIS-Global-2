@@ -9,6 +9,7 @@ import messages from "../../../languages/en.json";
 
 const renderPanel = ({
   isolates = [],
+  specimens = [{ sampleItemId: "sample-1", label: "OWN-SAMPLE" }],
   onCreateIsolate = vi.fn(),
   onUpdateIdentification = vi.fn(),
   readOnly = false,
@@ -21,6 +22,7 @@ const renderPanel = ({
       <IsolatePanel
         caseId="case-1"
         isolates={isolates}
+        specimens={specimens}
         onCreateIsolate={onCreateIsolate}
         onUpdateIdentification={onUpdateIdentification}
         readOnly={readOnly}
@@ -39,6 +41,10 @@ describe("IsolatePanel", () => {
     renderPanel({ onCreateIsolate });
 
     await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
+    expect(
+      screen.getByRole("button", { name: "Create isolate" }),
+    ).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText("Sample"), "sample-1");
     await user.type(
       screen.getByLabelText("Colony morphology"),
       "Lactose fermenting colonies",
@@ -48,11 +54,28 @@ describe("IsolatePanel", () => {
     await waitFor(() =>
       expect(onCreateIsolate).toHaveBeenCalledWith({
         caseId: "case-1",
+        sourceSampleItemId: "sample-1",
         isolateLabel: "ISO-1",
         gramStain: "Gram negative rods",
         colonyMorphology: "Lactose fermenting colonies",
         significance: "CLINICALLY_SIGNIFICANT",
       }),
+    );
+  });
+
+  it("retains specimen and isolate draft when creation fails", async () => {
+    const user = userEvent.setup();
+    const onCreateIsolate = vi.fn().mockRejectedValue(new Error("Denied"));
+    renderPanel({ onCreateIsolate });
+    await user.selectOptions(screen.getByLabelText("Sample"), "sample-1");
+    await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
+    await user.click(screen.getByRole("button", { name: "Create isolate" }));
+    expect(
+      await screen.findByText("Unable to save isolate"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Sample")).toHaveValue("sample-1");
+    expect(screen.getByLabelText("Gram stain")).toHaveValue(
+      "Gram negative rods",
     );
   });
 

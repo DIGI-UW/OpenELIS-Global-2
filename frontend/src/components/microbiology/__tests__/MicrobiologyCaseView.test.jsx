@@ -834,6 +834,7 @@ describe("MicrobiologyCaseView", () => {
         screen.getByTestId("microbiology-case-section-isolates"),
       ).toHaveFocus(),
     );
+    await user.selectOptions(screen.getByLabelText("Sample"), "1001");
     await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
     await user.type(
       screen.getByLabelText("Colony morphology"),
@@ -844,6 +845,7 @@ describe("MicrobiologyCaseView", () => {
     await waitFor(() =>
       expect(service.createIsolate).toHaveBeenCalledWith({
         caseId: "case-1",
+        sourceSampleItemId: "1001",
         isolateLabel: "ISO-1",
         gramStain: "Gram negative rods",
         colonyMorphology: "Lactose fermenting colonies",
@@ -994,6 +996,31 @@ describe("MicrobiologyCaseView", () => {
     expect(release).toBeDisabled();
     await userEvent.click(release);
     expect(service.releaseAmendedReport).not.toHaveBeenCalled();
+  });
+
+  it("keeps the isolate draft and restores saving controls after rejection", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      createIsolate: vi.fn().mockRejectedValue(new Error("Denied")),
+    };
+    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
+    await screen.findByTestId("microbiology-case-section-isolates");
+    await user.selectOptions(screen.getByLabelText("Sample"), "1001");
+    await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
+    await user.click(screen.getByRole("button", { name: "Create isolate" }));
+    expect(
+      await screen.findByText("Unable to save isolate"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Sample")).toHaveValue("1001");
+    expect(screen.getByLabelText("Gram stain")).toHaveValue(
+      "Gram negative rods",
+    );
+    expect(
+      screen.getByRole("button", { name: "Create isolate" }),
+    ).toBeEnabled();
+    expect(service.getCaseDetail).toHaveBeenCalledTimes(1);
   });
 
   it("shows a final case as read-only and disables isolate mutation", async () => {

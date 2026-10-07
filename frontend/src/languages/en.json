@@ -12296,5 +12296,6 @@
   "microbiology.inoculation.sample": "Sample",
   "microbiology.inoculation.samplePlaceholder": "Choose a sample",
   "microbiology.cultureAction.noGrowth.note": "Incubation complete with no growth",
-  "microbiology.cultureAction.positive.note": "Culture marked positive"
+  "microbiology.cultureAction.positive.note": "Culture marked positive",
+  "microbiology.isolate.saveError": "Unable to save isolate"
 }
