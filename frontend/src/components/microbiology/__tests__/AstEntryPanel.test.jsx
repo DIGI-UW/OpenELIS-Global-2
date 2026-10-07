@@ -141,7 +141,6 @@ const renderPanel = (service, props = {}) =>
     <IntlProvider locale="en" messages={messages}>
       <AstEntryPanel
         caseId="case-1"
-        workflowType="BACTERIOLOGY"
         isolates={[isolate]}
         service={service}
         saving={false}
@@ -151,6 +150,27 @@ const renderPanel = (service, props = {}) =>
   );
 
 describe("AstEntryPanel", () => {
+  it("loads selectable panels without a case workflow classification", async () => {
+    const service = {
+      getAstPanels: vi
+        .fn()
+        .mockResolvedValue([
+          { id: "panel-1", label: "Gram negative AST panel" },
+        ]),
+      getAntibiotics: vi.fn().mockResolvedValue([]),
+      getBreakpointStandards: vi.fn().mockResolvedValue([]),
+      getAstRunsForIsolate: vi.fn().mockResolvedValue([]),
+      getCaseReadiness: vi
+        .fn()
+        .mockResolvedValue({ finalReleaseReady: false, blockers: [] }),
+    };
+    renderPanel(service);
+    expect(
+      await screen.findByRole("option", { name: "Gram negative AST panel" }),
+    ).toBeInTheDocument();
+    expect(service.getAstPanels).toHaveBeenCalledWith();
+  });
+
   it("focuses the isolate and AST run named by the worklist link", async () => {
     const linkedIsolate = { ...isolate, id: "iso-2", isolateLabel: "ISO-2" };
     const original = { ...reviewedRun, isolateId: "iso-2" };

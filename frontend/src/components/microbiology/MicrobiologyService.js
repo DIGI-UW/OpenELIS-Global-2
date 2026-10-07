@@ -84,14 +84,9 @@ export const updateIsolateIdentification = (isolateId, payload) =>
     );
   });
 
-export const getAstPanels = (workflowType) =>
+export const getAstPanels = () =>
   new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/reference/ast-panels?workflowType=${encodeURIComponent(
-        workflowType,
-      )}`,
-      resolve,
-    );
+    getFromOpenElisServer("/rest/microbiology/reference/ast-panels", resolve);
   });
 
 export const getAstSetupForIsolate = (isolateId) =>
