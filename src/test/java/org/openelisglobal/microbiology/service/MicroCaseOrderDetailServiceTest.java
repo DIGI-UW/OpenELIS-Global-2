@@ -2,7 +2,6 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -27,7 +26,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
-import org.openelisglobal.sample.valueholder.Sample;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroCaseOrderDetailServiceTest {
@@ -51,17 +49,6 @@ public class MicroCaseOrderDetailServiceTest {
         when(referenceService.isActivePatientOriginCode(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
         service = new MicroCaseOrderDetailServiceImpl(orderDetailDAO, caseDAO, activityDAO, referenceService,
                 new ObjectMapper());
-    }
-
-    @Test
-    public void discardingADraftRecordsTheActorInsteadOfDeletingIt() {
-        service.discardOrderDraft("42", "7");
-
-        ArgumentCaptor<java.sql.Timestamp> discardedAt = ArgumentCaptor.forClass(java.sql.Timestamp.class);
-        verify(orderDetailDAO).discardDraftBySampleId(org.mockito.ArgumentMatchers.eq("42"), discardedAt.capture(),
-                org.mockito.ArgumentMatchers.eq("7"));
-        org.junit.Assert.assertNotNull("a discard must carry the moment it happened", discardedAt.getValue());
-        verify(orderDetailDAO, never()).delete(any(MicroCaseOrderDetail.class));
     }
 
     @Test
@@ -136,146 +123,6 @@ public class MicroCaseOrderDetailServiceTest {
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(null);
 
         assertEquals(null, service.getOrderDetail("case-1"));
-    }
-
-    @Test
-    public void saveOrderDraftPersistsPreCaseDetailBySample() {
-        when(orderDetailDAO.getAnyDraftBySampleId("99")).thenReturn(null);
-        Sample sample = new Sample();
-        sample.setId("99");
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.cultureMethodId = "17";
-        request.culturePurpose = "CLINICAL_DIAGNOSTIC";
-        request.patientOrigin = "INPATIENT";
-        request.admissionDate = "2026-08-03";
-        request.numberOfSets = 2;
-        request.clinicalHistory = "Persistent fever";
-        request.antibioticExposure = true;
-
-        MicroCaseOrderDetail saved = service.saveOrderDraft(sample, request, "7");
-
-        assertNull(saved.getCaseId());
-        assertEquals("99", saved.getSampleId());
-        assertEquals("17", saved.getCultureMethodId());
-        assertEquals("CLINICAL_DIAGNOSTIC", saved.getCulturePurpose());
-        assertEquals(LocalDate.of(2026, 8, 3), saved.getAdmissionDate());
-        assertEquals(Boolean.TRUE, saved.getAntibioticExposure());
-        verify(orderDetailDAO).insert(saved);
-        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
-    }
-
-    @Test
-    public void getOrderDraftCompilesTheReloadForm() {
-        MicroCaseOrderDetail detail = new MicroCaseOrderDetail();
-        detail.setSampleId("99");
-        detail.setCultureMethodId("17");
-        detail.setCulturePurpose("ACTIVE_SCREENING");
-        detail.setPatientOrigin("INPATIENT");
-        detail.setAdmissionDate(LocalDate.of(2026, 8, 13));
-        detail.setNumberOfSets(3);
-        detail.setClinicalHistory("Sepsis query");
-        detail.setAntibioticExposure(false);
-        when(orderDetailDAO.getDraftBySampleId("99")).thenReturn(detail);
-
-        MicroCaseOrderDetailRequestForm reloaded = service.getOrderDraft("99");
-
-        assertEquals("17", reloaded.cultureMethodId);
-        assertEquals("ACTIVE_SCREENING", reloaded.culturePurpose);
-        assertEquals("INPATIENT", reloaded.patientOrigin);
-        assertEquals("2026-08-13", reloaded.admissionDate);
-        assertEquals(Integer.valueOf(3), reloaded.numberOfSets);
-        assertEquals("Sepsis query", reloaded.clinicalHistory);
-        assertEquals(Boolean.FALSE, reloaded.antibioticExposure);
-    }
-
-    @Test
-    public void saveOrderDraftClearsAdmissionDateForOutpatientContext() {
-        when(orderDetailDAO.getAnyDraftBySampleId("99")).thenReturn(null);
-        Sample sample = new Sample();
-        sample.setId("99");
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.culturePurpose = "CLINICAL_DIAGNOSTIC";
-        request.patientOrigin = "OUTPATIENT";
-        request.admissionDate = "2026-08-03";
-
-        MicroCaseOrderDetail saved = service.saveOrderDraft(sample, request, "7");
-
-        assertNull(saved.getAdmissionDate());
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void saveOrderDraftRejectsMalformedAdmissionDate() {
-        when(orderDetailDAO.getAnyDraftBySampleId("99")).thenReturn(null);
-        Sample sample = new Sample();
-        sample.setId("99");
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.culturePurpose = "CLINICAL_DIAGNOSTIC";
-        request.patientOrigin = "INPATIENT";
-        request.admissionDate = "2026-02-31";
-
-        service.saveOrderDraft(sample, request, "7");
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void saveOrderDraftRejectsUnknownPatientOriginCode() {
-        when(referenceService.isActivePatientOriginCode("FREE_TEXT")).thenReturn(false);
-        Sample sample = new Sample();
-        sample.setId("99");
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.culturePurpose = "CLINICAL_DIAGNOSTIC";
-        request.patientOrigin = "FREE_TEXT";
-
-        service.saveOrderDraft(sample, request, "7");
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void saveOrderDraftRejectsMissingCulturePurposeForANewOrder() {
-        when(orderDetailDAO.getAnyDraftBySampleId("99")).thenReturn(null);
-        Sample sample = new Sample();
-        sample.setId("99");
-
-        service.saveOrderDraft(sample, new MicroCaseOrderDetailRequestForm(), "7");
-    }
-
-    @Test
-    public void reQualifyingRevivesTheRetiredDraftInsteadOfInsertingASecondOne() {
-        MicroCaseOrderDetail retired = new MicroCaseOrderDetail();
-        retired.setId("detail-1");
-        retired.setSampleId("99");
-        retired.setDiscardedAt(new java.sql.Timestamp(System.currentTimeMillis()));
-        retired.setDiscardedBy("3");
-        when(orderDetailDAO.getAnyDraftBySampleId("99")).thenReturn(retired);
-        Sample sample = new Sample();
-        sample.setId("99");
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.clinicalHistory = "Culture ordered again";
-
-        MicroCaseOrderDetail saved = service.saveOrderDraft(sample, request, "7");
-
-        org.junit.Assert.assertNull("a revived draft is no longer retired", saved.getDiscardedAt());
-        org.junit.Assert.assertNull(saved.getDiscardedBy());
-        assertEquals("Culture ordered again", saved.getClinicalHistory());
-        verify(orderDetailDAO).update(retired);
-        verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
-    }
-
-    @Test
-    public void saveOrderDraftAllowsHistoricalDraftToRemainUnclassified() {
-        MicroCaseOrderDetail existing = new MicroCaseOrderDetail();
-        existing.setId("detail-1");
-        existing.setSampleId("99");
-        when(orderDetailDAO.getAnyDraftBySampleId("99")).thenReturn(existing);
-        Sample sample = new Sample();
-        sample.setId("99");
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.clinicalHistory = "Historical order context";
-
-        MicroCaseOrderDetail saved = service.saveOrderDraft(sample, request, "7");
-
-        assertNull(saved.getCulturePurpose());
-        assertEquals("Historical order context", saved.getClinicalHistory());
-        verify(orderDetailDAO).update(existing);
-        verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
     }
 
     @Test

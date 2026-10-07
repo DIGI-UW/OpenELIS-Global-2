@@ -17,7 +17,6 @@ import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
-import org.openelisglobal.microbiology.dao.MicroCultureSetupDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 
@@ -36,15 +35,12 @@ public class MicrobiologyConfigurationServiceTest {
     private MicroBreakpointStandardDAO standardDAO;
     @Mock
     private MicroBreakpointRuleDAO ruleDAO;
-    @Mock
-    private MicroCultureSetupDAO cultureSetupDAO;
-
     private MicrobiologyConfigurationService service;
 
     @Before
     public void setUp() {
         service = new MicrobiologyConfigurationServiceImpl(organismDAO, antibioticDAO, panelDAO, panelAntibioticDAO,
-                standardDAO, ruleDAO, cultureSetupDAO);
+                standardDAO, ruleDAO);
     }
 
     @Test

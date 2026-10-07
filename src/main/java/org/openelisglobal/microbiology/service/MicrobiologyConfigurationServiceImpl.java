@@ -8,14 +8,12 @@ import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointRuleDAO;
 import org.openelisglobal.microbiology.dao.MicroBreakpointStandardDAO;
-import org.openelisglobal.microbiology.dao.MicroCultureSetupDAO;
 import org.openelisglobal.microbiology.dao.MicroOrganismDAO;
 import org.openelisglobal.microbiology.valueholder.MicroAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,19 +27,16 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
     private final MicroBreakpointStandardDAO standardDAO;
     private final MicroBreakpointRuleDAO ruleDAO;
-    private final MicroCultureSetupDAO cultureSetupDAO;
 
     public MicrobiologyConfigurationServiceImpl(MicroOrganismDAO organismDAO, MicroAntibioticDAO antibioticDAO,
             MicroAstPanelDAO astPanelDAO, MicroAstPanelAntibioticDAO panelAntibioticDAO,
-            MicroBreakpointStandardDAO standardDAO, MicroBreakpointRuleDAO ruleDAO,
-            MicroCultureSetupDAO cultureSetupDAO) {
+            MicroBreakpointStandardDAO standardDAO, MicroBreakpointRuleDAO ruleDAO) {
         this.organismDAO = organismDAO;
         this.antibioticDAO = antibioticDAO;
         this.astPanelDAO = astPanelDAO;
         this.panelAntibioticDAO = panelAntibioticDAO;
         this.standardDAO = standardDAO;
         this.ruleDAO = ruleDAO;
-        this.cultureSetupDAO = cultureSetupDAO;
     }
 
     @Override
@@ -113,17 +108,15 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
     @Transactional
     public MicroAstPanel createAstPanel(MicroAstPanel panel) {
         requireText(panel == null ? null : panel.getName(), "panel.name");
-        requireText(panel == null ? null : panel.getWorkflowType(), "panel.workflowType");
         astPanelDAO.insert(panel);
         return panel;
     }
 
     @Override
     @Transactional
-    public MicroAstPanel getOrCreateAstPanel(String name, String workflowType, String organismGroup) {
+    public MicroAstPanel getOrCreateAstPanel(String name, String organismGroup) {
         requireText(name, "panel.name");
-        requireText(workflowType, "panel.workflowType");
-        List<MicroAstPanel> existing = astPanelDAO.getAllMatching(Map.of("name", name, "workflowType", workflowType));
+        List<MicroAstPanel> existing = astPanelDAO.getAllMatching(Map.of("name", name));
         if (!existing.isEmpty()) {
             MicroAstPanel panel = existing.get(0);
             if (!"Y".equals(panel.getIsActive())) {
@@ -135,7 +128,6 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
 
         MicroAstPanel panel = new MicroAstPanel();
         panel.setName(name);
-        panel.setWorkflowType(workflowType);
         panel.setOrganismGroup(organismGroup);
         return createAstPanel(panel);
     }
@@ -218,56 +210,6 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
             return existing;
         }
         return createBreakpointRule(rule);
-    }
-
-    @Override
-    @Transactional
-    public MicroCultureSetup createCultureSetup(MicroCultureSetup setup) {
-        requireText(setup == null ? null : setup.getMethodId(), "setup.methodId");
-        requireText(setup == null ? null : setup.getName(), "setup.name");
-        requireText(setup == null ? null : setup.getWorkflowType(), "setup.workflowType");
-        cultureSetupDAO.insert(setup);
-        return setup;
-    }
-
-    @Override
-    @Transactional
-    public MicroCultureSetup getOrCreateCultureSetup(MicroCultureSetup setup) {
-        requireText(setup == null ? null : setup.getMethodId(), "setup.methodId");
-        requireText(setup == null ? null : setup.getName(), "setup.name");
-        requireText(setup == null ? null : setup.getWorkflowType(), "setup.workflowType");
-
-        MicroCultureSetup existing = cultureSetupDAO.getActiveSetupForMethod(setup.getMethodId(),
-                setup.getWorkflowType());
-        if (existing == null) {
-            return createCultureSetup(setup);
-        }
-
-        boolean changed = false;
-        if (!setup.getName().equals(existing.getName())) {
-            existing.setName(setup.getName());
-            changed = true;
-        }
-        if (!sameValue(setup.getMediaDefaults(), existing.getMediaDefaults())) {
-            existing.setMediaDefaults(setup.getMediaDefaults());
-            changed = true;
-        }
-        if (!sameValue(setup.getIncubationDefaults(), existing.getIncubationDefaults())) {
-            existing.setIncubationDefaults(setup.getIncubationDefaults());
-            changed = true;
-        }
-        if (!sameValue(setup.getAtmosphereDefaults(), existing.getAtmosphereDefaults())) {
-            existing.setAtmosphereDefaults(setup.getAtmosphereDefaults());
-            changed = true;
-        }
-        if (!sameValue(setup.getReportableTestAnalyteId(), existing.getReportableTestAnalyteId())) {
-            existing.setReportableTestAnalyteId(setup.getReportableTestAnalyteId());
-            changed = true;
-        }
-        if (changed) {
-            cultureSetupDAO.update(existing);
-        }
-        return existing;
     }
 
     private void requireText(String value, String fieldName) {

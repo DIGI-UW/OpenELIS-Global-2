@@ -68,7 +68,6 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -169,7 +168,7 @@ public class MicrobiologyUatScenarioServiceTest {
     private MicroCaseService caseService;
 
     @Mock
-    private MicroOrderRoutingService orderRoutingService;
+    private MicroCaseAnalysisService caseAnalysisService;
 
     @Mock
     private InventoryItemService inventoryItemService;
@@ -245,7 +244,7 @@ public class MicrobiologyUatScenarioServiceTest {
                 personService, sampleHumanService, typeOfSampleService, typeOfSampleTestService, testService,
                 testSectionService, localizationService, analyteService, testAnalyteService, analysisService,
                 testResultService, testMethodService, statusService, statusOfSampleService, configurationService,
-                caseService, orderRoutingService, inventoryItemService, inventoryLotService, inventoryManagementService,
+                caseService, caseAnalysisService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
                 nceCategoryService, nceTypeService, isolateService, astService, analyzerService);
     }
@@ -589,66 +588,6 @@ public class MicrobiologyUatScenarioServiceTest {
     }
 
     @Test
-    public void provisionsR1ClassificationScenarioThroughServices() {
-        Sample sample = sample("sample-1");
-        SampleItem sampleItem = sampleItem("sample-item-1");
-        Method method = method("method-1");
-        org.openelisglobal.test.valueholder.Test test = test("test-1");
-        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
-        Analysis analysis = analysis("analysis-1");
-        MicroCase routedCase = microCase("case-bacteriology");
-        MicroCase unassignedCase = microCase("case-unassigned");
-        unassignedCase.setWorkflowType(MicroWorkflowType.UNASSIGNED.name());
-        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, routedCase);
-        when(testService.getTestByDescription("UAT microbiology TB culture")).thenReturn(null);
-        when(testService.getTestByDescription("UAT routine non-culture test")).thenReturn(null);
-        doAnswer(invocation -> {
-            Method inserted = invocation.getArgument(0);
-            inserted.setId("method-alternate");
-            return null;
-        }).when(methodService).insert(any(Method.class));
-        doAnswer(invocation -> {
-            org.openelisglobal.test.valueholder.Test inserted = invocation.getArgument(0);
-            if ("UAT microbiology TB culture".equals(inserted.getDescription())) {
-                inserted.setId("test-tb");
-            } else if ("UAT routine non-culture test".equals(inserted.getDescription())) {
-                inserted.setId("test-routine");
-            }
-            return null;
-        }).when(testService).insert(any(org.openelisglobal.test.valueholder.Test.class));
-        when(caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1"))
-                .thenReturn(unassignedCase);
-        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
-        request.scenario = "R1";
-        request.scenarioKey = "playwright-r1-workflow-classification";
-
-        MicrobiologyUatScenarioForm result = service.provision(request, "1");
-
-        assertEquals("case-unassigned", result.caseId);
-        assertEquals("case-bacteriology", result.siblingCaseId);
-        assertEquals("method-1", result.methodId);
-        assertEquals("method-alternate", result.alternateMethodId);
-        assertEquals("sample-type-1", result.sampleTypeId);
-        assertEquals("test-1", result.cultureTestId);
-        assertEquals("test-tb", result.tbCultureTestId);
-        assertEquals("test-routine", result.nonCultureTestId);
-        ArgumentCaptor<TestMethod> methodLinkCaptor = ArgumentCaptor.forClass(TestMethod.class);
-        verify(testMethodService, times(4)).linkMethod(methodLinkCaptor.capture());
-        TestMethod alternateLink = methodLinkCaptor.getAllValues().stream()
-                .filter(link -> "method-alternate".equals(link.getMethodId())).findFirst().orElseThrow();
-        assertEquals("test-1", alternateLink.getTestId());
-        assertFalse(alternateLink.getIsDefaultMethod());
-        verify(caseService).createOrGetCase(sampleItem.getId(), MicroWorkflowType.UNASSIGNED, null, "1");
-        ArgumentCaptor<org.openelisglobal.microbiology.valueholder.MicroCultureSetup> setupCaptor = ArgumentCaptor
-                .forClass(org.openelisglobal.microbiology.valueholder.MicroCultureSetup.class);
-        verify(configurationService, times(3)).getOrCreateCultureSetup(setupCaptor.capture());
-        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), setupCaptor.getAllValues().get(0).getWorkflowType());
-        assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), setupCaptor.getAllValues().get(1).getWorkflowType());
-        assertEquals("method-alternate", setupCaptor.getAllValues().get(2).getMethodId());
-        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), setupCaptor.getAllValues().get(2).getWorkflowType());
-    }
-
-    @Test
     public void provisionsReviewedAstScenarioThroughServices() {
         provisionReviewedAstScenario("AST_REVIEWED", false);
     }
@@ -924,7 +863,7 @@ public class MicrobiologyUatScenarioServiceTest {
                 .thenReturn(ciprofloxacin);
         when(configurationService.getOrCreateAntibiotic("Gentamicin (UAT)", "GENUAT", "Aminoglycoside"))
                 .thenReturn(gentamicin);
-        when(configurationService.getOrCreateAstPanel(anyString(), anyString(), anyString())).thenReturn(panel);
+        when(configurationService.getOrCreateAstPanel(anyString(), anyString())).thenReturn(panel);
         MicroOrganism organism = new MicroOrganism();
         organism.setId("organism-1");
         when(configurationService.getOrCreateOrganism(anyString(), anyString(), anyString())).thenReturn(organism);
@@ -940,10 +879,7 @@ public class MicrobiologyUatScenarioServiceTest {
         when(analyteService.getAnalyteByName(any(Analyte.class), any(Boolean.class))).thenReturn(analyte);
         when(testAnalyteService.getAllTestAnalytesPerTest(test)).thenReturn(List.of(testAnalyte));
         when(analysisService.getAnalysisBySampleItemAndTest(sampleItem.getId(), test.getId())).thenReturn(analysis);
-        when(orderRoutingService.routeAnalysesForSampleItem(sampleItem, List.of(analysis), "1"))
-                .thenReturn(List.of(microCase));
-        when(caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.MYCOBACTERIOLOGY_TB, method.getId(), "1"))
-                .thenReturn(microCase("case-tb"));
+        when(caseService.createOrGetCase(sampleItem.getId(), method.getId(), "1")).thenReturn(microCase);
     }
 
     private Sample sample(String id) {
@@ -997,7 +933,6 @@ public class MicrobiologyUatScenarioServiceTest {
     private MicroCase microCase(String id) {
         MicroCase microCase = new MicroCase();
         microCase.setId(id);
-        microCase.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         return microCase;
     }
 

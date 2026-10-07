@@ -23,7 +23,10 @@ public class MicroCase extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String sampleItemId;
 
-    @Column(name = "workflow_type", nullable = false, length = 40)
+    // Retired V1 classification, still read by the WHONET export query so stored
+    // rows keep their bacteriology scope until step 15 replaces it with track
+    // populations. Never written.
+    @Column(name = "workflow_type", insertable = false, updatable = false, length = 40)
     private String workflowType;
 
     @Column(name = "stage", nullable = false, length = 40)
@@ -71,10 +74,6 @@ public class MicroCase extends BaseObject<String> {
 
     public String getWorkflowType() {
         return workflowType;
-    }
-
-    public void setWorkflowType(String workflowType) {
-        this.workflowType = workflowType;
     }
 
     public String getStage() {

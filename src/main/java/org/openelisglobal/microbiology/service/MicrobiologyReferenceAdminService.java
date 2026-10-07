@@ -3,7 +3,6 @@ package org.openelisglobal.microbiology.service;
 import java.util.List;
 import org.openelisglobal.microbiology.form.MicroAntibioticAdminForm;
 import org.openelisglobal.microbiology.form.MicroAstPanelAdminForm;
-import org.openelisglobal.microbiology.form.MicroCultureSetupAdminForm;
 import org.openelisglobal.microbiology.form.MicroOrganismAdminForm;
 import org.openelisglobal.microbiology.form.MicroPatientOriginAdminForm;
 import org.openelisglobal.microbiology.form.MicroReferenceAdminPageForm;
@@ -36,13 +35,7 @@ public interface MicrobiologyReferenceAdminService {
 
     MicroAstPanelAdminForm publishPanelVersion(String currentPanelId, MicroAstPanelAdminForm request, String actorId);
 
-    MicroReferenceAdminPageForm<MicroCultureSetupAdminForm> getCultureSetups(MicroReferenceAdminQueryForm query);
-
     MicroReferenceAdminPageForm<MicroPatientOriginAdminForm> getPatientOrigins(MicroReferenceAdminQueryForm query);
-
-    MicroCultureSetupAdminForm getCultureSetup(String id);
-
-    MicroCultureSetupAdminForm saveCultureSetup(String id, MicroCultureSetupAdminForm request, String actorId);
 
     List<MicroReferenceOptionForm> getOptions(String resource);
 }

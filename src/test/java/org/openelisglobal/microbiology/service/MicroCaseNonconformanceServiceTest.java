@@ -129,7 +129,6 @@ public class MicroCaseNonconformanceServiceTest {
         MicroCase microCase = new MicroCase();
         microCase.setId(id);
         microCase.setSampleItemId("1001");
-        microCase.setWorkflowType("BACTERIOLOGY");
         microCase.setStage(stage.name());
         return microCase;
     }

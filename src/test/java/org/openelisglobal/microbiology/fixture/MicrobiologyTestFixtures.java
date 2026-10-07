@@ -25,9 +25,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstPanelAntibiotic;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointRule;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.service.PersonService;
@@ -220,7 +218,6 @@ public class MicrobiologyTestFixtures {
 
         MicroAstPanel panel = new MicroAstPanel();
         panel.setName("Enterobacterales panel " + suffix);
-        panel.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         panel.setOrganismGroup("Enterobacterales");
         configurationService.createAstPanel(panel);
 
@@ -244,16 +241,7 @@ public class MicrobiologyTestFixtures {
                 new BigDecimal("8.0000"), new BigDecimal("32.0000"));
         configurationService.createBreakpointRule(rule);
 
-        MicroCultureSetup setup = new MicroCultureSetup();
-        setup.setMethodId(methodId);
-        setup.setName("Urine culture " + suffix);
-        setup.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
-        setup.setMediaDefaults("Blood agar");
-        setup.setIncubationDefaults("18-24h");
-        setup.setAtmosphereDefaults("Ambient");
-        setup = configurationService.getOrCreateCultureSetup(setup);
-
-        return new ReferenceData(organism, antibiotic, panel, panelAntibiotic, standard, rule, setup);
+        return new ReferenceData(organism, antibiotic, panel, panelAntibiotic, standard, rule);
     }
 
     public AlternativeBreakpointData createAlternativeBreakpoint(ReferenceData referenceData) {
@@ -275,27 +263,16 @@ public class MicrobiologyTestFixtures {
         return configurationService.createOrganism(organism);
     }
 
-    public MicroCultureSetup createTbCultureSetup(String methodId) {
-        MicroCultureSetup setup = new MicroCultureSetup();
-        setup.setMethodId(methodId);
-        setup.setName("TB culture " + uniqueSuffix());
-        setup.setWorkflowType(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name());
-        setup.setMediaDefaults("MGIT");
-        setup.setIncubationDefaults("up to 42 days");
-        setup.setAtmosphereDefaults("Ambient");
-        return configurationService.getOrCreateCultureSetup(setup);
-    }
-
     public org.openelisglobal.test.valueholder.Test createCatalogTest() {
-        return createCatalogTest(null, null);
+        return createCatalogTest((Method) null);
     }
 
-    public Test createCatalogCultureTest(String methodId, MicroWorkflowType workflowType) {
+    public Test createCatalogCultureTest(String methodId) {
         Method method = methodService.findById(methodId);
         if (method == null) {
             throw new IllegalArgumentException("Method not found: " + methodId);
         }
-        Test test = createCatalogTest(workflowType, method);
+        Test test = createCatalogTest(method);
 
         TestMethod link = new TestMethod();
         link.setTestId(test.getId());
@@ -324,7 +301,7 @@ public class MicrobiologyTestFixtures {
         return analysis;
     }
 
-    private Test createCatalogTest(MicroWorkflowType workflowType, Method method) {
+    private Test createCatalogTest(Method method) {
         String suffix = uniqueSuffix();
         Test test = new Test();
         test.setName("MicroCatalogIT " + suffix);
@@ -334,7 +311,6 @@ public class MicrobiologyTestFixtures {
         test.setDomain("CLINICAL");
         test.setAntimicrobialResistance(true);
         test.setOrderable(true);
-        test.setCultureWorkflowType(workflowType == null ? null : workflowType.name());
         if (method != null) {
             test.setMethod(method);
         }
@@ -510,8 +486,7 @@ public class MicrobiologyTestFixtures {
     }
 
     public record ReferenceData(MicroOrganism organism, MicroAntibiotic antibiotic, MicroAstPanel panel,
-            MicroAstPanelAntibiotic panelAntibiotic, MicroBreakpointStandard standard, MicroBreakpointRule rule,
-            MicroCultureSetup cultureSetup) {
+            MicroAstPanelAntibiotic panelAntibiotic, MicroBreakpointStandard standard, MicroBreakpointRule rule) {
     }
 
     public record AlternativeBreakpointData(MicroBreakpointStandard standard, MicroBreakpointRule rule) {
