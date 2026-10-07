@@ -326,14 +326,14 @@ const AnalyserResults = (props) => {
     jpSet(form, name, value);
     const field = name.match(/\.(result|note)$/)?.[1];
     if (field) rememberEdit(rowId, field, value);
-    if (field === "result") {
-      const row = (form.resultList || []).find(
-        (candidate) => String(candidate.id) === String(rowId),
-      );
-      if (row) {
-        row.criticalAcknowledged = false;
-        row.invalidResultConfirmed = false;
-      }
+    const row = (form.resultList || []).find(
+      (candidate) => String(candidate.id) === String(rowId),
+    );
+    // A row without a note has no note property for the path above to set.
+    if (field === "note" && row) row.note = value;
+    if (field === "result" && row) {
+      row.criticalAcknowledged = false;
+      row.invalidResultConfirmed = false;
     }
   };
 

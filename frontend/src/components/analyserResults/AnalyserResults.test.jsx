@@ -567,6 +567,24 @@ describe("AnalyserResults", () => {
     expect(submittedResults.resultList[0].isAccepted).toBe(true);
   });
 
+  it("submits the note typed on a result that carried none", async () => {
+    renderResults([mappedQualitativeResult]);
+
+    const resultRow = await screen.findByRole("row", {
+      name: /MTB-RIF NOT DETECTED/,
+    });
+    fireEvent.click(within(resultRow).getAllByRole("checkbox")[0]);
+    fireEvent.change(document.getElementById("resultList1005.note"), {
+      target: { value: "Instrument keyed a different patient ID" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submittedResults = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submittedResults.resultList[0].note).toBe(
+      "Instrument keyed a different patient ID",
+    );
+  });
+
   it("OGC-1417: a retyped value the server refuses as critical is acknowledged and the batch sent again", async () => {
     const glucose = {
       id: "1001",
