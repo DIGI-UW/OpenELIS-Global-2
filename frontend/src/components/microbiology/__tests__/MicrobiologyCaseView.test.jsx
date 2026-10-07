@@ -1023,6 +1023,48 @@ describe("MicrobiologyCaseView", () => {
     expect(service.getCaseDetail).toHaveBeenCalledTimes(1);
   });
 
+  it("retains an identification draft and restores controls after a denied save", async () => {
+    const user = userEvent.setup();
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        isolates: [
+          {
+            id: "iso-1",
+            isolateLabel: "ISO-1",
+            gramStain: "Gram negative rods",
+            identificationStatus: "PRELIMINARY",
+          },
+        ],
+      }),
+      getOrganisms: vi
+        .fn()
+        .mockResolvedValue([{ id: "organism-1", label: "Escherichia coli" }]),
+      updateIsolateIdentification: vi
+        .fn()
+        .mockRejectedValue(new Error("Denied")),
+    };
+    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
+    await user.click(
+      await screen.findByRole("button", { name: "Identify organism" }),
+    );
+    await user.selectOptions(screen.getByLabelText("Organism"), "organism-1");
+    await user.selectOptions(screen.getByLabelText("ID method"), "MALDI_TOF");
+    await user.click(
+      screen.getByRole("button", { name: "Save identification" }),
+    );
+    expect(
+      await screen.findByText("Unable to save isolate"),
+    ).toBeInTheDocument();
+    expect(screen.getByLabelText("Organism")).toHaveValue("organism-1");
+    expect(screen.getByLabelText("ID method")).toHaveValue("MALDI_TOF");
+    expect(
+      screen.getByRole("button", { name: "Save identification" }),
+    ).toBeEnabled();
+    expect(service.getCaseDetail).toHaveBeenCalledTimes(1);
+  });
+
   it("shows a final case as read-only and disables isolate mutation", async () => {
     const finalCase = {
       ...caseDetail,

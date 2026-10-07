@@ -380,10 +380,10 @@ const MicrobiologyCaseView = ({
 
   const updateIdentification = (isolateId, payload) => {
     setSaving(true);
-    return service.updateIsolateIdentification(isolateId, payload).then(() => {
-      loadCase({ showLoading: false });
-      setSaving(false);
-    });
+    return service
+      .updateIsolateIdentification(isolateId, payload)
+      .then(() => loadCase({ showLoading: false }))
+      .finally(() => setSaving(false));
   };
 
   const selectSection = (section) => {

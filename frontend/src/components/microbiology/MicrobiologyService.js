@@ -70,16 +70,18 @@ export const createIsolate = (payload) =>
   });
 
 export const updateIsolateIdentification = (isolateId, payload) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     putToOpenElisServerFullResponse(
       `/rest/microbiology/isolates/${encodeURIComponent(isolateId)}/identification`,
       JSON.stringify(payload),
       (response) => {
-        if (!response) {
-          resolve({ status: 0 });
+        if (!response?.ok) {
+          const failure = new Error("Identification save failed");
+          failure.status = response?.status || 0;
+          reject(failure);
           return;
         }
-        response.json().then(resolve);
+        response.json().then(settleJsonResponse(resolve, reject)).catch(reject);
       },
     );
   });

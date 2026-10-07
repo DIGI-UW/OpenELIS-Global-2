@@ -1,6 +1,7 @@
 import MicrobiologyService, {
   getAstPanels,
   createIsolate,
+  updateIsolateIdentification,
   recordCaseActivity,
   logCriticalCommunication,
   releaseFinalReport,
@@ -10,6 +11,7 @@ import MicrobiologyService, {
 } from "../MicrobiologyService";
 import {
   getFromOpenElisServer,
+  putToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
 } from "../../utils/Utils";
 
@@ -42,6 +44,46 @@ describe("MicrobiologyService", () => {
     await expect(
       createIsolate({ caseId: "case-1", sourceSampleItemId: "sample-1" }),
     ).rejects.toThrow();
+  });
+
+  it.each([
+    undefined,
+    { ok: false, status: 403, json: async () => ({ message: "Denied" }) },
+  ])("rejects unsuccessful identification responses %o", async (response) => {
+    putToOpenElisServerFullResponse.mockImplementationOnce(
+      (url, body, callback) => callback(response),
+    );
+    await expect(
+      updateIsolateIdentification("isolate-1", {}),
+    ).rejects.toThrow();
+  });
+
+  it("settles empty error and malformed success responses, and returns saved identification", async () => {
+    putToOpenElisServerFullResponse.mockImplementationOnce(
+      (url, body, callback) => callback({ ok: false, status: 409 }),
+    );
+    await expect(
+      updateIsolateIdentification("isolate-1", {}),
+    ).rejects.toMatchObject({ status: 409 });
+    putToOpenElisServerFullResponse.mockImplementationOnce(
+      (url, body, callback) =>
+        callback({
+          ok: true,
+          json: async () => {
+            throw new SyntaxError("Invalid JSON");
+          },
+        }),
+    );
+    await expect(updateIsolateIdentification("isolate-1", {})).rejects.toThrow(
+      "Invalid JSON",
+    );
+    const saved = { id: "isolate-1", identificationStatus: "CONFIRMED" };
+    putToOpenElisServerFullResponse.mockImplementationOnce(
+      (url, body, callback) => callback({ ok: true, json: async () => saved }),
+    );
+    await expect(updateIsolateIdentification("isolate-1", {})).resolves.toEqual(
+      saved,
+    );
   });
 
   it("loads panel options without the retired workflow query parameter", async () => {

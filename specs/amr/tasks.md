@@ -323,7 +323,10 @@ requires an explicit member specimen, awaits completion, and retains its draft
 and restores controls on rejection. Two panel checks failed before the change;
 53 affected panel/service/case-screen checks pass, including denied creation
 through the case screen and successful timeline refresh. Persisted browser
-verification remains pending.
+verification remains pending. Identification saves now reject unsuccessful HTTP
+responses and malformed success bodies, and restore saving controls on rejection.
+Two regressions reproduced false success; 57 affected panel/service/case checks
+pass, including retention of the identification draft after denied writes.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,
