@@ -1,0 +1,36 @@
+{
+  "resourceType": "Questionnaire",
+  "id": "260734d7-b9fa-42cd-861f-8ac1c72a39ac",
+  "name": "GenericSampleLogbook",
+  "title": "Generic Sample Logbook Metadata",
+  "status": "active",
+  "subjectType": ["Specimen", "ServiceRequest"],
+  "description": "Captures logbook datapoints that are not stored on the Sample or Sample Item records.",
+  "item": [
+    {
+      "linkId": "sn",
+      "text": "Serial Number (SN)",
+      "type": "integer",
+      "required": false
+    },
+    {
+      "linkId": "id",
+      "text": "Sample Identifier (ID range)",
+      "type": "string",
+      "required": false
+    },
+    {
+      "linkId": "storagefreezerlocation",
+      "text": "Storage Freezer # & Location",
+      "type": "string",
+      "required": false
+    },
+    {
+      "text":"Lab person received",
+      "linkId":"labpersonreceived",
+      "type":"string",
+      "required":false
+    }
+  ]
+}
+

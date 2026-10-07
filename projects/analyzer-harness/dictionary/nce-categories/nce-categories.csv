@@ -1,0 +1,6 @@
+name,displayKey,active,localization:en,localization:fr
+General,nce.category.general,Y,General,Général
+Order,nce.category.order,Y,Order,Commande
+Sample,nce.category.sample,Y,Sample,Échantillon
+Analysis,nce.category.analysis,Y,Analysis,Analyse
+Post-Analytical,nce.category.postAnalytical,Y,Post-Analytical,Post-analytique
