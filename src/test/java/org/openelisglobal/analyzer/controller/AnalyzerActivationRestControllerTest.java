@@ -5,6 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.Before;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -14,6 +15,7 @@ import org.openelisglobal.analyzer.service.AnalyzerActivationBlocker;
 import org.openelisglobal.analyzer.service.AnalyzerActivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerActivationService;
 import org.openelisglobal.analyzer.service.AnalyzerDeactivationResult;
+import org.openelisglobal.analyzer.service.AnalyzerRequestException;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -121,6 +123,23 @@ public class AnalyzerActivationRestControllerTest {
 
         assertEquals(HttpStatus.UNPROCESSABLE_ENTITY, response.getStatusCode());
         assertEquals(blocked, response.getBody());
+    }
+
+    @Test
+    public void resetsAnUnavailableAnalyzerTypeWithTheAuthenticatedActor() {
+        ResponseEntity<Void> response = controller.resetProfile("77", authenticatedRequest(17));
+
+        assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
+        verify(service).resetUnavailableProfile("77", "17");
+    }
+
+    @Test
+    public void explainsARefusedResetWithItsMessageKey() {
+        ResponseEntity<Map<String, Object>> response = controller.handleInvalidRequest(
+                new AnalyzerRequestException("analyzer.reset.error.profileAvailable", "Still available"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("analyzer.reset.error.profileAvailable", response.getBody().get("messageKey"));
     }
 
     private static MockHttpServletRequest authenticatedRequest(int systemUserId) {
