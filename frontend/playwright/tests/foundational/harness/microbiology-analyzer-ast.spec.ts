@@ -1,5 +1,8 @@
+import { randomUUID } from "node:crypto";
 import { expect, test } from "../../../helpers/test-base";
 import type { Page } from "@playwright/test";
+import { withAuthedPage } from "../../../helpers/api-session";
+import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
 import {
   seedAnalyzerReviewMicrobiologyCase,
   submitQcFailedAstAnalyzerResults,
@@ -8,7 +11,8 @@ import {
 
 // Exercise normalized AST review with a real configured harness connection.
 // Instrument parsing and protocol compatibility have their own harness journeys.
-const SOURCE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)";
+const run = randomUUID().slice(0, 8);
+const SOURCE_ANALYZER = `AST source ${run}`;
 
 const frameBelowHeader = async (page: Page, testId: string) => {
   const target = page.getByTestId(testId);
@@ -25,6 +29,13 @@ const frameBelowHeader = async (page: Page, testId: string) => {
 };
 
 test.describe("Microbiology analyzer AST review", () => {
+  test.beforeAll(async ({ browser }) => {
+    test.setTimeout(180_000);
+    await withAuthedPage(browser, (page) =>
+      activateShippedGeneXpert(page, SOURCE_ANALYZER, `GX-AST-${run}`),
+    );
+  });
+
   test("Analyzer AST results expose QC evidence, resolve explicitly, and become reviewable", async ({
     page,
   }, testInfo) => {
