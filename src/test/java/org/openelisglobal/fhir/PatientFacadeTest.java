@@ -6,6 +6,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
@@ -302,6 +303,24 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
             assertEquals(element, asRead.get(element), afterwards.get(element));
         }
         assertEquals(null, personService.get("1").getStreetAddress());
+    }
+
+    @Test
+    public void updatePatient_withTheResourceAsRead_writesNothingToThePerson() throws Exception {
+        Person before = personService.get("1");
+        String zipCodeBefore = before.getZipCode();
+        String cellPhoneBefore = before.getCellPhone();
+        Timestamp lastUpdatedBefore = before.getLastupdated();
+        String patientUuid = patientService.get("1").getFhirUuidAsString();
+
+        MockHttpServletResponse response = put(patientUuid, read(patientUuid).toString());
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        Person after = personService.get("1");
+        assertEquals("09785432", after.getCellPhone());
+        assertEquals(cellPhoneBefore, after.getCellPhone());
+        assertEquals(zipCodeBefore, after.getZipCode());
+        assertEquals(lastUpdatedBefore, after.getLastupdated());
     }
 
     @Test

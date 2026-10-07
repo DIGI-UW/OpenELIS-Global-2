@@ -802,6 +802,11 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
+    public void keepUnchangedPatientContactDetails(Person stored, Person working) {
+        patientTransformService.keepUnchangedContactDetails(stored, working);
+    }
+
+    @Override
     public PatientSearchResults transformToOpenElisPatientSearchResults(org.hl7.fhir.r4.model.Patient fhirPatient) {
         return patientTransformService.transformToOpenElisPatientSearchResults(fhirPatient);
     }

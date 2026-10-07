@@ -362,6 +362,22 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
     }
 
     /**
+     * True when {@code code} is the code a read publishes for the analysis. A test
+     * with no LOINC code or terminology mapping is published by name only, as
+     * {@code code.text}, which no coding lookup can resolve, so sending it back
+     * unchanged was refused.
+     */
+    private boolean publishesTheAnalysisCode(CodeableConcept code, Analysis analysis) {
+        if (analysis == null || analysis.getTest() == null) {
+            return false;
+        }
+        SampleItem sampleItem = analysis.getSampleItem();
+        CodeableConcept published = terminologyTransformService.transformTestToCodeableConcept(
+                analysis.getTest().getId(), sampleItem == null ? null : sampleItem.getTypeOfSampleId());
+        return published != null && published.equalsDeep(code);
+    }
+
+    /**
      * Only an organization of the referring-site type is read back as the order's
      * location; storing any other one leaves a requester the read cannot see and
      * that the next update duplicates.
@@ -463,7 +479,9 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         }
 
         Test requestedTest = null;
-        if (serviceRequest.hasCode()) {
+        if (serviceRequest.hasCode() && publishesTheAnalysisCode(serviceRequest.getCode(), existingAnalysis)) {
+            requestedTest = existingAnalysis.getTest();
+        } else if (serviceRequest.hasCode()) {
             List<Test> foundTests = resolveTestsFromCodeableConcept(serviceRequest.getCode());
             if (foundTests.isEmpty()) {
                 throw new UnprocessableEntityException("ServiceRequest.code does not name an active test");

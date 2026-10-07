@@ -5,6 +5,8 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.ContactPoint;
@@ -298,6 +300,31 @@ public class PatientTransformServiceImpl implements PatientTransformService {
             patientInfo.setGpsLongitude(
                     person.getGpsLongitude() == null ? null : person.getGpsLongitude().toPlainString());
         }
+    }
+
+    @Override
+    public void keepUnchangedContactDetails(Person stored, Person working) {
+        keepIfSame(stored.getStreetAddress(), working.getStreetAddress(), working::setStreetAddress);
+        keepIfSame(stored.getCity(), working.getCity(), working::setCity);
+        keepIfSame(stored.getState(), working.getState(), working::setState);
+        keepIfSame(stored.getZipCode(), working.getZipCode(), working::setZipCode);
+        keepIfSame(stored.getCountry(), working.getCountry(), working::setCountry);
+        keepIfSame(stored.getEmail(), working.getEmail(), working::setEmail);
+        keepIfSame(stored.getFax(), working.getFax(), working::setFax);
+        if (sameText(stored.getPrimaryPhone(), working.getPrimaryPhone())) {
+            working.setPrimaryPhone(stored.getPrimaryPhone());
+            working.setCellPhone(stored.getCellPhone());
+        }
+    }
+
+    private static void keepIfSame(String stored, String sent, Consumer<String> setter) {
+        if (sameText(stored, sent)) {
+            setter.accept(stored);
+        }
+    }
+
+    private static boolean sameText(String stored, String sent) {
+        return Objects.equals(blankToNull(stored), blankToNull(sent));
     }
 
     private static String blankToNull(String value) {

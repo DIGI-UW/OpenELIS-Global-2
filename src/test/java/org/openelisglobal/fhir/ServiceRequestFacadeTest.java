@@ -12,6 +12,7 @@ import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.sql.Timestamp;
 import java.util.Arrays;
+import javax.sql.DataSource;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mockito;
@@ -30,6 +31,7 @@ import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.spring.util.SpringContext;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.mock.web.MockServletConfig;
@@ -56,6 +58,9 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private ObservationHistoryService observationHistoryService;
+
+    @Autowired
+    private DataSource dataSource;
 
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
@@ -370,6 +375,30 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals(before.getStatusId(), after.getStatusId());
         assertEquals(analysesBefore, analysisService.getAll().size());
         assertEquals("Histopathology", observationHistoryService.get("1").getValue());
+    }
+
+    @Test
+    public void updateServiceRequest_forATestWithoutLoinc_roundTripsItsTextOnlyCode() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        String loinc = jdbc.queryForObject("SELECT loinc FROM clinlims.test WHERE id = 1", String.class);
+        jdbc.update("UPDATE clinlims.test SET loinc = NULL WHERE id = 1");
+        try {
+            MockHttpServletResponse read = new MockHttpServletResponse();
+            fhirServlet.service(buildFhirRequest("GET", "/ServiceRequest/" + ANALYSIS1_FHIRID), read);
+            JsonNode code = objectMapper.readTree(read.getContentAsString()).get("code");
+            assertEquals("the read should publish the code by name only", null, code.get("coding"));
+
+            MockHttpServletRequest request = buildFhirRequest("PUT", "/ServiceRequest/" + ANALYSIS1_FHIRID);
+            request.setContentType("application/json");
+            request.setContent(read.getContentAsByteArray());
+            MockHttpServletResponse response = new MockHttpServletResponse();
+            fhirServlet.service(request, response);
+
+            assertEquals(response.getContentAsString(), 200, response.getStatus());
+            assertEquals("1", analysisService.get("1").getTest().getId());
+        } finally {
+            jdbc.update("UPDATE clinlims.test SET loinc = ? WHERE id = 1", loinc);
+        }
     }
 
     @Test

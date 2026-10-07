@@ -345,8 +345,10 @@ public class ServiceRequestProvider implements IResourceProvider {
             requireNonNull(request, "HttpServletRequest cannot be null");
 
             requireNonNull(serviceRequest, "ServiceRequest resource cannot be null");
-            requireTrue(serviceRequest.hasCode() && serviceRequest.getCode().hasCoding(),
-                    "ServiceRequest.code.coding is required");
+            requireTrue(
+                    serviceRequest.hasCode()
+                            && (serviceRequest.getCode().hasCoding() || serviceRequest.getCode().hasText()),
+                    "ServiceRequest.code is required");
 
             final String sysUserId = requireNonBlank(FhirProviderUtils.getSysUserId(request),
                     "Missing or invalid system user ID");

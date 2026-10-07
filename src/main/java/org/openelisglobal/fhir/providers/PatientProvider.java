@@ -30,6 +30,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -48,6 +49,7 @@ import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.search.service.PatientSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -297,6 +299,9 @@ public class PatientProvider implements IResourceProvider {
 
         try {
 
+            Person storedPerson = new Person();
+            PropertyUtils.copyProperties(storedPerson, existingPatient.getPerson());
+
             PatientManagementInfo patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
 
             if (patientInfo == null) {
@@ -326,6 +331,7 @@ public class PatientProvider implements IResourceProvider {
                 fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), workingPatient.getPerson());
             }
             fhirTransformService.addPatientAddressToPerson(fhirPatient, workingPatient.getPerson());
+            fhirTransformService.keepUnchangedPatientContactDetails(storedPerson, workingPatient.getPerson());
 
             String sysUserId = FhirProviderUtils.getSysUserId(request);
             if (sysUserId == null) {

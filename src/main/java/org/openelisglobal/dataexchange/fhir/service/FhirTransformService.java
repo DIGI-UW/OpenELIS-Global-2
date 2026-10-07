@@ -106,6 +106,9 @@ public interface FhirTransformService {
     void keepPatientDetailsFhirDoesNotCarry(PatientManagementInfo patientInfo,
             org.openelisglobal.patient.valueholder.Patient storedPatient);
 
+    void keepUnchangedPatientContactDetails(org.openelisglobal.person.valueholder.Person stored,
+            org.openelisglobal.person.valueholder.Person working);
+
     org.hl7.fhir.r4.model.Observation transformResultToObservation(org.openelisglobal.result.valueholder.Result result)
             throws FhirTransformationException;
 

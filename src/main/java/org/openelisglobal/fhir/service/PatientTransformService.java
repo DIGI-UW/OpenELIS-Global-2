@@ -31,4 +31,13 @@ public interface PatientTransformService {
      * so without this a FHIR update would erase them.
      */
     void keepDetailsFhirDoesNotCarry(PatientManagementInfo patientInfo, Patient storedPatient);
+
+    /**
+     * Puts back on {@code working} each stored address and contact value the update
+     * sent unchanged, so that an unchanged update writes nothing:
+     * {@code PERSON.ZIP_CODE} is padded, blanks are stored as empty strings, and
+     * the cell phone is not published at all. {@code stored} must be a copy taken
+     * before the update was applied.
+     */
+    void keepUnchangedContactDetails(Person stored, Person working);
 }
