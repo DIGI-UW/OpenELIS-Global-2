@@ -11,7 +11,8 @@ export type GeneXpertFixture = { assay: string; outcome: string };
 /**
  * Replay a Cepheid-documented message from the provisioned GeneXpert mock to
  * this connection's Bridge listener, for this accession. `instrumentCodes`
- * renames profile codes the way the instrument would send them.
+ * renames profile codes the way the instrument would send them, and `patient`
+ * fills the patient record Cepheid's examples leave empty.
  */
 export async function sendGeneXpertFixture(
   request: APIRequestContext,
@@ -20,6 +21,7 @@ export async function sendGeneXpertFixture(
   fixture: GeneXpertFixture,
   senderId: string,
   instrumentCodes: Record<string, string> = {},
+  patient?: { id: string; name: string },
 ): Promise<string> {
   const bridgeUrl =
     process.env.ANALYZER_BRIDGE_URL ||
@@ -104,6 +106,7 @@ export async function sendGeneXpertFixture(
         sample_id: accession,
         sender_id: senderId,
         instrument_codes: instrumentCodes,
+        ...(patient ? { patient } : {}),
       },
     },
   );

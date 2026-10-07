@@ -21,82 +21,11 @@ import {
 } from "../../../helpers/analyzer-setup-flow";
 import { csrfToken, withAuthedPage } from "../../../helpers/api-session";
 import { API } from "../../../helpers/analyzer-profile-api";
-
-type Order = Awaited<ReturnType<typeof createClinicalOrder>>;
-
-/**
- * What the lab sees saved for one component of an ordered test, read as the
- * Results screen does. The screen names a component after the test.
- */
-async function savedValue(
-  page: Page,
-  order: Order,
-  testId: string,
-  component: string,
-) {
-  const response = await page.request.get(
-    `${API}/accession-results?accessionNumber=${encodeURIComponent(order.accession)}`,
-  );
-  expect(response.ok()).toBeTruthy();
-  const data = (await response.json()) as {
-    lastName: string;
-    testResult: Array<{
-      testId: string;
-      testName: string;
-      resultValue: string;
-      resultType: string;
-      result?: { id?: string };
-      dictionaryResults?: Array<{ id: string; value: string }>;
-    }>;
-  };
-  expect(data.lastName).toBe(order.patientLastName);
-  const saved = data.testResult.filter(
-    (row) =>
-      row.testId === testId &&
-      row.testName.endsWith(` — ${component}`) &&
-      row.result?.id,
-  );
-  expect(
-    saved.length,
-    `Saved ${component} for ${order.accession}`,
-  ).toBeGreaterThan(0);
-  // A test's own result and an analyte can share a label; they carry the same call.
-  const values = saved.map((row) =>
-    row.resultType === "D"
-      ? row.dictionaryResults?.find((entry) => entry.id === row.resultValue)
-          ?.value
-      : row.resultValue,
-  );
-  return [...new Set(values)].join(" | ");
-}
-
-/**
- * Accept every row the analyzer sent for these accessions, as the reviewer
- * does, and save. Matched rows open already accepted, and Save takes every
- * accepted row on the screen, so the accessions are saved together.
- */
-async function acceptAll(page: Page, analyzer: Analyzer, accessions: string[]) {
-  await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
-    waitUntil: "domcontentloaded",
-  });
-  for (const accession of accessions) {
-    const rows = page.getByRole("row", { name: new RegExp(accession) });
-    await expect(rows.first()).toBeVisible();
-    const box = rows.locator('input[id$=".isAccepted"]');
-    for (let index = 0; index < (await box.count()); index += 1) {
-      await box.nth(index).setChecked(true);
-    }
-  }
-  await page.getByRole("button", { name: "Save", exact: true }).click();
-  // What was accepted leaves the screen; a held row stays, without a box to accept.
-  for (const accession of accessions) {
-    await expect(
-      page
-        .getByRole("row", { name: new RegExp(accession) })
-        .locator('input[id$=".isAccepted"]'),
-    ).toHaveCount(0);
-  }
-}
+import {
+  acceptAll,
+  savedValue,
+  type Order,
+} from "../../../helpers/analyzer-review";
 
 test.describe("A GeneXpert from setup to a clinical result", () => {
   const run = randomUUID().slice(0, 8);
