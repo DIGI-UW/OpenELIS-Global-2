@@ -64,6 +64,7 @@ const activityPresentation = (intl, activity) => {
 };
 
 const CaseTimelinePanel = ({
+  readOnly = false,
   activities = [],
   timelineSectionId,
   onAddNote,
@@ -130,7 +131,7 @@ const CaseTimelinePanel = ({
             kind="tertiary"
             size="sm"
             renderIcon={Add}
-            disabled={saving}
+            disabled={readOnly || saving}
             onClick={() => setAddingNote(true)}
           >
             {intl.formatMessage({ id: "microbiology.case.timeline.addNote" })}
@@ -159,7 +160,7 @@ const CaseTimelinePanel = ({
             <div className="microbiology-inline-actions">
               <Button
                 size="sm"
-                disabled={!note.trim() || saving}
+                disabled={readOnly || !note.trim() || saving}
                 onClick={saveNote}
               >
                 {intl.formatMessage({
@@ -169,7 +170,7 @@ const CaseTimelinePanel = ({
               <Button
                 kind="secondary"
                 size="sm"
-                disabled={saving}
+                disabled={readOnly || saving}
                 onClick={closeNote}
               >
                 {intl.formatMessage({ id: "button.cancel" })}

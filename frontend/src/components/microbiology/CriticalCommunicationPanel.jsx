@@ -24,6 +24,7 @@ const statusTagType = (status) => {
 };
 
 const CriticalCommunicationPanel = ({
+  readOnly = false,
   caseId,
   sampleItemId,
   isolates = [],
@@ -293,7 +294,7 @@ const CriticalCommunicationPanel = ({
             onChange={(_, state) => setFollowUpNeeded(state.checked)}
           />
           <div>
-            <Button onClick={logCommunication} disabled={saving}>
+            <Button onClick={logCommunication} disabled={readOnly || saving}>
               {intl.formatMessage({ id: "microbiology.critical.log" })}
             </Button>
           </div>
@@ -336,7 +337,7 @@ const CriticalCommunicationPanel = ({
                       kind="secondary"
                       size="sm"
                       onClick={() => acknowledge(communication.id)}
-                      disabled={saving}
+                      disabled={readOnly || saving}
                     >
                       {intl.formatMessage({
                         id: "microbiology.critical.acknowledge",
@@ -348,7 +349,7 @@ const CriticalCommunicationPanel = ({
                       kind="secondary"
                       size="sm"
                       onClick={() => setClosingId(communication.id)}
-                      disabled={saving}
+                      disabled={readOnly || saving}
                     >
                       {intl.formatMessage({
                         id: "microbiology.critical.close",
@@ -370,7 +371,7 @@ const CriticalCommunicationPanel = ({
                     />
                     <Button
                       onClick={() => close(communication.id)}
-                      disabled={saving || !resolutionNote.trim()}
+                      disabled={readOnly || saving || !resolutionNote.trim()}
                     >
                       {intl.formatMessage({
                         id: "microbiology.critical.close",

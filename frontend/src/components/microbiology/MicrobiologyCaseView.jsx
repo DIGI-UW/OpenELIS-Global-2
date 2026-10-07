@@ -547,6 +547,8 @@ const MicrobiologyCaseView = ({
   const finalReleased =
     caseDetail.finalReleaseState === "FINAL_RELEASED" ||
     caseDetail.stage === "FINAL_RELEASED";
+  const canEnterResults = caseDetail.canEnterResults === true;
+  const canValidateResults = caseDetail.canValidateResults === true;
   const amendmentOpen =
     caseDetail.finalReleaseState === "AMENDMENT_IN_PROGRESS";
 
@@ -689,7 +691,7 @@ const MicrobiologyCaseView = ({
             <Button
               kind="ghost"
               size="sm"
-              disabled={finalReleased}
+              disabled={!canEnterResults || finalReleased}
               onClick={() => openNonconformance("report-nce")}
             >
               {intl.formatMessage({ id: "microbiology.nce.report" })}
@@ -697,7 +699,7 @@ const MicrobiologyCaseView = ({
             <Button
               kind="danger--tertiary"
               size="sm"
-              disabled={finalReleased}
+              disabled={!canEnterResults || finalReleased}
               onClick={() => openNonconformance("mark-lost")}
             >
               {intl.formatMessage({ id: "microbiology.nce.markLost" })}
@@ -705,6 +707,7 @@ const MicrobiologyCaseView = ({
             <Button
               kind="tertiary"
               size="sm"
+              disabled={!canEnterResults}
               onClick={() => openCriticalCommunication("CASE", caseDetail.id)}
             >
               {intl.formatMessage({
@@ -868,7 +871,7 @@ const MicrobiologyCaseView = ({
                     caseId={caseDetail.id}
                     orderDetail={caseDetail.orderDetail}
                     service={service}
-                    isReadOnly={finalReleased}
+                    isReadOnly={!canEnterResults || finalReleased}
                     onSaved={() => loadCase({ showLoading: false })}
                   />
                 </CaseSectionFocusTarget>
@@ -887,17 +890,18 @@ const MicrobiologyCaseView = ({
                   label={intl.formatMessage({ id: sectionLabelIds.setup })}
                 >
                   <Stack gap={5}>
-                    {["mark-positive", "mark-no-growth"].includes(
-                      routeState.action,
-                    ) && (
-                      <CaseCultureTransitionPanel
-                        action={routeState.action}
-                        caseId={caseId}
-                        service={service}
-                        onComplete={completeCultureTransition}
-                        onCancel={() => selectSection("setup")}
-                      />
-                    )}
+                    {canEnterResults &&
+                      ["mark-positive", "mark-no-growth"].includes(
+                        routeState.action,
+                      ) && (
+                        <CaseCultureTransitionPanel
+                          action={routeState.action}
+                          caseId={caseId}
+                          service={service}
+                          onComplete={completeCultureTransition}
+                          onCancel={() => selectSection("setup")}
+                        />
+                      )}
                     <CaseInoculationPanel
                       inoculations={inoculations}
                       onRecord={recordInoculation}
@@ -908,7 +912,9 @@ const MicrobiologyCaseView = ({
                       saving={saving}
                       reagentRequirements={reagentOverview.requirements}
                       reagentUsages={reagentOverview.usages}
-                      readOnly={finalReleased && !amendmentOpen}
+                      readOnly={
+                        !canEnterResults || (finalReleased && !amendmentOpen)
+                      }
                     />
                   </Stack>
                 </CaseSectionFocusTarget>
@@ -927,6 +933,7 @@ const MicrobiologyCaseView = ({
                   label={intl.formatMessage({ id: sectionLabelIds.timeline })}
                 >
                   <CaseTimelinePanel
+                    readOnly={!canEnterResults}
                     activities={caseDetail.activities}
                     timelineSectionId="microbiology-timeline"
                     onAddNote={addTimelineNote}
@@ -949,7 +956,8 @@ const MicrobiologyCaseView = ({
                     id: sectionLabelIds.nonconformance,
                   })}
                 >
-                  {routeState.section === "nonconformance" &&
+                  {canEnterResults &&
+                    routeState.section === "nonconformance" &&
                     ["report-nce", "mark-lost"].includes(routeState.action) && (
                       <CaseNonconformancePanel
                         caseId={caseDetail.id}
@@ -981,10 +989,13 @@ const MicrobiologyCaseView = ({
                     onCreateIsolate={createIsolate}
                     onUpdateIdentification={updateIdentification}
                     saving={saving}
-                    readOnly={finalReleased}
+                    readOnly={!canEnterResults || finalReleased}
                     amendmentOpen={amendmentOpen}
-                    onLogCritical={(isolate) =>
-                      openCriticalCommunication("ISOLATE", isolate.id)
+                    onLogCritical={
+                      canEnterResults
+                        ? (isolate) =>
+                            openCriticalCommunication("ISOLATE", isolate.id)
+                        : undefined
                     }
                     service={service}
                   />
@@ -1013,7 +1024,7 @@ const MicrobiologyCaseView = ({
                       );
                       loadReagentOverview();
                     }}
-                    readOnly={finalReleased}
+                    readOnly={!canEnterResults || finalReleased}
                     reviewedView={routeState.astView === "reviewed"}
                     reagentRequirements={reagentOverview.requirements}
                     reagentUsages={reagentOverview.usages}
@@ -1040,6 +1051,7 @@ const MicrobiologyCaseView = ({
                   })}
                 >
                   <CriticalCommunicationPanel
+                    readOnly={!canEnterResults}
                     caseId={caseDetail.id}
                     sampleItemId={caseDetail.sampleItemId}
                     isolates={caseDetail.isolates}
@@ -1074,6 +1086,8 @@ const MicrobiologyCaseView = ({
                   label={intl.formatMessage({ id: sectionLabelIds.reports })}
                 >
                   <ReportReadinessPanel
+                    canReleasePreliminary={canEnterResults}
+                    canReleaseFinal={canValidateResults}
                     caseId={caseDetail.id}
                     service={service}
                     finalReleaseState={
@@ -1104,6 +1118,7 @@ const MicrobiologyCaseView = ({
                   label={intl.formatMessage({ id: sectionLabelIds.amendment })}
                 >
                   <AmendmentHistoryPanel
+                    readOnly={!canValidateResults}
                     caseId={caseDetail.id}
                     finalReleaseState={
                       caseDetail.finalReleaseState || caseDetail.stage

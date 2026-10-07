@@ -13,6 +13,8 @@ import MicrobiologyService from "./MicrobiologyService";
 
 const ReportReadinessPanel = ({
   caseId,
+  canReleasePreliminary = false,
+  canReleaseFinal = false,
   service = MicrobiologyService,
   finalReleaseState = "",
   patientId,
@@ -269,7 +271,11 @@ const ReportReadinessPanel = ({
               <Button
                 kind="secondary"
                 onClick={releasePreliminary}
-                disabled={saving || !projection?.reportableContent}
+                disabled={
+                  !canReleasePreliminary ||
+                  saving ||
+                  !projection?.reportableContent
+                }
               >
                 {intl.formatMessage({ id: "microbiology.release.preliminary" })}
               </Button>
@@ -277,6 +283,7 @@ const ReportReadinessPanel = ({
             <Button
               onClick={releaseFinal}
               disabled={
+                !canReleaseFinal ||
                 saving ||
                 !readiness?.finalReleaseReady ||
                 !projection?.reportableContent ||

@@ -18,6 +18,7 @@ const isErrorResponse = (response) =>
   response?.status === 0 || response?.status >= 400;
 
 const AmendmentHistoryPanel = ({
+  readOnly = false,
   caseId,
   finalReleaseState,
   service = MicrobiologyService,
@@ -170,7 +171,7 @@ const AmendmentHistoryPanel = ({
               <>
                 <Button
                   kind="danger--tertiary"
-                  disabled={saving || !reason.trim()}
+                  disabled={readOnly || saving || !reason.trim()}
                   onClick={() =>
                     runAction(
                       () =>
@@ -186,7 +187,7 @@ const AmendmentHistoryPanel = ({
                   })}
                 </Button>
                 <Button
-                  disabled={saving}
+                  disabled={readOnly || saving}
                   onClick={() =>
                     runAction(
                       () => service.releaseAmendedReport(caseId),
@@ -201,7 +202,7 @@ const AmendmentHistoryPanel = ({
               </>
             ) : (
               <Button
-                disabled={saving || !reason.trim()}
+                disabled={readOnly || saving || !reason.trim()}
                 onClick={() =>
                   runAction(
                     () =>

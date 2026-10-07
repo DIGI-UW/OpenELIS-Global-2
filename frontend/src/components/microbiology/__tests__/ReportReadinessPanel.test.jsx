@@ -12,7 +12,13 @@ const renderPanel = (service, props = {}) =>
   render(
     <MemoryRouter>
       <IntlProvider locale="en" messages={messages}>
-        <ReportReadinessPanel caseId="case-1" service={service} {...props} />
+        <ReportReadinessPanel
+          caseId="case-1"
+          service={service}
+          canReleasePreliminary
+          canReleaseFinal
+          {...props}
+        />
       </IntlProvider>
     </MemoryRouter>,
   );

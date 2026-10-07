@@ -304,8 +304,14 @@ and classification-based section blocking are retired. Protocol URL actions are
 ignored. Two visible-control regressions failed before removal; 61 checks across
 case view, current-step selection, routing, service and nonconformance suites
 pass afterward. This is focused frontend evidence, not browser acceptance.
-Case-unit mutation controls, explicit specimen selection, case/header/worklist
-response alignment and persisted mock comparison remain to be completed.
+Case mutation controls now consume the server's case-unit permission flags:
+result entry controls preliminary release, culture/isolate/AST entry, notes and
+critical communication; validation controls final release and amendments.
+Missing flags disable mutations while direct-link sections remain visible.
+Seven regressions failed before the change; 56 tests across the affected case,
+release, amendment, timeline and communication suites pass. Persisted permission
+journeys, explicit specimen selection, case/header/worklist response alignment
+and mock comparison remain to be completed.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,

@@ -10,6 +10,8 @@ import messages from "../../../languages/en.json";
 
 const caseDetail = {
   id: "case-1",
+  canEnterResults: true,
+  canValidateResults: true,
   sampleItemId: "1001",
   patientId: "patient-1",
   patientName: "Microbiology, UAT",
@@ -899,6 +901,93 @@ describe("MicrobiologyCaseView", () => {
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
       "/Microbiology/cases/case-1?section=ast",
     );
+  });
+
+  it.each([
+    ["isolates", "Create isolate"],
+    ["timeline", "Add note"],
+    ["reports", "Release preliminary report"],
+    ["reports", "Release final report"],
+    ["critical-communication", "Log communication"],
+  ])(
+    "keeps %s readable but blocks %s without case permissions",
+    async (section, action) => {
+      const service = {
+        ...astServiceStubs,
+        getCaseDetail: vi.fn().mockResolvedValue({
+          ...caseDetail,
+          canEnterResults: false,
+          canValidateResults: false,
+        }),
+      };
+      renderCase(service, `/Microbiology/cases/case-1?section=${section}`);
+      await screen.findByTestId(`microbiology-case-section-${section}`);
+      expect(
+        await screen.findByRole("button", { name: action, exact: true }),
+      ).toBeDisabled();
+      expect(
+        screen.getByRole("button", { name: "Log critical notification" }),
+      ).toBeDisabled();
+    },
+  );
+
+  it.each([
+    [true, false],
+    [false, true],
+  ])(
+    "separates result-entry (%s) from final-validation (%s) permission",
+    async (canEnterResults, canValidateResults) => {
+      const service = {
+        ...astServiceStubs,
+        getCaseDetail: vi.fn().mockResolvedValue({
+          ...caseDetail,
+          canEnterResults,
+          canValidateResults,
+        }),
+      };
+      renderCase(service, "/Microbiology/cases/case-1?section=reports");
+      const preliminary = await screen.findByRole("button", {
+        name: "Release preliminary report",
+      });
+      const final = await screen.findByRole("button", {
+        name: "Release final report",
+      });
+      await waitFor(() => {
+        expect(preliminary.disabled).toBe(!canEnterResults);
+        expect(final.disabled).toBe(!canValidateResults);
+      });
+    },
+  );
+
+  it("does not enable case mutations when permission fields are missing", async () => {
+    const { canEnterResults, canValidateResults, ...detail } = caseDetail;
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue(detail),
+    };
+    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
+    expect(
+      await screen.findByRole("button", { name: "Create isolate" }),
+    ).toBeDisabled();
+  });
+
+  it("shows amendment history without enabling release for result-entry users", async () => {
+    const service = {
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        canValidateResults: false,
+        finalReleaseState: "AMENDMENT_IN_PROGRESS",
+        stage: "FINAL_RELEASED",
+      }),
+    };
+    renderCase(service, "/Microbiology/cases/case-1?section=amendment");
+    const release = await screen.findByRole("button", {
+      name: messages["microbiology.amendment.release"],
+    });
+    expect(release).toBeDisabled();
+    await userEvent.click(release);
+    expect(service.releaseAmendedReport).not.toHaveBeenCalled();
   });
 
   it("shows a final case as read-only and disables isolate mutation", async () => {
