@@ -97,6 +97,22 @@ public class BridgeProfileCatalogServiceTest {
     }
 
     @Test
+    public void getCatalogIgnoresFieldsANewerBridgeAddsWithinTheSameSchemaVersion() throws Exception {
+        ObjectNode catalog = (ObjectNode) new ObjectMapper().readTree(validCatalog());
+        catalog.put("addedByANewerBridge", true);
+        ObjectNode entry = (ObjectNode) catalog.path("profiles").get(0);
+        entry.putObject("lifecycle").put("state", "CURRENT");
+        ((ObjectNode) entry.path("controlRecognitionSummary")).put("addedByANewerBridge", "x");
+        when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+        BridgeProfileCatalog loaded = service.getCatalog();
+
+        assertEquals("sysmex-xn", loaded.profiles().get(0).profile().path("profileMeta").path("id").asText());
+        assertEquals("RULES", loaded.profiles().get(0).controlRecognitionSummary().mode());
+    }
+
+    @Test
     public void getCatalogRejectsUnsupportedSchemaVersion() throws Exception {
         when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(200,

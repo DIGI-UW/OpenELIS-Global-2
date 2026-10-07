@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -20,7 +21,12 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
 
     private final BridgeHttpClient bridgeHttpClient;
     private final String bridgeUrl;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    // A field a newer Bridge adds within the same schema version is ignored; what
+    // OE2
+    // depends on is checked explicitly in validateContract, and a breaking change
+    // bumps schemaVersion.
+    private final ObjectMapper objectMapper = new ObjectMapper()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
 
     public BridgeProfileCatalogServiceImpl(BridgeHttpClient bridgeHttpClient,
             @Value("${analyzer.bridge.url:}") String bridgeUrl) {
