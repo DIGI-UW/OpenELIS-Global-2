@@ -832,7 +832,7 @@ public class AmrCutoverMigrationTest {
     public void rollbackPreservesRequestDetailsEvenWithoutASetNumber() throws Exception {
         seed();
         Liquibase migration = completeSequence();
-        migration.update(CONTEXTS);
+        migration.update(4, CONTEXTS.toString());
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("insert into clinlims.sample_type_request"
                     + " (id,sample_id,type_of_sample_id,sort_order,status,created_date,body_site)"
@@ -855,7 +855,7 @@ public class AmrCutoverMigrationTest {
     public void bottleSetRollbackRefusesToDiscardRecordedAssignments() throws Exception {
         seed();
         Liquibase migration = completeSequence();
-        migration.update(CONTEXTS);
+        migration.update(4, CONTEXTS.toString());
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("update clinlims.sample_item set culture_set_number=2 where id=990001");
         }
@@ -872,6 +872,71 @@ public class AmrCutoverMigrationTest {
     }
 
     @Test
+    public void requestedMembershipCollisionFailsBeforeRetirement() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("create table clinlims.micro_case_requested_test(existing_value text)");
+            statement.executeUpdate("insert into clinlims.micro_case_requested_test values ('preserve')");
+        }
+        connection.commit();
+        String history = allHistory();
+        expectFailure(completeSequence(), "requested-test membership target table");
+        assertTrue(tableExists("micro_culture_setup"));
+        assertEquals("preserve", scalar("select existing_value from clinlims.micro_case_requested_test"));
+        assertEquals(history, allHistory());
+    }
+
+    @Test
+    public void requestedMembershipRollbackRefusesToDiscardOwnership() throws Exception {
+        seed();
+        Liquibase migration = completeSequence();
+        migration.update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.sample_type_request"
+                    + " (id,sample_id,type_of_sample_id,sort_order,status,created_date)"
+                    + " select 990019,samp_id,typeosamp_id,0,'REQUESTED',current_timestamp"
+                    + " from clinlims.sample_item where id=990001");
+            statement.executeUpdate("insert into clinlims.micro_case_requested_test"
+                    + " (id,case_id,request_id,test_id,case_role,collected_in_sets,created_at,created_by)"
+                    + " values ('request-owner','case-bacteria',990019,(select min(id) from clinlims.test),"
+                    + "'CULTURE',true,current_timestamp,'1')");
+        }
+        connection.commit();
+        var boundary = connection.setSavepoint();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_requested_test"
+                    + " select 'duplicate-owner',case_id,request_id,test_id,case_role,collected_in_sets,created_at,created_by"
+                    + " from clinlims.micro_case_requested_test where id='request-owner'");
+            fail("A requested test must not acquire a second owner");
+        } catch (java.sql.SQLException expected) {
+            assertEquals("23505", expected.getSQLState());
+        } finally {
+            connection.rollback(boundary);
+        }
+        boundary = connection.setSavepoint();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "update clinlims.micro_case_requested_test set case_role='DIRECT' where id='request-owner'");
+            fail("Only a culture request can be collected in sets");
+        } catch (java.sql.SQLException expected) {
+            assertEquals("23514", expected.getSQLState());
+        } finally {
+            connection.rollback(boundary);
+        }
+        connection.commit();
+        String history = allHistory();
+        try {
+            migration.rollback(1, "default");
+            fail("Rollback must preserve requested-test ownership");
+        } catch (LiquibaseException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("recorded requested-test case ownership"));
+        }
+        assertEquals("case-bacteria",
+                scalar("select case_id from clinlims.micro_case_requested_test where id='request-owner'"));
+        assertEquals(history, allHistory());
+    }
+
+    @Test
     public void completeSequencePreservesUpgradeAndSupportsRollbackReapply() throws Exception {
         seed();
         Map<String, String> before = clinicalSnapshot();
@@ -883,9 +948,10 @@ public class AmrCutoverMigrationTest {
         assertTrue(columnExists("program", "reporting_track_id"));
         assertTrue(tableExists("micro_export_reporting_track"));
         assertTrue(columnExists("sample_item", "culture_set_number"));
+        assertTrue(tableExists("micro_case_requested_test"));
         assertEquals("0", scalar("select count(*) from clinlims.sample_item where culture_set_number is not null"));
         assertEquals(before, clinicalSnapshot());
-        migration.rollback(4, "default");
+        migration.rollback(5, "default");
         assertTrue(columnExists("micro_case", "workflow_type"));
         assertFalse(columnExists("test", "collected_in_sets"));
         assertEquals(history, allHistory());

@@ -20,6 +20,7 @@
       <column header="program_id" name="program_id" type="NUMERIC"/>
     </loadData>
     <sqlFile path="amr-cutover-fingerprint.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <sqlFile path="amr-v2-request-membership-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <sqlFile path="amr-v2-bottle-sets-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <sqlFile path="amr-v2-program-target-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <sqlFile path="amr-v2-membership-target-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>

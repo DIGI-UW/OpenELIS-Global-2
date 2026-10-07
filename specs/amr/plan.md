@@ -431,3 +431,28 @@ gh pr checks
 All three checkpoints must exist and pass: `01 Checkpoint - Backend`,
 `02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. A workflow conclusion is not
 proof. Missing PR/checkpoint, dependency or approval means blocked, not green.
+
+### Request-stage case ownership (V02)
+
+Clinical Step 1 persists `SampleTypeRequest` records; it does not create
+`SampleItem` or `Analysis` records. Opening cases at this point therefore needs
+explicit ownership for the requested test, before collected-specimen membership
+exists. `MicroCaseRequestedTest` records one case per request/test pair, the
+catalog case role and collected-in-sets flag at ordering, and its actor/time.
+It is not a second test catalog or a replacement for the shared request lifecycle.
+
+The fifth unregistered candidate migration provides this relationship without
+backfilling inferred ownership. It rejects target collisions before retirement
+and refuses rollback once ownership has been recorded. The database constrains
+request/test uniqueness, references and valid role/set combinations.
+
+The consuming save service must hold the existing order lock, use the shared
+catalog/grouping rules, and create/reuse cases atomically with request saves.
+Collection must resolve the recorded request owner, attach the actual specimen
+and analysis to that same case, and preserve identity on retries and out-of-order
+collection. After fulfillment, analysis/specimen membership governs clinical
+work; the request link remains ordering provenance. Pending case detail and
+worklists must distinguish requested from collected specimens. Add/remove and
+last-test cancellation must preserve history and enforce FR-02.8, and must never
+join previously separate cases. These runtime consumers are still required;
+entity/DAO/migration tests alone do not establish initial-order acceptance.

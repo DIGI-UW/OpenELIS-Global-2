@@ -82,6 +82,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointRule</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroBreakpointActivationEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseRequestedTest</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroExportReportingTrack</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCase</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>

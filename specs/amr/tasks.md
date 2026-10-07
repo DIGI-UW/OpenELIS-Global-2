@@ -495,6 +495,18 @@ Remaining V02c2 implementation and acceptance:
       the shared request/collection lifecycle rather than inventing collected
       specimens to open cases. Verify initial save, reload, collection and retries
       retain the same case and specimen intent before accepting V02.
+      The request-membership storage prerequisite adds an explicit case owner per
+      requested test with ordering role/set snapshots and actor/time; no collected
+      specimen or analysis is invented. The fifth candidate migration has early
+      collision and populated-rollback guards. Runtime save, handoff, worklist,
+      cancellation and retry integration remain required as described in the
+      [engineering plan](plan.md#request-stage-case-ownership-v02).
+      Validation: five migration scenarios passed (upgrade/rollback/reapply,
+      target collision, ownership protection, and the two bottle rollback
+      guards). After fixing entity registration, the focused rerun passed six
+      tests: ownership persistence without collected specimens, four entity
+      mapping checks, and ownership uniqueness/role/rollback protection. These
+      checks do not prove initial-order routing or browser acceptance.
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason
       and preservation when cancelling a case's last micro test (FR-02.8).
 - [x] Bind the documented mapping file, actor and migration timestamp in runtime
@@ -508,7 +520,7 @@ Remaining V02c2 implementation and acceptance:
       and its snapshot-dependent tests remain in V02d; no-result splits remain V02e.
 
 This is a prerequisite within V02c2, not a new slice or runtime acceptance.
-Keep all four candidate migrations unregistered until the catalog, routing,
+Keep all five candidate migrations unregistered until the catalog, routing,
 permissions and affected-caller gate is complete. Video attachment publication
 for V02c1 remains outstanding and is not satisfied by this migration work.
 

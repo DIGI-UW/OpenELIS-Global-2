@@ -62,6 +62,7 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroBreakpointRule.class));
         assertNotNull(metamodel.entity(MicroBreakpointActivationEvent.class));
         assertNotNull(metamodel.entity(MicroCaseSpecimen.class));
+        assertNotNull(metamodel.entity(org.openelisglobal.microbiology.valueholder.MicroCaseRequestedTest.class));
         assertNotNull(metamodel.entity(MicroExportReportingTrack.class));
         assertNotNull(metamodel.entity(MicroPatientOrigin.class));
         assertNotNull(metamodel.entity(MicroPatientOriginDefault.class));

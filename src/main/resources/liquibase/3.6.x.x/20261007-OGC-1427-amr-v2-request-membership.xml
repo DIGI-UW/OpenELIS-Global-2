@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- Candidate only. Existing requests are not retroactively assigned to cases. -->
+    <changeSet id="amr-v2-request-membership-20261007" author="OpenELIS">
+        <sqlFile path="amr-v2-request-membership-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
+        <createTable schemaName="clinlims" tableName="micro_case_requested_test">
+            <column name="id" type="varchar(36)"><constraints primaryKey="true" primaryKeyName="pk_micro_case_requested_test" nullable="false"/></column>
+            <column name="case_id" type="varchar(36)"><constraints nullable="false"/></column>
+            <column name="request_id" type="integer"><constraints nullable="false"/></column>
+            <column name="test_id" type="numeric(10)"><constraints nullable="false"/></column>
+            <column name="case_role" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="collected_in_sets" type="boolean"><constraints nullable="false"/></column>
+            <column name="created_at" type="timestamp"><constraints nullable="false"/></column>
+            <column name="created_by" type="varchar(20)"><constraints nullable="false"/></column>
+        </createTable>
+        <addUniqueConstraint schemaName="clinlims" tableName="micro_case_requested_test" columnNames="request_id,test_id" constraintName="uq_micro_request_test"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_requested_test" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_request_case"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_requested_test" baseColumnNames="request_id" referencedTableSchemaName="clinlims" referencedTableName="sample_type_request" referencedColumnNames="id" constraintName="fk_micro_request_request"/>
+        <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_requested_test" baseColumnNames="test_id" referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id" constraintName="fk_micro_request_test"/>
+        <createIndex schemaName="clinlims" tableName="micro_case_requested_test" indexName="idx_micro_request_case"><column name="case_id"/></createIndex>
+        <sql>ALTER TABLE clinlims.micro_case_requested_test ADD CONSTRAINT ck_micro_request_role CHECK (case_role IN ('CULTURE','DIRECT','CASE') AND (NOT collected_in_sets OR case_role='CULTURE'))</sql>
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$ BEGIN
+                    LOCK TABLE clinlims.micro_case_requested_test IN ACCESS EXCLUSIVE MODE;
+                    IF EXISTS (SELECT 1 FROM clinlims.micro_case_requested_test) THEN
+                        RAISE EXCEPTION 'Cannot discard recorded requested-test case ownership';
+                    END IF;
+                END $$;
+            ]]></sql>
+            <dropTable schemaName="clinlims" tableName="micro_case_requested_test"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

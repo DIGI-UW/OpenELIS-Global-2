@@ -11,4 +11,6 @@
         file="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-program-foundation.xml" />
     <include
         file="liquibase/3.6.x.x/20261007-OGC-1427-amr-v2-bottle-sets.xml" />
+    <include
+        file="liquibase/3.6.x.x/20261007-OGC-1427-amr-v2-request-membership.xml" />
 </databaseChangeLog>

@@ -59,6 +59,7 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseActivity</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCaseRequestedTest</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
