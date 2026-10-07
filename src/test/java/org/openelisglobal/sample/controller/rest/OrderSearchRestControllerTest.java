@@ -15,14 +15,11 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
-import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.program.valueholder.Program;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.sample.service.OrderProgressService;
-import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.testmethod.service.TestMethodService;
@@ -30,34 +27,6 @@ import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.springframework.test.util.ReflectionTestUtils;
 
 public class OrderSearchRestControllerTest {
-
-    @Test
-    public void addsPersistedMicrobiologyDraftToOrderSearchResponse() {
-        OrderSearchRestController controller = new OrderSearchRestController();
-        MicroCaseOrderDetailService service = mock(MicroCaseOrderDetailService.class);
-        MicroCaseOrderDetailRequestForm draft = new MicroCaseOrderDetailRequestForm();
-        Sample sample = new Sample();
-        sample.setId("42");
-        when(service.getOrderDraft("42")).thenReturn(draft);
-        ReflectionTestUtils.setField(controller, "microCaseOrderDetailService", service);
-        Map<String, Object> response = new HashMap<>();
-
-        controller.addMicrobiologyOrderDetail(response, sample);
-
-        assertSame(draft, response.get("microbiologyOrderDetail"));
-    }
-
-    @Test
-    public void leavesResponseUnchangedWhenMicrobiologyIsUnavailable() {
-        OrderSearchRestController controller = new OrderSearchRestController();
-        Sample sample = new Sample();
-        sample.setId("42");
-        Map<String, Object> response = new HashMap<>();
-
-        controller.addMicrobiologyOrderDetail(response, sample);
-
-        assertTrue(response.isEmpty());
-    }
 
     @Test
     public void mapsCanonicalProgramIdentityForReloadedOrders() {
@@ -76,14 +45,13 @@ public class OrderSearchRestControllerTest {
     }
 
     @Test
-    public void mapsCultureWorkflowAndMethodsForReloadedOrders() {
+    public void mapsMethodsForReloadedOrders() {
         OrderSearchRestController controller = new OrderSearchRestController();
         TestMethodService testMethodService = mock(TestMethodService.class);
         org.openelisglobal.test.valueholder.Test test = mock(org.openelisglobal.test.valueholder.Test.class);
         when(test.getId()).thenReturn("42");
         when(test.getLocalizedName()).thenReturn("Blood culture");
         when(test.getDescription()).thenReturn("Blood culture");
-        when(test.getCultureWorkflowType()).thenReturn("BACTERIOLOGY");
         TestMethodDto defaultMethod = new TestMethodDto();
         defaultMethod.methodId = "7";
         defaultMethod.methodName = "Blood Culture Standard";
@@ -94,7 +62,6 @@ public class OrderSearchRestControllerTest {
         TestSelectionDTO selectedTest = controller.buildSelectedTestData(test);
 
         assertEquals("42", selectedTest.getId());
-        assertEquals("BACTERIOLOGY", selectedTest.getCultureWorkflowType());
         assertSame(defaultMethod, selectedTest.getMethods().get(0));
     }
 
