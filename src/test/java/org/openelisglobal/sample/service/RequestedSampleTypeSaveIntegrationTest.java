@@ -57,6 +57,15 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.test.service.TestService testService;
 
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO cases;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseRequestedTestDAO ownership;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO analysisLinks;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO specimenLinks;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -70,6 +79,102 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         patient = fixtures.createPatient("REQSPEC");
         sampleType = fixtures.getOrCreateActiveSampleType();
         secondSampleType = fixtures.createTypeOfSample();
+    }
+
+    @Test
+    public void initialOrderOpensOneSetCaseAndOutOfOrderCollectionRetainsOwnership() {
+        var test = bottleTest();
+        var first = requested("1");
+        first.setRequestedTests(test.getId());
+        first.setCultureSetNumber(1);
+        var second = requested("1");
+        second.setRequestedTests(test.getId());
+        second.setCultureSetNumber(2);
+        Sample order = newSample();
+        persist(order, List.of(first, second));
+        var requests = sampleTypeRequestService.getRequestsBySampleId(order.getId());
+        assertEquals(1, cases.getByOrder(order.getId()).size());
+        var owner = cases.getByOrder(order.getId()).get(0);
+        assertTrue(sampleItemService.getSampleItemsBySampleId(order.getId()).isEmpty());
+        assertEquals(owner.getId(), ownership.getByRequestAndTest(requests.get(0).getId(), test.getId()).getCaseId());
+        assertEquals(owner.getId(), ownership.getByRequestAndTest(requests.get(1).getId(), test.getId()).getCaseId());
+        persist(order, List.of(new SampleTypeRequestDTO(requests.get(1)), new SampleTypeRequestDTO(requests.get(0))));
+        assertEquals(1, cases.getByOrder(order.getId()).size());
+        persist(order, new SamplePatientEntryForm(),
+                bottleXml(test.getId(), "sampleTypeRequestId='" + requests.get(1).getId() + "'"));
+        var item = sampleTypeRequestService.get(requests.get(1).getId()).getSampleItem();
+        assertEquals(Integer.valueOf(2), item.getCultureSetNumber());
+        assertEquals(1, cases.getByOrder(order.getId()).size());
+        assertNotNull(specimenLinks.getByCaseAndSampleItem(owner.getId(), item.getId()));
+        assertEquals(1, analysisLinks.getByCaseId(owner.getId()).size());
+        assertTrue(analysisLinks.getByCaseId(owner.getId()).get(0).isCollectedInSets());
+        persist(order, new SamplePatientEntryForm(), bottleXml(test.getId(), "sampleItemId='" + item.getId() + "'"));
+        assertEquals(1, analysisLinks.getByCaseId(owner.getId()).size());
+        assertEquals(1, specimenLinks.getByCaseId(owner.getId()).size());
+    }
+
+    @Test
+    public void setRequestsShareCaseAcrossTypesAndCollectionKeepsOrderedRole() {
+        var test = bottleTest();
+        var first = requested(sampleType, "1");
+        first.setRequestedTests(test.getId());
+        first.setCultureSetNumber(1);
+        var second = requested(secondSampleType, "1");
+        second.setRequestedTests(test.getId());
+        second.setCultureSetNumber(2);
+        Sample order = newSample();
+        persist(order, List.of(first, second));
+        var requests = sampleTypeRequestService.getRequestsBySampleId(order.getId());
+        var owner = ownership.getByRequestAndTest(requests.get(0).getId(), test.getId()).getCaseId();
+        assertEquals(owner, ownership.getByRequestAndTest(requests.get(1).getId(), test.getId()).getCaseId());
+        test.setCollectedInSets(false);
+        test.setMicrobiologyCaseRole("DIRECT");
+        test.setSysUserId(userId);
+        testService.update(test);
+        persist(order, new SamplePatientEntryForm(),
+                bottleXml(test.getId(), "sampleTypeRequestId='" + requests.get(0).getId() + "'"));
+        var link = analysisLinks.getByCaseId(owner).get(0);
+        assertEquals("CULTURE", link.getCaseRole());
+        assertTrue(link.isCollectedInSets());
+        assertEquals(1, cases.getByOrder(order.getId()).size());
+    }
+
+    @Test
+    public void collectionCannotAttachToFinalReleasedRequestedCase() {
+        var test = bottleTest();
+        var request = requested("1");
+        request.setRequestedTests(test.getId());
+        request.setCultureSetNumber(1);
+        Sample order = newSample();
+        persist(order, List.of(request));
+        var owner = cases.getByOrder(order.getId()).get(0);
+        owner.setFinalReleaseState("FINAL_RELEASED");
+        owner.setSysUserId(userId);
+        cases.update(owner);
+        var saved = sampleTypeRequestService.getRequestsBySampleId(order.getId()).get(0);
+        assertThrows(IllegalStateException.class, () -> persist(order, new SamplePatientEntryForm(),
+                bottleXml(test.getId(), "sampleTypeRequestId='" + saved.getId() + "'")));
+    }
+
+    @Test
+    public void ordinaryRequestedTestDoesNotOpenCaseAndUnitsRemainSeparate() {
+        var unit = fixtures.createLabUnit();
+        var other = fixtures.createLabUnit();
+        var direct = fixtures
+                .createCatalogMicroTest(org.openelisglobal.microbiology.valueholder.MicroCaseTestRole.DIRECT, unit);
+        var another = fixtures
+                .createCatalogMicroTest(org.openelisglobal.microbiology.valueholder.MicroCaseTestRole.DIRECT, other);
+        var ordinary = fixtures.createCatalogTest();
+        var request = requested("1");
+        request.setRequestedTests(ordinary.getId());
+        Sample order = newSample();
+        persist(order, List.of(request));
+        assertEquals(0, cases.getByOrder(order.getId()).size());
+        request.setRequestedTests(direct.getId() + "," + another.getId() + "," + ordinary.getId());
+        persist(order, List.of(request));
+        assertEquals(2, cases.getByOrder(order.getId()).size());
+        var saved = sampleTypeRequestService.getRequestsBySampleId(order.getId()).get(0);
+        assertNull(ownership.getByRequestAndTest(saved.getId(), ordinary.getId()));
     }
 
     @Test(expected = IllegalArgumentException.class)

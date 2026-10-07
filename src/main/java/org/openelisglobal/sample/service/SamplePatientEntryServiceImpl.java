@@ -187,6 +187,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private org.openelisglobal.questionnaire.service.QuestionnaireStorageService questionnaireStorageService;
     @Autowired
     private MicroOrderRoutingService microOrderRoutingService;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroRequestedCaseService microRequestedCaseService;
     @Lazy
     @Autowired
     private ResultLimitService resultLimitService;
@@ -256,10 +258,17 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         persistProviderData(updateData);
         persistRequestorContactData(updateData);
         persistSampleData(updateData);
+        microRequestedCaseService.lockOrder(updateData.getSample().getId());
         persistRequestedSampleTypes(updateData.getSample(), form.getRequestedSampleTypes(),
                 updateData.getCurrentUserId());
         fulfillRequestedSampleTypes(updateData);
         validateCollectedBottleSets(updateData);
+        microRequestedCaseService.routeRequests(
+                sampleTypeRequestService.getRequestsBySampleId(updateData.getSample().getId()),
+                updateData.getCurrentUserId());
+        for (SampleTestCollection submitted : updateData.getSampleItemsTests()) {
+            routeMicrobiologyCases(submitted.item, submitted, updateData.getCurrentUserId());
+        }
 
         // Only persist requester data and observations if sample was successfully
         // created
@@ -665,7 +674,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     persistAnalysisNotificationConfigs(analysis, updateData);
                 }
             }
-            routeMicrobiologyCases(savedItem, sampleTestCollection, updateData.getCurrentUserId());
         }
 
         org.openelisglobal.sample.valueholder.Sample submittedSample = updateData.getSample();

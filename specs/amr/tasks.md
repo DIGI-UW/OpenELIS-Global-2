@@ -488,25 +488,24 @@ Remaining V02c2 implementation and acceptance:
       (do not infer it from translated display names), audit other fulfillment
       entry points, environmental presentation, final-schema retirement and
       browser proof. Case-header warnings alone do not accept FR-02.4a.
-- [ ] Open cases on initial clinical order save, including requested specimens.
-      Current clinical Step 1 sends requested sample types with empty sample XML;
-      physical specimens and runtime routing arrive at collection. The existing
-      routing tests therefore do not prove the initial-save requirement. Preserve
-      the shared request/collection lifecycle rather than inventing collected
-      specimens to open cases. Verify initial save, reload, collection and retries
-      retain the same case and specimen intent before accepting V02.
-      The request-membership storage prerequisite adds an explicit case owner per
-      requested test with ordering role/set snapshots and actor/time; no collected
-      specimen or analysis is invented. The fifth candidate migration has early
-      collision and populated-rollback guards. Runtime save, handoff, worklist,
-      cancellation and retry integration remain required as described in the
-      [engineering plan](plan.md#request-stage-case-ownership-v02).
-      Validation: five migration scenarios passed (upgrade/rollback/reapply,
-      target collision, ownership protection, and the two bottle rollback
-      guards). After fixing entity registration, the focused rerun passed six
-      tests: ownership persistence without collected specimens, four entity
-      mapping checks, and ownership uniqueness/role/rollback protection. These
-      checks do not prove initial-order routing or browser acceptance.
+- [ ] Accept initial clinical order save, including requested specimens.
+      The shared save now opens cases from persisted requests before collection,
+      expands panel selections, and records ordering role/set eligibility. It
+      routes collected analyses only after request fulfillment, preserving the
+      requested case and its role snapshot. No physical specimens are invented.
+      Initial save, request reordering, second-bottle-first collection and retries
+      are covered through the actual shared save service. The initial focused
+      run passed 24 tests across request saves and existing routing suites.
+      The final run passed 35 tests, adding cross-type sets, ordering-role
+      preservation after catalog edits, final-release refusal, and shared-save
+      unit regression coverage.
+      Request ownership storage is in PR #4636; its five migration scenarios and
+      six focused persistence/mapping/constraint checks passed. All five candidate
+      migrations remain unregistered.
+      Still required before accepting this gate: independent fulfillment callers,
+      pending case detail/worklist presentation, add/remove and last-test
+      cancellation, permission review, and persisted browser/video comparison.
+      See the [engineering plan](plan.md#request-stage-case-ownership-v02).
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason
       and preservation when cancelling a case's last micro test (FR-02.8).
 - [x] Bind the documented mapping file, actor and migration timestamp in runtime

@@ -446,13 +446,15 @@ backfilling inferred ownership. It rejects target collisions before retirement
 and refuses rollback once ownership has been recorded. The database constrains
 request/test uniqueness, references and valid role/set combinations.
 
-The consuming save service must hold the existing order lock, use the shared
-catalog/grouping rules, and create/reuse cases atomically with request saves.
-Collection must resolve the recorded request owner, attach the actual specimen
-and analysis to that same case, and preserve identity on retries and out-of-order
-collection. After fulfillment, analysis/specimen membership governs clinical
+The shared clinical save holds the order lock while saving requests and opens
+cases from catalog tests, including panel selections. Request membership takes
+precedence over order/type/unit grouping, and set cultures group across types.
+It fulfills specimen requests before routing analyses, attaching the actual
+specimen and analysis to the recorded case and retaining its ordering role/set
+snapshot on retries and out-of-order collection. Independent fulfillment callers
+still need the same handoff integration. After fulfillment, analysis/specimen membership governs clinical
 work; the request link remains ordering provenance. Pending case detail and
 worklists must distinguish requested from collected specimens. Add/remove and
 last-test cancellation must preserve history and enforce FR-02.8, and must never
-join previously separate cases. These runtime consumers are still required;
-entity/DAO/migration tests alone do not establish initial-order acceptance.
+join previously separate cases. These remaining consumers and rendered verification are still required;
+shared-save integration tests alone do not establish browser acceptance.

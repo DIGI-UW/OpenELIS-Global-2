@@ -65,8 +65,10 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
             return memberCases;
         }
         String match = collectedInSetsTestId == null ? "c.sampleTypeId = :sampleTypeId"
-                : "exists (select l.id from MicroCaseAnalysis l join Analysis a on a.id = l.analysisId"
-                        + " where l.caseId = c.id and l.collectedInSets = true and a.test.id = :setsTestId)";
+                : "(exists (select l.id from MicroCaseAnalysis l join Analysis a on a.id = l.analysisId"
+                        + " where l.caseId = c.id and l.collectedInSets = true and a.test.id = :setsTestId)"
+                        + " or exists (select r.id from MicroCaseRequestedTest r where r.caseId = c.id"
+                        + " and r.collectedInSets = true and r.testId = :setsTestId))";
         Query<MicroCase> query = entityManager.unwrap(Session.class)
                 .createQuery("select c from MicroCase c where c.sampleId = :sampleId and c.testSectionId = :unitId"
                         + " and " + match + " order by c.createdAt, c.id", MicroCase.class);
