@@ -124,6 +124,56 @@ desktop/mobile and keyboard behavior with the directly linked mock section.
 Shared-owner changes add that owner's focused regression command here before
 work begins. Do not substitute an unrelated full-suite pass.
 
+### Video and mock comparison
+
+For each user-facing sub-PR and remaining V03–V16 slice, record the affected
+persisted journey on its committed application revision with synthetic data.
+Show the starting state, the operation, save/reload, and the resulting state;
+include denied/locked behavior when the slice changes permissions or release
+rules. Cover desktop, narrow layout and keyboard behavior where applicable.
+Existing browser assertions still decide correctness; video supplements them.
+
+Use the pinned `openelis-work` revision
+`516c88efbdd2edbc9ea108f69d7b57f4ceb9ec9b` for the
+[V2 interactive mock source](https://github.com/DIGI-UW/openelis-work/blob/516c88efbdd2edbc9ea108f69d7b57f4ceb9ec9b/designs/microbiology/amr-micro-v2-mockup.jsx)
+and [V2 rendered mock](https://github.com/DIGI-UW/openelis-work/blob/516c88efbdd2edbc9ea108f69d7b57f4ceb9ec9b/designs/microbiology/amr-micro-v2-preview.html).
+Compare the corresponding clinical or environmental scenario and the slice's
+linked shared-screen design at matching viewports. Record any later source
+revision explicitly before using it; a changing gallery URL is not a source pin.
+
+The existing Playwright configuration supports `PLAYWRIGHT_VIDEO=on`. Run the
+slice's exact browser command with that variable and a durable, run-specific
+`--output` directory under `.devin/artifacts/`; retain videos for passing runs.
+Inspect the recorded video, console and traces. Do not record credentials or
+real patient data. Migration-only V02a/V02b have no browser/video claim.
+
+Each PR description and its Jira evidence link must identify:
+
+- Application SHA, design SHA, criterion IDs, executed command and result.
+- Review-accessible video and comparison artifacts, not only local file paths.
+- Video timestamps matched to mock sections/screens at the same viewport.
+- For each comparison: expected behavior/layout, observed result, and pass or
+  discrepancy. Include a paired frame/screenshot for a visual discrepancy.
+- Resolved discrepancies and any explicitly approved design deviation. Unexplained
+  behavior, layout or permission drift blocks that slice's acceptance.
+
+### Commit, stack and CI procedure
+
+Create each bounded branch in its own durable worktree from the preceding
+reviewed stack head. Commit a coherent tested increment, open a draft PR with
+that predecessor as its base, then attach it with `gh stack link 4610 <PR>`.
+Import/inspect its local stack metadata with `gh stack checkout <own-branch>` and
+`gh stack view`; use `gh stack push` for subsequent stack-aware publication.
+Do not advance dependent implementation while its prerequisite gate is failing.
+A committed draft is reviewable work, not acceptance or permission to merge.
+
+For each review revision, run `scripts/run-ci-checks.sh --artifact-dir <durable-path>`
+from a clean committed tree while GitHub CI runs. Keep its generated checkouts
+under the repository's `.worktrees/` directory. Inspect the three checkpoints via
+`gh pr checks <PR>`: Backend, Frontend and E2E must all exist and pass. Retain the
+source SHA and each local lane's outcome; check cleanup of the owned containers,
+volumes and networks. Parent-branch CI does not verify new child changes.
+
 For changed runtime code, run the repository formatters/checks:
 
 ```bash
@@ -196,6 +246,31 @@ The confirmed migration contract is:
 ```bash
 scripts/run-java21 mvn -B -ntp -Dtest=AmrCutoverMigrationTest test
 ```
+
+### Recovery audit
+
+Inspection on 2026-10-07 found these issues in the preserved, uncommitted V02
+worktree. They are findings about that snapshot, not claims that the recovery
+branch already contains or fixes every change.
+
+| Finding                                                       | Evidence and consequence                                                                                                                                                                                | Required disposition                                                                                                                                                                                |
+| ------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Active cutover has surviving old callers                      | `base-changelog.xml` registers the cutover while `MicrobiologyCaseView.jsx` still renders workflow/protocol controls and `MicrobiologyService.js` calls retired endpoints.                              | Block activation until the replacement UI and backend agree; V02c.                                                                                                                                  |
+| Shared order/catalog contract is incomplete                   | `OrderContext.jsx` and `orderDataUtils.js` still handle `microbiologyOrderDetail`; catalog `BasicInfoSection.jsx` still edits `cultureWorkflowType`, while the backend removes draft/workflow handling. | Audit preview/save/edit/cancel/reflex and electronic orders, replace the actual callers, and prove ordinary-order integrity; V02c.                                                                  |
+| Export changes need a population-preservation audit           | New Program/reporting-track storage and changed WHONET selection were accumulated with routing changes.                                                                                                 | Compare existing populations and configuration paths; keep required cutover dependencies explicit and defer new export behavior to V15. No empty-population/default-mapping assumption is accepted. |
+| Tests do not establish integrated acceptance                  | The snapshot has focused backend/frontend evidence, but browser scenarios still describe reception workflows and no final V02 full-CI revision exists.                                                  | Reproduce regressions on extracted commits, update obsolete expectations from source requirements, and test persisted browser behavior with each affected PR.                                       |
+| Transfer, split and permissions need complete writer coverage | Transfer backend and case-scoped result detection exist; the split operation does not. Ordinary Results/Validation writers and direct child reads require inspection.                                   | Retain necessary locking/permission checks; audit every writer, implement atomic split, verify direct-link read-only behavior and denial without writes; V02c–e.                                    |
+
+Every extracted file must be traced to an existing requirement and classified as
+retain, correct/refactor, defer to its named owner, or remove. A path inventory
+alone is not a code review. Review transaction boundaries, ownership/provenance,
+migration failure atomicity and shared order-save behavior before accepting the
+extraction. In particular, do not simplify away the case refresh/lock that makes
+authorization follow a transferred case's current lab unit.
+
+Recovery delivery boundaries and status live only in
+[tasks.md](tasks.md#v02-recovery-and-review-boundaries). Keep the original working
+snapshot and historical test logs; do not turn them into runtime fallback code.
 
 ### V02 — routing
 

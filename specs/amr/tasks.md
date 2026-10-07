@@ -40,13 +40,28 @@ remain with their owners and are linked, not copied into new specifications.
   `[✓]` stated acceptance reviewed. No parallel status ledger.
 - Work one iteration at a time. Freeze interfaces, source decisions and shared
   owner dependencies before implementation; start with a failing focused test.
+- Commit each coherent tested behavior; open the draft PR at the first passing
+  implementation commit and push subsequent increments. Do not wait for the
+  entire slice before making its work reviewable. Manage dependent PRs through
+  `gh stack`; base each on its immediate predecessor and keep the stack order
+  consistent with this roadmap. No merge or deployment is implied.
+- Each PR declares its source requirements, file/behavior boundary, removals,
+  exclusions and exact checks before implementation. A newly discovered dependency
+  changes that boundary explicitly before more code is added.
+- At each commit and goal continuation, reconcile the current branch, PR, source
+  revision, remaining acceptance and next bounded change. After two unsuccessful
+  repair attempts on the same gate, diagnose the approach before expanding work.
+- Run local CI parity and GitHub CI in parallel on the same committed revision.
+  Inspect all three required checkpoints. Focused tests do not replace either
+  full CI or persisted browser checks for changed user workflows.
 - Each slice deletes superseded consumers/expectations, not just adds V2 code.
 - **Done when:** run the linked exact gate; inspect evidence; fix and repeat that
   gate until green; review the stated outcome against the direct mock reference.
+  Every user-facing change includes the [recorded mock comparison](plan.md#video-and-mock-comparison).
   An HTTP success, skipped test or missing dependency never closes a step.
 - Preserve behavior through code/test evidence, not source “built” labels. Keep
   every post-final change behind the amendment and authorization boundary.
-- Pinned sources define the baseline; the mock is the live design surface.
+- Pinned requirements and mock sources define the comparison baseline.
   Reconcile any changed source explicitly before expanding the iteration.
 
 ## 00 — source and cutover gate
@@ -144,9 +159,9 @@ historical meaning survives without a production legacy reader.
 
 **Prerequisites:** V01 accepted at its gate; shared owners linked before changing their behavior.
 
-**Removals:** Workflow classification, protocol routing, Program guards and obsolete routing expectations.
+**Removals:** Workflow classification, protocol routing, Program guards, obsolete routing expectations and reception callers whose backend support is removed.
 
-**Status:** `[ ]`. Sources: [catalog][catalog], [routing][routing], [mock][mock].
+**Status:** `[*]` recovery in progress; no V02 acceptance. Sources: [catalog][catalog], [routing][routing], [mock][mock].
 
 - [ ] Replace workflow/protocol routing with V2 membership/grouping and catalog
       eligibility; apply the rehearsed cutover and remove obsolete consumers.
@@ -157,17 +172,61 @@ historical meaning survives without a production legacy reader.
 opens a case, CBC opens none, resave is idempotent, Program is unlocked and a
 forbidden write changes nothing.
 
+### V02 recovery and review boundaries
+
+The original V02 worktree is preserved for extraction, not treated as an
+accepted implementation. Its 204 changed/new/deleted source paths were captured
+on 2026-10-07 with a binary patch, new-file archive and SHA-256 manifest under
+`.devin/artifacts/amr-v02-recovery-20261007/`. The parent revision is
+`0f1f5a8c80da1141db0f923af8fdef2f627a8fec`. Existing test evidence remains in that
+worktree; it does not prove the extracted PRs until they are tested again.
+
+V02 keeps its identifier, source requirements and criterion ownership. The
+following sub-PRs make its dependencies reviewable without advancing V03 early.
+Tests ship with each behavior; the final row is not permission to defer tests.
+
+| Sub-PR                                                 | Prerequisite and change boundary                                                                                                                                                                               | Verification before advancing                                                                                                                                                                                                                      |
+| ------------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| V02a — migration safety                                | Green committed parent; reject ambiguous observation history, duplicate analysis ownership and cross-case culture parents in the unregistered candidate.                                                       | Reproduce each failure, then run the complete candidate migration rehearsal; verify clinical/history preservation and unchanged active changelog.                                                                                                  |
+| V02b — membership rehearsal                            | V02a; extract and audit membership, specimen/isolate/culture provenance constraints and rollback. Keep candidate migrations unregistered.                                                                      | Fresh/upgrade/rollback/reapply; ambiguous ownership and later-data rollback rejection; applied history unchanged.                                                                                                                                  |
+| V02c — coherent runtime cutover                        | V02b; canonical membership/routing, catalog switch, shared preview/save/edit, case-unit read/write permissions and every affected old caller. Remove workflow/protocol and reception draft authority together. | Persisted ordinary/direct/culture/mixed orders, resave/cancel/edit, case read/write permissions; frontend/backend contract checks; fresh and upgraded startup; scoped retired-caller scan. Register the candidate only with this coherent runtime. |
+| V02d — transfers                                       | V02c; extract separate-case transfers, both-unit permissions, refreshed write ownership and final/amendment restrictions.                                                                                      | Persisted and browser transfers, denial without mutation, concurrent write after transfer, unchanged IDs/history and separate destination cases.                                                                                                   |
+| V02e — no-result splits                                | V02d; implement case-scoped eligibility, atomic membership/pending-culture moves and reason on both histories.                                                                                                 | Persisted/browser allowed and denied splits, failure rollback, unrelated ordinary results, preserved IDs/provenance and no case joining.                                                                                                           |
+| V02 completion gate (not a separate implementation PR) | V02c–e checks already pass; verify the complete V02 requirements and reconcile the existing coverage matrix/evidence.                                                                                          | Exact V02 gate, affected shared-order/security regressions, persisted browser journeys, rendered comparison and full local/GitHub CI on the review revision.                                                                                       |
+
+If the V02c dependency audit reveals a smaller independently coherent change,
+record that boundary here before extracting it. Do not publish an active cutover
+with broken callers to achieve an arbitrary file-count target. Program/export
+behavior remains owned by V03/V15; only a demonstrated cutover dependency belongs
+in V02. Culture provenance protection does not establish V05 media or V06
+independent-reading acceptance. Authorization fixes in existing writers stay
+where needed for safe case ownership; they are not deferred merely because the
+writer's full feature belongs to a later slice.
+
+The next implementation after this bounded remediation round is V02b, beginning
+from the reviewed V02a branch in stack #4610. Do not resume edits on the preserved
+204-file worktree. Extract only the declared boundary into its owning worktree;
+carry necessary fixes and tests together. A sub-PR passing its own checks does not
+mark V02 accepted. Finish V02c–e and the completion gate before V03.
+
+The recovery audit in [the engineering plan](plan.md#recovery-audit) records
+confirmed blockers and unresolved checks. Each extracted PR must state which
+findings it resolves, its exact tested revision, and what remains. Existing
+uncommitted test counts are historical supporting evidence, not passing evidence
+for a recovery PR. V03 starts only after V02 acceptance; later iteration order and
+all 112 criterion owners remain unchanged.
+
 ## 03 — case information
 
 **Tracking:** [OGC-1428](https://uwdigi.atlassian.net/browse/OGC-1428).
 
 **Prerequisites:** V02 accepted at its gate; shared owners linked before changing their behavior.
 
-**Removals:** Reception micro draft handling and duplicate questionnaire/context authority.
+**Removals:** Duplicate questionnaire/context authority. Retirement of reception micro draft callers moves to V02c alongside backend retirement.
 
 **Status:** `[ ]`. Sources: [context][context], [mock][mock].
 
-- [ ] Remove the reception micro tile/draft pipeline; edit context on the case.
+- [ ] Confirm V02c removed the reception micro tile/draft pipeline; implement context editing on the case.
 - [ ] Reuse Program/questionnaires and shared order response; distinguish
       patient-wide context from specimen-specific fields and audit the changes.
 - [ ] Keep admission optional, enforce the draft required-before-final fields and

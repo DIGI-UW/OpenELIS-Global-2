@@ -82,6 +82,12 @@ Each iteration requires its source-linked user outcome, engineering invariants,
 negative/security cases and exact gate to pass on the same revision. UI proof
 shows persisted behavior after reload, not merely a successful request. Compare
 with the named mock section and record deliberate design deviations for review.
+Every user-facing slice supplies a video of the implemented workflow, including
+save and reload, and a written comparison against the pinned V2 mock. Record the
+application commit, mock commit, scenario/criterion IDs, viewport, video timestamps
+and any mismatch. A video link without that comparison is incomplete evidence.
+Migration-only slices record database preservation/rollback evidence instead;
+they do not claim user-interface acceptance.
 
 Implementation starts only after the source/cutover gate closes. This document
 is not a claim that V2 is implemented, deployed or accepted.
