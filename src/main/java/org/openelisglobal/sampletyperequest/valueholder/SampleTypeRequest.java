@@ -66,6 +66,9 @@ public class SampleTypeRequest extends BaseObject<Integer> {
     @Column(name = "requested_quantity")
     private Double requestedQuantity;
 
+    @Column(name = "culture_set_number")
+    private Integer cultureSetNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "unit_of_measure_id")
     private UnitOfMeasure unitOfMeasure;
@@ -195,4 +198,16 @@ public class SampleTypeRequest extends BaseObject<Integer> {
     public boolean isPending() {
         return status == Status.REQUESTED;
     }
+
+    public Integer getCultureSetNumber() {
+        return cultureSetNumber;
+    }
+
+    public void setCultureSetNumber(Integer cultureSetNumber) {
+        if (cultureSetNumber != null && cultureSetNumber < 1) {
+            throw new IllegalArgumentException("Culture set number must be positive");
+        }
+        this.cultureSetNumber = cultureSetNumber;
+    }
+
 }

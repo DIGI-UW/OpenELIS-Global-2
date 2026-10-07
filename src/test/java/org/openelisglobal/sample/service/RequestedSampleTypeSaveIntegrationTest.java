@@ -51,6 +51,9 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     @Autowired
     private SampleService sampleService;
 
+    @Autowired
+    private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -64,6 +67,59 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         patient = fixtures.createPatient("REQSPEC");
         sampleType = fixtures.getOrCreateActiveSampleType();
         secondSampleType = fixtures.createTypeOfSample();
+    }
+
+    @Test
+    public void bottleSetsKeepIdentityWhenSameTypeRequestsAreReordered() {
+        Sample order = newSample();
+        var first = requested("1");
+        first.setCultureSetNumber(1);
+        var second = requested("1");
+        second.setCultureSetNumber(2);
+        persist(order, List.of(first, second));
+        var original = sampleTypeRequestService.getRequestsBySampleId(order.getId());
+        var firstReloaded = new SampleTypeRequestDTO(original.get(0));
+        var secondReloaded = new SampleTypeRequestDTO(original.get(1));
+        assertEquals(Integer.valueOf(1), firstReloaded.getCultureSetNumber());
+        assertEquals(Integer.valueOf(2), secondReloaded.getCultureSetNumber());
+        persist(order, List.of(secondReloaded, firstReloaded));
+        assertEquals(Integer.valueOf(1), sampleTypeRequestService.get(original.get(0).getId()).getCultureSetNumber());
+        assertEquals(Integer.valueOf(2), sampleTypeRequestService.get(original.get(1).getId()).getCultureSetNumber());
+        assertEquals(Integer.valueOf(0), sampleTypeRequestService.get(original.get(1).getId()).getSortOrder());
+    }
+
+    @Test
+    public void collectingSecondBottleFirstUsesItsRequestAndSetNumber() {
+        Sample order = newSample();
+        var first = requested("1");
+        first.setCultureSetNumber(1);
+        var second = requested("1");
+        second.setCultureSetNumber(2);
+        persist(order, List.of(first, second));
+        var requests = sampleTypeRequestService.getRequestsBySampleId(order.getId());
+        persist(order, new SamplePatientEntryForm(),
+                "<samples><sample typeId='" + sampleType.getId() + "' sampleTypeRequestId='" + requests.get(1).getId()
+                        + "' tests='' panels='' testSectionMap='' testSampleTypeMap='' /></samples>");
+        var collected = sampleTypeRequestService.get(requests.get(1).getId());
+        assertEquals(SampleTypeRequest.Status.COLLECTED, collected.getStatus());
+        assertEquals(Integer.valueOf(2),
+                sampleItemService.get(collected.getSampleItem().getId()).getCultureSetNumber());
+        assertEquals(SampleTypeRequest.Status.REQUESTED,
+                sampleTypeRequestService.get(requests.get(0).getId()).getStatus());
+    }
+
+    @Test
+    public void sampleXmlKeepsExplicitSetNumberOnSaveAndEdit() {
+        Sample order = newSample();
+        String attributes = " typeId='" + sampleType.getId()
+                + "' tests='' panels='' testSectionMap='' testSampleTypeMap='' ";
+        persist(order, new SamplePatientEntryForm(),
+                "<samples><sample" + attributes + "cultureSetNumber='2'/></samples>");
+        var item = sampleItemService.getSampleItemsBySampleId(order.getId()).get(0);
+        assertEquals(Integer.valueOf(2), item.getCultureSetNumber());
+        persist(order, new SamplePatientEntryForm(), "<samples><sample" + attributes + "sampleItemId='" + item.getId()
+                + "' cultureSetNumber='3'/></samples>");
+        assertEquals(Integer.valueOf(3), sampleItemService.get(item.getId()).getCultureSetNumber());
     }
 
     @Test
@@ -130,8 +186,12 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         Sample sample = newSample();
         persist(sample, List.of(requested("2.5")));
         SampleTypeRequest request = sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId()).getFirst();
-        sampleTypeRequestService.fulfillRequest(request.getId(),
-                fixtures.createSampleWithSampleItem("COLLECTED").getId());
+        var collected = fixtures.createSampleWithSampleItem("COLLECTED");
+        collected.setSample(sample);
+        collected.setTypeOfSample(sampleType);
+        collected.setSysUserId(userId);
+        sampleItemService.update(collected);
+        sampleTypeRequestService.fulfillRequest(request.getId(), collected.getId());
 
         persist(sample, List.of(requested("2.5")));
 
@@ -212,7 +272,11 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     }
 
     private void persist(Sample sample, SamplePatientEntryForm form) {
-        SampleAddService sampleAddService = new SampleAddService("<samples></samples>", userId, sample, "");
+        persist(sample, form, "<samples></samples>");
+    }
+
+    private void persist(Sample sample, SamplePatientEntryForm form, String xml) {
+        SampleAddService sampleAddService = new SampleAddService(xml, userId, sample, "");
         SamplePatientUpdateData updateData = new SamplePatientUpdateData(userId);
         updateData.setSample(sample);
         updateData.setSampleAddService(sampleAddService);

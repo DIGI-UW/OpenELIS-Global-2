@@ -374,7 +374,8 @@ migration history remains unchanged; these are still unregistered candidates.
 
 The complete `AmrCutoverMigrationTest` gate passed at `33d5f9afd5`: 34 tests,
 zero failures, errors or skips (396.8 seconds). This covers the full candidate
-migration regression class, not application startup or V02 acceptance.
+migration regression class at that revision, before the fourth (bottle-set)
+candidate migration; not application startup or V02 acceptance.
 
 Remaining V02c2 implementation and acceptance:
 
@@ -410,6 +411,25 @@ Remaining V02c2 implementation and acceptance:
       the case set count, per-set header lines and nonblocking set warnings
       (AC-V2-104). The existing editable number-of-sets field is not acceptance
       of this behavior; set numbering remains V02 scope.
+      The bottle-set storage increment preserves explicit positive set numbers
+      from requested specimens through collection and order reload. Stable request
+      identifiers prevent same-type bottles from swapping assignments when reordered
+      or collected out of order. Fulfillment rejects a different order or sample
+      type. Historical records receive no inferred set assignments. The fourth,
+      unregistered candidate migration checks collisions before cutover and refuses
+      rollback when it would discard recorded assignments.
+      Focused validation: 51 backend tests passed (10 order-save integration,
+      34 request-service, four ORM and three migration scenarios), plus 16 frontend
+      request-mapping/order-load tests. This is not the full migration regression
+      rerun or browser acceptance. Required next: entry controls, first/inherited
+      defaults, required-on-set save validation, derived count/header and warnings.
+- [ ] Open cases on initial clinical order save, including requested specimens.
+      Current clinical Step 1 sends requested sample types with empty sample XML;
+      physical specimens and runtime routing arrive at collection. The existing
+      routing tests therefore do not prove the initial-save requirement. Preserve
+      the shared request/collection lifecycle rather than inventing collected
+      specimens to open cases. Verify initial save, reload, collection and retries
+      retain the same case and specimen intent before accepting V02.
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason
       and preservation when cancelling a case's last micro test (FR-02.8).
 - [x] Bind the documented mapping file, actor and migration timestamp in runtime
@@ -423,7 +443,7 @@ Remaining V02c2 implementation and acceptance:
       and its snapshot-dependent tests remain in V02d; no-result splits remain V02e.
 
 This is a prerequisite within V02c2, not a new slice or runtime acceptance.
-Keep both candidate migrations unregistered until the catalog, routing,
+Keep all four candidate migrations unregistered until the catalog, routing,
 permissions and affected-caller gate is complete. Video attachment publication
 for V02c1 remains outstanding and is not satisfied by this migration work.
 

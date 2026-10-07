@@ -798,6 +798,42 @@ public class AmrCutoverMigrationTest {
     }
 
     @Test
+    public void completeSequenceRejectsBottleSetCollisionBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("alter table clinlims.sample_item add column culture_set_number integer");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String history = allHistory();
+        expectFailure(completeSequence(), "culture_set_number");
+        assertTrue(columnExists("micro_case", "workflow_type"));
+        assertTrue(tableExists("micro_culture_setup"));
+        assertEquals(history, allHistory());
+        assertEquals(before, clinicalSnapshot());
+    }
+
+    @Test
+    public void bottleSetRollbackRefusesToDiscardRecordedAssignments() throws Exception {
+        seed();
+        Liquibase migration = completeSequence();
+        migration.update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("update clinlims.sample_item set culture_set_number=2 where id=990001");
+        }
+        connection.commit();
+        String history = allHistory();
+        try {
+            migration.rollback(1, "default");
+            fail("Rollback must preserve recorded bottle sets");
+        } catch (LiquibaseException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("recorded set assignments"));
+        }
+        assertEquals("2", scalar("select culture_set_number from clinlims.sample_item where id=990001"));
+        assertEquals(history, allHistory());
+    }
+
+    @Test
     public void completeSequencePreservesUpgradeAndSupportsRollbackReapply() throws Exception {
         seed();
         Map<String, String> before = clinicalSnapshot();
@@ -808,8 +844,10 @@ public class AmrCutoverMigrationTest {
         assertTrue(columnExists("test", "collected_in_sets"));
         assertTrue(columnExists("program", "reporting_track_id"));
         assertTrue(tableExists("micro_export_reporting_track"));
+        assertTrue(columnExists("sample_item", "culture_set_number"));
+        assertEquals("0", scalar("select count(*) from clinlims.sample_item where culture_set_number is not null"));
         assertEquals(before, clinicalSnapshot());
-        migration.rollback(3, "default");
+        migration.rollback(4, "default");
         assertTrue(columnExists("micro_case", "workflow_type"));
         assertFalse(columnExists("test", "collected_in_sets"));
         assertEquals(history, allHistory());

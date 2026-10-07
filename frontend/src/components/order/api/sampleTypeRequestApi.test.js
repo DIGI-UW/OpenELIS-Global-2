@@ -145,3 +145,18 @@ describe("mergeCollectedAndPendingSamples", () => {
     expect(mergeCollectedAndPendingSamples([], [], fallback)).toBe(fallback);
   });
 });
+
+it("round-trips bottle identity and set number through pending entry", () => {
+  const restored = convertRequestsToSamples([
+    { id: "81", typeOfSampleId: "5", cultureSetNumber: 2, status: "REQUESTED" },
+    { id: "82", typeOfSampleId: "5", cultureSetNumber: 1, status: "REQUESTED" },
+  ]);
+  expect(restored[0].cultureSetNumber).toBe(2);
+  const reordered = toRequestedSampleTypes([restored[1], restored[0]]);
+  expect(
+    reordered.map(({ id, cultureSetNumber }) => ({ id, cultureSetNumber })),
+  ).toEqual([
+    { id: "82", cultureSetNumber: 1 },
+    { id: "81", cultureSetNumber: 2 },
+  ]);
+});

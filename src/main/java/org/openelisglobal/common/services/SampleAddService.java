@@ -175,6 +175,9 @@ public class SampleAddService {
                 item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
                 item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
                 item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
+                String cultureSetNumber = sampleItem.attributeValue("cultureSetNumber");
+                item.setCultureSetNumber(GenericValidator.isBlankOrNull(cultureSetNumber) ? null
+                        : Integer.valueOf(cultureSetNumber.trim()));
                 item.setContainer(sampleItem.attributeValue("container"));
                 item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
                 item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
@@ -247,6 +250,7 @@ public class SampleAddService {
                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
                 stc.existingSampleItemId = existingSampleItemId;
+                stc.sampleTypeRequestId = sampleItem.attributeValue("sampleTypeRequestId");
                 stc.storageNotes = storageNotes;
                 stc.panelIds = splitIds(panelIDs);
 
@@ -419,6 +423,7 @@ public class SampleAddService {
 
         // Existing sample item ID - for updates, identifies which sample_item to update
         public String existingSampleItemId;
+        public String sampleTypeRequestId;
 
         // Panels selected on this sample; a test is attributed only to one of these
         public List<String> panelIds = new ArrayList<>();

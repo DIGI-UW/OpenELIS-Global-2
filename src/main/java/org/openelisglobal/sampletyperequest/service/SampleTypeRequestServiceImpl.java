@@ -97,6 +97,18 @@ public class SampleTypeRequestServiceImpl extends AuditableBaseObjectServiceImpl
             throw new IllegalArgumentException("SampleItem not found: " + sampleItemId);
         }
 
+        if (request.getSample() == null || sampleItem.getSample() == null
+                || !request.getSample().getId().equals(sampleItem.getSample().getId())
+                || request.getTypeOfSample() == null
+                || !request.getTypeOfSample().getId().equals(sampleItem.getTypeOfSampleId())) {
+            throw new IllegalArgumentException("Collected specimen must belong to the requested order and sample type");
+        }
+        if (sampleItem.getCultureSetNumber() == null && request.getCultureSetNumber() != null) {
+            sampleItem.setCultureSetNumber(request.getCultureSetNumber());
+            sampleItem.setSysUserId(org.openelisglobal.spring.util.SpringContext
+                    .getBean(org.openelisglobal.common.util.UserContextHolder.class).getCurrentSysUserId());
+            sampleItemService.update(sampleItem);
+        }
         request.setStatus(SampleTypeRequest.Status.COLLECTED);
         request.setSampleItem(sampleItem);
         update(request);

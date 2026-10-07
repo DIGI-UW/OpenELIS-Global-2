@@ -562,6 +562,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     // Copy collection details from the incoming item
                     savedItem.setCollectionDate(sampleTestCollection.item.getCollectionDate());
                     savedItem.setCollector(sampleTestCollection.item.getCollector());
+                    if (sampleTestCollection.item.getCultureSetNumber() != null) {
+                        savedItem.setCultureSetNumber(sampleTestCollection.item.getCultureSetNumber());
+                    }
                     savedItem.setQuantity(sampleTestCollection.item.getQuantity());
                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
@@ -813,7 +816,27 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
             // Matching the specimen rather than the position keeps a cancellation
             // pointing at the specimen that was actually taken off the order.
-            SampleTypeRequest request = takePendingRequestFor(reusable, typeOfSample);
+            SampleTypeRequest request;
+            if (!GenericValidator.isBlankOrNull(requested.getId())) {
+                request = takeRequestById(reusable, requested.getId());
+            } else if (!GenericValidator.isBlankOrNull(requested.getSampleItemId())) {
+                request = reusable.stream()
+                        .filter(candidate -> candidate.getSampleItem() != null
+                                && requested.getSampleItemId().equals(candidate.getSampleItem().getId()))
+                        .findFirst().orElse(null);
+                if (request == null) {
+                    SampleItem collected = sampleItemService.get(requested.getSampleItemId());
+                    if (collected == null || collected.getSample() == null
+                            || !sample.getId().equals(collected.getSample().getId())
+                            || !typeOfSample.getId().equals(collected.getTypeOfSampleId())) {
+                        throw new IllegalArgumentException("Collected sample does not belong to this order and type");
+                    }
+                } else {
+                    reusable.remove(request);
+                }
+            } else {
+                request = takePendingRequestFor(reusable, typeOfSample);
+            }
             if (request != null && request.getStatus() == SampleTypeRequest.Status.COLLECTED) {
                 sortOrder++;
                 continue;
@@ -827,6 +850,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setTypeOfSample(typeOfSample);
             request.setSortOrder(sortOrder);
             request.setRequestedQuantity(requested.getRequestedQuantity());
+            request.setCultureSetNumber(requested.getCultureSetNumber());
             request.setRequestedTests(requested.getRequestedTests());
             request.setRequestedPanels(requested.getRequestedPanels());
             request.setStatus(SampleTypeRequest.Status.REQUESTED);
@@ -926,15 +950,33 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         pending.sort(
                 Comparator.comparing(SampleTypeRequest::getSortOrder, Comparator.nullsLast(Comparator.naturalOrder())));
 
+        Map<String, String> requestedIdsByItem = new java.util.HashMap<>();
+        if (updateData.getSampleItemsTests() != null) {
+            for (SampleTestCollection submitted : updateData.getSampleItemsTests()) {
+                if (submitted.item != null && !GenericValidator.isBlankOrNull(submitted.sampleTypeRequestId)) {
+                    requestedIdsByItem.put(submitted.item.getId(), submitted.sampleTypeRequestId);
+                }
+            }
+        }
         List<SampleItem> items = new ArrayList<>(sampleItemService.getSampleItemsBySampleId(sample.getId()));
         items.sort(Comparator.comparing(item -> Integer.valueOf(item.getId())));
         for (SampleItem item : items) {
             if (item.isRejected() || item.getTypeOfSample() == null || linkedItemIds.contains(item.getId())) {
                 continue;
             }
-            SampleTypeRequest request = takePendingRequestFor(pending, item.getTypeOfSample());
+            String requestedId = requestedIdsByItem.get(item.getId());
+            SampleTypeRequest request = requestedId == null ? takePendingRequestFor(pending, item.getTypeOfSample())
+                    : takeRequestById(pending, requestedId);
+            if (request != null && !request.getTypeOfSample().getId().equals(item.getTypeOfSampleId())) {
+                throw new IllegalArgumentException("Collected sample type differs from its request");
+            }
             if (request == null) {
                 continue;
+            }
+            if (item.getCultureSetNumber() == null && request.getCultureSetNumber() != null) {
+                item.setCultureSetNumber(request.getCultureSetNumber());
+                item.setSysUserId(updateData.getCurrentUserId());
+                sampleItemService.update(item);
             }
             request.setStatus(SampleTypeRequest.Status.COLLECTED);
             request.setSampleItem(item);
@@ -942,6 +984,17 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             sampleTypeRequestService.update(request);
             linkedItemIds.add(item.getId());
         }
+    }
+
+    private SampleTypeRequest takeRequestById(List<SampleTypeRequest> requests, String requestId) {
+        for (Iterator<SampleTypeRequest> iterator = requests.iterator(); iterator.hasNext();) {
+            SampleTypeRequest request = iterator.next();
+            if (requestId.equals(String.valueOf(request.getId()))) {
+                iterator.remove();
+                return request;
+            }
+        }
+        throw new IllegalArgumentException("Sample request does not belong to this order or was already consumed");
     }
 
     private SampleTypeRequest takePendingRequestFor(List<SampleTypeRequest> reusable, TypeOfSample typeOfSample) {

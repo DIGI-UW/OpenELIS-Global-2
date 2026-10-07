@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <!-- Candidate only: no historical bottle assignment is inferred. -->
+    <changeSet id="amr-v2-bottle-sets-20261007" author="OpenELIS">
+        <sqlFile path="amr-v2-bottle-sets-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
+        <addColumn schemaName="clinlims" tableName="sample_type_request">
+            <column name="culture_set_number" type="integer"/>
+        </addColumn>
+        <addColumn schemaName="clinlims" tableName="sample_item">
+            <column name="culture_set_number" type="integer"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.sample_type_request ADD CONSTRAINT ck_request_culture_set_positive CHECK (culture_set_number &gt; 0);
+            ALTER TABLE clinlims.sample_item ADD CONSTRAINT ck_sample_culture_set_positive CHECK (culture_set_number &gt; 0);
+        </sql>
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$ BEGIN
+                    IF EXISTS (SELECT 1 FROM clinlims.sample_type_request WHERE culture_set_number IS NOT NULL)
+                       OR EXISTS (SELECT 1 FROM clinlims.sample_item WHERE culture_set_number IS NOT NULL) THEN
+                        RAISE EXCEPTION 'Cannot roll back bottle sets while recorded set assignments exist';
+                    END IF;
+                END $$;
+            ]]></sql>
+            <dropColumn schemaName="clinlims" tableName="sample_item" columnName="culture_set_number"/>
+            <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="culture_set_number"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

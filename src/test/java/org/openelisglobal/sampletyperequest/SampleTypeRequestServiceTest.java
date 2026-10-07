@@ -133,14 +133,24 @@ public class SampleTypeRequestServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void fulfillRequest_shouldLinkSampleItemAndMarkCollected() {
-        sampleTypeRequestService.fulfillRequest(101, "2");
+        sampleTypeRequestService.fulfillRequest(102, "2");
 
-        SampleTypeRequest fulfilled = sampleTypeRequestService.get(101);
+        SampleTypeRequest fulfilled = sampleTypeRequestService.get(102);
         assertEquals(SampleTypeRequest.Status.COLLECTED, fulfilled.getStatus());
         assertEquals("2", fulfilled.getSampleItem().getId());
         assertTrue(fulfilled.isFulfilled());
 
-        assertEquals(SampleTypeRequest.Status.REQUESTED, sampleTypeRequestService.get(102).getStatus());
+        assertEquals(SampleTypeRequest.Status.REQUESTED, sampleTypeRequestService.get(101).getStatus());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void fulfillRequest_shouldRejectADifferentSampleType() {
+        sampleTypeRequestService.fulfillRequest(101, "2");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void fulfillRequest_shouldRejectADifferentOrder() {
+        sampleTypeRequestService.fulfillRequest(101, "4");
     }
 
     @Test(expected = ObjectNotFoundException.class)

@@ -66,6 +66,13 @@ export const toRequestedSampleTypes = (samples = []) =>
     .filter((sample) => sample && sample.sampleTypeId)
     .map((sample) => ({
       typeOfSampleId: sample.sampleTypeId,
+      ...(sample.sampleTypeRequestId
+        ? { id: String(sample.sampleTypeRequestId) }
+        : {}),
+      ...(sample.sampleItemId ? { sampleItemId: sample.sampleItemId } : {}),
+      ...(sample.cultureSetNumber != null && sample.cultureSetNumber !== ""
+        ? { cultureSetNumber: Number(sample.cultureSetNumber) }
+        : {}),
       requestedQuantity: parseFloat(sample.quantity) || null,
       unitOfMeasureId: sample.quantityUnit || null,
       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
@@ -146,6 +153,7 @@ export const convertRequestsToSamples = (pendingRequests) => {
       rejectionReason: "",
       sampleTypeId: request.typeOfSampleId,
       sampleTypeName: request.typeOfSampleName,
+      cultureSetNumber: request.cultureSetNumber ?? "",
       // Panels need to be objects with id and name properties for the UI
       panels: zipIdsAndNames(
         request.requestedPanels,
