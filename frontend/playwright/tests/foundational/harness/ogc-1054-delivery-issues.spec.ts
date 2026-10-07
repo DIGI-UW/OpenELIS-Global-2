@@ -64,13 +64,12 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
     expect(network.subnet).toMatch(/^10\.\d+\.\d+\.0\/24$/);
     const bridgeIp = network.subnet.replace(/\.0\/24$/, ".2");
     const sent = await page.request.post(
-      `${mockUrl}/simulate/astm/${mockName}`,
+      `${mockUrl}/simulate/fixture/${mockName}/hivvl/quantified`,
       {
         data: {
           destination: `tcp://${bridgeIp}:12001`,
           sample_id: accession,
           sender_id: senderId,
-          results: [{ test_code: "MTB-RIF", value: "NOT DETECTED" }],
         },
       },
     );

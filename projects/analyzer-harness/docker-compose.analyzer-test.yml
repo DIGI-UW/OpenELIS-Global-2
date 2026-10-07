@@ -1,8 +1,8 @@
 # Analyzer Testing Services
 #
 # Analyzer mock and Bridge for E2E testing.
-# The M1 assembled lane publishes only profile-gated priority analyzers:
-#   GET/POST http://localhost:8085/simulate/astm/genexpert_astm
+# The GeneXpert replays Cepheid's documented messages:
+#   POST http://localhost:8085/simulate/fixture/genexpert_astm/<assay>/<outcome>
 #
 # ASTM_TEMPLATE env var sets the default template for the ASTM listen port
 # (what the bridge gets when it connects). All other templates available via API.
