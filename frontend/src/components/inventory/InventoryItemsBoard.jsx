@@ -118,6 +118,8 @@ const compare = (a, b) => {
   return String(a).localeCompare(String(b));
 };
 
+const PAGE_SIZES = [25, 50, 100];
+
 const InventoryItemsBoard = () => {
   const intl = useIntl();
   const [rows, setRows] = useState([]);
@@ -405,9 +407,8 @@ const InventoryItemsBoard = () => {
   }, [search, statusFilter, locationFilter, tagFilter, sort]);
 
   // A stock-take covers everything in scope, so count mode shows every row.
-  const paged = !countMode && visibleRows.length > pageSize;
-  const pageCount = Math.max(1, Math.ceil(visibleRows.length / pageSize));
-  const currentPage = Math.min(page, pageCount);
+  const paged = !countMode && visibleRows.length > PAGE_SIZES[0];
+  const currentPage = Math.min(page, Math.ceil(visibleRows.length / pageSize));
   const pagedRows = paged
     ? visibleRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
     : visibleRows;
@@ -1189,7 +1190,7 @@ const InventoryItemsBoard = () => {
         <Pagination
           page={currentPage}
           pageSize={pageSize}
-          pageSizes={[25, 50, 100]}
+          pageSizes={PAGE_SIZES}
           totalItems={visibleRows.length}
           onChange={({ page: nextPage, pageSize: nextSize }) => {
             setPage(nextPage);

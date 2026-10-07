@@ -1393,15 +1393,16 @@ describe("InventoryItemsBoard", () => {
       expect(InventoryBoardAPI.get).toHaveBeenCalledTimes(1);
     });
   });
+  const PAGED_ITEMS = Array.from({ length: 30 }, (_, index) => ({
+    ...CARTRIDGE,
+    itemId: 1000 + index,
+    name: `Paged item ${String(index + 1).padStart(2, "0")}`,
+    code: `PG-${index + 1}`,
+    tags: [],
+  }));
+
   it("pages the board at 25 rows and returns to page 1 when the search changes", async () => {
-    const many = Array.from({ length: 30 }, (_, index) => ({
-      ...CARTRIDGE,
-      itemId: 1000 + index,
-      name: `Paged item ${String(index + 1).padStart(2, "0")}`,
-      code: `PG-${index + 1}`,
-      tags: [],
-    }));
-    await renderBoard(many, []);
+    await renderBoard(PAGED_ITEMS, []);
 
     expect(bodyRows()).toHaveLength(25);
     expect(screen.getByText(/1-25 of 30 items/)).toBeInTheDocument();
@@ -1418,14 +1419,7 @@ describe("InventoryItemsBoard", () => {
   });
 
   it("shows every row in count mode, however many pages the board has", async () => {
-    const many = Array.from({ length: 30 }, (_, index) => ({
-      ...CARTRIDGE,
-      itemId: 1000 + index,
-      name: `Paged item ${String(index + 1).padStart(2, "0")}`,
-      code: `PG-${index + 1}`,
-      tags: [],
-    }));
-    await renderBoard(many, []);
+    await renderBoard(PAGED_ITEMS, []);
     expect(bodyRows()).toHaveLength(25);
 
     fireEvent.click(screen.getByRole("button", { name: "Count mode" }));
@@ -1434,5 +1428,20 @@ describe("InventoryItemsBoard", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "Leave count mode" }));
     expect(bodyRows()).toHaveLength(25);
+  });
+
+  it("keeps the pager when a larger page size fits every row", async () => {
+    await renderBoard(PAGED_ITEMS, []);
+
+    fireEvent.change(screen.getByLabelText("Items per page"), {
+      target: { value: "50" },
+    });
+    expect(bodyRows()).toHaveLength(30);
+
+    fireEvent.change(screen.getByLabelText("Items per page"), {
+      target: { value: "25" },
+    });
+    expect(bodyRows()).toHaveLength(25);
+    expect(screen.getByText(/1-25 of 30 items/)).toBeInTheDocument();
   });
 });
