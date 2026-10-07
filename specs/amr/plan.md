@@ -451,8 +451,11 @@ cases from catalog tests, including panel selections. Request membership takes
 precedence over order/type/unit grouping, and set cultures group across types.
 It fulfills specimen requests before routing analyses, attaching the actual
 specimen and analysis to the recorded case and retaining its ordering role/set
-snapshot on retries and out-of-order collection. Independent fulfillment callers
-still need the same handoff integration. After fulfillment, analysis/specimen membership governs clinical
+snapshot on retries and out-of-order collection. The separate request fulfillment
+endpoint uses the same handoff after locking the order and refreshing the request.
+It permits a same-specimen retry, rejects a different specimen for a collected
+request, and prevents one specimen from fulfilling two requests. The authenticated
+actor is recorded for request, specimen and case writes. After fulfillment, analysis/specimen membership governs clinical
 work; the request link remains ordering provenance. Pending case detail and
 worklists must distinguish requested from collected specimens. Add/remove and
 last-test cancellation must preserve history and enforce FR-02.8, and must never

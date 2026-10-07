@@ -20,6 +20,12 @@ public class SampleTypeRequestServiceImpl extends AuditableBaseObjectServiceImpl
     @Autowired
     private SampleItemService sampleItemService;
 
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroRequestedCaseService microRequestedCaseService;
+
+    @Autowired
+    private org.openelisglobal.common.util.UserContextHolder userContext;
+
     public SampleTypeRequestServiceImpl() {
         super(SampleTypeRequest.class);
     }
@@ -88,9 +94,14 @@ public class SampleTypeRequestServiceImpl extends AuditableBaseObjectServiceImpl
         if (request == null) {
             throw new IllegalArgumentException("SampleTypeRequest not found: " + requestId);
         }
-        if (request.getStatus() != SampleTypeRequest.Status.REQUESTED) {
+        microRequestedCaseService.lockOrder(request.getSample().getId());
+        request = sampleTypeRequestDAO.getForUpdate(requestId);
+        boolean retry = request.getStatus() == SampleTypeRequest.Status.COLLECTED && request.getSampleItem() != null
+                && sampleItemId.equals(request.getSampleItem().getId());
+        if (!retry && request.getStatus() != SampleTypeRequest.Status.REQUESTED) {
             throw new IllegalStateException("Cannot fulfill request in status: " + request.getStatus());
         }
+        String actor = userContext.requireSysUserId();
 
         SampleItem sampleItem = sampleItemService.get(sampleItemId);
         if (sampleItem == null) {
@@ -103,14 +114,22 @@ public class SampleTypeRequestServiceImpl extends AuditableBaseObjectServiceImpl
                 || !request.getTypeOfSample().getId().equals(sampleItem.getTypeOfSampleId())) {
             throw new IllegalArgumentException("Collected specimen must belong to the requested order and sample type");
         }
+        if (sampleTypeRequestDAO.getFulfilledRequestsBySampleId(request.getSample().getId()).stream()
+                .anyMatch(other -> !requestId.equals(other.getId()) && other.getSampleItem() != null
+                        && sampleItemId.equals(other.getSampleItem().getId()))) {
+            throw new IllegalStateException("A collected specimen already fulfills another request");
+        }
         if (RequestedSpecimenDetails.apply(request, sampleItem)) {
-            sampleItem.setSysUserId(org.openelisglobal.spring.util.SpringContext
-                    .getBean(org.openelisglobal.common.util.UserContextHolder.class).getCurrentSysUserId());
+            sampleItem.setSysUserId(actor);
             sampleItemService.update(sampleItem);
         }
-        request.setStatus(SampleTypeRequest.Status.COLLECTED);
-        request.setSampleItem(sampleItem);
-        update(request);
+        if (!retry) {
+            request.setStatus(SampleTypeRequest.Status.COLLECTED);
+            request.setSampleItem(sampleItem);
+            request.setSysUserId(actor);
+            update(request);
+        }
+        microRequestedCaseService.routeRequests(List.of(request), actor);
     }
 
     @Override

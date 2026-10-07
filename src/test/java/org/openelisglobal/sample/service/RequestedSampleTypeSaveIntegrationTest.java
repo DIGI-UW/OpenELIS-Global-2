@@ -157,6 +157,52 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
+    public void directCollectionPreservesRequestedCaseAndIsIdempotent() {
+        var test = bottleTest();
+        var request = requested("1");
+        request.setRequestedTests(test.getId());
+        request.setCultureSetNumber(3);
+        Sample order = newSample();
+        persist(order, List.of(request));
+        var saved = sampleTypeRequestService.getRequestsBySampleId(order.getId()).get(0);
+        var owner = ownership.getByRequestAndTest(saved.getId(), test.getId()).getCaseId();
+        var item = new org.openelisglobal.sampleitem.valueholder.SampleItem();
+        item.setSample(order);
+        item.setTypeOfSample(sampleType);
+        item.setSortOrder("1");
+        item.setStatusId(fixtures.ensureSampleEnteredStatus());
+        item.setSysUserId(userId);
+        sampleItemService.insert(item);
+        var analysis = fixtures.createAnalysis(item, test);
+        sampleTypeRequestService.fulfillRequest(saved.getId(), item.getId());
+        sampleTypeRequestService.fulfillRequest(saved.getId(), item.getId());
+        assertEquals(Integer.valueOf(3), sampleItemService.get(item.getId()).getCultureSetNumber());
+        assertEquals(owner, analysisLinks.getByAnalysis(analysis.getId()).getCaseId());
+        assertEquals(1, specimenLinks.getByCaseId(owner).size());
+        assertEquals(1, analysisLinks.getByCaseId(owner).size());
+        assertEquals(1, cases.getByOrder(order.getId()).size());
+    }
+
+    @Test
+    public void directCollectionCannotUseOneBottleForTwoRequests() {
+        var test = bottleTest();
+        var first = requested("1");
+        first.setRequestedTests(test.getId());
+        first.setCultureSetNumber(1);
+        var second = requested("1");
+        second.setRequestedTests(test.getId());
+        second.setCultureSetNumber(2);
+        Sample order = newSample();
+        persist(order, List.of(first, second));
+        var requests = sampleTypeRequestService.getRequestsBySampleId(order.getId());
+        persist(order, new SamplePatientEntryForm(),
+                bottleXml(test.getId(), "sampleTypeRequestId='" + requests.get(0).getId() + "'"));
+        var itemId = sampleTypeRequestService.get(requests.get(0).getId()).getSampleItem().getId();
+        assertThrows(IllegalStateException.class,
+                () -> sampleTypeRequestService.fulfillRequest(requests.get(1).getId(), itemId));
+    }
+
+    @Test
     public void ordinaryRequestedTestDoesNotOpenCaseAndUnitsRemainSeparate() {
         var unit = fixtures.createLabUnit();
         var other = fixtures.createLabUnit();

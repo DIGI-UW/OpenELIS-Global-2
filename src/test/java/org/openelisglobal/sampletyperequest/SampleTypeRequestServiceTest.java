@@ -143,6 +143,13 @@ public class SampleTypeRequestServiceTest extends BaseWebContextSensitiveTest {
         assertEquals(SampleTypeRequest.Status.REQUESTED, sampleTypeRequestService.get(101).getStatus());
     }
 
+    @Test
+    public void fulfillRequest_shouldAllowSameSpecimenRetry() {
+        sampleTypeRequestService.fulfillRequest(102, "2");
+        sampleTypeRequestService.fulfillRequest(102, "2");
+        assertEquals("2", sampleTypeRequestService.get(102).getSampleItem().getId());
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void fulfillRequest_shouldRejectADifferentSampleType() {
         sampleTypeRequestService.fulfillRequest(101, "2");

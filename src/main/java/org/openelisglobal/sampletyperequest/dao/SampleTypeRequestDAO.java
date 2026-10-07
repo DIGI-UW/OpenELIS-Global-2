@@ -6,6 +6,8 @@ import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
 
 public interface SampleTypeRequestDAO extends BaseDAO<SampleTypeRequest, Integer> {
 
+    SampleTypeRequest getForUpdate(Integer requestId);
+
     /**
      * Get all sample type requests for a given sample.
      */

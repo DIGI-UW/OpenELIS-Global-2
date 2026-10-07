@@ -16,6 +16,17 @@ public class SampleTypeRequestDAOImpl extends BaseDAOImpl<SampleTypeRequest, Int
         super(SampleTypeRequest.class);
     }
 
+    @Override
+    public SampleTypeRequest getForUpdate(Integer requestId) {
+        SampleTypeRequest request = entityManager.find(SampleTypeRequest.class, requestId);
+        if (request == null) {
+            throw new IllegalArgumentException("Sample request not found");
+        }
+        // Called after the order lock; discard state read before waiting for it.
+        entityManager.refresh(request, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+        return request;
+    }
+
     private String normalizeSampleId(String sampleId) {
         if (sampleId == null || sampleId.trim().isEmpty()) {
             return null;

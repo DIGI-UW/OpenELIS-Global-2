@@ -485,8 +485,8 @@ Remaining V02c2 implementation and acceptance:
       Required next: complete warning presentation during shared save (including
       saved-order editing), define and
       persist catalog classification for pediatric/adult container compatibility
-      (do not infer it from translated display names), audit other fulfillment
-      entry points, environmental presentation, final-schema retirement and
+      (do not infer it from translated display names), environmental presentation,
+      final-schema retirement and
       browser proof. Case-header warnings alone do not accept FR-02.4a.
 - [ ] Accept initial clinical order save, including requested specimens.
       The shared save now opens cases from persisted requests before collection,
@@ -502,8 +502,14 @@ Remaining V02c2 implementation and acceptance:
       Request ownership storage is in PR #4636; its five migration scenarios and
       six focused persistence/mapping/constraint checks passed. All five candidate
       migrations remain unregistered.
-      Still required before accepting this gate: independent fulfillment callers,
-      pending case detail/worklist presentation, add/remove and last-test
+      The separate fulfillment endpoint now uses the same ownership handoff,
+      takes the order/request locks and records the authenticated actor. Retries
+      retain the same specimen; one specimen cannot fulfill two requests.
+      Its final run passed 73 tests: shared saves (22), request service (35), and
+      endpoint responses (16). This covers direct handoff and duplicate prevention,
+      not browser acceptance.
+      Still required before accepting this gate: pending case detail/worklist
+      presentation, add/remove and last-test
       cancellation, permission review, and persisted browser/video comparison.
       See the [engineering plan](plan.md#request-stage-case-ownership-v02).
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason
