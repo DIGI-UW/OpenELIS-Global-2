@@ -299,7 +299,15 @@ Program administration, defaults and export-track configuration remain V03/V15
 work. In particular, empty export-track configuration must not be accepted as a
 valid empty population during the remaining V02c2/V15 verification.
 
-Remaining V02c2 work includes the frontend workflow/protocol caller retirement,
+The case-screen workflow/protocol controls, their service calls and components,
+and classification-based section blocking are retired. Protocol URL actions are
+ignored. Two visible-control regressions failed before removal; 61 checks across
+case view, current-step selection, routing, service and nonconformance suites
+pass afterward. This is focused frontend evidence, not browser acceptance.
+Case-unit mutation controls, explicit specimen selection, case/header/worklist
+response alignment and persisted mock comparison remain to be completed.
+
+Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,
 full migration regression, and persisted browser/video comparison. The catalog
 case-opening controls and culture-setup admin retirement have 43 passing frontend

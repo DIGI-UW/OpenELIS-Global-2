@@ -26,8 +26,6 @@ export const MICROBIOLOGY_CASE_ACTIONS = [
   "mark-positive",
   "mark-no-growth",
   "new-ast-attempt",
-  "set-protocol",
-  "change-protocol",
 ];
 export const MICROBIOLOGY_CRITICAL_TARGET_TYPES = ["CASE", "ISOLATE"];
 

@@ -238,63 +238,23 @@ describe("MicrobiologyCaseView", () => {
     },
   );
 
-  it("sets a bench protocol from canonical URL state and retains worklist context", async () => {
-    const user = userEvent.setup();
-    const protocolOption = {
-      id: "method-1",
-      label: "Routine blood culture",
-      active: true,
-      current: false,
-      mediaDefaults: "BAP + CHOC",
-      incubationDefaults: "48 hours at 35 C",
-      atmosphereDefaults: "aerobic + anaerobic",
-    };
-    const updatedCase = { ...caseDetail, cultureMethodId: "method-1" };
-    const service = {
-      ...astServiceStubs,
-      getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
-      getCaseProtocolOptions: vi.fn().mockResolvedValue([protocolOption]),
-      changeCaseProtocol: vi.fn().mockResolvedValue(updatedCase),
-      createIsolate: vi.fn(),
-    };
-
-    renderCase(
-      service,
-      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
-    );
-
-    await user.click(
-      await screen.findByRole("button", { name: "Set protocol" }),
-    );
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "workflow=BACTERIOLOGY&section=setup&action=set-protocol",
-    );
-    await user.selectOptions(
-      screen.getByRole("combobox", { name: "Culture protocol" }),
-      "method-1",
-    );
-    await user.type(
-      screen.getByRole("textbox", { name: "Reason for protocol change" }),
-      "Bench review requires routine media",
-    );
-    await user.click(screen.getByRole("button", { name: "Save protocol" }));
-
-    await waitFor(() =>
-      expect(service.changeCaseProtocol).toHaveBeenCalledWith("case-1", {
-        cultureMethodId: "method-1",
-        reason: "Bench review requires routine media",
-      }),
-    );
-    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&section=setup",
-    );
-    expect(
-      screen.getByTestId("microbiology-current-url"),
-    ).not.toHaveTextContent("action=");
-    expect(
-      await screen.findByText("Routine blood culture"),
-    ).toBeInTheDocument();
-  });
+  it.each(["case-info", "setup"])(
+    "renders the %s section without retired workflow or protocol controls",
+    async (section) => {
+      const service = {
+        ...astServiceStubs,
+        getCaseDetail: vi.fn().mockResolvedValue(caseDetail),
+      };
+      renderCase(service, `/Microbiology/cases/case-1?section=${section}`);
+      await screen.findByTestId(`microbiology-case-section-${section}`);
+      expect(screen.queryByText("Change workflow")).not.toBeInTheDocument();
+      expect(
+        screen.queryByRole("button", { name: "Set protocol" }),
+      ).not.toBeInTheDocument();
+      expect(service.getCultureMethods).not.toHaveBeenCalled();
+      expect(service.getCaseProtocolOptions).not.toHaveBeenCalled();
+    },
+  );
 
   it.each([
     {
@@ -925,41 +885,19 @@ describe("MicrobiologyCaseView", () => {
     );
   });
 
-  it("holds profile-specific actions until an unassigned case is classified", async () => {
-    const unassignedCase = {
-      ...caseDetail,
-      workflowType: "UNASSIGNED",
-      siblingCases: [
-        {
-          id: "case-tb",
-          workflowType: "MYCOBACTERIOLOGY_TB",
-          stage: "RECEIVED",
-        },
-      ],
-    };
+  it("opens a canonical case section without requiring workflow classification", async () => {
+    const { workflowType, ...canonicalCase } = caseDetail;
     const service = {
       ...astServiceStubs,
-      getCaseDetail: vi.fn().mockResolvedValue(unassignedCase),
-      recordCaseActivity: vi.fn(),
-      createIsolate: vi.fn(),
+      getCaseDetail: vi.fn().mockResolvedValue(canonicalCase),
     };
-
     renderCase(service, "/Microbiology/cases/case-1?section=ast");
-
+    await screen.findByTestId("microbiology-case-section-ast");
     expect(
-      await screen.findByText("Workflow classification required"),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Change workflow")).toBeInTheDocument();
-    expect(
-      screen.queryByRole("button", { name: "Start AST" }),
+      screen.queryByText("Workflow classification required"),
     ).not.toBeInTheDocument();
-    expect(
-      screen.getByLabelText("Mycobacteriology/TB (Received)"),
-    ).toHaveAttribute("href", "/Microbiology/cases/case-tb?section=case-info");
-    await waitFor(() =>
-      expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?section=case-info",
-      ),
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/case-1?section=ast",
     );
   });
 

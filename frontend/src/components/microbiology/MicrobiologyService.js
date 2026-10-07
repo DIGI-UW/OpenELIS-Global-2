@@ -123,16 +123,6 @@ export const getBreakpointStandards = () =>
     );
   });
 
-export const getCultureMethods = (workflowType) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/reference/culture-methods?workflowType=${encodeURIComponent(
-        workflowType,
-      )}`,
-      resolve,
-    );
-  });
-
 export const getPatientOrigins = (organizationId) =>
   new Promise((resolve) => {
     const query = organizationId
@@ -141,44 +131,6 @@ export const getPatientOrigins = (organizationId) =>
     getFromOpenElisServer(
       `/rest/microbiology/reference/patient-origins${query}`,
       resolve,
-    );
-  });
-
-export const changeCaseWorkflow = (caseId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/workflow`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
-    );
-  });
-
-export const getCaseProtocolOptions = (caseId) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/protocol/options`,
-      resolve,
-    );
-  });
-
-export const changeCaseProtocol = (caseId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/protocol`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
     );
   });
 
@@ -537,11 +489,7 @@ const MicrobiologyService = {
   getAntibiotics,
   getOrganisms,
   getBreakpointStandards,
-  getCultureMethods,
   getPatientOrigins,
-  changeCaseWorkflow,
-  getCaseProtocolOptions,
-  changeCaseProtocol,
   getAstRunsForIsolate,
   getAnalyzers,
   startAstRun,

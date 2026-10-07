@@ -300,18 +300,18 @@ describe("MicrobiologyRoutes", () => {
     });
   });
 
-  it("keeps the protocol-only bench action in canonical case state", () => {
+  it("ignores retired protocol actions in canonical case state", () => {
     expect(
       getMicrobiologyCaseUrl("case-1", {
         section: "setup",
         action: "change-protocol",
       }),
-    ).toBe("/Microbiology/cases/case-1?section=setup&action=change-protocol");
+    ).toBe("/Microbiology/cases/case-1?section=setup");
     expect(
       parseMicrobiologyCaseSearch("?section=setup&action=set-protocol"),
     ).toMatchObject({
       section: "setup",
-      action: "set-protocol",
+      action: "",
     });
   });
 
