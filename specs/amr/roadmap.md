@@ -30,7 +30,8 @@ them.
 - [ ] Workflow type, culture setups and protocols removed, backend and frontend
 - [ ] Reception Microbiology section, micro draft pipeline and Program guards removed
 - [ ] V1 order routing removed
-- [ ] Order entry, Results, Validation and existing cases work; no schema change
+- [ ] Retired columns made nullable; no other schema change
+- [ ] Order entry, Results, Validation and existing cases work
 
 ## 4. Case structure
 
@@ -145,7 +146,7 @@ them.
 [§12](spec.md#12-surveillance-populations), [§13](spec.md#13-environmental-cases)
 
 - [ ] Site-subject cases, environmental fields and purposes
-- [ ] Purpose and track populations in the WHONET export
+- [ ] Purpose and track populations in the WHONET export, replacing its retired workflow-type scope
 - [ ] M-18 acceptance criteria
 - AC: 50, 107
 
