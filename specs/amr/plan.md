@@ -437,8 +437,15 @@ proof. Missing PR/checkpoint, dependency or approval means blocked, not green.
 Clinical Step 1 persists `SampleTypeRequest` records; it does not create
 `SampleItem` or `Analysis` records. Opening cases at this point therefore needs
 explicit ownership for the requested test, before collected-specimen membership
-exists. `MicroCaseRequestedTest` records one case per request/test pair, the
+exists. `MicroCaseRequestedTest` records the case for each ordering of a request/test pair, the
 catalog case role and collected-in-sets flag at ordering, and its actor/time.
+Only one active ownership record may exist per request/test pair. Cancellation
+retains that record with actor/time and an optional reason; a later ordering can
+create a new active record while the prior case keeps its original provenance.
+Cancelled assignments do not participate in routing, pending details or pending
+worklist context. Cancelled cases are not grouping targets. Confirmation, the
+reason required when results exist, whole-step atomicity and write locking must
+be wired before the cancellation flow is accepted (FR-02.8).
 It is not a second test catalog or a replacement for the shared request lifecycle.
 
 The fifth unregistered candidate migration provides this relationship without

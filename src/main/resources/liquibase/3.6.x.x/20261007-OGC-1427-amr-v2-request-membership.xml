@@ -5,6 +5,7 @@
     <!-- Candidate only. Existing requests are not retroactively assigned to cases. -->
     <changeSet id="amr-v2-request-membership-20261007" author="OpenELIS">
         <sqlFile path="amr-v2-request-membership-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
+        <sql>ALTER TABLE clinlims.micro_case DROP CONSTRAINT micro_case_stage_chk; ALTER TABLE clinlims.micro_case ADD CONSTRAINT micro_case_stage_chk CHECK (stage IN ('RECEIVED', 'SETUP_RECORDED', 'INCUBATING', 'POSITIVE_SIGNAL', 'GROWTH_DETECTED', 'NO_GROWTH_READY', 'IDENTIFICATION', 'AST_READY', 'AST_IN_PROGRESS', 'REVIEW_READY', 'PRELIM_RELEASED', 'FINAL_RELEASED', 'AMENDED', 'REJECTED', 'LOST_SPECIMEN', 'LOST_SPECIMEN_POSITIVE', 'CANCELLED'))</sql>
         <createTable schemaName="clinlims" tableName="micro_case_requested_test">
             <column name="id" type="varchar(36)"><constraints primaryKey="true" primaryKeyName="pk_micro_case_requested_test" nullable="false"/></column>
             <column name="case_id" type="varchar(36)"><constraints nullable="false"/></column>
@@ -14,8 +15,12 @@
             <column name="collected_in_sets" type="boolean"><constraints nullable="false"/></column>
             <column name="created_at" type="timestamp"><constraints nullable="false"/></column>
             <column name="created_by" type="varchar(20)"><constraints nullable="false"/></column>
+            <column name="cancelled_at" type="timestamp"/>
+            <column name="cancelled_by" type="varchar(20)"/>
+            <column name="cancellation_reason" type="text"/>
         </createTable>
-        <addUniqueConstraint schemaName="clinlims" tableName="micro_case_requested_test" columnNames="request_id,test_id" constraintName="uq_micro_request_test"/>
+        <sql>CREATE UNIQUE INDEX uq_micro_request_test ON clinlims.micro_case_requested_test (request_id, test_id) WHERE cancelled_at IS NULL</sql>
+        <sql>ALTER TABLE clinlims.micro_case_requested_test ADD CONSTRAINT ck_micro_request_cancellation CHECK ((cancelled_at IS NULL AND cancelled_by IS NULL AND cancellation_reason IS NULL) OR (cancelled_at IS NOT NULL AND cancelled_by IS NOT NULL AND length(trim(cancelled_by)) &gt; 0))</sql>
         <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_requested_test" baseColumnNames="case_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case" referencedColumnNames="id" constraintName="fk_micro_request_case"/>
         <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_requested_test" baseColumnNames="request_id" referencedTableSchemaName="clinlims" referencedTableName="sample_type_request" referencedColumnNames="id" constraintName="fk_micro_request_request"/>
         <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_requested_test" baseColumnNames="test_id" referencedTableSchemaName="clinlims" referencedTableName="test" referencedColumnNames="id" constraintName="fk_micro_request_test"/>
@@ -24,13 +29,18 @@
         <rollback>
             <sql splitStatements="false"><![CDATA[
                 DO $$ BEGIN
+                    LOCK TABLE clinlims.micro_case IN ACCESS EXCLUSIVE MODE;
                     LOCK TABLE clinlims.micro_case_requested_test IN ACCESS EXCLUSIVE MODE;
+                    IF EXISTS (SELECT 1 FROM clinlims.micro_case WHERE stage = 'CANCELLED') THEN
+                        RAISE EXCEPTION 'Cannot discard cancelled case state';
+                    END IF;
                     IF EXISTS (SELECT 1 FROM clinlims.micro_case_requested_test) THEN
                         RAISE EXCEPTION 'Cannot discard recorded requested-test case ownership';
                     END IF;
                 END $$;
             ]]></sql>
             <dropTable schemaName="clinlims" tableName="micro_case_requested_test"/>
+            <sql>ALTER TABLE clinlims.micro_case DROP CONSTRAINT micro_case_stage_chk; ALTER TABLE clinlims.micro_case ADD CONSTRAINT micro_case_stage_chk CHECK (stage IN ('RECEIVED', 'SETUP_RECORDED', 'INCUBATING', 'POSITIVE_SIGNAL', 'GROWTH_DETECTED', 'NO_GROWTH_READY', 'IDENTIFICATION', 'AST_READY', 'AST_IN_PROGRESS', 'REVIEW_READY', 'PRELIM_RELEASED', 'FINAL_RELEASED', 'AMENDED', 'REJECTED', 'LOST_SPECIMEN', 'LOST_SPECIMEN_POSITIVE'))</sql>
         </rollback>
     </changeSet>
 </databaseChangeLog>

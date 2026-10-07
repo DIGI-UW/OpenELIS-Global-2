@@ -56,7 +56,7 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
         List<MicroCase> memberCases = entityManager
                 .createQuery(
                         "select c from MicroCase c where c.sampleId = :sampleId and c.testSectionId = :unitId"
-                                + " and exists (select m.id from MicroCaseSpecimen m"
+                                + " and c.stage <> 'CANCELLED'" + " and exists (select m.id from MicroCaseSpecimen m"
                                 + " where m.caseId = c.id and m.sampleItemId = :itemId) order by c.createdAt, c.id",
                         MicroCase.class)
                 .setParameter("sampleId", sampleId).setParameter("unitId", testSectionId)
@@ -68,10 +68,11 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
                 : "(exists (select l.id from MicroCaseAnalysis l join Analysis a on a.id = l.analysisId"
                         + " where l.caseId = c.id and l.collectedInSets = true and a.test.id = :setsTestId)"
                         + " or exists (select r.id from MicroCaseRequestedTest r where r.caseId = c.id"
-                        + " and r.collectedInSets = true and r.testId = :setsTestId))";
-        Query<MicroCase> query = entityManager.unwrap(Session.class)
-                .createQuery("select c from MicroCase c where c.sampleId = :sampleId and c.testSectionId = :unitId"
-                        + " and " + match + " order by c.createdAt, c.id", MicroCase.class);
+                        + " and r.cancelledAt is null and r.collectedInSets = true and r.testId = :setsTestId))";
+        Query<MicroCase> query = entityManager.unwrap(Session.class).createQuery(
+                "select c from MicroCase c where c.sampleId = :sampleId and c.testSectionId = :unitId"
+                        + " and c.stage <> 'CANCELLED'" + " and " + match + " order by c.createdAt, c.id",
+                MicroCase.class);
         query.setParameter("sampleId", sampleId).setParameter("unitId", testSectionId);
         if (collectedInSetsTestId == null) {
             query.setParameter("sampleTypeId", sampleTypeId);

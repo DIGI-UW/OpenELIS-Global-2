@@ -25,7 +25,7 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
             + "join request.sample sample join request.typeOfSample type "
             + "left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id "
             + "left join Patient patient on patient.id = sampleHuman.patientId left join patient.person person "
-            + "where membership.caseId in (:caseIds) and request.status = :status";
+            + "where membership.caseId in (:caseIds) and request.status = :status and membership.cancelledAt is null";
 
     static final String SPECIMEN_CONTEXT_HQL = "select sampleItem.id, sample.accessionNumber, person.lastName, person.firstName, type.description, sampleItem.collectionDate, type.id "
             + "from SampleItem sampleItem join sampleItem.sample sample "

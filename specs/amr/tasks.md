@@ -529,6 +529,16 @@ Remaining V02c2 implementation and acceptance:
       See the [engineering plan](plan.md#request-stage-case-ownership-v02).
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason
       and preservation when cancelling a case's last micro test (FR-02.8).
+      Cancellation storage now retains ended requested-test ownership with
+      actor/time/reason and restricts uniqueness to active ownership. Routing
+      ignores cancelled cases/assignments; pending displays ignore cancelled
+      assignments. The fifth migration is still unregistered; applied migration
+      history is unchanged. This is a prerequisite, not cancellation acceptance:
+      Thirty lifecycle/migration checks and one dedicated cancelled-case rollback
+      check passed. They prove retained prior ownership, a new active case on
+      reordering, and refusal to discard cancellation state. Still required:
+      shared save/direct-cancel commands, confirmation/reason UI, case closure,
+      preserved results and cancelled-case write locking still require delivery.
 - [x] Bind the documented mapping file, actor and migration timestamp in runtime
       startup. `LiquibaseConfigTest`: five passing tests cover propagation, absent
       parameters, partial configuration and invalid actor/timestamp rejection.

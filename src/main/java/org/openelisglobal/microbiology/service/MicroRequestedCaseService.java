@@ -101,9 +101,10 @@ public class MicroRequestedCaseService {
                     }
                     String unit = test.getTestSection().getId();
                     // Membership takes precedence over grouping; never join existing cases.
-                    owner = cases.getByOrder(orderId).stream().filter(c -> unit.equals(c.getTestSectionId()))
-                            .filter(c -> requests.getByCaseId(c.getId()).stream()
-                                    .anyMatch(r -> r.getRequestId().equals(request.getId())))
+                    owner = cases.getByOrder(orderId).stream()
+                            .filter(c -> unit.equals(c.getTestSectionId()) && !"CANCELLED".equals(c.getStage()))
+                            .filter(c -> requests.getByCaseId(c.getId()).stream().anyMatch(
+                                    r -> r.getCancelledAt() == null && r.getRequestId().equals(request.getId())))
                             .findFirst().orElse(null);
                     if (owner == null) {
                         var candidates = cases.getRoutingCandidates(orderId, request.getTypeOfSample().getId(), unit,

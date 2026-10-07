@@ -217,6 +217,9 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     private void compileRequestedContext(MicroCaseDetailForm form) {
         Map<Integer, org.openelisglobal.microbiology.form.MicroCaseRequestedSpecimenForm> pending = new java.util.LinkedHashMap<>();
         for (var link : requestedTestDAO.getByCaseId(form.id)) {
+            if (link.getCancelledAt() != null) {
+                continue;
+            }
             var request = requestService.get(link.getRequestId());
             if (request
                     .getStatus() != org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.REQUESTED) {

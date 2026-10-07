@@ -18,11 +18,10 @@ public class MicroCaseRequestedTestDAOImpl extends BaseDAOImpl<MicroCaseRequeste
     @Override
     @Transactional(readOnly = true)
     public MicroCaseRequestedTest getByRequestAndTest(Integer requestId, String testId) {
-        return entityManager
-                .createQuery("from MicroCaseRequestedTest r where r.requestId = :requestId and r.testId = :testId",
-                        MicroCaseRequestedTest.class)
-                .setParameter("requestId", requestId).setParameter("testId", testId).getResultList().stream()
-                .findFirst().orElse(null);
+        return entityManager.createQuery(
+                "from MicroCaseRequestedTest r where r.requestId = :requestId and r.testId = :testId and r.cancelledAt is null",
+                MicroCaseRequestedTest.class).setParameter("requestId", requestId).setParameter("testId", testId)
+                .getResultList().stream().findFirst().orElse(null);
     }
 
     @Override

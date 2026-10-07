@@ -905,6 +905,7 @@ public class AmrCutoverMigrationTest {
         var boundary = connection.setSavepoint();
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate("insert into clinlims.micro_case_requested_test"
+                    + " (id,case_id,request_id,test_id,case_role,collected_in_sets,created_at,created_by)"
                     + " select 'duplicate-owner',case_id,request_id,test_id,case_role,collected_in_sets,created_at,created_by"
                     + " from clinlims.micro_case_requested_test where id='request-owner'");
             fail("A requested test must not acquire a second owner");
@@ -933,6 +934,27 @@ public class AmrCutoverMigrationTest {
         }
         assertEquals("case-bacteria",
                 scalar("select case_id from clinlims.micro_case_requested_test where id='request-owner'"));
+        assertEquals(history, allHistory());
+    }
+
+    @Test
+    public void requestedMembershipRollbackPreservesCancelledCaseState() throws Exception {
+        seed();
+        Liquibase migration = completeSequence();
+        migration.update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "update clinlims.micro_case set stage='CANCELLED', closed_at=current_timestamp, closed_by='1' where id='case-bacteria'");
+        }
+        connection.commit();
+        String history = allHistory();
+        try {
+            migration.rollback(1, "default");
+            fail("Rollback must preserve cancelled cases even without requested ownership");
+        } catch (LiquibaseException expected) {
+            assertTrue(expected.getMessage(), expected.getMessage().contains("cancelled case state"));
+        }
+        assertEquals("CANCELLED", scalar("select stage from clinlims.micro_case where id='case-bacteria'"));
         assertEquals(history, allHistory());
     }
 

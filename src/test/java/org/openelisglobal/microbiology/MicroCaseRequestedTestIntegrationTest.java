@@ -37,6 +37,8 @@ public class MicroCaseRequestedTestIntegrationTest extends BaseWebContextSensiti
     private MicroCaseDAO cases;
     @Autowired
     private MicroCaseRequestedTestDAO memberships;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroRequestedCaseService routing;
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -87,5 +89,34 @@ public class MicroCaseRequestedTestIntegrationTest extends BaseWebContextSensiti
         assertEquals(1, memberships.getByCaseId(owner.getId()).size());
         assertTrue(specimens.getSampleItemsBySampleId(order.getId()).isEmpty());
         assertEquals(SampleTypeRequest.Status.REQUESTED, requests.get(request.getId()).getStatus());
+
+        // A cancelled assignment remains provenance when the same test is ordered
+        // again.
+        stored.setCancelledAt(Timestamp.valueOf("2026-10-07 09:00:00"));
+        stored.setCancelledBy(actor);
+        stored.setCancellationReason("Order corrected");
+        stored.setSysUserId(actor);
+        memberships.update(stored);
+        var cancelledCase = cases.get(owner.getId()).orElseThrow();
+        cancelledCase.setStage("CANCELLED");
+        cancelledCase.setClosedAt(stored.getCancelledAt());
+        cancelledCase.setClosedBy(actor);
+        cancelledCase.setSysUserId(actor);
+        cases.update(cancelledCase);
+        entityManager.flush();
+        entityManager.clear();
+        routing.routeRequests(java.util.List.of(requests.get(request.getId())), actor);
+        entityManager.flush();
+        entityManager.clear();
+        var replacement = memberships.getByRequestAndTest(request.getId(), test.getId());
+        assertNotEquals(owner.getId(), replacement.getCaseId());
+        assertNull(replacement.getCancelledAt());
+        var history = memberships.getByCaseId(owner.getId());
+        assertEquals(1, history.size());
+        assertEquals("Order corrected", history.get(0).getCancellationReason());
+        assertEquals(actor, history.get(0).getCancelledBy());
+        assertTrue(history.get(0).isCollectedInSets());
+        assertEquals("CANCELLED", cases.get(owner.getId()).orElseThrow().getStage());
+        assertTrue(specimens.getSampleItemsBySampleId(order.getId()).isEmpty());
     }
 }

@@ -40,6 +40,39 @@ public class MicroCaseRequestedTest extends BaseObject<String> {
     @Column(name = "created_by", nullable = false, length = 20)
     private String createdBy;
 
+    @Column(name = "cancelled_at")
+    private Timestamp cancelledAt;
+
+    @Column(name = "cancelled_by", length = 20)
+    private String cancelledBy;
+
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
+
+    public Timestamp getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(Timestamp value) {
+        cancelledAt = value;
+    }
+
+    public String getCancelledBy() {
+        return cancelledBy;
+    }
+
+    public void setCancelledBy(String value) {
+        cancelledBy = value;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String value) {
+        cancellationReason = value;
+    }
+
     public String getId() {
         return id;
     }
