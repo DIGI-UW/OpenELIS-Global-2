@@ -32,11 +32,14 @@ traces and service logs. Video-only pacing is presentation, never readiness.
 Before OE starts, the harness copies its dictionary,
 `projects/analyzer-harness/dictionary/`, into the writable `configuration-data`
 volume. OE loads it through its ordinary startup configuration service. The
-dictionary is a copy of OE2's generic dictionary
-(`volume/configuration/backend/`) plus the concepts every shipped analyzer
-profile sends, so each binds on a fresh setup with no operator work. It is test
-data, not an application-wide clinical default. A file already in the volume,
-such as a Catalog Import upload, is not overwritten on restart.
+dictionary holds only what the analyzer stories use, as `analyzer-harness-*`
+files in the `volume/configuration/backend/` shape: the tests each shipped
+profile resolves by LOINC, their sample types, and the answers and components
+every shipped instrument sends, so each binds on a fresh setup with no operator
+work. A domain the dictionary supplies replaces OE's built-in files for that
+domain; other domains load the built-in files, as in every OE2 deployment. It is
+test data, not an application-wide clinical default. A file already in the
+volume, such as a Catalog Import upload, is not overwritten on restart.
 
 - CI and local parity load the same harness catalog through the normal loader.
 - Local development keeps optional Catalog Import uploads in its worktree-scoped

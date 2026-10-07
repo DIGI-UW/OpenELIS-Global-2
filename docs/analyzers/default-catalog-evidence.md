@@ -2,27 +2,35 @@
 
 Bridge profiles define the instrument's codes, values and records, each with
 standard codes. OpenELIS binds a profile's defaults by exact standard-code match
-against its local catalog. The analyzer harness runs on its own copy of
-OpenELIS's generic dictionary, `projects/analyzer-harness/dictionary/`, so every
-shipped baseline profile binds every test, record and value on a fresh setup
-with no operator work. It is test configuration, not the catalog a site
-receives.
+against its local catalog. The analyzer harness loads its own dictionary,
+`projects/analyzer-harness/dictionary/`, holding only what the analyzer stories
+use, so every shipped baseline profile binds every test, record and value on a
+fresh setup with no operator work. It is test configuration, not the catalog a
+site receives.
 
 ## How it loads
 
 The `harness-catalog-init` service copies the dictionary into the writable
 `configuration-data` volume before OpenELIS starts, keeping any file already
 there (a Catalog Import upload, for example). OpenELIS loads it through its
-ordinary configuration loader, domain by domain in load order.
+ordinary configuration loader, domain by domain in load order. A domain the
+dictionary supplies replaces OpenELIS's built-in files for that domain; every
+other domain loads the built-in files, as in any deployment. Nothing else that
+runs on the harness (its fixtures and specs) depends on a row only this
+dictionary adds or changes.
 
-The dictionary is `volume/configuration/backend/` with these changes:
+The dictionary is `analyzer-harness-*.csv` files in the
+`volume/configuration/backend/` shape:
 
-- `analyzer-harness-*.csv` files add what the baseline profiles report:
-  Influenza A, Influenza B and RSV PCR tests (CDC LIVD codes 85477-8, 85478-6,
-  85479-4 for the Xpert Xpress CoV-2/Flu/RSV plus), an Internal Control DNA test
-  (89578-3, QuantStudio), a Nasopharyngeal Swab sample type, a result component
-  for every record a test reports (analyte calls, Ct and EndPt, internal
-  controls, the HIV-1 call and log), and their answers.
+- The tests the baseline profiles resolve by LOINC: HIV-1 Viral Load (20447-9),
+  SARS-CoV-2 PCR (94500-6), Xpert MTB/RIF (85362-2) and Rifampin Resistance, as
+  in the generic dictionary; Influenza A, Influenza B and RSV PCR (CDC LIVD
+  codes 85477-8, 85478-6, 85479-4 for the Xpert Xpress CoV-2/Flu/RSV plus); an
+  Internal Control DNA test (89578-3, QuantStudio). The Molecular Biology
+  section and the Plasma and Serum sample types come from the base catalog; the
+  dictionary adds Nasopharyngeal Swab and Sputum.
+- A result component for every record a test reports (analyte calls, Ct and
+  EndPt, internal controls, the HIV-1 call and log), and their answers.
 - Answers carry standard codes: Positive LA6576-8, Negative LA6577-6, Invalid
   LA15841-2, Detected LA11882-0, Not detected LA11883-8, Pass LA10392-1 and Fail
   LA25389-0 (the answer list of 90101-7 "Internal control result"), with SNOMED
