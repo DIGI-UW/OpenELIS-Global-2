@@ -10,6 +10,11 @@ frontend, tests and documentation together. Individual tasks, dependency work
 and fixes stay in their owning milestone; they do not create extra PRs. Final
 acceptance is a gate on the assembled stack, not a separate implementation PR.
 
+Publish each reviewable milestone promptly as a draft so GitHub CI runs while
+local validation continues. Use `gh stack` to track and publish the dependent
+branches and PRs. Draft status and unfinished validation do not delay publication;
+verified contribution checks and final stack acceptance determine completion.
+
 An item is done when its contribution is verified on its branch: the application
 boots with the registered application changelog on fresh and upgraded databases,
 the change's own tests pass, and every user-facing item has a recorded browser
@@ -49,11 +54,11 @@ acceptance; their primary assignment is not evidence that all parts already work
 
 [§4.1](spec.md#41-case), [§10 Restructure](spec.md#10-v1-disposition-retire-restructure-evolve)
 
-- [ ] Case lab unit, Program, member samples and case analysis roles, restructured in place
-- [ ] Requested-test ownership before collection; explicit attachment to the eventual sample, cancellation history and retry rules
-- [ ] Membership constraints permit retained separate cases after transfer; split relationships are preserved independently of shared samples
-- [ ] Existing cases load and display after upgrade
-- [ ] Existing-data requirements for later access and routing documented and rehearsed against the registered schema; missing clinical mappings are never fabricated
+- [x] Case lab unit, Program, member samples and case analysis roles, restructured in place
+- [x] Requested-test ownership before collection; explicit attachment to the eventual sample, cancellation history and retry rules
+- [x] Membership constraints permit retained separate cases after transfer; split relationships are preserved independently of shared samples
+- [x] Existing cases load and display after upgrade
+- [x] Existing-data requirements for later access and routing documented and rehearsed against the registered schema; missing clinical mappings are never fabricated
 
 ## 5. Routing and case creation
 
