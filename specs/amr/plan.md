@@ -230,6 +230,13 @@ The confirmed migration contract is:
   Unresolved, duplicate or unknown mappings abort the transaction before any
   committed clinical changes. Supply an existing `amr.cutover.actorId` and an
   explicit `amr.cutover.at` timestamp for attributable migration activity.
+  Application startup reads these three Spring environment properties (for
+  example, JVM `-D` properties) and passes them to Liquibase together. Use
+  `yyyy-MM-dd HH:mm:ss` for the timestamp; no actor or timestamp is invented.
+  Partial configuration, nonnumeric actors and invalid timestamps fail before
+  migration database access. Actor existence and CSV completeness remain
+  database preflight checks. With all three properties absent, ordinary startup
+  keeps its existing changelog; this binding does not activate the candidates.
 - Preserve case IDs and their existing specimen/result ownership. Add
   `MicroCase` order/sample-type/working-unit/Program references and
   `micro_case_specimen` membership. The grouping index is not unique: existing

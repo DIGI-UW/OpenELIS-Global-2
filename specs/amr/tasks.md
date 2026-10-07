@@ -388,8 +388,11 @@ Remaining V02c2 implementation and acceptance:
       of this behavior; set numbering remains V02 scope.
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason
       and preservation when cancelling a case's last micro test (FR-02.8).
-- [ ] Bind the documented mapping file, actor and migration timestamp in runtime
-      startup; verify fresh installation, upgrade and restart before activation.
+- [x] Bind the documented mapping file, actor and migration timestamp in runtime
+      startup. `LiquibaseConfigTest`: five passing tests cover propagation, absent
+      parameters, partial configuration and invalid actor/timestamp rejection.
+- [ ] Verify fresh installation, upgrade and restart through application startup
+      before activation; the parameter-binding tests do not establish this gate.
 - [ ] Complete persisted browser/video comparison against the pinned mocks. The catalog
       case-opening controls and culture-setup admin retirement have 43 passing frontend
       checks, but have not yet been accepted in the browser. Transfer implementation
