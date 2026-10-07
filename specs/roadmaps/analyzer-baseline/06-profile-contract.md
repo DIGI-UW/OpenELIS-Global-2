@@ -126,6 +126,23 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
   a credential, not data, and an exposed Bridge with a known password is not
   a degraded mode.
 
+- Boundary strictness (6 Oct, read in source). OE2 read the profile
+  catalog with Jackson's defaults into records, which refuse any field the
+  record does not declare (`BridgeProfileCatalogServiceImpl.java`, since
+  #4056; nothing configured or tested it), so the Bridge's new `issues`
+  field made OE2 refuse the whole catalog. OE2's other Bridge readers
+  (`BridgeAnalyzerConnectionClient`, `BridgeOutboxClient`) read a JSON tree
+  and check only what they use. In the other direction the Bridge validates
+  every connection create, update, probe and runtime request from OE2
+  against schemas with `additionalProperties: false`
+  (`AnalyzerConnectionContractValidator`, called from
+  `AnalyzerConnectionController`), so a field a newer OE2 adds is refused
+  with 400 by an older Bridge. Part of that is deliberate: the contract test
+  `schemasRejectLocalOwnershipAndOperationalQcLeakage` requires a create
+  request carrying `operationalQc` to be refused. The Bridge also validates
+  its own connection responses before sending them. Not yet read: how OE2
+  parses the FHIR result bundle (HAPI parser error handling) and whether the
+  Bridge's Jackson mapper refuses unknown fields on its other endpoints.
 - Profile identity (decided 6 Oct: "we need a new profile id for sure").
   Revisions 1 to 7 of `genexpert-astm` (and 1 to 4 of `fluorocycler-xt`, 1
   to 3 of `quantstudio`) are pre-baseline; rule 6 says none is an earlier
@@ -176,6 +193,10 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
 - [x] T6.15 Restore: each active connection restores on its own; a failure reports `actualRuntimeState` ERROR (the contract's state) with a `runtime-restore-failed` blocker carrying the reason, and the next ACTIVATE retries it. Blockers gain an optional `detail`. The FILE monitor start is unchanged (it creates missing directories and has not failed in any test); recorded here, not chased
 - [x] T6.16 Bridge health stays UP while the Bridge runs (asserted in T6.12): a set-aside profile, draft or connection is that item's issue, not the Bridge's (decided 6 Oct: "the bridge is up, no?? a bad profile etc is not a bridge issue, its a profile issue!"). Issues are reported on the item: the profile catalog lists them, and each connection carries its own blocker or ERROR reason
 - [ ] T6.17 OE2 consumer. Done with the pin bump: `BridgeProfileCatalog` reads `issues` (without it OE2 rejected the whole catalog response as invalid JSON, `BridgeProfileCatalogServiceTest`). Open: the analyzer page shows the Bridge connection's readiness blockers (none are shown today, including `missingRequiredValues`) with `en.json` labels for `profileUnavailable` and `restoreFailed`, and offers setup to re-verify; the profile catalog issues are shown on the analyzer types page; a message arriving for a connection that is not running stays held with its reason (asserted)
+- [x] T6.20 OE2's profile catalog reader ignores fields it does not know; schemaVersion, fingerprint and recognition summary are still checked (`BridgeProfileCatalogServiceTest`)
+- [ ] T6.21 (for approval) Bridge connection requests (create, update, probe, runtime) accept fields the Bridge does not know at every level, and refuse by name the fields OE2 must never send (`operationalQc`, `controlLot`, `qcRule`, `westgardEnabled`, `classifierState`, `openelisTestId`, `labUnitId`, `testCodeLoinc`); red first: a create request with an unknown field is accepted, one with `operationalQc` is still refused
+- [ ] T6.22 (for approval) The contract README states rule 21; every contract consumer test (OE2 and Bridge) carries one fixture with an added field that its reader must accept
+- [ ] T6.23 (for approval) Read the remaining boundary readers and record each as tolerant or not: OE2's FHIR bundle import (HAPI parser error handler) and the Bridge's Jackson mapper on its profile, outbox and order endpoints; fix any that refuse unknown fields, test first
 - [ ] T6.18 Baseline profiles under new IDs at revision 1 (IDs per Facts): rev 8 content becomes the GeneXpert baseline with Flu A 85477-8, Flu B 85478-6, RSV 85479-4, and the SPC, IQS-H and IQS-L records declaring PASS LA10392-1, FAIL LA25389-0, NA SNOMED 385432009, and NO RESULT as their run failure; FluoroCycler XT rev 5 and QuantStudio rev 4 become revision 1 of theirs. Docs, templates, mock fixtures and contract test, and OE2 references follow
 - [ ] T6.19 Delete the pre-baseline revisions of the core IDs (`genexpert-astm` 1 to 8, `fluorocycler-xt` 1 to 5, `quantstudio` 1 to 4) in the same release as T6.13 to T6.15 (decided 6 Oct: "yes delete"). A connection pinned to one shows `profile-unavailable` and is re-verified, as rule 6 and changeset 124 already require. Distro folders are unaffected
 ```
