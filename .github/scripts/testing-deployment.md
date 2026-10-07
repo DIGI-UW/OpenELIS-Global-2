@@ -41,14 +41,12 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
 - `.openelis-ci/`: the image override and `target.json`.
 
 After the application reports ready, the deploy creates missing default
-analyzers
-(`seed-analyzers.sh --ensure-connections --no-mock-network --activate`). It
-activates only newly created priority connections whose shipped mapping is
-already confirmed. It never selects, excludes or confirms mapping rows. Existing
-connections retain their configuration and activation state. If the stock
-mapping needs review, the first deployment stops after creating the connection.
-Complete mapping confirmation **and activate that connection** in OpenELIS, then
-retry deployment. Confirmation alone does not activate it:
+analyzers (`seed-analyzers.sh --ensure-connections --no-mock-network`) in Setup.
+Each analyzer has its own mapping, and the deploy never selects, excludes or
+confirms mapping rows or activates a connection. Existing connections retain
+their configuration and activation state. On the first deployment, the delivery
+check that follows stops because the GeneXpert connection is not active yet:
+confirm its mapping **and activate it** in OpenELIS, then retry deployment.
 `--ensure-connections` preserves existing connections, including inactive ones.
 Deployment does not guess whether a connection was intentionally disabled.
 
