@@ -275,10 +275,14 @@ uses; they are restated so a step can be run without re-reading those files.
 - Order from 6 Oct, one reviewable stacked PR each: Bridge request
   tolerance and the boundary checks (T6.21 to T6.23) with the startup work
   in #4618; the analyzer page shows the Bridge's blockers and catalog
-  issues (T6.17); baseline profiles under new IDs and the old revisions
-  deleted (T6.18, T6.19); the harness dictionary (T7.3, T7.4); the E2E
-  rewrite (T7.1 to T7.2b, T7.6); then the evidence package (T7.8), which is
-  the finish line.
+  issues (T6.17); baseline profiles under new IDs (T6.18); the harness
+  dictionary (T7.3, T7.4); the fresh-setup and vendor-outcome E2E with the
+  step 2b fixes they found (T7.1, T7.2, T2b.7b, T2b.7c). Then, decided 7 Oct
+  ("Delete first, then rewrite (Recommended)"): the old revisions and the
+  mock's generative GeneXpert templates deleted (T6.19, T8.4) with the seed
+  setting up the harness analyzers as an operator would (T7.4b); the
+  remaining specs rewritten straight to the end state (T7.2b, T7.6); then the
+  evidence package (T7.8), which is the finish line.
 - Last: step 9 as its own PR on `develop`, after everything above has
   landed.
 - The top OE2 PR (step 7) bumps the pins (`tools/openelis-analyzer-bridge`
