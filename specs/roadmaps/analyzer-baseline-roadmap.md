@@ -126,7 +126,8 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     result as the call with an R.7 `<` or `>` flag and the limit in the R.6
     range, with no number in R.4 (303-0251 §2.1.1); the Bridge maps that to a
     FHIR quantity with the comparator and the limit (rule 17).
-12. MTB/RIF is three results: MTB detection (Detected, Not detected, Trace
+12. (On hold until a vendor LIS document or verified capture states them; step 5.)
+    MTB/RIF is three results: MTB detection (Detected, Not detected, Trace
     detected), bacillary level, rifampicin resistance on LOINC 89372-7
     (Detected, Not detected, Indeterminate). 46244-0 is retired.
 13. Instrument codes are a per-analyzer override. The profile ships the
