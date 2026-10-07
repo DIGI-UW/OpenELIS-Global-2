@@ -2,9 +2,15 @@ import React from "react";
 import { Tag } from "@carbon/react";
 import { useIntl } from "react-intl";
 
-const CultureSetSummary = ({ specimens = [], warnings = [] }) => {
+const CultureSetSummary = ({
+  specimens = [],
+  requestedSpecimens = [],
+  warnings = [],
+}) => {
   const intl = useIntl();
-  const bottles = specimens.filter((specimen) => specimen.collectedInSets);
+  const bottles = [...specimens, ...requestedSpecimens].filter(
+    (specimen) => specimen.collectedInSets,
+  );
   if (!bottles.length) return null;
   const sets = new Map();
   bottles.forEach((bottle) => {

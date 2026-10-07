@@ -12311,6 +12311,8 @@
   "microbiology.cultureAction.noGrowth.note": "Incubation complete with no growth",
   "microbiology.cultureAction.positive.note": "Culture marked positive",
   "microbiology.isolate.saveError": "Unable to save isolate",
+  "microbiology.case.requestedSpecimens": "Requested specimens",
+  "microbiology.case.awaitingCollection": "Awaiting collection",
   "microbiology.case.specimens": "Specimens",
   "microbiology.case.labUnit": "Lab unit",
   "microbiology.case.relatedCases": "Related cases",

@@ -1,3 +1,4 @@
+import RequestedSpecimenSummary from "./RequestedSpecimenSummary";
 import CultureSetSummary from "./CultureSetSummary";
 import React, { forwardRef, useEffect, useRef, useState } from "react";
 import {
@@ -717,8 +718,11 @@ const MicrobiologyCaseView = ({
         </header>
         <CultureSetSummary
           specimens={caseDetail.specimens}
+          requestedSpecimens={caseDetail.requestedSpecimens}
           warnings={caseDetail.setWarnings}
         />
+
+        <RequestedSpecimenSummary specimens={caseDetail.requestedSpecimens} />
 
         {finalReleased && (
           <InlineNotification

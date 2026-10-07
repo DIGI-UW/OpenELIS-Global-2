@@ -295,6 +295,8 @@ public class MicroCaseServiceTest {
     private MicroCaseService service() {
         return new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO, sampleItemService,
                 sampleHumanService, patientService, sampleOrganizationService, systemUserService, nceSpecimenService,
-                specimenDAO, testSectionService, caseAnalysisDAO, new MicroCultureSetWarningService(30));
+                specimenDAO, testSectionService, caseAnalysisDAO, new MicroCultureSetWarningService(30),
+                org.mockito.Mockito.mock(org.openelisglobal.microbiology.dao.MicroCaseRequestedTestDAO.class),
+                org.mockito.Mockito.mock(org.openelisglobal.sampletyperequest.service.SampleTypeRequestService.class));
     }
 }

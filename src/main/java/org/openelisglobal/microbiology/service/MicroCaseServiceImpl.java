@@ -40,6 +40,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroCaseServiceImpl implements MicroCaseService {
 
     private final org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO caseAnalysisDAO;
+    private final org.openelisglobal.microbiology.dao.MicroCaseRequestedTestDAO requestedTestDAO;
+    private final org.openelisglobal.sampletyperequest.service.SampleTypeRequestService requestService;
     private final MicroCultureSetWarningService setWarningService;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseSpecimenDAO specimenDAO;
@@ -61,7 +63,11 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             NceSpecimenService nceSpecimenService, MicroCaseSpecimenDAO specimenDAO,
             TestSectionService testSectionService,
             org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO caseAnalysisDAO,
-            MicroCultureSetWarningService setWarningService) {
+            MicroCultureSetWarningService setWarningService,
+            org.openelisglobal.microbiology.dao.MicroCaseRequestedTestDAO requestedTestDAO,
+            org.openelisglobal.sampletyperequest.service.SampleTypeRequestService requestService) {
+        this.requestedTestDAO = requestedTestDAO;
+        this.requestService = requestService;
         this.setWarningService = setWarningService;
         this.caseAnalysisDAO = caseAnalysisDAO;
         this.testSectionService = testSectionService;
@@ -151,6 +157,7 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             return null;
         }
         MicroCaseDetailForm form = toDetailForm(microCase);
+        compileRequestedContext(form);
         for (MicroCaseSpecimen member : getSpecimens(caseId)) {
             compileSpecimenContext(form, member);
         }
@@ -181,25 +188,63 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         for (MicroCaseSpecimenForm specimen : form.specimens) {
             specimen.collectedInSets = setSpecimenIds.contains(specimen.sampleItemId);
         }
-        if (!setSpecimenIds.isEmpty()) {
+        if (!setSpecimenIds.isEmpty() || form.requestedSpecimens.stream().anyMatch(r -> r.collectedInSets)) {
             if (form.orderDetail == null) {
                 form.orderDetail = new MicroCaseOrderDetailForm();
                 form.orderDetail.caseId = caseId;
             }
-            form.orderDetail.numberOfSets = (int) form.specimens.stream()
-                    .filter(specimen -> specimen.collectedInSets && specimen.cultureSetNumber != null)
-                    .map(specimen -> specimen.cultureSetNumber).distinct().count();
+            form.orderDetail.numberOfSets = (int) java.util.stream.Stream
+                    .concat(form.specimens.stream().filter(s -> s.collectedInSets).map(s -> s.cultureSetNumber),
+                            form.requestedSpecimens.stream().filter(s -> s.collectedInSets)
+                                    .map(s -> s.cultureSetNumber))
+                    .filter(java.util.Objects::nonNull).distinct().count();
         }
-        form.setWarnings = setWarningService.evaluate(form.specimens);
+        List<MicroCaseSpecimenForm> warningInputs = new java.util.ArrayList<>(form.specimens);
+        for (var request : form.requestedSpecimens) {
+            // Warning inputs never enter the collected-specimen/result-target list.
+            var input = new MicroCaseSpecimenForm();
+            input.collectedInSets = request.collectedInSets;
+            input.cultureSetNumber = request.cultureSetNumber;
+            input.bodySite = request.bodySite;
+            input.containerType = request.containerType;
+            input.collectionDate = request.collectionDate;
+            warningInputs.add(input);
+        }
+        form.setWarnings = setWarningService.evaluate(warningInputs);
         return form;
     }
 
-    private void compileSpecimenContext(MicroCaseDetailForm form, MicroCaseSpecimen member) {
-        SampleItem sampleItem = sampleItemService.getData(member.getSampleItemId());
-        if (sampleItem == null) {
-            return;
+    private void compileRequestedContext(MicroCaseDetailForm form) {
+        Map<Integer, org.openelisglobal.microbiology.form.MicroCaseRequestedSpecimenForm> pending = new java.util.LinkedHashMap<>();
+        for (var link : requestedTestDAO.getByCaseId(form.id)) {
+            var request = requestService.get(link.getRequestId());
+            if (request
+                    .getStatus() != org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.REQUESTED) {
+                continue;
+            }
+            var row = pending.get(request.getId());
+            if (row == null) {
+                row = new org.openelisglobal.microbiology.form.MicroCaseRequestedSpecimenForm();
+                row.requestId = request.getId();
+                row.sampleTypeId = request.getTypeOfSample().getId();
+                row.specimenType = request.getTypeOfSample().getLocalizedName();
+                row.bodySite = request.getBodySite();
+                row.containerType = request.getContainer();
+                row.cultureSetNumber = request.getCultureSetNumber();
+                if (request.getCollectionDate() != null) {
+                    row.collectionDate = Timestamp.valueOf(request.getCollectionDate().toLocalDate()
+                            .atTime(request.getCollectionTime() == null ? java.time.LocalTime.MIDNIGHT
+                                    : java.time.LocalTime.parse(request.getCollectionTime())));
+                }
+                pending.put(request.getId(), row);
+                compileOrderContext(form, request.getSample());
+            }
+            row.collectedInSets |= link.isCollectedInSets();
         }
-        Sample sample = sampleItem.getSample();
+        form.requestedSpecimens.addAll(pending.values());
+    }
+
+    private void compileOrderContext(MicroCaseDetailForm form, Sample sample) {
         if (sample != null) {
             form.accessionNumber = sample.getAccessionNumber();
             SampleOrganization sampleOrganization = sampleOrganizationService.getDataBySample(sample);
@@ -212,6 +257,15 @@ public class MicroCaseServiceImpl implements MicroCaseService {
                 form.patientName = patientService.getLastFirstName(patient);
             }
         }
+    }
+
+    private void compileSpecimenContext(MicroCaseDetailForm form, MicroCaseSpecimen member) {
+        SampleItem sampleItem = sampleItemService.getData(member.getSampleItemId());
+        if (sampleItem == null) {
+            return;
+        }
+        Sample sample = sampleItem.getSample();
+        compileOrderContext(form, sample);
         if (sampleItem.getTypeOfSample() != null) {
             form.specimenType = form.specimenType == null ? sampleItem.getTypeOfSample().getDescription()
                     : form.specimenType + ", " + sampleItem.getTypeOfSample().getDescription();

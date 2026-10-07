@@ -31,6 +31,7 @@ public class MicroCaseDetailForm {
     public int nonconformanceCount;
     public List<MicroCultureSetWarningForm> setWarnings = new ArrayList<>();
     public List<MicroCaseSpecimenForm> specimens = new ArrayList<>();
+    public List<MicroCaseRequestedSpecimenForm> requestedSpecimens = new ArrayList<>();
     public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();
     public List<MicroIsolateForm> isolates = new ArrayList<>();

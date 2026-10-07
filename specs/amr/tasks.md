@@ -508,8 +508,16 @@ Remaining V02c2 implementation and acceptance:
       Its final run passed 73 tests: shared saves (22), request service (35), and
       endpoint responses (16). This covers direct handoff and duplicate prevention,
       not browser acceptance.
-      Still required before accepting this gate: pending case detail/worklist
-      presentation, add/remove and last-test
+      Case detail now includes an explicit read-only requested-specimen list,
+      patient/order context before collection, and set counts/warnings combining
+      pending and collected bottles. Requested rows never enter result target
+      lists and disappear from the pending section after collection. The UI
+      labels them Awaiting collection. The final backend run passed 29 tests,
+      covering pending context, partial collection, counts and set warnings.
+      The frontend run passed 46 tests and its
+      production build passed; these are not rendered/video acceptance.
+      Still required before accepting this gate: pending worklist presentation
+      (current culture rows require collected specimens), add/remove and last-test
       cancellation, permission review, and persisted browser/video comparison.
       See the [engineering plan](plan.md#request-stage-case-ownership-v02).
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason

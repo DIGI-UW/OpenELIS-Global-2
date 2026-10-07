@@ -456,8 +456,11 @@ endpoint uses the same handoff after locking the order and refreshing the reques
 It permits a same-specimen retry, rejects a different specimen for a collected
 request, and prevents one specimen from fulfilling two requests. The authenticated
 actor is recorded for request, specimen and case writes. After fulfillment, analysis/specimen membership governs clinical
-work; the request link remains ordering provenance. Pending case detail and
-worklists must distinguish requested from collected specimens. Add/remove and
+work; the request link remains ordering provenance. Case detail exposes requested
+specimens separately from collected result targets, retains order/patient context
+before collection, and derives set counts/warnings from both lists without double
+counting. Pending worklist discovery remains required: culture rows currently
+require collected specimen membership. Add/remove and
 last-test cancellation must preserve history and enforce FR-02.8, and must never
 join previously separate cases. These remaining consumers and rendered verification are still required;
 shared-save integration tests alone do not establish browser acceptance.

@@ -112,6 +112,30 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
+  it("shows pending specimens with order context before any collection", async () => {
+    renderCase({
+      ...astServiceStubs,
+      getCaseDetail: vi.fn().mockResolvedValue({
+        ...caseDetail,
+        specimens: [],
+        requestedSpecimens: [
+          {
+            requestId: 9,
+            specimenType: "Blood",
+            containerType: "Aerobic",
+            collectedInSets: true,
+            cultureSetNumber: 1,
+          },
+        ],
+      }),
+    });
+    expect(
+      await screen.findByRole("region", { name: "Requested specimens" }),
+    ).toHaveTextContent("Awaiting collection");
+    expect(screen.getByText("1 set, 1 bottle")).toBeInTheDocument();
+    expect(screen.getAllByText("UATMICRO001").length).toBeGreaterThan(0);
+  });
+
   it("opens primary inoculation from the received next step with canonical URL state", async () => {
     const user = userEvent.setup();
     const service = {

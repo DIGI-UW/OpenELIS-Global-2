@@ -66,6 +66,9 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO specimenLinks;
 
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCaseService caseDetails;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -96,6 +99,13 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         assertEquals(1, cases.getByOrder(order.getId()).size());
         var owner = cases.getByOrder(order.getId()).get(0);
         assertTrue(sampleItemService.getSampleItemsBySampleId(order.getId()).isEmpty());
+        var pendingDetail = caseDetails.getCaseDetail(owner.getId());
+        assertEquals(order.getAccessionNumber(), pendingDetail.accessionNumber);
+        assertEquals(patient.getId(), pendingDetail.patientId);
+        assertEquals(2, pendingDetail.requestedSpecimens.size());
+        assertEquals(2, pendingDetail.setWarnings.stream().filter(w -> "SINGLE_BOTTLE".equals(w.code())).count());
+        assertTrue(pendingDetail.specimens.isEmpty());
+        assertEquals(Integer.valueOf(2), pendingDetail.orderDetail.numberOfSets);
         assertEquals(owner.getId(), ownership.getByRequestAndTest(requests.get(0).getId(), test.getId()).getCaseId());
         assertEquals(owner.getId(), ownership.getByRequestAndTest(requests.get(1).getId(), test.getId()).getCaseId());
         persist(order, List.of(new SampleTypeRequestDTO(requests.get(1)), new SampleTypeRequestDTO(requests.get(0))));
@@ -111,6 +121,11 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         persist(order, new SamplePatientEntryForm(), bottleXml(test.getId(), "sampleItemId='" + item.getId() + "'"));
         assertEquals(1, analysisLinks.getByCaseId(owner.getId()).size());
         assertEquals(1, specimenLinks.getByCaseId(owner.getId()).size());
+        var partialDetail = caseDetails.getCaseDetail(owner.getId());
+        assertEquals(1, partialDetail.requestedSpecimens.size());
+        assertEquals(1, partialDetail.specimens.size());
+        assertEquals(requests.get(0).getId(), partialDetail.requestedSpecimens.get(0).requestId);
+        assertEquals(Integer.valueOf(2), partialDetail.orderDetail.numberOfSets);
     }
 
     @Test
