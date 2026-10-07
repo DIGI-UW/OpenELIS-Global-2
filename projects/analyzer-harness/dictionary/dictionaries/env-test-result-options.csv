@@ -1,0 +1,31 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+# ============================================================================
+# ENVIRONMENTAL & VECTOR SURVEILLANCE - Test Result Dictionary Options
+# ============================================================================
+# Positif Negatif
+Positif Negatif,Positif,POSI,Y,1,,Positive,Positif,Positivo,Positif
+Positif Negatif,Negatif,NEGA,Y,2,,Negative,Négatif,Negativo,Negatif
+# Water Clarity
+Water Clarity,Jernih,JERN,Y,1,,Clear,Clair,Claro,Jernih
+Water Clarity,Keruh,KERU,Y,2,,Turbid,Trouble,Turbio,Keruh
+Water Clarity,Agak Keruh,AGAK,Y,3,,Slightly Turbid,Légèrement Trouble,Ligeramente Turbio,Agak Keruh
+# Water Color
+Water Color,Tidak Berwarna,TIDA,Y,1,,Colorless,Incolore,Incoloro,Tidak Berwarna
+Water Color,Putih,PUTI,Y,2,,White,Blanc,Blanco,Putih
+Water Color,Hitam,HITA,Y,3,,Black,Noir,Negro,Hitam
+Water Color,Kuning,KUNI,Y,4,,Yellow,Jaune,Amarillo,Kuning
+Water Color,Cokelat,COKE,Y,5,,Brown,Brun,Marrón,Cokelat
+Water Color,Merah,MERA,Y,6,,Red,Rouge,Rojo,Merah
+Water Color,Biru,BIRU,Y,7,,Blue,Bleu,Azul,Biru
+Water Color,Hijau,HIJA,Y,8,,Green,Vert,Verde,Hijau
+# Susceptibility Results
+Susceptibility Results,Sensitif,SENS,Y,1,,Sensitive,Sensible,Sensible,Sensitif
+Susceptibility Results,Resistan,RESI,Y,2,,Resistant,Résistant,Resistente,Resistan
+Susceptibility Results,Intermediate,INTE,Y,3,,Intermediate,Intermédiaire,Intermedio,Intermediate
+# Detection Results
+Detection Results,Terdeteksi,TERD,Y,1,,Detected,Détecté,Detectado,Terdeteksi
+Detection Results,Tidak Terdeteksi,TTID,Y,2,,Not Detected,Non Détecté,No Detectado,Tidak Terdeteksi
+Detection Results,Tidak Meyakinkan,TMEY,Y,3,,Inconclusive,Non Concluant,Inconcluso,Tidak Meyakinkan
+# ============================================================================
+# Test-specific result option sets
+# ============================================================================
