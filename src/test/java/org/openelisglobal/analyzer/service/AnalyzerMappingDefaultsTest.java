@@ -116,6 +116,30 @@ public class AnalyzerMappingDefaultsTest {
     }
 
     @Test
+    public void bindsTheMainAnswerOnThePrimaryResultWhenAnAnalyteRecordSharesItsCode() throws Exception {
+        when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED), "c-primary"),
+                new AnalyzerMappingCatalogService.ResultOption("31", "991", "Detected", loinc(DETECTED), "c-target")));
+        when(catalog.getActiveComponents("1"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("c-primary", "PRIMARY", "Result", true),
+                        new AnalyzerMappingCatalogService.ComponentOption("c-target", "TARGET", "Target", false)));
+        var profile = BridgeAnalyzerProfile.from(new ObjectMapper().readTree("""
+                {"profileMeta":{"id":"fixture.defaults","displayName":"Default resolution"},
+                 "catalog":{"revision":1,"revisionFingerprint":"sha256:%s","source":"SHIPPED","status":"ACTIVE"},
+                 "protocol":{"name":"ASTM"},
+                 "default_test_mappings":[{"test_code":"RAW-A","loinc":"%s","result_type":"qualitative",
+                   "values":["DETECTED"],"value_codes":{"DETECTED":[{"system":"http://loinc.org","code":"%s"}]},
+                   "components":[{"code":"TARGET","sub_identity":"TARGET","result_type":"qualitative","values":["POS"],
+                     "value_codes":{"POS":[{"system":"http://loinc.org","code":"%s"}]}}]}]}
+                """.formatted("a".repeat(64), LOINC, DETECTED, DETECTED)));
+
+        var draft = defaults.resolve(profile);
+
+        assertEquals("21", draft.results().get(0).testResultId());
+        assertEquals("31", draft.results().get(1).testResultId());
+    }
+
+    @Test
     public void doesNotBindAnAnswerWhoseLabelMatchesButWhoseCodeDiffers() throws Exception {
         when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
                 new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc("LA99999-9"))));
