@@ -286,7 +286,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             number.setTestId(testMapping.getTestId());
             number.setComponentId(testMapping.getComponentId());
             number.setResultType("N");
-            AnalyzerMappingResult answer = mapping.results().get(new ResultKey(record, result.rawValue()));
+            // With a call, the raw value is that call and is mapped on the call's row
+            // below.
+            AnalyzerMappingResult answer = result.call() != null ? null
+                    : mapping.results().get(new ResultKey(record, result.rawValue()));
             if (answer == null || bindAnswer(number, answer, record, result.rawValue(), mapping)) {
                 rows.add(number);
             }
