@@ -1,0 +1,81 @@
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,componentCode
+SARS-CoV-2 PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,
+SARS-CoV-2 PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,
+SARS-CoV-2 PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,
+SARS-CoV-2 PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,SARS-CoV-2
+SARS-CoV-2 PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,SARS-CoV-2
+SARS-CoV-2 PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,SARS-CoV-2
+SARS-CoV-2 PCR,N,,,1,Y,Y,N,1,,SARS-CoV-2 Ct
+SARS-CoV-2 PCR,N,,,1,Y,Y,N,1,,SARS-CoV-2 EndPt
+SARS-CoV-2 PCR,D,Pass,Analyzer harness answers,1,N,Y,Y,,,SPC
+SARS-CoV-2 PCR,D,Fail,Analyzer harness answers,2,N,Y,N,,,SPC
+SARS-CoV-2 PCR,D,Not applicable,Analyzer harness answers,3,N,Y,N,,,SPC
+SARS-CoV-2 PCR,N,,,1,Y,Y,N,1,,SPC Ct
+SARS-CoV-2 PCR,N,,,1,Y,Y,N,1,,SPC EndPt
+Influenza A PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,
+Influenza A PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,
+Influenza A PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,
+Influenza A PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,Flu A 1
+Influenza A PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,Flu A 1
+Influenza A PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,Flu A 1
+Influenza A PCR,N,,,1,Y,Y,N,1,,Flu A 1 Ct
+Influenza A PCR,N,,,1,Y,Y,N,1,,Flu A 1 EndPt
+Influenza A PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,Flu A 2
+Influenza A PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,Flu A 2
+Influenza A PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,Flu A 2
+Influenza A PCR,N,,,1,Y,Y,N,1,,Flu A 2 Ct
+Influenza A PCR,N,,,1,Y,Y,N,1,,Flu A 2 EndPt
+Influenza A PCR,D,Pass,Analyzer harness answers,1,N,Y,Y,,,SPC
+Influenza A PCR,D,Fail,Analyzer harness answers,2,N,Y,N,,,SPC
+Influenza A PCR,D,Not applicable,Analyzer harness answers,3,N,Y,N,,,SPC
+Influenza A PCR,N,,,1,Y,Y,N,1,,SPC Ct
+Influenza A PCR,N,,,1,Y,Y,N,1,,SPC EndPt
+Influenza B PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,
+Influenza B PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,
+Influenza B PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,
+Influenza B PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,Flu B
+Influenza B PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,Flu B
+Influenza B PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,Flu B
+Influenza B PCR,N,,,1,Y,Y,N,1,,Flu B Ct
+Influenza B PCR,N,,,1,Y,Y,N,1,,Flu B EndPt
+Influenza B PCR,D,Pass,Analyzer harness answers,1,N,Y,Y,,,SPC
+Influenza B PCR,D,Fail,Analyzer harness answers,2,N,Y,N,,,SPC
+Influenza B PCR,D,Not applicable,Analyzer harness answers,3,N,Y,N,,,SPC
+Influenza B PCR,N,,,1,Y,Y,N,1,,SPC Ct
+Influenza B PCR,N,,,1,Y,Y,N,1,,SPC EndPt
+RSV PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,
+RSV PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,
+RSV PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,
+RSV PCR,D,Positive,Analyzer harness answers,1,N,Y,N,,,RSV
+RSV PCR,D,Negative,Analyzer harness answers,2,N,Y,Y,,,RSV
+RSV PCR,D,Invalid,Analyzer harness answers,3,N,Y,N,,,RSV
+RSV PCR,N,,,1,Y,Y,N,1,,RSV Ct
+RSV PCR,N,,,1,Y,Y,N,1,,RSV EndPt
+RSV PCR,D,Pass,Analyzer harness answers,1,N,Y,Y,,,SPC
+RSV PCR,D,Fail,Analyzer harness answers,2,N,Y,N,,,SPC
+RSV PCR,D,Not applicable,Analyzer harness answers,3,N,Y,N,,,SPC
+RSV PCR,N,,,1,Y,Y,N,1,,SPC Ct
+RSV PCR,N,,,1,Y,Y,N,1,,SPC EndPt
+HIV-1 Viral Load,N,,,1,Y,Y,N,0,,
+HIV-1 Viral Load,D,Detected,Analyzer harness answers,1,N,Y,N,,,call
+HIV-1 Viral Load,D,Not detected,Analyzer harness answers,2,N,Y,Y,,,call
+HIV-1 Viral Load,D,Invalid,Analyzer harness answers,3,N,Y,N,,,call
+HIV-1 Viral Load,D,Indeterminate,Analyzer harness answers,4,N,Y,N,,,call
+HIV-1 Viral Load,N,,,1,Y,Y,N,2,,LOG
+HIV-1 Viral Load,D,Positive,Analyzer harness answers,1,N,Y,N,,,HIV-1
+HIV-1 Viral Load,D,Negative,Analyzer harness answers,2,N,Y,Y,,,HIV-1
+HIV-1 Viral Load,D,Invalid,Analyzer harness answers,3,N,Y,N,,,HIV-1
+HIV-1 Viral Load,N,,,1,Y,Y,N,1,,HIV-1 Ct
+HIV-1 Viral Load,N,,,1,Y,Y,N,1,,HIV-1 EndPt
+HIV-1 Viral Load,N,,,1,Y,Y,N,1,,HIV-1 Delta Ct
+HIV-1 Viral Load,D,Pass,Analyzer harness answers,1,N,Y,Y,,,IQS-H
+HIV-1 Viral Load,D,Fail,Analyzer harness answers,2,N,Y,N,,,IQS-H
+HIV-1 Viral Load,N,,,1,Y,Y,N,1,,IQS-H Ct
+HIV-1 Viral Load,N,,,1,Y,Y,N,1,,IQS-H EndPt
+HIV-1 Viral Load,D,Pass,Analyzer harness answers,1,N,Y,Y,,,IQS-L
+HIV-1 Viral Load,D,Fail,Analyzer harness answers,2,N,Y,N,,,IQS-L
+HIV-1 Viral Load,N,,,1,Y,Y,N,1,,IQS-L Ct
+HIV-1 Viral Load,N,,,1,Y,Y,N,1,,IQS-L EndPt
+Xpert MTB/RIF,A,,,1,N,Y,N,,,
+Rifampin Resistance,A,,,1,N,Y,N,,,
+Internal Control DNA,N,,,1,Y,Y,N,1,,

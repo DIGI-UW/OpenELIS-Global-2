@@ -82,7 +82,7 @@ Viral Load,Hemato-Immunology,Whole Blood,,Y,Y,72,copies/ml,Viral load,Mesure de 
 HIV-1 Viral Load,Molecular Biology,Plasma|Serum,20447-9,Y,Y,73,copies/mL,HIV-1 Viral Load,Charge Virale VIH-1,Carga Viral VIH-1,Viral Load HIV-1
 SARS-CoV-2 PCR,Molecular Biology,Nasopharyngeal Swab|Sputum,94500-6,Y,Y,74,,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR
 Xpert MTB/RIF,Molecular Biology,Sputum,85362-2,Y,Y,75,,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF
-Rifampin Resistance,Molecular Biology,Sputum,46244-0,Y,Y,76,,Rifampin Resistance,Résistance à la Rifampicine,Resistencia a Rifampicina,Resistensi Rifampin
+Rifampin Resistance,Molecular Biology,Sputum,89372-7,Y,Y,76,,Rifampin Resistance,Résistance à la Rifampicine,Resistencia a Rifampicina,Resistensi Rifampin
 # ============================================================================
 # MICROBIOLOGY - AFB, Gram Stain, Wet Prep
 # ============================================================================
