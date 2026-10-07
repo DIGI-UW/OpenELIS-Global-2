@@ -4,6 +4,8 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.security.MessageDigest;
 import java.sql.Timestamp;
@@ -25,10 +27,12 @@ import org.openelisglobal.microbiology.service.MicroAstService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.openelisglobal.microbiology.service.MicroReportReleaseService;
 import org.openelisglobal.microbiology.service.MicroWhonetDatasetService;
+import org.openelisglobal.microbiology.service.MicroWhonetExportBlockedException;
 import org.openelisglobal.microbiology.service.MicrobiologyUatScenarioService;
 import org.openelisglobal.microbiology.valueholder.MicroAstMethod;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
+import org.openelisglobal.microbiology.valueholder.MicroExportReportingTrack;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
@@ -44,6 +48,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
 public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensitiveTest {
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     @Autowired
     private MicrobiologyTestFixtures fixtures;
@@ -80,6 +87,33 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
     public void setUp() throws Exception {
         super.setUp();
         fixtures.ensureRequiredWorkflowStatuses();
+    }
+
+    @Test
+    public void missingReportingTracksBlockPreviewAndGenerationWithoutAudit() {
+        MicroWhonetExportQueryForm query = new MicroWhonetExportQueryForm();
+        query.from = "2026-07-01";
+        query.to = "2026-07-31";
+        WHONetReportServiceImpl reportService = new WHONetReportServiceImpl(datasetService, exportRunDAO);
+        long before = exportRunDAO.getAll().size();
+        org.junit.Assert.assertThrows(MicroWhonetExportBlockedException.class,
+                () -> reportService.previewMicrobiologyExport(query));
+        org.junit.Assert.assertThrows(MicroWhonetExportBlockedException.class,
+                () -> reportService.generateMicrobiologyExport(query, fixtures.defaultUserId()));
+        assertEquals(before, exportRunDAO.getAll().size());
+    }
+
+    @Test
+    public void configuredReportingTracksAreScopedToTheRequestedExport() {
+        assertFalse(caseDAO.hasExportReportingTracks("WHONET"));
+        MicroExportReportingTrack track = new MicroExportReportingTrack();
+        track.setExportKey("WHONET");
+        track.setReportingTrackId(entityManager.createQuery("select d.id from Dictionary d order by d.id", String.class)
+                .setMaxResults(1).getSingleResult());
+        entityManager.persist(track);
+        entityManager.flush();
+        assertTrue(caseDAO.hasExportReportingTracks("WHONET"));
+        assertFalse(caseDAO.hasExportReportingTracks("OTHER"));
     }
 
     @Test

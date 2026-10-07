@@ -77,6 +77,7 @@ public class MicroWhonetDatasetServiceTest {
 
     @Before
     public void setUp() {
+        when(caseDAO.hasExportReportingTracks("WHONET")).thenReturn(true);
         patientContextsBySampleItem = new LinkedHashMap<>();
         sourceSampleItemByCase = new LinkedHashMap<>();
         when(worklistContextDAO.getWhonetPatientContexts(any())).thenAnswer(invocation -> {
@@ -89,6 +90,16 @@ public class MicroWhonetDatasetServiceTest {
             List<String> caseIds = invocation.getArgument(0);
             return caseIds.stream().map(caseId -> orderDetail(caseId, null, "CLINICAL_DIAGNOSTIC")).toList();
         });
+    }
+
+    @Test
+    public void missingReportingTrackConfigurationBlocksPopulationSelection() {
+        when(caseDAO.hasExportReportingTracks("WHONET")).thenReturn(false);
+        org.junit.Assert.assertThrows(MicroWhonetExportBlockedException.class,
+                () -> service.compile(query("NONE")));
+        org.junit.Assert.assertThrows(MicroWhonetExportBlockedException.class,
+                () -> service.getFilterOptions(query("NONE")));
+        verify(caseDAO, never()).getFinalizedForExportByCollectionDateRange(anyString(), any(), any());
     }
 
     @Test

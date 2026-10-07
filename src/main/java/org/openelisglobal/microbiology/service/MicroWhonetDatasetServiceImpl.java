@@ -287,6 +287,9 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     }
 
     private Population loadPopulation(NormalizedQuery query) {
+        if (!caseDAO.hasExportReportingTracks("WHONET")) {
+            throw new MicroWhonetExportBlockedException("WHONET reporting tracks must be configured before export");
+        }
         List<MicroCase> cases = caseDAO.getFinalizedForExportByCollectionDateRange("WHONET", query.fromInclusive,
                 query.toExclusive);
         if (cases.isEmpty()) {

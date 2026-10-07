@@ -299,8 +299,11 @@ validation test.
 This is backend evidence, not whole-runtime acceptance. The Program/export
 storage foundation is an explicit dependency of the replacement query model;
 Program administration, defaults and export-track configuration remain V03/V15
-work. In particular, empty export-track configuration must not be accepted as a
-valid empty population during the remaining V02c2/V15 verification.
+work. Missing export-track configuration is rejected explicitly before population
+selection. The regression first reproduced a valid-looking empty population;
+31 dataset service tests and two persisted tests now pass, including blocked
+preview/generation without an export audit record and export-specific configured
+track lookup. Actual configured export-population acceptance remains V15 work.
 
 The case-screen workflow/protocol controls, their service calls and components,
 and classification-based section blocking are retired. Protocol URL actions are

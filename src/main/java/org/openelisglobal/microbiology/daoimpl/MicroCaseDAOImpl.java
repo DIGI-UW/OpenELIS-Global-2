@@ -129,6 +129,15 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
 
     @Override
     @Transactional(readOnly = true)
+    public boolean hasExportReportingTracks(String exportKey) {
+        return !entityManager
+                .createQuery("select track.id from MicroExportReportingTrack track where track.exportKey = :exportKey",
+                        String.class)
+                .setParameter("exportKey", exportKey).setMaxResults(1).getResultList().isEmpty();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroCase> getFinalizedForExportByCollectionDateRange(String exportKey, Timestamp fromInclusive,
             Timestamp toExclusive) {
         Query<MicroCase> query = entityManager.unwrap(Session.class)

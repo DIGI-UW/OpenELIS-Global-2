@@ -22,6 +22,8 @@ public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
 
     List<MicroCase> getOpenCases(boolean allUnits, java.util.Set<String> unitIds);
 
+    boolean hasExportReportingTracks(String exportKey);
+
     List<MicroCase> getFinalizedForExportByCollectionDateRange(String exportKey, Timestamp fromInclusive,
             Timestamp toExclusive);
 }
