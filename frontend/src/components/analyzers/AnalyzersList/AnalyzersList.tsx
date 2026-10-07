@@ -78,11 +78,14 @@ const isAnalyzerSetupStep = (
 const isAnalyzerLifecycleAction = (
   value: string | null,
 ): value is AnalyzerLifecycleAction =>
-  value === "deactivate" || value === "reactivate";
+  value === "activate" || value === "deactivate" || value === "reactivate";
 
 const lifecycleActionsFor = (
   status: AnalyzerStatus,
 ): AnalyzerLifecycleAction[] => {
+  if (status === "SETUP") {
+    return ["activate"];
+  }
   if (status === "INACTIVE") {
     return ["reactivate"];
   }

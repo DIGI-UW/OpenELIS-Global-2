@@ -1623,7 +1623,20 @@ const AnalyzerTypeMappingEditor = ({
                   </p>
                 </div>
               </div>
-              <Accordion align="start">{visibleTests.map(renderRow)}</Accordion>
+              {draftTests.length === 0 ? (
+                <InlineNotification
+                  kind="info"
+                  lowContrast
+                  hideCloseButton
+                  title={intl.formatMessage({
+                    id: "analyzerType.mappingEditor.tests.none",
+                  })}
+                />
+              ) : (
+                <Accordion align="start">
+                  {visibleTests.map(renderRow)}
+                </Accordion>
+              )}
             </section>
           )}
 
