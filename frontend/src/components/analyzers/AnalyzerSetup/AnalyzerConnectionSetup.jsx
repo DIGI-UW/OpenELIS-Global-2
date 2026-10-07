@@ -157,6 +157,12 @@ export const needsMappingVerification = (readiness) =>
     readiness?.blockers?.some((blocker) => MAPPING_BLOCKERS.has(blocker.code)),
   );
 
+// What the Bridge set aside on this connection; its own detail text is not shown.
+const BRIDGE_DEGRADED_BLOCKERS = new Set([
+  "analyzer.connection.readiness.profileUnavailable",
+  "analyzer.connection.readiness.restoreFailed",
+]);
+
 const formatActivationBlocker = (intl, blocker) => {
   const id = blocker?.code;
   return intl.formatMessage(
@@ -442,6 +448,23 @@ const AnalyzerConnectionSetup = ({
             })}
           />
         )}
+        {(candidate?.connection?.readiness?.blockers || [])
+          .filter((blocker) => BRIDGE_DEGRADED_BLOCKERS.has(blocker.messageKey))
+          .map((blocker) => (
+            <InlineNotification
+              key={blocker.key}
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage(
+                { id: blocker.messageKey },
+                {
+                  profileId: candidate.connection.profileRef?.profileId,
+                  revision: candidate.connection.profileRef?.revision,
+                },
+              )}
+            />
+          ))}
         {readiness?.blockers.map((blocker, index) => (
           <InlineNotification
             key={`${blocker.code}-${index}`}

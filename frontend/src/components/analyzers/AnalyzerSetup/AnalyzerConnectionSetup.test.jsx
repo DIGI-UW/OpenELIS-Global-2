@@ -172,6 +172,7 @@ const candidate = {
 };
 
 const renderConnection = ({
+  shown = candidate,
   onCandidateChange = vi.fn(),
   onClose = vi.fn(),
   onVerifyMappings,
@@ -185,7 +186,7 @@ const renderConnection = ({
     <Router history={history}>
       <IntlProvider locale="en" messages={messages}>
         <AnalyzerConnectionSetup
-          candidate={candidate}
+          candidate={shown}
           onCandidateChange={onCandidateChange}
           onClose={onClose}
           onVerifyMappings={onVerifyMappings}
@@ -211,6 +212,48 @@ describe("AnalyzerConnectionSetup", () => {
     updateAnalyzer.mockImplementation((_id, _payload, callback) =>
       callback(candidate),
     );
+  });
+
+  it("says why the Bridge set this connection aside", async () => {
+    renderConnection({
+      shown: {
+        ...candidate,
+        connection: {
+          ...connection,
+          fields: [],
+          actualRuntimeState: "ERROR",
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "profile-unavailable",
+                messageKey: "analyzer.connection.readiness.profileUnavailable",
+                fieldKeys: [],
+                detail: "raw Bridge text",
+              },
+              {
+                key: "runtime-restore-failed",
+                messageKey: "analyzer.connection.readiness.restoreFailed",
+                fieldKeys: [],
+                detail: "raw Bridge text",
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    expect(
+      await screen.findByText(
+        `This connection is pinned to ${profileRef.profileId} revision ${profileRef.revision}, which the Analyzer Bridge no longer has. Choose the analyzer type again to reconnect it.`,
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByText(
+        "The Analyzer Bridge could not restart this connection. Activate it again; if it still fails, check the Bridge log.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("raw Bridge text")).not.toBeInTheDocument();
   });
 
   it("renders and saves generic Bridge fields without analyzer-specific branching", async () => {
