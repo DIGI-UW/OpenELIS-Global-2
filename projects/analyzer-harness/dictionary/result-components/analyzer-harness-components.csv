@@ -1,0 +1,45 @@
+testName,code,label,resultType,significantDigits,isPrimary,showOnReport
+SARS-CoV-2 PCR,PRIMARY,SARS-CoV-2,D,,Y,Y
+SARS-CoV-2 PCR,SARS-CoV-2,SARS-CoV-2,D,,N,Y
+SARS-CoV-2 PCR,SARS-CoV-2 Ct,SARS-CoV-2 Ct,N,1,N,N
+SARS-CoV-2 PCR,SARS-CoV-2 EndPt,SARS-CoV-2 EndPt,N,1,N,N
+SARS-CoV-2 PCR,SPC,Sample processing control,D,,N,N
+SARS-CoV-2 PCR,SPC Ct,SPC Ct,N,1,N,N
+SARS-CoV-2 PCR,SPC EndPt,SPC EndPt,N,1,N,N
+Influenza A PCR,PRIMARY,Influenza A,D,,Y,Y
+Influenza A PCR,Flu A 1,Flu A 1,D,,N,Y
+Influenza A PCR,Flu A 1 Ct,Flu A 1 Ct,N,1,N,N
+Influenza A PCR,Flu A 1 EndPt,Flu A 1 EndPt,N,1,N,N
+Influenza A PCR,Flu A 2,Flu A 2,D,,N,Y
+Influenza A PCR,Flu A 2 Ct,Flu A 2 Ct,N,1,N,N
+Influenza A PCR,Flu A 2 EndPt,Flu A 2 EndPt,N,1,N,N
+Influenza A PCR,SPC,Sample processing control,D,,N,N
+Influenza A PCR,SPC Ct,SPC Ct,N,1,N,N
+Influenza A PCR,SPC EndPt,SPC EndPt,N,1,N,N
+Influenza B PCR,PRIMARY,Influenza B,D,,Y,Y
+Influenza B PCR,Flu B,Flu B,D,,N,Y
+Influenza B PCR,Flu B Ct,Flu B Ct,N,1,N,N
+Influenza B PCR,Flu B EndPt,Flu B EndPt,N,1,N,N
+Influenza B PCR,SPC,Sample processing control,D,,N,N
+Influenza B PCR,SPC Ct,SPC Ct,N,1,N,N
+Influenza B PCR,SPC EndPt,SPC EndPt,N,1,N,N
+RSV PCR,PRIMARY,RSV,D,,Y,Y
+RSV PCR,RSV,RSV,D,,N,Y
+RSV PCR,RSV Ct,RSV Ct,N,1,N,N
+RSV PCR,RSV EndPt,RSV EndPt,N,1,N,N
+RSV PCR,SPC,Sample processing control,D,,N,N
+RSV PCR,SPC Ct,SPC Ct,N,1,N,N
+RSV PCR,SPC EndPt,SPC EndPt,N,1,N,N
+HIV-1 Viral Load,PRIMARY,HIV-1 viral load,N,0,Y,Y
+HIV-1 Viral Load,call,HIV-1 call,D,,N,Y
+HIV-1 Viral Load,LOG,Log viral load,N,2,N,Y
+HIV-1 Viral Load,HIV-1,HIV-1,D,,N,N
+HIV-1 Viral Load,HIV-1 Ct,HIV-1 Ct,N,1,N,N
+HIV-1 Viral Load,HIV-1 EndPt,HIV-1 EndPt,N,1,N,N
+HIV-1 Viral Load,HIV-1 Delta Ct,HIV-1 Delta Ct,N,1,N,N
+HIV-1 Viral Load,IQS-H,IQS-H,D,,N,N
+HIV-1 Viral Load,IQS-H Ct,IQS-H Ct,N,1,N,N
+HIV-1 Viral Load,IQS-H EndPt,IQS-H EndPt,N,1,N,N
+HIV-1 Viral Load,IQS-L,IQS-L,D,,N,N
+HIV-1 Viral Load,IQS-L Ct,IQS-L Ct,N,1,N,N
+HIV-1 Viral Load,IQS-L EndPt,IQS-L EndPt,N,1,N,N

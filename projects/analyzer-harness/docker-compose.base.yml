@@ -8,14 +8,13 @@ services:
       - /bin/sh
       - -ec
       - |
-        for domain in tests test-results; do
-          target="/catalog/backend/$$domain"
-          mkdir -p "$$target"
-          for source in /templates/$$domain/*.csv; do
-            [ -f "$$source" ] || continue
-            file="$$target/$${source##*/}"
-            [ -e "$$file" ] || cp "$$source" "$$file"
-          done
+        # A file Catalog Import already wrote to the volume is kept.
+        cd /dictionary
+        find . -type f | while read -r file; do
+          target="/catalog/backend/$$file"
+          [ -e "$$target" ] && continue
+          mkdir -p "$$(dirname "$$target")"
+          cp "$$file" "$$target"
         done
         chown -R 8443:8443 /catalog/backend
 
