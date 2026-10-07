@@ -10346,7 +10346,7 @@
   "microbiology.worklist.resistance.hint": "Analyzer-reported flags completed today; OpenELIS expert-rule detection remains Phase 1B.",
   "microbiology.worklist.resistance.title": "Today's resistance hits",
   "microbiology.worklist.search.ast": "Search lab number, patient, isolate, organism, or panel",
-  "microbiology.worklist.search.cultures": "Search lab number, patient, specimen, or workflow",
+  "microbiology.worklist.search.cultures": "Search lab number, patient, specimen, or lab unit",
   "microbiology.worklist.sharedQueue": "Shared laboratory queue",
   "microbiology.worklist.siblings": "Sibling workflows",
   "microbiology.worklist.setupAst": "Set up AST",
@@ -12300,5 +12300,9 @@
   "microbiology.isolate.saveError": "Unable to save isolate",
   "microbiology.case.specimens": "Specimens",
   "microbiology.case.labUnit": "Lab unit",
-  "microbiology.case.relatedCases": "Related cases"
+  "microbiology.case.relatedCases": "Related cases",
+  "microbiology.worklist.filter.labUnit": "Lab unit",
+  "microbiology.worklist.filter.allLabUnits": "All permitted lab units",
+  "microbiology.worklist.sort.labUnit": "Lab unit",
+  "microbiology.worklist.linkedCases": "Linked · {count} cases"
 }

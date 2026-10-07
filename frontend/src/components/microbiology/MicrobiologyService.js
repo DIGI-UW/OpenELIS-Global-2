@@ -263,7 +263,7 @@ export const getWorklistRows = (query = {}) =>
       "status",
       "from",
       "to",
-      "workflow",
+      "testSectionId",
       "stage",
       "urgency",
       "due",

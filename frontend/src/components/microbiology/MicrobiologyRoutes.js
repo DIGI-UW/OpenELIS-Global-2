@@ -38,7 +38,7 @@ const DEFAULT_WORKLIST_STATE = {
   organism: [],
   origin: [],
   significance: [],
-  workflow: "",
+  testSectionId: "",
   stage: "",
   urgency: "",
   due: "",
@@ -100,12 +100,12 @@ const normalizeWorklistState = (state = {}, now = labNow()) => {
     organism: grain === "ast" ? values(state.organism) : [],
     origin: grain === "ast" ? values(state.origin) : [],
     significance: grain === "ast" ? values(state.significance) : [],
-    workflow: textValue(state.workflow),
+    testSectionId: textValue(state.testSectionId),
     stage: textValue(state.stage),
     urgency: textValue(state.urgency),
     due: textValue(state.due),
     q: textValue(state.q),
-    sort: ["priority", "newest", "workflow"].includes(state.sort)
+    sort: ["priority", "newest", "labUnit"].includes(state.sort)
       ? state.sort
       : DEFAULT_WORKLIST_STATE.sort,
     page: positiveInteger(state.page, DEFAULT_WORKLIST_STATE.page),
@@ -132,8 +132,8 @@ const toSearch = (state, caseState = {}) => {
       state[key].forEach((value) => params.append(key, value)),
     );
   }
-  if (state.workflow) {
-    params.set("workflow", state.workflow);
+  if (state.testSectionId) {
+    params.set("testSectionId", state.testSectionId);
   }
   if (state.stage) {
     params.set("stage", state.stage);
@@ -200,7 +200,7 @@ export const parseMicrobiologyWorklistSearch = (
       organism: params.getAll("organism"),
       origin: params.getAll("origin"),
       significance: params.getAll("significance"),
-      workflow: params.get("workflow"),
+      testSectionId: params.get("testSectionId"),
       stage: params.get("stage"),
       urgency: params.get("urgency"),
       due: params.get("due"),

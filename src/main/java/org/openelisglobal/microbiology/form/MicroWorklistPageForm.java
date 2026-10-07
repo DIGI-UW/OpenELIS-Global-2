@@ -5,6 +5,7 @@ import java.util.List;
 
 public class MicroWorklistPageForm {
 
+    public List<MicroWhonetFilterOptionForm> labUnits = new ArrayList<>();
     public List<MicroWorklistRowForm> rows = new ArrayList<>();
     public List<MicroWorklistRecentActivityForm> recentActivity = new ArrayList<>();
     public MicroWorklistSummaryForm summary = new MicroWorklistSummaryForm();

@@ -64,7 +64,6 @@ import {
 import "./MicrobiologyWorklist.css";
 import { labNow } from "../utils/labClock";
 
-const WORKFLOW_OPTIONS = ["BACTERIOLOGY", "MYCOBACTERIOLOGY_TB", "MYCOLOGY"];
 const STAGE_OPTIONS = [
   "RECEIVED",
   "SETUP_RECORDED",
@@ -195,6 +194,7 @@ const normalizePageResponse = (response, filters) => {
     recentActivity: Array.isArray(response?.recentActivity)
       ? response.recentActivity
       : [],
+    labUnits: response?.labUnits || [],
     filterOptions: response?.filterOptions || {
       specimenTypes: [],
       organisms: [],
@@ -395,7 +395,7 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
 
   const hasFilters = Boolean(
     filters.status ||
-    filters.workflow ||
+    filters.testSectionId ||
     filters.stage ||
     filters.urgency ||
     filters.due ||
@@ -930,27 +930,26 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
           </div>
           <div className="microbiology-worklist__filter-grid">
             <Select
-              id="microbiology-worklist-workflow-filter"
-              labelText={intl.formatMessage({
-                id: "microbiology.worklist.filter.workflow",
+              id="microbiology-worklist-unit-filter"
+              aria-label={intl.formatMessage({
+                id: "microbiology.worklist.filter.labUnit",
               })}
-              value={filters.workflow}
+              labelText={intl.formatMessage({
+                id: "microbiology.worklist.filter.labUnit",
+              })}
+              value={filters.testSectionId}
               onChange={(event) =>
-                updateFilters({ workflow: event.target.value })
+                updateFilters({ testSectionId: event.target.value })
               }
             >
               <SelectItem
                 value=""
                 text={intl.formatMessage({
-                  id: "microbiology.worklist.filter.allWorkflows",
+                  id: "microbiology.worklist.filter.allLabUnits",
                 })}
               />
-              {WORKFLOW_OPTIONS.map((workflow) => (
-                <SelectItem
-                  key={workflow}
-                  value={workflow}
-                  text={formatMicrobiologyEnum(workflow, intl)}
-                />
+              {(worklist.labUnits || []).map((unit) => (
+                <SelectItem key={unit.id} value={unit.id} text={unit.label} />
               ))}
             </Select>
             {!isAstGrain && (
@@ -1076,9 +1075,9 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                 })}
               />
               <SelectItem
-                value="workflow"
+                value="labUnit"
                 text={intl.formatMessage({
-                  id: "microbiology.worklist.sort.workflow",
+                  id: "microbiology.worklist.sort.labUnit",
                 })}
               />
             </Select>
@@ -1256,21 +1255,20 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                                               {cell.value}
                                             </Link>
                                             <Tag type="outline">
-                                              {formatMicrobiologyEnum(
-                                                row.workflowType,
-                                                intl,
-                                              )}
+                                              {(worklist.labUnits || []).find(
+                                                (unit) =>
+                                                  unit.id === row.testSectionId,
+                                              )?.label || row.testSectionId}
                                             </Tag>
-                                            {row.siblingWorkflows?.length >
-                                              0 && (
+                                            {row.relatedCaseIds?.length > 0 && (
                                               <span data-testid="microbiology-worklist-siblings">
                                                 {intl.formatMessage(
                                                   {
-                                                    id: "microbiology.worklist.linkedWorkflows",
+                                                    id: "microbiology.worklist.linkedCases",
                                                   },
                                                   {
                                                     count:
-                                                      row.siblingWorkflows
+                                                      row.relatedCaseIds
                                                         .length + 1,
                                                   },
                                                 )}

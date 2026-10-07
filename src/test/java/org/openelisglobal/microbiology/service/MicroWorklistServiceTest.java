@@ -83,6 +83,8 @@ public class MicroWorklistServiceTest {
     @Mock
     private MicrobiologyCaseAccessService accessService;
     private final java.util.Map<String, MicroCaseSpecimen> membersByCase = new java.util.LinkedHashMap<>();
+    @Mock
+    private org.openelisglobal.test.service.TestSectionService testSectionService;
     private MicroWorklistService service;
 
     @Before
@@ -98,7 +100,31 @@ public class MicroWorklistServiceTest {
                 invocation.<List<String>>getArgument(0).stream().map(membersByCase::get)
                         .filter(java.util.Objects::nonNull).toList());
         service = new MicroWorklistServiceImpl(caseDAO, caseOrderDetailDAO, isolateDAO, astRunDAO, communicationDAO,
-                contextDAO, panelDAO, patientOriginDAO, organismDAO, specimenDAO, accessService);
+                contextDAO, panelDAO, patientOriginDAO, organismDAO, specimenDAO, accessService, testSectionService);
+    }
+
+    @Test
+    public void labUnitOptionsRespectAccessEvenWhenNoRowsMatch() {
+        var allowed = new org.openelisglobal.test.valueholder.TestSection();
+        allowed.setId("unit-1");
+        allowed.setTestSectionName("Bacteriology bench");
+        var denied = new org.openelisglobal.test.valueholder.TestSection();
+        denied.setId("unit-2");
+        denied.setTestSectionName("Other bench");
+        when(testSectionService.getAllTestSections()).thenReturn(List.of(allowed, denied));
+        when(accessService.getWorklistAccess("7"))
+                .thenReturn(new MicrobiologyWorklistAccess(false, java.util.Set.of("unit-1")));
+        MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        var page = service.getWorklistPage(query, "7");
+        assertEquals(1, page.labUnits.size());
+        assertEquals("unit-1", page.labUnits.get(0).id);
+        assertEquals("Bacteriology bench", page.labUnits.get(0).label);
+        assertEquals(0, page.total);
+        query.grain = "ast";
+        query.status = "reviewed";
+        var reviewed = service.getWorklistPage(query, "7");
+        assertEquals(1, reviewed.labUnits.size());
+        assertEquals("unit-1", reviewed.labUnits.get(0).id);
     }
 
     @Test

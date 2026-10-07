@@ -8,11 +8,22 @@ import {
 describe("MicrobiologyRoutes", () => {
   const now = new Date(2026, 7, 4, 12, 0, 0);
 
+  it("preserves lab-unit context and drops retired workflow state", () => {
+    const state = parseMicrobiologyWorklistSearch(
+      "?testSectionId=unit-9&workflow=BACTERIOLOGY&sort=labUnit",
+    );
+    expect(state.testSectionId).toBe("unit-9");
+    expect(state).not.toHaveProperty("workflow");
+    expect(getMicrobiologyCaseUrl("case-1", state)).toBe(
+      "/Microbiology/cases/case-1?testSectionId=unit-9&sort=labUnit",
+    );
+  });
+
   it("composes worklist filters in a deterministic order", () => {
     expect(
       getMicrobiologyWorklistUrl({
         urgency: "HIGH",
-        workflow: "BACTERIOLOGY",
+        testSectionId: "unit-9",
         stage: "AST_IN_PROGRESS",
         due: "AST_REVIEW",
         q: "blood culture",
@@ -21,7 +32,7 @@ describe("MicrobiologyRoutes", () => {
         pageSize: 50,
       }),
     ).toBe(
-      "/Microbiology/worklist?workflow=BACTERIOLOGY&stage=AST_IN_PROGRESS&urgency=HIGH&due=AST_REVIEW&q=blood+culture&sort=newest&page=3&pageSize=50",
+      "/Microbiology/worklist?testSectionId=unit-9&stage=AST_IN_PROGRESS&urgency=HIGH&due=AST_REVIEW&q=blood+culture&sort=newest&page=3&pageSize=50",
     );
   });
 
@@ -83,7 +94,7 @@ describe("MicrobiologyRoutes", () => {
   it("drops unsupported worklist state while parsing", () => {
     expect(
       parseMicrobiologyWorklistSearch(
-        "?workflow=BACTERIOLOGY&sort=unsupported&unknown=value",
+        "?testSectionId=unit-9&sort=unsupported&unknown=value",
       ),
     ).toEqual({
       grain: "cultures",
@@ -94,7 +105,7 @@ describe("MicrobiologyRoutes", () => {
       organism: [],
       origin: [],
       significance: [],
-      workflow: "BACTERIOLOGY",
+      testSectionId: "unit-9",
       stage: "",
       urgency: "",
       due: "",
@@ -129,16 +140,16 @@ describe("MicrobiologyRoutes", () => {
   it("preserves worklist context and a valid section in a case URL", () => {
     expect(
       getMicrobiologyCaseUrl("case / 1", {
-        workflow: "BACTERIOLOGY",
+        testSectionId: "unit-9",
         urgency: "HIGH",
         section: "isolates",
       }),
     ).toBe(
-      "/Microbiology/cases/case%20%2F%201?workflow=BACTERIOLOGY&urgency=HIGH&section=isolates",
+      "/Microbiology/cases/case%20%2F%201?testSectionId=unit-9&urgency=HIGH&section=isolates",
     );
     expect(
       parseMicrobiologyCaseSearch(
-        "?workflow=BACTERIOLOGY&urgency=HIGH&section=isolates",
+        "?testSectionId=unit-9&urgency=HIGH&section=isolates",
       ),
     ).toEqual({
       grain: "cultures",
@@ -149,7 +160,7 @@ describe("MicrobiologyRoutes", () => {
       organism: [],
       origin: [],
       significance: [],
-      workflow: "BACTERIOLOGY",
+      testSectionId: "unit-9",
       urgency: "HIGH",
       stage: "",
       due: "",
@@ -219,7 +230,7 @@ describe("MicrobiologyRoutes", () => {
     ).toBe("");
   });
 
-  it("keeps the amendment workflow addressable in the case URL", () => {
+  it("keeps the amendment testSectionId addressable in the case URL", () => {
     expect(getMicrobiologyCaseUrl("case-1", { section: "amendment" })).toBe(
       "/Microbiology/cases/case-1?section=amendment",
     );

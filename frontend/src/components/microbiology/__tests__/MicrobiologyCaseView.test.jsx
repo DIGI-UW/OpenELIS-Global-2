@@ -873,7 +873,7 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(
       service,
-      "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+      "/Microbiology/cases/case-1?testSectionId=unit-9&urgency=HIGH&sort=newest",
     );
 
     await screen.findByRole("heading", { name: "Microbiology case" });
@@ -881,7 +881,7 @@ describe("MicrobiologyCaseView", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest&section=isolates",
+        "/Microbiology/cases/case-1?testSectionId=unit-9&urgency=HIGH&sort=newest&section=isolates",
       ),
     );
 
@@ -890,7 +890,7 @@ describe("MicrobiologyCaseView", () => {
     );
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?workflow=BACTERIOLOGY&urgency=HIGH&sort=newest",
+        "/Microbiology/worklist?testSectionId=unit-9&urgency=HIGH&sort=newest",
       ),
     );
   });

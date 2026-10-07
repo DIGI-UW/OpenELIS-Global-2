@@ -44,7 +44,10 @@ remain with their owners and are linked, not copied into new specifications.
   implementation commit and push subsequent increments. Do not wait for the
   entire slice before making its work reviewable. Manage dependent PRs through
   `gh stack`; base each on its immediate predecessor and keep the stack order
-  consistent with this roadmap. No merge or deployment is implied.
+  consistent with this roadmap. A PR may contain one squashed commit; commit-count
+  cleanup is not a delivery requirement. Prefer coherent behavior boundaries and
+  a simple stack over retrospective history restructuring. No merge or deployment
+  is implied.
 - Each PR declares its source requirements, file/behavior boundary, removals,
   exclusions and exact checks before implementation. A newly discovered dependency
   changes that boundary explicitly before more code is added.
@@ -331,7 +334,12 @@ The case header now renders member specimen labels and case-unit names; related
 case links use lab-unit display names instead of retired workflow classification.
 The backend compiles names into the response within its transaction. A visible
 header regression failed before the fix; 39 case-screen and seven case-service
-tests pass. Worklist filter/query/display retirement is still pending.
+tests pass. Worklist filter/query/display now uses permitted lab units instead of
+workflow classification, preserves the unit in case links, and shows related
+case counts. Unit options remain available when the selected view has no rows,
+including reviewed susceptibility results. Two regressions failed before the
+change; 87 affected frontend tests and 18 worklist service tests pass. This is
+focused contract evidence; persisted browser verification remains pending.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,

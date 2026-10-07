@@ -86,6 +86,20 @@ describe("MicrobiologyService", () => {
     );
   });
 
+  it("sends the lab-unit worklist filter without retired workflow authority", async () => {
+    getFromOpenElisServer.mockImplementationOnce((url, callback) =>
+      callback({ rows: [] }),
+    );
+    await MicrobiologyService.getWorklistRows({
+      testSectionId: "unit-9",
+      workflow: "BACTERIOLOGY",
+    });
+    expect(getFromOpenElisServer).toHaveBeenCalledWith(
+      "/rest/microbiology/worklist?testSectionId=unit-9",
+      expect.any(Function),
+    );
+  });
+
   it("loads panel options without the retired workflow query parameter", async () => {
     const panels = [{ id: "panel-1", label: "Gram negative panel" }];
     getFromOpenElisServer.mockImplementationOnce((url, callback) =>

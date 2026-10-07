@@ -44,6 +44,7 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
+import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -66,12 +67,13 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
     private final MicroOrganismDAO organismDAO;
     private final MicroCaseSpecimenDAO specimenDAO;
     private final MicrobiologyCaseAccessService accessService;
+    private final TestSectionService testSectionService;
 
     public MicroWorklistServiceImpl(MicroCaseDAO caseDAO, MicroCaseOrderDetailDAO caseOrderDetailDAO,
             MicroIsolateDAO isolateDAO, MicroAstRunDAO astRunDAO, MicroCriticalCommunicationDAO communicationDAO,
             MicroWorklistContextDAO contextDAO, MicroAstPanelDAO panelDAO, MicroPatientOriginDAO patientOriginDAO,
-            MicroOrganismDAO organismDAO, MicroCaseSpecimenDAO specimenDAO,
-            MicrobiologyCaseAccessService accessService) {
+            MicroOrganismDAO organismDAO, MicroCaseSpecimenDAO specimenDAO, MicrobiologyCaseAccessService accessService,
+            TestSectionService testSectionService) {
         this.caseDAO = caseDAO;
         this.caseOrderDetailDAO = caseOrderDetailDAO;
         this.isolateDAO = isolateDAO;
@@ -83,6 +85,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         this.organismDAO = organismDAO;
         this.specimenDAO = specimenDAO;
         this.accessService = accessService;
+        this.testSectionService = testSectionService;
     }
 
     @Override
@@ -136,6 +139,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         rows.sort(comparatorFor(normalized.sort));
 
         MicroWorklistPageForm page = new MicroWorklistPageForm();
+        page.labUnits = labUnitOptions(access);
         page.filterOptions = surveillanceOptions;
         page.summary = summarize(summaryRows);
         addResistanceHits(page.summary, runsByIsolate);
@@ -179,6 +183,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 orderDetails);
 
         MicroWorklistPageForm page = new MicroWorklistPageForm();
+        page.labUnits = labUnitOptions(access);
         page.filterOptions = surveillanceFilterOptions(rows, patientOriginLabels(rows));
         page.total = (int) Math.min(Integer.MAX_VALUE, astRunDAO.countReviewedWorklist(reviewedQuery));
         page.page = query.page;
@@ -187,6 +192,15 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         page.recentActivity.addAll(toRecentActivityForms(
                 contextDAO.getRecentActivityContexts(caseIds, RECENT_ACTIVITY_LIMIT), cases, membersByCase, specimens));
         return page;
+    }
+
+    private List<MicroWhonetFilterOptionForm> labUnitOptions(MicrobiologyWorklistAccess access) {
+        return testSectionService.getAllTestSections().stream()
+                .filter(unit -> access.allUnits() || access.unitIds().contains(unit.getId()))
+                .filter(unit -> !TestSectionService.USER_SENTINEL_SECTION_NAME
+                        .equalsIgnoreCase(unit.getTestSectionName()))
+                .map(unit -> new MicroWhonetFilterOptionForm(unit.getId(), unit.getTestSectionName()))
+                .sorted(Comparator.comparing(option -> safe(option.label))).toList();
     }
 
     private MicroWorklistQueryForm queryWithoutActionFilters(MicroWorklistQueryForm query) {
