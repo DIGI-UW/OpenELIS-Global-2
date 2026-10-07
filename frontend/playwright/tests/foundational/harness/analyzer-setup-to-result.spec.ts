@@ -11,12 +11,15 @@ import { createClinicalOrder } from "../../../helpers/analyzer-clinical-order";
 import {
   sendGeneXpertFixture,
   writeFluoroCyclerFile,
+  writeResultsFile,
 } from "../../../helpers/analyzer-native-traffic";
 import {
   FLUOROCYCLER,
+  QUANTSTUDIO,
   activateShippedAnalyzer,
   activateShippedGeneXpert,
 } from "../../../helpers/analyzer-setup-flow";
+import { csrfToken, withAuthedPage } from "../../../helpers/api-session";
 import { API } from "../../../helpers/analyzer-profile-api";
 
 type Order = Awaited<ReturnType<typeof createClinicalOrder>>;
@@ -85,9 +88,12 @@ async function acceptAll(page: Page, analyzer: Analyzer, accessions: string[]) {
     }
   }
   await page.getByRole("button", { name: "Save", exact: true }).click();
+  // What was accepted leaves the screen; a held row stays, without a box to accept.
   for (const accession of accessions) {
     await expect(
-      page.getByRole("row", { name: new RegExp(accession) }),
+      page
+        .getByRole("row", { name: new RegExp(accession) })
+        .locator('input[id$=".isAccepted"]'),
     ).toHaveCount(0);
   }
 }
@@ -99,7 +105,6 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
 
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(180_000);
-    const { withAuthedPage } = await import("../../../helpers/api-session");
     analyzer = await withAuthedPage(browser, (page) =>
       activateShippedGeneXpert(page, `Results GeneXpert ${run}`, senderId),
     );
@@ -304,6 +309,171 @@ test.describe("A FluoroCycler from setup to a clinical result", () => {
           Number(await savedValue(page, order, testId, "HIV-1 viral load")),
         )
         .toBe(Number(emitted[index].result));
+    }
+  });
+});
+
+test.describe("A catalog test deactivated after setup", () => {
+  let deactivated: string | null = null;
+  // The catalog is shared; a story that turns a test off puts it back even when it fails.
+  test.afterEach(async ({ page }) => {
+    if (!deactivated) return;
+    const testId = deactivated;
+    deactivated = null;
+    const restored = await page.request.post(
+      `${API}/test-catalog/tests/${testId}/activate`,
+      { headers: { "X-CSRF-Token": await csrfToken(page) }, data: {} },
+    );
+    expect(restored.ok(), `Reactivate ${testId}`).toBeTruthy();
+  });
+
+  test("its result is held while the rest are accepted, then recovers once the test is active again", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    const run = randomUUID().slice(0, 8);
+    const senderId = `GX-OFF-${run}`;
+    const specimen = "Nasopharyngeal Swab";
+    const analyzer = await activateShippedGeneXpert(
+      page,
+      `Deactivation GeneXpert ${run}`,
+      senderId,
+    );
+    const tests = {
+      sars: await activeTestId(page, "SARS-CoV-2 PCR", specimen),
+      fluA: await activeTestId(page, "Influenza A PCR", specimen),
+      fluB: await activeTestId(page, "Influenza B PCR", specimen),
+    };
+    const order = await createClinicalOrder(page, {
+      testIds: Object.values(tests),
+      specimenName: specimen,
+    });
+
+    // The lab retires Influenza B after the analyzer was set up.
+    const headers = { "X-CSRF-Token": await csrfToken(page) };
+    const off = await page.request.put(
+      `${API}/test-catalog/tests/${tests.fluB}/basic-info`,
+      { headers, data: { active: false } },
+    );
+    expect(off.ok(), `Deactivate Influenza B: ${off.status()}`).toBeTruthy();
+    deactivated = tests.fluB;
+
+    await sendGeneXpertFixture(
+      page.request,
+      analyzer.bridgeConnectionId,
+      order.accession,
+      { assay: "cov-flu-plus", outcome: "flu-b-positive" },
+      senderId,
+    );
+    type Row = WorklistRow & { componentId?: string | null };
+    const own = async (code: string) =>
+      (await worklistFor<Row>(page, analyzer.id, order.accession)).find(
+        (row) => row.rawTestCode === code && !row.componentId,
+      );
+    await expect
+      .poll(async () => (await own("FLUB"))?.importIssueReason)
+      .toBe("test_mapping_not_ready");
+    expect((await own("FLUA"))?.importIssueReason).toBeFalsy();
+
+    // The usable results are accepted; the held one stays on the screen.
+    const fluBRow = (await own("FLUB"))!;
+    await acceptAll(page, analyzer, [order.accession]);
+    await expect
+      .poll(() => savedValue(page, order, tests.fluA, "Flu A 1"))
+      .toBe("Negative");
+    await expect
+      .poll(() => savedValue(page, order, tests.sars, "SARS-CoV-2"))
+      .toBe("Negative");
+    await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
+      waitUntil: "domcontentloaded",
+    });
+    const held = page.getByTestId(`held-analyzer-result-${fluBRow.id}`);
+    await expect(held).toBeVisible();
+
+    // Influenza B is active again; the held observation is retried, not resent.
+    const on = await page.request.post(
+      `${API}/test-catalog/tests/${tests.fluB}/activate`,
+      { headers, data: {} },
+    );
+    expect(on.ok(), `Reactivate Influenza B: ${on.status()}`).toBeTruthy();
+    deactivated = null;
+    await held.getByRole("link", { name: "Review analyzer mapping" }).click();
+    const apply = page.getByRole("button", {
+      name: "Apply mappings and retry held results",
+    });
+    await expect(apply).toBeEnabled();
+    await apply.click();
+    await expect
+      .poll(async () => (await own("FLUB"))?.importIssueReason)
+      .toBeFalsy();
+
+    await acceptAll(page, analyzer, [order.accession]);
+    await expect
+      .poll(() => savedValue(page, order, tests.fluB, "Flu B"))
+      .toBe("Positive");
+  });
+});
+
+test.describe("A QuantStudio from setup to a clinical result", () => {
+  test("a results workbook in the watched folder reaches each order and is accepted", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    const run = randomUUID().slice(0, 8);
+    const directory = `/data/analyzer-imports/quantstudio/incoming/${run}`;
+    const analyzer = await activateShippedAnalyzer(
+      page,
+      QUANTSTUDIO,
+      `Results QuantStudio ${run}`,
+      { importDirectory: directory },
+    );
+    const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
+    const orders: Order[] = [];
+    for (let index = 0; index < 2; index += 1) {
+      orders.push(
+        await createClinicalOrder(page, {
+          testIds: [testId],
+          specimenName: "Plasma",
+        }),
+      );
+    }
+    // The workbook has six result rows: three samples nobody ordered here and a
+    // positive control ride along with the two that were.
+    const unordered = (index: number) => `UNORDERED-${run}-${index}`;
+    const emitted = await writeResultsFile(
+      page.request,
+      "quantstudio7",
+      directory,
+      [
+        orders[0].accession,
+        orders[1].accession,
+        unordered(3),
+        "CPOS",
+        unordered(5),
+        unordered(7),
+      ],
+    );
+    for (const order of orders) {
+      await expect
+        .poll(
+          async () =>
+            (await worklistFor<WorklistRow>(page, analyzer.id, order.accession))
+              .length,
+        )
+        .toBeGreaterThan(0);
+    }
+    await acceptAll(
+      page,
+      analyzer,
+      orders.map((order) => order.accession),
+    );
+    for (const [index, order] of orders.entries()) {
+      // A viral load is saved in whole copies.
+      await expect
+        .poll(async () =>
+          Number(await savedValue(page, order, testId, "HIV-1 viral load")),
+        )
+        .toBe(Math.round(Number(emitted[index].result)));
     }
   });
 });

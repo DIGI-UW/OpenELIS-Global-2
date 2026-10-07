@@ -67,7 +67,7 @@
     "pw:guard": "node scripts/pw-bucket-guard.mjs && node scripts/pw-harness-demo-dependency-guard.mjs",
     "pw:test:harness": "playwright test --project=harness-demo --workers=1",
     "pw:test:core-foundational": "playwright test --project=core-app",
-    "pw:test:harness-mvp": "playwright test --project=harness-foundational playwright/tests/foundational/harness/ogc-1054-analyzer-mvp.spec.ts",
+    "pw:test:harness-results": "playwright test --project=harness-foundational playwright/tests/foundational/harness/analyzer-setup-to-result.spec.ts",
     "pw:test:microbiology-accessibility": "playwright test --project=core-accessibility --project=core-accessibility-mobile",
     "pw:test:microbiology-performance": "playwright test --project=core-performance",
     "pw:test:harness-foundational": "playwright test --project=harness-foundational --workers=1",
