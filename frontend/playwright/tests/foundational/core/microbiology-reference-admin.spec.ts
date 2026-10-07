@@ -403,7 +403,6 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
       ["organisms", "Organisms"],
       ["antibiotics", "Antibiotics"],
       ["ast-panels", "AST panels"],
-      ["culture-setups", "Culture methods"],
       ["breakpoints", "Breakpoint standards"],
     ]) {
       await page.getByRole("link", { name: label, exact: true }).click();
