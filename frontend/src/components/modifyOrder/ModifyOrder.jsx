@@ -1,3 +1,5 @@
+import CaseCancellationPrompt from "../order/CaseCancellationPrompt";
+import { postOrderWithCancellation } from "../order/postOrderWithCancellation";
 import React, { useContext, useEffect, useState, useRef } from "react";
 import {
   Button,
@@ -14,11 +16,7 @@ import "../addOrder/add-order.scss";
 import { ModifyOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { ConfigurationContext, NotificationContext } from "../layout/Layout";
 import { AlertDialog, NotificationKinds } from "../common/CustomNotification";
-import {
-  postToOpenElisServerFullResponse,
-  getFromOpenElisServer,
-  resolveApiErrorMessage,
-} from "../utils/Utils";
+import { getFromOpenElisServer, resolveApiErrorMessage } from "../utils/Utils";
 import EditOrderEntryAdditionalQuestions from "./EditOrderEntryAdditionalQuestions";
 import OrderSuccessMessage from "../addOrder/OrderSuccessMessage";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -76,6 +74,11 @@ const ModifyOrder = () => {
 
   const [page, setPage] = useState(firstPageNumber);
   const [orderFormValues, setOrderFormValues] = useState(ModifyOrderFormValues);
+  const [caseCancellationPrompt, setCaseCancellationPrompt] = useState(null);
+  const askCaseCancellation = (cases) =>
+    new Promise((resolve) => {
+      setCaseCancellationPrompt({ cases, resolve });
+    });
   const [staleSave, setStaleSave] = useState(null);
   const [samples, setSamples] = useState([sampleObject]);
   const [errors, setErrors] = useState([]);
@@ -279,10 +282,11 @@ const ModifyOrder = () => {
     orderFormValues.sampleOrderItems.providersList = [];
     orderFormValues.sampleOrderItems.paymentOptions = [];
     orderFormValues.sampleOrderItems.testLocationCodeList = [];
-    postToOpenElisServerFullResponse(
+    postOrderWithCancellation(
       "/rest/SampleEdit",
       JSON.stringify(orderFormValues),
       handlePost,
+      askCaseCancellation,
     );
   };
 
@@ -355,6 +359,17 @@ const ModifyOrder = () => {
 
   return (
     <>
+      {caseCancellationPrompt && (
+        <CaseCancellationPrompt
+          key={JSON.stringify(caseCancellationPrompt.cases)}
+          cases={caseCancellationPrompt.cases}
+          onDecision={(decision) => {
+            const resolve = caseCancellationPrompt.resolve;
+            setCaseCancellationPrompt(null);
+            resolve(decision);
+          }}
+        />
+      )}
       <PageBreadCrumb breadcrumbs={breadcrumbs} />
       <br />
 

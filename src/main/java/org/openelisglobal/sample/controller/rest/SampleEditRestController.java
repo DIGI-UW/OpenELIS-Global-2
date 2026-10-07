@@ -245,6 +245,9 @@ public class SampleEditRestController extends BaseSampleEntryController {
 
         try {
             sampleEditService.editSample(form, request, updatedSample, sampleChanged, getSysUserId(request));
+        } catch (org.openelisglobal.microbiology.service.MicroCaseCancellationRequiredException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("code",
+                    "MICRO_CASE_CANCELLATION_REQUIRED", "cases", e.getCases(), "error", e.getMessage()));
         } catch (LIMSRuntimeException e) {
             // Surface the actual reason (e.g. "Position B12 is already occupied") instead
             // of letting it fall through to the global advice's "Check server logs".

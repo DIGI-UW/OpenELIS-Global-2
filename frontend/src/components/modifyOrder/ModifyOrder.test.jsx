@@ -231,7 +231,7 @@ describe("ModifyOrder — a refused save says why (OGC-1366)", () => {
     fireEvent.click(screen.getByRole("button", { name: /next/i }));
     fireEvent.click(screen.getByRole("button", { name: /submit/i }));
     await act(async () => {
-      await submitCallback(response);
+      await submitCallback({ ...response, clone: () => response });
     });
     return addNotification.mock.calls.map(([n]) => n);
   };
@@ -432,5 +432,54 @@ describe("ModifyOrder — a lab number with no order (OGC-1192 walk)", () => {
 
     expect(() => act(() => getLoad()(undefined))).not.toThrow();
     expect(screen.getByRole("button", { name: /next/i })).toBeInTheDocument();
+  });
+});
+
+test("collected-test cancellation keeps the edit and retries only after a reason and confirmation", async () => {
+  utilsMock.postToOpenElisServerFullResponse.mockReset();
+  const getLoad = mountAndCaptureLoad();
+  getLoad()({
+    ...orderPayload(),
+    existingTests: [{ analysisId: "9", sampleItemId: "3", canceled: true }],
+  });
+  fireEvent.click(screen.getByRole("button", { name: /next/i }));
+  fireEvent.click(screen.getByRole("button", { name: /next/i }));
+  fireEvent.click(screen.getByRole("button", { name: /submit/i }));
+  const [url, originalBody, callback] =
+    utilsMock.postToOpenElisServerFullResponse.mock.calls[0];
+  let pending;
+  await act(async () => {
+    pending = callback(
+      new Response(
+        JSON.stringify({
+          code: "MICRO_CASE_CANCELLATION_REQUIRED",
+          cases: [
+            { caseId: "case-1", labUnit: "Bacteriology", hasResults: true },
+          ],
+        }),
+        { status: 409 },
+      ),
+    );
+  });
+  expect(screen.getByText("Bacteriology")).toBeInTheDocument();
+  const confirm = screen.getByRole("button", {
+    name: /Cancel cases and save$/,
+  });
+  expect(confirm).toBeDisabled();
+  fireEvent.change(screen.getByRole("textbox"), {
+    target: { value: "Duplicate order" },
+  });
+  await act(async () => {
+    fireEvent.click(confirm);
+    await pending;
+  });
+  expect(utilsMock.postToOpenElisServerFullResponse).toHaveBeenCalledTimes(2);
+  const [retryUrl, retryBody] =
+    utilsMock.postToOpenElisServerFullResponse.mock.calls[1];
+  expect(retryUrl).toBe(url);
+  expect(JSON.parse(retryBody)).toEqual({
+    ...JSON.parse(originalBody),
+    microCaseCancellationIds: ["case-1"],
+    microCaseCancellationReason: "Duplicate order",
   });
 });

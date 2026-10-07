@@ -119,12 +119,22 @@ public class SampleEditServiceImpl implements SampleEditService {
     NoteService noteService;
     @Autowired
     private SampleStorageService sampleStorageService;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCaseCancellationService microCaseCancellationService;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroOrderRoutingService microOrderRoutingService;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCaseAnalysisService microCaseAnalysisService;
     private List<String> analysisList = new ArrayList<>();
 
     @Transactional
     @Override
     public void editSample(SampleEditForm form, HttpServletRequest request, Sample updatedSample, boolean sampleChanged,
             String sysUserId) {
+        if (updatedSample == null) {
+            updatedSample = sampleService.getSampleByAccessionNumber(form.getAccessionNumber());
+        }
+        microCaseCancellationService.lockOrder(updatedSample.getId());
         List<SampleEditItem> existingTests = form.getExistingTests() != null ? form.getExistingTests()
                 : new ArrayList<>();
         List<Analysis> cancelAnalysisList = createRemoveList(existingTests, sysUserId);
@@ -136,9 +146,6 @@ public class SampleEditServiceImpl implements SampleEditService {
         List<IResultUpdate> updaters = ResultUpdateRegister.getRegisteredUpdaters();
         ResultsUpdateDataSet actionDataSet = new ResultsUpdateDataSet(sysUserId);
 
-        if (updatedSample == null) {
-            updatedSample = sampleService.getSampleByAccessionNumber(form.getAccessionNumber());
-        }
         Sample storedSample = new Sample();
         storedSample.setId(updatedSample.getId());
         sampleService.getData(storedSample);
@@ -260,10 +267,6 @@ public class SampleEditServiceImpl implements SampleEditService {
             analysisService.update(analysis);
             addExternalResultsToDeleteList(analysis, patient, updatedSample, actionDataSet);
             analysisIds.add(analysis.getId());
-        }
-
-        for (IResultUpdate updater : updaters) {
-            updater.postTransactionalCommitUpdate(actionDataSet);
         }
 
         for (Analysis analysis : addAnalysisList) {
@@ -393,6 +396,31 @@ public class SampleEditServiceImpl implements SampleEditService {
         if (orderArtifacts.getDeletableSamplePersonRequester() != null) {
             sampleRequesterService.delete(orderArtifacts.getDeletableSamplePersonRequester());
         }
+
+        // Route additions before assessing whether a case has lost its last test.
+        java.util.Map<String, List<Analysis>> addedBySpecimen = new java.util.LinkedHashMap<>();
+        for (String id : analysisIds) {
+            if (cancelAnalysisList.stream().anyMatch(a -> id.equals(a.getId()))) {
+                continue;
+            }
+            Analysis added = analysisService.get(id);
+            addedBySpecimen.computeIfAbsent(added.getSampleItem().getId(), key -> new ArrayList<>()).add(added);
+        }
+        for (List<Analysis> additions : addedBySpecimen.values()) {
+            microOrderRoutingService.routeAnalysesForSampleItem(additions.get(0).getSampleItem(), additions, sysUserId);
+        }
+        microCaseCancellationService.reconcile(updatedSample.getId(), form.getMicroCaseCancellationIds(),
+                form.getMicroCaseCancellationReason(), sysUserId,
+                cancelAnalysisList.stream().map(Analysis::getId).toList());
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void afterCommit() {
+                        for (IResultUpdate updater : updaters) {
+                            updater.postTransactionalCommitUpdate(actionDataSet);
+                        }
+                    }
+                });
 
         persistSampleStorageLocation(addedSamples);
 
@@ -567,7 +595,8 @@ public class SampleEditServiceImpl implements SampleEditService {
                 .getAnalysesBySampleItemIdAndStatusId(sampleEditItem.getSampleItemId(), CANCELED_TEST_STATUS_ID);
 
         for (Analysis analysis : canceledAnalysis) {
-            if (sampleEditItem.getTestId().equals(analysis.getTest().getId())) {
+            if (sampleEditItem.getTestId().equals(analysis.getTest().getId())
+                    && microCaseAnalysisService.getAnalysisLink(analysis.getId()) == null) {
                 return analysis;
             }
         }

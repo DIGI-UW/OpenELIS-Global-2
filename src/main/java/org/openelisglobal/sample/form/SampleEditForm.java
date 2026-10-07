@@ -21,6 +21,25 @@ import org.openelisglobal.validation.constraintvalidator.NameValidator.NameType;
 
 public class SampleEditForm extends BaseForm {
 
+    private List<String> microCaseCancellationIds = List.of();
+    private String microCaseCancellationReason;
+
+    public List<String> getMicroCaseCancellationIds() {
+        return microCaseCancellationIds;
+    }
+
+    public void setMicroCaseCancellationIds(List<String> value) {
+        microCaseCancellationIds = value;
+    }
+
+    public String getMicroCaseCancellationReason() {
+        return microCaseCancellationReason;
+    }
+
+    public void setMicroCaseCancellationReason(String value) {
+        microCaseCancellationReason = value;
+    }
+
     public interface SampleEdit {
     }
 

@@ -547,9 +547,19 @@ Remaining V02c2 implementation and acceptance:
       boundaries refuse writes, including administrator writes.
       Validation: 79 shared-save/request/guard checks passed, followed by 22 policy
       and access checks and 19 controller checks (overlapping suites). Eighteen
-      frontend tests and the production build passed. The older collected-analysis
-      edit path in SampleEditServiceImpl still needs the same cancellation policy;
-      the full FR-02.8 gate and rendered/video acceptance remain open.
+      frontend tests and the production build passed.
+      The collected-analysis edit path now uses the same case confirmation and
+      reason policy, inside the order save transaction. Additions route before
+      cancellation is assessed; ended requested-test ownership is retained.
+      Reordering creates a new analysis rather than reviving a cancelled micro
+      analysis. External result-update callbacks run only after commit. The
+      Modify Order screen resubmits the same edit with explicit case consent.
+      Focused verification includes collected cancellation, result/link retention,
+      same-save replacement, reordering, final-case protection, and the rendered
+      confirmation component: 62 backend tests, 21 frontend tests, and the
+      production frontend build passed. Full persisted browser/video acceptance and the
+      remaining shared-caller/permission audit are still open; FR-02.8 is not
+      marked complete.
 - [x] Bind the documented mapping file, actor and migration timestamp in runtime
       startup. `LiquibaseConfigTest`: five passing tests cover propagation, absent
       parameters, partial configuration and invalid actor/timestamp rejection.

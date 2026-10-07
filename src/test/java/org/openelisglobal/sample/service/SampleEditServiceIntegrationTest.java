@@ -358,6 +358,124 @@ public class SampleEditServiceIntegrationTest extends BaseWebContextSensitiveTes
         assertTrue("Newly added analysis should be found in DB", foundNewAnalysis);
     }
 
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO microCases;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO microLinks;
+
+    private org.openelisglobal.microbiology.valueholder.MicroCase caseForExistingAnalysis() {
+        var owner = new org.openelisglobal.microbiology.valueholder.MicroCase();
+        var analysis = analysisService.get(EXISTING_ANALYSIS_ID);
+        owner.setSampleId(analysis.getSampleItem().getSample().getId());
+        owner.setSampleTypeId(analysis.getSampleItem().getTypeOfSampleId());
+        owner.setTestSectionId(analysis.getTest().getTestSection().getId());
+        owner.setSysUserId(SYS_USER_ID);
+        microCases.insert(owner);
+        var link = new org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis();
+        link.setCaseId(owner.getId());
+        link.setAnalysisId(EXISTING_ANALYSIS_ID);
+        link.setCaseRole("DIRECT");
+        link.setSysUserId(SYS_USER_ID);
+        microLinks.insert(link);
+        return owner;
+    }
+
+    private SampleEditForm cancellationForm() {
+        var form = createBaseForm();
+        var item = new SampleEditItem();
+        item.setCanceled(true);
+        item.setAnalysisId(EXISTING_ANALYSIS_ID);
+        item.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        form.getExistingTests().add(item);
+        return form;
+    }
+
+    @Test
+    public void collectedMicroCancellationRequiresConfirmation() {
+        var owner = caseForExistingAnalysis();
+        var failure = org.junit.Assert.assertThrows(
+                org.openelisglobal.microbiology.service.MicroCaseCancellationRequiredException.class,
+                () -> sampleEditService.editSample(cancellationForm(), new MockHttpServletRequest(),
+                        sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), false, SYS_USER_ID));
+        assertEquals(owner.getId(), failure.getCases().get(0).caseId());
+    }
+
+    @Test
+    public void confirmedCollectedCancellationKeepsAnalysisAndMembership() {
+        var owner = caseForExistingAnalysis();
+        var resultService = SpringContext.getBean(org.openelisglobal.result.service.ResultService.class);
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setAnalysis(analysisService.get(EXISTING_ANALYSIS_ID));
+        result.setResultType("N");
+        result.setValue("4.2");
+        result.setIsReportable("N");
+        result.setSysUserId(SYS_USER_ID);
+        String resultId = resultService.insert(result);
+        var form = cancellationForm();
+        form.setMicroCaseCancellationIds(List.of(owner.getId()));
+        form.setMicroCaseCancellationReason("Duplicate order corrected");
+        sampleEditService.editSample(form, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), false, SYS_USER_ID);
+        assertEquals("4.2", resultService.get(resultId).getValue());
+        assertEquals("CANCELLED", microCases.get(owner.getId()).orElseThrow().getStage());
+        assertEquals(owner.getId(), microLinks.getByAnalysis(EXISTING_ANALYSIS_ID).getCaseId());
+        assertEquals(EXISTING_SAMPLE_ITEM_ID, analysisService.get(EXISTING_ANALYSIS_ID).getSampleItem().getId());
+    }
+
+    @Test
+    public void replacingCollectedTestInSameSaveKeepsCaseOpen() {
+        var owner = caseForExistingAnalysis();
+        var testService = SpringContext.getBean(org.openelisglobal.test.service.TestService.class);
+        var test = testService.get(TEST_ID);
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole("DIRECT");
+        test.setSysUserId(SYS_USER_ID);
+        testService.update(test);
+        var form = cancellationForm();
+        var addition = new SampleEditItem();
+        addition.setAdd(true);
+        addition.setTestId(TEST_ID);
+        addition.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        form.getPossibleTests().add(addition);
+        sampleEditService.editSample(form, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), false, SYS_USER_ID);
+        assertEquals("RECEIVED", microCases.get(owner.getId()).orElseThrow().getStage());
+        var all = analysisService.getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID));
+        assertEquals(2, all.size());
+        var added = all.stream().filter(a -> !EXISTING_ANALYSIS_ID.equals(a.getId())).findFirst().orElseThrow();
+        assertEquals(owner.getId(), microLinks.getByAnalysis(added.getId()).getCaseId());
+    }
+
+    @Test
+    public void reorderingCancelledMicroTestCreatesNewAnalysisAndCase() {
+        var owner = caseForExistingAnalysis();
+        var testService = SpringContext.getBean(org.openelisglobal.test.service.TestService.class);
+        var test = testService.get(TEST_ID);
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole("DIRECT");
+        test.setSysUserId(SYS_USER_ID);
+        testService.update(test);
+        var cancellation = cancellationForm();
+        cancellation.setMicroCaseCancellationIds(List.of(owner.getId()));
+        sampleEditService.editSample(cancellation, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), false, SYS_USER_ID);
+        var reorder = createBaseForm();
+        var addition = new SampleEditItem();
+        addition.setAdd(true);
+        addition.setTestId(TEST_ID);
+        addition.setSampleItemId(EXISTING_SAMPLE_ITEM_ID);
+        reorder.getPossibleTests().add(addition);
+        sampleEditService.editSample(reorder, new MockHttpServletRequest(),
+                sampleService.getSampleByAccessionNumber(ACCESSION_NUMBER), false, SYS_USER_ID);
+        var all = analysisService.getAnalysesBySampleItem(sampleItemService.get(EXISTING_SAMPLE_ITEM_ID));
+        assertEquals(2, all.size());
+        assertEquals("CANCELLED", microCases.get(owner.getId()).orElseThrow().getStage());
+        assertEquals(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.Canceled),
+                analysisService.get(EXISTING_ANALYSIS_ID).getStatusId());
+        var added = all.stream().filter(a -> !EXISTING_ANALYSIS_ID.equals(a.getId())).findFirst().orElseThrow();
+        org.junit.Assert.assertNotEquals(owner.getId(), microLinks.getByAnalysis(added.getId()).getCaseId());
+    }
+
     @Test
     public void editSample_withCanceledTests_shouldUpdateAnalysisStatus() {
         SampleEditForm form = createBaseForm();

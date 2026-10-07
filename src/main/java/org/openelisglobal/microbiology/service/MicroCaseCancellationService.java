@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.analysis.service.AnalysisService;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
@@ -61,7 +62,16 @@ public class MicroCaseCancellationService {
         this.units = units;
     }
 
+    public void lockOrder(String orderId) {
+        cases.lockOrder(orderId);
+    }
+
     public void reconcile(String orderId, List<String> confirmedCaseIds, String reason, String actor) {
+        reconcile(orderId, confirmedCaseIds, reason, actor, List.of());
+    }
+
+    public void reconcile(String orderId, List<String> confirmedCaseIds, String reason, String actor,
+            List<String> cancelledAnalysisIds) {
         MicroCaseServiceImpl.requireText(actor, "performedBy");
         cases.lockOrder(orderId);
         String note = reason == null || reason.isBlank() ? null : reason.trim();
@@ -85,22 +95,29 @@ public class MicroCaseCancellationService {
         String cancelledStatus = statuses
                 .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
         for (MicroCase owner : cases.getByOrder(orderId)) {
+            var caseAnalyses = links.getByCaseId(owner.getId()).stream().map(link -> analyses.get(link.getAnalysisId()))
+                    .toList();
+            boolean edited = caseAnalyses.stream().anyMatch(a -> cancelledAnalysisIds.contains(a.getId()));
             List<MicroCaseRequestedTest> active = ownership.getByCaseId(owner.getId()).stream()
                     .filter(link -> link.getCancelledAt() == null).toList();
             List<MicroCaseRequestedTest> removed = active.stream().filter(link -> {
                 var request = current.get(link.getRequestId());
                 return request == null || request.getStatus() == SampleTypeRequest.Status.CANCELLED
                         || (request.getStatus() == SampleTypeRequest.Status.REQUESTED
-                                && !selected.get(request.getId()).contains(link.getTestId()));
+                                && !selected.get(request.getId()).contains(link.getTestId()))
+                        || (request.getStatus() == SampleTypeRequest.Status.COLLECTED && request.getSampleItem() != null
+                                && caseAnalyses.stream().anyMatch(
+                                        a -> cancelledAnalysisIds.contains(a.getId()) && matches(a, request, link))
+                                && caseAnalyses.stream().noneMatch(
+                                        a -> matches(a, request, link) && !cancelledStatus.equals(a.getStatusId())));
             }).toList();
-            if (removed.isEmpty()) {
+            if (removed.isEmpty() && !edited) {
                 continue;
             }
             MicroCaseMutationGuard.requireMutable(owner);
             removals.addAll(removed);
-            var analysisIds = links.getByCaseId(owner.getId()).stream().map(link -> link.getAnalysisId()).toList();
-            boolean liveAnalysis = analysisIds.stream()
-                    .anyMatch(id -> !cancelledStatus.equals(analyses.get(id).getStatusId()));
+            var analysisIds = caseAnalyses.stream().map(Analysis::getId).toList();
+            boolean liveAnalysis = caseAnalyses.stream().anyMatch(a -> !cancelledStatus.equals(a.getStatusId()));
             if (removed.size() == active.size() && !liveAnalysis) {
                 boolean hasResults = (!analysisIds.isEmpty()
                         && !results.getResultsForAnalysisIdList(analysisIds).isEmpty())
@@ -139,6 +156,12 @@ public class MicroCaseCancellationService {
             event.setSysUserId(actor);
             activities.insert(event);
         }
+    }
+
+    private static boolean matches(Analysis analysis, SampleTypeRequest request, MicroCaseRequestedTest link) {
+        return analysis.getSampleItem() != null && analysis.getTest() != null
+                && request.getSampleItem().getId().equals(analysis.getSampleItem().getId())
+                && link.getTestId().equals(analysis.getTest().getId());
     }
 
     private static Set<String> ids(String csv) {
