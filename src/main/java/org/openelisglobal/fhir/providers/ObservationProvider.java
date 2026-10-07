@@ -131,10 +131,7 @@ public class ObservationProvider implements IResourceProvider {
     public Observation read(@IdParam IdType id) {
         String method = "read";
         try {
-            if (id == null || !id.hasIdPart()) {
-                throw new ResourceNotFoundException("Missing Observation ID");
-            }
-            String uuid = id.getIdPart();
+            String uuid = FhirProviderUtils.requireUuidId(id, "Observation").toString();
 
             Result result = resultService.getResultByFhirUuid(uuid);
             if (result == null) {
@@ -148,7 +145,7 @@ public class ObservationProvider implements IResourceProvider {
 
             return observation;
 
-        } catch (ResourceNotFoundException e) {
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
         } catch (Exception e) {
             if (FhirProviderUtils.isDataError(e)) {
@@ -333,7 +330,7 @@ public class ObservationProvider implements IResourceProvider {
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
                 "Received FHIR DELETE request for Observation ID: " + (theId != null ? theId.getIdPart() : "null"));
         try {
-            FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
+            FhirProviderUtils.requireUuidId(theId, "Observation");
 
             Result result = resultService.getResultByFhirUuid(theId.getIdPart());
 

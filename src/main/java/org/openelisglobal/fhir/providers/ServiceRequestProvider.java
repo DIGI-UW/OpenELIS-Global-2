@@ -494,14 +494,12 @@ public class ServiceRequestProvider implements IResourceProvider {
         final String method = "deleteServiceRequest";
 
         try {
-            if (theId == null || theId.getIdPart() == null) {
-                throw new InvalidRequestException("Missing ServiceRequest ID in URL");
-            }
+            UUID analysisFhirUuid = FhirProviderUtils.requireUuidId(theId, "ServiceRequest");
 
             String sysUserId = FhirProviderUtils.getSysUserId(request);
             String analysisUuid = theId.getIdPart();
 
-            List<Analysis> existingAnalyses = analysisService.getAllMatching("fhirUuid", UUID.fromString(analysisUuid));
+            List<Analysis> existingAnalyses = analysisService.getAllMatching("fhirUuid", analysisFhirUuid);
             if (existingAnalyses.isEmpty()) {
                 throw new ResourceNotFoundException("Analysis not found with UUID: " + analysisUuid);
             }

@@ -102,10 +102,7 @@ public class PatientProvider implements IResourceProvider {
     public org.hl7.fhir.r4.model.Patient getPatientByUUID(@IdParam IdType theId) {
         String method = "Read";
         try {
-            if (theId == null || !theId.hasIdPart()) {
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Patient ID for Read");
-                throw new InvalidRequestException("Patient ID must be provided for Read");
-            }
+            FhirProviderUtils.requireUuidId(theId, "Patient");
             Patient patient = getPatientByFhirId(theId.getIdPart());
             if (patient == null) {
                 throw new ResourceNotFoundException("Patient/" + theId.getIdPart());
@@ -301,6 +298,7 @@ public class PatientProvider implements IResourceProvider {
             throw new InvalidRequestException("FHIR Patient resource body is required");
         }
 
+        FhirProviderUtils.requireUuidId(theId, "Patient");
         Patient existingPatient = getPatientByFhirId(fhirUuid);
 
         if (existingPatient == null) {
@@ -400,7 +398,7 @@ public class PatientProvider implements IResourceProvider {
 
         try {
 
-            FhirProviderUtils.validateIdParam(theId, "Patient", this.getClass().getSimpleName(), method);
+            FhirProviderUtils.requireUuidId(theId, "Patient");
 
             Patient patient = getPatientByFhirId(theId.getIdPart());
 
