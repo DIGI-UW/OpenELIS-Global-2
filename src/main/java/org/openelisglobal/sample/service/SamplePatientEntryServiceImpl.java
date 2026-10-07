@@ -259,6 +259,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         persistRequestedSampleTypes(updateData.getSample(), form.getRequestedSampleTypes(),
                 updateData.getCurrentUserId());
         fulfillRequestedSampleTypes(updateData);
+        validateCollectedBottleSets(updateData);
 
         // Only persist requester data and observations if sample was successfully
         // created
@@ -992,6 +993,26 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setSysUserId(updateData.getCurrentUserId());
             sampleTypeRequestService.update(request);
             linkedItemIds.add(item.getId());
+        }
+    }
+
+    private void validateCollectedBottleSets(SamplePatientUpdateData updateData) {
+        for (SampleTestCollection submitted : updateData.getSampleItemsTests()) {
+            SampleItem item = submitted.item;
+            if (item == null || item.getCultureSetNumber() != null) {
+                continue;
+            }
+            // Validate after request fulfillment has restored its explicit set.
+            // Read persisted analyses as well: an edit may omit the test list.
+            boolean hasSetTest = analysisService.getAnalysesBySampleItem(item).stream()
+                    .anyMatch(analysis -> analysis.getTest() != null && analysis.getTest().isCollectedInSets());
+            if (!hasSetTest) {
+                hasSetTest = submitted.tests.stream().map(test -> testService.get(test.getId()))
+                        .anyMatch(test -> test != null && test.isCollectedInSets());
+            }
+            if (hasSetTest) {
+                throw new IllegalArgumentException("A set number is required for each culture bottle");
+            }
         }
     }
 

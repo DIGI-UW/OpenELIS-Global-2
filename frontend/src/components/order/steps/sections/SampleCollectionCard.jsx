@@ -58,6 +58,28 @@ const SampleCollectionCard = ({
     sample.sampleItemId ||
     sample.sampleTypeRequestId ||
     `sample-index-${sampleIndex}`;
+  const [catalogTests, setCatalogTests] = useState([]);
+  useEffect(() => {
+    let active = true;
+    setCatalogTests([]);
+    if (sample.sampleTypeId) {
+      getFromOpenElisServer(
+        `/rest/sample-type-tests?sampleType=${sample.sampleTypeId}`,
+        (response) => {
+          if (active) setCatalogTests(response?.tests || []);
+        },
+      );
+    }
+    return () => {
+      active = false;
+    };
+  }, [sample.sampleTypeId]);
+  const needsSet = (sample.tests || []).some((selected) => {
+    const catalog = catalogTests.find(
+      (test) => String(test.id) === String(selected.id || selected),
+    );
+    return (catalog || selected).collectedInSets === true;
+  });
   const [collectionMethods, setCollectionMethods] = useState([]);
   const [specimenOrigins, setSpecimenOrigins] = useState([]);
   const { configurationProperties = {} } =
@@ -242,6 +264,33 @@ const SampleCollectionCard = ({
             ))}
           </Select>
         </Column>
+
+        {(needsSet ||
+          (sample.cultureSetNumber != null &&
+            sample.cultureSetNumber !== "")) && (
+          <Column lg={4} md={4} sm={2}>
+            <TextInput
+              id={`cultureSetNumber-${sampleIndex}`}
+              type="number"
+              min={1}
+              step={1}
+              required={needsSet}
+              labelText={intl.formatMessage({ id: "order.cultureSetNumber" })}
+              value={sample.cultureSetNumber ?? ""}
+              invalid={
+                !Number.isInteger(Number(sample.cultureSetNumber)) ||
+                Number(sample.cultureSetNumber) < 1
+              }
+              invalidText={intl.formatMessage({
+                id: "order.cultureSetNumber.required",
+              })}
+              onChange={(event) =>
+                handleFieldChange("cultureSetNumber", event.target.value)
+              }
+              disabled={isReadOnly}
+            />
+          </Column>
+        )}
 
         {/* Quantity */}
         <Column lg={4} md={4} sm={2}>

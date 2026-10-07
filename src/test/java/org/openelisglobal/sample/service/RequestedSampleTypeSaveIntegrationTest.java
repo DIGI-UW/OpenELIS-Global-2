@@ -105,6 +105,61 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     }
 
     @Test
+    public void collectionWithoutBottleSetRollsBackTheWholeOrder() {
+        var test = bottleTest();
+        Sample order = newSample();
+        String accession = order.getAccessionNumber();
+        IllegalArgumentException failure = assertThrows(IllegalArgumentException.class,
+                () -> persist(order, new SamplePatientEntryForm(), bottleXml(test.getId(), "")));
+        assertEquals("A set number is required for each culture bottle", failure.getMessage());
+        TestTransaction.flagForCommit();
+        assertThrows(UnexpectedRollbackException.class, TestTransaction::end);
+        TestTransaction.start();
+        assertNull(sampleService.getSampleByAccessionNumber(accession));
+    }
+
+    @Test
+    public void collectionRestoresRequestedSetBeforeValidationAndKeepsItOnEdit() {
+        var test = bottleTest();
+        var request = requested("1");
+        request.setRequestedTests(test.getId());
+        request.setCultureSetNumber(3);
+        Sample order = newSample();
+        persist(order, List.of(request));
+        String requestId = String.valueOf(sampleTypeRequestService.getRequestsBySampleId(order.getId()).get(0).getId());
+        persist(order, new SamplePatientEntryForm(),
+                bottleXml(test.getId(), "sampleTypeRequestId='" + requestId + "'"));
+        var item = sampleItemService.getSampleItemsBySampleId(order.getId()).get(0);
+        assertEquals(Integer.valueOf(3), item.getCultureSetNumber());
+        persist(order, new SamplePatientEntryForm(), bottleXml("", "sampleItemId='" + item.getId() + "'"));
+        assertEquals(Integer.valueOf(3), sampleItemService.get(item.getId()).getCultureSetNumber());
+        assertEquals(1, sampleItemService.getSampleItemsBySampleId(order.getId()).size());
+    }
+
+    @Test
+    public void collectedBottleWithNoSetCannotBypassValidationByOmittingTests() {
+        var item = fixtures.createSampleWithSampleItem("NOSET");
+        fixtures.createAnalysis(item, bottleTest());
+        String xml = "<samples><sample typeId='" + item.getTypeOfSampleId() + "' sampleItemId='" + item.getId()
+                + "' tests='' panels='' testSectionMap='' testSampleTypeMap='' /></samples>";
+        assertThrows(IllegalArgumentException.class,
+                () -> persist(item.getSample(), new SamplePatientEntryForm(), xml));
+    }
+
+    private org.openelisglobal.test.valueholder.Test bottleTest() {
+        var test = fixtures.createCatalogMicroTest(
+                org.openelisglobal.microbiology.valueholder.MicroCaseTestRole.CULTURE, fixtures.createLabUnit());
+        test.setCollectedInSets(true);
+        test.setSysUserId(userId);
+        return testService.update(test);
+    }
+
+    private String bottleXml(String testId, String attributes) {
+        return "<samples><sample typeId='" + sampleType.getId() + "' tests='" + testId
+                + "' panels='' testSectionMap='' testSampleTypeMap='' " + attributes + "/></samples>";
+    }
+
+    @Test
     public void bottleSetsKeepIdentityWhenSameTypeRequestsAreReordered() {
         Sample order = newSample();
         var first = requested("1");

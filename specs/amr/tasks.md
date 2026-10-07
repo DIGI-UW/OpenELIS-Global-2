@@ -431,8 +431,14 @@ Remaining V02c2 implementation and acceptance:
       specimen clears its request/item/client identity so it becomes a new bottle.
       This follow-up passed 12 backend order-save tests, 31 frontend tests and the
       frontend production build; it does not establish browser acceptance.
-      Required next: collection/save-path validation beyond pending requests,
-      environmental presentation, derived count/header, warnings and browser proof.
+      Collection now exposes the stored set for correction, resolves reloaded test
+      flags from the catalog, and disables edits in read-only mode. The shared
+      specimen-save transaction validates required sets after request fulfillment;
+      it also reads existing analyses so omitting tests on edit cannot bypass the
+      check. Failed collection rolls back the order. Fifteen backend order-save
+      tests and 41 frontend tests pass, along with the frontend production build.
+      Required next: audit other fulfillment entry points, environmental
+      presentation, derived count/header, warnings and browser proof.
 - [ ] Open cases on initial clinical order save, including requested specimens.
       Current clinical Step 1 sends requested sample types with empty sample XML;
       physical specimens and runtime routing arrive at collection. The existing
