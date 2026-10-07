@@ -80,6 +80,65 @@ public class BridgeAnalyzerProfileTest {
         assertEquals("94500-6", profile.testDefinitions().get(1).loinc());
     }
 
+    @Test
+    public void readsTranslatedRunFailuresAndKeepsOnlyTheAnswersTranslations() throws Exception {
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(objectMapper.readTree("""
+                {
+                  "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
+                  "protocol":{"name":"ASTM"},
+                  "catalog":{
+                    "revision":1,
+                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "source":"SITE",
+                    "status":"ACTIVE"
+                  },
+                  "default_test_mappings":[
+                    {
+                      "test_code":"RAW-A",
+                      "loinc":"94500-6",
+                      "result_type":"qualitative",
+                      "values":["POSITIVE"],
+                      "run_failure_values":["NO RESULT"],
+                      "translations":{"POSITIVE":["POSITIF"],"NO RESULT":["PAS DE RÉSULTAT"]},
+                      "components":[
+                        {"code":"SPC","sub_identity":"SPC","result_type":"qualitative","values":["PASS"],
+                         "run_failure_values":["NO RESULT"],"translations":{"NO RESULT":["PAS DE RÉSULTAT"]}}
+                      ]
+                    }
+                  ]
+                }
+                """));
+
+        BridgeAnalyzerProfile.TestDefinition test = profile.testDefinitions().get(0);
+        assertEquals(java.util.Map.of("POSITIVE", java.util.List.of("POSITIF")), test.translations());
+        assertEquals(java.util.Map.of(), test.recordComponents().get(0).translations());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsATranslationOfAValueTheTestNeitherDeclaresNorFailsWith() throws Exception {
+        BridgeAnalyzerProfile.from(objectMapper.readTree("""
+                {
+                  "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
+                  "protocol":{"name":"ASTM"},
+                  "catalog":{
+                    "revision":1,
+                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "source":"SITE",
+                    "status":"ACTIVE"
+                  },
+                  "default_test_mappings":[
+                    {
+                      "test_code":"RAW-A",
+                      "loinc":"94500-6",
+                      "result_type":"qualitative",
+                      "values":["POSITIVE"],
+                      "translations":{"NEGATIVE":["NÉGATIF"]}
+                    }
+                  ]
+                }
+                """));
+    }
+
     @Test(expected = IllegalArgumentException.class)
     public void rejectsAValueCodeForAValueTheTestDoesNotDeclare() throws Exception {
         BridgeAnalyzerProfile.from(objectMapper.readTree("""
