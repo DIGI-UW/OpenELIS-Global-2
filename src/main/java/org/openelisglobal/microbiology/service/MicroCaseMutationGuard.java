@@ -10,6 +10,9 @@ final class MicroCaseMutationGuard {
     }
 
     static void requireMutable(MicroCase microCase) {
+        if (MicroCaseStage.CANCELLED.name().equals(microCase.getStage())) {
+            throw new MicroCaseLockedException("CANCELLED_CASE_LOCKED");
+        }
         if (MicroCaseStage.AMENDED.name().equals(microCase.getStage())
                 && MicroCaseFinalReleaseState.AMENDMENT_IN_PROGRESS.name().equals(microCase.getFinalReleaseState())) {
             return;

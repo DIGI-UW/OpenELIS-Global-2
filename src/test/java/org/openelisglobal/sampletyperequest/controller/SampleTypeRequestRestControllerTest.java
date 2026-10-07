@@ -85,6 +85,17 @@ public class SampleTypeRequestRestControllerTest {
     // ─── getRequestsBySample ──────────────────────────────────────────────────
 
     @Test
+    public void cancellationConfirmationReturnsStructuredConflict() {
+        var required = new org.openelisglobal.microbiology.service.MicroCaseCancellationRequiredException(
+                List.of(new org.openelisglobal.microbiology.service.MicroCaseCancellationRequiredException.AffectedCase(
+                        "case-1", "Microbiology", true)));
+        doThrow(required).when(sampleTypeRequestService).cancelRequest(30);
+        ResponseEntity<?> response = controller.cancelRequest(30, null);
+        assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
+        assertEquals("MICRO_CASE_CANCELLATION_REQUIRED", ((java.util.Map<?, ?>) response.getBody()).get("code"));
+    }
+
+    @Test
     public void getRequestsBySample_returnsDtoList() {
         SampleTypeRequest req = buildRequest(10, "123", SampleTypeRequest.Status.REQUESTED);
         when(sampleTypeRequestService.getRequestsBySampleId("123")).thenReturn(Arrays.asList(req));
@@ -241,7 +252,7 @@ public class SampleTypeRequestRestControllerTest {
         doNothing().when(sampleTypeRequestService).cancelRequest(30);
         when(sampleTypeRequestService.get(30)).thenReturn(cancelled);
 
-        ResponseEntity<?> response = controller.cancelRequest(30);
+        ResponseEntity<?> response = controller.cancelRequest(30, null);
 
         assertEquals(HttpStatus.OK, response.getStatusCode());
         SampleTypeRequestDTO body = (SampleTypeRequestDTO) response.getBody();
@@ -255,7 +266,7 @@ public class SampleTypeRequestRestControllerTest {
         doThrow(new IllegalArgumentException("Request not found: 999")).when(sampleTypeRequestService)
                 .cancelRequest(999);
 
-        ResponseEntity<?> response = controller.cancelRequest(999);
+        ResponseEntity<?> response = controller.cancelRequest(999, null);
 
         assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
         assertEquals("Request not found: 999", response.getBody());
@@ -266,7 +277,7 @@ public class SampleTypeRequestRestControllerTest {
         doThrow(new IllegalStateException("Only REQUESTED status can be cancelled")).when(sampleTypeRequestService)
                 .cancelRequest(30);
 
-        ResponseEntity<?> response = controller.cancelRequest(30);
+        ResponseEntity<?> response = controller.cancelRequest(30, null);
 
         assertEquals(HttpStatus.CONFLICT, response.getStatusCode());
         assertEquals("Only REQUESTED status can be cancelled", response.getBody());
@@ -276,7 +287,7 @@ public class SampleTypeRequestRestControllerTest {
     public void cancelRequest_unexpectedException_returns500() {
         doThrow(new RuntimeException("DB error")).when(sampleTypeRequestService).cancelRequest(30);
 
-        ResponseEntity<?> response = controller.cancelRequest(30);
+        ResponseEntity<?> response = controller.cancelRequest(30, null);
 
         assertEquals(HttpStatus.INTERNAL_SERVER_ERROR, response.getStatusCode());
     }

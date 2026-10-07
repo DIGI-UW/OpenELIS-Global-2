@@ -10,6 +10,13 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 
 public class MicroCaseMutationGuardTest {
 
+    @Test(expected = MicroCaseLockedException.class)
+    public void cancelledCaseRejectsMutation() {
+        var owner = new org.openelisglobal.microbiology.valueholder.MicroCase();
+        owner.setStage("CANCELLED");
+        MicroCaseMutationGuard.requireMutable(owner);
+    }
+
     @Test
     public void finalCaseRemainsLockedWithoutAmendment() {
         MicroCase microCase = new MicroCase();

@@ -485,6 +485,9 @@ public class SamplePatientEntryRestController extends BaseSampleEntryController 
             logger.error("SamplePatientEntry errors: {}", result.toString());
             persistErrorMessage = rootCauseMessage(e);
             persistFailed = true;
+        } catch (org.openelisglobal.microbiology.service.MicroCaseCancellationRequiredException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(
+                    Map.of("code", "MICRO_CASE_CANCELLATION_REQUIRED", "cases", e.getCases(), "error", e.getMessage()));
         } catch (IllegalArgumentException e) {
             logger.warn("Order save rejected (validation) for labNo={}: {}", sampleOrder.getLabNo(), e.getMessage());
             persistErrorMessage = e.getMessage();

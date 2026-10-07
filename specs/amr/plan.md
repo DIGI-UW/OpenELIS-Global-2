@@ -443,9 +443,16 @@ Only one active ownership record may exist per request/test pair. Cancellation
 retains that record with actor/time and an optional reason; a later ordering can
 create a new active record while the prior case keeps its original provenance.
 Cancelled assignments do not participate in routing, pending details or pending
-worklist context. Cancelled cases are not grouping targets. Confirmation, the
-reason required when results exist, whole-step atomicity and write locking must
-be wired before the cancellation flow is accepted (FR-02.8).
+worklist context. Cancelled cases are not grouping targets. The shared requested
+stage and direct pending-request cancel command reconcile all removals within
+one transaction. A structured conflict rolls back the step and lists the cases
+requiring consent; order entry asks for case-specific confirmation and a reason
+when results exist, then resubmits the same payload. All conditions are checked
+again under the order lock. Case closure retains results and ownership and records
+an actor/time/reason Timeline event. Cancelled cases remain readable; the common
+mutation guard and Results/Validation access boundaries refuse writes. The older
+collected-analysis edit service still needs the same policy before FR-02.8 is
+accepted.
 It is not a second test catalog or a replacement for the shared request lifecycle.
 
 The fifth unregistered candidate migration provides this relationship without

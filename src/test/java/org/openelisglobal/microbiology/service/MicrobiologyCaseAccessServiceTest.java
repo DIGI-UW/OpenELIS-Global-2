@@ -55,6 +55,17 @@ public class MicrobiologyCaseAccessServiceTest {
     }
 
     @Test
+    public void cancelledCaseRemainsReadableButCannotBeChangedEvenByAdministrator() {
+        caseDAO.get("case-1").orElseThrow().setStage("CANCELLED");
+        when(userRoleService.userInRole("7", Constants.ROLE_GLOBAL_ADMIN)).thenReturn(true);
+        assertTrue(accessService.canReadCase("case-1", "7"));
+        assertFalse(accessService.canEnterResults("case-1", "7"));
+        assertFalse(accessService.canValidateResults("case-1", "7"));
+        assertThrows(MicroCaseLockedException.class, () -> accessService.requireResults("case-1", "7"));
+        assertThrows(MicroCaseLockedException.class, () -> accessService.requireValidation("case-1", "7"));
+    }
+
+    @Test
     public void authenticatedReaderWithoutUnitRightsCanOpenOnlyReadOnly() {
         assertTrue(accessService.canReadCase("case-1", "7"));
         assertFalse(accessService.canViewOnWorklist("case-1", "7"));

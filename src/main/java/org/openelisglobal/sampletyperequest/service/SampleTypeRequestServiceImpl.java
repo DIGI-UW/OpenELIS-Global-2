@@ -25,6 +25,8 @@ public class SampleTypeRequestServiceImpl extends AuditableBaseObjectServiceImpl
 
     @Autowired
     private org.openelisglobal.common.util.UserContextHolder userContext;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCaseCancellationService cancellationService;
 
     public SampleTypeRequestServiceImpl() {
         super(SampleTypeRequest.class);
@@ -135,15 +137,26 @@ public class SampleTypeRequestServiceImpl extends AuditableBaseObjectServiceImpl
     @Override
     @Transactional
     public void cancelRequest(Integer requestId) {
+        cancelRequest(requestId, List.of(), null);
+    }
+
+    @Override
+    @Transactional
+    public void cancelRequest(Integer requestId, List<String> confirmedCaseIds, String reason) {
         SampleTypeRequest request = get(requestId);
         if (request == null) {
             throw new IllegalArgumentException("SampleTypeRequest not found: " + requestId);
         }
+        microRequestedCaseService.lockOrder(request.getSample().getId());
+        request = sampleTypeRequestDAO.getForUpdate(requestId);
         if (request.getStatus() != SampleTypeRequest.Status.REQUESTED) {
             throw new IllegalStateException("Cannot cancel request in status: " + request.getStatus());
         }
 
+        String actor = userContext.requireSysUserId();
         request.setStatus(SampleTypeRequest.Status.CANCELLED);
+        request.setSysUserId(actor);
         update(request);
+        cancellationService.reconcile(request.getSample().getId(), confirmedCaseIds, reason, actor);
     }
 }

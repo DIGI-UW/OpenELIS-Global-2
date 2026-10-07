@@ -33,6 +33,25 @@ public class SamplePatientEntryForm extends BaseForm {
     public interface SamplePatientEntry {
     }
 
+    private List<String> microCaseCancellationIds = List.of();
+    private String microCaseCancellationReason;
+
+    public List<String> getMicroCaseCancellationIds() {
+        return microCaseCancellationIds;
+    }
+
+    public void setMicroCaseCancellationIds(List<String> ids) {
+        microCaseCancellationIds = ids;
+    }
+
+    public String getMicroCaseCancellationReason() {
+        return microCaseCancellationReason;
+    }
+
+    public void setMicroCaseCancellationReason(String reason) {
+        microCaseCancellationReason = reason;
+    }
+
     private Boolean rememberSiteAndRequester;
 
     /**

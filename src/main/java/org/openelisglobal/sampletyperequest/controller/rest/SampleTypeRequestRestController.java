@@ -95,15 +95,23 @@ public class SampleTypeRequestRestController {
      * Cancel a pending request.
      */
     @PutMapping("/{requestId}/cancel")
-    public ResponseEntity<?> cancelRequest(@PathVariable Integer requestId) {
+    public ResponseEntity<?> cancelRequest(@PathVariable Integer requestId,
+            @org.springframework.web.bind.annotation.RequestBody(required = false) org.openelisglobal.microbiology.form.MicroCaseCancellationCommand command) {
         try {
-            sampleTypeRequestService.cancelRequest(requestId);
+            if (command == null) {
+                sampleTypeRequestService.cancelRequest(requestId);
+            } else {
+                sampleTypeRequestService.cancelRequest(requestId, command.caseIds(), command.reason());
+            }
 
             SampleTypeRequest request = sampleTypeRequestService.get(requestId);
             LogEvent.logInfo(this.getClass().getSimpleName(), "cancelRequest", "Cancelled request: " + requestId);
 
             return ResponseEntity.ok(convertToDTO(request));
 
+        } catch (org.openelisglobal.microbiology.service.MicroCaseCancellationRequiredException e) {
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(java.util.Map.of("code",
+                    "MICRO_CASE_CANCELLATION_REQUIRED", "cases", e.getCases(), "error", e.getMessage()));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IllegalStateException e) {

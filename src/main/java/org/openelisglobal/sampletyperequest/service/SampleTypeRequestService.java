@@ -30,4 +30,6 @@ public interface SampleTypeRequestService extends BaseObjectService<SampleTypeRe
      * Cancel a pending request.
      */
     void cancelRequest(Integer requestId);
+
+    void cancelRequest(Integer requestId, List<String> confirmedCaseIds, String reason);
 }

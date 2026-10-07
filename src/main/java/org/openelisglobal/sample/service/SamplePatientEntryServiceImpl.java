@@ -189,6 +189,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private MicroOrderRoutingService microOrderRoutingService;
     @Autowired
     private org.openelisglobal.microbiology.service.MicroRequestedCaseService microRequestedCaseService;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCaseCancellationService microCaseCancellationService;
     @Lazy
     @Autowired
     private ResultLimitService resultLimitService;
@@ -269,6 +271,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         for (SampleTestCollection submitted : updateData.getSampleItemsTests()) {
             routeMicrobiologyCases(submitted.item, submitted, updateData.getCurrentUserId());
         }
+
+        microCaseCancellationService.reconcile(updateData.getSample().getId(), form.getMicroCaseCancellationIds(),
+                form.getMicroCaseCancellationReason(), updateData.getCurrentUserId());
 
         // Only persist requester data and observations if sample was successfully
         // created
@@ -903,7 +908,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         for (SampleTypeRequest removed : reusable) {
             if (removed.getStatus() == SampleTypeRequest.Status.REQUESTED) {
-                sampleTypeRequestService.cancelRequest(removed.getId());
+                removed.setStatus(SampleTypeRequest.Status.CANCELLED);
+                removed.setSysUserId(currentUserId);
+                sampleTypeRequestService.update(removed);
             }
         }
     }

@@ -109,6 +109,9 @@ public class MicrobiologyCaseAccessServiceImpl implements MicrobiologyCaseAccess
         // authorizing. The surrounding mutation retains these locks until commit.
         caseDAO.lockOrder(observed.getSampleId());
         MicroCase current = caseDAO.getForUpdate(caseId);
+        if ("CANCELLED".equals(current.getStage())) {
+            throw new MicroCaseLockedException("CANCELLED_CASE_LOCKED");
+        }
         if (!hasUnitRole(current.getTestSectionId(), systemUserId, roleName)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, message);
         }
@@ -119,7 +122,8 @@ public class MicrobiologyCaseAccessServiceImpl implements MicrobiologyCaseAccess
             return false;
         }
         MicroCase microCase = caseDAO.get(caseId).orElse(null);
-        return microCase != null && hasUnitRole(microCase.getTestSectionId(), systemUserId, roleName);
+        return microCase != null && !"CANCELLED".equals(microCase.getStage())
+                && hasUnitRole(microCase.getTestSectionId(), systemUserId, roleName);
     }
 
     private boolean hasUnitRole(String testSectionId, String systemUserId, String roleName) {

@@ -72,6 +72,15 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.microbiology.dao.MicroWorklistContextDAO worklistContext;
 
+    @Autowired
+    private org.openelisglobal.result.service.ResultService results;
+    @Autowired
+    private org.openelisglobal.analysis.service.AnalysisService analyses;
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroCaseAnalysisService caseAnalyses;
+    @Autowired
+    private org.openelisglobal.common.services.IStatusService statuses;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -85,6 +94,84 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         patient = fixtures.createPatient("REQSPEC");
         sampleType = fixtures.getOrCreateActiveSampleType();
         secondSampleType = fixtures.createTypeOfSample();
+    }
+
+    @Test
+    public void lastRequestedMicroTestRemovalRequiresConfirmationAndRollsBack() {
+        var test = bottleTest();
+        var request = requested("1");
+        request.setRequestedTests(test.getId());
+        request.setCultureSetNumber(1);
+        Sample order = newSample();
+        persist(order, List.of(request));
+        var owner = cases.getByOrder(order.getId()).get(0);
+        var failure = assertThrows(org.openelisglobal.microbiology.service.MicroCaseCancellationRequiredException.class,
+                () -> persist(order, List.of()));
+        assertEquals(owner.getId(), failure.getCases().get(0).caseId());
+        assertTrue(!failure.getCases().get(0).hasResults());
+        TestTransaction.flagForCommit();
+        assertThrows(UnexpectedRollbackException.class, TestTransaction::end);
+        TestTransaction.start();
+        assertTrue(cases.get(owner.getId()).isEmpty());
+    }
+
+    @Test
+    public void confirmedLastTestRemovalClosesCaseAndRetainsOwnership() {
+        var test = bottleTest();
+        var request = requested("1");
+        request.setRequestedTests(test.getId());
+        request.setCultureSetNumber(1);
+        Sample order = newSample();
+        persist(order, List.of(request));
+        var owner = cases.getByOrder(order.getId()).get(0);
+        var saved = sampleTypeRequestService.getRequestsBySampleId(order.getId()).get(0);
+        var form = new SamplePatientEntryForm();
+        form.setRequestedSampleTypes(List.of());
+        form.setMicroCaseCancellationIds(List.of(owner.getId()));
+        persist(order, form);
+        assertEquals("CANCELLED", cases.get(owner.getId()).orElseThrow().getStage());
+        assertNotNull(cases.get(owner.getId()).orElseThrow().getClosedAt());
+        assertEquals(SampleTypeRequest.Status.CANCELLED, sampleTypeRequestService.get(saved.getId()).getStatus());
+        assertNull(ownership.getByRequestAndTest(saved.getId(), test.getId()));
+        assertEquals(userId, ownership.getByCaseId(owner.getId()).get(0).getCancelledBy());
+    }
+
+    @Test
+    public void confirmedCancellationRetainsAnEarlierResultAndItsLink() {
+        var test = bottleTest();
+        var request = requested("1");
+        request.setRequestedTests(test.getId());
+        request.setCultureSetNumber(1);
+        Sample order = newSample();
+        persist(order, List.of(request));
+        var owner = cases.getByOrder(order.getId()).get(0);
+        var item = new org.openelisglobal.sampleitem.valueholder.SampleItem();
+        item.setSample(order);
+        item.setTypeOfSample(sampleType);
+        item.setSortOrder("1");
+        item.setStatusId(fixtures.ensureSampleEnteredStatus());
+        item.setSysUserId(userId);
+        sampleItemService.insert(item);
+        var analysis = fixtures.createAnalysis(item, test);
+        caseAnalyses.linkAnalysis(owner, analysis, userId);
+        analysis.setStatusId(
+                statuses.getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled));
+        analysis.setSysUserId(userId);
+        analyses.update(analysis);
+        var result = new org.openelisglobal.result.valueholder.Result();
+        result.setAnalysis(analysis);
+        result.setResultType("N");
+        result.setValue("4.2");
+        result.setIsReportable("N");
+        result.setSysUserId(userId);
+        String resultId = results.insert(result);
+        var saved = sampleTypeRequestService.getRequestsBySampleId(order.getId()).get(0);
+        sampleTypeRequestService.cancelRequest(saved.getId(), List.of(owner.getId()), "Duplicate request corrected");
+        assertEquals("CANCELLED", cases.get(owner.getId()).orElseThrow().getStage());
+        assertEquals("4.2", results.get(resultId).getValue());
+        assertEquals(owner.getId(), analysisLinks.getByAnalysis(analysis.getId()).getCaseId());
+        assertEquals("Duplicate request corrected",
+                ownership.getByCaseId(owner.getId()).get(0).getCancellationReason());
     }
 
     @Test

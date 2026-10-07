@@ -537,8 +537,19 @@ Remaining V02c2 implementation and acceptance:
       Thirty lifecycle/migration checks and one dedicated cancelled-case rollback
       check passed. They prove retained prior ownership, a new active case on
       reordering, and refusal to discard cancellation state. Still required:
-      shared save/direct-cancel commands, confirmation/reason UI, case closure,
-      preserved results and cancelled-case write locking still require delivery.
+      Shared requested-test saves and the direct pending-request cancellation
+      command now reconcile removals atomically. Removing the last active micro
+      test requires confirmation for the affected case IDs; existing ordinary
+      results, isolates or culture observations require a nonblank reason. The
+      order-entry Carbon modal resubmits the unchanged step with that consent.
+      Cancellation retains ownership/results, closes the case and adds a Timeline
+      event. Cancelled cases remain readable but the common mutation/access
+      boundaries refuse writes, including administrator writes.
+      Validation: 79 shared-save/request/guard checks passed, followed by 22 policy
+      and access checks and 19 controller checks (overlapping suites). Eighteen
+      frontend tests and the production build passed. The older collected-analysis
+      edit path in SampleEditServiceImpl still needs the same cancellation policy;
+      the full FR-02.8 gate and rendered/video acceptance remain open.
 - [x] Bind the documented mapping file, actor and migration timestamp in runtime
       startup. `LiquibaseConfigTest`: five passing tests cover propagation, absent
       parameters, partial configuration and invalid actor/timestamp rejection.

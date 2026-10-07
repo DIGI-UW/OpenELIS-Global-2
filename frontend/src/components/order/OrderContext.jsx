@@ -1,3 +1,5 @@
+import CaseCancellationPrompt from "./CaseCancellationPrompt";
+import { postOrderWithCancellation } from "./postOrderWithCancellation";
 import { labNow } from "../utils/labClock";
 import React, {
   createContext,
@@ -271,6 +273,14 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   const [saveStatus, setSaveStatus] = useState(SaveStatus.SAVED);
   const [isDirty, setIsDirty] = useState(false);
   const [error, setError] = useState(null);
+  const [caseCancellationPrompt, setCaseCancellationPrompt] = useState(null);
+  const askCaseCancellation = useCallback(
+    (cases) =>
+      new Promise((resolve) => {
+        setCaseCancellationPrompt({ cases, resolve });
+      }),
+    [],
+  );
   const [fieldErrors, setFieldErrors] = useState({});
   const [rangeNotApplied, setRangeNotApplied] = useState({
     labNumber: null,
@@ -1169,7 +1179,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         submitData.sampleOrderItems,
       );
 
-      postToOpenElisServerFullResponse(
+      postOrderWithCancellation(
         endpoint,
         JSON.stringify(submitData),
         async (response) => {
@@ -1275,6 +1285,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             reject(new Error(failure.message));
           }
         },
+        askCaseCancellation,
       );
     });
     inFlightSaveRef.current = save;
@@ -1632,7 +1643,20 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   };
 
   return (
-    <OrderContext.Provider value={value}>{children}</OrderContext.Provider>
+    <OrderContext.Provider value={value}>
+      {children}
+      {caseCancellationPrompt && (
+        <CaseCancellationPrompt
+          key={JSON.stringify(caseCancellationPrompt.cases)}
+          cases={caseCancellationPrompt.cases}
+          onDecision={(decision) => {
+            const resolve = caseCancellationPrompt.resolve;
+            setCaseCancellationPrompt(null);
+            resolve(decision);
+          }}
+        />
+      )}
+    </OrderContext.Provider>
   );
 };
 
