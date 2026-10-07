@@ -1,5 +1,7 @@
+import contextlib
 import importlib.machinery
 import importlib.util
+import io
 import os
 import pathlib
 import re
@@ -20,6 +22,141 @@ def load_dev_stack():
     module = importlib.util.module_from_spec(spec)
     loader.exec_module(module)
     return module
+
+
+def isolated_git_environment(home):
+    environment = os.environ.copy()
+    environment.update(
+        {
+            "HOME": str(home),
+            "GIT_CONFIG_GLOBAL": os.devnull,
+            "GIT_CONFIG_NOSYSTEM": "1",
+            "GIT_AUTHOR_NAME": "Dev Stack Test",
+            "GIT_AUTHOR_EMAIL": "dev-stack@example.org",
+            "GIT_COMMITTER_NAME": "Dev Stack Test",
+            "GIT_COMMITTER_EMAIL": "dev-stack@example.org",
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "protocol.file.allow",
+            "GIT_CONFIG_VALUE_0": "always",
+        }
+    )
+    return environment
+
+
+class SubmoduleFixture:
+    """A parent repository pinning tools/sub to the first of two commits."""
+
+    path = "tools/sub"
+
+    def __init__(self, root):
+        self.environment = isolated_git_environment(root)
+        origin = root / "sub-origin"
+        origin.mkdir()
+        self.git(origin, "init", "-q")
+        (origin / "source.txt").write_text("pinned\n")
+        self.git(origin, "add", "source.txt")
+        self.git(origin, "commit", "-q", "-m", "pinned")
+        self.pinned = self.git(origin, "rev-parse", "HEAD")
+        (origin / "source.txt").write_text("local work\n")
+        self.git(origin, "commit", "-q", "-am", "local work")
+        self.local = self.git(origin, "rev-parse", "HEAD")
+
+        self.repo_root = root / "parent"
+        self.repo_root.mkdir()
+        self.git(self.repo_root, "init", "-q")
+        self.git(self.repo_root, "submodule", "add", "-q", str(origin), self.path)
+        self.git(self.submodule, "checkout", "-q", self.pinned)
+        self.git(self.repo_root, "add", self.path)
+        self.git(self.repo_root, "commit", "-q", "-m", "pin submodule")
+        self.context = SimpleNamespace(repo_root=self.repo_root)
+
+    @property
+    def submodule(self):
+        return self.repo_root / self.path
+
+    def git(self, cwd, *arguments):
+        return subprocess.run(
+            ["git", *arguments],
+            cwd=cwd,
+            env=self.environment,
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    def head(self):
+        return self.git(self.submodule, "rev-parse", "HEAD")
+
+
+class DevStackSubmoduleTest(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.dev_stack = load_dev_stack()
+
+    def setUp(self):
+        directory = tempfile.TemporaryDirectory()
+        self.addCleanup(directory.cleanup)
+        self.fixture = SubmoduleFixture(pathlib.Path(directory.name))
+
+    def ensure_submodules(self):
+        printed = io.StringIO()
+        with (
+            patch.object(
+                self.dev_stack, "required_submodules", return_value=(self.fixture.path,)
+            ),
+            contextlib.redirect_stdout(printed),
+        ):
+            self.dev_stack.ensure_submodules(
+                self.fixture.context, self.fixture.environment
+            )
+        return printed.getvalue()
+
+    def test_submodule_at_another_commit_is_built_as_checked_out_and_reported(self):
+        self.fixture.git(self.fixture.submodule, "checkout", "-q", self.fixture.local)
+
+        printed = self.ensure_submodules()
+
+        self.assertEqual(self.fixture.head(), self.fixture.local)
+        self.assertEqual(
+            printed,
+            f"tools/sub: building checked-out {self.fixture.local[:7]} "
+            f"(recorded pin {self.fixture.pinned[:7]})\n",
+        )
+
+    def test_submodule_with_uncommitted_changes_is_left_alone_and_reported(self):
+        (self.fixture.submodule / "source.txt").write_text("uncommitted\n")
+
+        printed = self.ensure_submodules()
+
+        self.assertEqual(self.fixture.head(), self.fixture.pinned)
+        self.assertEqual(
+            (self.fixture.submodule / "source.txt").read_text(), "uncommitted\n"
+        )
+        self.assertEqual(
+            printed,
+            f"tools/sub: building checked-out {self.fixture.pinned[:7]} "
+            f"(recorded pin {self.fixture.pinned[:7]}), with uncommitted changes\n",
+        )
+
+    def test_empty_submodule_is_initialized_at_the_recorded_pin(self):
+        self.fixture.git(
+            self.fixture.repo_root, "submodule", "deinit", "-q", "-f", self.fixture.path
+        )
+        self.assertEqual(os.listdir(self.fixture.submodule), [])
+
+        printed = self.ensure_submodules()
+
+        self.assertEqual(self.fixture.head(), self.fixture.pinned)
+        self.assertEqual(
+            (self.fixture.submodule / "source.txt").read_text(), "pinned\n"
+        )
+        self.assertEqual(printed, "")
+
+    def test_clean_submodule_at_the_recorded_pin_is_silent(self):
+        printed = self.ensure_submodules()
+
+        self.assertEqual(self.fixture.head(), self.fixture.pinned)
+        self.assertEqual(printed, "")
 
 
 class DevStackContractTest(unittest.TestCase):
@@ -137,16 +274,7 @@ class DevStackContractTest(unittest.TestCase):
             ),
         )
 
-    def test_submodule_bootstrap_repairs_empty_checkouts_without_forcing_dirty_ones(self):
-        repair_mode = self.dev_stack.submodule_repair_mode
-
-        self.assertEqual(repair_mode("expected", "actual", " D file", False), "force")
-        self.assertEqual(repair_mode("expected", "actual", "", True), "checkout")
-        self.assertIsNone(repair_mode("expected", "expected", "", True))
-        with self.assertRaisesRegex(RuntimeError, "local changes"):
-            repair_mode("expected", "actual", " M file", True)
-
-    def test_submodule_initialization_forces_only_an_empty_failed_checkout(self):
+    def test_submodule_initialization_forces_an_empty_failed_checkout(self):
         with tempfile.TemporaryDirectory() as directory:
             root = pathlib.Path(directory)
             (root / "dataexport").mkdir()
@@ -173,20 +301,6 @@ class DevStackContractTest(unittest.TestCase):
                     "dataexport",
                 ],
             )
-
-    def test_submodule_initialization_never_forces_a_populated_failed_checkout(self):
-        with tempfile.TemporaryDirectory() as directory:
-            root = pathlib.Path(directory)
-            (root / "dataexport").mkdir()
-            (root / "dataexport" / "local-change.txt").write_text("keep me\n")
-            context = SimpleNamespace(repo_root=root)
-            failed = subprocess.CalledProcessError(128, ["git", "submodule"])
-
-            with patch.object(self.dev_stack, "run", side_effect=failed) as run:
-                with self.assertRaisesRegex(RuntimeError, "populated checkout"):
-                    self.dev_stack.initialize_submodule(context, {}, "dataexport")
-
-            run.assert_called_once()
 
     def test_run_java21_honors_selected_java_21_home(self):
         with tempfile.TemporaryDirectory() as directory:

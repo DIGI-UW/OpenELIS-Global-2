@@ -729,12 +729,16 @@ existing Let's Encrypt flow.
 
 Use the mode matching the work:
 
-- `scripts/dev-stack up` builds this checkout and pinned analyzer dependencies
-  using worktree-specific images. It does not reuse published application
-  images.
+- `scripts/dev-stack up` builds this checkout using worktree-specific images,
+  including the Bridge and analyzer mock exactly as checked out in their
+  submodules. It initializes only empty submodules, never moves or resets a
+  populated one, and prints a line for each submodule that differs from the
+  recorded commit or has uncommitted changes. It does not reuse published
+  application images.
 - `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
-  revision, concurrently with GitHub after each push. Targeted tests alone are
-  not full parity. Retain and inspect the aggregate result and reports.
+  revision and its recorded submodule commits, concurrently with GitHub after
+  each push. Targeted tests alone are not full parity. Retain and inspect the
+  aggregate result and reports.
 - Published deployments use the released image Compose/installer path described
   in [the setup guide](docs/dev_setup.md). Pull a coherent version or digest
   set; do not mount source, a local WAR, or silently build missing application
