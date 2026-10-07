@@ -1,11 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <dataset>
 
-    <person id="1" last_name="Doe" first_name="John" email="john@gmail.com"
-        lastupdated="2023-11-01 12:00:00" />
+    <person id="1" last_name="Doe" first_name="John"
+        email="john@gmail.com" lastupdated="2023-11-01 12:00:00" />
 
-    <person id="2" last_name="Legacy" first_name="Lena" email="lena@gmail.com"
-        lastupdated="2023-11-01 12:00:00" />
+    <person id="2" last_name="Legacy" first_name="Lena"
+        email="lena@gmail.com" lastupdated="2023-11-01 12:00:00" />
 
     <patient id="1" person_id="1" gender="M" national_id="1234"
         fhir_uuid="b479ab79-5f53-4d1f-bc9b-10f19ce04635"
