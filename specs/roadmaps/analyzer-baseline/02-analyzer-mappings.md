@@ -114,7 +114,7 @@ summary)` with `source='ANALYZER_LEGACY'`, `status='EXPORTED'`, one JSONB
 - [x] T2.11 Editor: re-point to the analyzer endpoints; keep prior selections on exclude; change summary before save; show origin per row
 - [x] T2.12 Analyzer Types page: remove Edit mappings; show read-only defaults preview from step 1's resolver against the current catalog
 - [x] T2.13 docs/analyzers/mapping-baseline-migration.md (under one page): what the changeset does, how to read the export, how to re-verify an analyzer
-- [ ] T2.14 Delete the superseded tests; green; format cold; commit; stack PR on step 1
+- [x] T2.14 (#4584; 7 Oct: no test exercises the removed shared mapping; the two site-binding Liquibase checks stay because applied changesets never change) Delete the superseded tests; green; format cold; commit; stack PR on step 1
 ```
 
 ### Verify
