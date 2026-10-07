@@ -57,6 +57,8 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testanalyte.valueholder.TestAnalyte;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -94,6 +96,8 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     private TestService testService;
     @Autowired
     private TestResultService testResultService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
     @Autowired
     private TypeOfSampleService typeOfSampleService;
     @Autowired
@@ -269,10 +273,14 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         item.setManual(false);
     }
 
-    /** As the review page derives it: the test's first active result definition. */
-    private String significantDigitsFor(AnalyzerResults staged) {
+    @Override
+    public String significantDigitsFor(AnalyzerResults staged) {
         if (staged.getTestId() == null || GenericValidator.isBlankOrNull(staged.getResult())) {
             return null;
+        }
+        if (staged.getComponentId() != null) {
+            return testResultComponentService.getMatch("id", staged.getComponentId())
+                    .map(TestResultComponent::getSignificantDigits).map(String::valueOf).orElse(null);
         }
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(staged.getTestId());
         return testResults == null || testResults.isEmpty() ? null : testResults.get(0).getSignificantDigits();
