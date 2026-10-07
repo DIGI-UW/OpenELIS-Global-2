@@ -14,6 +14,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.Query;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.Instant;
@@ -247,6 +249,12 @@ public class MicrobiologyUatScenarioServiceTest {
                 caseService, caseAnalysisService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
                 nceCategoryService, nceTypeService, isolateService, astService, analyzerService);
+
+        EntityManager entityManager = mock(EntityManager.class);
+        Query bulkUpdate = mock(Query.class);
+        when(entityManager.createQuery(anyString())).thenReturn(bulkUpdate);
+        when(bulkUpdate.setParameter(anyString(), any())).thenReturn(bulkUpdate);
+        ReflectionTestUtils.setField(service, "entityManager", entityManager);
     }
 
     @Test
