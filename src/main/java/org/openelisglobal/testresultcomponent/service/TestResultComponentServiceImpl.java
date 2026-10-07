@@ -462,13 +462,17 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         if (test == null) {
             return;
         }
-        List<TestResult> testResults = new ArrayList<>(testResultService.getActiveTestResultsByTest(testId));
+        TestResultComponent primary = findPrimaryComponent(testId);
+        // The primary's type and digits come from its own options, not from those a
+        // catalog row put on another component.
+        String primaryId = primary == null ? null : primary.getId();
+        List<TestResult> testResults = new ArrayList<>(testResultService.getActiveTestResultsByTest(testId).stream()
+                .filter(tr -> tr.getComponentId() == null || tr.getComponentId().equals(primaryId)).toList());
         testResults.sort((a, b) -> Long.compare(parseId(b.getId()), parseId(a.getId())));
         String uomId = test.getUnitOfMeasure() == null ? null : test.getUnitOfMeasure().getId();
         String resultType = latestResultType(testResults);
         Integer significantDigits = latestSignificantDigits(testResults);
 
-        TestResultComponent primary = findPrimaryComponent(testId);
         if (primary == null) {
             // Legacy created this test outside the new editor (or before the M1
             // backfill ran), so it has no component yet — create its PRIMARY.
@@ -495,17 +499,16 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
         // Legacy writes options (test_result) and ranges (result_limits) with a NULL
         // component_id; repoint those onto the PRIMARY component so the new editor,
         // which scopes both by component_id, surfaces them.
-        String primaryId = primary.getId();
         for (TestResult tr : testResults) {
             if (tr.getComponentId() == null) {
-                tr.setComponentId(primaryId);
+                tr.setComponentId(primary.getId());
                 tr.setSysUserId(sysUserId);
                 testResultService.update(tr);
             }
         }
         for (ResultLimit rl : resultLimitService.getAllResultLimitsForTest(testId)) {
             if (rl.getComponentId() == null) {
-                rl.setComponentId(primaryId);
+                rl.setComponentId(primary.getId());
                 rl.setSysUserId(sysUserId);
                 resultLimitService.update(rl);
             }
