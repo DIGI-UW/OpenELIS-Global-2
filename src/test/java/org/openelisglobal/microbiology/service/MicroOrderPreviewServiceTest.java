@@ -67,7 +67,7 @@ public class MicroOrderPreviewServiceTest {
         when(positive.getLocalizedName()).thenReturn("Positive");
         when(dictionary.getDictionaryById("901")).thenReturn(positive);
         service = new MicroOrderPreviewServiceImpl(new MicroOrderRoutingServiceImpl(cases, links, tests), tests, types,
-                users, roles, reflex, scope, dictionary, components);
+                users, roles, reflex, scope, dictionary, components, new MicroCultureSetWarningService(30));
     }
 
     @Test
@@ -185,6 +185,27 @@ public class MicroOrderPreviewServiceTest {
         assertTrue(preview.cases().isEmpty());
         assertEquals(1, preview.ordinaryTests().size());
         verifyZeroInteractions(cases, links, reflex);
+    }
+
+    @Test
+    public void previewUsesExplicitSetAssignmentsAndSameWarningRulesWithoutWrites() {
+        catalog("culture", "Blood culture", "1", true);
+        when(tests.get("culture").isCollectedInSets()).thenReturn(true);
+        when(tests.get("culture").getMicrobiologyCaseRole()).thenReturn("CULTURE");
+        var request = request("culture");
+        request.specimens.get(0).cultureSetNumber = 1;
+        var second = new MicroOrderPreviewRequestForm.Specimen();
+        second.sampleTypeId = "5";
+        second.testIds = List.of("culture");
+        second.cultureSetNumber = 2;
+        request.specimens = List.of(request.specimens.get(0), second);
+        var preview = service.preview(request, "user");
+        assertEquals(1, preview.cases().size());
+        assertEquals(2, preview.cases().get(0).bottles().size());
+        assertEquals(List.of(1, 2), preview.cases().get(0).setWarnings().stream().map(w -> w.setNumber()).toList());
+        second.cultureSetNumber = 1;
+        assertTrue(service.preview(request, "user").cases().get(0).setWarnings().isEmpty());
+        verifyZeroInteractions(cases, links);
     }
 
     private MicroOrderPreviewRequestForm request(String... ids) {

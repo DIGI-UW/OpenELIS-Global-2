@@ -176,3 +176,48 @@ it.each([
     );
   },
 );
+
+it("refreshes set counts and warnings when only a bottle assignment changes", async () => {
+  const bottle = {
+    collectedInSets: true,
+    cultureSetNumber: 1,
+    specimenType: "Blood",
+  };
+  previewMicrobiologyOrder.mockResolvedValue({
+    ...response,
+    cases: [
+      {
+        ...response.cases[0],
+        bottles: [bottle],
+        setWarnings: [
+          { setNumber: 1, code: "SINGLE_BOTTLE", intervalMinutes: 30 },
+        ],
+      },
+    ],
+  });
+  const first = [{ ...samples[0], cultureSetNumber: 1 }];
+  const rendered = render(view(first));
+  await screen.findByText("1 set, 1 bottle");
+  expect(screen.getByText("Only one bottle in this set")).toBeInTheDocument();
+  expect(previewMicrobiologyOrder).toHaveBeenLastCalledWith({
+    specimens: [
+      {
+        sampleTypeId: "5",
+        testIds: ["culture", "rpr"],
+        cultureSetNumber: 1,
+      },
+    ],
+  });
+  rendered.rerender(view([{ ...samples[0], cultureSetNumber: 2 }]));
+  await waitFor(() =>
+    expect(previewMicrobiologyOrder).toHaveBeenLastCalledWith({
+      specimens: [
+        {
+          sampleTypeId: "5",
+          testIds: ["culture", "rpr"],
+          cultureSetNumber: 2,
+        },
+      ],
+    }),
+  );
+});

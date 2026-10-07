@@ -403,7 +403,14 @@ Remaining V02c2 implementation and acceptance:
       backend and 27 frontend checks pass for this follow-up, plus five persisted
       routing tests with the expanded Spring service wiring and the frontend
       production build. These checks do not establish visual acceptance.
-      Still required: bottle set summaries, Referred and
+      The preview now accepts explicit set numbers, returns the same bottle-summary
+      shape as case detail and uses the shared warning evaluator. Counts and
+      single-bottle tags refresh when only a set assignment changes; the preview
+      remains read-only. Missing assignments remain unassigned. Fourteen backend
+      preview/HTTP/warning tests, 13 frontend tests and the production build pass
+      for this connection; these are not persisted browser parity evidence.
+      Still required: complete container/site/time capture and its pending-request
+      round trip before all set warnings can be evaluated at entry, Referred and
       Tested elsewhere handling, saved-order ownership,
       environmental site grouping, placement beside the Ordered tests table,
       and persisted browser/video comparison. AC-V2-103 remains unaccepted.
@@ -461,7 +468,8 @@ Remaining V02c2 implementation and acceptance:
       Warning validation passed 15 backend tests, 42 frontend tests and the
       frontend production build, including the exact interval boundary, a lab
       override, midnight crossing, missing details and per-set tag placement.
-      Required next: expose the warnings during shared save/preview, define and
+      Required next: complete warning presentation during shared save and all
+      collection-detail inputs in the preview, define and
       persist catalog classification for pediatric/adult container compatibility
       (do not infer it from translated display names), audit other fulfillment
       entry points, environmental presentation, final-schema retirement and

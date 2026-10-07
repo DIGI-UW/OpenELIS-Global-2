@@ -1,3 +1,4 @@
+import CultureSetSummary from "../../../microbiology/CultureSetSummary";
 import React, { useEffect, useState } from "react";
 import { useIntl } from "react-intl";
 import {
@@ -19,6 +20,10 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
       .filter((sample) => sample.sampleTypeId)
       .map((sample) => ({
         sampleTypeId: sample.sampleTypeId,
+        ...(Number.isInteger(Number(sample.cultureSetNumber)) &&
+        Number(sample.cultureSetNumber) > 0
+          ? { cultureSetNumber: Number(sample.cultureSetNumber) }
+          : {}),
         testIds: (sample.tests || []).map((test) => test.id),
       })),
   });
@@ -89,21 +94,27 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
       ) : (
         <div>
           {preview.cases.map((entry, index) => (
-            <p key={`case-${index}`}>
-              <Tag type="blue">{text("opens")}</Tag>{" "}
-              {text("case", {
-                tests: entry.testNames.join(", "),
-                unit: entry.labUnitName,
-                samples: entry.specimens
-                  .map((sample) =>
-                    text("sample", {
-                      type: sample.sampleTypeName,
-                      number: sample.index + 1,
-                    }),
-                  )
-                  .join(", "),
-              })}
-            </p>
+            <div key={`case-${index}`}>
+              <p>
+                <Tag type="blue">{text("opens")}</Tag>{" "}
+                {text("case", {
+                  tests: entry.testNames.join(", "),
+                  unit: entry.labUnitName,
+                  samples: entry.specimens
+                    .map((sample) =>
+                      text("sample", {
+                        type: sample.sampleTypeName,
+                        number: sample.index + 1,
+                      }),
+                    )
+                    .join(", "),
+                })}
+              </p>
+              <CultureSetSummary
+                specimens={entry.bottles}
+                warnings={entry.setWarnings}
+              />
+            </div>
           ))}
           {preview.ordinaryTests.map((entry) => (
             <p key={`${entry.specimenIndex}-${entry.testId}`}>

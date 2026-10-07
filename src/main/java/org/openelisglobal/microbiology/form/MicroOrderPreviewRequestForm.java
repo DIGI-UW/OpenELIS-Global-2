@@ -8,6 +8,7 @@ public class MicroOrderPreviewRequestForm {
 
     public static class Specimen {
         public String sampleTypeId;
+        public Integer cultureSetNumber;
         public List<String> testIds = new ArrayList<>();
     }
 }

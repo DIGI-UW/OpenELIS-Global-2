@@ -31,6 +31,7 @@ import org.springframework.web.server.ResponseStatusException;
 @Service
 @Transactional(readOnly = true)
 public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
+    private final MicroCultureSetWarningService setWarningService;
     private final MicroOrderRoutingService routingService;
     private final TestService testService;
     private final TypeOfSampleService sampleTypeService;
@@ -44,7 +45,8 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
     public MicroOrderPreviewServiceImpl(MicroOrderRoutingService routingService, TestService testService,
             TypeOfSampleService sampleTypeService, UserService userService, RoleService roleService,
             TestReflexService reflexService, RuleResultScope ruleScope, DictionaryService dictionaryService,
-            TestResultComponentService componentService) {
+            TestResultComponentService componentService, MicroCultureSetWarningService setWarningService) {
+        this.setWarningService = setWarningService;
         this.routingService = routingService;
         this.testService = testService;
         this.sampleTypeService = sampleTypeService;
@@ -106,10 +108,23 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
         }
         List<CaseLine> cases = routingService.previewNewOrder(selections).stream().map(group -> {
             List<Test> tests = group.testIds().stream().map(catalog::get).toList();
+            List<org.openelisglobal.microbiology.form.MicroCaseSpecimenForm> bottles = group.specimenIndexes().stream()
+                    .filter(i -> selections.get(i).tests().stream()
+                            .anyMatch(test -> test.isCollectedInSets() && group.testIds().contains(test.getId())))
+                    .map(i -> {
+                        var bottle = new org.openelisglobal.microbiology.form.MicroCaseSpecimenForm();
+                        bottle.collectedInSets = true;
+                        bottle.cultureSetNumber = request.specimens.get(i).cultureSetNumber;
+                        if (bottle.cultureSetNumber != null && bottle.cultureSetNumber < 1) {
+                            throw new IllegalArgumentException("Set number must be positive");
+                        }
+                        bottle.specimenType = sampleNames.get(i);
+                        return bottle;
+                    }).toList();
             return new CaseLine(group.key().testSectionId(), tests.get(0).getTestSection().getTestSectionName(),
                     group.specimenIndexes().stream().map(i -> new SpecimenLine(i, sampleNames.get(i))).toList(),
                     tests.stream().map(Test::getLocalizedName).toList(),
-                    tests.stream().anyMatch(Test::isCollectedInSets));
+                    tests.stream().anyMatch(Test::isCollectedInSets), bottles, setWarningService.evaluate(bottles));
         }).toList();
         if (cases.isEmpty()) {
             return new MicroOrderPreviewForm(cases, ordinary, List.of(), List.of(), List.of());
