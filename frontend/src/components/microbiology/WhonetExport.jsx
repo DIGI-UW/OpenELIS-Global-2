@@ -41,6 +41,7 @@ import {
   toWhonetRequest,
 } from "./WhonetRoutes";
 import "./WhonetExport.scss";
+import { labNow } from "../utils/labClock";
 
 const formatRequestError = (intl, error) => {
   if (error?.code === "MICROBIOLOGY_REFERENCE_INVALID") {
@@ -82,7 +83,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
   const [filterOptionsError, setFilterOptionsError] = useState("");
   const [filterOptions, setFilterOptions] = useState(emptyFilterOptions);
   const [filterOptionsLoading, setFilterOptionsLoading] = useState(false);
-  const referenceNow = useMemo(() => now || new Date(), [now]);
+  const referenceNow = useMemo(() => now || labNow(), [now]);
 
   const state = useMemo(
     () => parseWhonetSearch(location.search, referenceNow),
@@ -307,7 +308,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
     : [];
 
   return (
-    <main className="whonet-export" data-testid="whonet-export">
+    <div className="whonet-export" data-testid="whonet-export">
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/Dashboard" },
@@ -851,7 +852,7 @@ const WhonetExport = ({ service = defaultService, now }) => {
           )}
         </Column>
       </Grid>
-    </main>
+    </div>
   );
 };
 

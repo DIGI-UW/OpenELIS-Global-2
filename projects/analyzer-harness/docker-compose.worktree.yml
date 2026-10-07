@@ -14,6 +14,7 @@ services:
 
   oe.openelis.org:
     container_name: !reset null
+    image: ${DEV_STACK_PROJECT}-backend:dev
     ports: !override
       - name: http
         target: 8080
@@ -53,7 +54,7 @@ services:
 
   frontend.openelis.org:
     container_name: !reset null
-    image: ${DEV_STACK_FRONTEND_IMAGE:-itechuw/openelis-global-2-frontend-dev:develop}
+    image: ${DEV_STACK_PROJECT}-frontend:dev
 
   proxy:
     container_name: !reset null

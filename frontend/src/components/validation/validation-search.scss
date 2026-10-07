@@ -1,0 +1,72 @@
+// OGC-1418 — the one Validation search sits on one level, like Results Entry:
+// the date range keeps its two inputs side by side within its column.
+.validationSearchArea .cds--date-picker--range {
+  display: flex;
+  flex-wrap: nowrap;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.validationSearchArea .cds--date-picker--range > .cds--date-picker-container {
+  flex: 1 1 0;
+  min-width: 0;
+}
+
+// Order entry's stylesheet fixes every date input in the app at 33rem
+// (!important) under a 200px cap; inside this search the two halves of the
+// range share their column instead.
+.validationSearchArea .cds--date-picker--range .cds--date-picker__input {
+  width: 100% !important;
+  max-width: none;
+  min-width: 0;
+  // Keep the date and its placeholder clear of the calendar icon.
+  padding-inline-start: 0.75rem;
+  padding-inline-end: 2.75rem;
+  text-overflow: ellipsis;
+}
+
+// The search box carries a hint under it, so the row aligns its labels rather
+// than its bottoms; the buttons keep a spacer label to sit level with the inputs.
+.validationSearchArea.unifiedResultsPage .unifiedResultsToolbarColumn {
+  justify-content: flex-start;
+}
+
+// One row of filters and actions on desktop: the inputs share the width with
+// minimums that keep them usable, the buttons keep their natural width, and the
+// row wraps only when even those minimums no longer fit (tablet, phone).
+.validationSearchArea .validationToolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  column-gap: 0.75rem;
+  row-gap: 0.75rem;
+}
+
+.validationSearchArea .validationToolbar > .unifiedResultsToolbarColumn {
+  min-width: 0;
+}
+
+.validationSearchArea .validationToolbarSearch {
+  flex: 3 1 8rem;
+}
+
+.validationSearchArea .validationToolbarLabUnit {
+  flex: 2 1 6rem;
+}
+
+.validationSearchArea .validationToolbar > .validationToolbarDates {
+  flex: 5 1 17.5rem;
+  min-width: 17.5rem;
+}
+
+.validationSearchArea .validationToolbarPatient,
+.validationSearchArea .validationToolbarLoad {
+  flex: 0 0 auto;
+}
+
+// These buttons carry no icon, so drop the icon space Carbon reserves on the
+// right and centre the label.
+.validationSearchArea .validationToolbar .cds--btn {
+  padding-inline: 1rem;
+  justify-content: center;
+}

@@ -19,6 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class PermissionModuleServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -161,11 +162,7 @@ public class PermissionModuleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @Transactional
     public void getData_ShouldDelegateToRoleModuleService_WhenAgentIsRole() {
-        // NOTE: @Transactional keeps the Hibernate session open so that accessing
-        // lazy properties like getSystemModule().getSystemModuleName() doesn't throw
-        // LazyInitializationException.
         setPermissionsAgent("Role");
         PermissionModule module = permissionModuleService.get("4001");
         permissionModuleService.getData(module);
@@ -173,11 +170,7 @@ public class PermissionModuleServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    @Transactional
     public void getData_ShouldDelegateToSystemUserModuleService_WhenAgentIsUser() {
-        // NOTE: @Transactional keeps the Hibernate session open so that accessing
-        // lazy properties like getSystemModule().getSystemModuleName() doesn't throw
-        // LazyInitializationException.
         setPermissionsAgent("USER");
         PermissionModule module = permissionModuleService.get("2");
         permissionModuleService.getData(module);

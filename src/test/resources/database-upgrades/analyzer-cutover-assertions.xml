@@ -30,6 +30,33 @@
                 AND t.source_row_key = 'upgrade-test' AND t.mapping_state = 'BOUND'
                 AND t.test_id = (SELECT MIN(id) FROM test)
             </sqlCheck>
+            <!-- Values that are about to be dropped are exported first: 900001's
+                superseded type text, and 900003's machine id and mapping row even though
+                900003 already has a Bridge connection. -->
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM configuration_import_run WHERE source =
+                'ANALYZER_LEGACY' AND status = 'EXPORTED'
+            </sqlCheck>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzers') d
+                WHERE r.source = 'ANALYZER_LEGACY'
+                AND (d->>'id')::numeric = 900001 AND d->>'analyzer_type' = 'HEMATOLOGY'
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzers') d
+                WHERE r.source = 'ANALYZER_LEGACY'
+                AND (d->>'id')::numeric = 900003 AND d->>'machine_id' = 'legacy-fixture'
+                AND d->>'bridge_connection_id' = 'bridge-upgrade-fixture'
+            ]]></sqlCheck>
+            <sqlCheck expectedResult="1"><![CDATA[
+                SELECT COUNT(*) FROM configuration_import_run r,
+                    jsonb_array_elements(r.summary::jsonb->'analyzer_test_map') m
+                WHERE r.source = 'ANALYZER_LEGACY'
+                AND (m->>'analyzer_id')::numeric = 900003
+                AND m->>'analyzer_test_name' = 'upgrade-test'
+            ]]></sqlCheck>
             <not>
                 <tableExists tableName="analyzer_test_map" />
             </not>

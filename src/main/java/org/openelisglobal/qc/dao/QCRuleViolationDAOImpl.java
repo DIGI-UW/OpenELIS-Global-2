@@ -82,6 +82,21 @@ public class QCRuleViolationDAOImpl extends BaseDAOImpl<QCRuleViolation, String>
     }
 
     @Override
+    public List<QCRuleViolation> findByDateRange(Timestamp startDate, Timestamp endDate) throws LIMSRuntimeException {
+        try {
+            CriteriaBuilder cb = entityManager.getCriteriaBuilder();
+            CriteriaQuery<QCRuleViolation> cq = cb.createQuery(QCRuleViolation.class);
+            Root<QCRuleViolation> root = cq.from(QCRuleViolation.class);
+            cq.where(cb.greaterThanOrEqualTo(root.get("violationDateTime"), startDate),
+                    cb.lessThanOrEqualTo(root.get("violationDateTime"), endDate));
+            cq.orderBy(cb.desc(root.get("violationDateTime")));
+            return entityManager.createQuery(cq).getResultList();
+        } catch (RuntimeException e) {
+            throw new LIMSRuntimeException("Error retrieving QC violations by date range", e);
+        }
+    }
+
+    @Override
     public List<QCRuleViolation> findUnresolvedByInstrument(String instrumentId) throws LIMSRuntimeException {
         try {
             CriteriaBuilder cb = entityManager.getCriteriaBuilder();

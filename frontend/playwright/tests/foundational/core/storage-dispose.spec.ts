@@ -1,5 +1,7 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Page, Locator } from "@playwright/test";
+import { StorageManagement } from "../../../fixtures/storage-management";
+import { chooseCarbonOption } from "../../../helpers/carbon-select";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
@@ -50,13 +52,15 @@ async function pickDisposableSample(
 
 test.describe("Storage Dispose", () => {
   test("dispose sample item from overflow menu", async ({ page }) => {
-    await test.step("load Sample Items listing", async () => {
+    const storage = new StorageManagement(page);
+
+    await test.step("load the Sample Items tab", async () => {
       await page.goto("/Storage/sample-items", {
         waitUntil: "domcontentloaded",
       });
-      await expect(
-        page.getByRole("heading", { name: "Sample Items", exact: true }),
-      ).toBeVisible();
+      // Sample Items is a tab of the Storage Management container now.
+      await storage.expectContainer();
+      await storage.expectTabSelected("Sample Items");
     });
 
     const { row: sampleRow, sampleItemId } = await pickDisposableSample(page);
@@ -72,15 +76,14 @@ test.describe("Storage Dispose", () => {
     const dialog = page.locator('[data-testid="dispose-modal"]');
 
     await test.step("fill disposal reason and method", async () => {
-      const reasonScope = dialog.locator("#disposal-reason");
-      await reasonScope.locator("button.cds--list-box__field").click();
-      await reasonScope
-        .getByRole("option", { name: /testing complete/i })
-        .click();
-
-      const methodScope = dialog.locator("#disposal-method");
-      await methodScope.locator("button.cds--list-box__field").click();
-      await methodScope.getByRole("option", { name: /incineration/i }).click();
+      await chooseCarbonOption(
+        dialog.getByRole("combobox", { name: "Disposal Reason" }),
+        /testing complete/i,
+      );
+      await chooseCarbonOption(
+        dialog.getByRole("combobox", { name: "Disposal Method" }),
+        /incineration/i,
+      );
     });
 
     await test.step("acknowledge confirmation and submit", async () => {

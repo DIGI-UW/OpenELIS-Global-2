@@ -35,6 +35,7 @@ import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.testmethod.service.TestMethodService.TestMethodDto;
 import org.openelisglobal.typeofsample.service.TypeOfSamplePanelService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
+import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 
 @RunWith(MockitoJUnitRunner.class)
 public class SampleEntryTestsForTypeProviderRestControllerTest {
@@ -64,6 +65,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     @Mock
     private MicrobiologyReferenceService microbiologyReferenceService;
     @Mock
+    private TypeOfSampleTestService typeOfSampleTestService;
+    @Mock
     private HttpServletRequest request;
 
     private SampleEntryTestsForTypeProviderRestController controller;
@@ -72,7 +75,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
     public void setUp() {
         controller = new SampleEntryTestsForTypeProviderRestController(panelService, testSectionService,
                 samplePanelService, panelItemService, typeOfSampleService, userService, roleService, programService,
-                testMethodService, testQcThresholdDAO, testService, microbiologyReferenceService);
+                testMethodService, testQcThresholdDAO, testService, microbiologyReferenceService,
+                typeOfSampleTestService);
         UserSessionData userSessionData = new UserSessionData();
         userSessionData.setSytemUserId(17);
         when(request.getAttribute(IActionConstants.USER_SESSION_DATA)).thenReturn(userSessionData);
@@ -95,6 +99,47 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         assertEquals("8", result.get(0).getId());
         assertEquals("Microbiology", result.get(0).getValue());
         assertEquals("MICROBIOLOGY", result.get(0).getCode());
+    }
+
+    /**
+     * OGC-781 FR-6: the picker never offers a deactivated program, and with the
+     * order's domain given it offers only that domain's programs.
+     */
+    @Test
+    public void userProgramsSkipDeactivatedProgramsAndFilterByOrderDomain() throws Exception {
+        Program clinical = program("8", "MICROBIOLOGY", "CLINICAL", "Y");
+        Program retiredEnvironmental = program("9", "OLD_WATER", "ENVIRONMENTAL", "N");
+        Program environmental = program("10", "WATER", "ENVIRONMENTAL", "Y");
+        when(userService.getUserPrograms("17", Constants.ROLE_RECEPTION))
+                .thenReturn(List.of(new IdValuePair("8", "Microbiology"), new IdValuePair("9", "Old water"),
+                        new IdValuePair("10", "Water")));
+        when(programService.get("8")).thenReturn(clinical);
+        when(programService.get("9")).thenReturn(retiredEnvironmental);
+        when(programService.get("10")).thenReturn(environmental);
+
+        List<SampleEntryTestsForTypeProviderRestController.ProgramOption> anyDomain = controller
+                .getUserSPrograms(request, null);
+        assertEquals(List.of("8", "10"), anyDomain.stream().map(option -> option.getId()).toList());
+
+        List<SampleEntryTestsForTypeProviderRestController.ProgramOption> environmentalOnly = controller
+                .getUserSPrograms(request, null, "ENVIRONMENTAL");
+        assertEquals(1, environmentalOnly.size());
+        assertEquals("10", environmentalOnly.get(0).getId());
+        assertEquals("ENVIRONMENTAL", environmentalOnly.get(0).getDomain());
+
+        List<SampleEntryTestsForTypeProviderRestController.ProgramOption> legacyCode = controller
+                .getUserSPrograms(request, null, "E");
+        assertEquals(List.of("10"), legacyCode.stream().map(option -> option.getId()).toList());
+    }
+
+    private static Program program(String id, String code, String domain, String isActive) {
+        Program program = new Program();
+        program.setId(id);
+        program.setCode(code);
+        program.setProgramName(code);
+        program.setDomain(domain);
+        program.setIsActive(isActive);
+        return program;
     }
 
     @Test
@@ -133,8 +178,8 @@ public class SampleEntryTestsForTypeProviderRestControllerTest {
         when(microbiologyReferenceService.getActiveCultureSetupForMethod("7", MicroWorkflowType.BACTERIOLOGY))
                 .thenReturn(setup);
 
-        SampleEntryTestsForTypeProviderRestController.SampleEntryTests result = controller.processRequest(request,
-                null);
+        SampleEntryTestsForTypeProviderRestController.SampleEntryTests result = (SampleEntryTestsForTypeProviderRestController.SampleEntryTests) controller
+                .processRequest(request, null).getBody();
 
         assertEquals("5", result.getSampleTypeId());
         assertEquals("BACTERIOLOGY", result.getTests().get(0).getCultureWorkflowType());

@@ -5,14 +5,14 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 public class DashboardSummaryDTO {
     private int totalOrders;
-    private double complianceRate;
+    private Double complianceRate;
     private int totalExceedances;
     private int sitesMonitored;
     private TrendDTO trend;
 
     public static class TrendDTO {
         private int totalOrders;
-        private double complianceRate;
+        private Double complianceRate;
         private int totalExceedances;
         private int sitesMonitored;
 
@@ -24,11 +24,11 @@ public class DashboardSummaryDTO {
             totalOrders = v;
         }
 
-        public double getComplianceRate() {
+        public Double getComplianceRate() {
             return complianceRate;
         }
 
-        public void setComplianceRate(double v) {
+        public void setComplianceRate(Double v) {
             complianceRate = v;
         }
 
@@ -57,11 +57,11 @@ public class DashboardSummaryDTO {
         totalOrders = v;
     }
 
-    public double getComplianceRate() {
+    public Double getComplianceRate() {
         return complianceRate;
     }
 
-    public void setComplianceRate(double v) {
+    public void setComplianceRate(Double v) {
         complianceRate = v;
     }
 

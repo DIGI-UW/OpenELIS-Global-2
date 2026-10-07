@@ -27,6 +27,7 @@ import {
 } from "../../common/CustomNotification";
 import { FormattedMessage, useIntl } from "react-intl";
 import "./ReflexStyles.css";
+import "../ruleBuilderAccordion.css";
 
 var defaultTestResultList = {};
 var defaultSampleTests = { conditions: {}, actions: {} };
@@ -628,9 +629,9 @@ function ReflexRule() {
                               toggled={!!rule.active}
                               aria-label="toggle button"
                               id={index + "_toggle"}
-                              labelText={
-                                <FormattedMessage id="rulebuilder.label.toggleRule" />
-                              }
+                              labelText={intl.formatMessage({
+                                id: "rulebuilder.label.toggleRule",
+                              })}
                               onToggle={(e) => toggleRule(e, index)}
                               onClick={handleClick}
                             />
@@ -653,7 +654,7 @@ function ReflexRule() {
                     </Column>
                   </Grid>
                   <div style={{ marginTop: "1rem" }}>
-                    <Accordion>
+                    <Accordion className="ruleBuilderAccordion">
                       <AccordionItem
                         title={
                           <FormattedMessage

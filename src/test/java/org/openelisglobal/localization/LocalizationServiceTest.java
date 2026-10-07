@@ -14,7 +14,9 @@ import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.service.LocalizationServiceImpl;
 import org.openelisglobal.localization.valueholder.Localization;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class LocalizationServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired
@@ -92,10 +94,15 @@ public class LocalizationServiceTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void getCurrentLocale_shouldReturnCorrectLocale() {
-        Locale.setDefault(Locale.US);
-        Locale currentLocale = localizationService.getCurrentLocale();
-        assertNotNull("Current locale should not be null", currentLocale);
-        assertEquals("Locale should be en_US", Locale.US, currentLocale);
+        Locale previous = Locale.getDefault();
+        try {
+            Locale.setDefault(Locale.US);
+            Locale currentLocale = localizationService.getCurrentLocale();
+            assertNotNull("Current locale should not be null", currentLocale);
+            assertEquals("Locale should be en_US", Locale.US, currentLocale);
+        } finally {
+            Locale.setDefault(previous);
+        }
     }
 
     @Test

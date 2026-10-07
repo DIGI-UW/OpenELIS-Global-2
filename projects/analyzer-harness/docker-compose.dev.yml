@@ -1,10 +1,17 @@
 services:
+  harness-catalog-init:
+    volumes:
+      - ./config-templates:/templates:ro
+
   certs:
     image: itechuw/certgen:main
     platform: linux/amd64
     restart: "no"
 
   db.openelis.org:
+    networks:
+      default:
+        aliases: [db]
     image: postgres:14.4
     restart: always
     env_file:
@@ -14,13 +21,11 @@ services:
       - ./volume/database/dbInit:/docker-entrypoint-initdb.d
 
   oe.openelis.org:
-    image: itechuw/openelis-global-2-dev:develop
-    # Local build: `docker compose build oe.openelis.org` (or `reset-env.sh --build`)
-    # rebuilds this image from the branch's Dockerfile.dev so local source drives the
-    # webapp, overriding the pulled :develop image tag.
+    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-backend:dev
     build:
       context: ../..
       dockerfile: Dockerfile.dev
+      target: dev-runtime
     depends_on:
       db.openelis.org:
         condition: service_healthy
@@ -39,16 +44,20 @@ services:
       - ../../volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
       - ./volume/programs:/var/lib/openelis-global/programs
       - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+      - reporting-data:/var/lib/openelis-global/reporting
       - ./volume/logs/tomcatLogs:/usr/local/tomcat/logs
       - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
       - ./volume/analyzer/analyzer-test-map.csv:/var/lib/openelis-global/analyzer/analyzer-test-map.csv
-      - ./volume/configuration:/var/lib/openelis-global/configuration
+      - configuration-data:/var/lib/openelis-global/configuration
       - ./volume/menu/menu_config.json:/var/lib/openelis-global/menu/menu_config.json
     secrets:
       - source: datasource.password
       - source: common.properties
 
   fhir.openelis.org:
+    networks:
+      default:
+        aliases: [fhir]
     image: hapiproject/hapi:v6.6.0-tomcat
     depends_on:
       db.openelis.org:
@@ -58,27 +67,36 @@ services:
     restart: always
     environment:
       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+      CATALINA_OPTS: >-
+        -Dhapi.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore}
+        -Dhapi.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
+        -Dhapi.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore}
+        -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       TZ: Africa/Nairobi
       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
-                  -Djavax.net.ssl.trustStorePassword=tspass
-                  -Djavax.net.ssl.trustStoreType=pkcs12
-                  -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
-                  -Djavax.net.ssl.keyStorePassword=kspass
-                  -Djavax.net.ssl.keyStoreType=pkcs12"
+        -Djavax.net.ssl.trustStorePassword=tspass
+        -Djavax.net.ssl.trustStoreType=pkcs12
+        -Djavax.net.ssl.keyStore=/etc/openelis-global/keystore
+        -Djavax.net.ssl.keyStorePassword=kspass
+        -Djavax.net.ssl.keyStoreType=pkcs12"
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - ../../tomcat/hapi_server.xml:/opt/bitnami/tomcat/conf/server.xml
     secrets:
       - source: hapi_application.yaml
     healthcheck:
-      test: ["CMD-SHELL", "pgrep -f org.apache.catalina.startup.Bootstrap >/dev/null"]
+      test:
+        [
+          "CMD-SHELL",
+          "pgrep -f org.apache.catalina.startup.Bootstrap >/dev/null",
+        ]
       interval: 15s
       timeout: 10s
       retries: 20
       start_period: 60s
 
   frontend.openelis.org:
-    image: itechuw/openelis-global-2-frontend-dev:develop
+    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-frontend:dev
     # Local-dev default: `target: dev` selects the Vite dev-server stage
     # of the single multi-stage Dockerfile — HMR + unminified React for
     # legible errors during iteration. For CI-parity (ship-artifact) mode,
@@ -93,6 +111,7 @@ services:
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public
+      - ../../volume/translation:/app/public/translation
 
   proxy:
     image: nginx:1.27-alpine

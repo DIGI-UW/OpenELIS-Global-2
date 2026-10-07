@@ -184,6 +184,30 @@ describe("harness demo dependency guard", () => {
     expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([]);
   });
 
+  test("allows canonical video pacing but still rejects backend access in that helper", () => {
+    const pacingHelper = fs.readFileSync(
+      path.resolve("playwright/helpers/video-pause.ts"),
+      "utf8",
+    );
+    const frontendRoot = createFrontend({
+      "playwright/tests/demo/harness/story.spec.ts":
+        "import { videoPause } from '../../../helpers/video-pause'; await videoPause(page, 1000, testInfo);",
+      "playwright/helpers/video-pause.ts": pacingHelper,
+    });
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([]);
+
+    fs.appendFileSync(
+      path.join(frontendRoot, "playwright/helpers/video-pause.ts"),
+      "\nawait page.request.post('/simulate');",
+    );
+    expect(findHarnessDemoDependencyViolations({ frontendRoot })).toEqual([
+      expect.objectContaining({
+        dependencyPath: "playwright/helpers/video-pause.ts",
+        messageId: "backendRequest",
+      }),
+    ]);
+  });
+
   test("rejects arbitrary waits and forced actions in supported helpers", () => {
     const frontendRoot = createFrontend({
       "playwright/tests/demo/harness/story.spec.ts":

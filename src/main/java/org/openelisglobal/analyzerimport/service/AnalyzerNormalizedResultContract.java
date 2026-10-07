@@ -87,7 +87,7 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 sourceProtocol, results);
     }
 
-    private static Result parseResult(Observation observation, Map<String, String> specimens, String deviceReference,
+    static Result parseResult(Observation observation, Map<String, String> specimens, String deviceReference,
             FhirContext fhirContext) {
         if (!observation.hasDevice() || !deviceReference.equals(observation.getDevice().getReference())) {
             throw new IllegalArgumentException("Every analyzer Observation must reference the bundle Device");

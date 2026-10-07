@@ -123,8 +123,8 @@ export default function GenericSampleOrderEdit({
       });
     }
     if (showUom) {
-      getFromOpenElisServer("/rest/UomCreate", (res) => {
-        setUoms(res.existingUomList || []);
+      getFromOpenElisServer("/rest/uom", (res) => {
+        setUoms(Array.isArray(res) ? res : []);
       });
     }
     if (showNotebookSelection) {
@@ -317,7 +317,13 @@ export default function GenericSampleOrderEdit({
             addNotification({
               kind: NotificationKinds.success,
               title: intl.formatMessage({ id: "genericSample.edit.success" }),
-              message: `Accession Number: ${data.accessionNumber || searchAccessionNumber}`,
+              message: intl.formatMessage(
+                { id: "genericSample.edit.success.accession" },
+                {
+                  accessionNumber:
+                    data.accessionNumber || searchAccessionNumber,
+                },
+              ),
             });
           }
           // Optionally reload the data
@@ -634,7 +640,9 @@ export default function GenericSampleOrderEdit({
                       id: n.id,
                       value: n.title,
                     }))}
-                    placeholder="Select a notebook (optional)"
+                    placeholder={intl.formatMessage({
+                      id: "notebook.select.optional",
+                    })}
                   />
                 </Column>
               </Grid>

@@ -61,14 +61,14 @@ async function fillMicrobiologyDetails(page: Page) {
 }
 
 async function saveEntryAndOpenCollect(page: Page) {
-  const saveAndNext = page.getByRole("button", { name: "Save & Next" });
+  const saveAndNext = page.getByRole("button", { name: "Save and next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
   await saveAndNext.click();
   await expect(page).toHaveURL(/\/order\/clinical\/collect$/i, {
     timeout: LONG_TIMEOUT,
   });
   await expect(
-    page.getByRole("heading", { name: "Collect", exact: true }),
+    page.getByRole("heading", { name: "Prepare Samples", exact: true }),
   ).toBeVisible();
   await expect(
     page.getByTestId("sample-collection-card-0").getByLabel("Sample Type"),
@@ -102,10 +102,15 @@ async function collectAndRoute(page: Page) {
       displayedCollectionDate = displayedDate;
     }
   }
-  const saveAndNext = page.getByRole("button", { name: "Save & Next" });
+  // Prepare Samples is complete once every sample has a collection date and
+  // time; the collector is optional (OGC-1419) and Lab performed sampling is
+  // not offered on clinical samples (OGC-1424).
+  const saveAndNext = page.getByRole("button", { name: "Save and next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
   await saveAndNext.click();
-  await expect(page).toHaveURL(/\/order\/clinical\/label$/i, {
+  // Sample check when the laboratory uses it, else order entry is finished
+  // and the dashboard says so.
+  await expect(page).toHaveURL(/\/order\/clinical(\/qa|\?done=)/i, {
     timeout: LONG_TIMEOUT,
   });
   return displayedCollectionDate;
@@ -269,7 +274,7 @@ test.describe("microbiology order entry on the supported workflow", () => {
     await page.getByRole("button", { name: "Edit", exact: true }).click();
     await expect(admissionDate).toBeEnabled();
 
-    await page.getByTestId("order-step-collect").click();
+    await page.getByTestId("order-step-prepare").click();
     await expectOrderStepUrl(page, "collect", labNumber);
     const collectionDate = page
       .getByTestId("sample-collection-card-0")
@@ -279,7 +284,7 @@ test.describe("microbiology order entry on the supported workflow", () => {
       page.getByText("Collection date cannot be before date of admission."),
     ).toBeVisible();
     await expect(
-      page.getByRole("button", { name: "Save & Next" }),
+      page.getByRole("button", { name: "Save and next" }),
     ).toBeDisabled();
 
     const displayedCollectionDate = await collectAndRoute(page);

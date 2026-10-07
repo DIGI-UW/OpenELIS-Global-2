@@ -1,6 +1,7 @@
 package org.openelisglobal.program.controller.cytology;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpSession;
 import java.sql.Timestamp;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
@@ -8,6 +9,8 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.rest.BaseRestController;
+import org.openelisglobal.common.rest.util.DashboardPage;
+import org.openelisglobal.common.rest.util.DashboardPaging;
 import org.openelisglobal.program.bean.CytologyDashBoardCount;
 import org.openelisglobal.program.service.cytology.CytologyDisplayService;
 import org.openelisglobal.program.service.cytology.CytologySampleService;
@@ -38,13 +41,38 @@ public class CytologyController extends BaseRestController {
     @Autowired
     private SystemUserService systemUserService;
 
+    /**
+     * Ids of the cases the last search found, in pages of paging.results.pageSize.
+     */
+    private final DashboardPaging<Integer> dashboardPaging = new DashboardPaging<>("cytologyDashboard");
+
+    /**
+     * One page of the dashboard. A request with {@code page} re-slices the list the
+     * session already holds; any other request runs the search again and answers
+     * with its first page. Only the page's rows are built.
+     */
     @GetMapping(value = "/rest/cytology/dashboard", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
-    public List<CytologyDisplayItem> getFilteredCytologyEntries(@RequestParam(required = false) String searchTerm,
-            @RequestParam CytologyStatus... statuses) {
-
-        return cytologySampleService.searchWithStatusAndTerm(Arrays.asList(statuses), searchTerm).stream()
-                .map(e -> cytologyDisplayService.convertToDisplayItem(e.getId())).collect(Collectors.toList());
+    public DashboardPage<CytologyDisplayItem> getFilteredCytologyEntries(
+            @RequestParam(required = false) String searchTerm,
+            @RequestParam(required = false) CytologyStatus[] statuses, @RequestParam(required = false) Integer page,
+            HttpServletRequest request) {
+        HttpSession session = request.getSession();
+        List<Integer> pageIds;
+        int pageNumber;
+        if (page != null) {
+            pageNumber = Math.max(page, 1);
+            pageIds = dashboardPaging.page(session, pageNumber);
+        } else {
+            pageNumber = 1;
+            List<CytologyStatus> requested = statuses == null ? List.of() : Arrays.asList(statuses);
+            pageIds = dashboardPaging.cache(session, cytologySampleService
+                    .searchWithStatusAndTerm(requested, searchTerm).stream().map(e -> e.getId()).toList());
+        }
+        List<CytologyDisplayItem> items = pageIds.stream().map(cytologyDisplayService::convertToDisplayItem)
+                .collect(Collectors.toList());
+        return new DashboardPage<>(items, dashboardPaging.pagingBean(session, pageNumber),
+                dashboardPaging.totalItems(session));
     }
 
     @GetMapping(value = "/rest/cytology/dashboard/count", produces = MediaType.APPLICATION_JSON_VALUE)

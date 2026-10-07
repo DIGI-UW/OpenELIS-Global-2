@@ -11,6 +11,7 @@ import java.util.Comparator;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -30,6 +31,8 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.resultlimit.valueholder.ComplianceEvaluation;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection;
+import org.openelisglobal.resultlimit.valueholder.ResultLimitSelection.RangeNotAppliedReason;
 import org.openelisglobal.resultlimits.dao.ResultLimitDAO;
 import org.openelisglobal.resultlimits.valueholder.ResultLimit;
 import org.openelisglobal.sample.service.SampleComplianceStandardService;
@@ -37,6 +40,7 @@ import org.openelisglobal.sample.valueholder.SampleComplianceStandard;
 import org.openelisglobal.samplehuman.service.SampleHumanService;
 import org.openelisglobal.siteinformation.service.SiteInformationService;
 import org.openelisglobal.siteinformation.valueholder.SiteInformation;
+import org.openelisglobal.test.service.TestServiceImpl;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
@@ -111,6 +115,18 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<ResultLimit> getNumericRangesForTest(String testId) {
+        List<ResultLimit> numeric = new ArrayList<>();
+        for (ResultLimit limit : getBaseObjectDAO().getAllResultLimitsForTest(testId)) {
+            if (NUMERIC_RESULT_TYPE_ID.equals(limit.getResultTypeId())) {
+                numeric.add(limit);
+            }
+        }
+        return numeric;
+    }
+
+    @Override
     @Transactional
     public void saveRangesForTest(String testId, List<ResultLimit> desired, String sysUserId) {
         // The Ranges editor only manages NUMERIC reference ranges. Dictionary /
@@ -136,9 +152,8 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
                 // resolve it here rather than forcing callers to know type ids.
                 target.setResultTypeId(NUMERIC_RESULT_TYPE_ID);
             }
-            // Copy only the editor-managed fields. Reporting range (per-Method) and
-            // the dictionary normal are NOT edited here, so leave the managed row's
-            // existing values intact (a new row keeps its ±Infinity defaults).
+            // Copy only the editor-managed fields. The dictionary normal is not edited
+            // here, so the managed row keeps its existing value.
             target.setComponentId(incoming.getComponentId());
             target.setSampleTypeId(incoming.getSampleTypeId());
             target.setGender(incoming.getGender());
@@ -150,6 +165,8 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
             target.setHighCritical(incoming.getHighCritical());
             target.setLowValid(incoming.getLowValid());
             target.setHighValid(incoming.getHighValid());
+            target.setLowReportingRange(incoming.getLowReportingRange());
+            target.setHighReportingRange(incoming.getHighReportingRange());
             target.setSysUserId(sysUserId);
             if (target.getId() != null) {
                 update(target);
@@ -182,7 +199,7 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForTestAndPatient(String testId, Patient patient, String sampleTypeId) {
-        return selectForPatient(scopeToSampleType(getResultLimits(testId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimits(testId), sampleTypeId, patient);
     }
 
     @Override
@@ -197,94 +214,150 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         if (GenericValidator.isBlankOrNull(componentId)) {
             return null;
         }
-        return selectForPatient(scopeToSampleType(getResultLimitsByComponentId(componentId), sampleTypeId), patient);
+        return selectWithSpecimenPrecedence(getResultLimitsByComponentId(componentId), sampleTypeId, patient);
     }
 
     /**
-     * OGC-1145 Phase 2 — specimen precedence over a limit pool: rows scoped to the
-     * given sample type win; otherwise the shared (null-scope) rows apply. Without
-     * a specimen in context, shared rows are preferred so an override for one
-     * specimen never leaks into another's evaluation. The full pool is the last
-     * resort (legacy data where every row predates scoping).
+     * OGC-1145 Phase 2 — specimen precedence over a limit pool: a row scoped to the
+     * given sample type wins for the patients it matches, and the shared
+     * (null-scope) rows back every patient the override does not cover. An override
+     * for Female adults on one specimen therefore leaves Male and paediatric
+     * patients on that specimen with the shared ranges, which is what the range
+     * coverage check assumes; selecting from the override rows alone left them with
+     * no range at all. Without a specimen in context, shared rows are preferred so
+     * an override for one specimen never leaks into another's evaluation. The full
+     * pool is the last resort only without a specimen in context (legacy data where
+     * every row predates scoping); with one, a specimen that has neither its own
+     * nor a shared range has none, rather than borrowing another specimen's.
      */
-    private static List<ResultLimit> scopeToSampleType(List<ResultLimit> pool, String sampleTypeId) {
+    private ResultLimit selectWithSpecimenPrecedence(List<ResultLimit> pool, String sampleTypeId, Patient patient) {
+        return selectWithSpecimenPrecedenceAndReason(pool, sampleTypeId, patient).getResultLimit();
+    }
+
+    private ResultLimitSelection selectWithSpecimenPrecedenceAndReason(List<ResultLimit> pool, String sampleTypeId,
+            Patient patient) {
         if (pool == null || pool.isEmpty()) {
-            return pool;
-        }
-        if (!GenericValidator.isBlankOrNull(sampleTypeId)) {
-            List<ResultLimit> scoped = new ArrayList<>();
-            for (ResultLimit limit : pool) {
-                if (sampleTypeId.equals(limit.getSampleTypeId())) {
-                    scoped.add(limit);
-                }
-            }
-            if (!scoped.isEmpty()) {
-                return scoped;
-            }
+            return ResultLimitSelection.of(null);
         }
         List<ResultLimit> shared = new ArrayList<>();
+        List<ResultLimit> scoped = new ArrayList<>();
         for (ResultLimit limit : pool) {
             if (GenericValidator.isBlankOrNull(limit.getSampleTypeId())) {
                 shared.add(limit);
+            } else if (sampleTypeId != null && sampleTypeId.equals(limit.getSampleTypeId())) {
+                scoped.add(limit);
             }
         }
-        return shared.isEmpty() ? pool : shared;
+        ResultLimitSelection override = null;
+        if (!scoped.isEmpty()) {
+            override = selectForPatientWithReason(scoped, patient);
+            if (override.hasResultLimit() || shared.isEmpty()) {
+                return override;
+            }
+        }
+        if (shared.isEmpty() && sampleTypeId != null) {
+            return ResultLimitSelection.of(null);
+        }
+        ResultLimitSelection fallback = selectForPatientWithReason(shared.isEmpty() ? new ArrayList<>(pool) : shared,
+                patient);
+        return override == null ? fallback : fallback.combinedWith(override);
     }
 
     /** Pick the best-matching limit from a pool for the patient's age/gender. */
     private ResultLimit selectForPatient(List<ResultLimit> resultLimits, Patient patient) {
+        return selectForPatientWithReason(resultLimits, patient).getResultLimit();
+    }
+
+    /**
+     * Selects from a pool for the patient. When the patient's sex or birth date is
+     * missing only a range that does not depend on the missing value is used, never
+     * a range borrowed from one sex or one age band. When nothing applies and a
+     * range would have applied had the value been recorded, the selection carries
+     * that reason so it can be shown on the result.
+     */
+    private ResultLimitSelection selectForPatientWithReason(List<ResultLimit> resultLimits, Patient patient) {
         if (resultLimits.isEmpty()) {
-            return null;
-        } else if (patient == null
-                || patient.getBirthDate() == null && GenericValidator.isBlankOrNull(patient.getGender())) {
-            return defaultResultLimit(resultLimits);
-        } else if (GenericValidator.isBlankOrNull(patient.getGender())) {
-            return ageBasedResultLimit(resultLimits, patient);
-        } else if (patient.getBirthDate() == null) {
-            return genderBasedResultLimit(resultLimits, patient);
-        } else {
-            return ageAndGenderBasedResultLimit(resultLimits, patient);
+            return ResultLimitSelection.of(null);
         }
+        if (patient == null) {
+            return ResultLimitSelection.of(defaultResultLimit(resultLimits));
+        }
+        boolean sexMissing = GenericValidator.isBlankOrNull(patient.getGender());
+        boolean ageMissing = patient.getBirthDate() == null;
+        if (!sexMissing && !ageMissing) {
+            return ResultLimitSelection.of(ageAndGenderBasedResultLimit(resultLimits, patient));
+        }
+        ResultLimit limit = sexMissing && ageMissing ? neutralResultLimit(resultLimits)
+                : sexMissing ? sexNeutralResultLimit(resultLimits, patient)
+                        : ageNeutralResultLimit(resultLimits, patient);
+        if (limit != null) {
+            return ResultLimitSelection.of(limit);
+        }
+        boolean sexMattered = sexMissing && anyRangeNeedsSex(resultLimits, patient);
+        boolean ageMattered = ageMissing && anyRangeNeedsAge(resultLimits, patient);
+        return new ResultLimitSelection(new ResultLimit(), RangeNotAppliedReason.of(sexMattered, ageMattered));
     }
 
     private ResultLimit defaultResultLimit(List<ResultLimit> resultLimits) {
+        ResultLimit limit = neutralResultLimit(resultLimits);
+        return limit == null ? new ResultLimit() : limit;
+    }
 
+    private ResultLimit neutralResultLimit(List<ResultLimit> resultLimits) {
         for (ResultLimit limit : resultLimits) {
             if (GenericValidator.isBlankOrNull(limit.getGender()) && limit.ageLimitsAreDefault()) {
                 return limit;
             }
         }
-        return new ResultLimit();
+        return null;
     }
 
-    private ResultLimit ageBasedResultLimit(List<ResultLimit> resultLimits, Patient patient) {
-
-        ResultLimit resultLimit = null;
-
-        // First we look for a limit with no gender
+    /**
+     * Sex unknown, age known: a sex-neutral range for the age, else for any age.
+     */
+    private ResultLimit sexNeutralResultLimit(List<ResultLimit> resultLimits, Patient patient) {
         for (ResultLimit limit : resultLimits) {
             if (GenericValidator.isBlankOrNull(limit.getGender()) && !limit.ageLimitsAreDefault()
-                    && getCurrPatientAge(patient) >= limit.getMinAge()
-                    && getCurrPatientAge(patient) <= limit.getMaxAge()) {
-
-                resultLimit = limit;
-                break;
+                    && patientInAgeRange(patient, limit)) {
+                return limit;
             }
         }
+        return neutralResultLimit(resultLimits);
+    }
 
-        // if none is found then drop the no gender requirement
-        if (resultLimit == null) {
-            for (ResultLimit limit : resultLimits) {
-                if (!limit.ageLimitsAreDefault() && getCurrPatientAge(patient) >= limit.getMinAge()
-                        && getCurrPatientAge(patient) <= limit.getMaxAge()) {
-
-                    resultLimit = limit;
-                    break;
-                }
+    /**
+     * Age unknown, sex known: an any-age range for the sex, else for either sex.
+     */
+    private ResultLimit ageNeutralResultLimit(List<ResultLimit> resultLimits, Patient patient) {
+        for (ResultLimit limit : resultLimits) {
+            if (limit.ageLimitsAreDefault() && patient.getGender().equals(limit.getGender())) {
+                return limit;
             }
         }
+        return neutralResultLimit(resultLimits);
+    }
 
-        return resultLimit == null ? defaultResultLimit(resultLimits) : resultLimit;
+    /** A sex-specific range that would match the patient on age (or any age). */
+    private boolean anyRangeNeedsSex(List<ResultLimit> resultLimits, Patient patient) {
+        for (ResultLimit limit : resultLimits) {
+            if (!GenericValidator.isBlankOrNull(limit.getGender()) && (patient.getBirthDate() == null
+                    || limit.ageLimitsAreDefault() || patientInAgeRange(patient, limit))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /** An age-banded range that would match the patient on sex (or either sex). */
+    private boolean anyRangeNeedsAge(List<ResultLimit> resultLimits, Patient patient) {
+        for (ResultLimit limit : resultLimits) {
+            if (!limit.ageLimitsAreDefault() && (GenericValidator.isBlankOrNull(patient.getGender())
+                    || GenericValidator.isBlankOrNull(limit.getGender())
+                    || patient.getGender().equals(limit.getGender()))) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private ResultLimit genderBasedResultLimit(List<ResultLimit> resultLimits, Patient patient) {
@@ -385,15 +458,41 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
         }
 
         if (high == Float.POSITIVE_INFINITY) {
-            return "> " + StringUtil.doubleWithSignificantDigits(low, significantDigits);
+            return "> " + StringUtil.doubleWithSignificantDigits(low, rangeDigits(significantDigits, low));
         }
 
         if (low == Float.NEGATIVE_INFINITY) {
-            return "< " + StringUtil.doubleWithSignificantDigits(high, significantDigits);
+            return "< " + StringUtil.doubleWithSignificantDigits(high, rangeDigits(significantDigits, high));
         }
 
-        return StringUtil.doubleWithSignificantDigits(low, significantDigits) + separator
-                + StringUtil.doubleWithSignificantDigits(high, significantDigits);
+        String digits = rangeDigits(significantDigits, low, high);
+        return StringUtil.doubleWithSignificantDigits(low, digits) + separator
+                + StringUtil.doubleWithSignificantDigits(high, digits);
+    }
+
+    /**
+     * The test's decimal places, widened to what the limits themselves need, so a
+     * range of 0.7 to 1.1 on a test set to whole numbers reads 0.7 - 1.1 rather
+     * than 1 - 1. At most four places are added for a limit stored inexactly.
+     */
+    static String rangeDigits(String significantDigits, double... limits) {
+        if (GenericValidator.isBlankOrNull(significantDigits) || significantDigits.equals("-1")) {
+            return significantDigits;
+        }
+        int digits;
+        try {
+            digits = Integer.parseInt(significantDigits.trim());
+        } catch (NumberFormatException e) {
+            return significantDigits;
+        }
+        for (double limit : limits) {
+            if (Double.isInfinite(limit) || Double.isNaN(limit)) {
+                continue;
+            }
+            int needed = Math.max(0, new java.math.BigDecimal(Double.toString(limit)).stripTrailingZeros().scale());
+            digits = Math.max(digits, Math.min(needed, 4));
+        }
+        return String.valueOf(digits);
     }
 
     @Override
@@ -615,19 +714,49 @@ public class ResultLimitServiceImpl extends AuditableBaseObjectServiceImpl<Resul
     @Override
     @Transactional(readOnly = true)
     public ResultLimit getResultLimitForResult(Analysis analysis, Result result, Patient patient, String componentId) {
+        return selectResultLimitForResult(analysis, result, patient, componentId).getResultLimit();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ResultLimitSelection selectResultLimitForResult(Analysis analysis, Result result, Patient patient,
+            String componentId) {
         String sampleTypeId = analysis == null || analysis.getSampleItem() == null ? null
                 : analysis.getSampleItem().getTypeOfSampleId();
         String testId = analysis == null || analysis.getTest() == null ? null : analysis.getTest().getId();
+        return selectForTest(testId, result, componentId, sampleTypeId, patient);
+    }
+
+    private ResultLimitSelection selectForTest(String testId, Result result, String componentId, String sampleTypeId,
+            Patient patient) {
         if (testId == null) {
-            return null;
+            return ResultLimitSelection.of(null);
         }
         String scope = componentId;
         if (scope == null) {
             TestResultComponent component = resolveComponentForResult(testId, result);
             scope = component == null ? null : component.getId();
         }
-        return scope == null ? getResultLimitForTestAndPatient(testId, patient, sampleTypeId)
-                : getResultLimitForComponentAndPatient(scope, patient, sampleTypeId);
+        List<ResultLimit> pool = scope == null ? getResultLimits(testId) : getResultLimitsByComponentId(scope);
+        return selectWithSpecimenPrecedenceAndReason(pool, sampleTypeId, patient);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getTestNamesWithRangeNotApplied(List<OrderedTest> orderedTests, Patient patient) {
+        Set<String> names = new LinkedHashSet<>();
+        if (orderedTests == null || patient == null) {
+            return new ArrayList<>(names);
+        }
+        for (OrderedTest ordered : orderedTests) {
+            if (ordered == null || GenericValidator.isBlankOrNull(ordered.testId())) {
+                continue;
+            }
+            if (selectForTest(ordered.testId(), null, null, ordered.sampleTypeId(), patient).isRangeNotApplied()) {
+                names.add(TestServiceImpl.getUserLocalizedTestName(ordered.testId()));
+            }
+        }
+        return new ArrayList<>(names);
     }
 
     /**

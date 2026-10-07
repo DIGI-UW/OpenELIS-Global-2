@@ -64,9 +64,9 @@ on:
 
 jobs:
   # ─── Pre-warm Playwright browser cache ─────────────────────────────────────
-  # Runs once per workflow invocation so the 4 parallel shards (2 here × 2
-  # callers — core and harness) don't all hammer the Playwright CDN on a cold
-  # cache. On a warm cache this job finishes in ~10s with no network I/O
+  # Runs once per suite invocation so its parallel shards do not all hammer
+  # the Playwright CDN on a cold cache. On a warm cache this job finishes in
+  # ~10s with no network I/O
   # beyond the cache backend. The shards' own `actions/cache` step restores
   # the key this job saves.
   pre-warm-playwright:
@@ -312,7 +312,7 @@ jobs:
 
       - name: Seed analyzers via REST API
         if: inputs.setup_analyzer_harness
-        run: bash projects/analyzer-harness/seed-analyzers.sh
+        run: bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
         env:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}

@@ -18,6 +18,7 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.configuration.valueholder.ConfigurationImportRun;
 import org.openelisglobal.security.DaemonContextExecutor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -31,6 +32,7 @@ import org.springframework.stereotype.Component;
 public class ConfigurationInitializationService implements ApplicationListener<ContextRefreshedEvent> {
 
     private static final String CLASS_NAME = "ConfigurationInitializationService";
+    private static final String SYSTEM_USER_ID = "1";
 
     @Value("${org.openelisglobal.configuration.dir:/var/lib/openelis-global/configuration/backend}")
     private String configurationBaseDir;
@@ -53,6 +55,15 @@ public class ConfigurationInitializationService implements ApplicationListener<C
 
     @Autowired
     private DaemonContextExecutor daemonContextExecutor;
+
+    // Both are Spring's to provide; the loader also runs in plain unit tests that
+    // construct it directly, where there is no run to record and no queue to
+    // sweep.
+    @Autowired(required = false)
+    private ConfigurationImportRunService importRunService;
+
+    @Autowired(required = false)
+    private UnresolvedReferenceService unresolvedReferenceService;
 
     private List<DomainConfigurationHandler> domainHandlers;
 
@@ -94,6 +105,10 @@ public class ConfigurationInitializationService implements ApplicationListener<C
     }
 
     private void loadAllDomainConfigurations() {
+        reloadAtStartup();
+    }
+
+    private void reloadAtStartup() {
         LogEvent.logInfo(CLASS_NAME, "onApplicationEvent",
                 "Starting configuration initialization from " + configurationBaseDir + "...");
 
@@ -102,10 +117,36 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                     + "'. Instance-specific configurations will be preferred when available.");
         }
 
-        reload(ConfigurationReloadOptions.all());
+        reload(ConfigurationReloadOptions.all(), ConfigurationImportRun.SOURCE_STARTUP);
     }
 
     public ConfigurationReloadResult reload(ConfigurationReloadOptions options) {
+        return reload(options, ConfigurationImportRun.SOURCE_API);
+    }
+
+    /**
+     * Loads the configuration as one import run, so the names it cannot resolve are
+     * queued against a record of when they were noticed (OGC-1194). A run already
+     * in progress on this thread (an import page apply) is kept.
+     */
+    public ConfigurationReloadResult reload(ConfigurationReloadOptions options, String source) {
+        ConfigurationImportRun run = importRunService != null && ImportRunContext.getRunId() == null
+                ? importRunService.start(source, SYSTEM_USER_ID)
+                : null;
+        try {
+            ConfigurationReloadResult result = loadDomains(options);
+            if (unresolvedReferenceService != null) {
+                unresolvedReferenceService.closeResolvable();
+            }
+            return result;
+        } finally {
+            if (run != null) {
+                importRunService.finish(run, null, false);
+            }
+        }
+    }
+
+    private ConfigurationReloadResult loadDomains(ConfigurationReloadOptions options) {
         ConfigurationReloadOptions reloadOptions = options == null ? ConfigurationReloadOptions.all() : options;
         List<ConfigurationReloadFileResult> fileResults = new ArrayList<>();
 
@@ -129,7 +170,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                     continue;
                 }
                 try {
-                    fileResults.addAll(loadDomainConfiguration(handler, claimedFiles, reloadOptions.force()).files());
+                    fileResults.addAll(loadDomainConfiguration(handler, claimedFiles, reloadOptions).files());
                 } catch (Exception e) {
                     LogEvent.logError("Failed to load configuration for domain: " + handler.getDomainName(), e);
                     fileResults.add(ConfigurationReloadFileResult.error(handler.getDomainName(), null, e.getMessage()));
@@ -143,7 +184,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
     }
 
     private ConfigurationReloadResult loadDomainConfiguration(DomainConfigurationHandler handler,
-            Set<String> claimedFiles, boolean force) throws Exception {
+            Set<String> claimedFiles, ConfigurationReloadOptions options) throws Exception {
         String domainName = handler.getDomainName();
         String fileMatcher = handler.getFileMatcher();
         String checksumsFile = configurationBaseDir + "/" + domainName + "-checksums.properties";
@@ -160,7 +201,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                     "classpath*:configuration/" + instanceSubPath);
 
             if (!instanceFiles.isEmpty()) {
-                LoadResult result = processFiles(handler, instanceFiles, checksums, domainName, claimedFiles, force);
+                LoadResult result = processFiles(handler, instanceFiles, checksums, domainName, claimedFiles, options);
                 fileResults.addAll(result.fileResults());
                 if (result.checksumsUpdated()) {
                     saveChecksums(checksums, checksumsFile);
@@ -181,7 +222,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
         Map<String, InputStreamSource> baseFiles = collectFiles("file:" + configurationBaseDir + "/" + baseSubPath,
                 "classpath*:configuration/" + baseSubPath);
 
-        LoadResult result = processFiles(handler, baseFiles, checksums, domainName, claimedFiles, force);
+        LoadResult result = processFiles(handler, baseFiles, checksums, domainName, claimedFiles, options);
         fileResults.addAll(result.fileResults());
         if (result.checksumsUpdated()) {
             saveChecksums(checksums, checksumsFile);
@@ -238,10 +279,12 @@ public class ConfigurationInitializationService implements ApplicationListener<C
      * <p>
      * Files already present in {@code claimedFiles} (claimed by a handler with
      * lower load order) are skipped. Every file this handler processes is added to
-     * the set so that later, broader-pattern handlers won't reprocess it.
+     * the set so that later, broader-pattern handlers won't reprocess it. A file
+     * outside the reload's named set is neither claimed nor reported: the reload
+     * did not concern it.
      */
     private LoadResult processFiles(DomainConfigurationHandler handler, Map<String, InputStreamSource> files,
-            Properties checksums, String domainName, Set<String> claimedFiles, boolean force) {
+            Properties checksums, String domainName, Set<String> claimedFiles, ConfigurationReloadOptions options) {
         boolean filesFound = false;
         boolean checksumsUpdated = false;
         List<ConfigurationReloadFileResult> fileResults = new ArrayList<>();
@@ -250,6 +293,10 @@ public class ConfigurationInitializationService implements ApplicationListener<C
             String fileName = entry.getKey();
             InputStreamSource streamSource = entry.getValue();
             filesFound = true;
+
+            if (!options.includesFile(fileName)) {
+                continue;
+            }
 
             // Skip files already claimed by a more-specific handler
             String fileKey = domainName + "/" + fileName;
@@ -269,7 +316,7 @@ public class ConfigurationInitializationService implements ApplicationListener<C
                 }
 
                 String storedChecksum = checksums.getProperty(fileName);
-                if (!force && currentChecksum.equals(storedChecksum)) {
+                if (!options.forces(fileName) && currentChecksum.equals(storedChecksum)) {
                     LogEvent.logInfo(CLASS_NAME, "loadDomainConfiguration",
                             domainName + " configuration " + fileName + " unchanged (checksum matches). Skipping.");
                     fileResults.add(ConfigurationReloadFileResult.skipped(domainName, fileName, "checksum matches"));

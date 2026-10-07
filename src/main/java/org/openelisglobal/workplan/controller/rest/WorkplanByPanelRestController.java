@@ -112,14 +112,15 @@ public class WorkplanByPanelRestController extends WorkplanRestController {
             List<PanelItem> panelItems = panelItemService.getPanelItemsForPanel(panelId);
 
             for (PanelItem panelItem : panelItems) {
-                List<Analysis> analysisList = analysisService.getAllAnalysisByTestAndStatus(panelItem.getTest().getId(),
-                        statusList);
+                List<Analysis> analysisList = withoutReferredOut(
+                        analysisService.getAllAnalysisByTestAndStatus(panelItem.getTest().getId(), statusList));
 
                 for (Analysis analysis : analysisList) {
                     TestResultItem testResultItem = new TestResultItem();
                     testResultItem.setTestId(analysis.getTest().getId());
                     Sample sample = analysis.getSampleItem().getSample();
                     testResultItem.setAccessionNumber(sample.getAccessionNumber());
+                    markEqaSample(testResultItem, sample);
                     testResultItem.setPatientInfo(getSubjectNumber(analysis));
                     testResultItem.setNextVisitDate(SpringContext.getBean(ObservationHistoryService.class)
                             .getValueForSample(ObservationType.NEXT_VISIT_DATE, sample.getId()));

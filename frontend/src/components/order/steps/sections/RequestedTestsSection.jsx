@@ -1,10 +1,4 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import React, { useCallback, useEffect, useMemo, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
   Tile,
@@ -18,10 +12,21 @@ import {
   Tag,
   OperationalTag,
   InlineNotification,
+  OverflowMenu,
+  OverflowMenuItem,
 } from "@carbon/react";
 import { Checkmark } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import TestAssignmentModal from "./TestAssignmentModal";
+import TestedElsewhereFields from "./TestedElsewhereFields";
+import {
+  listTestedElsewhere,
+  markTestedElsewhere,
+  unmarkTestedElsewhere,
+} from "../../api/orderEntryCleanupApi";
+
+const compatibilityMapKey = (id, isPanel) =>
+  `${isPanel ? "panel" : "test"}-${id}`;
 
 export const getAssignableSamplesOfType = (samples = [], sampleTypeId) =>
   samples
@@ -49,9 +54,98 @@ const RequestedTestsSection = ({
   removeTestFromSample: _removeTestFromSample,
   sampleTypes,
   isReadOnly,
+  labNumber = "",
+  referringSite = null,
 }) => {
   const intl = useIntl();
-  const componentMounted = useRef(true);
+
+  // FR-B20: tests whose result another laboratory reported, by test id.
+  const [testedElsewhere, setTestedElsewhere] = useState({});
+  const [testedElsewhereError, setTestedElsewhereError] = useState("");
+
+  useEffect(() => {
+    if (!labNumber) {
+      return undefined;
+    }
+    let active = true;
+    listTestedElsewhere(labNumber)
+      .then((marks) => {
+        if (!active) return;
+        const byTest = {};
+        (marks || []).forEach((mark) => {
+          byTest[String(mark.testId)] = mark;
+        });
+        setTestedElsewhere(byTest);
+      })
+      .catch(() => {
+        if (active) setTestedElsewhere({});
+      });
+    return () => {
+      active = false;
+    };
+  }, [labNumber]);
+
+  const saveTestedElsewhere = useCallback(
+    (testId, changes) => {
+      const current = testedElsewhere[String(testId)] || {};
+      const next = { ...current, ...changes };
+      setTestedElsewhereError("");
+      markTestedElsewhere({
+        labNumber,
+        testId,
+        performingLabId: next.performingLabId,
+        reportedValue: next.reportedValue,
+      })
+        .then((saved) =>
+          setTestedElsewhere((previous) => ({
+            ...previous,
+            [String(testId)]: saved,
+          })),
+        )
+        .catch((error) =>
+          setTestedElsewhereError(
+            intl.formatMessage(
+              { id: "order.tests.testedElsewhere.saveFailed" },
+              { reason: error.message },
+            ),
+          ),
+        );
+    },
+    [intl, labNumber, testedElsewhere],
+  );
+
+  const markTest = useCallback(
+    (testId) =>
+      saveTestedElsewhere(testId, {
+        performingLabId: referringSite?.id || "",
+        performingLabName: referringSite?.name || "",
+        reportedValue: "",
+      }),
+    [referringSite, saveTestedElsewhere],
+  );
+
+  const unmarkTest = useCallback(
+    (testId) => {
+      setTestedElsewhereError("");
+      unmarkTestedElsewhere(labNumber, testId)
+        .then(() =>
+          setTestedElsewhere((previous) => {
+            const next = { ...previous };
+            delete next[String(testId)];
+            return next;
+          }),
+        )
+        .catch((error) =>
+          setTestedElsewhereError(
+            intl.formatMessage(
+              { id: "order.tests.testedElsewhere.saveFailed" },
+              { reason: error.message },
+            ),
+          ),
+        );
+    },
+    [intl, labNumber],
+  );
 
   // Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -97,37 +191,47 @@ const RequestedTestsSection = ({
         .join(","),
     [requestedItems],
   );
+  const panelIds = useMemo(
+    () =>
+      requestedItems
+        .filter((item) => item.isPanel)
+        .map((panel) => panel.id)
+        .join(","),
+    [requestedItems],
+  );
+  const compatibilityKey = `${testIds}|${panelIds}`;
   const isLoadingCompatibility =
-    Boolean(testIds) && loadedCompatibilityIds !== testIds;
+    Boolean(testIds || panelIds) && loadedCompatibilityIds !== compatibilityKey;
 
-  // Fetch test-sample-type compatibility when tests change
   useEffect(() => {
-    componentMounted.current = true;
+    if (!testIds && !panelIds) return;
 
-    if (!testIds) return;
-
+    let current = true;
     getFromOpenElisServer(
-      `/rest/test-sample-types?testIds=${testIds}`,
+      `/rest/test-sample-types?testIds=${testIds}&panelIds=${panelIds}`,
       (response) => {
-        if (componentMounted.current && response?.tests) {
-          const map = {};
-          response.tests.forEach((t) => {
-            map[t.testId] = t.compatibleSampleTypes || [];
-          });
-          setTestSampleTypeMap(map);
-          setLoadedCompatibilityIds(testIds);
-        }
+        if (!current) return;
+        const map = {};
+        (response?.tests || []).forEach((t) => {
+          map[compatibilityMapKey(t.testId, false)] =
+            t.compatibleSampleTypes || [];
+        });
+        (response?.panels || []).forEach((p) => {
+          map[compatibilityMapKey(p.panelId, true)] =
+            p.compatibleSampleTypes || [];
+        });
+        setTestSampleTypeMap(map);
+        setLoadedCompatibilityIds(compatibilityKey);
       },
     );
 
     return () => {
-      componentMounted.current = false;
+      current = false;
     };
-  }, [testIds]);
+  }, [testIds, panelIds]);
 
-  // Get compatible sample types for a test
   const getCompatibleSampleTypes = useCallback(
-    (testId) => testSampleTypeMap[testId] || [],
+    (id, isPanel) => testSampleTypeMap[compatibilityMapKey(id, isPanel)] || [],
     [testSampleTypeMap],
   );
 
@@ -240,6 +344,7 @@ const RequestedTestsSection = ({
           defaultMessage: "Sample Assignment(s)",
         }),
       },
+      { key: "actions", header: "" },
     ],
     [intl],
   );
@@ -248,8 +353,9 @@ const RequestedTestsSection = ({
   const rows = useMemo(
     () =>
       requestedItems.map((item) => {
-        const compatibleTypes = getCompatibleSampleTypes(item.id);
+        const compatibleTypes = getCompatibleSampleTypes(item.id, item.isPanel);
         const assignments = getSampleAssignments(item.id, item.isPanel);
+        const mark = item.isPanel ? null : testedElsewhere[String(item.id)];
 
         return {
           id: `${item.isPanel ? "panel" : "test"}-${item.id}`,
@@ -269,6 +375,31 @@ const RequestedTestsSection = ({
                   <FormattedMessage id="label.tests" defaultMessage="tests" />)
                 </span>
               )}
+              {mark && (
+                <Tag
+                  type="purple"
+                  size="sm"
+                  data-testid={`tested-elsewhere-tag-${item.id}`}
+                >
+                  {mark.performingLabName ? (
+                    <FormattedMessage
+                      id="order.tests.testedElsewhereAt"
+                      values={{ lab: mark.performingLabName }}
+                    />
+                  ) : (
+                    <FormattedMessage id="order.tests.tag.testedElsewhere" />
+                  )}
+                </Tag>
+              )}
+              {mark && (
+                <TestedElsewhereFields
+                  key={`${item.id}-${mark.performingLabId || ""}`}
+                  testId={item.id}
+                  mark={mark}
+                  onSave={(changes) => saveTestedElsewhere(item.id, changes)}
+                  disabled={isReadOnly}
+                />
+              )}
             </div>
           ),
           compatibleTypes: (
@@ -282,27 +413,20 @@ const RequestedTestsSection = ({
                     type="green"
                     size="sm"
                     className="sample-type-tag clickable"
-                    text={`+ ${st.name}${st.code ? ` (${st.code})` : ""}`}
+                    text={`+ ${st.name}`}
                     onClick={() => handleSampleTypeClick(item, st)}
                   />
                 ))
               ) : (
-                // If no compatibility data, show all sample types as options
-                sampleTypes.slice(0, 5).map((st) => (
-                  <OperationalTag
-                    key={st.id}
-                    type="green"
-                    size="sm"
-                    className="sample-type-tag clickable"
-                    text={`+ ${st.value}`}
-                    onClick={() =>
-                      handleSampleTypeClick(item, {
-                        id: st.id,
-                        name: st.value,
-                      })
-                    }
+                <span
+                  className="no-compatible-types"
+                  data-testid={`no-compatible-types-${item.id}`}
+                >
+                  <FormattedMessage
+                    id="collect.noCompatibleSampleTypes"
+                    defaultMessage="No sample type is set up for this test in the test catalog"
                   />
-                ))
+                </span>
               )}
             </div>
           ),
@@ -320,6 +444,17 @@ const RequestedTestsSection = ({
                     {a.sampleTypeName} (Sample {a.sampleIndex + 1})
                   </Tag>
                 ))
+              ) : mark ? (
+                <span className="tested-elsewhere-at">
+                  <FormattedMessage
+                    id="order.tests.testedElsewhereAt"
+                    values={{
+                      lab:
+                        mark.performingLabName ||
+                        intl.formatMessage({ id: "common.notRecorded" }),
+                    }}
+                  />
+                </span>
               ) : (
                 <span className="no-assignment">
                   <FormattedMessage
@@ -330,15 +465,50 @@ const RequestedTestsSection = ({
               )}
             </div>
           ),
+          actions:
+            !item.isPanel && labNumber && !isReadOnly ? (
+              <OverflowMenu
+                size="sm"
+                flipped
+                aria-label={intl.formatMessage({ id: "common.moreActions" })}
+                iconDescription={intl.formatMessage({
+                  id: "common.moreActions",
+                })}
+                data-testid={`test-row-actions-${item.id}`}
+              >
+                {mark ? (
+                  <OverflowMenuItem
+                    itemText={intl.formatMessage({
+                      id: "order.tests.action.unmarkTestedElsewhere",
+                    })}
+                    onClick={() => unmarkTest(item.id)}
+                  />
+                ) : (
+                  <OverflowMenuItem
+                    itemText={intl.formatMessage({
+                      id: "order.tests.action.markTestedElsewhere",
+                    })}
+                    onClick={() => markTest(item.id)}
+                  />
+                )}
+              </OverflowMenu>
+            ) : null,
         };
       }),
     [
       getCompatibleSampleTypes,
       getSampleAssignments,
       handleSampleTypeClick,
+      intl,
       isLoadingCompatibility,
+      isReadOnly,
+      labNumber,
+      markTest,
       requestedItems,
       sampleTypes,
+      saveTestedElsewhere,
+      testedElsewhere,
+      unmarkTest,
     ],
   );
 
@@ -382,6 +552,16 @@ const RequestedTestsSection = ({
         />
       </p>
 
+      {testedElsewhereError && (
+        <InlineNotification
+          kind="error"
+          lowContrast
+          title=""
+          subtitle={testedElsewhereError}
+          onCloseButtonClick={() => setTestedElsewhereError("")}
+          data-testid="tested-elsewhere-error"
+        />
+      )}
       <DataTable rows={rows} headers={headers} size="lg">
         {({ rows, headers, getTableProps, getHeaderProps, getRowProps }) => (
           <Table {...getTableProps()}>

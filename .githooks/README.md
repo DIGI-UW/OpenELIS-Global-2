@@ -3,7 +3,7 @@
 ## Pre-commit Hook
 
 A pre-commit hook that formats and lints **staged files only** before commits to
-prevent CI failures (format + Catalyst Python lint).
+prevent CI failures.
 
 ### Setup (One-Time)
 
@@ -25,9 +25,7 @@ The hook runs on **staged files only**:
 - **Java runtime**: Uses the `.sdkmanrc` Java candidate when it is installed,
   then verifies that Java 21 is active before invoking Maven.
 - **Format**: Java, Markdown, Shell, XML, .gitignore, pom.xml (spotless),
-  frontend (prettier), Python (ruff format). Formatted files are re-staged.
-- **Lint**: For staged Catalyst Python files, runs `ruff check` (same as
-  Catalyst CI). Commit is blocked if lint fails.
+  frontend (prettier). Formatted files are re-staged.
 
 ### How It Works
 

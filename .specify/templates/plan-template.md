@@ -65,6 +65,10 @@ Verify compliance with
     - See
       [Testing Roadmap](.specify/guides/testing-roadmap.md#cypress-e2e-testing)
       for comprehensive Cypress guidance
+- [ ] **Test Isolation**: Every test level follows Constitution V.7: unique
+      test-owned records, scoped reads or before and after deltas, and explicit
+      dates with frozen or injected clocks when current time is used. Document
+      these choices in Test Data Management below.
 - [ ] **Schema Management**: Database changes via Liquibase changesets only
 - [ ] **Internationalization**: All UI strings use React Intl (no hardcoded
       text)
@@ -273,6 +277,24 @@ Document which test types will be used for this feature:
 
 Document how test data will be created and cleaned up:
 
+**All test levels MUST follow Constitution V.7:**
+
+- [ ] **Write only data you own**: Create each test's mutable records with
+      unique identifiers using builders, APIs, or seed helpers. Document how
+      the test cleans up or rolls back its own writes.
+- [ ] **Read only data you own**: Scope every list, count, total, rate, or
+      derived enabled state to the test's own records, or assert a before and
+      after delta. A date window alone is not a scope. Never widen an assertion
+      because other data might be present.
+- [ ] **Pin time**: Use explicit dates and freeze or inject the clock used by
+      the code under test when it reads the current time, including the server
+      clock when applicable. A live server's "today" is not pinned time. For
+      current-date behavior, set that clock to the dates or boundaries being
+      exercised; results must not depend on the wall clock or browser time zone.
+- [ ] **Shared reference data is read-only**: Only read-only reference data,
+      such as the configured test catalog and authentication state, may be
+      shared. Tests that change it must restore it or use their own copy.
+
 - **Backend**:
 
   - **Unit Tests**: Use builders/factories for test data (NOT hardcoded values)
@@ -282,9 +304,11 @@ Document how test data will be created and cleaned up:
   - **E2E Tests (Cypress)**:
     - [ ] Use API-based setup via `cy.request()` (NOT slow UI interactions) -
           10x faster
-    - [ ] Prefer the unified fixture loader for stable baseline data:
-          `./src/test/resources/load-test-fixtures.sh` (see
-          `src/test/resources/FIXTURE_LOADER_README.md`)
+    - [ ] Use shared baseline fixtures only for read-only reference data
+          (for example the configured test catalog and authentication state).
+          Create mutable records through APIs or seed helpers with unique
+          identifiers for each test; shared fixture rows are not test-owned
+          data.
     - [ ] Use `cy.intercept()` as **spy-first** (alias + assertions). Avoid
           stubbing backend responses in real E2E tests.
     - [ ] **DO NOT** stub the mutation endpoint under test

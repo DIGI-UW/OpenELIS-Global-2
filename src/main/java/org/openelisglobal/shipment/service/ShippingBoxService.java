@@ -63,6 +63,17 @@ public interface ShippingBoxService {
     List<ShippingBox> getBoxesByState(BoxState state);
 
     /**
+     * Get the boxes distributing one EQA cycle's panel material, each with its
+     * shipment already loaded. Destination facilities are deliberately left lazy:
+     * the EQA workbench names participants from its own enrollment rows, which it
+     * needs whether or not a box exists yet.
+     *
+     * @param eqaCycleId EQA cycle id
+     * @return List of shipping boxes
+     */
+    List<ShippingBox> getBoxesByEqaCycle(Long eqaCycleId);
+
+    /**
      * Get shipping boxes by destination facility
      *
      * @param facilityId Destination facility ID
@@ -114,13 +125,15 @@ public interface ShippingBoxService {
     ShippingBox changeBoxState(Integer id, BoxState newState, Integer systemUserId);
 
     /**
-     * Mark box as ready to send (validates box has at least one sample)
+     * Mark box as ready to send (validates the box holds at least one item of
+     * contents — a patient sample item or EQA panel material)
      *
-     * @param id Box ID
+     * @param id           Box ID
+     * @param systemUserId System user ID for audit trail
      * @return Updated ShippingBox
      * @throws IllegalStateException if box is empty
      */
-    ShippingBox markReadyToSend(Integer id);
+    ShippingBox markReadyToSend(Integer id, Integer systemUserId);
 
     /**
      * Get boxes for dashboard with sample counts and metadata Services MUST compile

@@ -3,12 +3,15 @@ package org.openelisglobal.labelpreset.migration;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
 
 import java.io.InputStream;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.Statement;
+import java.util.ArrayList;
+import java.util.List;
 import javax.sql.DataSource;
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
@@ -72,7 +75,7 @@ import org.w3c.dom.NodeList;
  */
 public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
 
-    private static final String SEED_CHANGESET = "liquibase/3.3.x.x/030-seed-system-presets.xml";
+    static final String SEED_CHANGESET = "liquibase/3.3.x.x/030-seed-system-presets.xml";
     /**
      * Field-seed changeset (031). The Liquibase init run executes 030 THEN 031, so
      * the pristine baseline has every system preset carrying its {@code LAB_NUMBER}
@@ -82,6 +85,14 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
      * {@code label_preset_field}.
      */
     static final String FIELD_SEED_CHANGESET = "liquibase/3.3.x.x/031-seed-system-preset-fields.xml";
+    /**
+     * Universality backfill changeset (032). The seed SQL in 030 inserts every
+     * system preset with {@code is_universal} at its column default of false; 032
+     * is what marks Specimen Label universal. Re-running 030 alone therefore
+     * restores the presets in a state the pristine baseline never had, and every
+     * later reader of the seeded Specimen Label sees a non-universal preset.
+     */
+    static final String UNIVERSAL_BACKFILL_CHANGESET = "liquibase/3.3.x.x/032-label-preset-is-universal.xml";
     private static final String FIXTURE = "fixtures/v1-barcode-config.sql";
 
     /**
@@ -97,40 +108,57 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
     @Before
     public void seedFromFixture() throws Exception {
         clearSystemPresets();
-        clearBarcodeSiteInformation();
+        stashLegacyLabelKeys(dataSource);
         loadFixture(FIXTURE);
         runRealSeedChangesetSql();
+        runRealSeedGuardSql();
     }
 
     @After
     public void restoreCanonicalSeed() throws Exception {
-        // Leave the DB the way the rest of the suite expects: canonical system presets
-        // (built from fallbacks, since no barcode.* keys remain), their LAB_NUMBER
-        // field
-        // rows (re-seeded via 031, since clearSystemPresets cascade-deleted them), and
-        // no
-        // fixture keys. The Testcontainer is shared + committed (NOT_SUPPORTED), so
-        // this
-        // restore protects sibling tests that read label_preset / label_preset_field.
-        clearSystemPresets();
-        clearBarcodeSiteInformation();
-        runRealSeedChangesetSql();
-        executeSeedSql(dataSource, FIELD_SEED_CHANGESET);
-        reapplyUniversalFlag(dataSource);
+        restoreCanonicalSeed(dataSource);
     }
 
     /**
-     * Re-apply changeset 032's universal-flag update on the Specimen Label system
-     * preset. The re-run of changeset 030 above re-inserts system presets with
-     * is_universal at its column default (false); the flag is normally set by the
-     * later changeset 032, which Liquibase does not re-run here. Sibling tests
-     * (e.g. OrderEntryLabelRequestServiceAggregationTest) depend on the
-     * fully-migrated state, so restore it explicitly.
+     * AC-22a (FRS v2.6): on a database carrying v1 barcode configuration no seeded
+     * preset may end up with the fallback dimensions, because the keys were read.
      */
-    static void reapplyUniversalFlag(DataSource dataSource) throws Exception {
+    @Test
+    public void noSeededPresetCarriesTheFallbackDimensionsWhenV1ConfigurationExists() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT name FROM clinlims.label_preset"
+                        + " WHERE is_system = true AND height_mm = ? AND width_mm = ?")) {
+            stmt.setInt(1, FALLBACK_HEIGHT);
+            stmt.setInt(2, FALLBACK_WIDTH);
+            try (ResultSet rs = stmt.executeQuery()) {
+                List<String> onFallback = new ArrayList<>();
+                while (rs.next()) {
+                    onFallback.add(rs.getString(1));
+                }
+                assertTrue("system presets seeded from the fallback dimensions although the site configured its own: "
+                        + onFallback, onFallback.isEmpty());
+            }
+        }
+    }
+
+    /**
+     * MG-6 (FRS v2.6): the seed fails loudly when v1 configuration exists and a
+     * preset did not take it. Reproduces OGC-1219 by hand (a preset put back on the
+     * fallbacks while its keys are present) and expects the guard to raise.
+     */
+    @Test
+    public void seedGuardRaisesWhenAPresetIgnoredItsLegacyKeys() throws Exception {
         try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute("UPDATE clinlims.label_preset SET is_universal = true, last_updated = CURRENT_TIMESTAMP"
-                    + " WHERE is_system = true AND name = 'Specimen Label'");
+            stmt.execute("UPDATE clinlims.label_preset SET height_mm = " + FALLBACK_HEIGHT + ", width_mm = "
+                    + FALLBACK_WIDTH + " WHERE name = 'Slide Label'");
+        }
+        try {
+            runRealSeedGuardSql();
+            fail("the MG-6 guard must raise when v1 configuration exists and a preset was seeded from fallbacks");
+        } catch (java.sql.SQLException e) {
+            assertTrue("guard names the ticket: " + e.getMessage(), e.getMessage().contains("OGC-1219"));
+            assertTrue("guard names the ignored key: " + e.getMessage(),
+                    e.getMessage().contains("heightSlideLabels=45"));
         }
     }
 
@@ -147,7 +175,7 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         // Specimen / Block / Slide / Freezer: per-sample scope; quantities live in the
         // per-sample columns.
         assertPreset("Specimen Label", 40, 80, false, true, 0, 10, 3, 7);
-        assertPreset("Block Label", 35, 70, false, true, 0, 10, 4, 6);
+        assertPreset("Block Label", 36, 70, false, true, 0, 10, 4, 6);
         assertPreset("Slide Label", 45, 85, false, true, 0, 10, 5, 9);
         assertPreset("Freezer Label", 50, 60, false, true, 0, 10, 2, 5);
 
@@ -163,6 +191,44 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
                 "seed must read fixture dimensions, not fallbacks — "
                         + "Specimen Label width should not equal the canonical fallback " + FALLBACK_WIDTH,
                 isWidthEqual("Specimen Label", FALLBACK_WIDTH));
+    }
+
+    /**
+     * The restore this class runs after every test is what sibling classes read for
+     * the rest of the suite, so it must reproduce the whole init run and not just
+     * the insert half. Re-running 030 alone leaves Specimen Label at the column
+     * default of false, and the aggregation tests that assert the universal column
+     * then fail depending only on surefire ordering.
+     */
+    @Test
+    public void restoreCanonicalSeed_leavesSpecimenLabelUniversal() throws Exception {
+        clearSystemPresets();
+
+        restoreCanonicalSeed(dataSource);
+
+        assertEquals("restore must re-apply the universality backfill, not only the preset insert", Boolean.TRUE,
+                isSpecimenLabelUniversal());
+        assertEquals("restore must leave exactly one seeded Specimen Label", 1, countSeededSpecimenLabels());
+    }
+
+    private Boolean isSpecimenLabelUniversal() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT is_universal FROM clinlims.label_preset"
+                        + " WHERE is_system = true AND name = 'Specimen Label'");
+                ResultSet rs = stmt.executeQuery()) {
+            assertTrue("the seeded Specimen Label preset must exist after a restore", rs.next());
+            return rs.getBoolean(1);
+        }
+    }
+
+    private int countSeededSpecimenLabels() throws Exception {
+        try (Connection conn = dataSource.getConnection();
+                PreparedStatement stmt = conn.prepareStatement("SELECT COUNT(*) FROM clinlims.label_preset"
+                        + " WHERE is_system = true AND name = 'Specimen Label'");
+                ResultSet rs = stmt.executeQuery()) {
+            rs.next();
+            return rs.getInt(1);
+        }
     }
 
     @Test
@@ -184,6 +250,13 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
 
     private void assertPreset(String name, int height, int width, boolean printsPerOrder, boolean printsPerSample,
             int defaultPerOrder, int maxPerOrder, int defaultPerSample, int maxPerSample) throws Exception {
+        assertPreset(dataSource, name, height, width, printsPerOrder, printsPerSample, defaultPerOrder, maxPerOrder,
+                defaultPerSample, maxPerSample);
+    }
+
+    static void assertPreset(DataSource dataSource, String name, int height, int width, boolean printsPerOrder,
+            boolean printsPerSample, int defaultPerOrder, int maxPerOrder, int defaultPerSample, int maxPerSample)
+            throws Exception {
         try (Connection conn = dataSource.getConnection();
                 PreparedStatement stmt = conn.prepareStatement("SELECT height_mm, width_mm, prints_per_order, "
                         + "prints_per_sample, default_per_order, max_per_order, default_per_sample, max_per_sample, "
@@ -244,12 +317,12 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         executeSeedSql(dataSource, SEED_CHANGESET);
     }
 
-    private void clearSystemPresets() throws Exception {
-        clearSystemPresets(dataSource);
+    private void runRealSeedGuardSql() throws Exception {
+        executeGuardSql(dataSource, SEED_CHANGESET);
     }
 
-    private void clearBarcodeSiteInformation() throws Exception {
-        clearBarcodeSiteInformation(dataSource);
+    private void clearSystemPresets() throws Exception {
+        clearSystemPresets(dataSource);
     }
 
     private void loadFixture(String fixture) throws Exception {
@@ -262,38 +335,87 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
     // ----------------------------------------------------------------------------------------------
 
     static void executeSeedSql(DataSource dataSource, String changesetPath) throws Exception {
-        String seedSql = extractSeedSql(changesetPath);
-        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute(seedSql);
-        }
+        executeChangesetSql(dataSource, changesetPath, "INSERT INTO");
     }
 
     /**
-     * Parses the changeset XML and returns the text of its (single) {@code <sql>}
-     * child. Reads the production artifact so the executed SQL is never a copy.
+     * Runs the MG-6 guard block of the seed changeset, the {@code DO} block that
+     * raises when v1 configuration exists and a seeded preset did not take it.
      */
+    static void executeGuardSql(DataSource dataSource, String changesetPath) throws Exception {
+        executeChangesetSql(dataSource, changesetPath, "RAISE EXCEPTION");
+    }
+
+    /**
+     * Runs the {@code UPDATE} block of a changeset, such as 032's backfill or 008's
+     * re-seed.
+     */
+    static void executeUpdateSql(DataSource dataSource, String changesetPath) throws Exception {
+        executeChangesetSql(dataSource, changesetPath, "UPDATE CLINLIMS.LABEL_PRESET");
+    }
+
+    private static void executeChangesetSql(DataSource dataSource, String changesetPath, String statementKeyword)
+            throws Exception {
+        String sql = extractChangesetSql(changesetPath, statementKeyword);
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            stmt.execute(sql);
+        }
+    }
+
     static String extractSeedSql(String changesetPath) throws Exception {
+        return extractChangesetSql(changesetPath, "INSERT INTO");
+    }
+
+    /**
+     * Parses the changeset XML and returns the text of the top-level {@code <sql>}
+     * block containing {@code statementKeyword}. Reads the production artifact so
+     * the executed SQL is never a copy. Only {@code <sql>} elements whose parent is
+     * a {@code <changeSet>} are considered, so a {@code <rollback>} carrying the
+     * inverse statement never matches.
+     */
+    static String extractChangesetSql(String changesetPath, String statementKeyword) throws Exception {
         DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
         factory.setNamespaceAware(true);
         DocumentBuilder builder = factory.newDocumentBuilder();
         ClassPathResource resource = new ClassPathResource(changesetPath);
         try (InputStream in = resource.getInputStream()) {
             NodeList sqlNodes = builder.parse(in).getElementsByTagNameNS("*", "sql");
-            // The seed changeset contains exactly one top-level <sql> insert block;
-            // <rollback>
-            // wraps its own <sql>, so filter to the element whose parent is a <changeSet>.
+            // <rollback> wraps its own <sql> and carries the inverse statement, so
+            // filter to the elements whose parent is a <changeSet> before matching on
+            // the keyword.
             for (int i = 0; i < sqlNodes.getLength(); i++) {
                 Element sql = (Element) sqlNodes.item(i);
                 String parentLocal = sql.getParentNode().getLocalName();
                 if (parentLocal != null && parentLocal.equals("changeSet")) {
                     String text = sql.getTextContent();
-                    if (text != null && text.toUpperCase().contains("INSERT INTO")) {
+                    if (text != null && text.toUpperCase().contains(statementKeyword)) {
                         return text;
                     }
                 }
             }
-            throw new IllegalStateException("No top-level <sql> INSERT block found in changeset " + changesetPath);
+            throw new IllegalStateException(
+                    "No top-level <sql> " + statementKeyword + " block found in changeset " + changesetPath);
         }
+    }
+
+    /**
+     * Rebuilds the canonical system presets the way the Liquibase init run leaves
+     * them, for a test that cleared them: 030 re-inserts the presets, 031 re-adds
+     * the LAB_NUMBER field rows {@link #clearSystemPresets(DataSource)}
+     * cascade-deleted, and 032 re-marks Specimen Label universal.
+     *
+     * <p>
+     * The Testcontainer is shared and committed ({@code NOT_SUPPORTED}), so an
+     * incomplete restore is not local damage — it is the state every later test
+     * class in the run reads. Add the matching call here whenever a new changeset
+     * conditions the seeded presets.
+     */
+    static void restoreCanonicalSeed(DataSource dataSource) throws Exception {
+        restoreLegacyLabelKeys(dataSource);
+        clearSystemPresets(dataSource);
+        executeSeedSql(dataSource, SEED_CHANGESET);
+        executeSeedSql(dataSource, FIELD_SEED_CHANGESET);
+        executeUpdateSql(dataSource, UNIVERSAL_BACKFILL_CHANGESET);
     }
 
     static void clearSystemPresets(DataSource dataSource) throws Exception {
@@ -304,11 +426,51 @@ public class SystemPresetSeedTest extends BaseWebContextSensitiveTest {
         }
     }
 
-    static void clearBarcodeSiteInformation(DataSource dataSource) throws Exception {
+    /**
+     * The real per-type label keys the seed reads (ConfigurationProperties.Property
+     * names).
+     */
+    static final String LEGACY_KEY_PATTERN = "^(height|width|numDefault|numMax)(Order|Specimen|Block|Slide|Freezer)Labels$";
+
+    private static final String LEGACY_KEY_BACKUP_TABLE = "label_key_backup_seed_test";
+
+    /**
+     * Moves the database's own legacy label keys into a backup table so a fixture
+     * can be the sole source of truth. The 2.5.x.x changelog seeds
+     * {@code numDefaultOrderLabels} and {@code numDefaultSpecimenLabels} on every
+     * database, so these rows exist in the shared test container and must come back
+     * afterwards ({@link #restoreLegacyLabelKeys}). An existing backup (a previous
+     * test that died before restoring) is kept, never overwritten.
+     */
+    static void stashLegacyLabelKeys(DataSource dataSource) throws Exception {
         try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
-            stmt.execute("DELETE FROM clinlims.site_information WHERE name LIKE 'barcode.order.%' "
-                    + "OR name LIKE 'barcode.specimen.%' OR name LIKE 'barcode.block.%' "
-                    + "OR name LIKE 'barcode.slide.%' OR name LIKE 'barcode.freezer.%'");
+            if (!backupTableExists(conn)) {
+                stmt.execute("CREATE TABLE clinlims." + LEGACY_KEY_BACKUP_TABLE
+                        + " AS SELECT * FROM clinlims.site_information WHERE name ~ '" + LEGACY_KEY_PATTERN + "'");
+            }
+            stmt.execute("DELETE FROM clinlims.site_information WHERE name ~ '" + LEGACY_KEY_PATTERN + "'");
+        }
+    }
+
+    /** Puts the stashed legacy label keys back and drops the fixture's rows. */
+    static void restoreLegacyLabelKeys(DataSource dataSource) throws Exception {
+        try (Connection conn = dataSource.getConnection(); Statement stmt = conn.createStatement()) {
+            if (!backupTableExists(conn)) {
+                return;
+            }
+            stmt.execute("DELETE FROM clinlims.site_information WHERE name ~ '" + LEGACY_KEY_PATTERN + "'");
+            stmt.execute("INSERT INTO clinlims.site_information SELECT * FROM clinlims." + LEGACY_KEY_BACKUP_TABLE);
+            stmt.execute("DROP TABLE clinlims." + LEGACY_KEY_BACKUP_TABLE);
+        }
+    }
+
+    private static boolean backupTableExists(Connection conn) throws Exception {
+        try (PreparedStatement stmt = conn.prepareStatement("SELECT to_regclass(?) IS NOT NULL")) {
+            stmt.setString(1, "clinlims." + LEGACY_KEY_BACKUP_TABLE);
+            try (ResultSet rs = stmt.executeQuery()) {
+                rs.next();
+                return rs.getBoolean(1);
+            }
         }
     }
 

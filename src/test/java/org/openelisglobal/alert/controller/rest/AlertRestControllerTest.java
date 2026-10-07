@@ -1,7 +1,6 @@
 package org.openelisglobal.alert.controller.rest;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -70,19 +69,17 @@ public class AlertRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void acknowledgeAlert_withoutNotes_shouldClearANotePreviouslyRecorded() throws Exception {
+    public void acknowledgeAlert_onAnAcknowledgedAlert_shouldBeRefusedAndKeepTheFirstNote() throws Exception {
         Alert alert = alertService.createAlert(AlertType.FREEZER_TEMPERATURE, "Freezer", 100L, AlertSeverity.CRITICAL,
                 "Temperature threshold violated", "{}");
         mockMvc.perform(put("/rest/alerts/" + alert.getId() + "/acknowledge").session(session)
-                .contentType(MediaType.APPLICATION_JSON).content("{\"notes\":\"entered by mistake\"}"))
+                .contentType(MediaType.APPLICATION_JSON).content("{\"notes\":\"first note\"}"))
                 .andExpect(status().isOk());
 
         mockMvc.perform(put("/rest/alerts/" + alert.getId() + "/acknowledge").session(session)
-                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.acknowledgmentNotes").doesNotExist());
+                .contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isConflict());
 
-        assertNull("A re-acknowledgment carrying no note must not leave the earlier one behind",
-                alertService.get(alert.getId()).getAcknowledgmentNotes());
+        assertEquals("first note", alertService.get(alert.getId()).getAcknowledgmentNotes());
     }
 
     @Test

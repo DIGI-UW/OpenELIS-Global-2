@@ -21,6 +21,7 @@ import org.openelisglobal.qaevent.valueholder.NceSpecimen;
 import org.openelisglobal.referral.service.ReferralService;
 import org.openelisglobal.referral.valueholder.Referral;
 import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.result.valueholder.ResultEntryAcknowledgement;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.service.TestServiceImpl;
@@ -47,6 +48,8 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
     private NceSpecimenService nceSpecimenService;
     @Autowired
     private NCEventService ncEventService;
+    @Autowired
+    private ResultEntryAcknowledgementService acknowledgementService;
 
     @Override
     @Transactional(readOnly = true)
@@ -60,6 +63,7 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
         addReflexEvents(analysis, events);
         addReferralEvents(analysis, events);
         addNceEvents(analysis, events);
+        addAcknowledgementEvents(analysis, events);
         events.sort(Comparator.comparingLong(AnalysisTimelineEvent::getTimestamp).reversed());
         return events;
     }
@@ -75,6 +79,35 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
             events.add(new AnalysisTimelineEvent("REFERRAL", when != null ? when.getTime() : 0,
                     when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "",
                     referral.getOrganizationName() != null ? referral.getOrganizationName() : "", ""));
+        } catch (RuntimeException e) {
+            LogEvent.logError(e);
+        }
+    }
+
+    /**
+     * OGC-1417: a critical value acknowledged, or a value outside the valid range
+     * confirmed, by the person who entered it, with the message they were shown.
+     */
+    private void addAcknowledgementEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        try {
+            for (ResultEntryAcknowledgement acknowledgement : acknowledgementService
+                    .getByAnalysisId(analysis.getId())) {
+                Timestamp when = acknowledgement.getAcknowledgedAt();
+                SystemUser by = systemUserService.get(acknowledgement.getAcknowledgedBy());
+                String type = ResultEntryAcknowledgement.KIND_CRITICAL.equals(acknowledgement.getKind())
+                        ? "CRITICAL_ACK"
+                        : "INVALID_CONFIRMED";
+                String message = GenericValidator.isBlankOrNull(acknowledgement.getMessage()) ? ""
+                        : " — " + acknowledgement.getMessage();
+                AnalysisTimelineEvent event = new AnalysisTimelineEvent(type, when != null ? when.getTime() : 0,
+                        when != null ? DateUtil.convertTimestampToStringDateAndTime(when) : "",
+                        acknowledgement.getResultValue() + message, by != null ? by.getDisplayName() : "");
+                if (!GenericValidator.isBlankOrNull(acknowledgement.getResultId())) {
+                    Result result = resultService.get(acknowledgement.getResultId());
+                    event.setComponentId(result != null ? componentOfResult(result) : null);
+                }
+                events.add(event);
+            }
         } catch (RuntimeException e) {
             LogEvent.logError(e);
         }
@@ -163,9 +196,14 @@ public class AnalysisTimelineServiceImpl implements AnalysisTimelineService {
 
     /**
      * Prior revisions of this test on the same sample item — each one is a retest
-     * that this analysis superseded.
+     * that this analysis superseded. A vector pool's analysis is anchored to the
+     * pool, not a sample item, so it has no such revisions; asking would throw
+     * inside a transactional call and roll back the whole timeline read.
      */
     private void addRetestEvents(Analysis analysis, List<AnalysisTimelineEvent> events) {
+        if (analysis.getSampleItem() == null || analysis.getTest() == null) {
+            return;
+        }
         try {
             for (Analysis revision : analysisService
                     .getRevisionHistoryOfAnalysesBySampleAndTest(analysis.getSampleItem(), analysis.getTest(), false)) {

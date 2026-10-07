@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzerresults.valueholder;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -35,4 +36,6 @@ public class SampleGrouping {
     public boolean updateSample = false;
     public boolean addSampleItem = false;
     public Map<Result, String> resultToUserserSelectionMap;
+    /** Staged rows in this grouping that were deliberately not persisted. */
+    public List<String> skippedResultIds = new ArrayList<>();
 }

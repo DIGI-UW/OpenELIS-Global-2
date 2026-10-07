@@ -3,8 +3,6 @@
 ## Evidence Sources
 
 - Feature spec: `specs/782-ogc-782-microbiology-mvp-spec/spec.md`
-- Engineering crosswalk:
-  `specs/roadmaps/analyzer-microbiology-engineering-crosswalk.md`
 - Confluence workflow narrative:
   `https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256`
 - Confluence dependency map:

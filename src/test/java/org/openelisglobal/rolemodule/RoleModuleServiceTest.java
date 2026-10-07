@@ -11,7 +11,9 @@ import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.rolemodule.service.RoleModuleService;
 import org.openelisglobal.systemusermodule.valueholder.RoleModule;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.transaction.annotation.Transactional;
 
+@Transactional
 public class RoleModuleServiceTest extends BaseWebContextSensitiveTest {
 
     @Autowired

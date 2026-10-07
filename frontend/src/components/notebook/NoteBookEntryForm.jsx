@@ -642,16 +642,12 @@ const NoteBookEntryForm = () => {
                 hour12: false,
               });
             }
-            return { ...item, id: index + 1, time: formattedTime };
+            return { ...item, id: String(index + 1), time: formattedTime };
           });
           setAuditTrailItems(updatedAuditTrailItems);
         } else {
           setAuditTrailItems([]);
         }
-        setAuditTrailLoading(false);
-      },
-      () => {
-        setAuditTrailItems([]);
         setAuditTrailLoading(false);
       },
     );
@@ -811,7 +807,7 @@ const NoteBookEntryForm = () => {
                     });
                   }}
                 >
-                  <SelectItem />
+                  <SelectItem value="" text="" />
                   {types.map((type, index) => {
                     return (
                       <SelectItem
@@ -1774,7 +1770,7 @@ const NoteBookEntryForm = () => {
                 }}
                 disabled={noteBookData.status === "ARCHIVED"}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {statuses.map((status, index) => {
                   return (
                     <SelectItem
@@ -1805,7 +1801,7 @@ const NoteBookEntryForm = () => {
                   });
                 }}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {technicianUsers.map((user, index) => {
                   return (
                     <SelectItem key={index} text={user.value} value={user.id} />

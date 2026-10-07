@@ -57,7 +57,9 @@ describe("LabNumberField", () => {
       "/rest/SampleEntryGenerateScanProvider",
       expect.any(Function),
     );
-    expect(onLabNumberChange).toHaveBeenCalledWith("DEV01260000000000001");
+    expect(onLabNumberChange).toHaveBeenCalledWith("DEV01260000000000001", {
+      generated: true,
+    });
   });
 
   it("leaves an order that already has a lab number alone", () => {

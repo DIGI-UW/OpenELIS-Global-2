@@ -20,6 +20,7 @@ import {
   formatPickerDateForIso,
 } from "../order/dateUtils";
 import "./MicrobiologyOrderDetailFields.scss";
+import { labNow } from "../utils/labClock";
 
 export const emptyMicrobiologyOrderDetail = {
   culturePurpose: "",
@@ -70,7 +71,7 @@ const MicrobiologyOrderDetailFields = ({
   const isOutpatient = fields.patientOrigin === "OUTPATIENT";
   const admissionDateIsFuture =
     Boolean(fields.admissionDate) &&
-    fields.admissionDate > format(new Date(), "yyyy-MM-dd");
+    fields.admissionDate > format(labNow(), "yyyy-MM-dd");
   const daysAfterAdmission = daysBetweenIsoDates(
     fields.admissionDate,
     collectionDate,

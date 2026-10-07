@@ -145,6 +145,9 @@
   <!-- required_by on sample (order level) — replaces OGC-527 sample_item approach -->
   <include relativeToChangelogFile="true" file="035-move-required-by-to-sample.xml"/>
 
+  <!-- Upgrade from 3.2.2.0: park CRITICAL_RESULT alerts while 036/057 redeclare chk_alert_type without it -->
+  <include relativeToChangelogFile="true" file="036-0-stash-upgrade-alert-types.xml"/>
+
   <!-- Add REQUIRED_BY_DEADLINE to alert type constraint -->
   <include relativeToChangelogFile="true" file="036-add-required-by-alert-type.xml"/>
 
@@ -273,6 +276,23 @@
   <!-- OGC-949 / OGC-986 (epic OGC-760): test_reagent_link foundation for the v2 Reagents tab -->
   <include relativeToChangelogFile="true" file="048-test-reagent-link.xml"/>
 
+  <!-- OGC-658: inventory_item.code; anchored here, not at the end of the file where every branch collides -->
+  <include relativeToChangelogFile="true" file="070-inventory-item-code.xml"/>
+
+  <!-- OGC-657: sample_storage_assignment/movement gain an occupant discriminator so a
+       row can describe an inventory lot as well as a sample item. Anchored next to the
+       inventory PK include, away from the end-of-file append point. -->
+  <include relativeToChangelogFile="true" file="071-generalize-storage-assignment-occupant.xml"/>
+
+  <!-- OGC-657: blank lot barcodes become NULL so the UNIQUE index stops treating
+       every barcode-less lot as a duplicate of the others. -->
+  <include relativeToChangelogFile="true" file="072-null-blank-lot-barcodes.xml"/>
+
+  <!-- OGC-658: per-prefix counter behind generated inventory item codes (PAR-500MG-001). -->
+  <include relativeToChangelogFile="true" file="073-inventory-item-code-sequence.xml"/>
+  <!-- OGC-657: Storage Management collapses to one sidenav row; its levels are tabs -->
+  <include relativeToChangelogFile="true" file="073-storage-menu-collapse.xml"/>
+
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
 
@@ -379,19 +399,18 @@
   <include relativeToChangelogFile="true" file="090-patient-search-trigram-indexes.xml"/>
   <include relativeToChangelogFile="true" file="091-backfill-fhir-uuids.xml"/>
 
+  <!-- The analyzer cutover changesets below leave the pre-Bridge storage in place;
+       116-remove-pre-bridge-analyzer-storage exports and removes it.
+       See docs/analyzers/pre-bridge-settings-export.md. -->
   <include relativeToChangelogFile="true" file="085-analyzer-profile-binding.xml"/>
   <include relativeToChangelogFile="true" file="086-analyzer-site-binding.xml"/>
-  <include relativeToChangelogFile="true" file="088-remove-analyzer-qc-rule.xml"/>
   <include relativeToChangelogFile="true" file="089-analyzer-site-binding-confirmation.xml"/>
   <include relativeToChangelogFile="true" file="090-analyzer-verification-evidence.xml"/>
   <include relativeToChangelogFile="true" file="091-analyzer-activation-record.xml"/>
   <include relativeToChangelogFile="true" file="092-normalize-analyzer-deleted-status.xml"/>
-  <include relativeToChangelogFile="true" file="093-remove-superseded-analyzer-runtime.xml"/>
-  <include relativeToChangelogFile="true" file="094-remove-openelis-analyzer-connection-runtime.xml"/>
   <include relativeToChangelogFile="true" file="095-allow-repeated-analyzer-site-binding-fingerprints.xml"/>
   <include relativeToChangelogFile="true" file="096-analyzer-result-source-context.xml"/>
-  <include relativeToChangelogFile="true" file="097-remove-openelis-analyzer-error-queue.xml"/>
-  <include relativeToChangelogFile="true" file="098-remove-superseded-analyzer-schema.xml"/>
+  <include relativeToChangelogFile="true" file="097-normalize-analyzer-registration.xml"/>
 
   <!-- OGC-782 M1: microbiology catalog/reference foundations. The historical
        filename is retained so already-applied demo migrations keep identity. -->
@@ -413,6 +432,8 @@
 
   <!-- OGC-782: keep the referral and critical-result alert types after 057 redeclares the constraint -->
   <include relativeToChangelogFile="true" file="058-alert-type-union.xml"/>
+  <!-- Upgrade from 3.2.2.0: restore the alert types parked by 036-0 -->
+  <include relativeToChangelogFile="true" file="058-1-restore-upgrade-alert-types.xml"/>
   <!-- OGC-782 remediation: explicit critical communication targets and lifecycle -->
   <include relativeToChangelogFile="true" file="058-microbiology-critical-lifecycle.xml"/>
 
@@ -529,5 +550,77 @@
   <!-- OGC-1188: referrals written by Results Entry with the deprecated SENT status
        were invisible to the Reference Lab Results page and to shipment dispatch. -->
   <include relativeToChangelogFile="true" file="101-referral-sent-status-backfill.xml"/>
+
+  <!-- A referral dispatched by a shipment box had no sent date, so it never aged
+       into the days-outstanding buckets or the stuck view. -->
+  <include relativeToChangelogFile="true" file="102-referral-sent-date-backfill.xml"/>
+
+  <!-- QC targets per control level and lot, plus LOD/LOQ on result components
+       (Test Catalog, OGC-1148). -->
+  <include relativeToChangelogFile="true" file="102-test-qc-targets.xml"/>
+
+  <!-- Catalog import runs, the "Needs your decision" queue and remembered aliases
+       (Test catalog import v2, OGC-1194). -->
+  <include relativeToChangelogFile="true" file="103-catalog-import-decisions.xml"/>
+  <include relativeToChangelogFile="true" file="104-analyzer-delivery-receipt.xml"/>
+
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs -->
+  <include relativeToChangelogFile="true" file="083-nce-trigger-source.xml"/>
+
+  <!-- OGC-707: CAPA Register due date on nce_action_log -->
+  <include relativeToChangelogFile="true" file="084-nce-action-log-due-date.xml"/>
+
+  <!-- OGC-704: per-test TEa for Westgard sigma metrics -->
+  <include relativeToChangelogFile="true" file="085-add-test-tea-column.xml"/>
+
+  <!-- OGC-701 / OGC-728: NCE trigger-source provenance for Westgard auto-created NCEs
+       (renumbered from 051 on rebase: develop claimed 051-075) -->
+  <include relativeToChangelogFile="true" file="076-nce-trigger-source.xml"/>
+
+  <!-- OGC-427 / OGC-811 M1: batch workplan foundation -->
+  <include relativeToChangelogFile="true" file="104-batch-workplan-foundation.xml"/>
+
+  <!-- Programs V2 (OGC-781): domain + is_active + program_lab_unit junction.
+       Existing programs backfill to CLINICAL/active; the many-to-many keeps
+       the legacy single test_section_id column populated during the
+       transition (dropped in a follow-up once every reader has migrated). -->
+  <include relativeToChangelogFile="true" file="105-program-domain.xml"/>
+  <include relativeToChangelogFile="true" file="106-program-active.xml"/>
+  <include relativeToChangelogFile="true" file="107-program-lab-unit-junction.xml"/>
+  <include relativeToChangelogFile="true" file="108-program-domain-shipped-classification.xml"/>
+
+  <!-- Audit history rows for tables keyed by a UUID string (qc_control_lot). -->
+  <include relativeToChangelogFile="true" file="109-history-reference-key.xml"/>
+
+  <!-- Order Entry Configuration switches for optional patient sex and date of birth. -->
+  <include relativeToChangelogFile="true" file="110-optional-patient-sex-age-config.xml"/>
+
+  <!-- Order progress status, release and cancellation records on the order; the order cancel reason list. -->
+  <include relativeToChangelogFile="true" file="111-order-progress-status.xml"/>
+
+  <!-- Locations and Organizations: organization profile fields, identifiers, change log, sampling-site link, category and ownership lists. -->
+  <include relativeToChangelogFile="true" file="112-locations-organizations.xml"/>
+
+  <!-- Result entry acknowledgements: who acknowledged a critical value or confirmed a value outside the valid range, and when. -->
+  <include relativeToChangelogFile="true" file="113-result-entry-acknowledgement.xml"/>
+
+  <!-- Validation is one page: the menu item opens it and the per-search entries are retired. -->
+  <include relativeToChangelogFile="true" file="114-validation-menu-collapse.xml"/>
+
+  <!-- Organization State / Province holds a province or region name. -->
+  <include relativeToChangelogFile="true" file="115-organization-state-length.xml"/>
+
+  <!-- Pre-Bridge analyzer settings: exported to the configuration-import history, then their tables and columns removed. -->
+  <include relativeToChangelogFile="true" file="116-remove-pre-bridge-analyzer-storage.xml"/>
+
+  <!-- Result entry has one page: the unified-route switch and the legacy result-entry menu rows are retired. -->
+  <include relativeToChangelogFile="true" file="117-retire-legacy-results-entry.xml"/>
+  <!-- IHC and Cytology results stored as a raw "see report" message key get its text. -->
+  <include relativeToChangelogFile="true" file="118-repair-see-report-results.xml"/>
+  <!-- OGC-1151: privilege data for the navigation menu filter -->
+  <include relativeToChangelogFile="true" file="111-menu-privilege-urls.xml"/>
+
+  <!-- Overdue STAT alerts: the turnaround target they are raised against. -->
+  <include relativeToChangelogFile="true" file="119-stat-turnaround-config.xml"/>
 
 </databaseChangeLog>

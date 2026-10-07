@@ -1,5 +1,12 @@
 import React, { useContext, useState, useEffect } from "react";
 import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
+import {
   Heading,
   Grid,
   Column,
@@ -46,17 +53,18 @@ function ExternalConnectionMenu() {
   const intl = useIntl();
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState(1);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [connectionListShow, setConnectionListShow] = useState([]);
 
   function deactivateConnection(event) {
@@ -85,39 +93,37 @@ function ExternalConnectionMenu() {
     invalidateServerData();
   };
 
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount, 1));
-    setSelectedRowIds([]);
-  };
-
   const handleSearchChange = (event) => {
     setIsSearching(true);
-    setPaging(1);
-    setStartingRecNo(1);
+    setPage(1);
     const query = event.target.value;
     setSearchTerm(query);
     setSelectedRowIds([]);
   };
 
-  const handlePageChange = ({ page, pageSize }) => {
-    setPage(page);
-    setPageSize(pageSize);
-    setSelectedRowIds([]);
+  const handlePageChange = ({ page: newPage }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
+    }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   // Browsing and searching are the same list from two endpoints, so which one
   // is read follows the search box.
   const { data: connectionList } = useServerData(
     searchTerm
       ? `/rest/SearchExternalConnectionMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${searchTerm}`
-      : `/rest/ExternalConnectionMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+      : `/rest/ExternalConnectionMenu?startingRecNo=${startingRecNo}`,
   );
   const invalidateServerData = useInvalidateServerData();
 
@@ -139,6 +145,14 @@ function ExternalConnectionMenu() {
       setFromRecordCount(connectionList.fromRecordCount);
       setToRecordCount(connectionList.toRecordCount);
       setTotalRecordCount(connectionList.totalRecordCount);
+      setServerPageSize((previous) =>
+        serverPageSizeFrom(
+          connectionList.fromRecordCount,
+          connectionList.toRecordCount,
+          connectionList.totalRecordCount,
+          previous,
+        ),
+      );
       setConnectionListShow(list);
     }
   }, [connectionList]);
@@ -159,8 +173,7 @@ function ExternalConnectionMenu() {
   useEffect(() => {
     if (isSearching && searchTerm === "") {
       setIsSearching(false);
-      setPaging(1);
-      setStartingRecNo(1);
+      setPage(1);
     }
   }, [isSearching, searchTerm]);
 
@@ -209,8 +222,6 @@ function ExternalConnectionMenu() {
           fromRecordCount={fromRecordCount}
           toRecordCount={toRecordCount}
           totalRecordCount={totalRecordCount}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
           deleteDeactivate={deactivateConnection}
           id={selectedRowIds[0]}
           otherParmsInLink={`&startingRecNo=1`}
@@ -241,11 +252,9 @@ function ExternalConnectionMenu() {
           <br />
           <Grid fullWidth={true} className="gridBoundary">
             <Column lg={16} md={8} sm={4}>
+              {arrows.show && <ServerPageArrows {...arrows} />}
               <DataTable
-                rows={connectionListShow.slice(
-                  (page - 1) * pageSize,
-                  page * pageSize,
-                )}
+                rows={connectionListShow}
                 headers={[
                   {
                     key: "select",
@@ -329,9 +338,10 @@ function ExternalConnectionMenu() {
               <Pagination
                 onChange={handlePageChange}
                 page={page}
-                pageSize={pageSize}
-                pageSizes={[10, 20]}
-                totalItems={connectionListShow.length}
+                pageSize={serverPageSize}
+                pageSizes={[serverPageSize]}
+                pageSizeInputDisabled
+                totalItems={Number(totalRecordCount) || 0}
                 forwardText={intl.formatMessage({
                   id: "pagination.forward",
                 })}

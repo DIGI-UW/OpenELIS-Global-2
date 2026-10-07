@@ -1,4 +1,9 @@
 services:
+  harness-catalog-init:
+    image: alpine:3.21
+    volumes:
+      - ./projects/analyzer-harness/config-templates:/templates:ro
+
   astm-simulator:
     build:
       context: ./tools/analyzer-mock-server
@@ -12,7 +17,7 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock
     ports:
       # Host port is parameterized so this file can also be run locally, which is
-      # what ci-parity-test.sh exists for. On macOS the AirPlay Receiver holds
+      # what the isolated CI runner exists for. On macOS the AirPlay Receiver holds
       # 5000, so a hardcoded mapping fails to bind before anything else runs.
       # Unset (as in CI) keeps the original 5000.
       - "${ASTM_SIMULATOR_PORT:-5000}:9600"
@@ -34,7 +39,11 @@ services:
     networks:
       - analyzer-net
     healthcheck:
-      test: ["CMD-SHELL", "python -c \"import socket; s=socket.socket(); s.settimeout(2); s.connect(('127.0.0.1',9600)); s.close()\""]
+      test:
+        [
+          "CMD-SHELL",
+          'python -c "import socket; s=socket.socket(); s.settimeout(2); s.connect((''127.0.0.1'',9600)); s.close()"',
+        ]
       interval: 15s
       timeout: 5s
       retries: 5
@@ -48,9 +57,9 @@ services:
     image: openelis-analyzer-bridge.ci
     container_name: openelis-analyzer-bridge
     ports:
-      - "8442:8443"
+      - "127.0.0.1:8442:8443"
       - "12000:12001"
-      - "2575:2575"    # MLLP HL7 listener (OGC-325)
+      - "2575:2575" # MLLP HL7 listener (OGC-325)
     volumes:
       - key_trust-store-volume:/etc/openelis-global
       - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
@@ -85,6 +94,8 @@ services:
     restart: unless-stopped
 
   oe.openelis.org:
+    volumes:
+      - configuration-data:/var/lib/openelis-global/configuration
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
       - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
@@ -92,8 +103,6 @@ services:
       # Full CATALINA_OPTS required here so compose merge replaces (not drops) base JVM flags.
       # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
-    volumes:
-      - ./projects/analyzer-harness/config-templates:/var/lib/openelis-global/configuration/backend:ro
     networks:
       - default
       - analyzer-net
@@ -106,3 +115,6 @@ services:
 networks:
   analyzer-net:
     driver: bridge
+
+volumes:
+  configuration-data:

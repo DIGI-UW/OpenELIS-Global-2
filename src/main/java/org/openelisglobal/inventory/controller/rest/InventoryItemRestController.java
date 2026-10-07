@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import java.util.List;
 import lombok.Getter;
 import lombok.Setter;
+import org.openelisglobal.common.exception.LocalizedValidationException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.inventory.service.InventoryItemService;
@@ -135,7 +136,7 @@ public class InventoryItemRestController extends BaseRestController {
     }
 
     @PostMapping(consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
-    public ResponseEntity<InventoryItem> create(@Valid @RequestBody InventoryItem item, HttpServletRequest request) {
+    public ResponseEntity<?> create(@Valid @RequestBody InventoryItem item, HttpServletRequest request) {
         try {
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
@@ -148,6 +149,8 @@ public class InventoryItemRestController extends BaseRestController {
 
             InventoryItem savedItem = inventoryItemService.save(item);
             return ResponseEntity.status(HttpStatus.CREATED).body(savedItem);
+        } catch (LocalizedValidationException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();

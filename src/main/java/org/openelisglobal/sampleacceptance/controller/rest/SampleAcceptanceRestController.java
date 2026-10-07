@@ -10,6 +10,7 @@ import org.openelisglobal.common.action.IActionConstants;
 import org.openelisglobal.common.exception.LIMSDuplicateRecordException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleacceptance.service.AdminChecklistView;
 import org.openelisglobal.sampleacceptance.service.ResampleResult;
@@ -70,6 +71,9 @@ public class SampleAcceptanceRestController extends BaseRestController {
 
     @Autowired
     private SampleItemService sampleItemService;
+
+    @Autowired
+    private SampleService sampleService;
 
     @Autowired
     private HttpServletRequest httpRequest;
@@ -526,8 +530,18 @@ public class SampleAcceptanceRestController extends BaseRestController {
         Map<String, Object> resample = new LinkedHashMap<>();
         resample.put("resampledToSampleId", sample == null ? null : sample.getResampledToSampleId());
         resample.put("resampledFromSampleId", sample == null ? null : sample.getResampledFromSampleId());
+        resample.put("resampledToAccession", sample == null ? null : accessionOf(sample.getResampledToSampleId()));
+        resample.put("resampledFromAccession", sample == null ? null : accessionOf(sample.getResampledFromSampleId()));
         response.put("resample", resample);
         return response;
+    }
+
+    private String accessionOf(String sampleId) {
+        if (sampleId == null || sampleId.isBlank()) {
+            return null;
+        }
+        Sample linked = sampleService.get(sampleId);
+        return linked == null ? null : linked.getAccessionNumber();
     }
 
     private Map<String, Object> toEvaluationMap(SampleAcceptanceEvaluation eval) {

@@ -71,6 +71,9 @@ We welcome community contributions to help improve OpenELIS Global!
 Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
 
+Supported versions, branches, and the versioning policy are described in
+[RELEASES.md](RELEASES.md).
+
 see full
 [installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
 for Offline Installation
@@ -81,65 +84,20 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
 
-Development has one supported startup path. From the root of any clone or Git
-worktree, run:
+Use the same launcher from any clone or worktree:
 
 ```bash
+bash scripts/setup-workspace.sh
 scripts/dev-stack up
-```
-
-The command initializes the required submodules, uses Java 21, builds the local
-WAR and analyzer components, and starts the complete OpenELIS + analyzer
-harness. Its Compose project, containers, images, networks, ports, and volumes
-are derived from the worktree path, so multiple worktrees can run concurrently.
-The harness analyzer scenarios are created idempotently through authenticated
-application services after login readiness; startup never seeds the database
-directly. Use `--no-scenarios` only when testing an intentionally empty system.
-
-Useful commands:
-
-```bash
-scripts/dev-stack status
 scripts/dev-stack url
-scripts/dev-stack playwright playwright/tests/foundational/core/example.spec.ts
-scripts/dev-stack playwright --project=setup  # verify authentication only
-scripts/dev-stack logs -f oe.openelis.org
-scripts/dev-stack down
-scripts/dev-stack down --volumes --yes  # explicit data reset
 ```
 
-The `playwright` command discovers this worktree's URL, loads credentials from
-the existing environment or `.env`, and runs the shared authentication setup
-automatically. To exercise a deployed environment with the identical path, set
-only its URL:
-
-```bash
-BASE_URL=https://amr.openelis-global.org \
-  scripts/dev-stack playwright playwright/tests/foundational/core/microbiology-whonet-export.spec.ts
-```
-
-Local development needs no configuration: `.env` is created from `.env.example`,
-the proxy binds random loopback ports, and `scripts/dev-stack url` prints the
-browser URL. Frontend source remains hot-reloaded. Re-run `scripts/dev-stack up`
-after backend or analyzer component changes.
-
-The published development frontend dependency image is reused when
-`package.json`, `package-lock.json`, and `frontend/Dockerfile` match `develop`;
-worktree source is still mounted for hot reload. If any of those inputs differ,
-the command automatically builds an isolated frontend image. Set
-`DEV_STACK_BUILD_FRONTEND=true` only to force that rebuild.
-
-For a domain-enabled development server, set a real `LETSENCRYPT_DOMAIN` and
-`LETSENCRYPT_EMAIL` in `.env`, then run the same `scripts/dev-stack up` command.
-It binds ports 80/443, renders the named nginx hosts, and uses the existing
-Let's Encrypt HTTP-01 flow. DNS for both the primary domain and
-`bridge.<domain>` must resolve to the server. Port and bind overrides are listed
-in `.env.example` for hosts that already have an external router; those hosts
-should terminate TLS at that router and set `DEV_STACK_TLS=self-signed` for the
-private upstream.
-
-Do not invoke the development Compose layers directly. CI, release, and packaged
-installation commands remain separate operational interfaces.
+The launcher builds the backend, frontend, Analyzer Bridge and mock from the
+checkout and pinned submodules. Its containers, images, ports and data belong to
+this worktree. Frontend edits hot reload; re-run `up` after backend or
+dependency changes. Native builds, focused tests, domain setup and
+published-image deployment are described in
+[the development guide](docs/dev_setup.md).
 
 #### The Instances can be accessed at
 
@@ -169,56 +127,19 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:apply
 
-#### To ensure your code passes the same checks as the CI pipeline
-
-**Recommended: Use the CI check scripts** (replicates exact CI workflow):
+#### Run the local CI test package
 
 ```bash
-# Run backend CI checks (formatting + build + tests)
-./scripts/run-ci-checks.sh
-
-# Run frontend CI checks (formatting + unit tests + E2E tests)
-./scripts/run-frontend-ci-checks.sh
-
-# Run both (full CI simulation)
-./scripts/run-ci-checks.sh && ./scripts/run-frontend-ci-checks.sh
+scripts/run-ci-checks.sh
+scripts/run-ci-checks.sh --list-jobs
+scripts/run-ci-checks.sh --job frontend-static
 ```
 
-**Options:**
-
-- `--skip-submodules`: Skip submodule build (faster, for quick checks)
-- `--skip-tests`: Skip tests (formatting only)
-- `--skip-e2e`: Skip E2E tests (frontend only)
-
-**Manual commands** (if you prefer to run steps individually):
-
-1.  Run Code Formatting Check (Backend). This command checks code formatting and
-    performs validation similar to the CI
-
-        mvn spotless:check
-
-1.  Run Build Check (Backend). This command builds the project similar to CI
-
-        mvn clean install -Dspotless.check.skip=true
-
-1.  To run Individual Integration Test
-
-         mvn verify -Dit.test=<packageName>.<TestClassName>
-
-    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
-    Flat XML datasets from `src/test/resources/testdata/` via
-    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
-    over inline SQL setup/cleanup to avoid test data pollution.
-
-1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
-
-    > **Note:** Frontend checks will only pass successfully if your development
-    > environment is properly set up and running without issues.
-
-        cd frontend/ # from project directory
-        npm install
-        npm run build
-        npm run cy:run # this will run e2e testing same CI
+The default runs the complete local code-check package on committed source in
+isolated environments. `--job` is repeatable and includes each selected job's
+setup; its result is labeled partial. Run the full command after a push while
+GitHub runs. Publishing and GitHub administration remain hosted operations. See
+[the development guide](docs/dev_setup.md) for job mapping and evidence.
 
 ### Environmental & Compliance-Scoped Result Evaluation
 
@@ -290,25 +211,11 @@ For comprehensive testing guidance, see:
 
 ### Test Data Setup
 
-For E2E testing, integration testing, and manual testing, load test fixtures:
-
-```bash
-# Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness fixture lane (includes HARN-* lane data)
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Note**: The unified loader script provides dependency checks, verification,
-and reset capabilities. See
-[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
+`scripts/dev-stack up` creates development scenarios through application
+services. The local CI runner prepares the workflow's fixtures in fresh,
+isolated test databases. Do not run fixture resets against the interactive
+development stack. For fixture maintenance and backend integration datasets, see
+[the test data guide](.specify/guides/test-data-strategy.md).
 
 ### Pull request guidelines
 

@@ -16,6 +16,7 @@ import {
   PasswordInput,
   Checkbox,
   FormGroup,
+  Modal,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
@@ -46,8 +47,17 @@ const breadcrumbs = [
 ];
 
 const passwordPatternRegex = /^(?=.*[*$#!])(?=.*[a-zA-Z0-9]).{7,}$/;
-const loginNameRegex = /^[a-zA-Z]+$/;
+// Mirrors the seeded server username charset (site information
+// "userNameCharset", checked by NameValidator USERNAME): never stricter than
+// what the server accepts, or stored login names such as qa_recept render
+// invalid on load.
+const loginNameRegex = /^[a-zàâçéèêëîïôûùüÿñæœ ._@-]+$/i;
 const nameRegex = /^(?=.*[a-zA-Z])[a-zA-Z .'_@-]*$/;
+const ALL_LAB_UNITS = "AllLabUnits";
+const ALL_LAB_UNITS_EXCLUSIVE_ERROR = "labUnitRoles.allLabUnitsExclusive";
+// The save endpoint answers 200 for a refused save too; only this forward
+// means the user was written.
+const SAVED_USER_FORWARD = "redirect:/UnifiedSystemUser";
 
 function UserAddModify() {
   const { notificationVisible, setNotificationVisible, addNotification } =
@@ -81,6 +91,7 @@ function UserAddModify() {
   const [selectedTestSectionLabUnits, setSelectedTestSectionLabUnits] =
     useState({});
   const [selectedTestSectionList, setSelectedTestSectionList] = useState([]);
+  const [pendingAllLabUnitsKey, setPendingAllLabUnitsKey] = useState(null);
   const [passwordTouched, setPasswordTouched] = useState({
     userPassword: false,
     confirmPassword: false,
@@ -97,16 +108,32 @@ function UserAddModify() {
     return "0";
   })();
 
-  const { data: readUser } = useServerData(
+  const {
+    data: readUser,
+    isPreviousData: readUserIsPrevious,
+    isFetchedAfterMount: readUserIsFresh,
+    isError: readUserFailed,
+  } = useServerData(
     ID ? `/rest/UnifiedSystemUser?ID=${ID}&startingRecNo=1&roleFilter=` : null,
   );
   const invalidateServerData = useInvalidateServerData();
+  const loadedUserFor = useRef(null);
+  const reloadUser = useRef(false);
 
+  // The form is seeded once per user from a read made after mount (never from
+  // the cached copy of an earlier visit) and again after a save. Every other
+  // read arrives while the user may be typing and must not replace their input.
   useEffect(() => {
-    if (readUser) {
-      handleUserData(readUser);
+    if (!readUser || readUserIsPrevious || !readUserIsFresh) {
+      return;
     }
-  }, [readUser]);
+    if (loadedUserFor.current === ID && !reloadUser.current) {
+      return;
+    }
+    loadedUserFor.current = ID;
+    reloadUser.current = false;
+    handleUserData(readUser);
+  }, [readUser, readUserIsPrevious, readUserIsFresh, ID]);
 
   useEffect(() => {
     if (!ID) {
@@ -119,16 +146,16 @@ function UserAddModify() {
       setIsLoading(true);
     } else {
       setUserData(res);
-      if (res.loginUserId) {
-        setValidation({
-          validatepassword: true,
-          password: true,
-          password2: true,
-          loginName: true,
-          firstName: true,
-          secondName: true,
-        });
-      }
+      const hasLogin = Boolean(res.loginUserId);
+      setValidation((prev) => ({
+        ...prev,
+        validatepassword: hasLogin,
+        password: hasLogin,
+        password2: hasLogin,
+        loginName: hasLogin || Boolean(res.userLoginName),
+        firstName: Boolean(res.userFirstName),
+        secondName: Boolean(res.userLastName),
+      }));
       var KeyList = [];
       Object.keys(res.selectedTestSectionLabUnits).map((key) =>
         KeyList.push(key),
@@ -300,9 +327,9 @@ function UserAddModify() {
         userDataShow.userPassword &&
         userDataShow.userPassword === userDataShow.confirmPassword
       ) {
-        setValidation({ ...validation, validatepassword: true });
+        setValidation((prev) => ({ ...prev, validatepassword: true }));
       } else {
-        setValidation({ ...validation, validatepassword: false });
+        setValidation((prev) => ({ ...prev, validatepassword: false }));
       }
     }
   }, [userDataShow]);
@@ -348,23 +375,35 @@ function UserAddModify() {
   }
 
   function userSavePostCallback(res) {
-    if (res) {
+    const responseStatus = res?.statusCode ?? res?.status ?? 200;
+    const saved =
+      res && responseStatus < 400 && res.forward === SAVED_USER_FORWARD;
+    if (saved) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id:
+            ID === "0"
+              ? "notification.user.add.success"
+              : "notification.user.update.success",
         }),
         kind: NotificationKinds.success,
       });
       setNotificationVisible(true);
+      reloadUser.current = true;
       invalidateServerData();
     } else {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: intl.formatMessage({
+          id:
+            res?.error === ALL_LAB_UNITS_EXCLUSIVE_ERROR
+              ? "systemuserrole.allLabUnits.exclusive.error"
+              : "server.error.msg",
+        }),
       });
       setNotificationVisible(true);
     }
@@ -386,11 +425,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, loginName: false });
+      setValidation((prev) => ({ ...prev, loginName: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, loginName: true });
+      setValidation((prev) => ({ ...prev, loginName: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userLoginName: value,
@@ -423,11 +462,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, password: false });
+      setValidation((prev) => ({ ...prev, password: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, password: true });
+      setValidation((prev) => ({ ...prev, password: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userPassword: value,
@@ -460,11 +499,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, password2: false });
+      setValidation((prev) => ({ ...prev, password2: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, password2: true });
+      setValidation((prev) => ({ ...prev, password2: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         confirmPassword: value,
@@ -493,11 +532,11 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, firstName: false });
+      setValidation((prev) => ({ ...prev, firstName: false }));
     } else {
       setNotificationVisible(false);
       setSaveButton(false);
-      setValidation({ ...validation, firstName: true });
+      setValidation((prev) => ({ ...prev, firstName: true }));
       setUserDataPost((prevUserDataPost) => ({
         ...prevUserDataPost,
         userFirstName: value,
@@ -526,7 +565,7 @@ function UserAddModify() {
         });
       }
       setSaveButton(true);
-      setValidation({ ...validation, secondName: false });
+      setValidation((prev) => ({ ...prev, secondName: false }));
     } else {
       setNotificationVisible(false);
       setUserDataPost((prevUserDataPost) => ({
@@ -534,7 +573,7 @@ function UserAddModify() {
         userLastName: value,
       }));
       setSaveButton(false);
-      setValidation({ ...validation, secondName: true });
+      setValidation((prev) => ({ ...prev, secondName: true }));
     }
 
     setUserDataShow((prevUserData) => ({
@@ -545,7 +584,7 @@ function UserAddModify() {
 
   function handleExpirationDateChange(date) {
     setSaveButton(false);
-    setValidation({ ...validation, expDate: true });
+    setValidation((prev) => ({ ...prev, expDate: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       expirationDate: date,
@@ -558,7 +597,7 @@ function UserAddModify() {
 
   function handleTimeoutChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, timeout: true });
+    setValidation((prev) => ({ ...prev, timeout: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       timeout: e.target.value,
@@ -571,7 +610,7 @@ function UserAddModify() {
 
   function handleAccountActiveChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, active: true });
+    setValidation((prev) => ({ ...prev, active: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountActive: e.target.value,
@@ -584,7 +623,7 @@ function UserAddModify() {
 
   function handleAccountDisabledChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, disabled: true });
+    setValidation((prev) => ({ ...prev, disabled: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountDisabled: e.target.value,
@@ -597,7 +636,7 @@ function UserAddModify() {
 
   function handleAccountLockedChange(e) {
     setSaveButton(false);
-    setValidation({ ...validation, locked: true });
+    setValidation((prev) => ({ ...prev, locked: true }));
     setUserDataPost((prevUserDataPost) => ({
       ...prevUserDataPost,
       accountLocked: e.target.value,
@@ -611,14 +650,14 @@ function UserAddModify() {
   function handleCopyUserPermissionsChange() {
     if (copyUserPermission.length > 0) {
       setSaveButton(false);
-      setValidation({ ...validation, copy: true });
+      setValidation((prev) => ({ ...prev, copy: true }));
     }
   }
 
   function handleAutoCompleteCopyUserPermissionsChange(selectedUserId) {
     setCopyUserPermission(selectedUserId);
     setSaveButton(false);
-    setValidation({ ...validation, autoCopy: true });
+    setValidation((prev) => ({ ...prev, autoCopy: true }));
   }
 
   function handleCopyUserPermissionsChangeClick() {
@@ -663,11 +702,47 @@ function UserAddModify() {
       selectedRoles: updatedRoles,
     }));
     setSaveButton(false);
-    setValidation({ ...validation, checkBox: true });
+    setValidation((prev) => ({ ...prev, checkBox: true }));
+  }
+
+  const hasAllLabUnitsRow = Object.keys(selectedTestSectionLabUnits).includes(
+    ALL_LAB_UNITS,
+  );
+
+  const labUnitName = (key) =>
+    userDataShow?.testSections?.find((section) => section.id === key)?.value ||
+    key;
+
+  const roleName = (roleId) =>
+    userDataShow?.labUnitRoles?.find((role) => role.roleId === roleId)
+      ?.roleName || roleId;
+
+  const scopedGrantsReplacedBy = (key) =>
+    Object.entries(selectedTestSectionLabUnits)
+      .filter(([unit]) => unit !== key && unit !== ALL_LAB_UNITS)
+      .map(([unit, roles]) => ({
+        id: unit,
+        unit: labUnitName(unit),
+        roles: roles.map(roleName),
+      }));
+
+  function applyAllLabUnits() {
+    setSelectedTestSectionLabUnits({ [ALL_LAB_UNITS]: [] });
+    setSelectedTestSectionList([ALL_LAB_UNITS]);
+    setPendingAllLabUnitsKey(null);
+    setSaveButton(false);
+    setValidation((prev) => ({ ...prev, testSection: true }));
   }
 
   function handleTestSectionsSelectChange(e, key) {
     const selectedValue = e.target.value;
+    if (
+      selectedValue === ALL_LAB_UNITS &&
+      scopedGrantsReplacedBy(key).length > 0
+    ) {
+      setPendingAllLabUnitsKey(key);
+      return;
+    }
     const index = selectedTestSectionList.indexOf(key);
     if (index != -1) {
       const testSectionList = [...selectedTestSectionList];
@@ -697,7 +772,7 @@ function UserAddModify() {
 
     setSelectedTestSectionLabUnits(updatedTestSectionLabUnits);
     setSaveButton(false);
-    setValidation({ ...validation, testSection: true });
+    setValidation((prev) => ({ ...prev, testSection: true }));
   }
 
   const addRoleToSelectedUnits = (key, roleIdToAdd) => {
@@ -707,7 +782,7 @@ function UserAddModify() {
       if (!currentRoles.includes(roleIdToAdd)) {
         updatedUnits[key] = [...currentRoles, roleIdToAdd];
         setSaveButton(false);
-        setValidation({ ...validation, role: true });
+        setValidation((prev) => ({ ...prev, role: true }));
       }
       return updatedUnits;
     });
@@ -721,15 +796,19 @@ function UserAddModify() {
           (roleId) => roleId !== roleIdToRemove,
         );
         setSaveButton(false);
-        setValidation({ ...validation, removeSelected: true });
+        setValidation((prev) => ({ ...prev, removeSelected: true }));
       }
       return updatedUnits;
     });
   };
 
   const addNewSection = () => {
+    if (hasAllLabUnitsRow) {
+      return;
+    }
     const newSectionsToAdd = userDataShow.testSections.filter(
       (section) =>
+        section.id !== ALL_LAB_UNITS &&
         !Object.keys(selectedTestSectionLabUnits).includes(section.id),
     );
 
@@ -757,7 +836,7 @@ function UserAddModify() {
     }
   };
 
-  if (!isLoading) {
+  if (!isLoading || (!userData && !readUserFailed)) {
     return (
       <>
         <Loading />
@@ -810,11 +889,15 @@ function UserAddModify() {
                         id: "login.login.name",
                       })}
                       invalid={
-                        userDataShow &&
-                        userDataShow.userLoginName &&
-                        !loginNameRegex.test(userDataShow.userLoginName)
+                        !!(
+                          userDataShow &&
+                          userDataShow.userLoginName &&
+                          !loginNameRegex.test(userDataShow.userLoginName)
+                        )
                       }
-                      // invalidText={errors.order}
+                      invalidText={intl.formatMessage({
+                        id: "notification.invalid.loginName",
+                      })}
                       required={true}
                       value={
                         userDataShow && userDataShow.userLoginName
@@ -870,10 +953,12 @@ function UserAddModify() {
                       })}
                       required={true}
                       invalid={
-                        passwordTouched.userPassword &&
-                        userDataShow &&
-                        userDataShow.userPassword &&
-                        !passwordPatternRegex.test(userDataShow.userPassword)
+                        !!(
+                          passwordTouched.userPassword &&
+                          userDataShow &&
+                          userDataShow.userPassword &&
+                          !passwordPatternRegex.test(userDataShow.userPassword)
+                        )
                       }
                       // invalidText={errors.order}
                       value={
@@ -904,16 +989,18 @@ function UserAddModify() {
                       })}
                       required={true}
                       invalid={
-                        (passwordTouched.confirmPassword &&
-                          userDataShow &&
-                          userDataShow.userPassword &&
-                          userDataShow.confirmPassword &&
-                          !passwordPatternRegex.test(
-                            userDataShow.confirmPassword,
-                          )) ||
-                        (passwordTouched.confirmPassword &&
-                          userDataShow.confirmPassword !==
-                            userDataShow.userPassword)
+                        !!(
+                          (passwordTouched.confirmPassword &&
+                            userDataShow &&
+                            userDataShow.userPassword &&
+                            userDataShow.confirmPassword &&
+                            !passwordPatternRegex.test(
+                              userDataShow.confirmPassword,
+                            )) ||
+                          (passwordTouched.confirmPassword &&
+                            userDataShow.confirmPassword !==
+                              userDataShow.userPassword)
+                        )
                       }
                       // invalidText={errors.order}
                       value={
@@ -945,9 +1032,11 @@ function UserAddModify() {
                       })}
                       required={true}
                       invalid={
-                        userDataShow &&
-                        userDataShow.userFirstName &&
-                        !nameRegex.test(userDataShow.userFirstName)
+                        !!(
+                          userDataShow &&
+                          userDataShow.userFirstName &&
+                          !nameRegex.test(userDataShow.userFirstName)
+                        )
                       }
                       // invalidText={errors.order}
                       value={
@@ -978,9 +1067,11 @@ function UserAddModify() {
                       })}
                       required={true}
                       invalid={
-                        userDataShow &&
-                        userDataShow.userLastName &&
-                        !nameRegex.test(userDataShow.userLastName)
+                        !!(
+                          userDataShow &&
+                          userDataShow.userLastName &&
+                          !nameRegex.test(userDataShow.userLastName)
+                        )
                       }
                       // invalidText={errors.order}
                       value={
@@ -1256,6 +1347,13 @@ function UserAddModify() {
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
                     <FormattedMessage id="systemuserrole.roles.labunit" />
+                    <br />
+                    <span
+                      className="cds--label"
+                      data-testid="all-lab-units-exclusive-info"
+                    >
+                      <FormattedMessage id="systemuserrole.allLabUnits.exclusive.info" />
+                    </span>
                   </Column>
                 </Grid>
                 <br />
@@ -1270,13 +1368,11 @@ function UserAddModify() {
                         <Select
                           id={`select-${key}`}
                           noLabel={true}
-                          defaultValue={
-                            userDataShow &&
-                            userDataShow.testSections &&
-                            userDataShow.testSections.length > 0
-                              ? userDataShow.testSections.find(
-                                  (section) => section.id === key,
-                                )?.id || userDataShow.testSections[0].id
+                          value={
+                            userDataShow?.testSections?.some(
+                              (section) => section.id === key,
+                            )
+                              ? key
                               : ""
                           }
                           onChange={(e) =>
@@ -1345,7 +1441,10 @@ function UserAddModify() {
                               [key]: updatedRoles,
                             }));
                             setSaveButton(false);
-                            setValidation({ ...validation, selectedLab: true });
+                            setValidation((prev) => ({
+                              ...prev,
+                              selectedLab: true,
+                            }));
                           }}
                         />
                         <FormGroup
@@ -1413,12 +1512,50 @@ function UserAddModify() {
                     <Button
                       data-cy="addNewPermission"
                       onClick={addNewSection}
+                      disabled={hasAllLabUnitsRow}
                       type="button"
                     >
                       <FormattedMessage id="systemuserrole.newpermissions" />
                     </Button>
                   </Column>
                 </Grid>
+                <Modal
+                  open={pendingAllLabUnitsKey !== null}
+                  danger
+                  size="sm"
+                  modalHeading={intl.formatMessage({
+                    id: "systemuserrole.allLabUnits.confirm.title",
+                  })}
+                  primaryButtonText={intl.formatMessage({
+                    id: "systemuserrole.allLabUnits.confirm.primary",
+                  })}
+                  secondaryButtonText={intl.formatMessage({
+                    id: "label.button.cancel",
+                  })}
+                  onRequestSubmit={applyAllLabUnits}
+                  onRequestClose={() => setPendingAllLabUnitsKey(null)}
+                  onSecondarySubmit={() => setPendingAllLabUnitsKey(null)}
+                >
+                  <p>
+                    <FormattedMessage id="systemuserrole.allLabUnits.confirm.body" />
+                  </p>
+                  <UnorderedList>
+                    {pendingAllLabUnitsKey !== null &&
+                      scopedGrantsReplacedBy(pendingAllLabUnitsKey).map(
+                        (grant) => (
+                          <ListItem key={grant.id}>
+                            {grant.unit}
+                            {": "}
+                            {grant.roles.length > 0
+                              ? grant.roles.join(", ")
+                              : intl.formatMessage({
+                                  id: "systemuserrole.allLabUnits.confirm.noPermissions",
+                                })}
+                          </ListItem>
+                        ),
+                      )}
+                  </UnorderedList>
+                </Modal>
                 <hr />
                 <br />
                 <Grid fullWidth={true}>
