@@ -79,12 +79,6 @@ public class AnalyzerResultsServiceImpl extends AuditableBaseObjectServiceImpl<A
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerResults> findHeldMappingResultsByProfile(String profileId, int profileRevision) {
-        return getBaseObjectDAO().findHeldMappingResultsByProfile(profileId, profileRevision);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public Map<String, Long> countHeldResultsByAnalyzerIds(List<String> analyzerIds) {
         return getBaseObjectDAO().countHeldResultsByAnalyzerIds(analyzerIds);
     }

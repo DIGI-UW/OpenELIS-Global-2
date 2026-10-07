@@ -85,13 +85,10 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
   than one row"). The baseline profiles resolve eight LOINCs: 20447-9,
   94500-6, 85362-2 and 89372-7 (rows of `example-tests.csv`), and 85477-8,
   85478-6, 85479-4 and 89578-3 (`analyzer-harness-tests.csv`).
-- The webapp health limit is the container's own check (start period 2m,
+- The webapp health limit was the container's own check (start period 2m, now 10m;
   three checks 30 s apart, in `projects/analyzer-harness/docker-compose.base.yml`,
   copied from `build.docker-compose.yml`); Compose stops waiting when Docker
   marks the container unhealthy, before CI's `--wait-timeout 900`.
-- Dead code this stack orphaned: `findHeldMappingResultsByProfile` (the DAO,
-  its implementation, the service and its implementation). The Playwright
-  config still names the deleted `ogc-1054-m2-shared-mapping.spec.ts`.
 
 ### Build
 
@@ -100,7 +97,7 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
 - [x] F1a The adoption integration test creates and deletes its own catalog tests (earlier suites in CI's class order leave the test table empty)
 - [x] F1b The harness loads only what the analyzer stories use: the `analyzer-harness-*` files, with the generic rows the baseline profiles resolve (HIV-1 Viral Load, SARS-CoV-2 PCR, Xpert MTB/RIF, Rifampin Resistance) moved into them; the rest of the copied generic dictionary is deleted. Nothing else that runs on the harness (the foundational, storage and reporting fixtures, every harness spec) reads a row only the harness configuration provides or changes; checked by booting the harness and loading its fixtures
 - [x] F1c The harness webapp's health grace period lets CI's own wait (15 minutes) govern: a slow start shows as a slow job, never as "unhealthy" at 4 minutes
-- [ ] F2 Delete the dead code this stack orphaned and the stale M2 entry in playwright.config.ts
+- [x] F2 Delete the dead code this stack orphaned (`findHeldMappingResultsByProfile` in the DAO, its implementation, the service and its implementation) and the stale M2 entry in playwright.config.ts (the entry went with `5517b2c136`)
 - [ ] F3 Specs in their end state, each setting up its own analyzers through the setup screens or the shared API sequence and sending only manufacturer fixtures: the MVP journeys (a GeneXpert HIV-1 viral load and a respiratory panel with its components, each to an accepted clinical result; two GeneXperts on one listener; FluoroCycler file to clinical result; a catalog test deactivated after mapping, held, reactivated and recovered, on Influenza B), with the seven per-code scenarios and the unknown-value recovery retired; a new QuantStudio file story to an accepted clinical result; the setup-assays held-result story on fixtures (Influenza B turned off; RSV under a code the profile does not declare); the adoption spec on its own catalog test; the microbiology AST spec with its own source analyzer; the M1 lineage text on the baseline ID; the M3 guided-setup spec (it clicks "Review mappings in Analyzer Types", a link per-analyzer mappings removed). Then `sendGeneXpertAstm` and the setup picker's profile pin are deleted
 - [ ] F4 E2E user story: an instrument code changed in the Assays step is the code results arrive under (Cepheid fixture replayed with that code) and they land on the right test. Outbound orders from OE2 are deferred
 - [ ] F5 E2E user stories for placement, recordable: a result placed on its tube; a mistyped ID held and placed by the reviewer; a patient mismatch explained before saving; a rerun replacing a held result; a FILE plate with one mistyped sample name. Two tubes, an unordered test and an unknown ID stay proved by the placement integration tests
