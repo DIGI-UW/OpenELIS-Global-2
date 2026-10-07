@@ -7,6 +7,14 @@ import {
 } from "./queryState";
 
 describe("microbiology reference query state", () => {
+  it("ignores retired workflow classification in URLs and requests", () => {
+    const parsed = parseReferenceQuery("?workflow=BACTERIOLOGY");
+    expect(parsed).not.toHaveProperty("workflow");
+    expect(
+      buildReferenceRequestQuery({ ...parsed, workflow: "BACTERIOLOGY" }),
+    ).not.toContain("workflow");
+  });
+
   it("round-trips supported state in a canonical order", () => {
     const parsed = parseReferenceQuery(
       "?pageSize=50&q=coli&status=ACTIVE&page=3&method=MIC",

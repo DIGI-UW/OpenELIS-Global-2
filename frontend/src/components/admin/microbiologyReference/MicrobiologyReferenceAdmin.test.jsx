@@ -70,6 +70,22 @@ describe("microbiology reference administration", () => {
     expect(REFERENCE_DEFINITIONS).not.toHaveProperty("culture-setups");
   });
 
+  it("does not offer retired workflow classification on panel creation", async () => {
+    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
+    renderPage(
+      <AstPanelPage query={{ ...query, edit: "new" }} setQuery={vi.fn()} />,
+    );
+    await screen.findByRole("dialog");
+    expect(
+      screen.queryAllByLabelText(messages["microbiology.admin.field.workflow"]),
+    ).toHaveLength(0);
+    expect(
+      screen.queryByRole("columnheader", {
+        name: messages["microbiology.admin.field.workflow"],
+      }),
+    ).not.toBeInTheDocument();
+  });
+
   it("loads the complete antibiotic option list for AST panels", async () => {
     getReferencePage.mockResolvedValue({ rows: [], total: 0 });
     getReferenceOptions.mockResolvedValue([]);
@@ -384,7 +400,6 @@ describe("microbiology reference administration", () => {
       id,
       logicalKey: "panel-logical-key",
       name: "Gram negative panel",
-      workflowType: "BACTERIOLOGY",
       versionNumber,
       current,
       active: true,

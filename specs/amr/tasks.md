@@ -351,6 +351,11 @@ now builds its own request from the current request fields, keeps admission date
 optional, and omits retired culture-method configuration. After this fix, all
 203 microbiology frontend tests across 23 suites pass. This module-level result
 does not include reference administration or persisted browser acceptance.
+Reference administration now removes the retired panel workflow field, column,
+filter and URL/request parameter. Two regressions failed before removal; all
+24 reference-administration tests pass, including published-version refresh.
+The frontend production build also passes. These checks do not establish
+persisted browser behavior or acceptance of later panel-administration features.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,
