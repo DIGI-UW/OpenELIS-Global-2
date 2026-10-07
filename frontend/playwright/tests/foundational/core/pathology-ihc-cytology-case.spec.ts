@@ -228,8 +228,12 @@ async function findOnDashboard(
   await expect(stageFilter.locator('option[value="All"]')).toHaveCount(1, {
     timeout: NAV_TIMEOUT,
   });
-  await stageFilter.selectOption("All");
-  await expect(stageFilter).toHaveValue("All");
+  // The dashboard's first load can land after the pick and put its own
+  // grouping back, so the pick is repeated until it holds.
+  await expect(async () => {
+    await stageFilter.selectOption("All");
+    await expect(stageFilter).toHaveValue("All", { timeout: 1000 });
+  }).toPass({ timeout: NAV_TIMEOUT });
   await page
     .getByRole("searchbox", { name: "Search by LabNo or Family Name" })
     .fill(labNo);

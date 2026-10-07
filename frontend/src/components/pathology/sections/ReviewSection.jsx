@@ -18,6 +18,10 @@ import "../pathologyCaseView.scss";
  * relying on that default is what lets the summary panel, the rail and the
  * section badge all read the one status field, instead of each having to
  * treat an absent status as a fourth meaning of its own.
+ *
+ * The multiselect hands back the objects it was given at mount, not the ones
+ * a status change has since replaced, so a request already on the case keeps
+ * the status it holds there; only a new pick is stamped open.
  */
 const ReviewSection = ({
   caseInfo,
@@ -92,10 +96,20 @@ const ReviewSection = ({
           itemToString={(item) => (item ? item.value : "")}
           initialSelectedItems={caseInfo.requests}
           onChange={(changes) =>
-            updateCase({
-              requests: changes.selectedItems.map((item) =>
-                item.status ? item : { ...item, status: "OPENED" },
-              ),
+            updateCase((prev) => {
+              const current = new Map(
+                (prev.requests ?? []).map((request) => [
+                  String(request.id),
+                  request,
+                ]),
+              );
+              return {
+                requests: changes.selectedItems.map(
+                  (item) =>
+                    current.get(String(item.id)) ??
+                    (item.status ? item : { ...item, status: "OPENED" }),
+                ),
+              };
             })
           }
           placeholder={intl.formatMessage({ id: "common.select" })}

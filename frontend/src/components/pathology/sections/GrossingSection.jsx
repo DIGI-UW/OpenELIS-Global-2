@@ -75,7 +75,7 @@ const GrossingSection = ({
         disabled={readOnly}
         rows={6}
         labelText={intl.formatMessage({ id: "pathology.label.grossexam" })}
-        value={caseInfo.grossExam}
+        value={caseInfo.grossExam ?? ""}
         onChange={(e) => updateCase({ grossExam: e.target.value })}
       />
       <div>
@@ -107,7 +107,7 @@ const GrossingSection = ({
                 labelText={intl.formatMessage({
                   id: "pathology.label.location",
                 })}
-                value={block.location}
+                value={block.location ?? ""}
                 onChange={(e) =>
                   patchBlock(index, { location: e.target.value })
                 }

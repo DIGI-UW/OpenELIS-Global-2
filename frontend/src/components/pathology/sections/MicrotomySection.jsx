@@ -86,7 +86,7 @@ const MicrotomySection = ({ caseInfo, updateCase, readOnly, onSlideFile }) => {
               labelText={intl.formatMessage({
                 id: "pathology.label.location",
               })}
-              value={slide.location}
+              value={slide.location ?? ""}
               onChange={(e) => patchSlide(index, { location: e.target.value })}
             />
           </div>

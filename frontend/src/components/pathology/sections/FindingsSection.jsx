@@ -71,7 +71,7 @@ const FindingsSection = ({
         disabled={readOnly}
         rows={6}
         labelText={intl.formatMessage({ id: "pathology.label.microexam" })}
-        value={caseInfo.microscopyExam}
+        value={caseInfo.microscopyExam ?? ""}
         onChange={(e) => updateCase({ microscopyExam: e.target.value })}
       />
       <div className="pathology-case-view__picker-row">
@@ -169,7 +169,7 @@ const FindingsSection = ({
         labelText={intl.formatMessage({
           id: "pathology.label.textconclusion",
         })}
-        value={caseInfo.conclusionText}
+        value={caseInfo.conclusionText ?? ""}
         onChange={(e) => updateCase({ conclusionText: e.target.value })}
       />
       <Checkbox

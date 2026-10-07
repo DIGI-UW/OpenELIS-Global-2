@@ -747,6 +747,47 @@ describe("PathologyCaseView sections", () => {
     expect(body.requests).toEqual([{ value: "3", status: "OPENED" }]);
   });
 
+  // The multiselect hands back the objects it was given at mount, so a status
+  // set on one request used to be reverted to open the moment a second
+  // request was picked.
+  it("keeps a request's status when another request is raised beside it", async () => {
+    hasRole.mockReturnValue(true);
+    servedCase = caseAtStage("READY_PATHOLOGIST");
+    requestCatalogue = [
+      { id: "3", value: "Recut" },
+      { id: "4", value: "Deeper sections" },
+    ];
+    renderCaseView();
+
+    await waitFor(() => expect(statusSelect()).not.toBeNull());
+
+    const user = userEvent.setup();
+    const review = within(section("pathology-section-review"));
+    await user.click(review.getByRole("combobox", { name: /^Requests/ }));
+    await user.click(review.getByRole("option", { name: "Recut" }));
+    fireEvent.change(document.getElementById("requeststatus0"), {
+      target: { value: "COMPLETED" },
+    });
+    await user.click(review.getByRole("option", { name: "Deeper sections" }));
+
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["caseView.action.saveDraft"],
+      }),
+    );
+
+    await waitFor(() =>
+      expect(postToOpenElisServerFullResponse).toHaveBeenCalled(),
+    );
+    const body = JSON.parse(
+      postToOpenElisServerFullResponse.mock.calls.at(-1)[1],
+    );
+    expect(body.requests).toEqual([
+      { value: "3", status: "COMPLETED" },
+      { value: "4", status: "OPENED" },
+    ]);
+  });
+
   // An empty option posts an empty status, which the server reads as open, so
   // the one control for closing a request also offered a way to silently
   // reopen it.

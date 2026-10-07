@@ -159,12 +159,12 @@ function PathologyCaseView() {
     ) {
       loaded.assignedPathologistId = userSessionDetails.userId;
       loaded.assignedPathologist =
-        userSessionDetails.lastName + " " + userSessionDetails.firstName;
+        userSessionDetails.lastName + "," + userSessionDetails.firstName;
     }
     if (!loaded.assignedTechnicianId) {
       loaded.assignedTechnicianId = userSessionDetails.userId;
       loaded.assignedTechnician =
-        userSessionDetails.lastName + " " + userSessionDetails.firstName;
+        userSessionDetails.lastName + "," + userSessionDetails.firstName;
     }
     setCaseInfo(loaded);
     setDirty(false);
