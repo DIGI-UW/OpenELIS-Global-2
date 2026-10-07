@@ -345,6 +345,12 @@ replacing the removed single-specimen response field. The regression failed
 before the fix; 43 panel/case-screen tests pass, including the case-screen
 connection and logging against the selected specimen. The backend's existing
 membership rejection remains in place; browser acceptance is still pending.
+The full microbiology frontend run exposed a remaining case-detail save caller
+of the retired reception serializer (202 passed, one failed). Case-detail saving
+now builds its own request from the current request fields, keeps admission date
+optional, and omits retired culture-method configuration. After this fix, all
+203 microbiology frontend tests across 23 suites pass. This module-level result
+does not include reference administration or persisted browser acceptance.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,

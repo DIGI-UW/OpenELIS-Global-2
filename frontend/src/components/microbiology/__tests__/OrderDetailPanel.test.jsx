@@ -30,7 +30,6 @@ describe("OrderDetailPanel", () => {
       saveOrderDetail: vi.fn().mockResolvedValue({
         orderDetail: {
           culturePurpose: "ACTIVE_SCREENING",
-          cultureMethodId: "",
           patientOrigin: "EMERGENCY",
           admissionDate: null,
           numberOfSets: 2,
@@ -64,7 +63,6 @@ describe("OrderDetailPanel", () => {
     await waitFor(() =>
       expect(service.saveOrderDetail).toHaveBeenCalledWith("case-1", {
         culturePurpose: "ACTIVE_SCREENING",
-        cultureMethodId: "",
         patientOrigin: "EMERGENCY",
         admissionDate: null,
         numberOfSets: 2,
@@ -78,7 +76,6 @@ describe("OrderDetailPanel", () => {
     renderPanel({
       orderDetail: {
         culturePurpose: "CLINICAL_DIAGNOSTIC",
-        cultureMethodId: "method-1",
         patientOrigin: "INPATIENT",
         admissionDate: "2026-08-03",
         numberOfSets: 3,
