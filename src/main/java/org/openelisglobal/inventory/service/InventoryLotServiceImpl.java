@@ -273,12 +273,7 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
             throw new IllegalArgumentException("Lot not found: " + lotId);
         }
 
-        // Dispose and adjust write the transaction; a bare status change would skip it.
-        if (status == LotStatus.DISPOSED
-                || (status == LotStatus.CONSUMED && lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0)) {
-            throw new IllegalStateException(
-                    "Lot " + lot.getLotNumber() + " cannot be set to " + status + " here; use dispose or adjust");
-        }
+        refuseStatusThatMovesStock(lot, status);
 
         lot.setStatus(status);
         lot.setSysUserId(sysUserId);
@@ -286,6 +281,16 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
         update(lot);
 
         return lot;
+    }
+
+    @Override
+    public void refuseStatusThatMovesStock(InventoryLot lot, LotStatus status) {
+        // Dispose and adjust write the transaction; a bare status change would skip it.
+        if (status == LotStatus.DISPOSED
+                || (status == LotStatus.CONSUMED && lot.getCurrentQuantity() != null && lot.getCurrentQuantity() > 0)) {
+            throw new IllegalStateException(
+                    "Lot " + lot.getLotNumber() + " cannot be set to " + status + " here; use dispose or adjust");
+        }
     }
 
     @Override

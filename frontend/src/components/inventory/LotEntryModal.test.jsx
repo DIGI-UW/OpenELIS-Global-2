@@ -539,3 +539,27 @@ describe("LotEntryModal — calendar dates on an edited lot", () => {
     });
   });
 });
+
+describe("LotEntryModal — quantity on an edited lot", () => {
+  it("locks the quantity, which only an adjustment may change", () => {
+    renderWithIntl(
+      <LotEntryModal
+        open
+        onClose={vi.fn()}
+        onSave={vi.fn()}
+        lot={{
+          id: 21,
+          inventoryItem: { id: "MALARIA_RDT" },
+          lotNumber: "LOT-21",
+          currentQuantity: 4,
+          status: "ACTIVE",
+          qcStatus: "PASSED",
+        }}
+      />,
+    );
+
+    expect(
+      screen.getByLabelText(messages["lot.initialQuantity"]),
+    ).toBeDisabled();
+  });
+});

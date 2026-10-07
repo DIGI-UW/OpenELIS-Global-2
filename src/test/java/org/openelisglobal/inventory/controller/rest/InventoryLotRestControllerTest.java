@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -28,6 +29,7 @@ import org.openelisglobal.inventory.controller.rest.InventoryLotRestController.A
 import org.openelisglobal.inventory.controller.rest.InventoryLotRestController.DisposeRequest;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryLotService;
+import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -171,6 +173,37 @@ public class InventoryLotRestControllerTest {
 
         assertEquals("A lot that carries no barcode can still be given one", "PAR-500-001-LOT-6",
                 updatedLot().getBarcode());
+    }
+
+    @Test
+    public void update_keepsTheStoredQuantity_whenTheBodyChangesIt() {
+        stubSession();
+        InventoryLot stored = lot(6L);
+        stored.setCurrentQuantity(40.0);
+        when(inventoryLotService.get(6L)).thenReturn(stored);
+        InventoryLot body = lot(null);
+        body.setCurrentQuantity(0.0);
+
+        controller.update("6", body, request);
+
+        assertEquals(Double.valueOf(40.0), updatedLot().getCurrentQuantity());
+    }
+
+    @Test
+    public void update_answers400WithBody_whenTheBodyAsksForAStatusOnlyDisposalMayRecord() {
+        stubSession();
+        InventoryLot stored = lot(6L);
+        when(inventoryLotService.get(6L)).thenReturn(stored);
+        doThrow(new IllegalStateException("Lot LOT-6 cannot be set to DISPOSED here; use dispose or adjust"))
+                .when(inventoryLotService).refuseStatusThatMovesStock(stored, LotStatus.DISPOSED);
+        InventoryLot body = lot(null);
+        body.setStatus(LotStatus.DISPOSED);
+
+        ResponseEntity<?> response = controller.update("6", body, request);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals("Lot LOT-6 cannot be set to DISPOSED here; use dispose or adjust", body(response).get("error"));
+        verify(inventoryLotService, never()).update(any());
     }
 
     private InventoryLot updatedLot() {
