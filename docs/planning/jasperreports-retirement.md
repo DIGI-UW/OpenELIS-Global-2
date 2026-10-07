@@ -50,13 +50,17 @@ measure.
   conversion, remove the legacy engine, and verify all supported reporting
   paths.
 
-R1 is implemented on `codex/reporting-r1-remediation`, directly above that
-combined tip. It addresses all 24 findings listed below and moves the remaining
+The current combined stack tip is
+[#4649](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4649),
+`codex/reporting-r1-remediation`, directly above #4552. The initial
+implementation commit is `43d9d43d035dd269f056302dfa767be1d0f8dd23`, followed by
+the multiple-referral correction in `5f61d646a1689a23184af9e6279a3eb0356fad8e`
+described below. R1 addresses all 24 baseline findings and moves the remaining
 label-reprint test from iText to PDFBox. Visual review also identified and fixed
 orphaned routine non-conformity order details/comments; ordinary orders now stay
 together, and long orders repeat their identifying details.
 
-Local reporting validation passed **97 tests in 29 suites**, with zero failures,
+Local reporting validation passed **98 tests in 29 suites**, with zero failures,
 errors or skips. This includes the existing report preparation/merging tests,
 real database fixtures, every workplan variant, page-level identity and
 order/notes association checks, configured logos, independent signature and
@@ -66,12 +70,23 @@ continuation pages, signatures, legends and printed recollection boxes. PDFs can
 be retained by adding `-Dreporting.pdf.output=target/reporting-r1-pdfs` to the
 reporting test invocation. The new database fixtures roll back after each test.
 
-The audited GitHub threads remain open until the fixes and evidence are reviewed
-and their outcomes recorded. R1 closure still requires the full local CI
-aggregate and the three GitHub checkpoints on the published remediation
-revision. Use that revision's PR checks and retained CI source identity rather
-than the audit baseline's results. **R2 is the next conversion milestone after
-R1 closure; R2–R5 remain unimplemented.**
+All 24 audited GitHub review threads received a linked implementation and
+regression-test reply and were formally resolved on 2026-10-07. A fresh audit of
+the 20 original PRs found zero unresolved threads. A new
+[#4649 finding](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4649#discussion_r4212928941)
+is also fixed: all referrals remain in their local-test block, with local
+identity repeated when it spans pages. The regression reproduced the original
+failure and now covers three referrals per ordinary test and 100 for a long
+test; representative pages were inspected. This follow-up also received its fix
+and test reply and was formally resolved. A fresh audit of all 21 PRs found
+**zero unresolved threads**, covering 25 resolved findings in total.
+
+Current candidate-validation results and the tested commit are recorded in
+[#4649](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4649) and its checks.
+R1 closes when the full local CI aggregate and all three GitHub checkpoints pass
+on the published remediation revision. Use that revision's results and retained
+CI source identity rather than the audit baseline's results. **R2 is the next
+conversion milestone after R1 closure; R2–R5 remain unimplemented.**
 
 At each milestone, update this baseline, the remaining inventory, review-thread
 outcomes and validation evidence from the new combined stack tip. Record the
@@ -286,13 +301,17 @@ days, split it into numbered submilestones with explicit completion criteria;
 retain this order and do not defer R1 findings into the later report
 conversions.
 
-### R1 — Review remediation and regression coverage (implemented; awaiting closure)
+### R1 — Review remediation and regression coverage (implementation and comments complete)
 
 The build blocker is fixed by moving `OrderLabelReprintDecreaseQtyTest` to the
 existing PDFBox test support. The three high-priority clinical findings, shared
 pagination/text issues and report-specific corrections are implemented with
-regression coverage in R1. These 14 rows account for all 24 unresolved threads
-at the baseline; links identify each finding individually.
+regression coverage in R1. These 14 rows account for all 24 review threads at
+the baseline; each linked thread is now formally resolved with its fix and test
+evidence. The additional multiple-referral finding on #4649 is fixed and covered
+by `ReferredOutReportTest.everyReferralRetainsItsLocalTestContextAcrossPages`.
+That follow-up is published and formally resolved. Candidate-validation results
+and the tested commit are tracked on #4649, as described above.
 
 | PR    | Threads | Remediation and regression examples                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | ----- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
