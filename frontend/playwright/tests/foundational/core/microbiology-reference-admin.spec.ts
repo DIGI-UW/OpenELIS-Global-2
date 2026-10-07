@@ -199,7 +199,10 @@ test.describe("OGC-782 M3 microbiology reference administration", () => {
       .filter({ hasText: "Gram negative AST panel (UAT)" })
       .filter({ hasText: "Current" });
     await expect(currentRow).toBeVisible({ timeout: LONG_TIMEOUT });
-    const versionText = await currentRow.getByRole("cell").nth(2).innerText();
+    const versionText = await currentRow
+      .getByRole("cell")
+      .filter({ hasText: /^v\d+$/ })
+      .innerText();
     const originalVersion = Number(versionText.replace(/^v/, ""));
     await currentRow.getByRole("button", { name: "Options" }).click();
     await page.getByRole("menuitem", { name: "Publish new version" }).click();

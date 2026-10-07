@@ -1,5 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.sql.Date;
@@ -154,6 +156,9 @@ public class MicrobiologyUatScenarioService {
     private final MicroAstService astService;
     private final AnalyzerService analyzerService;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     public MicrobiologyUatScenarioService(MethodService methodService, SampleService sampleService,
             SampleItemService sampleItemService, PatientService patientService, PersonService personService,
             SampleHumanService sampleHumanService, TypeOfSampleService typeOfSampleService,
@@ -255,6 +260,13 @@ public class MicrobiologyUatScenarioService {
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
         MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), method.getId(), performedBy);
         caseAnalysisService.linkAnalysis(microCase, analysis, reportableTestAnalyte.getId());
+        if (WHONET_EXPORT_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
+            // Stands in for a stored V1 bacteriology row so the WHONET export's
+            // workflow_type scope remnant keeps selecting it; roadmap step 15
+            // replaces the scope with track populations and removes this stamp.
+            entityManager.createQuery("update MicroCase c set c.workflowType = 'BACTERIOLOGY' where c.id = :id")
+                    .setParameter("id", microCase.getId()).executeUpdate();
+        }
         AstScenarioData astScenarioData = null;
         if (REVIEWED_AST_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
             astScenarioData = ensureReviewedAstScenario(microCase, astReferenceData, performedBy);

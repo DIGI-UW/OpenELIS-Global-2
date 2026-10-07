@@ -435,11 +435,11 @@ describe("microbiology reference administration", () => {
       }),
     );
 
-    expect(
-      await screen.findByRole("row", {
-        name: /Gram negative panel.*v2.*Current.*Active/,
-      }),
-    ).toBeInTheDocument();
+    const publishedRow = await screen.findByRole("row", {
+      name: /Gram negative panel.*v2.*Current.*Active/,
+    });
+    expect(publishedRow).toBeInTheDocument();
+    expect(within(publishedRow).getByText(/^v\d+$/)).toHaveTextContent("v2");
     expect(
       screen.getByRole("row", {
         name: /Gram negative panel.*v1.*Historical.*Active/,

@@ -118,7 +118,8 @@ public class MicrobiologyConfigurationServiceImpl implements MicrobiologyConfigu
         requireText(name, "panel.name");
         List<MicroAstPanel> existing = astPanelDAO.getAllMatching(Map.of("name", name));
         if (!existing.isEmpty()) {
-            MicroAstPanel panel = existing.get(0);
+            MicroAstPanel panel = existing.stream().filter(candidate -> "Y".equals(candidate.getIsCurrent()))
+                    .findFirst().orElse(existing.get(0));
             if (!"Y".equals(panel.getIsActive())) {
                 panel.setIsActive("Y");
                 astPanelDAO.update(panel);
