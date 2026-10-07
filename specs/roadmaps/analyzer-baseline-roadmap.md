@@ -272,6 +272,13 @@ uses; they are restated so a step can be run without re-reading those files.
 - Bridge: step 6 as PRs in `DIGI-UW/openelis-analyzer-bridge`, GeneXpert
   first, then one profile per PR.
 - Mock: step 8 as a PR in `DIGI-UW/analyzer-mock-server`.
+- Order from 6 Oct, one reviewable stacked PR each: Bridge request
+  tolerance and the boundary checks (T6.21 to T6.23) with the startup work
+  in #4618; the analyzer page shows the Bridge's blockers and catalog
+  issues (T6.17); baseline profiles under new IDs and the old revisions
+  deleted (T6.18, T6.19); the harness dictionary (T7.3, T7.4); the E2E
+  rewrite (T7.1 to T7.2b, T7.6); then the evidence package (T7.8), which is
+  the finish line.
 - Last: step 9 as its own PR on `develop`, after everything above has
   landed.
 - The top OE2 PR (step 7) bumps the pins (`tools/openelis-analyzer-bridge`
