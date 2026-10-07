@@ -13,7 +13,6 @@ import {
   DismissibleTag,
   Search,
   Link,
-  Modal,
 } from "@carbon/react";
 import {
   Add,
@@ -23,7 +22,6 @@ import {
   ChevronUp,
 } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
-import { hasCultureWorkflowTest } from "../../orderDataUtils";
 import {
   formatHoldingMinutes,
   holdingDeadline,
@@ -33,8 +31,6 @@ import {
 const SampleTestSection = ({
   samples,
   setSamples,
-  orderData,
-  setOrderData,
   isReadOnly,
   workflowType,
 }) => {
@@ -50,7 +46,6 @@ const SampleTestSection = ({
   const [trapTypesPerSample, setTrapTypesPerSample] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPerSample, setLoadingPerSample] = useState({});
-  const [pendingSamples, setPendingSamples] = useState(null);
 
   const cloneSamples = () =>
     samples.map((sample) => ({
@@ -322,41 +317,7 @@ const SampleTestSection = ({
     return "purple";
   };
 
-  const hasMicrobiologyDetail = Object.values(
-    orderData?.microbiologyOrderDetail || {},
-  ).some((value) => value !== "" && value !== null && value !== false);
-
-  const clearMicrobiologyState = () => {
-    setOrderData((previous) => ({
-      ...previous,
-      microbiologyOrderDetail: undefined,
-      sampleOrderItems: {
-        ...previous.sampleOrderItems,
-        programId:
-          previous.sampleOrderItems?.microbiologyPreviousProgramId || "",
-        microbiologyProgramId: undefined,
-        microbiologyPreviousProgramId: undefined,
-      },
-    }));
-  };
-
-  const applySamples = (updated) => {
-    if (
-      hasCultureWorkflowTest(samples) &&
-      !hasCultureWorkflowTest(updated) &&
-      hasMicrobiologyDetail
-    ) {
-      setPendingSamples(updated);
-      return;
-    }
-    setSamples(updated);
-  };
-
-  const confirmDiscardMicrobiologyDetail = () => {
-    setSamples(pendingSamples);
-    clearMicrobiologyState();
-    setPendingSamples(null);
-  };
+  const applySamples = (updated) => setSamples(updated);
 
   const handleRemoveSample = (index) => {
     applySamples(samples.filter((_, i) => i !== index));
@@ -1354,25 +1315,6 @@ const SampleTestSection = ({
       className="order-section sample-test-section"
       data-testid="order-sample-test-section"
     >
-      <Modal
-        open={pendingSamples !== null}
-        modalHeading={intl.formatMessage({
-          id: "microbiology.orderEntry.discardHeading",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id: "microbiology.orderEntry.discardConfirm",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-        danger
-        onRequestSubmit={confirmDiscardMicrobiologyDetail}
-        onRequestClose={() => setPendingSamples(null)}
-      >
-        <p>
-          {intl.formatMessage({
-            id: "microbiology.orderEntry.discardMessage",
-          })}
-        </p>
-      </Modal>
       <h4 className="section-title">
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>

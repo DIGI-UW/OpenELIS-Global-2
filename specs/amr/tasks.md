@@ -198,6 +198,20 @@ Tests ship with each behavior; the final row is not permission to defer tests.
 | V02e — no-result splits                                | V02d; implement case-scoped eligibility, atomic membership/pending-culture moves and reason on both histories.                                                                                                 | Persisted/browser allowed and denied splits, failure rollback, unrelated ordinary results, preserved IDs/provenance and no case joining.                                                                                                           |
 | V02 completion gate (not a separate implementation PR) | V02c–e checks already pass; verify the complete V02 requirements and reconcile the existing coverage matrix/evidence.                                                                                          | Exact V02 focused gate, affected shared-order/security regressions, persisted browser journeys and recorded mock comparison. Full CI is tracked for final stabilization.                                                                           |
 
+V02c is delivered in two ordered PRs after the caller audit:
+
+- **V02c1 — reception retirement:** remove the reception microbiology tile,
+  forced Program selection, special readiness gate and draft submission/reload
+  path together, including backend draft methods and routing's draft/Program
+  fallback. Preserve ordinary order saves, requested samples, questionnaires and
+  existing case information. Do not activate the candidate migrations. Verify
+  shared order/Program tests, backend routing and case-context regressions, and
+  record a persisted reception journey against the shared reception requirement.
+- **V02c2 — runtime cutover:** complete the canonical catalog/routing/permissions
+  model and remaining workflow/protocol caller removal, then register the tested
+  migrations. All V02c runtime gates in the table still apply; V02c1 alone does
+  not establish V02c completion or permit V02d to start.
+
 If the V02c dependency audit reveals a smaller independently coherent change,
 record that boundary here before extracting it. Do not publish an active cutover
 with broken callers to achieve an arbitrary file-count target. Program/export

@@ -167,53 +167,22 @@ describe("SampleTestSection microbiology metadata", () => {
     ]);
   });
 
-  it("confirms before discarding details with the final culture test", async () => {
+  it("removes a culture test without changing the selected Program", async () => {
     const user = userEvent.setup();
     const setSamples = vi.fn();
     const setOrderData = vi.fn();
     renderSection(setSamples, {
       currentSamples: [{ ...sample, tests: [cultureTest] }],
-      orderData: {
-        microbiologyOrderDetail: {
-          cultureMethodId: "7",
-          clinicalHistory: "Fever and hypotension",
-        },
-        sampleOrderItems: {
-          programId: "8",
-          microbiologyPreviousProgramId: "1",
-        },
-      },
+      orderData: { sampleOrderItems: { programId: "8" } },
       setOrderData,
     });
-
     await screen.findAllByText("Blood culture");
     await user.click(document.querySelector('label[for="test-0-42"]'));
-
-    expect(
-      screen.getByRole("heading", { name: "Remove microbiology workflow?" }),
-    ).toBeInTheDocument();
-    expect(setSamples).not.toHaveBeenCalled();
-
-    await user.click(screen.getByRole("button", { name: /Discard details$/ }));
-
     expect(setSamples).toHaveBeenCalledWith([
       expect.objectContaining({ tests: [] }),
     ]);
-    const clearOrder = setOrderData.mock.calls.at(-1)[0];
-    expect(
-      clearOrder({
-        microbiologyOrderDetail: { clinicalHistory: "Fever" },
-        sampleOrderItems: {
-          programId: "8",
-          microbiologyPreviousProgramId: "1",
-        },
-      }),
-    ).toEqual(
-      expect.objectContaining({
-        microbiologyOrderDetail: undefined,
-        sampleOrderItems: expect.objectContaining({ programId: "1" }),
-      }),
-    );
+    expect(setOrderData).not.toHaveBeenCalled();
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 });
 

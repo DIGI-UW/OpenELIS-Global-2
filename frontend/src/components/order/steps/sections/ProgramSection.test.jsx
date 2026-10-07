@@ -51,7 +51,7 @@ const cultureSamples = [
   },
 ];
 
-describe("ProgramSection microbiology derivation", () => {
+describe("ProgramSection independent selection", () => {
   beforeEach(() => {
     getFromOpenElisServer.mockReset();
     getFromOpenElisServer.mockImplementation((url, callback) => {
@@ -66,128 +66,68 @@ describe("ProgramSection microbiology derivation", () => {
     });
   });
 
-  it("auto-selects the Microbiology Program by code for a culture test", async () => {
+  it("keeps the selected Program and questionnaire when a culture is ordered", async () => {
+    const savedAnswers = {
+      resourceType: "QuestionnaireResponse",
+      item: [{ linkId: "history", answer: [{ valueString: "Saved answer" }] }],
+    };
+    const savedOrder = {
+      sampleOrderItems: { programId: "1", additionalQuestions: savedAnswers },
+    };
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/user-programs")
+        callback([
+          { id: "1", value: "Routine Testing", code: "ROUTINE" },
+          { id: "8", value: "Microbiology", code: "MICROBIOLOGY" },
+        ]);
+      else callback({ resourceType: "Questionnaire", id: "routine", item: [] });
+    });
     const setOrderData = vi.fn();
     render(
       <IntlProvider locale="en" messages={messages}>
         <ProgramSection
-          orderData={orderData}
+          orderData={savedOrder}
           setOrderData={setOrderData}
           samples={cultureSamples}
           isReadOnly={false}
         />
       </IntlProvider>,
     );
-
-    expect(
-      await screen.findByRole("heading", {
-        name: "Microbiology Program Details",
-      }),
-    ).toBeInTheDocument();
-    expect(setOrderData).toHaveBeenCalledWith(expect.any(Function));
-    const update = setOrderData.mock.calls
-      .map(([value]) => value)
-      .filter((value) => typeof value === "function")
-      .find((value) => value(orderData).sampleOrderItems?.programId === "8");
-    expect(update).toBeDefined();
-    expect(update(orderData).sampleOrderItems.programId).toBe("8");
-    expect(screen.getByRole("combobox", { name: "Program" })).toBeDisabled();
-    expect(
-      screen.getByText(
-        "Microbiology is derived from the selected culture test.",
-      ),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText("Blood Culture Standard", { exact: true }),
-    ).toBeInTheDocument();
-    expect(getFromOpenElisServer).not.toHaveBeenCalledWith(
-      "/rest/program/8/questionnaire",
-      expect.any(Function),
-    );
-  });
-
-  it("restores the derived Program and protocol from reloaded test metadata", async () => {
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ProgramSection
-          orderData={{
-            ...orderData,
-            microbiologyOrderDetail: {
-              ...orderData.microbiologyOrderDetail,
-              cultureMethodId: "7",
-            },
-            sampleOrderItems: {
-              programId: "8",
-              programCode: "MICROBIOLOGY",
-              microbiologyProgramId: "8",
-            },
-          }}
-          setOrderData={vi.fn()}
-          samples={cultureSamples}
-          isReadOnly
-        />
-      </IntlProvider>,
-    );
-
     expect(
       await screen.findByRole("combobox", { name: "Program" }),
-    ).toHaveValue("Microbiology");
-    expect(screen.getByRole("combobox", { name: "Program" })).toBeDisabled();
+    ).toHaveValue("Routine Testing");
+    expect(screen.getByRole("combobox", { name: "Program" })).toBeEnabled();
+    expect(await screen.findByTestId("questionnaire")).toBeInTheDocument();
+    for (const [update] of setOrderData.mock.calls) {
+      const next = typeof update === "function" ? update(savedOrder) : update;
+      expect(next.sampleOrderItems.programId).toBe("1");
+      expect(next.sampleOrderItems.additionalQuestions).toBe(savedAnswers);
+    }
     expect(
-      screen.getByText("Blood Culture Standard", { exact: true }),
-    ).toBeInTheDocument();
-    expect(
-      screen.queryByRole("combobox", { name: "Culture Protocol" }),
+      screen.queryByRole("heading", { name: "Microbiology Program Details" }),
     ).not.toBeInTheDocument();
   });
 
-  it("clears the previous Program questionnaire when culture derives Microbiology", async () => {
-    const previousProgramOrderData = {
-      ...orderData,
-      sampleOrderItems: {
-        programId: "1",
-        questionnaire: { id: "routine-questionnaire" },
-        additionalQuestions: {
-          resourceType: "QuestionnaireResponse",
-          questionnaire: "Questionnaire/routine-questionnaire",
-        },
-      },
-    };
-    const setOrderData = vi.fn();
-
+  it("uses the configured questionnaire for a manually selected Microbiology Program", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/user-programs")
+        callback([{ id: "8", value: "Microbiology", code: "MICROBIOLOGY" }]);
+      else callback({ resourceType: "Questionnaire", id: "micro", item: [] });
+    });
     render(
       <IntlProvider locale="en" messages={messages}>
         <ProgramSection
-          orderData={previousProgramOrderData}
-          setOrderData={setOrderData}
-          samples={cultureSamples}
+          orderData={{ sampleOrderItems: { programId: "8" } }}
+          setOrderData={vi.fn()}
+          samples={[]}
           isReadOnly={false}
         />
       </IntlProvider>,
     );
-
-    await screen.findByRole("heading", {
-      name: "Microbiology Program Details",
-    });
-    const deriveMicrobiology = setOrderData.mock.calls
-      .map(([value]) => value)
-      .filter((value) => typeof value === "function")
-      .find(
-        (value) =>
-          value(previousProgramOrderData).sampleOrderItems?.programId === "8",
-      );
-
-    expect(deriveMicrobiology).toBeDefined();
+    expect(await screen.findByTestId("questionnaire")).toBeInTheDocument();
     expect(
-      deriveMicrobiology(previousProgramOrderData).sampleOrderItems,
-    ).toEqual(
-      expect.objectContaining({
-        programId: "8",
-        microbiologyProgramId: "8",
-        questionnaire: null,
-        additionalQuestions: null,
-      }),
-    );
+      screen.queryByRole("heading", { name: "Microbiology Program Details" }),
+    ).not.toBeInTheDocument();
   });
 
   it("survives a failed program fetch instead of crashing the order page (OGC-1222)", async () => {
@@ -240,75 +180,6 @@ describe("ProgramSection microbiology derivation", () => {
     expect(await screen.findByRole("combobox")).toBeInTheDocument();
   });
 
-  it("shows a named configuration error when the Program is unavailable", async () => {
-    getFromOpenElisServer.mockImplementation((url, callback) => {
-      if (url === "/rest/user-programs") {
-        callback([{ id: "1", value: "Routine Testing", code: "ROUTINE" }]);
-      } else {
-        callback({});
-      }
-    });
-
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ProgramSection
-          orderData={orderData}
-          setOrderData={vi.fn()}
-          samples={cultureSamples}
-          isReadOnly={false}
-        />
-      </IntlProvider>,
-    );
-
-    expect(
-      await screen.findByText(
-        "Microbiology Program is not configured for this order workflow.",
-      ),
-    ).toBeInTheDocument();
-  });
-
-  it("shows the same details for a manually selected Microbiology Program with an untyped test", async () => {
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ProgramSection
-          orderData={{
-            ...orderData,
-            sampleOrderItems: { programId: "8" },
-          }}
-          setOrderData={vi.fn()}
-          samples={[
-            {
-              sampleTypeId: "5",
-              sampleTypeName: "Blood",
-              tests: [
-                {
-                  id: "43",
-                  name: "Untyped culture",
-                  methods: [
-                    {
-                      methodId: "7",
-                      methodName: "Blood Culture Standard",
-                      isDefault: true,
-                    },
-                  ],
-                },
-              ],
-            },
-          ]}
-          isReadOnly={false}
-        />
-      </IntlProvider>,
-    );
-
-    expect(
-      await screen.findByRole("heading", {
-        name: "Microbiology Program Details",
-      }),
-    ).toBeInTheDocument();
-    expect(screen.getByText("Unassigned")).toBeInTheDocument();
-    expect(screen.getByText("Blood Culture Standard")).toBeInTheDocument();
-  });
-
   it("reflects a cleared canonical Program value after culture test removal", async () => {
     const props = {
       setOrderData: vi.fn(),
@@ -328,10 +199,8 @@ describe("ProgramSection microbiology derivation", () => {
     );
 
     expect(
-      await screen.findByRole("heading", {
-        name: "Microbiology Program Details",
-      }),
-    ).toBeInTheDocument();
+      await screen.findByRole("combobox", { name: "Program" }),
+    ).toHaveValue("Microbiology");
 
     rerender(
       <IntlProvider locale="en" messages={messages}>
@@ -348,62 +217,6 @@ describe("ProgramSection microbiology derivation", () => {
     expect(
       screen.queryByRole("heading", { name: "Microbiology Program Details" }),
     ).not.toBeInTheDocument();
-  });
-
-  it("confirms before discarding manually entered microbiology details on Program change", async () => {
-    const user = userEvent.setup();
-    let latestOrderData;
-    const initialOrderData = {
-      ...orderData,
-      microbiologyOrderDetail: {
-        ...orderData.microbiologyOrderDetail,
-        clinicalHistory: "Persistent fever",
-      },
-      sampleOrderItems: { programId: "8" },
-    };
-    const ControlledProgramSection = () => {
-      const [currentOrderData, setCurrentOrderData] =
-        React.useState(initialOrderData);
-      latestOrderData = currentOrderData;
-      return (
-        <ProgramSection
-          orderData={currentOrderData}
-          setOrderData={setCurrentOrderData}
-          samples={[]}
-          isReadOnly={false}
-        />
-      );
-    };
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ControlledProgramSection />
-      </IntlProvider>,
-    );
-
-    const program = await screen.findByRole("combobox", { name: "Program" });
-    await user.click(program);
-    await user.clear(program);
-    await user.type(program, "Routine");
-    await user.click(
-      await screen.findByRole("option", { name: "Routine Testing" }),
-    );
-
-    expect(
-      screen.getByRole("dialog", { name: "Discard Microbiology details?" }),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByText(
-        "You have entered Microbiology details. Changing the Program will discard them.",
-      ),
-    ).toBeInTheDocument();
-
-    await user.click(screen.getByRole("button", { name: /Discard details$/ }));
-
-    expect(
-      screen.queryByRole("heading", { name: "Microbiology Program Details" }),
-    ).not.toBeInTheDocument();
-    expect(latestOrderData.sampleOrderItems.programId).toBe("1");
-    expect(latestOrderData.microbiologyOrderDetail).toBeUndefined();
   });
 });
 

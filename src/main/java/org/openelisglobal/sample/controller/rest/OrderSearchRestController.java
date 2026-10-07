@@ -241,8 +241,6 @@ public class OrderSearchRestController extends BaseRestController {
     @Autowired
     private TestMethodService testMethodService;
 
-    @Autowired(required = false)
-    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
     private String ADDRESS_PART_VILLAGE_ID;
     private String ADDRESS_PART_COMMUNE_ID;
     private String ADDRESS_PART_DEPT_ID;
@@ -986,8 +984,6 @@ public class OrderSearchRestController extends BaseRestController {
             Map<String, Object> sampleOrderItems = buildSampleOrderItems(sample);
             response.put("sampleOrderItems", sampleOrderItems);
 
-            addMicrobiologyOrderDetail(response, sample);
-
             // Step progress - determine based on actual data
             boolean isVectorOrder = "V".equals(sample.getDomain());
             Map<String, Boolean> stepProgress = new HashMap<>();
@@ -1150,16 +1146,6 @@ public class OrderSearchRestController extends BaseRestController {
             }
         }
         return false;
-    }
-
-    void addMicrobiologyOrderDetail(Map<String, Object> response, Sample sample) {
-        if (microCaseOrderDetailService == null) {
-            return;
-        }
-        var microbiologyOrderDetail = microCaseOrderDetailService.getOrderDraft(sample.getId());
-        if (microbiologyOrderDetail != null) {
-            response.put("microbiologyOrderDetail", microbiologyOrderDetail);
-        }
     }
 
     TestSelectionDTO buildSelectedTestData(org.openelisglobal.test.valueholder.Test test) {

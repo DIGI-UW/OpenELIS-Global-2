@@ -1,7 +1,6 @@
 package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -30,7 +29,6 @@ import org.openelisglobal.sample.form.SamplePatientEntryForm;
 import org.openelisglobal.sample.service.PatientManagementUpdate;
 import org.openelisglobal.sample.service.SamplePatientEntryService;
 import org.openelisglobal.sample.valueholder.Sample;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,10 +36,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * The order-entry invariant: microbiology details belong only to orders that
- * qualify for the microbiology workflow. A client may submit the details object
- * on any order, so the server decides eligibility itself rather than trusting
- * the payload.
+ * Reception saves do not own case information or derive cases from a Program.
  */
 @Transactional
 public class MicrobiologyOrderEligibilityIntegrationTest extends BaseWebContextSensitiveTest {
@@ -89,111 +84,34 @@ public class MicrobiologyOrderEligibilityIntegrationTest extends BaseWebContextS
     }
 
     @Test
-    public void routineOrderKeepsNoMicrobiologyDetailEvenWhenTheClientSubmitsIt() {
+    public void routineOrderDoesNotOpenCaseWhenMicrobiologyProgramSelected() {
         Sample sample = newSample();
         SamplePatientUpdateData update = orderUpdate(sample, routineTest);
-
-        persist(update, orderDetail());
-
-        SampleItem savedItem = update.getSampleItemsTests().getFirst().item;
-        List<MicroCase> cases = caseService.getSiblingCases(savedItem.getId());
-
-        assertNotNull(sample.getId());
-        assertTrue("a routine order must not create a microbiology case", cases.isEmpty());
-        assertNull("a routine order must not retain submitted microbiology details",
-                orderDetailService.getOrderDraft(sample.getId()));
+        update.setProgramSample(microbiologyProgramSample());
+        persist(update);
+        assertTrue(caseService.getSiblingCases(update.getSampleItemsTests().getFirst().item.getId()).isEmpty());
     }
 
     @Test
-    public void cultureOrderStillRetainsItsSubmittedMicrobiologyDetail() {
+    public void cultureOrderDoesNotCreateReceptionDetail() {
+        SamplePatientUpdateData update = orderUpdate(newSample(), cultureTest);
+        persist(update);
+        List<MicroCase> cases = caseService.getSiblingCases(update.getSampleItemsTests().getFirst().item.getId());
+        assertEquals(1, cases.size());
+        assertNull(orderDetailService.getOrderDetail(cases.getFirst().getId()));
+    }
+
+    @Test
+    public void laterOrderSaveDoesNotOverwriteInformationRecordedOnTheCase() {
         Sample sample = newSample();
         SamplePatientUpdateData update = orderUpdate(sample, cultureTest);
-        MicroCaseOrderDetailRequestForm submitted = orderDetail();
-
-        persist(update, submitted);
-
-        SampleItem savedItem = update.getSampleItemsTests().getFirst().item;
-        assertEquals(1, caseService.getSiblingCases(savedItem.getId()).size());
-
-        MicroCaseOrderDetailRequestForm retained = orderDetailService.getOrderDraft(sample.getId());
-        assertNotNull("a culture order must retain the details entered at order entry", retained);
-        assertEquals(submitted.clinicalHistory, retained.clinicalHistory);
-    }
-
-    @Test
-    public void aSubmittedTestClaimingCultureWorkflowDoesNotMakeTheOrderMicrobiology() {
-        Sample sample = newSample();
-        SamplePatientUpdateData update = orderUpdate(sample, routineTest);
-        // The client sends a routine test but marks it as culture work.
-        update.getSampleItemsTests().forEach(collection -> collection.tests
-                .forEach(test -> test.setCultureWorkflowType(MicroWorkflowType.BACTERIOLOGY.name())));
-
-        persist(update, orderDetail());
-
-        assertNull("eligibility must come from the catalog, not the submitted test",
-                orderDetailService.getOrderDraft(sample.getId()));
-    }
-
-    @Test
-    public void anExplicitMicrobiologyProgramQualifiesTheOrderTheRequestedStageActuallySends() {
-        Sample sample = newSample();
-        // The requested stage sends no sample XML at all, so the program is the
-        // only thing that can qualify the order at that point.
-        SamplePatientUpdateData update = orderUpdateWithoutTests(sample);
-        update.setProgramSample(microbiologyProgramSample());
-        MicroCaseOrderDetailRequestForm submitted = orderDetail();
-
-        persist(update, submitted);
-
-        MicroCaseOrderDetailRequestForm retained = orderDetailService.getOrderDraft(sample.getId());
-        assertNotNull("an explicitly selected Microbiology program must qualify the order", retained);
-        assertEquals(submitted.clinicalHistory, retained.clinicalHistory);
-    }
-
-    @Test
-    public void anOrderThatStopsQualifyingDiscardsTheDetailItCaptured() {
-        Sample sample = newSample();
-        persist(orderUpdate(sample, cultureTest), orderDetail());
-        assertNotNull(orderDetailService.getOrderDraft(sample.getId()));
-
-        persist(orderUpdate(sample, routineTest), null);
-
-        assertNull("details must not outlive the order's eligibility",
-                orderDetailService.getOrderDraft(sample.getId()));
-    }
-
-    /**
-     * A detail row is owned by exactly one of the case or the sample, so a discard
-     * keyed on the sample cannot reach a case's row. This pins that a save which no
-     * longer qualifies still leaves the case's details in place.
-     */
-    @Test
-    public void detailsAlreadyBelongingToACaseSurviveASaveThatNoLongerQualifies() {
-        Sample sample = newSample();
-        SamplePatientUpdateData cultureUpdate = orderUpdate(sample, cultureTest);
-        persist(cultureUpdate, orderDetail());
-        String caseId = caseService.getSiblingCases(cultureUpdate.getSampleItemsTests().getFirst().item.getId())
-                .getFirst().getId();
+        persist(update);
+        String caseId = caseService.getSiblingCases(update.getSampleItemsTests().getFirst().item.getId()).getFirst()
+                .getId();
         orderDetailService.saveOrderDetail(caseId, orderDetail(), userId);
-
-        persist(orderUpdate(sample, routineTest), null);
-
-        assertNotNull("details recorded against a case belong to the case, not the order entry",
-                orderDetailService.getOrderDetail(caseId));
-    }
-
-    @Test
-    public void requestedStageQualifiesFromRequestedSampleTypesWhenNoProgramIsSelected() {
-        Sample sample = newSample();
-        SamplePatientUpdateData update = orderUpdateWithoutTests(sample);
-        org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO requested = new org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO();
-        requested.setTypeOfSampleId(sampleType.getId());
-        requested.setRequestedTests(cultureTest.getId());
-
-        persist(update, orderDetail(), java.util.List.of(requested));
-
-        assertNotNull("requested culture tests must qualify the order before the program loads",
-                orderDetailService.getOrderDraft(sample.getId()));
+        persist(orderUpdate(sample, routineTest));
+        assertEquals("Persistent fever after antibiotics",
+                orderDetailService.getOrderDetail(caseId).getClinicalHistory());
     }
 
     private ProgramSample microbiologyProgramSample() {
@@ -241,18 +159,11 @@ public class MicrobiologyOrderEligibilityIntegrationTest extends BaseWebContextS
         return updateData;
     }
 
-    private void persist(SamplePatientUpdateData updateData, MicroCaseOrderDetailRequestForm orderDetail) {
-        persist(updateData, orderDetail, null);
-    }
-
-    private void persist(SamplePatientUpdateData updateData, MicroCaseOrderDetailRequestForm orderDetail,
-            java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
+    private void persist(SamplePatientUpdateData updateData) {
         PatientManagementInfo patientInfo = new PatientManagementInfo();
         patientInfo.setPatientPK(patient.getId());
         SamplePatientEntryForm form = new SamplePatientEntryForm();
         form.setPatientProperties(patientInfo);
-        form.setMicrobiologyOrderDetail(orderDetail);
-        form.setRequestedSampleTypes(requestedSampleTypes);
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         samplePatientEntryService.persistData(updateData, patientUpdate, patientInfo, form,

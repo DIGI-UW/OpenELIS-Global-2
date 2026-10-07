@@ -77,7 +77,8 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
 
     /**
      * Covers the real transactional save orchestration; the supported browser
-     * interaction remains covered by the registered M-03 Playwright journey.
+     * interaction remains covered by the V02c reception and runtime Playwright
+     * journeys.
      */
     @Test
     public void supportedOrderSaveCreatesOneCaseAndRemainsIdempotent() {
@@ -85,7 +86,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         MicroCaseOrderDetailRequestForm orderDetail = orderDetail();
 
         SamplePatientUpdateData firstSave = orderUpdate(sample, null);
-        persist(firstSave, orderDetail);
+        persist(firstSave);
 
         SampleItem savedItem = firstSave.getSampleItemsTests().getFirst().item;
         Analysis savedAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(), cultureTest.getId());
@@ -95,11 +96,13 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         assertNotNull(savedItem.getId());
         assertNotNull(savedAnalysis);
         assertEquals(1, firstCases.size());
+        org.junit.Assert.assertNull(orderDetailService.getOrderDetail(firstCases.getFirst().getId()));
+        orderDetailService.saveOrderDetail(firstCases.getFirst().getId(), orderDetail, userId);
         assertOrderDetail(firstCases.getFirst(), orderDetail);
         assertCaseAnalysisLink(firstCases.getFirst(), savedAnalysis);
 
         SamplePatientUpdateData repeatedSave = orderUpdate(sample, savedItem.getId());
-        persist(repeatedSave, orderDetail);
+        persist(repeatedSave);
 
         SampleItem repeatedItem = repeatedSave.getSampleItemsTests().getFirst().item;
         Analysis repeatedAnalysis = analysisService.getAnalysisBySampleItemAndTest(repeatedItem.getId(),
@@ -138,12 +141,11 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         return updateData;
     }
 
-    private void persist(SamplePatientUpdateData updateData, MicroCaseOrderDetailRequestForm orderDetail) {
+    private void persist(SamplePatientUpdateData updateData) {
         PatientManagementInfo patientInfo = new PatientManagementInfo();
         patientInfo.setPatientPK(patient.getId());
         SamplePatientEntryForm form = new SamplePatientEntryForm();
         form.setPatientProperties(patientInfo);
-        form.setMicrobiologyOrderDetail(orderDetail);
 
         PatientManagementUpdate patientUpdate = SpringContext.getBean(PatientManagementUpdate.class);
         samplePatientEntryService.persistData(updateData, patientUpdate, patientInfo, form,

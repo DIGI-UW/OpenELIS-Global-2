@@ -185,10 +185,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private OrderLabelRequestService orderLabelRequestService;
     @Autowired
     private org.openelisglobal.questionnaire.service.QuestionnaireStorageService questionnaireStorageService;
-    @Autowired(required = false)
+    @Autowired
     private MicroOrderRoutingService microOrderRoutingService;
-    @Autowired(required = false)
-    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
     @Lazy
     @Autowired
     private ResultLimitService resultLimitService;
@@ -257,7 +255,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         persistProviderData(updateData);
         persistRequestorContactData(updateData);
-        persistSampleData(updateData, form.getMicrobiologyOrderDetail(), form.getRequestedSampleTypes());
+        persistSampleData(updateData);
         persistRequestedSampleTypes(updateData.getSample(), form.getRequestedSampleTypes(),
                 updateData.getCurrentUserId());
         fulfillRequestedSampleTypes(updateData);
@@ -466,9 +464,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
-    private void persistSampleData(SamplePatientUpdateData updateData,
-            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail,
-            java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
+    private void persistSampleData(SamplePatientUpdateData updateData) {
         String analysisRevision = ConfigurationProperties.getInstance().getPropertyValue("analysis.default.revision");
 
         if (updateData.getSample() == null) {
@@ -517,13 +513,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             }
             updateData.getSample().setPriority(updateData.getPriority());
             sampleService.insertDataWithAccessionNumber(updateData.getSample());
-        }
-
-        if (isMicrobiologyOrder(updateData, requestedSampleTypes)) {
-            persistMicrobiologyOrderDraft(updateData.getSample(), microbiologyOrderDetail,
-                    updateData.getCurrentUserId());
-        } else {
-            discardMicrobiologyOrderDraft(updateData.getSample(), updateData.getCurrentUserId());
         }
 
         for (SampleAdditionalField field : updateData.getSampleFields()) {
@@ -664,8 +653,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     persistAnalysisNotificationConfigs(analysis, updateData);
                 }
             }
-            routeMicrobiologyCases(savedItem, sampleTestCollection, updateData.getCurrentUserId(),
-                    microbiologyOrderDetail, microbiologyProgramSelected(updateData));
+            routeMicrobiologyCases(savedItem, sampleTestCollection, updateData.getCurrentUserId());
         }
 
         org.openelisglobal.sample.valueholder.Sample submittedSample = updateData.getSample();
@@ -967,93 +955,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         return null;
     }
 
-    private boolean microbiologyProgramSelected(SamplePatientUpdateData updateData) {
-        return updateData.getProgramSample() != null && updateData.getProgramSample().getProgram() != null
-                && "MICROBIOLOGY".equalsIgnoreCase(updateData.getProgramSample().getProgram().getCode());
-    }
-
-    /**
-     * Order-entry details are microbiology data, so they are kept only for an order
-     * the server itself considers microbiology. A submitted payload never makes an
-     * order microbiology.
-     */
-    private boolean isMicrobiologyOrder(SamplePatientUpdateData updateData,
-            java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
-        if (microOrderRoutingService == null) {
-            return false;
-        }
-        // The submitted collection carries id-only tests, so the catalog attributes
-        // that decide the workflow are read from the persisted test, loaded once per
-        // id.
-        java.util.Map<String, Test> catalogById = new java.util.HashMap<>();
-        List<Test> orderedTests = new ArrayList<>();
-        if (updateData.getSampleItemsTests() != null) {
-            for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
-                if (sampleTestCollection.tests == null) {
-                    continue;
-                }
-                for (Test submittedTest : sampleTestCollection.tests) {
-                    if (submittedTest == null || submittedTest.getId() == null) {
-                        continue;
-                    }
-                    Test catalogTest = catalogById.computeIfAbsent(submittedTest.getId(), testService::get);
-                    if (catalogTest != null) {
-                        orderedTests.add(catalogTest);
-                    }
-                }
-            }
-        }
-        // The requested stage of /order/enter sends an empty sampleXML, so the tests
-        // that decide eligibility live only in the requested sample types.
-        if (orderedTests.isEmpty() && requestedSampleTypes != null) {
-            for (org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO requested : requestedSampleTypes) {
-                if (requested == null || requested.getRequestedTests() == null) {
-                    continue;
-                }
-                for (String testId : requested.getRequestedTests().split(",")) {
-                    String trimmed = testId.trim();
-                    if (trimmed.isEmpty()) {
-                        continue;
-                    }
-                    Test catalogTest = catalogById.computeIfAbsent(trimmed, testService::get);
-                    if (catalogTest != null) {
-                        orderedTests.add(catalogTest);
-                    }
-                }
-            }
-        }
-        return microOrderRoutingService.isMicrobiologyOrder(orderedTests, microbiologyProgramSelected(updateData));
-    }
-
-    void persistMicrobiologyOrderDraft(org.openelisglobal.sample.valueholder.Sample sample,
-            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm orderDetail, String performedBy) {
-        if (microCaseOrderDetailService == null || sample == null || sample.getId() == null || orderDetail == null) {
-            return;
-        }
-        microCaseOrderDetailService.saveOrderDraft(sample, orderDetail, performedBy);
-    }
-
-    /**
-     * An order that stops qualifying before collection loses the details it
-     * captured; once a case exists they belong to the case and stay.
-     */
-    private void discardMicrobiologyOrderDraft(org.openelisglobal.sample.valueholder.Sample sample,
-            String performedBy) {
-        if (microCaseOrderDetailService == null || sample == null || sample.getId() == null) {
-            return;
-        }
-        microCaseOrderDetailService.discardOrderDraft(sample.getId(), performedBy);
-    }
-
     private void routeMicrobiologyCases(SampleItem sampleItem, SampleTestCollection sampleTestCollection,
-            String currentUserId,
-            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail,
-            boolean microbiologyProgramSelected) {
-        if (microOrderRoutingService == null) {
-            return;
-        }
-        microOrderRoutingService.routeAnalysesForSampleItem(sampleItem, sampleTestCollection.analysises, currentUserId,
-                microbiologyOrderDetail, microbiologyProgramSelected);
+            String currentUserId) {
+        microOrderRoutingService.routeAnalysesForSampleItem(sampleItem, sampleTestCollection.analysises, currentUserId);
     }
 
     /*
