@@ -29,6 +29,7 @@ public class MicroCaseDetailForm {
     public String lastActivityBy;
     public Timestamp lastActivityAt;
     public int nonconformanceCount;
+    public List<MicroCultureSetWarningForm> setWarnings = new ArrayList<>();
     public List<MicroCaseSpecimenForm> specimens = new ArrayList<>();
     public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();

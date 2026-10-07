@@ -126,6 +126,7 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
         var detail = caseService.getCaseDetail(owner.getId());
         assertEquals(Integer.valueOf(2), detail.orderDetail.numberOfSets);
         assertEquals(2, detail.specimens.size());
+        assertEquals(2, detail.setWarnings.stream().filter(warning -> "SINGLE_BOTTLE".equals(warning.code())).count());
         assertTrue(detail.specimens.stream().allMatch(specimen -> specimen.collectedInSets));
         assertTrue(detail.specimens.stream().anyMatch(specimen -> "Aerobic".equals(specimen.containerType)));
         second = sampleItemService.get(second.getId());

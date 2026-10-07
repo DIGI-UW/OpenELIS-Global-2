@@ -295,6 +295,6 @@ public class MicroCaseServiceTest {
     private MicroCaseService service() {
         return new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO, sampleItemService,
                 sampleHumanService, patientService, sampleOrganizationService, systemUserService, nceSpecimenService,
-                specimenDAO, testSectionService, caseAnalysisDAO);
+                specimenDAO, testSectionService, caseAnalysisDAO, new MicroCultureSetWarningService(30));
     }
 }

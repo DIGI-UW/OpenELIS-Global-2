@@ -715,7 +715,10 @@ const MicrobiologyCaseView = ({
             </Button>
           </div>
         </header>
-        <CultureSetSummary specimens={caseDetail.specimens} />
+        <CultureSetSummary
+          specimens={caseDetail.specimens}
+          warnings={caseDetail.setWarnings}
+        />
 
         {finalReleased && (
           <InlineNotification

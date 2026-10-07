@@ -60,3 +60,35 @@ it("shows missing historical assignments without inventing another set", () => {
   expect(screen.getByText("0 sets, 1 bottle")).toBeInTheDocument();
   expect(screen.getByText("Set not recorded: Aerobic")).toBeInTheDocument();
 });
+
+it("places readable warning tags on the affected set without disabling anything", () => {
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CultureSetSummary
+        specimens={[
+          {
+            collectedInSets: true,
+            cultureSetNumber: 1,
+            containerType: "Aerobic",
+          },
+          {
+            collectedInSets: true,
+            cultureSetNumber: 2,
+            containerType: "Anaerobic",
+          },
+        ]}
+        warnings={[
+          { setNumber: 2, code: "SINGLE_BOTTLE", intervalMinutes: 45 },
+          { setNumber: 2, code: "COLLECTION_INTERVAL", intervalMinutes: 45 },
+        ]}
+      />
+    </IntlProvider>,
+  );
+  const lines = screen.getAllByRole("listitem");
+  expect(lines[0]).not.toHaveTextContent("Only one bottle");
+  expect(lines[1]).toHaveTextContent("Only one bottle in this set");
+  expect(lines[1]).toHaveTextContent(
+    "Collection times are more than 45 minutes apart",
+  );
+  expect(screen.queryByRole("button")).not.toBeInTheDocument();
+});

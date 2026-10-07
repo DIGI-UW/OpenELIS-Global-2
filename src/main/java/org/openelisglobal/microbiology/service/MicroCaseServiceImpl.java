@@ -40,6 +40,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroCaseServiceImpl implements MicroCaseService {
 
     private final org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO caseAnalysisDAO;
+    private final MicroCultureSetWarningService setWarningService;
     private final MicroCaseDAO caseDAO;
     private final MicroCaseSpecimenDAO specimenDAO;
     private final MicroCaseActivityDAO activityDAO;
@@ -59,7 +60,9 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             SampleOrganizationService sampleOrganizationService, SystemUserService systemUserService,
             NceSpecimenService nceSpecimenService, MicroCaseSpecimenDAO specimenDAO,
             TestSectionService testSectionService,
-            org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO caseAnalysisDAO) {
+            org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO caseAnalysisDAO,
+            MicroCultureSetWarningService setWarningService) {
+        this.setWarningService = setWarningService;
         this.caseAnalysisDAO = caseAnalysisDAO;
         this.testSectionService = testSectionService;
         this.caseDAO = caseDAO;
@@ -187,6 +190,7 @@ public class MicroCaseServiceImpl implements MicroCaseService {
                     .filter(specimen -> specimen.collectedInSets && specimen.cultureSetNumber != null)
                     .map(specimen -> specimen.cultureSetNumber).distinct().count();
         }
+        form.setWarnings = setWarningService.evaluate(form.specimens);
         return form;
     }
 

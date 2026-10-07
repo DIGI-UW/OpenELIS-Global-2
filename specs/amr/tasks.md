@@ -451,8 +451,21 @@ Remaining V02c2 implementation and acceptance:
       written by runtime services. Its remaining entity mapping/storage must be
       removed by the final cutover after preserving historical captured values as
       audit evidence; leaving it indefinitely is not the accepted final schema.
-      Required next: audit other fulfillment entry points, environmental
-      presentation, set warnings, final-schema retirement and browser proof.
+      Case-detail warnings now identify an explicit set with one bottle, repeated
+      recorded container types, different recorded sites or collection timestamps
+      beyond the configured interval. They appear as text Tags on that set and
+      do not change membership or block actions. Missing values do not become
+      duplicate/site/time warnings. The interval defaults to 30 minutes and can
+      be set with `amr.cultureSetIntervalMinutes` in the existing application
+      properties (including `/run/secrets/extra.properties`); it must be positive.
+      Warning validation passed 15 backend tests, 42 frontend tests and the
+      frontend production build, including the exact interval boundary, a lab
+      override, midnight crossing, missing details and per-set tag placement.
+      Required next: expose the warnings during shared save/preview, define and
+      persist catalog classification for pediatric/adult container compatibility
+      (do not infer it from translated display names), audit other fulfillment
+      entry points, environmental presentation, final-schema retirement and
+      browser proof. Case-header warnings alone do not accept FR-02.4a.
 - [ ] Open cases on initial clinical order save, including requested specimens.
       Current clinical Step 1 sends requested sample types with empty sample XML;
       physical specimens and runtime routing arrive at collection. The existing
