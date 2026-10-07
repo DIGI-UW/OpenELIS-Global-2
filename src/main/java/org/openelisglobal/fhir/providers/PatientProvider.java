@@ -44,12 +44,10 @@ import org.openelisglobal.fhir.FhirConstants;
 import org.openelisglobal.fhir.search.searchparams.PatientSearchParams;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
-import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.patient.valueholder.PatientContact;
 import org.openelisglobal.search.service.PatientSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -89,9 +87,6 @@ public class PatientProvider implements IResourceProvider {
 
     @Autowired
     private PatientService patientService;
-
-    @Autowired
-    private PatientContactService patientContactService;
 
     @Override
     public Class<? extends IBaseResource> getResourceType() {
@@ -169,12 +164,7 @@ public class PatientProvider implements IResourceProvider {
             } else {
                 LogEvent.logInfo(this.getClass().getSimpleName(), method, "No telecom info provided for patient");
             }
-
-            if (patientInfo.getPatientContact() != null) {
-                patientInfo.getPatientContact().setPerson(patient.getPerson());
-            } else {
-                LogEvent.logInfo(this.getClass().getSimpleName(), method, "No patient contact info provided");
-            }
+            fhirTransformService.addPatientAddressToPerson(fhirPatient, patient.getPerson());
 
             patientService.persistPatientData(patientInfo, patient, FhirProviderUtils.getSysUserId(request));
             LogEvent.logInfo(this.getClass().getSimpleName(), method, "Patient persisted with ID: " + patient.getId());
@@ -315,6 +305,7 @@ public class PatientProvider implements IResourceProvider {
 
             patientInfo.setPatientPK(existingPatient.getId());
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
+            fhirTransformService.keepPatientDetailsFhirDoesNotCarry(patientInfo, existingPatient);
 
             Errors errors = new BindException(patientInfo, "patientInfo");
             ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
@@ -334,16 +325,7 @@ public class PatientProvider implements IResourceProvider {
             if (fhirPatient.hasTelecom()) {
                 fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), workingPatient.getPerson());
             }
-
-            List<PatientContact> contacts = patientContactService.getForPatient(existingPatient.getId());
-
-            if (contacts == null || contacts.isEmpty()) {
-                throw new InternalErrorException("No PatientContact found for patient id=" + existingPatient.getId());
-            }
-
-            PatientContact contact = contacts.get(0);
-            contact.setPerson(workingPatient.getPerson());
-            patientInfo.setPatientContact(contact);
+            fhirTransformService.addPatientAddressToPerson(fhirPatient, workingPatient.getPerson());
 
             String sysUserId = FhirProviderUtils.getSysUserId(request);
             if (sysUserId == null) {
@@ -380,6 +362,9 @@ public class PatientProvider implements IResourceProvider {
 
         } catch (StaleObjectStateException e) {
             throw new ResourceVersionConflictException("Patient was modified by another user");
+
+        } catch (BaseServerResponseException e) {
+            throw e;
 
         } catch (Exception e) {
             if (FhirProviderUtils.isDataError(e)) {

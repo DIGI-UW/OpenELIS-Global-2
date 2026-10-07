@@ -211,6 +211,139 @@ public class PatientFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void updatePatient_withoutEmergencyContact_succeeds() throws Exception {
+        Patient patientWithoutContact = patientService.get("2");
+        assertTrue(patientContactService.getForPatient("2").isEmpty());
+        String patientUuid = patientWithoutContact.getFhirUuidAsString();
+
+        MockHttpServletResponse response = put(patientUuid, """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{ "family": "Mulizi", "given": ["Jamie"] }],
+                  "gender": "female",
+                  "birthDate": "1997-10-09"
+                }
+                """.formatted(patientUuid));
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        assertEquals("Jamie", personService.get("2").getFirstName());
+        assertTrue("an update must not invent an emergency contact",
+                patientContactService.getForPatient("2").isEmpty());
+    }
+
+    @Test
+    public void updatePatient_leavesEmergencyContactUntouched() throws Exception {
+        Person contactPerson = new Person();
+        contactPerson.setFirstName("Grace");
+        contactPerson.setLastName("Contact");
+        contactPerson.setPrimaryPhone("0700111222");
+        contactPerson.setSysUserId("1");
+        personService.insert(contactPerson);
+        PatientContact contact = patientContactService.getForPatient("3").get(0);
+        contact.setPerson(contactPerson);
+        contact.setSysUserId("1");
+        patientContactService.update(contact);
+        String patientUuid = patientService.get("3").getFhirUuidAsString();
+
+        MockHttpServletResponse response = put(patientUuid, """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{ "family": "Kukki", "given": ["Faithful"] }],
+                  "telecom": [{ "system": "phone", "value": "0788999000", "use": "mobile" }],
+                  "gender": "male",
+                  "birthDate": "1992-12-12"
+                }
+                """.formatted(patientUuid));
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        Person storedContact = personService.get(contactPerson.getId());
+        assertEquals("Grace", storedContact.getFirstName());
+        assertEquals("Contact", storedContact.getLastName());
+        assertEquals("0700111222", storedContact.getPrimaryPhone());
+        assertEquals("Faithful", personService.get("3").getFirstName());
+    }
+
+    @Test
+    public void updatePatient_keepsIdentitiesAFhirPatientCannotCarry() throws Exception {
+        String patientUuid = patientService.get("1").getFhirUuidAsString();
+
+        MockHttpServletResponse response = put(patientUuid, """
+                {
+                  "resourceType": "Patient",
+                  "id": "%s",
+                  "name": [{ "family": "Doe", "given": ["Johnny"] }],
+                  "gender": "male",
+                  "birthDate": "1992-12-12"
+                }
+                """.formatted(patientUuid));
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        assertEquals("Ugandan",
+                patientIdentityService.getPatitentIdentityForPatientAndType("1", "17").getIdentityData());
+        assertEquals("USA", patientIdentityService.getPatitentIdentityForPatientAndType("1", "18").getIdentityData());
+    }
+
+    @Test
+    public void updatePatient_withTheResourceAsRead_changesNothingItPublishes() throws Exception {
+        Person person = personService.get("1");
+        person.setFax("");
+        person.setSysUserId("1");
+        personService.update(person);
+        String patientUuid = patientService.get("1").getFhirUuidAsString();
+        JsonNode asRead = read(patientUuid);
+
+        MockHttpServletResponse response = put(patientUuid, asRead.toString());
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        JsonNode afterwards = read(patientUuid);
+        for (String element : new String[] { "identifier", "name", "telecom", "gender", "birthDate", "address" }) {
+            assertEquals(element, asRead.get(element), afterwards.get(element));
+        }
+        assertEquals(null, personService.get("1").getStreetAddress());
+    }
+
+    @Test
+    public void createPatient_doesNotRecordThePatientAsItsOwnEmergencyContact() throws Exception {
+        MockHttpServletRequest request = buildRequest("POST", "/Patient");
+        request.setContent("""
+                {
+                  "resourceType": "Patient",
+                  "name": [{ "family": "Nakato", "given": ["Ruth"] }],
+                  "gender": "female",
+                  "birthDate": "1991-03-04",
+                  "address": [{ "line": ["Plot 4"], "city": "Gulu", "postalCode": "256", "country": "Uganda" }]
+                }
+                """.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(response.getContentAsString(), 201, response.getStatus());
+        String createdId = objectMapper.readTree(response.getContentAsString()).get("id").asText();
+        Patient created = patientService.getAllMatching("fhirUuid", UUID.fromString(createdId)).get(0);
+        assertTrue(patientContactService.getForPatient(created.getId()).isEmpty());
+        Person person = personService.get(created.getPerson().getId());
+        assertEquals("Uganda", person.getCountry());
+        assertEquals("256", person.getZipCode().trim());
+    }
+
+    private MockHttpServletResponse put(String patientUuid, String body) throws Exception {
+        MockHttpServletRequest request = buildRequest("PUT", "/Patient/" + patientUuid);
+        request.setContent(body.getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+        return response;
+    }
+
+    private JsonNode read(String patientUuid) throws Exception {
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(buildRequest("GET", "/Patient/" + patientUuid), response);
+        assertEquals(200, response.getStatus());
+        return objectMapper.readTree(response.getContentAsString());
+    }
+
+    @Test
     public void updatePatient_withInvalidId_shouldReturn404() throws Exception {
         String nonExistentUuid = "00000000-0000-0000-0000-000000000000";
 

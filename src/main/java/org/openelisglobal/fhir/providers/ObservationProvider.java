@@ -260,6 +260,15 @@ public class ObservationProvider implements IResourceProvider {
             LogEvent.logInfo(getClass().getSimpleName(), method,
                     "Existing Result found with ID=" + existingResult.getId());
 
+            Observation published = fhirTransformService.transformResultToObservation(existingResult);
+            if (sameContent(published, fhirObservation)) {
+                published.setId(theId);
+                MethodOutcome unchanged = new MethodOutcome();
+                unchanged.setCreated(false);
+                unchanged.setResource(published);
+                return unchanged;
+            }
+
             TestResultItem item = fhirTransformService.createResultFromObservation(fhirObservation);
 
             ResultsUpdateDataSet actionDataSet = handleObservationPersistence(item, fhirObservation, existingResult,
@@ -419,6 +428,23 @@ public class ObservationProvider implements IResourceProvider {
         }
     }
 
+    /**
+     * True when an update sends back exactly what a read publishes for the stored
+     * result. Saving it anyway records a result modification that did not happen:
+     * the analysis revision and entry date move and the audit trail grows on every
+     * unchanged round trip.
+     */
+    private static boolean sameContent(Observation published, Observation sent) {
+        Observation stored = published.copy();
+        Observation received = sent.copy();
+        for (Observation observation : List.of(stored, received)) {
+            observation.setIdElement(new IdType());
+            observation.setMeta(null);
+            observation.setText(null);
+        }
+        return stored.equalsDeep(received);
+    }
+
     private ResultsUpdateDataSet handleObservationPersistence(TestResultItem item, Observation observation,
             Result existingResult, HttpServletRequest request, String method) {
 
@@ -531,7 +557,7 @@ public class ObservationProvider implements IResourceProvider {
                         .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
             }
 
-            throw new InternalErrorException("Unexpected Error during validation");
+            throw new UnprocessableEntityException("Observation failed validation", outcome);
         }
 
         boolean useTechnicianName = ConfigurationProperties.getInstance()
@@ -621,7 +647,7 @@ public class ObservationProvider implements IResourceProvider {
                         .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
             }
 
-            throw new InternalErrorException("Unexpected Error during validation");
+            throw new UnprocessableEntityException("Observation failed validation", outcome);
         }
 
         boolean useTechnicianName = ConfigurationProperties.getInstance()

@@ -20,11 +20,12 @@ import ca.uhn.fhir.rest.param.DateRangeParam;
 import ca.uhn.fhir.rest.param.ReferenceAndListParam;
 import ca.uhn.fhir.rest.param.TokenAndListParam;
 import ca.uhn.fhir.rest.server.IResourceProvider;
+import ca.uhn.fhir.rest.server.exceptions.BaseServerResponseException;
 import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
 import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
 import ca.uhn.fhir.rest.server.exceptions.ResourceNotFoundException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -52,6 +53,7 @@ import org.openelisglobal.dataexchange.fhir.FhirUtil;
 import org.openelisglobal.dataexchange.fhir.service.FhirTransformService;
 import org.openelisglobal.fhir.FhirConstants;
 import org.openelisglobal.fhir.search.searchparams.ServiceRequestSearchParams;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
@@ -75,16 +77,24 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.search.service.ServiceRequestSearchService;
 import org.openelisglobal.spring.util.SpringContext;
 import org.openelisglobal.systemuser.service.UserService;
-import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.validation.BindException;
 import org.springframework.validation.Errors;
 import org.springframework.validation.FieldError;
+import org.springframework.validation.ObjectError;
 
 @Component
 public class ServiceRequestProvider implements IResourceProvider {
+
+    /**
+     * The sample list of an update, which never adds a test. The edit form
+     * validator rejects a missing list as malformed XML, so without it every update
+     * that kept the requested test, including an unchanged round trip, answered
+     * 400.
+     */
+    private static final String NO_SAMPLES_ADDED_XML = "<?xml version=\"1.0\" encoding=\"utf-8\"?><samples></samples>";
 
     @Autowired
     private SamplePatientEntryService samplePatientService;
@@ -97,9 +107,6 @@ public class ServiceRequestProvider implements IResourceProvider {
 
     @Autowired
     private SampleUtil sampleUtil;
-
-    @Autowired
-    private IStatusService statusService;
 
     @Autowired
     private SampleHumanService sampleHumanService;
@@ -115,9 +122,6 @@ public class ServiceRequestProvider implements IResourceProvider {
 
     @Autowired
     public SampleEditFormValidator formValidator;
-
-    @Autowired
-    private TestService testService;
 
     @Autowired
     private UserService userService;
@@ -366,7 +370,7 @@ public class ServiceRequestProvider implements IResourceProvider {
             form.setNoSampleFound(false);
 
             final SampleOrderItem orderItem = requireNonNull(
-                    fhirTransformService.buildSampleOrderItemFromServiceRequest(serviceRequest, sysUserId),
+                    fhirTransformService.buildSampleOrderItemForUpdate(serviceRequest, existingSample, sysUserId),
                     "Failed to build SampleOrderItem");
             form.setSampleOrderItems(orderItem);
 
@@ -380,26 +384,15 @@ public class ServiceRequestProvider implements IResourceProvider {
             final List<SampleEditItem> possibleTests = editItems.stream().filter(i -> i != null && i.isAdd())
                     .collect(Collectors.toList());
 
+            if (!possibleTests.isEmpty()) {
+                throw new UnprocessableEntityException(
+                        "ServiceRequest.code cannot change: a ServiceRequest is one analysis of one test. Revoke this"
+                                + " ServiceRequest and create a new one for the other test.");
+            }
+
             form.setExistingTests(existingTests);
             form.setPossibleTests(possibleTests);
-
-            if (!possibleTests.isEmpty()) {
-                final List<Test> allTests = new ArrayList<>();
-
-                existingAnalyses.stream()
-                        .filter(a -> a != null && a.getTest() != null
-                                && !statusService.matches(a.getStatusId(), AnalysisStatus.Canceled))
-                        .map(Analysis::getTest).forEach(allTests::add);
-
-                possibleTests.stream().map(SampleEditItem::getTestId).filter(Objects::nonNull).map(testService::get)
-                        .filter(Objects::nonNull).forEach(allTests::add);
-
-                final String sampleXml = requireNonBlank(
-                        SampleUtil.buildSampleXml(allTests, sampleItem, sampleItem.getId()),
-                        "Failed to build sample XML");
-
-                form.setSampleXML(sampleXml);
-            }
+            form.setSampleXML(NO_SAMPLES_ADDED_XML);
 
             final List<SampleItem> sampleItems = sampleItemService.getSampleItemsBySampleId(existingSample.getId());
 
@@ -424,8 +417,11 @@ public class ServiceRequestProvider implements IResourceProvider {
 
             form.setRejectReasonList(DisplayListService.getInstance().getList(ListType.REJECTION_REASONS));
 
-            final Errors result = new BindException(form, "form");
-            formValidator.validate(form, result);
+            final Errors validation = new BindException(form, "form");
+            formValidator.validate(form, validation);
+            final BindException result = new BindException(form, "form");
+            validation.getAllErrors().stream().filter(error -> !isStoredAccessionFormatError(error))
+                    .forEach(result::addError);
 
             if (result.hasErrors()) {
                 throw new InvalidRequestException(formatErrors(result));
@@ -475,7 +471,7 @@ public class ServiceRequestProvider implements IResourceProvider {
 
             return outcome;
 
-        } catch (InvalidRequestException | ResourceNotFoundException e) {
+        } catch (BaseServerResponseException e) {
             LogEvent.logError(this.getClass().getSimpleName(), method, FhirProviderUtils.safeMessage(e));
             throw e;
 
@@ -591,6 +587,17 @@ public class ServiceRequestProvider implements IResourceProvider {
      * Prevents NPE when logging exception messages
      */
 
+    /**
+     * The edit form validator checks {@code maxAccessionNumber}, built here from
+     * the order's stored accession number, against the accession format currently
+     * configured. An update cannot change that number, so an order accessioned
+     * under another format (imported, or entered before the format changed) could
+     * never be updated. Modify Order logs the same error and saves anyway.
+     */
+    private static boolean isStoredAccessionFormatError(ObjectError error) {
+        return error instanceof FieldError fieldError && "maxAccessionNumber".equals(fieldError.getField());
+    }
+
     private String formatErrors(Errors errors) {
         if (!errors.hasErrors()) {
             return "";
@@ -613,11 +620,13 @@ public class ServiceRequestProvider implements IResourceProvider {
 
         // Return formatted message for exception
         return errors.getAllErrors().stream().map(e -> {
+            String message = e.getDefaultMessage() != null ? e.getDefaultMessage()
+                    : MessageUtil.getMessage(e.getCode());
             if (e instanceof FieldError) {
                 FieldError fe = (FieldError) e;
-                return fe.getField() + ": " + fe.getDefaultMessage();
+                return fe.getField() + ": " + message;
             }
-            return e.getDefaultMessage();
+            return message;
         }).filter(Objects::nonNull).collect(Collectors.joining("; "));
     }
 

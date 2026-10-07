@@ -97,6 +97,15 @@ public interface FhirTransformService {
 
     PatientManagementInfo createOePatientManagementInfo(org.hl7.fhir.r4.model.Patient fhirPatient);
 
+    SampleOrderItem buildSampleOrderItemForUpdate(ServiceRequest serviceRequest,
+            org.openelisglobal.sample.valueholder.Sample sample, String sysUserId) throws Exception;
+
+    void addPatientAddressToPerson(org.hl7.fhir.r4.model.Patient fhirPatient,
+            org.openelisglobal.person.valueholder.Person person);
+
+    void keepPatientDetailsFhirDoesNotCarry(PatientManagementInfo patientInfo,
+            org.openelisglobal.patient.valueholder.Patient storedPatient);
+
     org.hl7.fhir.r4.model.Observation transformResultToObservation(org.openelisglobal.result.valueholder.Result result)
             throws FhirTransformationException;
 

@@ -7,6 +7,7 @@ import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.RestfulServer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.sql.Timestamp;
@@ -24,6 +25,7 @@ import org.openelisglobal.common.provider.validation.IAccessionNumberValidator.V
 import org.openelisglobal.fhir.providers.ServiceRequestProvider;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
+import org.openelisglobal.observationhistory.service.ObservationHistoryService;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.spring.util.SpringContext;
@@ -51,6 +53,9 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
     @Autowired
     private AnalysisService analysisService;
+
+    @Autowired
+    private ObservationHistoryService observationHistoryService;
 
     private RestfulServer fhirServlet;
     private ObjectMapper objectMapper;
@@ -282,12 +287,12 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void updateServiceRequest_shouldReturnUpdatedServiceRequest() throws Exception {
+    public void updateServiceRequest_shouldUpdateThePriority() throws Exception {
         String analysisUUID = "f8b9e2c1-7a2d-4e8b-b3a4-9c1e7f6d2b01";
         String subjectUUID = "b479ab79-5f53-4d1f-bc9b-10f19ce04635";
         String specimenUUID = "68438220-5cef-44c4-9e6f-9f88e6b93270";
         String practitionerUUID = "550e8400-e29b-41d4-a716-446655441004";
-        String loinc = "543216";
+        String loinc = "123456";
         String loincDisplay = "Blood Test";
         MockHttpServletRequest request = buildFhirRequest("PUT", "/ServiceRequest/" + analysisUUID);
         String jsonBody = """
@@ -296,7 +301,7 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
                 "id": "%s",
                 "status": "active",
                 "intent": "order",
-                "priority": "routine",
+                "priority": "stat",
 
                 "code": {
                     "coding": [
@@ -342,6 +347,62 @@ public class ServiceRequestFacadeTest extends BaseWebContextSensitiveTest {
 
         JsonNode jsonResponse = objectMapper.readTree(response.getContentAsString());
         assertEquals("ServiceRequest", jsonResponse.get("resourceType").asText());
+        assertEquals("stat", jsonResponse.get("priority").asText());
+    }
+
+    @Test
+    public void updateServiceRequest_withTheResourceAsRead_succeedsWithoutAddingOrCancellingTests() throws Exception {
+        MockHttpServletResponse read = new MockHttpServletResponse();
+        fhirServlet.service(buildFhirRequest("GET", "/ServiceRequest/" + ANALYSIS1_FHIRID), read);
+        assertEquals(200, read.getStatus());
+        Analysis before = analysisService.get("1");
+        int analysesBefore = analysisService.getAll().size();
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/ServiceRequest/" + ANALYSIS1_FHIRID);
+        request.setContentType("application/json");
+        request.setContent(read.getContentAsByteArray());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        Analysis after = analysisService.get("1");
+        assertEquals(before.getTest().getId(), after.getTest().getId());
+        assertEquals(before.getStatusId(), after.getStatusId());
+        assertEquals(analysesBefore, analysisService.getAll().size());
+        assertEquals("Histopathology", observationHistoryService.get("1").getValue());
+    }
+
+    @Test
+    public void updateServiceRequest_changingTheTest_isRefusedWithoutTouchingTheOrder() throws Exception {
+        int analysesBefore = analysisService.getAll().size();
+
+        MockHttpServletResponse response = putWithCode(
+                "{\"system\": \"http://loinc.org\", \"code\": \"543216\", \"display\": \"Urine Test\"}");
+
+        assertEquals(response.getContentAsString(), 422, response.getStatus());
+        assertEquals("1", analysisService.get("1").getTest().getId());
+        assertEquals(analysesBefore, analysisService.getAll().size());
+    }
+
+    @Test
+    public void updateServiceRequest_withACodeNamingNoTest_isRefusedAs422() throws Exception {
+        MockHttpServletResponse response = putWithCode("{\"system\": \"http://loinc.org\", \"code\": \"0000-0\"}");
+
+        assertEquals(response.getContentAsString(), 422, response.getStatus());
+    }
+
+    private MockHttpServletResponse putWithCode(String coding) throws Exception {
+        MockHttpServletResponse read = new MockHttpServletResponse();
+        fhirServlet.service(buildFhirRequest("GET", "/ServiceRequest/" + ANALYSIS1_FHIRID), read);
+        ObjectNode body = (ObjectNode) objectMapper.readTree(read.getContentAsString());
+        body.set("code", objectMapper.readTree("{\"coding\": [" + coding + "]}"));
+
+        MockHttpServletRequest request = buildFhirRequest("PUT", "/ServiceRequest/" + ANALYSIS1_FHIRID);
+        request.setContentType("application/json");
+        request.setContent(body.toString().getBytes());
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        fhirServlet.service(request, response);
+        return response;
     }
 
     @Test

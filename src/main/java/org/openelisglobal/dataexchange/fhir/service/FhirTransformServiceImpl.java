@@ -786,6 +786,22 @@ public class FhirTransformServiceImpl implements FhirTransformService {
     }
 
     @Override
+    public SampleOrderItem buildSampleOrderItemForUpdate(ServiceRequest serviceRequest, Sample sample, String sysUserId)
+            throws Exception {
+        return serviceRequestTransformService.buildSampleOrderItemForUpdate(serviceRequest, sample, sysUserId);
+    }
+
+    @Override
+    public void addPatientAddressToPerson(org.hl7.fhir.r4.model.Patient fhirPatient, Person person) {
+        patientTransformService.addAddressToPerson(fhirPatient, person);
+    }
+
+    @Override
+    public void keepPatientDetailsFhirDoesNotCarry(PatientManagementInfo patientInfo, Patient storedPatient) {
+        patientTransformService.keepDetailsFhirDoesNotCarry(patientInfo, storedPatient);
+    }
+
+    @Override
     public PatientSearchResults transformToOpenElisPatientSearchResults(org.hl7.fhir.r4.model.Patient fhirPatient) {
         return patientTransformService.transformToOpenElisPatientSearchResults(fhirPatient);
     }

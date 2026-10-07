@@ -1,9 +1,15 @@
 package org.openelisglobal.fhir.service;
 
-import ca.uhn.fhir.rest.server.exceptions.InternalErrorException;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import java.sql.Timestamp;
+import java.util.Arrays;
 import java.util.Date;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Set;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.hl7.fhir.r4.model.Annotation;
 import org.hl7.fhir.r4.model.CodeType;
 import org.hl7.fhir.r4.model.CodeableConcept;
@@ -14,6 +20,7 @@ import org.hl7.fhir.r4.model.Extension;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.IntegerType;
 import org.hl7.fhir.r4.model.Quantity;
+import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ResourceType;
 import org.hl7.fhir.r4.model.Specimen;
 import org.hl7.fhir.r4.model.Specimen.SpecimenCollectionComponent;
@@ -23,6 +30,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
+import org.openelisglobal.common.util.validator.GenericValidator;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.localization.service.LocalizationService;
@@ -46,6 +54,16 @@ import org.springframework.stereotype.Service;
 
 @Service
 public class SpecimenTransformServiceImpl implements SpecimenTransformService {
+
+    private static final Pattern ITEM_SUFFIX = Pattern.compile("(.+)-\\d+");
+
+    /**
+     * Collection conditions are one column published twice, as
+     * {@code collection.method} and as a note, so the notes of a resource sent back
+     * repeat the method. Conditions are merged as a set of segments joined by this
+     * separator instead of appended.
+     */
+    private static final String CONDITION_SEPARATOR = "; ";
 
     @Autowired
     private FhirConfig fhirConfig;
@@ -105,29 +123,27 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
 
         if (specimen.hasAccessionIdentifier() && specimen.getAccessionIdentifier().hasValue()) {
 
-            String accessionNumber = specimen.getAccessionIdentifier().getValue().trim();
-            Sample sample = sampleService.getSampleByAccessionNumber(accessionNumber);
+            String accessionValue = specimen.getAccessionIdentifier().getValue().trim();
+            Sample sample = findSampleForAccession(accessionValue);
 
             if (sample == null) {
-                throw new InternalErrorException("Sample not found for accession: " + accessionNumber);
+                throw new InvalidRequestException(
+                        "Specimen.accessionIdentifier '" + accessionValue + "' does not name an existing order");
             }
 
-            int sampleIndex;
-            try {
-                sampleIndex = Integer.parseInt(sample.getId());
-            } catch (NumberFormatException e) {
-                throw new InternalErrorException("Invalid sample ID: " + sample.getId());
+            if (item.getId() == null) {
+                int sortOrder = nextSortOrder(sample);
+                item.setSample(sample);
+                item.setSortOrder(String.valueOf(sortOrder));
+                item.setExternalId(sample.getAccessionNumber() + "-" + sortOrder);
+            } else if (item.getSample() != null && !sample.getId().equals(item.getSample().getId())) {
+                throw new InvalidRequestException("Specimen.accessionIdentifier '" + accessionValue
+                        + "' names another order; a Specimen cannot be moved to another order");
             }
-
-            item.setSample(sample);
-            item.setSortOrder(String.valueOf(sampleIndex));
-
-            sampleIndex++;
-            item.setExternalId(accessionNumber + "-" + sampleIndex);
         }
 
-        // Status
-        if (specimen.hasStatus()) {
+        if (specimen.hasStatus() && (item.getId() == null
+                || specimen.getStatus() != mapSampleItemStatusToSpecimenStatus(item.getStatusId()))) {
             SampleStatus mappedStatus = mapSpecimenStatus(specimen.getStatus());
             item.setStatusId(statusService.getStatusID(mappedStatus));
         }
@@ -151,7 +167,8 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
 
             Specimen.SpecimenCollectionComponent col = specimen.getCollection();
 
-            if (col.hasCollectedDateTimeType()) {
+            if (col.hasCollectedDateTimeType()
+                    && !sameSecond(item.getCollectionDate(), col.getCollectedDateTimeType().getValue())) {
                 Date date = col.getCollectedDateTimeType().getValue();
                 item.setCollectionDate(new Timestamp(date.getTime()));
             }
@@ -183,6 +200,9 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
                         break;
                     }
                 }
+                if (!col.getMethod().hasCoding() && col.getMethod().hasText()) {
+                    item.setCollectionConditions(col.getMethod().getText());
+                }
             }
         }
 
@@ -210,24 +230,64 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
         }
 
         // Received
-        if (specimen.hasReceivedTime()) {
+        if (specimen.hasReceivedTime() && !sameSecond(item.getReceivedDate(), specimen.getReceivedTime())) {
             item.setReceivedDate(new Timestamp(specimen.getReceivedTime().getTime()));
         }
 
         // Notes
         if (specimen.hasNote()) {
-            String notes = specimen.getNote().stream().filter(Annotation::hasText).map(Annotation::getText)
-                    .reduce((a, b) -> a + "; " + b).orElse(null);
-
-            if (notes != null) {
-                String existing = item.getCollectionConditions();
-                item.setCollectionConditions(existing != null ? existing + "; " + notes : notes);
+            Set<String> conditions = new LinkedHashSet<>();
+            if (!GenericValidator.isBlankOrNull(item.getCollectionConditions())) {
+                conditions.addAll(Arrays.asList(item.getCollectionConditions().split(CONDITION_SEPARATOR)));
             }
+            specimen.getNote().stream().filter(Annotation::hasText)
+                    .flatMap(note -> Arrays.stream(note.getText().split(CONDITION_SEPARATOR)))
+                    .filter(condition -> !condition.isBlank()).forEach(conditions::add);
+            if (!conditions.isEmpty()) {
+                item.setCollectionConditions(String.join(CONDITION_SEPARATOR, conditions));
+            }
+        }
+
+        if (item.getId() == null && item.getSample() == null) {
+            throw new UnprocessableEntityException("Specimen.accessionIdentifier must name the order it belongs to");
+        }
+        if (item.getId() == null && item.getTypeOfSample() == null) {
+            throw new UnprocessableEntityException("Specimen.type must name a sample type");
         }
 
         item.setSysUserId(sysuserId);
 
         return item;
+    }
+
+    /**
+     * The order an accession identifier names. A Specimen is published with
+     * {@code <accession>-<sortOrder>}, and a client may also send the bare order
+     * accession, so both resolve to the same Sample.
+     */
+    private Sample findSampleForAccession(String accessionValue) {
+        Sample sample = sampleService.getSampleByAccessionNumber(accessionValue);
+        Matcher itemSuffix = ITEM_SUFFIX.matcher(accessionValue);
+        if (sample == null && itemSuffix.matches()) {
+            sample = sampleService.getSampleByAccessionNumber(itemSuffix.group(1));
+        }
+        return sample;
+    }
+
+    /**
+     * True when a stored time and a sent one are the same instant to the second.
+     * Specimen times are published to the second, so writing a time back unchanged
+     * must not drop the fraction of a second the database holds.
+     */
+    private static boolean sameSecond(Timestamp stored, Date sent) {
+        return stored != null && sent != null
+                && Math.floorDiv(stored.getTime(), 1000L) == Math.floorDiv(sent.getTime(), 1000L);
+    }
+
+    private int nextSortOrder(Sample sample) {
+        return sampleItemService.getSampleItemsBySampleId(sample.getId()).stream().map(SampleItem::getSortOrder)
+                .filter(sortOrder -> sortOrder != null && sortOrder.matches("\\d+")).mapToInt(Integer::parseInt).max()
+                .orElse(0) + 1;
     }
 
     @Override
@@ -368,6 +428,9 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
 
         SpecimenCollectionComponent specimenCollectionComponent = new SpecimenCollectionComponent();
         specimenCollectionComponent.setCollected(new DateTimeType(collectionDate));
+        if (!GenericValidator.isBlankOrNull(collector)) {
+            specimenCollectionComponent.setCollector(new Reference().setDisplay(collector));
+        }
 
         // Add GPS coordinates extension if available
         if (sample != null && sample.hasGpsCoordinates()) {
@@ -425,6 +488,12 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
         return gpsExtension;
     }
 
+    /**
+     * Inverse of {@link #mapSampleItemStatusToSpecimenStatus(String)}: read and
+     * search publish a cancelled item as {@code unsatisfactory}, so writing that
+     * status cancels the item rather than rejecting it, which read back as
+     * {@code available}.
+     */
     private SampleStatus mapSpecimenStatus(Specimen.SpecimenStatus status) {
         if (status == null) {
             return SampleStatus.Entered;
@@ -438,8 +507,6 @@ public class SpecimenTransformServiceImpl implements SpecimenTransformService {
             return SampleStatus.Disposed;
 
         case UNSATISFACTORY:
-            return SampleStatus.SampleRejected;
-
         case ENTEREDINERROR:
             return SampleStatus.Canceled;
 

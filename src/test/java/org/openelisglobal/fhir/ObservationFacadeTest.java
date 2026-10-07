@@ -260,6 +260,32 @@ public class ObservationFacadeTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void updateObservation_withTheResourceAsRead_recordsNoModification() throws Exception {
+        attachPanelToAnalysis("1");
+        MockHttpServletResponse read = serve(buildFhirRequest("GET", "/Observation/" + RESULT_WITH_PROVIDER_UUID));
+        assertEquals(200, read.getStatus());
+        String revisionBefore = analysisService.get("1").getRevision();
+
+        MockHttpServletResponse response = serve(putObservation(RESULT_WITH_PROVIDER_UUID, read.getContentAsString()));
+
+        assertEquals(response.getContentAsString(), 200, response.getStatus());
+        assertEquals(revisionBefore, analysisService.get("1").getRevision());
+    }
+
+    @Test
+    public void updateObservation_withTextForANumericTest_isRefusedAs422() throws Exception {
+        attachPanelToAnalysis("1");
+
+        String updateJson = observationJson(RESULT_WITH_PROVIDER_UUID, "\"status\": \"final\",", LOINC_CODING, SUBJECT,
+                SPECIMEN, BASED_ON, "\"valueString\": \"abc\"");
+
+        MockHttpServletResponse response = serve(putObservation(RESULT_WITH_PROVIDER_UUID, updateJson));
+
+        assertEquals(response.getContentAsString(), 422, response.getStatus());
+        assertEquals("85.0", resultService.getResultByFhirUuid(RESULT_WITH_PROVIDER_UUID).getValue());
+    }
+
+    @Test
     public void deleteObservation_shouldReturn204() throws Exception {
 
         Result result = resultService.getResultByFhirUuid(RESULT_WITH_PROVIDER_UUID);
