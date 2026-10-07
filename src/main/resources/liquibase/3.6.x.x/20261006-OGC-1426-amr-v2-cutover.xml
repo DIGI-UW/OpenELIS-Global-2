@@ -20,6 +20,7 @@
       <column header="program_id" name="program_id" type="NUMERIC"/>
     </loadData>
     <sqlFile path="amr-cutover-fingerprint.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <sqlFile path="amr-v2-observation-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <sqlFile path="amr-cutover-forward.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <rollback>
       <sqlFile path="amr-cutover-fingerprint.sql" relativeToChangelogFile="true" splitStatements="false"/>

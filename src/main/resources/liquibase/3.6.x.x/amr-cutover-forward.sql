@@ -15,6 +15,16 @@ BEGIN
         EXECUTE format('LOCK TABLE clinlims.%I IN ACCESS EXCLUSIVE MODE',item.tablename);
     END LOOP;
 
+    -- Reject ownership that cannot be carried into canonical membership.
+    IF EXISTS (SELECT analysis_id FROM clinlims.micro_case_analysis GROUP BY analysis_id HAVING count(*) > 1) THEN
+        RAISE EXCEPTION 'AMR cutover requires one owner for each analysis';
+    END IF;
+    IF EXISTS (SELECT 1 FROM clinlims.micro_case_inoculation child
+        JOIN clinlims.micro_case_inoculation parent ON parent.id=child.source_inoculation_id
+        WHERE child.case_id <> parent.case_id) THEN
+        RAISE EXCEPTION 'AMR cutover requires a subculture parent in the same case';
+    END IF;
+
     IF EXISTS (
         SELECT 1 FROM clinlims.micro_case c
         LEFT JOIN clinlims.amr_cutover_case_map mapping ON mapping.case_id = c.id

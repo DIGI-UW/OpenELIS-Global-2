@@ -274,6 +274,82 @@ public class AmrCutoverMigrationTest {
         return new Liquibase(path, new ClassLoaderResourceAccessor(fixtureLoader), database);
     }
 
+    @Test
+    public void candidateCutoverRejectsUnresolvableObservationBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_activity"
+                    + "(id,case_id,activity_type,occurred_at,performed_by,structured_data) values "
+                    + "('invalid-positive','case-tb','STAGE_CHANGED',timestamp '2026-09-01 12:34:56',1,'unresolvable stage history')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String applied = allHistory();
+        expectFailure(cutover(MAP), "AMR cutover requires resolvable stage history");
+        assertEquals(before, clinicalSnapshot());
+        assertEquals(applied, allHistory());
+        assertTrue(columnExists("micro_case", "sample_item_id"));
+        assertFalse(tableExists("micro_case_specimen"));
+    }
+
+    @Test
+    public void candidateCutoverDoesNotTreatUnknownStageHistoryAsNoResults() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_activity"
+                    + "(id,case_id,activity_type,occurred_at,performed_by,structured_data) values "
+                    + "('unknown-observation','case-tb','STAGE_CHANGED',timestamp '2026-09-01 12:34:56',1,'{\"to\":\"UNKNOWN_OBSERVATION\"}')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String applied = allHistory();
+        expectFailure(cutover(MAP), "AMR cutover requires resolvable stage history");
+        assertEquals(before, clinicalSnapshot());
+        assertEquals(applied, allHistory());
+        assertTrue(columnExists("micro_case", "sample_item_id"));
+    }
+
+    @Test
+    public void candidateCutoverRejectsCrossCaseSubcultureBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "insert into clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by)"
+                            + " values ('cross-case-activity','case-tb','SUBCULTURE_RECORDED',timestamp '2026-09-01 12:34:56','1')");
+            statement.executeUpdate(
+                    "insert into clinlims.micro_case_inoculation(id,case_id,activity_id,source_inoculation_id,"
+                            + "container_identifier,media,occurred_at,performed_by) values ('cross-case-culture','case-tb',"
+                            + "'cross-case-activity','inoculation-original','AMR-CROSS-PLATE','Blood agar',timestamp '2026-09-01 12:34:56','1')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String history = allHistory();
+        expectFailure(cutover(MAP), "subculture parent in the same case");
+        assertEquals(before, clinicalSnapshot());
+        assertEquals(history, allHistory());
+        assertTrue(columnExists("micro_case", "workflow_type"));
+        assertFalse(tableExists("micro_case_specimen"));
+    }
+
+    @Test
+    public void candidateCutoverRejectsDuplicateAnalysisOwnersBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_analysis(id,case_id,analysis_id)"
+                    + " values ('duplicate-owner','case-tb',990010)");
+        }
+        connection.commit();
+        Map<String, String> clinicalBefore = clinicalSnapshot();
+        String historyBefore = allHistory();
+
+        expectFailure(cutover(MAP), "one owner for each analysis");
+
+        assertEquals(clinicalBefore, clinicalSnapshot());
+        assertEquals(historyBefore, allHistory());
+        assertTrue(columnExists("micro_case", "workflow_type"));
+        assertFalse(tableExists("micro_case_specimen"));
+    }
+
     private Liquibase cutover(String mappings) {
         Liquibase migration = changelog(CUTOVER);
         migration.setChangeLogParameter("amr.cutover.mappingFile", mappings);
