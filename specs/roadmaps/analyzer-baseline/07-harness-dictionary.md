@@ -46,13 +46,14 @@ significantDigits,flags,significance`). Dictionary rows carry `loincCode`.
 ### Build
 
 ```
-- [ ] T7.1 Red: E2E, fresh setup of every shipped analyzer binds every declared test, value and component
+- [ ] T7.0 OE2 sends the Bridge what the Assays step stores: on Apply and on connection save, `values.codeOverrides` holds each enabled assay's instrument code (profile code to instrument code), `values.numberFormat` the analyzer's override when set; the setup reads both back from the connection view. Red first through the Bridge contract fixtures. (The other half of T4.3, left without a task when T4.3 moved here)
+- [ ] T7.1 Red: E2E, fresh setup of every shipped analyzer binds every declared test, value and component. Against GeneXpert rev 8 the stock codes are HIVVL, SARSCOV2, FLUA, FLUB, RSV, SARSCOV2_3, MTB, RIF; MTB and RIF are text results with no answers, held until a lab maps them, so the old MTB-RIF, RIF (46244-0) and COVID19 scenarios are retired, not rewritten
 - [ ] T7.1b Red: E2E, an assay's instrument code set in the Assays step is used for result translation and for an outbound order (moved from T4.3; needs the Bridge's `codeOverrides` from step 6)
 - [ ] T7.2 Red: E2E, every vendor outcome from the mock lands on the right test, component or QC result, or is held with its note; readback by accession, test, value
 - [ ] T7.2b E2E for each placement state of step 1b through native mock traffic: tube ID to its tube, rerun on a held result, two tubes, unordered test, unknown ID, a mistyped ID placed on its order, a mismatched patient, and a FILE plate with one mistyped sample name
 - [ ] T7.3 Create projects/analyzer-harness/dictionary/ as a copy of volume/configuration/backend/ with: answers for SARS-CoV-2 PCR as the instrument reports them (Positive, Negative, Invalid; LOINC LL2021-5), tests for Influenza A, Influenza B and RSV with the same answers for the 302-7279 panels (LOINC from the step-5 note), MTB and RIF as text tests without answers (the three results of rule 12 wait for a vendor source, step 5), HIV-1 Viral Load as one test per rule 11 (numeric copies/mL primary; components for the call with Detected, Not detected and Invalid, the LOG, and the HIV-1, IQS-H and IQS-L analyte records with their Ct), components per assay, corrected LOINC on the legacy rows, answer codings in the step-2c answer terminology CSV (every LOINC, SNOMED and CIEL code step 5 cites)
 - [ ] T7.4 Point harness-catalog-init at the new directory; delete config-templates/; fix .gitignore
-- [ ] T7.5 Bump Bridge and mock submodule pins and image tags to the step-6 and step-8 releases
+- [ ] T7.5 Pins first, tags later: the submodule pins point at the Bridge #75 and mock #53 heads (done 6 Oct; OE2 builds both from the submodules, so the harness E2E runs against them). The image tags in `docker-compose.analyzers.yml` follow the releases a maintainer cuts after review; until then the `deployment-contract` check is red by design
 - [ ] T7.6 Remove per-message overrides from analyzer-native-traffic.ts; use mock fixtures
 - [ ] T7.7 Green; format cold; commit; top of stack PR
 ```
