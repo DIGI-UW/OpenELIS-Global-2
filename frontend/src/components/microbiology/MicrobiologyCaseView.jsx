@@ -897,12 +897,18 @@ const MicrobiologyCaseView = ({
                         <CaseCultureTransitionPanel
                           action={routeState.action}
                           caseId={caseId}
+                          specimens={caseDetail.specimens}
+                          readOnly={
+                            !canEnterResults ||
+                            (finalReleased && !amendmentOpen)
+                          }
                           service={service}
                           onComplete={completeCultureTransition}
                           onCancel={() => selectSection("setup")}
                         />
                       )}
                     <CaseInoculationPanel
+                      specimens={caseDetail.specimens}
                       inoculations={inoculations}
                       onRecord={recordInoculation}
                       stage={caseDetail.stage}

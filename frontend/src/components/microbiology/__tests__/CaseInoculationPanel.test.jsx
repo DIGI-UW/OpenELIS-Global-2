@@ -17,6 +17,51 @@ const renderPanel = (props = {}) =>
   );
 
 describe("CaseInoculationPanel", () => {
+  it("requires an explicit member sample for primary culture and submits the selected sample", async () => {
+    const user = userEvent.setup();
+    const onRecord = vi.fn().mockResolvedValue({});
+    renderPanel({
+      action: "start-inoculation",
+      specimens: [
+        { sampleItemId: "101", label: "OWN-ORDER-1" },
+        { sampleItemId: "202", label: "OWN-ORDER-2" },
+      ],
+      onRecord,
+    });
+    await user.type(screen.getByLabelText("Bottle or plate ID"), "OWN-BOTTLE");
+    await user.type(screen.getByLabelText("Media or bottle"), "Blood agar");
+    expect(screen.getByRole("button", { name: "Save media" })).toBeDisabled();
+    await user.selectOptions(screen.getByLabelText("Sample"), "202");
+    await user.click(screen.getByRole("button", { name: "Save media" }));
+    expect(onRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceSampleItemId: "202" }),
+    );
+  });
+
+  it("keeps the selected sample and culture draft after a failed save", async () => {
+    const user = userEvent.setup();
+    const onRecord = vi.fn().mockRejectedValue(new Error("Save denied"));
+    const onInoculationAction = vi.fn();
+    renderPanel({
+      action: "start-inoculation",
+      specimens: [{ sampleItemId: "202", label: "OWN-ORDER-2" }],
+      onRecord,
+      onInoculationAction,
+    });
+    await user.selectOptions(screen.getByLabelText("Sample"), "202");
+    await user.type(screen.getByLabelText("Bottle or plate ID"), "OWN-BOTTLE");
+    await user.type(screen.getByLabelText("Media or bottle"), "Blood agar");
+    await user.click(screen.getByRole("button", { name: "Save media" }));
+    expect(onRecord).toHaveBeenCalledWith(
+      expect.objectContaining({ sourceSampleItemId: "202" }),
+    );
+    expect(onInoculationAction).not.toHaveBeenCalled();
+    expect(screen.getByLabelText("Sample")).toHaveValue("202");
+    expect(screen.getByLabelText("Bottle or plate ID")).toHaveValue(
+      "OWN-BOTTLE",
+    );
+  });
+
   it("routes primary setup, moves focus into it, and restores focus after cancel", async () => {
     const user = userEvent.setup();
     const onInoculationAction = vi.fn();
@@ -82,14 +127,44 @@ describe("CaseInoculationPanel", () => {
     expect(screen.getByRole("button", { name: "Save media" })).toBeDisabled();
   });
 
+  it.each([undefined, "outside-case"])(
+    "blocks subculture with invalid parent specimen %s",
+    async (sourceSampleItemId) => {
+      const user = userEvent.setup();
+      const onRecord = vi.fn();
+      renderPanel({
+        action: "add-subculture",
+        specimens: [{ sampleItemId: "101", label: "OWN-SAMPLE" }],
+        inoculations: [
+          {
+            id: "parent",
+            sourceSampleItemId,
+            containerIdentifier: "PARENT",
+            media: "Agar",
+          },
+        ],
+        onRecord,
+      });
+      await user.selectOptions(screen.getByLabelText("Parent media"), "parent");
+      await user.type(screen.getByLabelText("Bottle or plate ID"), "CHILD");
+      await user.type(screen.getByLabelText("Media or bottle"), "Agar");
+      const save = screen.getByRole("button", { name: "Save media" });
+      expect(save).toBeDisabled();
+      await user.click(save);
+      expect(onRecord).not.toHaveBeenCalled();
+    },
+  );
+
   it("records a subculture with its selected parent", async () => {
     const user = userEvent.setup();
     const onRecord = vi.fn().mockResolvedValue({});
     const onInoculationAction = vi.fn();
     const panelProps = {
+      specimens: [{ sampleItemId: "101", label: "OWN-ORDER-1" }],
       inoculations: [
         {
           id: "inoculation-1",
+          sourceSampleItemId: "101",
           containerIdentifier: "BOTTLE-001",
           media: "Blood agar",
           incubation: "24h",
@@ -124,6 +199,7 @@ describe("CaseInoculationPanel", () => {
     await user.click(screen.getByRole("button", { name: "Save media" }));
 
     expect(onRecord).toHaveBeenCalledWith({
+      sourceSampleItemId: "101",
       sourceInoculationId: "inoculation-1",
       containerIdentifier: "PLATE-002",
       media: "MacConkey agar",
@@ -147,6 +223,7 @@ describe("CaseInoculationPanel", () => {
     const onCultureAction = vi.fn();
     const { rerender } = renderPanel({
       stage: "INCUBATING",
+      specimens: [{ sampleItemId: "101", label: "OWN-ORDER-1" }],
       inoculations: [
         {
           id: "inoculation-1",

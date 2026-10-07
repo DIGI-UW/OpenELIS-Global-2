@@ -12292,5 +12292,9 @@
   "label.testCatalog.basicInfo.microbiologyCaseRole.CULTURE": "Culture",
   "label.testCatalog.basicInfo.microbiologyCaseRole.DIRECT": "Direct",
   "label.testCatalog.basicInfo.microbiologyCaseRole.CASE": "Case",
-  "label.testCatalog.basicInfo.collectedInSets": "Collected in sets"
+  "label.testCatalog.basicInfo.collectedInSets": "Collected in sets",
+  "microbiology.inoculation.sample": "Sample",
+  "microbiology.inoculation.samplePlaceholder": "Choose a sample",
+  "microbiology.cultureAction.noGrowth.note": "Incubation complete with no growth",
+  "microbiology.cultureAction.positive.note": "Culture marked positive"
 }

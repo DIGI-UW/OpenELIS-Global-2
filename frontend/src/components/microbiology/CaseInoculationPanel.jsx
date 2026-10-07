@@ -23,6 +23,7 @@ import ReagentUsageHistory from "./ReagentUsageHistory";
 
 const CaseInoculationPanel = ({
   inoculations = [],
+  specimens = [],
   onRecord,
   saving = false,
   reagentRequirements = [],
@@ -41,6 +42,7 @@ const CaseInoculationPanel = ({
         ? "subculture"
         : "";
   const [sourceInoculationId, setSourceInoculationId] = useState("");
+  const [sampleItemId, setSampleItemId] = useState("");
   const [containerIdentifier, setContainerIdentifier] = useState("");
   const [media, setMedia] = useState("");
   const [incubation, setIncubation] = useState("");
@@ -89,6 +91,7 @@ const CaseInoculationPanel = ({
 
   const clearForm = () => {
     setSourceInoculationId("");
+    setSampleItemId("");
     setContainerIdentifier("");
     setMedia("");
     setIncubation("");
@@ -120,13 +123,20 @@ const CaseInoculationPanel = ({
     previousModeRef.current = mode;
   }, [mode]);
 
+  const sourceSampleItemId =
+    mode === "subculture"
+      ? byId.get(sourceInoculationId)?.sourceSampleItemId
+      : sampleItemId;
   const valid =
     containerIdentifier.trim() &&
     media.trim() &&
+    specimens.some((sample) => sample.sampleItemId === sourceSampleItemId) &&
     (mode !== "subculture" || sourceInoculationId);
 
   const submit = () => {
+    if (!valid || saving || readOnly) return;
     const payload = {
+      sourceSampleItemId,
       sourceInoculationId:
         mode === "subculture" ? sourceInoculationId : undefined,
       containerIdentifier: containerIdentifier.trim(),
@@ -287,6 +297,31 @@ const CaseInoculationPanel = ({
                       : "microbiology.inoculation.start",
                 })}
               </h4>
+              {mode === "primary" && (
+                <Select
+                  id="microbiology-inoculation-sample"
+                  labelText={intl.formatMessage({
+                    id: "microbiology.inoculation.sample",
+                  })}
+                  value={sampleItemId}
+                  disabled={saving || readOnly}
+                  onChange={(event) => setSampleItemId(event.target.value)}
+                >
+                  <SelectItem
+                    value=""
+                    text={intl.formatMessage({
+                      id: "microbiology.inoculation.samplePlaceholder",
+                    })}
+                  />
+                  {specimens.map((sample) => (
+                    <SelectItem
+                      key={sample.sampleItemId}
+                      value={sample.sampleItemId}
+                      text={sample.label || sample.sampleItemId}
+                    />
+                  ))}
+                </Select>
+              )}
               {mode === "subculture" && (
                 <Select
                   ref={sourceFieldRef}

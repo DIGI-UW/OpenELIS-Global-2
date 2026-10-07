@@ -13,6 +13,7 @@ const caseDetail = {
   canEnterResults: true,
   canValidateResults: true,
   sampleItemId: "1001",
+  specimens: [{ sampleItemId: "1001", label: "UATMICRO001-1" }],
   patientId: "patient-1",
   patientName: "Microbiology, UAT",
   accessionNumber: "UATMICRO001",
@@ -305,6 +306,8 @@ describe("MicrobiologyCaseView", () => {
       });
       await waitFor(() => expect(transitionTitle).toHaveFocus());
       const confirm = screen.getByRole("button", { name: buttonName });
+      expect(confirm).toBeDisabled();
+      await user.selectOptions(screen.getByLabelText("Sample"), "1001");
       confirm.focus();
       await user.keyboard("{Enter}");
 
@@ -312,6 +315,7 @@ describe("MicrobiologyCaseView", () => {
         expect(service.recordCaseActivity).toHaveBeenCalledWith("case-1", {
           nextStage,
           note,
+          sourceSampleItemId: "1001",
         }),
       );
       await waitFor(() =>
@@ -530,6 +534,7 @@ describe("MicrobiologyCaseView", () => {
       screen.getByTestId("microbiology-case-section-setup"),
     ).getByRole("button", { name: "Start inoculation" });
     await user.click(startInoculation);
+    await user.selectOptions(screen.getByLabelText("Sample"), "1001");
     await user.type(screen.getByLabelText("Bottle or plate ID"), "BOTTLE-001");
     await user.type(
       screen.getByLabelText("Media or bottle"),
@@ -542,6 +547,7 @@ describe("MicrobiologyCaseView", () => {
 
     await waitFor(() =>
       expect(service.recordCaseInoculation).toHaveBeenCalledWith("case-1", {
+        sourceSampleItemId: "1001",
         containerIdentifier: "BOTTLE-001",
         media: "Blood culture bottle",
         incubation: "35 C for 24 hours",
