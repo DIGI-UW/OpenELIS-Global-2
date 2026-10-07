@@ -1,0 +1,166 @@
+# Microbiology (AMR) V2 — roadmap
+
+Ordered work to reach the [final state](spec.md). Check an item when it is done.
+Evidence belongs in the pull request, not here.
+
+An item is done when it is merged-ready on its branch: the application boots
+on a fresh and an upgraded database, the change's own tests pass, and every
+user-facing item has a recorded browser run compared with the pinned design
+mock. Schema changes ship with the step that needs them
+([D8](spec.md#2-engineering-decisions)).
+
+Acceptance criteria (AC-V2-nn) are listed once, under the step that delivers
+them.
+
+## 1. Spec and roadmap
+
+- [ ] [spec.md](spec.md) reviewed and accepted
+- [ ] V1 specifications under `specs/782-*` removed
+- [ ] Jira OGC-1383 / OGC-1382 children point at these steps
+
+## 2. Dependencies and open decisions
+
+- [ ] Each _not found_ or _confirm_ row in [§14](spec.md#14-shared-openelis-dependencies) confirmed or planned
+- [ ] [§15](spec.md#15-open-decisions) decisions recorded in the spec
+
+## 3. Retire the V1 front
+
+[§10 Retire](spec.md#10-v1-disposition-retire-restructure-evolve)
+
+- [ ] Workflow type, culture setups and protocols removed, backend and frontend
+- [ ] Reception Microbiology section, micro draft pipeline and Program guards removed
+- [ ] V1 order routing removed
+- [ ] Order entry, Results, Validation and existing cases work; no schema change
+
+## 4. Case structure
+
+[§4.1](spec.md#41-case), [§10 Restructure](spec.md#10-v1-disposition-retire-restructure-evolve)
+
+- [ ] Case lab unit, Program, member samples and case analysis roles, restructured in place
+- [ ] Existing cases load and display after upgrade
+
+## 5. Routing and case creation
+
+[§5](spec.md#5-routing-and-case-membership)
+
+- [ ] Catalog switch, case role, collected in sets
+- [ ] Routing on order save, electronic orders, reflex, case tests
+- [ ] What this order will open preview
+- [ ] Set numbers and set warnings
+- [ ] Edit order: add, cancel, last-test confirmation and reason
+- AC: 01, 02, 03, 05, 54, 58, 88, 91, 103, 104
+
+## 6. Case, case information and access
+
+[§4.1](spec.md#41-case), [§6](spec.md#6-case-work-rules), [§9](spec.md#9-access)
+
+- [ ] Case view shell, header, related cases, samples list, timeline
+- [ ] Case information, order-level details, Program and questionnaire
+- [ ] Case-lab-unit access on every read and write; read-only direct links
+- [ ] Case search and worklist listing by lab unit
+- [ ] Transfer
+- [ ] Split a no-result sample
+- AC: 04, 06, 07, 49, 60, 63, 90, 92, 99, 111
+
+## 7. Case tests and results
+
+[§4.3](spec.md#43-case-tests)
+
+- [ ] Initial testing and Additional testing with the shared chooser
+- [ ] One result table and inline editor, multi-component results
+- [ ] Tested elsewhere, reagent lots, In lab only
+- [ ] Notes on case and results
+- [ ] Per-result validation, Block self-validation
+- AC: 08, 09, 24, 30, 31, 32, 33, 38, 39, 40, 51, 59, 61, 67, 68, 100, 105, 108
+
+## 8. Culture rows and media
+
+[§4.4](spec.md#44-culture-rows)
+
+- [ ] Inoculation from media links, medium and lot without stock change, tracked-media setting
+- [ ] Readings, check due, incubation complete, extensions, positive time
+- [ ] Instrument negatives, late growth
+- [ ] Culture tree: tests on a culture, Gram stain shortcut, subcultures
+- [ ] Seeded positive-bottle reflex rule
+- [ ] Used on cultures in Inventory
+- AC: 10, 13, 23, 55, 64, 65, 66, 69, 70, 71, 72, 77, 82, 83, 84, 89, 93, 95, 97, 101, 102, 109, 110
+
+## 9. Isolates and referral
+
+[§4.5](spec.md#45-isolates-and-referral)
+
+- [ ] Isolates picked from rows, identification history, significance
+- [ ] Isolate sample items
+- [ ] Received isolates
+- [ ] Refer remaining work, a test or an isolate
+- AC: 15, 26, 57, 62, 75, 106
+
+## 10. AST/DST and TB classification
+
+[§4.6](spec.md#46-astdst)
+
+- [ ] Runs, default panel, added panels, standards and reasons
+- [ ] Readings, attempts, overrides, QC, expert flags
+- [ ] Use for reporting per agent
+- [ ] TB classification, discordance gate, NTM off-ramp
+- AC: 21, 27, 43, 47, 56, 98
+
+## 11. Incoming results
+
+[§4.7](spec.md#47-incoming-results)
+
+- [ ] Results for existing rows go to the row
+- [ ] Incoming queue, one-click placement, moves, duplicate sends
+- [ ] Reflex no-duplicate rule
+- AC: 16, 17, 18, 25, 34, 35, 36, 37
+
+## 12. Releases, report and calls
+
+[§4.8](spec.md#48-notes-report-choices-releases-calls), [§7](spec.md#7-output)
+
+- [ ] Work stage and culture outcome
+- [ ] Report choices
+- [ ] Partial and final release, amendments, server-side final lock
+- [ ] Patient report micro block and environmental certificate
+- [ ] Critical calls through the shared callback log
+- AC: 14, 19, 20, 28, 29, 44, 45, 46, 48, 52, 53, 96
+
+## 13. Worklist, bench and labels
+
+[§8](spec.md#8-worklist-and-bench), [§7 Labels](spec.md#7-output)
+
+- [ ] Needs attention reasons and sorting
+- [ ] Cultures filters, No growth, Inoculate many, Extend 24 h, Undo
+- [ ] Bench sheet as Workplan print, Open sheet
+- [ ] Per-container label scope and presets, label scanning
+- AC: 11, 12, 73, 76, 78, 79, 80, 81, 85, 86, 87, 94, 112
+
+## 14. Patient history
+
+- [ ] Patient history, repeat isolate, TB follow-up ([§6](spec.md#6-case-work-rules))
+- AC: 74
+
+## 15. Environmental cases and surveillance
+
+[§12](spec.md#12-surveillance-populations), [§13](spec.md#13-environmental-cases)
+
+- [ ] Site-subject cases, environmental fields and purposes
+- [ ] Purpose and track populations in the WHONET export
+- [ ] M-18 acceptance criteria
+- AC: 50, 107
+
+## 16. Final acceptance
+
+- [ ] Localization, desktop/mobile and keyboard review
+- [ ] Preservation capabilities (A-16) and retained worklist list (A-12) present
+- [ ] All three GitHub checkpoints pass on the final revision
+- AC: 22, 41
+
+## 17. Clinical migration
+
+[§11](spec.md#11-existing-data)
+
+- [ ] Lab unit and Program assignment with review lists and timeline notes
+- [ ] Verified on a copy of a V1 database
+- [ ] Retired columns and tables dropped
+- AC: 42
