@@ -9,6 +9,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
+import org.openelisglobal.common.util.PdfReportLayout;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.sample.util.AccessionNumberUtil;
 import org.openelisglobal.test.beanItems.TestResultItem;
@@ -116,10 +117,8 @@ final class WorkplanPdf {
     private static byte[] layout(String title, List<String> metaLines, List<String> headers, List<List<String>> rows) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PdfExportSupport.pageSize(), 36, 36, 36, 48);
-        PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
-        PdfExportSupport.addHeading(document, title, TITLE_FONT, META_FONT,
-                metaLines.stream().map(line -> line + "\n").toArray(String[]::new));
-        document.add(new Phrase("\n", META_FONT));
+        PdfReportLayout.open(document, out,
+                PdfReportLayout.heading(title, TITLE_FONT, META_FONT, metaLines.toArray(String[]::new)), true);
 
         PdfPTable table = new PdfPTable(headers.size());
         table.setWidthPercentage(100);

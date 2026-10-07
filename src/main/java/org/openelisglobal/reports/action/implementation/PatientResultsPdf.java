@@ -8,6 +8,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
+import org.openelisglobal.common.util.PdfReportText;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPatientData;
 import org.openpdf.text.Document;
@@ -81,19 +82,6 @@ final class PatientResultsPdf {
             List<ClinicalPatientData> items) {
         ReportHeaderPdf.add(document, MessageUtil.getMessage("report.analysisReport"), settings.headerLines(),
                 settings.accreditationLogos(), settings.accreditationNotesLine());
-        ClinicalPatientData first = items.get(0);
-        if (first.isCorrectedResult()) {
-            Paragraph corrected = new Paragraph(MessageUtil.getMessage("report.correctedReport"), NOTICE_FONT);
-            corrected.setAlignment(Element.ALIGN_CENTER);
-            document.add(corrected);
-        }
-        Paragraph status = new Paragraph(
-                MessageUtil.getMessage("report.results") + " " + Objects.toString(first.getCompleteFlag(), ""),
-                SECTION_FONT);
-        status.setAlignment(Element.ALIGN_CENTER);
-        status.setSpacingBefore(8);
-        document.add(status);
-
         PdfPTable results = null;
         for (int i = 0; i < items.size(); i++) {
             ClinicalPatientData item = items.get(i);
@@ -106,11 +94,23 @@ final class PatientResultsPdf {
                     document.add(results);
                     results = null;
                 }
+                addOrderNotices(document, item);
                 addOrderDetails(document, settings, item);
-                results = resultsTable();
             }
             if (newSection) {
+                if (results != null) {
+                    document.add(results);
+                }
+                results = resultsTable();
+                PdfPCell identity = new PdfPCell(new Phrase(
+                        MessageUtil.getMessage("report.patientCode") + " "
+                                + Objects.toString(item.getSubjectNumber(), "") + "    "
+                                + MessageUtil.getMessage("report.ordinanceNo") + " " + item.getAccessionNumber(),
+                        SECTION_FONT));
+                identity.setColspan(RESULT_WIDTHS.length);
+                results.addCell(identity);
                 addSectionHeading(results, item.getTestSection());
+                results.setHeaderRows(3);
             }
             results.addCell(cell(item.getTestName(), TEXT_FONT, Element.ALIGN_LEFT));
             results.addCell(cell(item.getSampleSortOrder(), TEXT_FONT, Element.ALIGN_CENTER));
@@ -130,6 +130,21 @@ final class PatientResultsPdf {
             document.add(results);
         }
         addValidation(document, writer, settings);
+    }
+
+    private static void addOrderNotices(Document document, ClinicalPatientData item) {
+        if (item.isCorrectedResult()) {
+            Paragraph corrected = new Paragraph(MessageUtil.getMessage("report.correctedReport"), NOTICE_FONT);
+            corrected.setAlignment(Element.ALIGN_CENTER);
+            document.add(corrected);
+        }
+        Paragraph status = new Paragraph(
+                MessageUtil.getMessage("report.results") + " " + Objects.toString(item.getCompleteFlag(), ""),
+                SECTION_FONT);
+        status.setAlignment(Element.ALIGN_CENTER);
+        status.setSpacingBefore(8);
+        document.add(status);
+
     }
 
     private static void addOrderDetails(Document document, Settings settings, ClinicalPatientData item) {
@@ -266,7 +281,7 @@ final class PatientResultsPdf {
     }
 
     private static PdfPCell cell(String text, Font font, int alignment) {
-        PdfPCell cell = new PdfPCell(new Phrase(Objects.toString(text, ""), font));
+        PdfPCell cell = new PdfPCell(new Phrase(PdfReportText.plain(text), font));
         cell.setHorizontalAlignment(alignment);
         return cell;
     }

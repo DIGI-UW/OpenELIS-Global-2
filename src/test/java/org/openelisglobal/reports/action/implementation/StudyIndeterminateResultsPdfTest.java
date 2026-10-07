@@ -17,6 +17,17 @@ public class StudyIndeterminateResultsPdfTest extends BaseWebContextSensitiveTes
     private static final String STUDY = "Résultats Indéterminés";
 
     @Test
+    public void byLocationKeepsStudyAndSerologyIdentityOnEveryPage() throws Exception {
+        java.util.ArrayList<IndeterminateReportData> orders = new java.util.ArrayList<>();
+        for (int i = 0; i < 140; i++) {
+            orders.add(order("LAB-" + i, "Central Clinic", "Dr A"));
+        }
+        byte[] pdf = StudyIndeterminateResultsPdf.byLocation(orders, STUDY);
+        org.openelisglobal.testsupport.PdfRegression.everyPage(pdf, "indeterminate-continuation", STUDY, "SEROLOGIE",
+                "LEXIQUE");
+    }
+
+    @Test
     public void versionOne_listsTheAlgorithmTestsTheOrderHasResultsFor() throws Exception {
         IndeterminateReportData order = order("DEV0126000000000961", "Central Clinic", "Dr Prescriber");
         order.setIntegral("Positif");

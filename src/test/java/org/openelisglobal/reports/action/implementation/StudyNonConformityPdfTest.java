@@ -17,6 +17,36 @@ import org.openelisglobal.testsupport.PdfText;
 public class StudyNonConformityPdfTest extends BaseWebContextSensitiveTest {
 
     @Test
+    public void followupNotesRemainWithTheOrderAtPageBoundaries() throws Exception {
+        java.util.ArrayList<FollowupRequiredData> orders = new java.util.ArrayList<>();
+        for (int i = 0; i < 50; i++) {
+            orders.add(followup("Central Clinic", "LAB-" + i, "ORDER-NOTE-" + i + "<br/>Second line<br/>Third line",
+                    null));
+        }
+        byte[] pdf = StudyNonConformityPdf.followupRequired("Follow-up scope", orders);
+        org.openelisglobal.testsupport.PdfRegression.everyPage(pdf, "followup-continuation", "Follow-up scope",
+                "Central Clinic");
+        java.util.List<String> pageTexts = org.openelisglobal.testsupport.PdfRegression.pages(pdf);
+        for (int i = 0; i < 50; i++) {
+            org.openelisglobal.testsupport.PdfRegression.samePage(pageTexts, "ORDER-NOTE-" + i, "LAB-" + i);
+        }
+    }
+
+    @Test
+    public void conclusionHasThreeSeparateSpecimenChoiceBoxes() {
+        for (boolean eid : List.of(false, true)) {
+            org.openpdf.text.pdf.PdfPTable table = StudyNonConformityPdf.conclusion(eid);
+            org.openpdf.text.pdf.PdfPTable choices = (org.openpdf.text.pdf.PdfPTable) table.getRow(1).getCells()[0]
+                    .getCompositeElements().get(0);
+            org.openpdf.text.pdf.PdfPCell[] cells = choices.getRow(0).getCells();
+            for (int column : new int[] { 0, 2, 4 }) {
+                org.junit.Assert.assertEquals(org.openpdf.text.Rectangle.BOX, cells[column].getBorder());
+                org.junit.Assert.assertEquals(column == 4 && eid ? "X" : "", cells[column].getPhrase().getContent());
+            }
+        }
+    }
+
+    @Test
     public void notification_putsEachOrderOnItsOwnPageWithItsNonConformities() throws Exception {
         NonConformityReportData noSubjectNumber = nonConformity("DEV0126000000000970", "Reception", "Sample unlabelled",
                 "Plasma", null);
@@ -123,7 +153,7 @@ public class StudyNonConformityPdfTest extends BaseWebContextSensitiveTest {
         assertLine(lines, "Section: Saisie Réception X Biochimie Immunologie(CD4) Charge virale");
         assertLine(lines, "Diagnostic précoce (EID) Sérologie VIH Hématologie X");
         assertLine(lines, "CONCLUSION : L’échantillon ne peut être traité ou analysé ce jour.");
-        assertLine(lines, "Prière refaire le prélèvement sur : Tube EDTA Tube sec Carte DBS Whatman 903");
+        assertLine(lines, "Prière refaire le prélèvement sur :");
         assertLine(lines, "Signature, date (jj/mm/aaaa), et cachet du Laboratoire/Biologiste");
         assertFalse("a tube order gets the tube form: " + lines, page.contains("Age de l’enfant"));
 
@@ -147,7 +177,7 @@ public class StudyNonConformityPdfTest extends BaseWebContextSensitiveTest {
         assertLine(lines, "Elution du disque DBS impossible X");
         assertLine(lines, "DBS spot de sang dilué par l’alcool");
         assertLine(lines, "Diagnostic précoce (EID) X Sérologie VIH Hématologie");
-        assertLine(lines, "Prière refaire le prélèvement sur : Tube EDTA Tube sec Carte DBS Whatman 903 X");
+        assertLine(lines, "Prière refaire le prélèvement sur :");
         assertFalse("an EID order gets the DBS form: " + lines, lines.contains("Echantillon Coagulé"));
     }
 

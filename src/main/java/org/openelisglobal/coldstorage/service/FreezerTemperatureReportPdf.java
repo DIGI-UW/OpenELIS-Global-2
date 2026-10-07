@@ -115,7 +115,8 @@ final class FreezerTemperatureReportPdf {
         compliance.setSpacingBefore(18);
         document.add(compliance);
         document.add(new Paragraph(
-                "This report complies with CAP, CLIA, FDA, and WHO guidelines for temperature-controlled storage monitoring.",
+                "This report complies with CAP, CLIA, FDA, and WHO guidelines for temperature-controlled storage monitoring.\n"
+                        + "All data organized chronologically with hierarchical grouping for regulatory compliance and easy review.",
                 TEXT_FONT));
         document.add(new Paragraph(
                 "Generated: " + LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")),

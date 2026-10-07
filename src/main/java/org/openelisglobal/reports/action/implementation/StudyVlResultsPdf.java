@@ -127,6 +127,9 @@ final class StudyVlResultsPdf {
     /** The site header and the patient block, repeated on every page. */
     private static void addHeading(Document document, VLReportData order, Settings settings) {
         ReportHeaderPdf.add(document, settings.studyName(), ReportHeaderPdf.siteNameLines());
+        if (Boolean.TRUE.equals(order.getDuplicateReport())) {
+            document.add(new Paragraph("Duplicata", new Font(Font.HELVETICA, 11, Font.BOLD)));
+        }
         StudyPatientBlockPdf.add(document, new StudyPatientBlockPdf.Patient(
                 order.getSubjectno() == null ? order.getSitesubjectno() : order.getSubjectno(),
                 order.getAccession_number(), order.getGender(), afterKey(order.getVlPregnancy()), order.getBirth_date(),

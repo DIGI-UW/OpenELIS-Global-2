@@ -15,7 +15,6 @@ package org.openelisglobal.reports.action.implementation;
 
 import java.io.ByteArrayOutputStream;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -26,7 +25,6 @@ import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
-import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.HaitiAggregateReportData;
@@ -128,9 +126,6 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
         document.add(table);
 
         document.add(new Paragraph(MessageUtil.getMessage("report.footNote"), new Font(Font.HELVETICA, 8)));
-        document.add(
-                new Paragraph(MessageUtil.getMessage("referral.report.date") + ": " + DateUtil.getCurrentDateAsText(),
-                        new Font(Font.HELVETICA, 8)));
         document.close();
         return out.toByteArray();
     }
@@ -385,18 +380,7 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
             testBucketList.add(bucket);
         }
 
-        Collections.sort(testBucketList, new Comparator<TestBucket>() {
-            @Override
-            public int compare(TestBucket o1, TestBucket o2) {
-                int order = o1.sectionSort - o2.sectionSort;
-
-                if (order == 0) {
-                    order = o1.testSort - o2.testSort;
-                }
-
-                return order;
-            }
-        });
+        testBucketList.sort(BUCKET_ORDER);
     }
 
     private void addEmptySectionsToBucketList(Map<String, TestSection> testSectionMap, List<TestBucket> bucketList) {
@@ -442,7 +426,10 @@ public abstract class IndicatorAllTest extends IndicatorReport implements IRepor
         }
     }
 
-    private class TestBucket {
+    static final Comparator<TestBucket> BUCKET_ORDER = Comparator
+            .comparingInt((TestBucket bucket) -> bucket.sectionSort).thenComparingInt(bucket -> bucket.testSort);
+
+    static class TestBucket {
         public String testName = "";
         public int testSort = 0;
         public String testSection = "";

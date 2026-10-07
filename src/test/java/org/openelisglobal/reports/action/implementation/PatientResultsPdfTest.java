@@ -19,18 +19,65 @@ import org.openelisglobal.reports.action.implementation.reportBeans.ClinicalPati
 import org.openelisglobal.reports.form.ReportForm;
 import org.openelisglobal.testsupport.PdfText;
 
+@org.springframework.transaction.annotation.Transactional
 public class PatientResultsPdfTest extends BaseWebContextSensitiveTest {
 
     private String originalPaperSize;
+    private String originalBillingLabel;
 
     @Before
-    public void setUp() {
+    public void setUp() throws Exception {
         originalPaperSize = ConfigurationProperties.getInstance().getPropertyValue(Property.REPORT_PAPER_SIZE);
+        originalBillingLabel = ConfigurationProperties.getInstance()
+                .getPropertyValue(Property.BILLING_REFERENCE_NUMBER_LABEL);
+        executeDataSetWithStateManagement("testdata/reporting-r1-patient.xml");
+        ConfigurationProperties.getInstance().setPropertyValue(Property.BILLING_REFERENCE_NUMBER_LABEL, "9842");
     }
 
     @After
     public void tearDown() {
         ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, originalPaperSize);
+        ConfigurationProperties.getInstance().setPropertyValue(Property.BILLING_REFERENCE_NUMBER_LABEL,
+                originalBillingLabel);
+    }
+
+    @Test
+    public void completionAndCorrectedNotesBelongToEachOrder() throws Exception {
+        ClinicalPatientData complete = rows("PAT-0001").get(0);
+        ClinicalPatientData partial = rows("PAT-0001").get(0);
+        complete.setAccessionNumber("COMPLETE-ORDER");
+        partial.setAccessionNumber("PARTIAL-ORDER");
+        partial.setCompleteFlag("Partial");
+        partial.setCorrectedResult(true);
+        partial.setNote("Corrected<br/>A &amp; B &lt;literal&gt;");
+        String text = PdfText.of(PatientResultsPdf.render(settings(true, List.of(), null), List.of(complete, partial)));
+        assertTrue(text, text.contains("Results Complete") && text.contains("Results Partial"));
+        assertTrue(text, text.indexOf("Results Partial") > text.indexOf("COMPLETE-ORDER"));
+        assertTrue(text, text.contains("Corrected\nA & B <literal>"));
+        org.junit.Assert.assertFalse(text, text.contains("<br") || text.contains("&amp;"));
+    }
+
+    @Test
+    public void overflowingSectionsRetainOrderIdentityAndColumnLabelsOnBothPaperSizes() throws Exception {
+        for (String size : List.of("A4", "Letter")) {
+            ConfigurationProperties.getInstance().setPropertyValue(Property.REPORT_PAPER_SIZE, size);
+            List<ClinicalPatientData> rows = new ArrayList<>();
+            for (int i = 0; i < 95; i++) {
+                rows.add(row("PAT-CONTINUATION", "Long Section", "Test " + i, "12.5", "B", "12 - 16", "g/L",
+                        "Note " + i));
+            }
+            byte[] pdf = PatientResultsPdf.render(settings(true, List.of(), null), rows);
+            for (int page = 1; page <= PdfText.pageCount(pdf); page++) {
+                String text = PdfText.ofPage(pdf, page);
+                if (text.contains("Test ")) {
+                    assertTrue(text, text.contains("PAT-CONTINUATION") && text.contains("DEV0126000000000961"));
+                    assertTrue(text, text.contains("Long Section")
+                            && text.contains("Test Spec Result Status Alert Reference value Unit"));
+                }
+            }
+            assertTrue("must paginate", PdfText.pageCount(pdf) > 1);
+            org.openelisglobal.testsupport.PdfRegression.save(pdf, "patient-results-" + size);
+        }
     }
 
     @Test

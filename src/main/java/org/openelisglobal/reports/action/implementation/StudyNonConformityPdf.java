@@ -116,8 +116,8 @@ final class StudyNonConformityPdf {
     static byte[] followupRequired(String title, List<FollowupRequiredData> items) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PdfExportSupport.pageSize(), 36, 36, 36, 48);
-        ReportHeaderPdf.open(document, out).setPageEvent(new ReportDateFooter());
-        ReportHeaderPdf.add(document, title, ReportHeaderPdf.siteNameLines());
+        ReportHeaderPdf.openRepeating(document, out, title, ReportHeaderPdf.siteNameLines())
+                .setPageEvent(new ReportDateFooter());
         int start = 0;
         while (start < items.size()) {
             int end = start;
@@ -144,12 +144,18 @@ final class StudyNonConformityPdf {
         PdfExportSupport.addHeaderRow(table, HEADER_FONT, 3, "Date de prélèvement", "Date de réception", "Lab No",
                 "Sujet No", "Site Sujet No", "Nom du médecin");
         for (FollowupRequiredData order : orders) {
+            PdfPTable block = new PdfPTable(new float[] { 98, 92, 112, 72, 72, 94 });
+            block.setHeaderRows(1);
             for (String value : new String[] { order.getCollectiondate(), order.getReceivedDate(), order.getLabNo(),
                     order.getSubjectNumber(), order.getSiteSubjectNumber(), order.getDoctor() }) {
-                table.addCell(new Phrase(Objects.toString(value, "").trim(), CELL_FONT));
+                block.addCell(new Phrase(Objects.toString(value, "").trim(), CELL_FONT));
             }
-            addNotes(table, "Non Conformité Remarque", order.getNonConformityNotes());
-            addNotes(table, "Suivi Requis Remarque", order.getUnderInvestigationNotes());
+            addNotes(block, "Non Conformité Remarque", order.getNonConformityNotes());
+            addNotes(block, "Suivi Requis Remarque", order.getUnderInvestigationNotes());
+            PdfPCell completeOrder = new PdfPCell(block);
+            completeOrder.setColspan(6);
+            completeOrder.setPadding(0);
+            table.addCell(completeOrder);
         }
         document.add(table);
     }
@@ -336,11 +342,18 @@ final class StudyNonConformityPdf {
         Paragraph text = new Paragraph();
         text.add(new Phrase("CONCLUSION : ", LABEL_FONT));
         text.add(new Phrase("L’échantillon ne peut être traité ou analysé ce jour.", TEXT_FONT));
-        text.add(new Phrase("\nPrière refaire le prélèvement sur : Tube EDTA Tube sec Carte DBS Whatman 903"
-                + (earlyInfantDiagnosis ? " X" : ""), TEXT_FONT));
+        text.add(new Phrase("\nPrière refaire le prélèvement sur :", TEXT_FONT));
         PdfPCell cell = new PdfPCell(text);
         cell.setPadding(5);
         table.addCell(cell);
+        PdfPTable choices = new PdfPTable(new float[] { 18, 75, 18, 65, 18, 180 });
+        choices.addCell(box(false));
+        choices.addCell(plain("Tube EDTA", TEXT_FONT));
+        choices.addCell(box(false));
+        choices.addCell(plain("Tube sec", TEXT_FONT));
+        choices.addCell(box(earlyInfantDiagnosis));
+        choices.addCell(plain("Carte DBS Whatman 903", TEXT_FONT));
+        table.addCell(new PdfPCell(choices));
         return table;
     }
 

@@ -25,6 +25,26 @@ public class IndicatorReportsTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void panelBucketsPrecedeUnsortedTestsWithoutIntegerOverflow() {
+        IndicatorAllTest.TestBucket panel = new IndicatorAllTest.TestBucket();
+        panel.testName = "Panel";
+        panel.testSort = -1;
+        IndicatorAllTest.TestBucket ordered = new IndicatorAllTest.TestBucket();
+        ordered.testName = "Ordered";
+        ordered.testSort = 1;
+        IndicatorAllTest.TestBucket unspecified = new IndicatorAllTest.TestBucket();
+        unspecified.testName = "Unspecified";
+        unspecified.testSort = Integer.MAX_VALUE;
+        for (List<IndicatorAllTest.TestBucket> input : List.of(List.of(unspecified, panel, ordered),
+                List.of(panel, unspecified, ordered))) {
+            List<IndicatorAllTest.TestBucket> buckets = new ArrayList<>(input);
+            buckets.sort(IndicatorAllTest.BUCKET_ORDER);
+            org.junit.Assert.assertEquals(List.of("Panel", "Ordered", "Unspecified"),
+                    buckets.stream().map(bucket -> bucket.testName).toList());
+        }
+    }
+
+    @Test
     public void labAggregate_countsEachTestsStatusesBySection() throws Exception {
         List<String> lines = render(new IndicatorAllTestClinical());
 

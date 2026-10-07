@@ -62,7 +62,9 @@ public class StudyEidResultsPdfTest extends BaseWebContextSensitiveTest {
         assertLine(checklist, "DBS: Nombre de spot rempli < 3 X");
         assertLine(checklist, "Section: Saisie Réception X Biochimie Immunologie(CD4) Charge virale");
         assertLine(checklist, "Diagnostic précoce (EID) X Sérologie VIH Hématologie");
-        assertLine(checklist, "Prière refaire le prélèvement sur : Tube EDTA Tube sec Carte DBS Whatman 903 X");
+        assertLine(checklist, "Prière refaire le prélèvement sur :");
+        assertLine(checklist, "Tube EDTA Tube sec X Carte DBS Whatman 903");
+        org.openelisglobal.testsupport.PdfRegression.save(pdf, "eid-checklist");
     }
 
     @Test

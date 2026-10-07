@@ -27,9 +27,6 @@ import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.reports.action.implementation.reportBeans.ErrorMessages;
 import org.openelisglobal.reports.form.ReportForm;
 import org.openpdf.text.Document;
-import org.openpdf.text.Font;
-import org.openpdf.text.Paragraph;
-import org.openpdf.text.Phrase;
 import org.openpdf.text.Rectangle;
 
 public abstract class IndicatorReport extends Report {
@@ -84,7 +81,6 @@ public abstract class IndicatorReport extends Report {
      */
     protected Document startPdf(ByteArrayOutputStream out, Rectangle pageSize, String period, String... moreLines) {
         Document document = new Document(pageSize, 36, 36, 36, 48);
-        ReportHeaderPdf.open(document, out);
         List<String> nameLines = new ArrayList<>();
         for (String line : new String[] { getLabNameLine1(), getLabNameLine2() }) {
             // getContextualMessage returns the key itself when the deployment configured
@@ -93,21 +89,17 @@ public abstract class IndicatorReport extends Report {
                 nameLines.add(line);
             }
         }
-        ReportHeaderPdf.add(document, getNameForReport(), nameLines);
-        Paragraph meta = new Paragraph(period, new Font(Font.HELVETICA, 10, Font.BOLD));
+        List<String> scope = new ArrayList<>();
+        String meta = period;
         String siteCode = ConfigurationProperties.getInstance().getPropertyValue(Property.SiteCode);
         if (!GenericValidator.isBlankOrNull(siteCode)) {
-            meta.add(new Phrase("    " + MessageUtil.getMessage("datasubmission.siteid") + ": " + siteCode,
-                    new Font(Font.HELVETICA, 10)));
+            meta += "    " + MessageUtil.getMessage("datasubmission.siteid") + ": " + siteCode;
         }
-        meta.setSpacingBefore(6);
-        meta.setSpacingAfter(moreLines.length == 0 ? 8 : 0);
-        document.add(meta);
-        for (int i = 0; i < moreLines.length; i++) {
-            Paragraph line = new Paragraph(moreLines[i], new Font(Font.HELVETICA, 10));
-            line.setSpacingAfter(i == moreLines.length - 1 ? 8 : 0);
-            document.add(line);
-        }
+        scope.add(meta);
+        scope.addAll(List.of(moreLines));
+        ReportHeaderPdf.openRepeatingWithFooter(document, out, getNameForReport(), nameLines,
+                scope.toArray(String[]::new),
+                MessageUtil.getMessage("referral.report.date") + ": " + DateUtil.getCurrentDateAsText());
         return document;
     }
 

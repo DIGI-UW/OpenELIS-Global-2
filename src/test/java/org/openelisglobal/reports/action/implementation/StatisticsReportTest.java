@@ -15,6 +15,26 @@ public class StatisticsReportTest extends BaseWebContextSensitiveTest {
     private static final String JANUARY_TO_DECEMBER = "4 3 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 2 1";
 
     @Test
+    public void repeatsScopeAndDateOnEveryStatisticsPage() throws Exception {
+        StatisticsReport report = new StatisticsReport();
+        ReportForm form = new ReportForm();
+        form.setUpperYear("2026");
+        form.setPriority(List.of());
+        form.setLabSections(List.of());
+        form.setReceptionTime(List.of());
+        report.initializeReport(form);
+        java.util.ArrayList<StatisticsReportData> items = new java.util.ArrayList<>();
+        for (int i = 0; i < 170; i++) {
+            StatisticsReportData item = new StatisticsReportData();
+            item.setTestName("Test " + i);
+            items.add(item);
+        }
+        org.openelisglobal.testsupport.PdfRegression.everyPage(report.render(items), "statistics-continuation",
+                "StatisticsReport", "2026", "Test Section:", "Priority:",
+                org.openelisglobal.common.util.DateUtil.getCurrentDateAsText());
+    }
+
+    @Test
     public void countsEachTestsTestsAndSamplesByMonth() throws Exception {
         StatisticsReport report = new StatisticsReport();
         ReportForm form = new ReportForm();

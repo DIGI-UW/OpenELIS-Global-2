@@ -43,6 +43,18 @@ public class FreezerTemperatureReportTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void everyLogRetainsTheCompleteComplianceDescription() throws Exception {
+        for (String kind : List.of("daily", "weekly", "monthly")) {
+            byte[] pdf = freezerReportService.generatePdfReport(kind, 100L, today, today);
+            org.openelisglobal.testsupport.PdfRegression.save(pdf, "freezer-" + kind);
+            String text = PdfText.of(pdf);
+            assertTrue(text, text.contains("CAP, CLIA, FDA, and WHO"));
+            assertTrue(text, text.contains("All data organized chronologically with hierarchical grouping"));
+            assertTrue(text, text.contains("for regulatory compliance and easy review."));
+        }
+    }
+
+    @Test
     public void dailyLog_listsEveryReadingWithItsStatus() throws Exception {
         List<String> lines = lines(freezerReportService.generatePdfReport("daily", 100L, today, today));
 

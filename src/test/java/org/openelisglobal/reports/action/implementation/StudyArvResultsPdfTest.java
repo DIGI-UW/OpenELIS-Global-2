@@ -18,6 +18,23 @@ public class StudyArvResultsPdfTest extends BaseWebContextSensitiveTest {
             StudyArvResultsPdf.Images.NONE);
 
     @Test
+    public void duplicateMarkerIsPerOrderInBothLayoutsAndChecklistPages() throws Exception {
+        ARVReportData original = order();
+        original.setDuplicateReport(false);
+        ARVReportData duplicate = order();
+        duplicate.setDuplicateReport(true);
+        for (byte[] pdf : List.of(StudyArvResultsPdf.versionOne(List.of(original, duplicate), SETTINGS),
+                StudyArvResultsPdf.versionTwo(List.of(original, duplicate), SETTINGS))) {
+            org.junit.Assert.assertFalse(PdfText.ofPage(pdf, 1), PdfText.ofPage(pdf, 1).contains("Duplicata"));
+            assertTrue(PdfText.ofPage(pdf, 2), PdfText.ofPage(pdf, 2).contains("Duplicata"));
+        }
+        duplicate.setAllQaEvents("sample.type.edtaTube:qa_event.hemolytic");
+        byte[] checklist = StudyArvResultsPdf.versionOne(List.of(duplicate), SETTINGS);
+        org.openelisglobal.testsupport.PdfRegression.everyPage(checklist, "arv-duplicate-checklist", "Duplicata",
+                "SUBJ-0042");
+    }
+
+    @Test
     public void versionOne_drawsOnlyThePanelsAnOrderHasResultsFor() throws Exception {
         ARVReportData order = order();
         order.setCd4per("28");

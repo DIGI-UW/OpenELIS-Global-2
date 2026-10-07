@@ -49,10 +49,12 @@ final class StudyPatientBlockPdf {
         block.addCell(field("Sujetno", patient.subjectNumber()));
         block.addCell(field("Labno", patient.labNo()));
         block.addCell(field("Sexe", patient.gender()));
-        block.addCell(field("Grossesse", patient.pregnancy()));
+        block.addCell(
+                "F".equalsIgnoreCase(patient.gender()) ? field("Grossesse", patient.pregnancy()) : field(null, null));
         block.addCell(field("Date Naiss.", patient.birthDate()));
         block.addCell(field("Age", patient.age()));
-        block.addCell(field("Allaitement", patient.breastfeeding()));
+        block.addCell("F".equalsIgnoreCase(patient.gender()) ? field("Allaitement", patient.breastfeeding())
+                : field(null, null));
         block.addCell(field(null, null));
         block.addCell(field("Date de Prél.", patient.collected()));
         block.addCell(field("Date de Réception", day(patient.received())));

@@ -13,6 +13,52 @@ import org.openelisglobal.testsupport.PdfText;
 public class ConfirmationReportTest extends BaseWebContextSensitiveTest {
 
     @Test
+    public void eachSiteStartsOnItsOwnPageAndLongOrdersRetainTheirIdentity() throws Exception {
+        ConfirmationReport report = new ConfirmationReport();
+        ReportForm form = new ReportForm();
+        form.setLowerDateRange("01/01/2026");
+        form.setUpperDateRange("12/12/2026");
+        report.initializeReport(form);
+        ConfirmationData first = confirmation();
+        ConfirmationData second = confirmation();
+        second.setOrganizationName("Clinic B");
+        byte[] twoSites = report.render(List.of(first, second));
+        org.junit.Assert.assertEquals(2, PdfText.pageCount(twoSites));
+        org.junit.Assert.assertFalse(PdfText.ofPage(twoSites, 1).contains("Clinic B"));
+        org.junit.Assert.assertFalse(PdfText.ofPage(twoSites, 2).contains("Clinic A"));
+        second.setRequesterTest(java.util.Collections.nCopies(100, "Long initial test"));
+        second.setRequesterResult(java.util.Collections.nCopies(100, "Positive"));
+        byte[] longOrder = report.render(List.of(second));
+        org.openelisglobal.testsupport.PdfRegression.everyPage(longOrder, "confirmation-long-order", "REQ-1",
+                "DEV0126000000000951", "Confirmation Test Report");
+    }
+
+    @Test
+    public void ordinaryOrderNotesAndResultsStayWithTheirIdentityAtPageBoundaries() throws Exception {
+        ConfirmationReport report = new ConfirmationReport();
+        ReportForm form = new ReportForm();
+        form.setLowerDateRange("01/01/2026");
+        form.setUpperDateRange("12/12/2026");
+        report.initializeReport(form);
+        java.util.ArrayList<ConfirmationData> orders = new java.util.ArrayList<>();
+        for (int i = 0; i < 24; i++) {
+            ConfirmationData order = confirmation();
+            order.setRequesterAccession("REQUEST-" + i);
+            order.setLabAccession("LAB-" + i);
+            order.setNote("ORDER-NOTE-" + i);
+            orders.add(order);
+        }
+        byte[] pdf = report.render(orders);
+        java.util.List<String> pageTexts = org.openelisglobal.testsupport.PdfRegression.pages(pdf);
+        org.openelisglobal.testsupport.PdfRegression.everyPage(pdf, "confirmation-order-boundaries",
+                "Confirmation Test Report");
+        for (int i = 0; i < orders.size(); i++) {
+            org.openelisglobal.testsupport.PdfRegression.samePage(pageTexts, "ORDER-NOTE-" + i, "REQUEST-" + i);
+            org.openelisglobal.testsupport.PdfRegression.samePage(pageTexts, "ORDER-NOTE-" + i, "LAB-" + i);
+        }
+    }
+
+    @Test
     public void listsEachOrdersInitialAndConfirmationResultsUnderItsSite() throws Exception {
         ConfirmationReport report = new ConfirmationReport();
         ReportForm form = new ReportForm();

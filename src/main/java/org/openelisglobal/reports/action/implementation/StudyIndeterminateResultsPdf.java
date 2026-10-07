@@ -117,9 +117,9 @@ final class StudyIndeterminateResultsPdf {
      */
     static byte[] byLocation(List<IndeterminateReportData> orders, String studyName) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
-        Document document = open(out);
-        ReportHeaderPdf.add(document, studyName, ReportHeaderPdf.siteNameLines());
-        addSerologyHeading(document);
+        Document document = new Document(PdfExportSupport.pageSize(), 30, 30, 30, 70);
+        ReportHeaderPdf.openRepeating(document, out, studyName, ReportHeaderPdf.siteNameLines(), "SEROLOGIE",
+                "Sérologie VIH " + SEROLOGY_METHOD).setPageEvent(new GlossaryFooter());
         int start = 0;
         while (start < orders.size()) {
             int end = start;

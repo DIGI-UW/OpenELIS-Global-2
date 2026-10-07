@@ -9,6 +9,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
+import org.openelisglobal.common.util.PdfReportText;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
@@ -23,7 +24,6 @@ import org.openpdf.text.pdf.PdfPTable;
  */
 final class ManagementReportPdf {
 
-    private static final Font TITLE_FONT = new Font(Font.HELVETICA, 14, Font.BOLD);
     private static final Font META_FONT = new Font(Font.HELVETICA, 9);
     private static final Font HEADER_FONT = new Font(Font.HELVETICA, 8, Font.BOLD);
     private static final Font CELL_FONT = new Font(Font.HELVETICA, 8);
@@ -45,10 +45,7 @@ final class ManagementReportPdf {
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(pageSize, 36, 36, 36, 48);
-        PdfExportSupport.openWithPageNumbers(document, out, "report.label.page");
-        PdfExportSupport.addHeading(document, title, TITLE_FONT, META_FONT,
-                metaLines.stream().map(line -> line + "\n").toArray(String[]::new));
-        document.add(new Phrase("\n", META_FONT));
+        ReportHeaderPdf.openRepeating(document, out, title, List.of(), metaLines.toArray(String[]::new));
 
         PdfPTable table = new PdfPTable(widths);
         table.setWidthPercentage(100);
@@ -56,7 +53,7 @@ final class ManagementReportPdf {
         PdfExportSupport.addHeaderRow(table, HEADER_FONT, 3, headers.toArray(String[]::new));
         for (List<String> row : rows) {
             for (String value : row) {
-                table.addCell(new Phrase(value == null ? "" : value, CELL_FONT));
+                table.addCell(new Phrase(PdfReportText.plain(value), CELL_FONT));
             }
         }
         document.add(table);

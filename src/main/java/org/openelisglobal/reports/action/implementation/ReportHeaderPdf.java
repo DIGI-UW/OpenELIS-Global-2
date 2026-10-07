@@ -9,6 +9,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.PdfExportSupport;
+import org.openelisglobal.common.util.PdfReportLayout;
 import org.openelisglobal.image.service.ImageService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.spring.util.SpringContext;
@@ -77,6 +78,30 @@ final class ReportHeaderPdf {
      */
     static void add(Document document, String title, List<String> nameLines, List<byte[]> accreditationLogos,
             String accreditationNotesLine) {
+        document.add(table(title, nameLines, accreditationLogos, accreditationNotesLine));
+    }
+
+    static PdfWriter openRepeating(Document document, OutputStream out, String title, List<String> nameLines,
+            String... metaLines) {
+        return openRepeatingWithFooter(document, out, title, nameLines, metaLines, new String[0]);
+    }
+
+    static PdfWriter openRepeatingWithFooter(Document document, OutputStream out, String title, List<String> nameLines,
+            String[] metaLines, String... footerLines) {
+        PdfPTable header = new PdfPTable(1);
+        PdfPCell site = new PdfPCell(table(title, nameLines, List.of(), null));
+        site.setBorder(Rectangle.NO_BORDER);
+        header.addCell(site);
+        for (String line : metaLines) {
+            PdfReportLayout.addLine(header, line, MANAGER_FONT);
+        }
+        boolean numbers = "true"
+                .equals(ConfigurationProperties.getInstance().getPropertyValue(Property.USE_PAGE_NUMBERS_ON_REPORTS));
+        return PdfReportLayout.open(document, out, header, numbers, footerLines);
+    }
+
+    private static PdfPTable table(String title, List<String> nameLines, List<byte[]> accreditationLogos,
+            String accreditationNotesLine) {
         PdfPTable header = new PdfPTable(new float[] { 1, 4, 1 });
         header.setWidthPercentage(100);
         header.addCell(logo("headerLeftImage", Element.ALIGN_LEFT));
@@ -106,12 +131,16 @@ final class ReportHeaderPdf {
         centreCell.setVerticalAlignment(Element.ALIGN_MIDDLE);
         header.addCell(centreCell);
         header.addCell(logo("headerRightImage", Element.ALIGN_RIGHT));
-        document.add(header);
 
         String director = ConfigurationProperties.getInstance().getPropertyValue(Property.labDirectorName);
         if (!GenericValidator.isBlankOrNull(director)) {
-            document.add(new Paragraph(MessageUtil.getMessage("report.labManager") + ": " + director, MANAGER_FONT));
+            PdfPCell manager = new PdfPCell(
+                    new Phrase(MessageUtil.getMessage("report.labManager") + ": " + director, MANAGER_FONT));
+            manager.setColspan(3);
+            manager.setBorder(Rectangle.NO_BORDER);
+            header.addCell(manager);
         }
+        return header;
     }
 
     private static PdfPCell logo(String siteInfoName, int alignment) {

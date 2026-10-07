@@ -61,12 +61,18 @@ final class StudyArvResultsPdf {
             }
             ARVReportData order = orders.get(index);
             ReportHeaderPdf.add(document, settings.studyName(), ReportHeaderPdf.siteNameLines());
+            if (Boolean.TRUE.equals(order.getDuplicateReport())) {
+                document.add(new Paragraph("Duplicata", new Font(Font.HELVETICA, 11, Font.BOLD)));
+            }
             StudyPatientBlockPdf.add(document, order);
             document.add(new Paragraph("Diagnostic Clinique", HEADING_FONT));
             addVersionOneResults(document, order, settings.images());
             if (order.getAllQaEvents() != null) {
                 document.newPage();
                 ReportHeaderPdf.add(document, settings.studyName(), ReportHeaderPdf.siteNameLines());
+                if (Boolean.TRUE.equals(order.getDuplicateReport())) {
+                    document.add(new Paragraph("Duplicata", new Font(Font.HELVETICA, 11, Font.BOLD)));
+                }
                 StudyPatientBlockPdf.add(document, order);
                 Paragraph title = new Paragraph("RAPPORT DE NON-CONFORMITE CLIENT", HEADING_FONT);
                 title.setAlignment(Element.ALIGN_CENTER);
@@ -263,6 +269,9 @@ final class StudyArvResultsPdf {
             }
             ARVReportData order = orders.get(index);
             ReportHeaderPdf.add(document, settings.studyName(), ReportHeaderPdf.siteNameLines());
+            if (Boolean.TRUE.equals(order.getDuplicateReport())) {
+                document.add(new Paragraph("Duplicata", new Font(Font.HELVETICA, 11, Font.BOLD)));
+            }
             StudyPatientBlockPdf.add(document, order);
             document.add(versionTwoResults(order, settings));
         }

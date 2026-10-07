@@ -48,6 +48,26 @@ public class WorkplanPdfTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void repeatsWorkplanIdentityAndPrintDateAcrossPages() throws Exception {
+        java.util.ArrayList<org.openelisglobal.test.beanItems.TestResultItem> items = new java.util.ArrayList<>();
+        for (int i = 0; i < 150; i++) {
+            org.openelisglobal.test.beanItems.TestResultItem item = new org.openelisglobal.test.beanItems.TestResultItem();
+            item.setAccessionNumber("DEV0126000000000101");
+            item.setTestName("Long Test");
+            items.add(item);
+        }
+        for (String results : List.of("false", "true")) {
+            setWorkplanOptions(results, "false", "false");
+            for (boolean bySection : List.of(false, true)) {
+                byte[] pdf = WorkplanPdf.render("Long Test", items, bySection, bySection ? "DEV" : null);
+                org.openelisglobal.testsupport.PdfRegression.everyPage(pdf,
+                        "workplan-continuation-" + results + "-" + bySection, "Long Test",
+                        org.openelisglobal.common.util.DateUtil.getCurrentDateAsText());
+            }
+        }
+    }
+
+    @Test
     public void testWorkplan_listsEveryTestWithItsLabNumberAndReceptionDate() throws Exception {
         setWorkplanOptions("false", "false", "false");
 

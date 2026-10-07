@@ -18,6 +18,25 @@ public class StudyVlResultsPdfTest extends BaseWebContextSensitiveTest {
             StudyVlResultsPdf.Images.NONE);
 
     @Test
+    public void reissuedReportsRetainTheirMarkerAndSuppressInapplicableObservations() throws Exception {
+        for (String gender : Arrays.asList("M", "", null)) {
+            VLReportData row = order();
+            row.setGender(gender);
+            row.setDuplicateReport(true);
+            row.setVirologyVlQaEvent("Hémolysé");
+            row.setAllQaEvents("sample.type.edtaTube:qa_event.hemolytic");
+            byte[] pdf = StudyVlResultsPdf.render(List.of(row), SETTINGS);
+            org.openelisglobal.testsupport.PdfRegression.everyPage(pdf, "vl-duplicate-" + gender, "Duplicata",
+                    "SUBJ-0042");
+            String text = PdfText.of(pdf);
+            assertFalse(text, text.contains("Grossesse") || text.contains("Allaitement"));
+        }
+        VLReportData original = order();
+        original.setDuplicateReport(false);
+        assertFalse(PdfText.of(StudyVlResultsPdf.render(List.of(original), SETTINGS)).contains("Duplicata"));
+    }
+
+    @Test
     public void describesTheExaminationTheViralLoadAndTheDetectionThresholds() throws Exception {
         String text = PdfText.of(StudyVlResultsPdf.render(List.of(order()), SETTINGS));
 

@@ -57,11 +57,14 @@ final class NonConformityReportPdf {
             details.addCell(field("report.subjectNo", order.getSubjectNumber()));
             details.addCell(
                     showSiteSubjectNumber ? field("report.siteSubjectNo", order.getSiteSubjectNumber()) : blank());
-            document.add(details);
 
             PdfPTable table = new PdfPTable(new float[] { 92, 78, 135, 117, 90, 236 });
             table.setWidthPercentage(100);
-            table.setHeaderRows(1);
+            PdfPCell identity = new PdfPCell(details);
+            identity.setColspan(headers.length);
+            identity.setBorder(Rectangle.NO_BORDER);
+            table.addCell(identity);
+            table.setHeaderRows(2);
             PdfExportSupport.addHeaderRow(table, HEADER_FONT, 3, headers);
             for (NonConformityReportData item : items.subList(start, end)) {
                 for (String value : new String[] { item.getSection(), item.getNonConformityDate(),
@@ -69,11 +72,16 @@ final class NonConformityReportPdf {
                     table.addCell(new Phrase(value == null ? "" : value, CELL_FONT));
                 }
             }
-            document.add(table);
             Paragraph comments = new Paragraph();
             comments.add(new Phrase(MessageUtil.getMessage("report.comments") + ": ", LABEL_FONT));
             comments.add(new Phrase(order.getSampleNote() == null ? "" : order.getSampleNote(), TEXT_FONT));
-            document.add(comments);
+            PdfPCell comment = new PdfPCell(comments);
+            comment.setColspan(headers.length);
+            comment.setBorder(Rectangle.NO_BORDER);
+            table.addCell(comment);
+            table.setTotalWidth(document.right() - document.left());
+            table.setKeepTogether(table.getTotalHeight() <= document.top() - document.bottom());
+            document.add(table);
             start = end;
         }
         return close(document, out);
@@ -128,21 +136,16 @@ final class NonConformityReportPdf {
 
     private static Document open(Rectangle pageSize, ByteArrayOutputStream out, String title, String period) {
         Document document = new Document(pageSize, 36, 36, 36, 48);
-        ReportHeaderPdf.open(document, out);
-        ReportHeaderPdf.add(document, title, ReportHeaderPdf.siteNameLines());
-        Paragraph periodLine = new Paragraph(period, PERIOD_FONT);
-        periodLine.setSpacingBefore(6);
-        document.add(periodLine);
+        boolean signature = ConfigurationProperties.getInstance()
+                .isPropertyValueEqual(Property.SIGNATURES_ON_NONCONFORMITY_REPORTS, "true");
+        String[] footer = signature ? new String[] { MessageUtil.getMessage("report.supervisorSign"), title }
+                : new String[] { title };
+        ReportHeaderPdf.openRepeatingWithFooter(document, out, title, ReportHeaderPdf.siteNameLines(),
+                new String[] { period }, footer);
         return document;
     }
 
     private static byte[] close(Document document, ByteArrayOutputStream out) {
-        if (ConfigurationProperties.getInstance().isPropertyValueEqual(Property.SIGNATURES_ON_NONCONFORMITY_REPORTS,
-                "true")) {
-            Paragraph signature = new Paragraph(MessageUtil.getMessage("report.supervisorSign"), TEXT_FONT);
-            signature.setSpacingBefore(24);
-            document.add(signature);
-        }
         document.close();
         return out.toByteArray();
     }

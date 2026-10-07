@@ -36,7 +36,6 @@ import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openpdf.text.Document;
 import org.openpdf.text.Font;
-import org.openpdf.text.Paragraph;
 import org.openpdf.text.Phrase;
 import org.openpdf.text.pdf.PdfPCell;
 import org.openpdf.text.pdf.PdfPTable;
@@ -145,9 +144,6 @@ public class StatisticsReport extends IndicatorReport implements IReportCreator,
             table.addCell(new Phrase(String.valueOf(total), TOTAL_FONT));
         }
         document.add(table);
-        document.add(
-                new Paragraph(MessageUtil.getMessage("referral.report.date") + ": " + DateUtil.getCurrentDateAsText(),
-                        new Font(Font.HELVETICA, 8)));
         document.close();
         return out.toByteArray();
     }

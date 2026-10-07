@@ -95,6 +95,9 @@ public class ConfirmationReport extends IndicatorReport implements IReportCreato
         String site = null;
         for (ConfirmationData item : items) {
             if (!Objects.equals(site, item.getOrganizationName())) {
+                if (site != null) {
+                    document.newPage();
+                }
                 site = item.getOrganizationName();
                 Paragraph siteLine = new Paragraph(MessageUtil.getMessage("report.site") + ": " + site, LABEL_FONT);
                 siteLine.setSpacingBefore(10);
@@ -122,10 +125,13 @@ public class ConfirmationReport extends IndicatorReport implements IReportCreato
                     + nullToEmpty(item.getRequesterEMail()), CELL_FONT);
             reach.setColspan(4);
             order.addCell(reach);
-            document.add(order);
-
             PdfPTable results = new PdfPTable(new float[] { 155, 120, 120, 123 });
             results.setWidthPercentage(100);
+            PdfPCell identity = new PdfPCell(order);
+            identity.setColspan(4);
+            identity.setBorder(Rectangle.NO_BORDER);
+            results.addCell(identity);
+            results.setHeaderRows(2);
             PdfExportSupport.addHeaderRow(results, HEADER_FONT, 3, "", MessageUtil.getMessage("report.test"),
                     MessageUtil.getMessage("report.result"), MessageUtil.getMessage("report.completionDate"));
             for (int i = 0; i < item.getRequesterTest().size(); i++) {
@@ -140,9 +146,13 @@ public class ConfirmationReport extends IndicatorReport implements IReportCreato
                         "".equals(result) ? MessageUtil.getMessage("report.test.status.inProgress") : result,
                         item.getCompleationDate().get(i));
             }
+            PdfPCell note = plain(MessageUtil.getMessage("report.note") + ": " + nullToEmpty(item.getNote()),
+                    CELL_FONT);
+            note.setColspan(4);
+            results.addCell(note);
+            results.setTotalWidth(document.right() - document.left());
+            results.setKeepTogether(results.getTotalHeight() <= document.top() - document.bottom() - 30);
             document.add(results);
-            document.add(new Paragraph(MessageUtil.getMessage("report.note") + ": " + nullToEmpty(item.getNote()),
-                    CELL_FONT));
         }
         document.close();
         return out.toByteArray();

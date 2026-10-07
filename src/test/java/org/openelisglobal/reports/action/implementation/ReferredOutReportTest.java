@@ -20,6 +20,32 @@ public class ReferredOutReportTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void firstReferralAlwaysSharesItsLocalTestPage() throws Exception {
+        ReferredOutReport report = new ReferredOutReport() {
+            @Override
+            protected void createReportItems() {
+                for (int i = 0; i < 90; i++) {
+                    reportItems.add(referral("LOCAL-" + i, "Local " + i, "1200", "copies/mL", "Confirmation",
+                            "REFERRAL-" + i, "1150", "05/06/2024", "10/06/2024"));
+                }
+            }
+        };
+        ReportForm form = new ReportForm();
+        form.setLowerDateRange("01/01/2024");
+        form.setUpperDateRange("12/12/2024");
+        form.setLocationCode("921");
+        report.initializeReport(form);
+        report.setReportPath(getClass().getClassLoader().getResource("reports/").getPath());
+        byte[] pdf = report.runReport();
+        org.openelisglobal.testsupport.PdfRegression.everyPage(pdf, "referrals-continuation",
+                "External Referrals Report: Reference Lab");
+        java.util.List<String> pageTexts = org.openelisglobal.testsupport.PdfRegression.pages(pdf);
+        for (int i = 0; i < 90; i++) {
+            org.openelisglobal.testsupport.PdfRegression.samePage(pageTexts, "REFERRAL-" + i, "LOCAL-" + i);
+        }
+    }
+
+    @Test
     public void listsEachReferredTestUnderItsLocalTest() throws Exception {
         List<String> lines = render();
 
