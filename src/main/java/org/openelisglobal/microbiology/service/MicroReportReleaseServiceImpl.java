@@ -24,11 +24,12 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     private final MicroReportProjectionService reportProjectionService;
     private final MicroReportVersionService reportVersionService;
     private final MicroCaseAmendmentService amendmentService;
+    private final MicrobiologyCaseAccessService accessService;
 
     public MicroReportReleaseServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             MicroCaseReadinessService readinessService, MicroCriticalCommunicationDAO communicationDAO,
             MicroReportProjectionService reportProjectionService, MicroReportVersionService reportVersionService,
-            MicroCaseAmendmentService amendmentService) {
+            MicroCaseAmendmentService amendmentService, MicrobiologyCaseAccessService accessService) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.readinessService = readinessService;
@@ -36,11 +37,13 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
         this.reportProjectionService = reportProjectionService;
         this.reportVersionService = reportVersionService;
         this.amendmentService = amendmentService;
+        this.accessService = accessService;
     }
 
     @Override
     @Transactional
     public MicroCase releasePreliminary(String caseId, String performedBy) {
+        accessService.requireResults(caseId, performedBy);
         MicroCase microCase = getCase(caseId);
         if (MicroCaseFinalReleaseState.FINAL_RELEASED.name().equals(microCase.getFinalReleaseState())
                 || MicroCaseStage.FINAL_RELEASED.name().equals(microCase.getStage())) {
@@ -59,6 +62,7 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releaseFinal(String caseId, String performedBy) {
+        accessService.requireValidation(caseId, performedBy);
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
         if (!readiness.finalReleaseReady) {
             throw new IllegalStateException("Final release is blocked: " + String.join(", ", readiness.blockers));
@@ -81,6 +85,7 @@ public class MicroReportReleaseServiceImpl implements MicroReportReleaseService 
     @Override
     @Transactional
     public MicroCase releaseAmended(String caseId, String performedBy) {
+        accessService.requireValidation(caseId, performedBy);
         MicroCaseReadinessForm readiness = readinessService.getReadiness(caseId);
         if (!readiness.finalReleaseReady) {
             throw new IllegalStateException("Amended release is blocked: " + String.join(", ", readiness.blockers));

@@ -1,201 +1,168 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
 import java.util.List;
+import org.junit.Before;
 import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
-import org.mockito.junit.MockitoJUnitRunner;
+import org.mockito.InOrder;
+import org.mockito.Mockito;
 import org.openelisglobal.analysis.valueholder.Analysis;
-import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
+import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
-import org.openelisglobal.testmethod.service.TestMethodService;
+import org.openelisglobal.test.service.TestService;
 
-@RunWith(MockitoJUnitRunner.class)
 public class MicroOrderRoutingServiceTest {
-
-    @Mock
     private MicroCaseService caseService;
-
-    @Mock
-    private MicrobiologyReferenceService referenceService;
-
-    @Mock
     private MicroCaseAnalysisService caseAnalysisService;
+    private TestService testService;
+    private MicroOrderRoutingService service;
+    private SampleItem specimen;
 
-    @Mock
-    private TestMethodService testMethodService;
-
-    @Test
-    public void routeAnalysesIgnoresNonMicrobiologyTests() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-
-        List<MicroCase> routed = service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(analysis(null, "1")),
-                "1");
-
-        assertTrue(routed.isEmpty());
-        verify(caseService, never()).createOrGetCase(any(String.class), any(MicroWorkflowType.class), any(String.class),
-                any(String.class));
+    @Before
+    public void setUp() {
+        caseService = mock(MicroCaseService.class);
+        caseAnalysisService = mock(MicroCaseAnalysisService.class);
+        testService = mock(TestService.class);
+        service = new MicroOrderRoutingServiceImpl(caseService, caseAnalysisService, testService);
+        specimen = new SampleItem();
+        specimen.setId("1001");
+        Sample order = new Sample();
+        order.setId("2001");
+        specimen.setSample(order);
     }
 
     @Test
-    public void routeAnalysesCreatesOneCasePerWorkflowWithConfiguredCultureSetup() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
-                .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
+    public void ordinaryTestsDoNotMakeAMicrobiologyOrder() {
+        assertFalse(service.isMicrobiologyOrder(List.of(new org.openelisglobal.test.valueholder.Test())));
+        assertFalse(service.isMicrobiologyOrder(null));
+        assertFalse(service.isMicrobiologyOrder(List.of()));
+    }
 
-        service.routeAnalysesForSampleItem(sampleItem("1001"),
-                Arrays.asList(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1"),
-                        analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")),
-                "1");
+    @Test
+    public void anOrderWithoutTestsDoesNotOpenACase() {
+        assertTrue(service.routeAnalysesForSampleItem(specimen, List.of(), "1").isEmpty());
+        Mockito.verifyZeroInteractions(caseService, caseAnalysisService, testService);
+    }
 
-        ArgumentCaptor<MicroWorkflowType> workflowCaptor = ArgumentCaptor.forClass(MicroWorkflowType.class);
-        verify(caseService).createOrGetCase(eq("1001"), workflowCaptor.capture(), any(String.class), any(String.class));
-        assertEquals(MicroWorkflowType.BACTERIOLOGY, workflowCaptor.getValue());
+    @Test
+    public void aDirectMicroTestOpensACaseWithoutWorkflowOrProtocol() {
+        org.openelisglobal.test.valueholder.Test catalog = catalog("41", "DIRECT", false);
+        Analysis direct = analysis("301", "41");
+        MicroCase owner = owner("case-direct");
+        when(caseService.createOrGetCase(specimen, catalog, "1")).thenReturn(owner);
+
+        assertEquals(List.of(owner), service.routeAnalysesForSampleItem(specimen, List.of(direct), "1"));
+        verify(caseAnalysisService).linkAnalysis(owner, direct, "1");
+    }
+
+    @Test
+    public void submittedCatalogFlagsCannotOpenAnOrdinaryTestCase() {
+        org.openelisglobal.test.valueholder.Test catalog = catalog("41", "DIRECT", false);
+        catalog.setOpensMicrobiologyCase(false);
+        Analysis ordinary = analysis("301", "41");
+        ordinary.getTest().setOpensMicrobiologyCase(true);
+
+        assertTrue(service.routeAnalysesForSampleItem(specimen, List.of(ordinary), "1").isEmpty());
+        verify(caseService, never()).createOrGetCase(specimen, catalog, "1");
+    }
+
+    @Test
+    public void setsAreRoutedBeforeOtherTestsOnTheirBottle() {
+        org.openelisglobal.test.valueholder.Test direct = catalog("41", "DIRECT", false);
+        org.openelisglobal.test.valueholder.Test sets = catalog("42", "CULTURE", true);
+        Analysis directAnalysis = analysis("301", "41");
+        Analysis setsAnalysis = analysis("302", "42");
+        MicroCase owner = owner("case-sets");
+        when(caseService.createOrGetCase(specimen, direct, "1")).thenReturn(owner);
+        when(caseService.createOrGetCase(specimen, sets, "1")).thenReturn(owner);
+
+        assertEquals(List.of(owner),
+                service.routeAnalysesForSampleItem(specimen, List.of(directAnalysis, setsAnalysis), "1"));
+        InOrder ordered = Mockito.inOrder(caseService, caseAnalysisService);
+        ordered.verify(caseService).createOrGetCase(specimen, sets, "1");
+        ordered.verify(caseAnalysisService).linkAnalysis(owner, setsAnalysis, "1");
+        ordered.verify(caseService).createOrGetCase(specimen, direct, "1");
+        ordered.verify(caseAnalysisService).linkAnalysis(owner, directAnalysis, "1");
+    }
+
+    @Test
+    public void resaveKeepsOriginalOwnershipAfterCatalogChangesAndFinalRelease() {
+        org.openelisglobal.test.valueholder.Test catalog = catalog("41", "DIRECT", false);
+        catalog.setOpensMicrobiologyCase(false);
+        Analysis existing = analysis("301", "41");
+        MicroCase owner = owner("case-original");
+        owner.setFinalReleaseState("FINAL_RELEASED");
+        MicroCaseAnalysis link = new MicroCaseAnalysis();
+        link.setCaseId(owner.getId());
+        link.setAnalysisId(existing.getId());
+        when(caseAnalysisService.getAnalysisLink(existing.getId())).thenReturn(link);
+        when(caseService.getCase(owner.getId())).thenReturn(owner);
+
+        assertEquals(List.of(owner), service.routeAnalysesForSampleItem(specimen, List.of(existing), "1"));
+        verify(caseService, never()).createOrGetCase(specimen, catalog, "1");
+        verify(caseAnalysisService, never()).linkAnalysis(owner, existing, "1");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void unpersistedAnalysesCannotBeRouted() {
+        catalog("41", "DIRECT", false);
+        service.routeAnalysesForSampleItem(specimen, List.of(analysis(null, "41")), "1");
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void anExistingAnalysisFromAnotherSpecimenCannotBeSubmitted() {
+        Analysis other = analysis("301", "41");
+        SampleItem wrong = new SampleItem();
+        wrong.setId("1002");
+        other.setSampleItem(wrong);
+        service.routeAnalysesForSampleItem(specimen, List.of(other), "1");
     }
 
     @Test(expected = IllegalStateException.class)
-    public void routeAnalysesRejectsWorkflowWithoutConfiguredCultureSetup() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-
-        service.routeAnalysesForSampleItem(sampleItem("1001"),
-                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1");
+    public void corruptOwnershipFromAnotherOrderIsNotAcceptedAsIdempotent() {
+        Analysis existing = analysis("301", "41");
+        MicroCase owner = owner("case-other-order");
+        owner.setSampleId("2002");
+        MicroCaseAnalysis link = new MicroCaseAnalysis();
+        link.setCaseId(owner.getId());
+        when(caseAnalysisService.getAnalysisLink(existing.getId())).thenReturn(link);
+        when(caseService.getCase(owner.getId())).thenReturn(owner);
+        service.routeAnalysesForSampleItem(specimen, List.of(existing), "1");
     }
 
-    @Test
-    public void routeAnalysesUsesTheTestDefault() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
-                .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
-        MicroCase routedCase = new MicroCase();
-        routedCase.setId("case-1");
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(routedCase);
-
-        service.routeAnalysesForSampleItem(sampleItem("1001"),
-                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1");
-
-        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
-    }
-
-    @Test
-    public void routeAnalysesUsesTheTestMethodDefaultBeforeTheLegacyMethod() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-        when(testMethodService.getDefaultMethodId("test-BACTERIOLOGY-1")).thenReturn("2");
-        when(referenceService.getActiveCultureSetupForMethod("2", MicroWorkflowType.BACTERIOLOGY))
-                .thenReturn(cultureSetup("2", MicroWorkflowType.BACTERIOLOGY));
-        MicroCase routedCase = new MicroCase();
-        routedCase.setId("case-1");
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1")).thenReturn(routedCase);
-
-        service.routeAnalysesForSampleItem(sampleItem("1001"),
-                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1")), "1");
-
-        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "2", "1");
-    }
-
-    @Test
-    public void routeAnalysesCreatesCaseWhenNoDefaultCultureMethodResolves() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-        Analysis analysis = analysis(MicroWorkflowType.BACTERIOLOGY.name(), null);
-        analysis.setId("analysis-1");
-        MicroCase routedCase = new MicroCase();
-        routedCase.setId("case-without-protocol");
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, null, "1")).thenReturn(routedCase);
-
-        List<MicroCase> routed = service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(analysis), "1");
-
-        assertEquals(1, routed.size());
-        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, null, "1");
-        verify(referenceService, never()).getActiveCultureSetupForMethod(any(String.class), any());
-        verify(caseAnalysisService).linkAnalysis(routedCase, analysis, null);
-    }
-
-    @Test
-    public void routeAnalysesKeepsSiblingWorkflowOnItsOwnDefaultMethod() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY))
-                .thenReturn(cultureSetup("1", MicroWorkflowType.BACTERIOLOGY));
-        when(referenceService.getActiveCultureSetupForMethod("9", MicroWorkflowType.MYCOBACTERIOLOGY_TB))
-                .thenReturn(cultureSetup("9", MicroWorkflowType.MYCOBACTERIOLOGY_TB));
-        MicroCase bacteriologyCase = new MicroCase();
-        bacteriologyCase.setId("case-bacteriology");
-        MicroCase tbCase = new MicroCase();
-        tbCase.setId("case-tb");
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1"))
-                .thenReturn(bacteriologyCase);
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.MYCOBACTERIOLOGY_TB, "9", "1")).thenReturn(tbCase);
-
-        service.routeAnalysesForSampleItem(sampleItem("1001"),
-                List.of(analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1"),
-                        analysis(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), "9")),
-                "1");
-
-        verify(caseService).createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
-        verify(caseService).createOrGetCase("1001", MicroWorkflowType.MYCOBACTERIOLOGY_TB, "9", "1");
-    }
-
-    @Test
-    public void routeAnalysesLinksPersistedAnalysesToTheCaseAndReportMapping() {
-        MicroOrderRoutingService service = new MicroOrderRoutingServiceImpl(caseService, referenceService,
-                caseAnalysisService, testMethodService);
-        MicroCultureSetup setup = cultureSetup("1", MicroWorkflowType.BACTERIOLOGY);
-        setup.setReportableTestAnalyteId("17");
-        MicroCase microCase = new MicroCase();
-        microCase.setId("case-1");
-        Analysis analysis = analysis(MicroWorkflowType.BACTERIOLOGY.name(), "1");
-        analysis.setId("42");
-        when(referenceService.getActiveCultureSetupForMethod("1", MicroWorkflowType.BACTERIOLOGY)).thenReturn(setup);
-        when(caseService.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1")).thenReturn(microCase);
-
-        service.routeAnalysesForSampleItem(sampleItem("1001"), List.of(analysis), "1");
-
-        verify(caseAnalysisService).linkAnalysis(microCase, analysis, setup);
-    }
-
-    private SampleItem sampleItem(String id) {
-        SampleItem sampleItem = new SampleItem();
-        sampleItem.setId(id);
-        return sampleItem;
-    }
-
-    private Analysis analysis(String workflowType, String methodId) {
+    private org.openelisglobal.test.valueholder.Test catalog(String id, String role, boolean sets) {
         org.openelisglobal.test.valueholder.Test test = new org.openelisglobal.test.valueholder.Test();
-        test.setId("test-" + workflowType + "-" + methodId);
-        test.setCultureWorkflowType(workflowType);
-        if (methodId != null) {
-            Method method = new Method();
-            method.setId(methodId);
-            test.setMethod(method);
-        }
+        test.setId(id);
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole(role);
+        test.setCollectedInSets(sets);
+        when(testService.get(id)).thenReturn(test);
+        return test;
+    }
+
+    private Analysis analysis(String id, String testId) {
+        org.openelisglobal.test.valueholder.Test reference = new org.openelisglobal.test.valueholder.Test();
+        reference.setId(testId);
         Analysis analysis = new Analysis();
-        analysis.setTest(test);
+        analysis.setId(id);
+        analysis.setSampleItem(specimen);
+        analysis.setTest(reference);
         return analysis;
     }
 
-    private MicroCultureSetup cultureSetup(String methodId, MicroWorkflowType workflowType) {
-        MicroCultureSetup setup = new MicroCultureSetup();
-        setup.setMethodId(methodId);
-        setup.setWorkflowType(workflowType.name());
-        return setup;
+    private MicroCase owner(String id) {
+        MicroCase microCase = new MicroCase();
+        microCase.setId(id);
+        microCase.setSampleId("2001");
+        return microCase;
     }
-
 }

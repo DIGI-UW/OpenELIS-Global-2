@@ -7,7 +7,9 @@ import org.openelisglobal.alert.valueholder.AlertSeverity;
 import org.openelisglobal.alert.valueholder.AlertStatus;
 import org.openelisglobal.alert.valueholder.AlertType;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroCriticalCommunicationDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
@@ -44,16 +46,23 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
     private final MicroIsolateDAO isolateDAO;
     private final ResultService resultService;
     private final AlertService alertService;
+    private final MicroCaseSpecimenDAO specimenDAO;
+    private final MicroCaseAnalysisDAO caseAnalysisDAO;
+    private final MicrobiologyCaseAccessService accessService;
 
     public MicroCriticalCommunicationServiceImpl(MicroCriticalCommunicationDAO communicationDAO, MicroCaseDAO caseDAO,
             MicroCaseActivityDAO activityDAO, MicroIsolateDAO isolateDAO, ResultService resultService,
-            AlertService alertService) {
+            AlertService alertService, MicroCaseSpecimenDAO specimenDAO, MicroCaseAnalysisDAO caseAnalysisDAO,
+            MicrobiologyCaseAccessService accessService) {
         this.communicationDAO = communicationDAO;
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.isolateDAO = isolateDAO;
         this.resultService = resultService;
         this.alertService = alertService;
+        this.specimenDAO = specimenDAO;
+        this.caseAnalysisDAO = caseAnalysisDAO;
+        this.accessService = accessService;
     }
 
     @Override
@@ -73,6 +82,7 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
         MicroCaseServiceImpl.requireText(recipient, "recipient");
         MicroCaseServiceImpl.requireText(communicationMethod, "communicationMethod");
         MicroCaseServiceImpl.requireText(message, "message");
+        accessService.requireResults(caseId, performedBy);
         MicroCase microCase = caseDAO.get(caseId)
                 .orElseThrow(() -> new IllegalArgumentException("Microbiology case not found"));
         MicroCriticalCommunicationTargetType resolvedTargetType = targetType == null
@@ -109,6 +119,7 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
         MicroCaseServiceImpl.requireText(communicationId, "communicationId");
         MicroCriticalCommunication communication = communicationDAO.get(communicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Critical communication not found"));
+        accessService.requireResults(communication.getCaseId(), performedBy);
         if (MicroCriticalCommunicationStatus.CLOSED.name().equals(communication.getAcknowledgementStatus())) {
             throw new IllegalStateException("Closed critical communication cannot be acknowledged");
         }
@@ -127,6 +138,7 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
         MicroCaseServiceImpl.requireText(resolutionNote, "resolutionNote");
         MicroCriticalCommunication communication = communicationDAO.get(communicationId)
                 .orElseThrow(() -> new IllegalArgumentException("Critical communication not found"));
+        accessService.requireResults(communication.getCaseId(), performedBy);
         if (MicroCriticalCommunicationStatus.OPEN.name().equals(communication.getAcknowledgementStatus())) {
             throw new IllegalStateException("Critical communication must be acknowledged before it can be closed");
         }
@@ -167,6 +179,7 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
     }
 
     private void acknowledgeRecord(MicroCriticalCommunication communication, String performedBy) {
+        accessService.requireResults(communication.getCaseId(), performedBy);
         communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.ACKNOWLEDGED.name());
         communication.setAcknowledgedAt(MicroCaseServiceImpl.now());
         communication.setAcknowledgedBy(performedBy);
@@ -177,6 +190,7 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
     }
 
     private void closeRecord(MicroCriticalCommunication communication, String resolutionNote, String performedBy) {
+        accessService.requireResults(communication.getCaseId(), performedBy);
         communication.setAcknowledgementStatus(MicroCriticalCommunicationStatus.CLOSED.name());
         communication.setClosedAt(MicroCaseServiceImpl.now());
         communication.setClosedBy(performedBy);
@@ -259,15 +273,15 @@ public class MicroCriticalCommunicationServiceImpl implements MicroCriticalCommu
             }
             return;
         case SAMPLE_ITEM:
-            if (!microCase.getSampleItemId().equals(targetId)) {
+            if (specimenDAO.getByCaseAndSampleItem(microCase.getId(), targetId) == null) {
                 throw new IllegalArgumentException("Sample item target does not belong to the microbiology case");
             }
             return;
         case RESULT:
             Result result = resultService.getResultById(targetId);
-            if (result == null || result.getAnalysis() == null || result.getAnalysis().getSampleItem() == null
-                    || !microCase.getSampleItemId().equals(result.getAnalysis().getSampleItem().getId())) {
-                throw new IllegalArgumentException("Result target does not belong to the microbiology case specimen");
+            if (result == null || result.getAnalysis() == null
+                    || caseAnalysisDAO.getByCaseAndAnalysis(microCase.getId(), result.getAnalysis().getId()) == null) {
+                throw new IllegalArgumentException("Result target does not belong to the microbiology case");
             }
             return;
         default:

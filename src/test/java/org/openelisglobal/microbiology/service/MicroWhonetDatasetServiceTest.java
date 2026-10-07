@@ -5,6 +5,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -72,10 +73,12 @@ public class MicroWhonetDatasetServiceTest {
     private MicroWorklistContextDAO worklistContextDAO;
     private MicroWhonetDatasetService service;
     private Map<String, MicroWhonetPatientContext> patientContextsBySampleItem;
+    private Map<String, String> sourceSampleItemByCase;
 
     @Before
     public void setUp() {
         patientContextsBySampleItem = new LinkedHashMap<>();
+        sourceSampleItemByCase = new LinkedHashMap<>();
         when(worklistContextDAO.getWhonetPatientContexts(any())).thenAnswer(invocation -> {
             List<String> sampleItemIds = invocation.getArgument(0);
             return sampleItemIds.stream().map(patientContextsBySampleItem::get).filter(value -> value != null).toList();
@@ -96,8 +99,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroAstReading cip = reading("reading-1", "run-1", "antibiotic-1", "SUSCEPTIBLE");
         MicroAstReading gen = reading("reading-2", "run-1", "antibiotic-2", "RESISTANT");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
         when(astReadingDAO.getByRunIds(List.of("run-1"))).thenReturn(List.of(cip, gen));
@@ -131,8 +134,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
         MicroAstRun run = reviewedRun("run-1", "isolate-1");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
         when(astReadingDAO.getByRunIds(List.of("run-1")))
@@ -158,8 +161,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroAstRun mappedRun = reviewedRun("run-1", "isolate-1");
         MicroAstRun unmappedRun = reviewedRun("run-2", "isolate-2");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(mappedCase, unmappedCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(mappedCase, unmappedCase));
         when(isolateDAO.getByCaseIds(List.of("case-1", "case-2"))).thenReturn(List.of(mappedIsolate, unmappedIsolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1", "isolate-2"))).thenReturn(List.of(mappedRun, unmappedRun));
         when(astReadingDAO.getByRunIds(List.of("run-1", "run-2"))).thenReturn(List.of(
@@ -190,8 +193,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
         MicroAstRun run = reviewedRun("run-1", "isolate-1");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
         when(astReadingDAO.getByRunIds(List.of("run-1")))
@@ -220,8 +223,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
         MicroAstRun run = reviewedRun("run-1", "isolate-1");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
         when(astReadingDAO.getByRunIds(List.of("run-1")))
@@ -245,8 +248,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate unidentified = isolate("isolate-1", "case-1", null);
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(unidentified));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of());
         stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
@@ -268,8 +271,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
         MicroAstRun run = reviewedRun("run-1", "isolate-1");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
         when(astReadingDAO.getByRunIds(List.of("run-1")))
@@ -295,8 +298,8 @@ public class MicroWhonetDatasetServiceTest {
         colonizer.setSignificance("COLONIZER");
         MicroAstRun run = reviewedRun("run-1", "isolate-1");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(clinical, colonizer));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(run));
         when(astReadingDAO.getByRunIds(List.of("run-1")))
@@ -326,8 +329,8 @@ public class MicroWhonetDatasetServiceTest {
         bloodContaminant.setSignificance(MicroIsolateSignificance.CONTAMINANT.name());
         MicroAstRun selectedRun = reviewedRun("run-3", "isolate-3");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(bloodClinicalCase, urineFloraCase, bloodContaminantCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(bloodClinicalCase, urineFloraCase, bloodContaminantCase));
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-1", "case-2", "case-3")))
                 .thenReturn(List.of(orderDetail("case-1", "OUTPATIENT"), orderDetail("case-2", "INPATIENT"),
                         orderDetail("case-3", "INPATIENT")));
@@ -375,8 +378,8 @@ public class MicroWhonetDatasetServiceTest {
                 isolate("isolate-screening", "case-screening", "organism-1"),
                 isolate("isolate-unspecified", "case-unspecified", "organism-1"));
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(cases);
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(cases);
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-clinical", "case-screening", "case-unspecified")))
                 .thenReturn(List.of(orderDetail("case-clinical", "INPATIENT", "CLINICAL_DIAGNOSTIC"),
                         orderDetail("case-screening", "INPATIENT", "ACTIVE_SCREENING"),
@@ -410,8 +413,8 @@ public class MicroWhonetDatasetServiceTest {
     public void previewIncludesScreeningAndUnspecifiedPurposesOnlyWhenEachFlagIsTrue() {
         MicroCase screeningCase = finalizedCase("case-screening", "item-screening", "2026-07-13 10:00:00");
         MicroCase unspecifiedCase = finalizedCase("case-unspecified", "item-unspecified", "2026-07-14 10:00:00");
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(screeningCase, unspecifiedCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(screeningCase, unspecifiedCase));
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-screening", "case-unspecified")))
                 .thenReturn(List.of(orderDetail("case-screening", "INPATIENT", "ACTIVE_SCREENING"),
                         orderDetail("case-unspecified", "INPATIENT", null)));
@@ -450,8 +453,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroIsolate flora = isolate("isolate-2", "case-2", "organism-2");
         flora.setSignificance(MicroIsolateSignificance.NORMAL_FLORA.name());
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(bloodCase, urineCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(bloodCase, urineCase));
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-1", "case-2")))
                 .thenReturn(List.of(orderDetail("case-1", "OUTPATIENT"), orderDetail("case-2", "INPATIENT")));
         when(isolateDAO.getByCaseIds(List.of("case-1", "case-2"))).thenReturn(List.of(clinical, flora));
@@ -476,7 +479,7 @@ public class MicroWhonetDatasetServiceTest {
 
     @Test
     public void filterOptionsAreEmptyWhenTheReportingPeriodHasNoCases() {
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class), any(Timestamp.class)))
                 .thenReturn(List.of());
 
         MicroWhonetFilterOptionsForm options = service.getFilterOptions(query("NONE"));
@@ -495,8 +498,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate unidentified = isolate("isolate-1", "case-1", null);
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of());
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(unidentified));
         stubPatientContext("case-1", "item-1", "patient-1", "LAB-001");
@@ -514,8 +517,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-12 10:00:00");
         MicroIsolate isolate = isolate("isolate-1", "case-1", "organism-1");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(caseOrderDetailDAO.getByCaseIds(List.of("case-1")))
                 .thenReturn(List.of(orderDetail("case-1", "LEGACY_ORIGIN")));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
@@ -541,8 +544,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroAstRun notReportable = reviewedRun("run-not-reportable", "isolate-1");
         notReportable.setReportable(false);
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(microCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(microCase));
         when(isolateDAO.getByCaseIds(List.of("case-1"))).thenReturn(List.of(isolate));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(selected, unreviewed, notReportable));
         when(astReadingDAO.getByRunIds(List.of("run-selected")))
@@ -567,8 +570,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroIsolate repeat = isolate("isolate-2", "case-2", "organism-1");
         MicroAstRun firstRun = reviewedRun("run-1", "isolate-1");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(repeatCase, firstCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(repeatCase, firstCase));
         when(isolateDAO.getByCaseIds(List.of("case-2", "case-1"))).thenReturn(List.of(repeat, first));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1"))).thenReturn(List.of(firstRun));
         when(astReadingDAO.getByRunIds(List.of("run-1")))
@@ -593,9 +596,10 @@ public class MicroWhonetDatasetServiceTest {
     public void compileDoesNotLoadPatientAndSpecimenContextOneCaseAtATime() {
         MicroCase firstCase = finalizedCase("case-1", "item-1", "2026-07-10 10:00:00");
         MicroCase secondCase = finalizedCase("case-2", "item-2", "2026-07-11 10:00:00");
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(firstCase, secondCase));
-        when(isolateDAO.getByCaseIds(List.of("case-1", "case-2"))).thenReturn(List.of());
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(firstCase, secondCase));
+        when(isolateDAO.getByCaseIds(List.of("case-1", "case-2")))
+                .thenReturn(List.of(isolate("iso-1", "case-1", "org-1"), isolate("iso-2", "case-2", "org-1")));
 
         service.compile(query("NONE"));
 
@@ -613,8 +617,8 @@ public class MicroWhonetDatasetServiceTest {
         MicroAstRun firstRun = reviewedRun("run-1", "isolate-1");
         MicroAstRun boundaryRun = reviewedRun("run-3", "isolate-3");
 
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
-                .thenReturn(List.of(boundaryCase, insideWindow, firstCase));
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class),
+                any(Timestamp.class))).thenReturn(List.of(boundaryCase, insideWindow, firstCase));
         when(isolateDAO.getByCaseIds(List.of("case-3", "case-2", "case-1")))
                 .thenReturn(List.of(boundary, inside, first));
         when(astRunDAO.getByIsolateIds(List.of("isolate-1", "isolate-3"))).thenReturn(List.of(firstRun, boundaryRun));
@@ -709,7 +713,7 @@ public class MicroWhonetDatasetServiceTest {
 
         assertEquals(1, service.compile(collectionQuery).getPreview().afterDeduplication);
         assertEquals(2, service.compile(releaseQuery).getPreview().afterDeduplication);
-        verify(caseDAO, times(2)).getFinalizedBacteriologyByCollectionDateRange(
+        verify(caseDAO, times(2)).getFinalizedForExportByCollectionDateRange("WHONET",
                 Timestamp.valueOf("2026-07-01 00:00:00"), Timestamp.valueOf("2026-08-01 00:00:00"));
     }
 
@@ -837,15 +841,58 @@ public class MicroWhonetDatasetServiceTest {
 
     @Test
     public void collectionDateRangeUsesInclusiveStartAndExclusiveDayAfterEnd() {
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class), any(Timestamp.class)))
                 .thenReturn(List.of());
 
         MicroWhonetPreviewForm preview = service.compile(query("NONE")).getPreview();
 
-        verify(caseDAO).getFinalizedBacteriologyByCollectionDateRange(Timestamp.valueOf("2026-07-01 00:00:00"),
+        verify(caseDAO).getFinalizedForExportByCollectionDateRange("WHONET", Timestamp.valueOf("2026-07-01 00:00:00"),
                 Timestamp.valueOf("2026-08-01 00:00:00"));
         assertEquals("2026-07-01", preview.from);
         assertEquals("2026-07-31", preview.to);
+        assertFalse(preview.canGenerate);
+    }
+
+    @Test
+    public void groupedCaseExportUsesEachIsolatesSourceCollectionDate() {
+        MicroCase microCase = finalizedCase("case-1", "item-1", "2026-08-12 10:00:00");
+        MicroIsolate julyIsolate = isolate("iso-july", "case-1", "organism-1");
+        MicroIsolate augustIsolate = isolate("iso-august", "case-1", "organism-1");
+        augustIsolate.setSourceSampleItemId("item-2");
+        stubDataset(List.of(microCase), List.of(julyIsolate, augustIsolate),
+                List.of(reviewedRun("run-july", "iso-july"), reviewedRun("run-august", "iso-august")),
+                List.of(reading("reading-july", "run-july", "antibiotic-1", "S"),
+                        reading("reading-august", "run-august", "antibiotic-1", "R")));
+        stubMappedReferences();
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", "2026-07-31 23:59:59");
+        stubPatientContext("case-1", "item-2", "patient-1", "LAB-001", "2026-08-01 00:00:00");
+        MicroWhonetExportQueryForm query = query("NONE");
+        query.dedupBasis = "RELEASE_DATE";
+
+        MicroWhonetPreviewForm preview = service.compile(query).getPreview();
+
+        assertEquals(2, preview.totalIsolates);
+        assertEquals(1, preview.exportedRows);
+        assertEquals("iso-july", preview.rows.get(0).isolateId);
+        assertEquals("S", preview.rows.get(0).interpretation);
+        verify(worklistContextDAO).getWhonetPatientContexts(List.of("item-1", "item-2"));
+    }
+
+    @Test
+    public void releaseDateCannotSubstituteForMissingCollectionDatePeriodMembership() {
+        MicroCase microCase = finalizedCase("case-1", "item-1", "2026-07-20 10:00:00");
+        MicroIsolate isolate = isolate("iso-1", "case-1", "organism-1");
+        stubDataset(List.of(microCase), List.of(isolate), List.of(reviewedRun("run-1", "iso-1")),
+                List.of(reading("reading-1", "run-1", "antibiotic-1", "S")));
+        stubPatientContext("case-1", "item-1", "patient-1", "LAB-001", (Timestamp) null);
+        MicroWhonetExportQueryForm query = query("FIRST_ISOLATE_7_DAY");
+        query.dedupBasis = "RELEASE_DATE";
+
+        MicroWhonetPreviewForm preview = service.compile(query).getPreview();
+
+        assertEquals(0, preview.exportedRows);
+        assertEquals(1, preview.excludedRows);
+        assertEquals(1, preview.warnings.size());
         assertFalse(preview.canGenerate);
     }
 
@@ -862,7 +909,7 @@ public class MicroWhonetDatasetServiceTest {
 
     private void stubDataset(List<MicroCase> cases, List<MicroIsolate> isolates, List<MicroAstRun> runs,
             List<MicroAstReading> readings) {
-        when(caseDAO.getFinalizedBacteriologyByCollectionDateRange(any(Timestamp.class), any(Timestamp.class)))
+        when(caseDAO.getFinalizedForExportByCollectionDateRange(eq("WHONET"), any(Timestamp.class), any(Timestamp.class)))
                 .thenReturn(cases);
         when(isolateDAO.getByCaseIds(cases.stream().map(MicroCase::getId).toList())).thenReturn(isolates);
         when(astRunDAO.getByIsolateIds(any())).thenAnswer(invocation -> {
@@ -884,8 +931,9 @@ public class MicroWhonetDatasetServiceTest {
     private MicroCase finalizedCase(String id, String sampleItemId, String closedAt) {
         MicroCase microCase = new MicroCase();
         microCase.setId(id);
-        microCase.setSampleItemId(sampleItemId);
-        microCase.setWorkflowType("BACTERIOLOGY");
+        sourceSampleItemByCase.put(id, sampleItemId);
+        microCase.setSampleId("order-" + sampleItemId);
+        microCase.setTestSectionId("unit-1");
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
         microCase.setClosedAt(Timestamp.valueOf(closedAt));
         return microCase;
@@ -895,6 +943,9 @@ public class MicroWhonetDatasetServiceTest {
         MicroIsolate isolate = new MicroIsolate();
         isolate.setId(id);
         isolate.setCaseId(caseId);
+        assertTrue("Each isolate fixture requires an explicit source specimen",
+                sourceSampleItemByCase.containsKey(caseId));
+        isolate.setSourceSampleItemId(sourceSampleItemByCase.get(caseId));
         isolate.setOrganismId(organismId);
         isolate.setIsolateLabel("ISO-1");
         isolate.setSignificance(MicroIsolateSignificance.CLINICALLY_SIGNIFICANT.name());

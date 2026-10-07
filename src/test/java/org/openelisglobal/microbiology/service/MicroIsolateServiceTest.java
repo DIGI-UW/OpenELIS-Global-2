@@ -5,7 +5,11 @@ import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -20,16 +24,20 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroIsolateServiceTest {
@@ -49,13 +57,26 @@ public class MicroIsolateServiceTest {
     @Mock
     private MicroIdentificationHistoryService identificationHistoryService;
 
+    @Mock
+    private MicroCaseSpecimenDAO specimenDAO;
+
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
     private MicroIsolateService service;
 
     @Before
     public void setUp() {
         service = new MicroIsolateServiceImpl(caseDAO, isolateDAO, activityDAO, amendmentDAO,
-                identificationHistoryService);
-        when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
+                identificationHistoryService, specimenDAO, accessService);
+        lenient().when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
+        lenient().when(caseDAO.getForUpdate("case-1")).thenAnswer(invocation -> caseDAO.get("case-1").orElseThrow());
+        lenient().when(isolateDAO.getForUpdate(any(String.class)))
+                .thenAnswer(invocation -> isolateDAO.get(invocation.<String>getArgument(0)).orElseThrow());
+        MicroCaseSpecimen member = new MicroCaseSpecimen();
+        member.setCaseId("case-1");
+        member.setSampleItemId("101");
+        lenient().when(specimenDAO.getByCaseAndSampleItem("case-1", "101")).thenReturn(member);
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setId("event-1");
         lenient().when(identificationHistoryService.recordChange(any(MicroIsolate.class), any(MicroIsolate.class),
@@ -63,11 +84,70 @@ public class MicroIsolateServiceTest {
     }
 
     @Test
+    public void reidentificationRequiresValidationBeforeChangingClinicalHistory() {
+        MicroIsolate isolate = permissionIsolate();
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
+        isolate.setOrganismId("org-original");
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(accessService).requireValidation("case-1", "7");
+        assertEquals(403,
+                assertThrows(ResponseStatusException.class, () -> identifyAs("org-corrected")).getStatusCode().value());
+        assertEquals("org-original", isolate.getOrganismId());
+        verify(isolateDAO, never()).update(any());
+        verify(activityDAO, never()).insert(any());
+        verify(identificationHistoryService, never()).recordChange(any(), any(), any(), any());
+    }
+
+    @Test
+    public void initialIdentificationUsesResultsRatherThanValidation() {
+        permissionIsolate();
+        identifyAs("org-first");
+        verify(accessService).requireResults("case-1", "7");
+        verify(accessService, never()).requireValidation(any(), any());
+    }
+
+    @Test
+    public void permissionsUseTheCurrentIdentityAfterOrderCaseAndIsolateLocks() {
+        permissionIsolate();
+        MicroIsolate refreshed = new MicroIsolate();
+        refreshed.setId("iso-1");
+        refreshed.setCaseId("case-1");
+        refreshed.setIdentificationStatus(MicroIsolateIdentificationStatus.CONFIRMED.name());
+        refreshed.setOrganismId("org-concurrent");
+        doReturn(refreshed).when(isolateDAO).getForUpdate("iso-1");
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(accessService).requireValidation("case-1", "7");
+        assertEquals(403,
+                assertThrows(ResponseStatusException.class, () -> identifyAs("org-corrected")).getStatusCode().value());
+        var locks = inOrder(caseDAO, isolateDAO, accessService);
+        locks.verify(caseDAO).lockOrder(any());
+        locks.verify(caseDAO).getForUpdate("case-1");
+        locks.verify(isolateDAO).getForUpdate("iso-1");
+        locks.verify(accessService).requireValidation("case-1", "7");
+        assertEquals("org-concurrent", refreshed.getOrganismId());
+        verify(isolateDAO, never()).update(any());
+    }
+
+    private MicroIsolate permissionIsolate() {
+        MicroIsolate isolate = new MicroIsolate();
+        isolate.setId("iso-1");
+        isolate.setCaseId("case-1");
+        isolate.setIdentificationStatus(MicroIsolateIdentificationStatus.PRELIMINARY.name());
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(isolate));
+        return isolate;
+    }
+
+    private MicroIsolate identifyAs(String organismId) {
+        return service.updateIdentification("iso-1", organismId, "Identification",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
+                "MALDI_TOF", new BigDecimal("99.5"), "Correct identity", "7");
+    }
+
+    @Test
     public void createIsolateRecordsPreliminaryWorkupAndAdvancesCase() {
-        MicroIsolate isolate = service.createIsolate("case-1", "ISO-1", "Gram negative rods",
+        MicroIsolate isolate = service.createIsolate("case-1", "101", "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
 
         assertEquals("case-1", isolate.getCaseId());
+        assertEquals("101", isolate.getSourceSampleItemId());
         assertEquals("ISO-1", isolate.getIsolateLabel());
         assertEquals("Gram negative rods", isolate.getGramStain());
         assertEquals("Lactose fermenting colonies", isolate.getColonyMorphology());
@@ -82,8 +162,8 @@ public class MicroIsolateServiceTest {
 
     @Test
     public void createIsolateRequiresGramStain() {
-        assertThrows(IllegalArgumentException.class, () -> service.createIsolate("case-1", "ISO-1", " ", "colonies",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"));
+        assertThrows(IllegalArgumentException.class, () -> service.createIsolate("case-1", "101", "ISO-1", " ",
+                "colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"));
     }
 
     @Test
@@ -97,8 +177,8 @@ public class MicroIsolateServiceTest {
         amendment.setCaseId("case-1");
         when(amendmentDAO.getOpenByCaseId("case-1")).thenReturn(amendment);
 
-        MicroIsolate isolate = service.createIsolate("case-1", "ISO-2", "Gram positive cocci", "Second colony type",
-                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "9");
+        MicroIsolate isolate = service.createIsolate("case-1", "101", "ISO-2", "Gram positive cocci",
+                "Second colony type", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "9");
 
         assertEquals("amendment-1", isolate.getAmendmentId());
         assertNull(isolate.getCancelledAt());
@@ -198,8 +278,36 @@ public class MicroIsolateServiceTest {
         finalCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
         when(caseDAO.get("case-1")).thenReturn(Optional.of(finalCase));
 
-        service.createIsolate("case-1", "ISO-1", "Gram negative rods", "colonies",
+        service.createIsolate("case-1", "101", "ISO-1", "Gram negative rods", "colonies",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1");
+    }
+
+    @Test
+    public void createIsolateRequiresAnExplicitMemberSource() {
+        assertThrows(IllegalArgumentException.class, () -> service.createIsolate("case-1", null, "ISO-1",
+                "Gram negative rods", "colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"));
+        verify(isolateDAO, never()).insert(any(MicroIsolate.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
+    }
+
+    @Test
+    public void createIsolateRejectsASpecimenOutsideTheCaseWithoutWriting() {
+        assertThrows(IllegalArgumentException.class, () -> service.createIsolate("case-1", "other-specimen", "ISO-1",
+                "Gram negative rods", "colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"));
+        verify(isolateDAO, never()).insert(any(MicroIsolate.class));
+        verify(caseDAO, never()).update(any(MicroCase.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
+    }
+
+    @Test
+    public void createIsolateRequiresResultsRightsInItsCaseUnit() {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(accessService).requireResults("case-1", "1");
+        ResponseStatusException failure = assertThrows(ResponseStatusException.class,
+                () -> service.createIsolate("case-1", "101", "ISO-1", "Gram negative rods", "colonies",
+                        MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, "1"));
+        assertEquals(HttpStatus.FORBIDDEN, failure.getStatusCode());
+        verify(isolateDAO, never()).insert(any(MicroIsolate.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
     }
 
     private MicroCase mutableCase() {

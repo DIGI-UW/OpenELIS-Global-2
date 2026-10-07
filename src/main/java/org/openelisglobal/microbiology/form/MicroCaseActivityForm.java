@@ -12,4 +12,5 @@ public class MicroCaseActivityForm {
     public String performedByDisplay;
     public String note;
     public String structuredData;
+    public String resultSourceSampleItemId;
 }

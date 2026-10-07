@@ -16,7 +16,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +37,8 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     private String sampleItemId;
     private String methodId;
     private ReferenceData referenceData;
+    private org.openelisglobal.test.valueholder.Test cultureTest;
+    private org.openelisglobal.test.valueholder.Test otherUnitTest;
 
     @Before
     @Override
@@ -46,29 +47,31 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
         methodId = fixtures.createMethodId();
         sampleItemId = fixtures.createSampleWithSampleItem("OGC782M2").getId();
         referenceData = fixtures.createReferenceData(methodId);
+        cultureTest = fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit());
+        otherUnitTest = fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit());
     }
 
     @Test
-    public void caseIdentityIsUniquePerSampleItemAndWorkflowWithSiblingSupport() {
-        MicroCase first = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
+    public void caseIdentityUsesOrderSampleTypeAndLabUnitWithSeparateRelatedCases() {
+        MicroCase first = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId), cultureTest,
                 fixtures.defaultUserId());
-        MicroCase duplicate = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
+        MicroCase duplicate = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId), cultureTest,
                 fixtures.defaultUserId());
-        MicroCase sibling = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.MYCOBACTERIOLOGY_TB, methodId,
+        MicroCase sibling = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId), otherUnitTest,
                 fixtures.defaultUserId());
 
         assertEquals(first.getId(), duplicate.getId());
-        assertEquals(sampleItemId, sibling.getSampleItemId());
+        assertEquals(java.util.List.of(sampleItemId), caseService.getSpecimenIds(sibling.getId()));
         assertEquals(2, caseService.getSiblingCases(sampleItemId).size());
     }
 
     @Test
     public void compiledCaseDetailIncludesTimelineAndIsolatesWithoutControllerTraversal() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
+        MicroCase microCase = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId), cultureTest,
                 fixtures.defaultUserId());
         stateService.advanceStage(microCase.getId(), MicroCaseStage.SETUP_RECORDED, fixtures.defaultUserId(),
                 "setup complete");
-        var isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
+        var isolate = isolateService.createIsolate(microCase.getId(), sampleItemId, "ISO-1", "Gram negative rods",
                 "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
         isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),

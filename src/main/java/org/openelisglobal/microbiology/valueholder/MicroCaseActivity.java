@@ -38,6 +38,10 @@ public class MicroCaseActivity extends BaseObject<String> {
     @Column(name = "structured_data")
     private String structuredData;
 
+    @Column(name = "result_source_sample_item_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String resultSourceSampleItemId;
+
     @Override
     public String getId() {
         return id;
@@ -94,5 +98,13 @@ public class MicroCaseActivity extends BaseObject<String> {
 
     public void setStructuredData(String structuredData) {
         this.structuredData = structuredData;
+    }
+
+    public String getResultSourceSampleItemId() {
+        return resultSourceSampleItemId;
+    }
+
+    public void setResultSourceSampleItemId(String resultSourceSampleItemId) {
+        this.resultSourceSampleItemId = resultSourceSampleItemId;
     }
 }

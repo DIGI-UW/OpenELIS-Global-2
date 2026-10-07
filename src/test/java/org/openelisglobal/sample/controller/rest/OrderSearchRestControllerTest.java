@@ -45,14 +45,16 @@ public class OrderSearchRestControllerTest {
     }
 
     @Test
-    public void mapsCultureWorkflowAndMethodsForReloadedOrders() {
+    public void mapsCaseEligibilityAndMethodsForReloadedOrders() {
         OrderSearchRestController controller = new OrderSearchRestController();
         TestMethodService testMethodService = mock(TestMethodService.class);
         org.openelisglobal.test.valueholder.Test test = mock(org.openelisglobal.test.valueholder.Test.class);
         when(test.getId()).thenReturn("42");
         when(test.getLocalizedName()).thenReturn("Blood culture");
         when(test.getDescription()).thenReturn("Blood culture");
-        when(test.getCultureWorkflowType()).thenReturn("BACTERIOLOGY");
+        when(test.isOpensMicrobiologyCase()).thenReturn(true);
+        when(test.getMicrobiologyCaseRole()).thenReturn("CULTURE");
+        when(test.isCollectedInSets()).thenReturn(true);
         TestMethodDto defaultMethod = new TestMethodDto();
         defaultMethod.methodId = "7";
         defaultMethod.methodName = "Blood Culture Standard";
@@ -63,7 +65,9 @@ public class OrderSearchRestControllerTest {
         TestSelectionDTO selectedTest = controller.buildSelectedTestData(test);
 
         assertEquals("42", selectedTest.getId());
-        assertEquals("BACTERIOLOGY", selectedTest.getCultureWorkflowType());
+        org.junit.Assert.assertTrue(selectedTest.isOpensMicrobiologyCase());
+        assertEquals("CULTURE", selectedTest.getMicrobiologyCaseRole());
+        org.junit.Assert.assertTrue(selectedTest.isCollectedInSets());
         assertSame(defaultMethod, selectedTest.getMethods().get(0));
     }
 

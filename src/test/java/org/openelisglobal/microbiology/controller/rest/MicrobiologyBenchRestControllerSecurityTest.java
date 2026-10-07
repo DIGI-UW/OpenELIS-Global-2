@@ -45,9 +45,9 @@ public class MicrobiologyBenchRestControllerSecurityTest extends SecuritySliceMo
     private MicroReportReleaseService releaseService;
 
     @Test
-    public void unrelatedAuthenticatedRoleCannotReadBenchCaseData() throws Exception {
+    public void authenticatedUserCanReadCaseTimelineThroughADirectLink() throws Exception {
         mockMvc.perform(get("/rest/microbiology/cases/case-1/timeline").with(user("reception").roles("RECEPTION")))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isOk());
     }
 
     @Test

@@ -283,6 +283,29 @@ only after the preceding structural cutover committed. The candidate now checks
 membership targets before retiring the old schema. The combined-sequence
 regressions assert unchanged clinical records, applied migration history and
 old runtime storage on rejection, and successful upgrade/rollback/reapply.
+The connected backend replacement is now being validated in the same V02c2
+branch. It removes workflow/protocol services and fields, uses explicit specimen
+membership and catalog case roles, and checks mutations against the current case
+lab unit. The test-only `liquibase/amr-v2-runtime-test.xml` root exercises the
+candidate schema without activating the application changelog; select it with
+`-Dtest.liquibase.changelog=classpath:liquibase/amr-v2-runtime-test.xml`.
+Twenty-five persisted routing/catalog/ownership/ORM checks passed against that
+root. The broader service/controller run passed 330 checks and exposed one
+Hibernate reserved-alias error; the corrected query then passed its focused
+validation test.
+This is backend evidence, not whole-runtime acceptance. The Program/export
+storage foundation is an explicit dependency of the replacement query model;
+Program administration, defaults and export-track configuration remain V03/V15
+work. In particular, empty export-track configuration must not be accepted as a
+valid empty population during the remaining V02c2/V15 verification.
+
+Remaining V02c2 work includes the frontend workflow/protocol caller retirement,
+shared preview/save/edit contract audit, candidate startup/upgrade checks,
+full migration regression, and persisted browser/video comparison. The catalog
+case-opening controls and culture-setup admin retirement have 43 passing frontend
+checks, but have not yet been accepted in the browser. Transfer implementation
+and its snapshot-dependent tests remain in V02d; no-result splits remain V02e.
+
 This is a prerequisite within V02c2, not a new slice or runtime acceptance.
 Keep both candidate migrations unregistered until the catalog, routing,
 permissions and affected-caller gate is complete. Video attachment publication

@@ -25,8 +25,9 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAmendment;
 import org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis;
 import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
+import org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen;
 import org.openelisglobal.microbiology.valueholder.MicroCriticalCommunication;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroExportReportingTrack;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageLink;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent;
@@ -60,15 +61,20 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroBreakpointStandard.class));
         assertNotNull(metamodel.entity(MicroBreakpointRule.class));
         assertNotNull(metamodel.entity(MicroBreakpointActivationEvent.class));
-        assertNotNull(metamodel.entity(MicroCultureSetup.class));
+        assertNotNull(metamodel.entity(MicroCaseSpecimen.class));
+        assertNotNull(metamodel.entity(MicroExportReportingTrack.class));
         assertNotNull(metamodel.entity(MicroPatientOrigin.class));
         assertNotNull(metamodel.entity(MicroPatientOriginDefault.class));
         assertNotNull(metamodel.entity(MicroCase.class));
+        assertNotNull(metamodel.entity(MicroCase.class).getAttribute("sampleId"));
+        assertNotNull(metamodel.entity(MicroCase.class).getAttribute("testSectionId"));
+        assertNotNull(metamodel.entity(MicroCase.class).getAttribute("programId"));
         assertNotNull(metamodel.entity(MicroCaseActivity.class));
         assertNotNull(metamodel.entity(MicroCaseAmendment.class));
         assertNotNull(metamodel.entity(MicroCaseAnalysis.class));
         assertNotNull(metamodel.entity(MicroCaseInoculation.class));
         assertNotNull(metamodel.entity(MicroIsolate.class));
+        assertNotNull(metamodel.entity(MicroIsolate.class).getAttribute("sourceSampleItemId"));
         assertNotNull(metamodel.entity(MicroIsolateIdentificationEvent.class));
         assertNotNull(metamodel.entity(MicroAstRun.class));
         assertNotNull(metamodel.entity(MicroAstRun.class).getAttribute("technique"));
@@ -77,8 +83,7 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
         assertNotNull(metamodel.entity(MicroAstOverrideEvent.class));
         assertNotNull(metamodel.entity(MicroCriticalCommunication.class));
         assertNotNull(metamodel.entity(MicroCaseOrderDetail.class));
-        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("sampleId"));
-        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("cultureMethodId"));
+        assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("caseId"));
         assertNotNull(metamodel.entity(MicroCaseOrderDetail.class).getAttribute("admissionDate"));
         assertNotNull(metamodel.entity(MicroReportVersion.class));
         assertNotNull(metamodel.entity(MicroReportVersionSource.class));
@@ -97,12 +102,14 @@ public class MicrobiologyOrmValidationTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void microbiologyOrderDetailDraftHqlCompiles() {
+    public void microbiologyCaseMembershipAndOrderDetailHqlCompile() {
         EntityManager entityManager = entityManagerFactory.createEntityManager();
         try {
-            assertNotNull(entityManager.createQuery(
-                    "from MicroCaseOrderDetail d where d.sampleId = :sampleId and d.caseId is null",
+            assertNotNull(entityManager.createQuery("from MicroCaseOrderDetail d where d.caseId = :caseId",
                     MicroCaseOrderDetail.class));
+            assertNotNull(entityManager.createQuery(
+                    "from MicroCaseSpecimen m where m.caseId = :caseId and m.sampleItemId = :sampleItemId",
+                    MicroCaseSpecimen.class));
         } finally {
             entityManager.close();
         }

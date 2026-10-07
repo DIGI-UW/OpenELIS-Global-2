@@ -51,6 +51,7 @@ public class MicroCultureAnalyzerEventServiceTest {
         AnalyzerEvent received = receivedEvent();
         MicroCaseInoculation inoculation = new MicroCaseInoculation();
         inoculation.setCaseId("case-1");
+        inoculation.setSourceSampleItemId("101");
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setStage(MicroCaseStage.INCUBATING.name());
@@ -64,7 +65,7 @@ public class MicroCultureAnalyzerEventServiceTest {
 
         assertEquals("evt-1", result.getExternalEventId());
         verify(stateService).advanceStage("case-1", MicroCaseStage.POSITIVE_SIGNAL, "bridge-user",
-                "Instrument flagged positive");
+                "Instrument flagged positive", List.of(), "101");
         verify(persistenceService).markApplied(received, "case-1");
     }
 
@@ -86,6 +87,80 @@ public class MicroCultureAnalyzerEventServiceTest {
         verify(stateService, never()).advanceStage(any(String.class), any(MicroCaseStage.class), any(String.class),
                 any(String.class));
         verify(persistenceService).markFailed(received, "CULTURE_ANALYZER_SOURCE_AMBIGUOUS");
+        org.mockito.Mockito.verifyNoMoreInteractions(stateService);
+    }
+
+    @Test
+    public void oneCaseDoesNotDisambiguateTwoDifferentSampleOwners() {
+        AnalyzerEvent received = receivedEvent();
+        MicroCaseInoculation first = new MicroCaseInoculation();
+        first.setCaseId("case-1");
+        first.setSourceSampleItemId("101");
+        MicroCaseInoculation second = new MicroCaseInoculation();
+        second.setCaseId("case-1");
+        second.setSourceSampleItemId("202");
+        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class)))
+                .thenReturn(new AnalyzerEventRegistration(received, true));
+        when(inoculationDAO.getByContainerIdentifier("bottle-42")).thenReturn(List.of(first, second));
+        service.receive(
+                new MicroCultureAnalyzerEventCommand("evt-1", "POSITIVE_SIGNAL", "analyzer-7", "bottle-42", null, null),
+                "bridge-user");
+        verify(persistenceService).markFailed(received, "CULTURE_ANALYZER_SOURCE_AMBIGUOUS");
+        verify(persistenceService, never()).markApplied(any(), any());
+        org.mockito.Mockito.verifyNoMoreInteractions(stateService);
+    }
+
+    @Test
+    public void anExplicitCaseStillRequiresTheSourceContainer() {
+        AnalyzerEvent received = receivedEvent();
+        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class)))
+                .thenReturn(new AnalyzerEventRegistration(received, true));
+        service.receive(
+                new MicroCultureAnalyzerEventCommand("evt-1", "POSITIVE_SIGNAL", "analyzer-7", null, "case-1", null),
+                "bridge-user");
+        verify(persistenceService).markFailed(received, "CULTURE_ANALYZER_SOURCE_SAMPLE_REQUIRED");
+        verify(persistenceService, never()).markApplied(any(), any());
+        org.mockito.Mockito.verifyNoMoreInteractions(stateService);
+    }
+
+    @Test
+    public void repeatedContainerRowsForOneSampleHaveOneUnambiguousOwner() {
+        AnalyzerEvent received = receivedEvent();
+        MicroCaseInoculation first = new MicroCaseInoculation();
+        first.setCaseId("case-1");
+        first.setSourceSampleItemId("101");
+        MicroCaseInoculation repeat = new MicroCaseInoculation();
+        repeat.setCaseId("case-1");
+        repeat.setSourceSampleItemId("101");
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        microCase.setStage(MicroCaseStage.INCUBATING.name());
+        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class)))
+                .thenReturn(new AnalyzerEventRegistration(received, true));
+        when(inoculationDAO.getByContainerIdentifier("bottle-42")).thenReturn(List.of(first, repeat));
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        service.receive(new MicroCultureAnalyzerEventCommand("evt-1", "POSITIVE_SIGNAL", "analyzer-7", "bottle-42",
+                null, "Positive signal"), "bridge-user");
+        verify(stateService).advanceStage("case-1", MicroCaseStage.POSITIVE_SIGNAL, "bridge-user", "Positive signal",
+                List.of(), "101");
+        verify(persistenceService).markApplied(received, "case-1");
+        verify(persistenceService, never()).markFailed(any(), any());
+    }
+
+    @Test
+    public void explicitCaseCannotAcceptAnotherCasesContainer() {
+        AnalyzerEvent received = receivedEvent();
+        MicroCaseInoculation source = new MicroCaseInoculation();
+        source.setCaseId("case-2");
+        source.setSourceSampleItemId("202");
+        when(persistenceService.createIfAbsent(any(AnalyzerEvent.class)))
+                .thenReturn(new AnalyzerEventRegistration(received, true));
+        when(inoculationDAO.getByContainerIdentifier("bottle-42")).thenReturn(List.of(source));
+        service.receive(new MicroCultureAnalyzerEventCommand("evt-1", "POSITIVE_SIGNAL", "analyzer-7", "bottle-42",
+                "case-1", null), "bridge-user");
+        verify(persistenceService).markFailed(received, "CULTURE_ANALYZER_SOURCE_NOT_MATCHED");
+        verify(persistenceService, never()).markApplied(any(), any());
+        org.mockito.Mockito.verifyNoMoreInteractions(stateService);
     }
 
     @Test

@@ -2,7 +2,9 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -19,14 +21,17 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseInoculationDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
+import org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroCaseInoculationServiceTest {
@@ -40,31 +45,37 @@ public class MicroCaseInoculationServiceTest {
     @Mock
     private MicroReagentLotService reagentLotService;
 
+    @Mock
+    private MicroCaseSpecimenDAO specimenDAO;
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
     private MicroCaseInoculationService service;
     private MicroCase microCase;
 
     @Before
     public void setUp() {
         service = new MicroCaseInoculationServiceImpl(caseDAO, inoculationDAO, activityDAO, reagentLotService,
-                new ObjectMapper());
+                new ObjectMapper(), specimenDAO, accessService);
         microCase = new MicroCase();
         microCase.setId("case-1");
-        microCase.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
-        microCase.setCultureMethodId("method-1");
         microCase.setStage(MicroCaseStage.RECEIVED.name());
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(caseDAO.update(microCase)).thenReturn(microCase);
+        when(caseDAO.getForUpdate("case-1")).thenReturn(microCase);
+        when(specimenDAO.getByCaseAndSampleItem("case-1", "101")).thenReturn(new MicroCaseSpecimen());
     }
 
     @Test
     public void recordsPrimaryInoculationTimelineStageAndLotsAtomically() throws Exception {
         List<MicroLotSelection> lots = List.of(new MicroLotSelection("analysis-1", "link-1", 7L));
 
-        MicroCaseInoculation result = service.record("case-1", null, "BOTTLE-001", "Blood agar", "24h at 35 C",
+        MicroCaseInoculation result = service.record("case-1", "101", null, "BOTTLE-001", "Blood agar", "24h at 35 C",
                 "Ambient", lots, "42");
 
         assertNull(result.getSourceInoculationId());
-        assertEquals("method-1", result.getMethodId());
+        assertEquals("101", result.getSourceSampleItemId());
+        assertNull(result.getMethodId());
         assertEquals("42", result.getPerformedBy());
         assertEquals(MicroCaseStage.INCUBATING.name(), microCase.getStage());
         ArgumentCaptor<MicroCaseActivity> activity = ArgumentCaptor.forClass(MicroCaseActivity.class);
@@ -72,6 +83,7 @@ public class MicroCaseInoculationServiceTest {
         assertEquals(MicroCaseActivityType.INOCULATION_RECORDED.name(), activity.getValue().getActivityType());
         var auditData = new ObjectMapper().readTree(activity.getValue().getStructuredData());
         assertEquals(result.getId(), auditData.get("inoculationId").asText());
+        assertEquals("101", auditData.get("sourceSampleItemId").asText());
         assertEquals("Blood agar", auditData.get("media").asText());
         assertEquals("24h at 35 C", auditData.get("incubation").asText());
         assertEquals("Ambient", auditData.get("atmosphere").asText());
@@ -86,10 +98,11 @@ public class MicroCaseInoculationServiceTest {
         MicroCaseInoculation parent = new MicroCaseInoculation();
         parent.setId("inoculation-1");
         parent.setCaseId("case-1");
+        parent.setSourceSampleItemId("101");
         when(inoculationDAO.get("inoculation-1")).thenReturn(Optional.of(parent));
 
-        MicroCaseInoculation result = service.record("case-1", "inoculation-1", "PLATE-002", "MacConkey agar", "18h",
-                "Ambient", List.of(), "42");
+        MicroCaseInoculation result = service.record("case-1", "101", "inoculation-1", "PLATE-002", "MacConkey agar",
+                "18h", "Ambient", List.of(), "42");
 
         assertEquals("inoculation-1", result.getSourceInoculationId());
         ArgumentCaptor<MicroCaseActivity> activity = ArgumentCaptor.forClass(MicroCaseActivity.class);
@@ -105,14 +118,7 @@ public class MicroCaseInoculationServiceTest {
         parent.setCaseId("case-2");
         when(inoculationDAO.get("inoculation-2")).thenReturn(Optional.of(parent));
 
-        service.record("case-1", "inoculation-2", "PLATE-002", "MacConkey agar", null, null, List.of(), "42");
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsInoculationBeforeWorkflowClassification() {
-        microCase.setWorkflowType(MicroWorkflowType.UNASSIGNED.name());
-
-        service.record("case-1", null, "BOTTLE-001", "Blood agar", null, null, List.of(), "42");
+        service.record("case-1", "101", "inoculation-2", "PLATE-002", "MacConkey agar", null, null, List.of(), "42");
     }
 
     @Test(expected = MicroCaseLockedException.class)
@@ -120,6 +126,46 @@ public class MicroCaseInoculationServiceTest {
         microCase.setStage(MicroCaseStage.FINAL_RELEASED.name());
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
 
-        service.record("case-1", null, "BOTTLE-001", "Blood agar", null, null, List.of(), "42");
+        service.record("case-1", "101", null, "BOTTLE-001", "Blood agar", null, null, List.of(), "42");
+    }
+
+    @Test
+    public void rejectsSampleOutsideTheCaseBeforeWriting() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.record("case-1", "202", null, "BOTTLE-002", "Blood agar", null, null, List.of(), "42"));
+        verify(activityDAO, never()).insert(any());
+        verify(inoculationDAO, never()).insert(any());
+        verify(reagentLotService, never()).recordSelections(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    public void requiresAnExplicitSampleRatherThanChoosingTheFirstMember() {
+        assertThrows(IllegalArgumentException.class,
+                () -> service.record("case-1", null, null, "BOTTLE-002", "Blood agar", null, null, List.of(), "42"));
+        verify(activityDAO, never()).insert(any());
+        verify(inoculationDAO, never()).insert(any());
+    }
+
+    @Test
+    public void subcultureCannotChangeItsParentSample() {
+        MicroCaseInoculation parent = new MicroCaseInoculation();
+        parent.setId("parent-202");
+        parent.setCaseId("case-1");
+        parent.setSourceSampleItemId("202");
+        when(inoculationDAO.get(parent.getId())).thenReturn(Optional.of(parent));
+        assertThrows(IllegalArgumentException.class, () -> service.record("case-1", "101", parent.getId(), "PLATE-003",
+                "Blood agar", null, null, List.of(), "42"));
+        verify(activityDAO, never()).insert(any());
+        verify(inoculationDAO, never()).insert(any());
+    }
+
+    @Test
+    public void caseUnitDenialLeavesCultureAndTimelineUnchanged() {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(accessService).requireResults("case-1", "42");
+        ResponseStatusException denied = assertThrows(ResponseStatusException.class,
+                () -> service.record("case-1", "101", null, "BOTTLE-004", "Blood agar", null, null, List.of(), "42"));
+        assertEquals(403, denied.getStatusCode().value());
+        verify(activityDAO, never()).insert(any());
+        verify(inoculationDAO, never()).insert(any());
     }
 }

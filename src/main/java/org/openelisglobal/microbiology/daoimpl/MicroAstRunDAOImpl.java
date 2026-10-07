@@ -24,7 +24,7 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
             + " join MicroIsolate isolate on isolate.id = run.isolateId"
             + " join MicroCase microCase on microCase.id = isolate.caseId"
             + " left join MicroAstPanel panel on panel.id = run.panelId"
-            + " left join SampleItem sampleItem on sampleItem.id = microCase.sampleItemId"
+            + " left join SampleItem sampleItem on sampleItem.id = isolate.sourceSampleItemId"
             + " left join sampleItem.sample sample"
             + " left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id"
             + " left join Patient patient on patient.id = sampleHuman.patientId" + " left join patient.person person"
@@ -34,15 +34,14 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
             + "newer.occurredAt > activity.occurredAt or (newer.occurredAt = activity.occurredAt"
             + " and newer.id > activity.id)))"
             + " left join SystemUser activityUser on activityUser.id = activity.performedBy"
-            + " where run.status = :reviewedStatus" + " and (:workflow = '' or microCase.workflowType = :workflow)"
-            + " and (:stage = '' or microCase.stage = :stage)" + " and (:urgency = ''"
-            + " or (:urgency = 'HIGH' and microCase.priority in ('STAT', 'URGENT'))"
+            + " where run.status = :reviewedStatus" + " and (:stage = '' or microCase.stage = :stage)"
+            + " and (:urgency = ''" + " or (:urgency = 'HIGH' and microCase.priority in ('STAT', 'URGENT'))"
             + " or (:urgency = 'ROUTINE' and microCase.priority not in ('STAT', 'URGENT')))"
             + " and (:due = '' or :due = 'VIEW')" + " and (:search = '' or lower(run.id) like :searchLike"
             + " or lower(microCase.id) like :searchLike"
-            + " or lower(cast(microCase.sampleItemId as string)) like :searchLike"
-            + " or lower(microCase.workflowType) like :searchLike" + " or lower(microCase.stage) like :searchLike"
-            + " or lower(isolate.isolateLabel) like :searchLike"
+            + " or lower(cast(isolate.sourceSampleItemId as string)) like :searchLike"
+            + " or lower(cast(microCase.testSectionId as string)) like :searchLike"
+            + " or lower(microCase.stage) like :searchLike" + " or lower(isolate.isolateLabel) like :searchLike"
             + " or lower(coalesce(isolate.preliminaryOrganismText, '')) like :searchLike"
             + " or lower(coalesce(isolate.organismId, '')) like :searchLike"
             + " or lower(coalesce(run.panelId, '')) like :searchLike" + " or lower(run.status) like :searchLike"
@@ -98,8 +97,12 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
     @Override
     @Transactional(readOnly = true)
     public List<MicroReviewedAstWorklistRow> getReviewedWorklistPage(MicroReviewedAstWorklistQuery worklistQuery) {
+        if (!worklistQuery.allUnits() && worklistQuery.permittedUnitIds().isEmpty()) {
+            return List.of();
+        }
         Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(
-                REVIEWED_WORKLIST_SELECT_HQL + reviewedWorklistOrder(worklistQuery.sort()), Object[].class);
+                REVIEWED_WORKLIST_SELECT_HQL + unitScope(worklistQuery) + reviewedWorklistOrder(worklistQuery.sort()),
+                Object[].class);
         setReviewedWorklistParameters(query, worklistQuery);
         query.setFirstResult(worklistQuery.offset());
         query.setMaxResults(worklistQuery.limit());
@@ -110,7 +113,11 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
     @Override
     @Transactional(readOnly = true)
     public long countReviewedWorklist(MicroReviewedAstWorklistQuery worklistQuery) {
-        Query<Long> query = entityManager.unwrap(Session.class).createQuery(REVIEWED_WORKLIST_COUNT_HQL, Long.class);
+        if (!worklistQuery.allUnits() && worklistQuery.permittedUnitIds().isEmpty()) {
+            return 0L;
+        }
+        Query<Long> query = entityManager.unwrap(Session.class)
+                .createQuery(REVIEWED_WORKLIST_COUNT_HQL + unitScope(worklistQuery), Long.class);
         setReviewedWorklistParameters(query, worklistQuery);
         return query.uniqueResult();
     }
@@ -138,13 +145,18 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
         return query.uniqueResult();
     }
 
+    private String unitScope(MicroReviewedAstWorklistQuery query) {
+        return (text(query.testSectionId()).isEmpty() ? "" : " and microCase.testSectionId = :unit")
+                + (query.allUnits() ? "" : " and microCase.testSectionId in (:permittedUnitIds)");
+    }
+
     private String reviewedWorklistOrder(String sort) {
         String priorityOrder = "case when microCase.priority in ('STAT', 'URGENT') then 0 else 1 end";
         if ("newest".equals(sort)) {
             return " order by run.startedAt desc, " + priorityOrder + ", run.id";
         }
-        if ("workflow".equals(sort)) {
-            return " order by microCase.workflowType, " + priorityOrder + ", run.startedAt, run.id";
+        if ("labUnit".equals(sort)) {
+            return " order by microCase.testSectionId, " + priorityOrder + ", run.startedAt, run.id";
         }
         return " order by " + priorityOrder + ", run.startedAt, run.id";
     }
@@ -152,7 +164,12 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
     private void setReviewedWorklistParameters(Query<?> query, MicroReviewedAstWorklistQuery worklistQuery) {
         String search = worklistQuery.search() == null ? "" : worklistQuery.search().trim().toLowerCase(Locale.ROOT);
         query.setParameter("reviewedStatus", MicroAstRunStatus.REVIEWED.name());
-        query.setParameter("workflow", text(worklistQuery.workflow()));
+        if (!text(worklistQuery.testSectionId()).isEmpty()) {
+            query.setParameter("unit", text(worklistQuery.testSectionId()));
+        }
+        if (!worklistQuery.allUnits()) {
+            query.setParameterList("permittedUnitIds", worklistQuery.permittedUnitIds());
+        }
         query.setParameter("stage", text(worklistQuery.stage()));
         query.setParameter("urgency", text(worklistQuery.urgency()));
         query.setParameter("due", text(worklistQuery.due()));

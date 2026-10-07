@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  logicalFilePath="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-program-foundation.xml"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <!-- Storage needed by the V2 mappings. Program administration and export
+       track configuration are accepted in their owning slices. -->
+  <changeSet id="20261006-OGC-1427-amr-v2-program-foundation" author="OpenELIS" dbms="postgresql">
+    <addColumn schemaName="clinlims" tableName="program">
+      <column name="show_on_microbiology_case" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+      <column name="reporting_track_id" type="numeric(10)"/>
+    </addColumn>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="program" baseColumnNames="reporting_track_id"
+      referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"
+      constraintName="fk_program_reporting_track"/>
+    <createTable schemaName="clinlims" tableName="micro_export_reporting_track">
+      <column name="id" type="varchar(36)"><constraints primaryKey="true" primaryKeyName="micro_export_reporting_track_pkey" nullable="false"/></column>
+      <column name="export_key" type="varchar(40)"><constraints nullable="false"/></column>
+      <column name="reporting_track_id" type="numeric(10)"><constraints nullable="false"/></column>
+    </createTable>
+    <addUniqueConstraint schemaName="clinlims" tableName="micro_export_reporting_track" columnNames="export_key,reporting_track_id"
+      constraintName="uq_micro_export_reporting_track"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_export_reporting_track" baseColumnNames="reporting_track_id"
+      referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"
+      constraintName="fk_micro_export_reporting_track"/>
+    <rollback>
+      <sql splitStatements="false"><![CDATA[
+        DO $rollback$
+        BEGIN
+          LOCK TABLE clinlims.program, clinlims.micro_export_reporting_track IN ACCESS EXCLUSIVE MODE;
+          IF EXISTS (SELECT 1 FROM clinlims.program WHERE show_on_microbiology_case OR reporting_track_id IS NOT NULL)
+            OR EXISTS (SELECT 1 FROM clinlims.micro_export_reporting_track) THEN
+            RAISE EXCEPTION 'AMR Program foundation rollback refused: later Program or export configuration exists';
+          END IF;
+        END;
+        $rollback$;
+      ]]></sql>
+      <dropTable schemaName="clinlims" tableName="micro_export_reporting_track"/>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="program" constraintName="fk_program_reporting_track"/>
+      <dropColumn schemaName="clinlims" tableName="program" columnName="reporting_track_id"/>
+      <dropColumn schemaName="clinlims" tableName="program" columnName="show_on_microbiology_case"/>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>

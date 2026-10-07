@@ -1,7 +1,7 @@
 package org.openelisglobal.microbiology.controller.rest;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/worklist")
-public class MicroWorklistRestController extends BaseRestController {
+public class MicroWorklistRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroWorklistService worklistService;
 
@@ -23,20 +23,21 @@ public class MicroWorklistRestController extends BaseRestController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN', 'RESULTS', 'VALIDATION')")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroWorklistPageForm> getWorklistRows(@RequestParam(required = false) String grain,
-            @RequestParam(required = false) String status, @RequestParam(required = false) String workflow,
+            @RequestParam(required = false) String status, @RequestParam(required = false) String testSectionId,
             @RequestParam(required = false) String from, @RequestParam(required = false) String to,
             @RequestParam(required = false) List<String> specimen,
             @RequestParam(required = false) List<String> organism, @RequestParam(required = false) List<String> origin,
             @RequestParam(required = false) List<String> significance, @RequestParam(required = false) String stage,
             @RequestParam(required = false) String urgency, @RequestParam(required = false) String due,
             @RequestParam(required = false) String q, @RequestParam(required = false) String sort,
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize,
+            HttpServletRequest httpRequest) {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
         query.grain = grain;
         query.status = status;
-        query.workflow = workflow;
+        query.testSectionId = testSectionId;
         query.from = from;
         query.to = to;
         query.specimen = specimen;
@@ -54,6 +55,6 @@ public class MicroWorklistRestController extends BaseRestController {
         if (pageSize != null) {
             query.pageSize = pageSize;
         }
-        return ResponseEntity.ok(worklistService.getWorklistPage(query));
+        return ResponseEntity.ok(worklistService.getWorklistPage(query, authenticatedUserId(httpRequest)));
     }
 }

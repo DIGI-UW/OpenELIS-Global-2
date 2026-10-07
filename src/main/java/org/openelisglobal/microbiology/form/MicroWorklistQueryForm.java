@@ -18,7 +18,7 @@ public class MicroWorklistQueryForm {
     public List<String> organism = new ArrayList<>();
     public List<String> origin = new ArrayList<>();
     public List<String> significance = new ArrayList<>();
-    public String workflow = "";
+    public String testSectionId = "";
     public String stage = "";
     public String urgency = "";
     public String due = "";

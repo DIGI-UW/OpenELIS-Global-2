@@ -17,7 +17,6 @@ import org.openelisglobal.microbiology.controller.rest.MicrobiologyRestException
 import org.openelisglobal.microbiology.service.MicroAmendmentConflictException;
 import org.openelisglobal.microbiology.service.MicroAstConflictException;
 import org.openelisglobal.microbiology.service.MicroCaseLockedException;
-import org.openelisglobal.microbiology.service.MicroCaseWorkflowConflictException;
 import org.openelisglobal.microbiology.service.MicroIdentificationHistoryService;
 import org.openelisglobal.microbiology.service.MicroIsolateService;
 import org.springframework.http.MediaType;
@@ -63,19 +62,9 @@ public class MicrobiologyRestExceptionHandlerTest {
     }
 
     @Test
-    public void workflowConflictReturnsNamedConflict() {
-        ResponseEntity<Map<String, Object>> response = new MicrobiologyRestExceptionHandler()
-                .handleWorkflowConflict(new MicroCaseWorkflowConflictException("MICROBIOLOGY_WORKFLOW_SIBLING_EXISTS"));
-
-        assertEquals(409, response.getStatusCode().value());
-        assertEquals("MICROBIOLOGY_WORKFLOW_CONFLICT", response.getBody().get("error"));
-        assertEquals("MICROBIOLOGY_WORKFLOW_SIBLING_EXISTS", response.getBody().get("message"));
-    }
-
-    @Test
     public void moduleSpecificLockHandlerWinsOverGlobalRuntimeHandler() throws Exception {
         MicroIsolateService isolateService = org.mockito.Mockito.mock(MicroIsolateService.class);
-        when(isolateService.createIsolate(any(), any(), any(), any(), any(), any()))
+        when(isolateService.createIsolate(any(), any(), any(), any(), any(), any(), any()))
                 .thenThrow(new MicroCaseLockedException("Final-released microbiology cases cannot be changed"));
         MockMvc mockMvc = MockMvcBuilders
                 .standaloneSetup(new MicroIsolateRestController(isolateService,
@@ -88,6 +77,7 @@ public class MicrobiologyRestExceptionHandlerTest {
                 .contentType(MediaType.APPLICATION_JSON).content("""
                         {
                           "caseId": "case-1",
+                          "sourceSampleItemId": "1001",
                           "isolateLabel": "ISO-LOCKED",
                           "preliminaryOrganismText": "Must not persist",
                           "significance": "UNKNOWN"

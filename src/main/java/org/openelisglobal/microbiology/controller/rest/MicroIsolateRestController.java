@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/isolates")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
+@PreAuthorize("isAuthenticated()")
 public class MicroIsolateRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroIsolateService isolateService;
@@ -38,8 +38,9 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
     @PostMapping
     public ResponseEntity<MicroIsolateForm> createIsolate(@RequestBody MicroIsolateRequestForm request,
             HttpServletRequest httpRequest) {
-        MicroIsolate isolate = isolateService.createIsolate(request.caseId, request.isolateLabel, request.gramStain,
-                request.colonyMorphology, significance(request.significance), authenticatedUserId(httpRequest));
+        MicroIsolate isolate = isolateService.createIsolate(request.caseId, request.sourceSampleItemId,
+                request.isolateLabel, request.gramStain, request.colonyMorphology, significance(request.significance),
+                authenticatedUserId(httpRequest));
         return ResponseEntity.ok(toForm(isolate));
     }
 
@@ -77,6 +78,7 @@ public class MicroIsolateRestController extends MicrobiologyRestControllerSuppor
         MicroIsolateForm form = new MicroIsolateForm();
         form.id = isolate.getId();
         form.caseId = isolate.getCaseId();
+        form.sourceSampleItemId = isolate.getSourceSampleItemId();
         form.isolateLabel = isolate.getIsolateLabel();
         form.organismId = isolate.getOrganismId();
         form.preliminaryOrganismText = isolate.getPreliminaryOrganismText();

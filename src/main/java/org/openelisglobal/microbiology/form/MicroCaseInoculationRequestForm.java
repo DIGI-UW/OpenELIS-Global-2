@@ -6,6 +6,7 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MicroCaseInoculationRequestForm {
+    public String sourceSampleItemId;
     public String sourceInoculationId;
     public String containerIdentifier;
     public String media;

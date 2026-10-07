@@ -11,31 +11,30 @@ import org.openelisglobal.microbiology.form.MicroReferenceOptionForm;
 import org.openelisglobal.microbiology.service.MicroBreakpointService;
 import org.openelisglobal.microbiology.service.MicroPatientOriginOptions;
 import org.openelisglobal.microbiology.service.MicrobiologyReferenceService;
-import org.openelisglobal.microbiology.valueholder.MicroCultureSetup;
+import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroPatientOrigin;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.ResponseEntity;
 
 public class MicrobiologyReferenceRestControllerTest {
 
     @Test
-    public void cultureMethodsExposeActiveCompatibleMethodIdentity() {
+    public void panelsExposeActiveOrganismGroupAndPublishedIdentity() {
         MicrobiologyReferenceService referenceService = org.mockito.Mockito.mock(MicrobiologyReferenceService.class);
-        MicroCultureSetup setup = new MicroCultureSetup();
-        setup.setMethodId("method-1");
-        setup.setName("Routine blood culture");
-        setup.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
-        when(referenceService.getActiveCultureSetups(MicroWorkflowType.BACTERIOLOGY)).thenReturn(List.of(setup));
+        MicroAstPanel panel = new MicroAstPanel();
+        panel.setId("panel-1");
+        panel.setName("Enterobacterales panel");
+        panel.setOrganismGroup("Enterobacterales");
+        when(referenceService.getActiveAstPanels("Enterobacterales")).thenReturn(List.of(panel));
 
         ResponseEntity<List<MicroReferenceOptionForm>> response = new MicrobiologyReferenceRestController(
                 referenceService, org.mockito.Mockito.mock(MicroBreakpointService.class))
-                .getCultureMethods(MicroWorkflowType.BACTERIOLOGY.name());
+                .getAstPanels("Enterobacterales");
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals(1, response.getBody().size());
-        assertEquals("method-1", response.getBody().get(0).id);
-        assertEquals("Routine blood culture", response.getBody().get(0).label);
-        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), response.getBody().get(0).code);
+        assertEquals("panel-1", response.getBody().get(0).id);
+        assertEquals("Enterobacterales panel", response.getBody().get(0).label);
+        assertEquals("Enterobacterales", response.getBody().get(0).code);
     }
 
     @Test

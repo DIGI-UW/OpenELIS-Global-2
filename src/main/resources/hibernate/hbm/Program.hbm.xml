@@ -28,6 +28,11 @@
         <property name="questionnaireUUID" type="java.util.UUID">
             <column name="questionnaire_fhir_uuid" />
         </property>
+        <property name="showOnMicrobiologyCase" type="boolean"
+            column="show_on_microbiology_case" not-null="true" />
+        <property name="reportingTrackId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="reporting_track_id" />
         <many-to-one name="testSection"
             class="org.openelisglobal.test.valueholder.TestSection"
             fetch="select" lazy="false">

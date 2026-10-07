@@ -7,19 +7,20 @@ import java.util.Map;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseActivityForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailForm;
+import org.openelisglobal.microbiology.form.MicroCaseSpecimenForm;
 import org.openelisglobal.microbiology.form.MicroIsolateForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
-import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
+import org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.qaevent.service.NceSpecimenService;
@@ -30,6 +31,7 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.systemuser.service.SystemUserService;
+import org.openelisglobal.test.valueholder.Test;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -37,6 +39,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MicroCaseServiceImpl implements MicroCaseService {
 
     private final MicroCaseDAO caseDAO;
+    private final MicroCaseSpecimenDAO specimenDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroCaseOrderDetailDAO orderDetailDAO;
@@ -51,8 +54,9 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             MicroCaseOrderDetailDAO orderDetailDAO, SampleItemService sampleItemService,
             SampleHumanService sampleHumanService, PatientService patientService,
             SampleOrganizationService sampleOrganizationService, SystemUserService systemUserService,
-            NceSpecimenService nceSpecimenService) {
+            NceSpecimenService nceSpecimenService, MicroCaseSpecimenDAO specimenDAO) {
         this.caseDAO = caseDAO;
+        this.specimenDAO = specimenDAO;
         this.activityDAO = activityDAO;
         this.isolateDAO = isolateDAO;
         this.orderDetailDAO = orderDetailDAO;
@@ -66,27 +70,42 @@ public class MicroCaseServiceImpl implements MicroCaseService {
 
     @Override
     @Transactional
-    public MicroCase createOrGetCase(String sampleItemId, MicroWorkflowType workflowType, String cultureMethodId,
-            String performedBy) {
-        requireText(sampleItemId, "sampleItemId");
-        if (workflowType == null) {
-            throw new IllegalArgumentException("workflowType is required");
+    public MicroCase createOrGetCase(SampleItem sampleItem, Test test, String performedBy) {
+        MicroCaseRoutingKey key = MicroCaseRoutingKey.forTest(sampleItem, test);
+        requireText(sampleItem.getId(), "sampleItemId");
+        requireText(key.sampleId(), "sampleId");
+        requireText(performedBy, "performedBy");
+        caseDAO.lockOrder(key.sampleId());
+        List<MicroCase> candidates = caseDAO.getRoutingCandidates(key.sampleId(), key.sampleTypeId(),
+                key.testSectionId(), key.collectedInSetsTestId(), sampleItem.getId());
+        MicroCase microCase;
+        if (candidates.isEmpty()) {
+            microCase = new MicroCase();
+            microCase.setSampleId(key.sampleId());
+            microCase.setSampleTypeId(sampleItem.getTypeOfSampleId());
+            microCase.setTestSectionId(key.testSectionId());
+            microCase.setCreatedAt(now());
+            microCase.setCreatedBy(performedBy);
+            microCase.setSysUserId(performedBy);
+            caseDAO.insert(microCase);
+            recordActivity(microCase.getId(), MicroCaseActivityType.CASE_CREATED, performedBy, "Case created", null);
+        } else {
+            microCase = candidates.get(0);
+            if (microCase.getClosedAt() != null || "FINAL_RELEASED".equals(microCase.getFinalReleaseState())) {
+                throw new IllegalStateException("A finalized case requires an amendment before adding tests");
+            }
         }
-
-        MicroCase existing = caseDAO.getBySampleItemAndWorkflow(sampleItemId, workflowType.name());
-        if (existing != null) {
-            return existing;
+        if (specimenDAO.getByCaseAndSampleItem(microCase.getId(), sampleItem.getId()) == null) {
+            MicroCaseSpecimen member = new MicroCaseSpecimen();
+            member.setCaseId(microCase.getId());
+            member.setSampleItemId(sampleItem.getId());
+            member.setCreatedAt(now());
+            member.setCreatedBy(performedBy);
+            member.setSysUserId(performedBy);
+            specimenDAO.insert(member);
+            recordActivity(microCase.getId(), MicroCaseActivityType.SPECIMEN_ADDED, performedBy, "Sample added to case",
+                    "{\"sampleItemId\":\"" + sampleItem.getId() + "\"}");
         }
-
-        MicroCase microCase = new MicroCase();
-        microCase.setSampleItemId(sampleItemId);
-        microCase.setWorkflowType(workflowType.name());
-        microCase.setCultureMethodId(cultureMethodId);
-        microCase.setStage(MicroCaseStage.RECEIVED.name());
-        microCase.setCreatedAt(now());
-        microCase.setCreatedBy(performedBy);
-        caseDAO.insert(microCase);
-        recordActivity(microCase.getId(), MicroCaseActivityType.CASE_CREATED, performedBy, "Case created", null);
         return microCase;
     }
 
@@ -98,11 +117,14 @@ public class MicroCaseServiceImpl implements MicroCaseService {
 
     @Override
     @Transactional(readOnly = true)
-    public MicroCase getCaseForSampleItemWorkflow(String sampleItemId, MicroWorkflowType workflowType) {
-        if (workflowType == null) {
-            return null;
-        }
-        return caseDAO.getBySampleItemAndWorkflow(sampleItemId, workflowType.name());
+    public List<MicroCaseSpecimen> getSpecimens(String caseId) {
+        return specimenDAO.getByCaseId(caseId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getSpecimenIds(String caseId) {
+        return getSpecimens(caseId).stream().map(MicroCaseSpecimen::getSampleItemId).toList();
     }
 
     @Override
@@ -119,7 +141,9 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             return null;
         }
         MicroCaseDetailForm form = toDetailForm(microCase);
-        compileSpecimenContext(form, microCase.getSampleItemId());
+        for (MicroCaseSpecimen member : getSpecimens(caseId)) {
+            compileSpecimenContext(form, member);
+        }
         Map<String, String> userDisplayById = new HashMap<>();
         for (MicroCaseActivity activity : activityDAO.getByCaseId(caseId)) {
             MicroCaseActivityForm activityForm = toActivityForm(activity, userDisplayById);
@@ -134,9 +158,7 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         for (MicroIsolate isolate : isolates) {
             form.isolates.add(toIsolateForm(isolate));
         }
-        form.workflowChangeRequiresConfirmation = !MicroCaseStage.RECEIVED.name().equals(microCase.getStage())
-                || !isolates.isEmpty();
-        for (MicroCase sibling : caseDAO.getBySampleItem(microCase.getSampleItemId())) {
+        for (MicroCase sibling : caseDAO.getByOrder(microCase.getSampleId())) {
             if (!microCase.getId().equals(sibling.getId())) {
                 form.siblingCases.add(toLookupForm(sibling));
             }
@@ -148,11 +170,8 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         return form;
     }
 
-    private void compileSpecimenContext(MicroCaseDetailForm form, String sampleItemId) {
-        if (sampleItemId == null) {
-            return;
-        }
-        SampleItem sampleItem = sampleItemService.getData(sampleItemId);
+    private void compileSpecimenContext(MicroCaseDetailForm form, MicroCaseSpecimen member) {
+        SampleItem sampleItem = sampleItemService.getData(member.getSampleItemId());
         if (sampleItem == null) {
             return;
         }
@@ -170,12 +189,23 @@ public class MicroCaseServiceImpl implements MicroCaseService {
             }
         }
         if (sampleItem.getTypeOfSample() != null) {
-            form.specimenType = sampleItem.getTypeOfSample().getDescription();
+            form.specimenType = form.specimenType == null ? sampleItem.getTypeOfSample().getDescription()
+                    : form.specimenType + ", " + sampleItem.getTypeOfSample().getDescription();
         }
+        MicroCaseSpecimenForm specimen = new MicroCaseSpecimenForm();
+        specimen.id = member.getId();
+        specimen.sampleItemId = sampleItem.getId();
+        specimen.label = (sample == null ? "" : sample.getAccessionNumber()) + "-" + sampleItem.getSortOrder();
+        specimen.sampleTypeId = sampleItem.getTypeOfSampleId();
+        specimen.specimenType = sampleItem.getTypeOfSample() == null ? null
+                : sampleItem.getTypeOfSample().getDescription();
+        specimen.bodySite = sampleItem.getSourceOther();
+        specimen.collectionDate = sampleItem.getCollectionDate();
+        form.specimens.add(specimen);
         try {
             List<?> linkedNonconformances = nceSpecimenService
                     .getSpecimenBySampleItemId(Integer.valueOf(sampleItem.getId()));
-            form.nonconformanceCount = linkedNonconformances == null ? 0 : linkedNonconformances.size();
+            form.nonconformanceCount += linkedNonconformances == null ? 0 : linkedNonconformances.size();
         } catch (NumberFormatException ignored) {
             form.nonconformanceCount = 0;
         }
@@ -206,11 +236,12 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     private MicroCaseDetailForm toDetailForm(MicroCase microCase) {
         MicroCaseDetailForm form = new MicroCaseDetailForm();
         form.id = microCase.getId();
-        form.sampleItemId = microCase.getSampleItemId();
-        form.workflowType = microCase.getWorkflowType();
+        form.sampleId = microCase.getSampleId();
+        form.testSectionId = microCase.getTestSectionId();
         form.stage = microCase.getStage();
         form.priority = microCase.getPriority();
-        form.cultureMethodId = microCase.getCultureMethodId();
+        form.programId = microCase.getProgramId();
+        form.migrationReviewRequired = microCase.isMigrationReviewRequired();
         form.createdAt = microCase.getCreatedAt();
         form.createdBy = microCase.getCreatedBy();
         form.closedAt = microCase.getClosedAt();
@@ -230,6 +261,7 @@ public class MicroCaseServiceImpl implements MicroCaseService {
                 userDisplayById);
         form.note = activity.getNote();
         form.structuredData = activity.getStructuredData();
+        form.resultSourceSampleItemId = activity.getResultSourceSampleItemId();
         return form;
     }
 
@@ -249,6 +281,7 @@ public class MicroCaseServiceImpl implements MicroCaseService {
         MicroIsolateForm form = new MicroIsolateForm();
         form.id = isolate.getId();
         form.caseId = isolate.getCaseId();
+        form.sourceSampleItemId = isolate.getSourceSampleItemId();
         form.isolateLabel = isolate.getIsolateLabel();
         form.organismId = isolate.getOrganismId();
         form.preliminaryOrganismText = isolate.getPreliminaryOrganismText();
@@ -265,8 +298,8 @@ public class MicroCaseServiceImpl implements MicroCaseService {
     private MicroCaseLookupForm toLookupForm(MicroCase microCase) {
         MicroCaseLookupForm form = new MicroCaseLookupForm();
         form.id = microCase.getId();
-        form.sampleItemId = microCase.getSampleItemId();
-        form.workflowType = microCase.getWorkflowType();
+        form.sampleId = microCase.getSampleId();
+        form.testSectionId = microCase.getTestSectionId();
         form.stage = microCase.getStage();
         form.priority = microCase.getPriority();
         return form;

@@ -30,10 +30,12 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
     private final MicroAstRunDAO astRunDAO;
     private final MicroIsolateDAO isolateDAO;
     private final MicroIdentificationHistoryService identificationHistoryService;
+    private final MicrobiologyCaseAccessService accessService;
 
     public MicroCaseAmendmentServiceImpl(MicroCaseDAO caseDAO, MicroCaseAmendmentDAO amendmentDAO,
             MicroCaseActivityDAO activityDAO, MicroReportVersionService reportVersionService, MicroAstRunDAO astRunDAO,
-            MicroIsolateDAO isolateDAO, MicroIdentificationHistoryService identificationHistoryService) {
+            MicroIsolateDAO isolateDAO, MicroIdentificationHistoryService identificationHistoryService,
+            MicrobiologyCaseAccessService accessService) {
         this.caseDAO = caseDAO;
         this.amendmentDAO = amendmentDAO;
         this.activityDAO = activityDAO;
@@ -41,6 +43,7 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
         this.astRunDAO = astRunDAO;
         this.isolateDAO = isolateDAO;
         this.identificationHistoryService = identificationHistoryService;
+        this.accessService = accessService;
     }
 
     @Override
@@ -48,6 +51,7 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
     public MicroCaseAmendment openAmendment(String caseId, String reason, String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
         requireReason(reason);
+        accessService.requireValidation(caseId, performedBy);
         MicroCase microCase = getCase(caseId);
         if (amendmentDAO.getOpenByCaseId(caseId) != null) {
             throw new MicroAmendmentConflictException("AMENDMENT_ALREADY_OPEN");
@@ -82,6 +86,7 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
     @Transactional
     public MicroCaseAmendment completeAmendment(String caseId, MicroReportProjectionResult projection,
             String performedBy) {
+        accessService.requireValidation(caseId, performedBy);
         MicroCase microCase = requireActiveAmendmentCase(caseId);
         MicroCaseAmendment amendment = requireOpenAmendment(caseId);
         reportVersionService.recordAmendedFinal(amendment, projection, performedBy);
@@ -96,6 +101,7 @@ public class MicroCaseAmendmentServiceImpl implements MicroCaseAmendmentService 
     @Transactional
     public MicroCaseAmendment cancelAmendment(String caseId, String reason, String performedBy) {
         requireReason(reason);
+        accessService.requireValidation(caseId, performedBy);
         MicroCase microCase = requireActiveAmendmentCase(caseId);
         MicroCaseAmendment amendment = requireOpenAmendment(caseId);
         identificationHistoryService.revertAmendment(amendment.getId(), reason.trim(), performedBy);

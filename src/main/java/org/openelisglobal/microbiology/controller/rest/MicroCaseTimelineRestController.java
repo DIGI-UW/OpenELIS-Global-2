@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases/{caseId}")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
+@PreAuthorize("isAuthenticated()")
 public class MicroCaseTimelineRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseTimelineService timelineService;

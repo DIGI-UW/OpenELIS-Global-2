@@ -3,9 +3,11 @@ package org.openelisglobal.microbiology.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -60,6 +62,8 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 /**
  * A run started with an explicit standard interprets readings against that
@@ -118,14 +122,17 @@ public class MicroAstServiceTest {
     @Mock
     private SystemUserService systemUserService;
 
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
     private MicroAstService service;
 
     @Before
     public void setUp() {
         service = new MicroAstServiceImpl(runDAO, readingDAO, isolateDAO, caseDAO, activityDAO, breakpointService,
                 interpretationService, amendmentDAO, reagentLotService, organismDAO, sampleItemService, panelDAO,
-                overrideEventDAO, systemUserService, panelAntibioticDAO, runAntibioticDAO, antibioticDAO, "CLSI",
-                "2026");
+                overrideEventDAO, systemUserService, panelAntibioticDAO, runAntibioticDAO, antibioticDAO, accessService,
+                "CLSI", "2026");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(mutableCase()));
         MicroOrganism organism = new MicroOrganism();
         organism.setId("org-1");
@@ -139,6 +146,136 @@ public class MicroAstServiceTest {
         MicroBreakpointStandard standard = standard("eucast-std", "EUCAST", "2025");
         when(breakpointService.getStandard("eucast-std")).thenReturn(standard);
         when(breakpointService.getActiveStandards()).thenReturn(List.of(standard));
+    }
+
+    @Test
+    public void startingARunRequiresCaseUnitResultsBeforeAnyClinicalWrite() {
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        denyResults(() -> service.startRun("iso-1", "panel-1", "eucast-std", "7"));
+    }
+
+    @Test
+    public void repeatSetupRequiresCaseUnitResults() {
+        permissionRun(MicroAstRunStatus.REVIEWED);
+        denyResults(() -> service.startRepeatRun("run-1", MicroAstAttemptType.REPEAT, "Repeat requested",
+                MicroAstMethod.MIC, "7"));
+    }
+
+    @Test
+    public void readingEntryRequiresCaseUnitResults() {
+        permissionRun(MicroAstRunStatus.IN_PROGRESS);
+        denyResults(() -> service.recordReading("run-1", "abx-1", MicroAstMethod.MIC, new BigDecimal("4"), "7"));
+    }
+
+    @Test
+    public void interpretationOverrideRequiresCaseUnitValidation() {
+        permissionReading();
+        denyValidation(
+                () -> service.overrideReading("reading-1", MicroAstInterpretation.RESISTANT, "Expert correction", "7"));
+    }
+
+    @Test
+    public void overrideReversionRequiresCaseUnitValidation() {
+        permissionReading();
+        denyValidation(() -> service.revertOverride("reading-1", "Expert correction cancelled", "7"));
+    }
+
+    @Test
+    public void expertReviewRequiresCaseUnitValidation() {
+        permissionRun(MicroAstRunStatus.IN_PROGRESS);
+        denyValidation(() -> service.reviewRun("run-1", "7"));
+    }
+
+    @Test
+    public void instrumentResultAcceptanceRequiresCaseUnitResults() {
+        permissionRun(MicroAstRunStatus.AWAITING_RESULTS);
+        denyResults(() -> service.applyAnalyzerResults(permissionBatch(), "7"));
+    }
+
+    @Test
+    public void duplicateInstrumentResultDoesNotBypassCaseUnitAuthorization() {
+        permissionRun(MicroAstRunStatus.RESULTS_IN).setSourceEventId("event-1");
+        denyResults(() -> service.applyAnalyzerResults(permissionBatch(), "7"));
+    }
+
+    private MicroAstAnalyzerResultBatch permissionBatch() {
+        return new MicroAstAnalyzerResultBatch("run-1", "event-1", "7", "card-42", null, "org-1", "Escherichia coli",
+                new BigDecimal("99.5"), List.of(), "qc-1", true, new Timestamp(1000), new Timestamp(2000), List.of(),
+                List.of(new MicroAstAnalyzerReading("abx-1", new BigDecimal("4"), "ug/mL", "SUSCEPTIBLE", "r-1")));
+    }
+
+    @Test
+    public void instrumentQcEventRequiresCaseUnitResults() {
+        permissionRun(MicroAstRunStatus.AWAITING_RESULTS);
+        denyResults(() -> service.recordAnalyzerQcFailure("run-1", "qc-17", List.of("CONTROL_OUT_OF_RANGE"),
+                "event-qc-1", "7"));
+    }
+
+    @Test
+    public void expertFlagAcknowledgementRequiresCaseUnitValidation() {
+        permissionRun(MicroAstRunStatus.RESULTS_IN);
+        denyValidation(() -> service.acknowledgeAnalyzerFlags("run-1", "Expert flags checked", "7"));
+    }
+
+    @Test
+    public void instrumentQcOverrideRequiresCaseUnitValidation() {
+        permissionRun(MicroAstRunStatus.QC_FAILED);
+        denyValidation(() -> service.overrideQcFailure("run-1", "Control failure reviewed", "7"));
+    }
+
+    @Test
+    public void invalidationAndRepeatRequiresCaseUnitResults() {
+        permissionRun(MicroAstRunStatus.QC_FAILED);
+        denyResults(() -> service.invalidateAndRepeat("run-1", "Repeat after control failure", "card-43", "7"));
+    }
+
+    @Test
+    public void reportingSelectionRequiresCaseUnitResults() {
+        permissionRun(MicroAstRunStatus.REVIEWED);
+        denyResults(() -> service.selectReportableRun("run-1", "7"));
+    }
+
+    private MicroAstRun permissionRun(MicroAstRunStatus status) {
+        MicroAstRun run = awaitingAnalyzerRun();
+        run.setStatus(status.name());
+        when(runDAO.get("run-1")).thenReturn(Optional.of(run));
+        when(isolateDAO.get("iso-1")).thenReturn(Optional.of(identifiedIsolate()));
+        return run;
+    }
+
+    private void permissionReading() {
+        permissionRun(MicroAstRunStatus.IN_PROGRESS);
+        MicroAstReading reading = new MicroAstReading();
+        reading.setId("reading-1");
+        reading.setAstRunId("run-1");
+        reading.setInterpretation(MicroAstInterpretation.SUSCEPTIBLE.name());
+        reading.setOverrideInterpretation(MicroAstInterpretation.RESISTANT.name());
+        when(readingDAO.get("reading-1")).thenReturn(Optional.of(reading));
+    }
+
+    private void denyResults(Runnable operation) {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(accessService).requireResults("case-1", "7");
+        assertForbiddenWithoutWrites(operation);
+        verify(accessService).requireResults("case-1", "7");
+        verify(accessService, never()).requireValidation(any(), any());
+    }
+
+    private void denyValidation(Runnable operation) {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(accessService).requireValidation("case-1", "7");
+        assertForbiddenWithoutWrites(operation);
+        verify(accessService).requireValidation("case-1", "7");
+        verify(accessService, never()).requireResults(any(), any());
+    }
+
+    private void assertForbiddenWithoutWrites(Runnable operation) {
+        assertEquals(403, assertThrows(ResponseStatusException.class, operation::run).getStatusCode().value());
+        verify(runDAO, never()).insert(any());
+        verify(runDAO, never()).update(any());
+        verify(readingDAO, never()).insert(any());
+        verify(readingDAO, never()).update(any());
+        verify(overrideEventDAO, never()).insert(any());
+        verify(activityDAO, never()).insert(any());
+        verify(reagentLotService, never()).recordSelections(any(), any(), any(), any(), any());
     }
 
     @Test
@@ -597,7 +734,6 @@ public class MicroAstServiceTest {
         organism.setOrganismGroup("Enterobacterales");
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
         MicroCase microCase = mutableCase();
-        microCase.setSampleItemId("item-1");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         SampleItem sampleItem = new SampleItem();
         TypeOfSample specimenType = new TypeOfSample();
@@ -826,7 +962,6 @@ public class MicroAstServiceTest {
         organism.setOrganismGroup("Enterobacterales");
         when(organismDAO.get("org-1")).thenReturn(Optional.of(organism));
         MicroCase microCase = mutableCase();
-        microCase.setSampleItemId("item-1");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         SampleItem sampleItem = new SampleItem();
         TypeOfSample specimenType = new TypeOfSample();
@@ -960,6 +1095,7 @@ public class MicroAstServiceTest {
         MicroIsolate isolate = new MicroIsolate();
         isolate.setId("iso-1");
         isolate.setCaseId("case-1");
+        isolate.setSourceSampleItemId("item-1");
         return isolate;
     }
 

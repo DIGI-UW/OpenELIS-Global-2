@@ -7,16 +7,19 @@ import java.util.List;
 public class MicroCaseDetailForm {
 
     public String id;
-    public String sampleItemId;
+    public String sampleId;
+    public String testSectionId;
+    public String programId;
+    public boolean migrationReviewRequired;
+    public boolean canEnterResults;
+    public boolean canValidateResults;
     public String patientId;
     public String patientName;
     public String accessionNumber;
     public String specimenType;
     public String requestingLocation;
-    public String workflowType;
     public String stage;
     public String priority;
-    public String cultureMethodId;
     public Timestamp createdAt;
     public String createdBy;
     public Timestamp closedAt;
@@ -25,7 +28,7 @@ public class MicroCaseDetailForm {
     public String lastActivityBy;
     public Timestamp lastActivityAt;
     public int nonconformanceCount;
-    public boolean workflowChangeRequiresConfirmation;
+    public List<MicroCaseSpecimenForm> specimens = new ArrayList<>();
     public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();
     public List<MicroIsolateForm> isolates = new ArrayList<>();

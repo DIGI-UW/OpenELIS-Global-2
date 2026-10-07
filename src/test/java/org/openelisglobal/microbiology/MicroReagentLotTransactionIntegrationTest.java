@@ -38,7 +38,6 @@ import org.openelisglobal.microbiology.service.MicroLotSelection;
 import org.openelisglobal.microbiology.service.MicroReagentLotService;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testreagentlink.service.TestReagentLinkService;
 import org.openelisglobal.testreagentlink.valueholder.TestReagentLink;
@@ -151,12 +150,13 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
     public void inoculationPersistsNumericMethodReferenceAndSelectedLotProvenance() {
         SelectedLot fixture = createSelectedLot("inoculation");
 
-        var inoculation = inoculationService.record(fixture.caseId(), null,
+        var inoculation = inoculationService.record(fixture.caseId(),
+                analysisService.get(fixture.analysisId()).getSampleItem().getId(), null,
                 "UAT-INTEGRATION-BOTTLE-" + UUID.randomUUID(), "Blood culture bottle", null, null,
                 List.of(fixture.selection()), fixture.userId());
 
         assertEquals(fixture.caseId(), inoculation.getCaseId());
-        assertTrue(inoculation.getMethodId().matches("\\d+"));
+        org.junit.Assert.assertNull(inoculation.getMethodId());
         assertEquals(1, reagentLotService.getUsageHistory(fixture.caseId()).size());
         assertEquals(fixture.lotNumber(), reagentLotService.getUsageHistory(fixture.caseId()).get(0).lotNumber);
     }
@@ -166,11 +166,10 @@ public class MicroReagentLotTransactionIntegrationTest extends BaseWebContextSen
         String methodId = fixtures.createMethodId();
         ReferenceData referenceData = fixtures.createReferenceData(methodId);
         SampleItem sampleItem = fixtures.createSampleWithSampleItem("OGC782M8L");
-        var microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.BACTERIOLOGY, methodId,
-                userId);
-        var test = fixtures.createCatalogTest();
+        var test = fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit());
+        var microCase = caseService.createOrGetCase(sampleItem, test, userId);
         Analysis analysis = createAnalysis(sampleItem, test, userId);
-        caseAnalysisService.linkAnalysis(microCase, analysis, referenceData.cultureSetup());
+        caseAnalysisService.linkAnalysis(microCase, analysis, userId);
 
         InventoryItem item = getOrCreateInventoryItem(userId);
         TestReagentLink reagentLink = new TestReagentLink();

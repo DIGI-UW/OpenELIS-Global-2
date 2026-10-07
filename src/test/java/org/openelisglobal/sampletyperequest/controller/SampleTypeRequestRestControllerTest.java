@@ -138,7 +138,7 @@ public class SampleTypeRequestRestControllerTest {
     }
 
     @Test
-    public void getPendingRequests_includesWorkflowAndMethodsNeededToRestoreSelection() {
+    public void getPendingRequests_includesCaseEligibilityAndMethodsNeededToRestoreSelection() {
         SampleTypeRequest pending = buildRequest(11, "123", SampleTypeRequest.Status.REQUESTED);
         pending.setRequestedTests("42");
         org.openelisglobal.test.valueholder.Test cultureTest = org.mockito.Mockito
@@ -146,7 +146,9 @@ public class SampleTypeRequestRestControllerTest {
         when(cultureTest.getId()).thenReturn("42");
         when(cultureTest.getLocalizedName()).thenReturn("Blood culture");
         when(cultureTest.getDescription()).thenReturn("Blood culture");
-        when(cultureTest.getCultureWorkflowType()).thenReturn("BACTERIOLOGY");
+        when(cultureTest.isOpensMicrobiologyCase()).thenReturn(true);
+        when(cultureTest.getMicrobiologyCaseRole()).thenReturn("CULTURE");
+        when(cultureTest.isCollectedInSets()).thenReturn(true);
         TestMethodDto method = new TestMethodDto();
         method.methodId = "7";
         method.methodName = "Blood Culture Standard";
@@ -157,7 +159,9 @@ public class SampleTypeRequestRestControllerTest {
 
         SampleTypeRequestDTO dto = controller.getPendingRequests("123").getBody().get(0);
 
-        assertEquals("BACTERIOLOGY", dto.getRequestedTestDetails().get(0).getCultureWorkflowType());
+        org.junit.Assert.assertTrue(dto.getRequestedTestDetails().get(0).isOpensMicrobiologyCase());
+        assertEquals("CULTURE", dto.getRequestedTestDetails().get(0).getMicrobiologyCaseRole());
+        org.junit.Assert.assertTrue(dto.getRequestedTestDetails().get(0).isCollectedInSets());
         assertSame(method, dto.getRequestedTestDetails().get(0).getMethods().get(0));
     }
 

@@ -7,6 +7,7 @@ import java.util.Map;
 import java.util.Set;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
@@ -33,21 +34,25 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
         ALLOWED_TRANSITIONS.put(MicroCaseStage.IDENTIFICATION, EnumSet.of(MicroCaseStage.AST_READY));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.AST_READY, EnumSet.of(MicroCaseStage.AST_IN_PROGRESS));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.AST_IN_PROGRESS, EnumSet.of(MicroCaseStage.REVIEW_READY));
-        ALLOWED_TRANSITIONS.put(MicroCaseStage.REVIEW_READY,
-                EnumSet.of(MicroCaseStage.PRELIM_RELEASED, MicroCaseStage.FINAL_RELEASED));
-        ALLOWED_TRANSITIONS.put(MicroCaseStage.PRELIM_RELEASED, EnumSet.of(MicroCaseStage.FINAL_RELEASED));
+        ALLOWED_TRANSITIONS.put(MicroCaseStage.REVIEW_READY, EnumSet.noneOf(MicroCaseStage.class));
+        ALLOWED_TRANSITIONS.put(MicroCaseStage.PRELIM_RELEASED, EnumSet.noneOf(MicroCaseStage.class));
         ALLOWED_TRANSITIONS.put(MicroCaseStage.FINAL_RELEASED, EnumSet.noneOf(MicroCaseStage.class));
     }
 
     private final MicroCaseDAO caseDAO;
     private final MicroCaseActivityDAO activityDAO;
     private final MicroReagentLotService reagentLotService;
+    private final MicrobiologyCaseAccessService accessService;
+    private final MicroCaseSpecimenDAO specimenDAO;
 
     public MicroCaseStateServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
-            MicroReagentLotService reagentLotService) {
+            MicroReagentLotService reagentLotService, MicrobiologyCaseAccessService accessService,
+            MicroCaseSpecimenDAO specimenDAO) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.reagentLotService = reagentLotService;
+        this.accessService = accessService;
+        this.specimenDAO = specimenDAO;
     }
 
     @Override
@@ -60,10 +65,18 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
     @Transactional
     public MicroCase advanceStage(String caseId, MicroCaseStage nextStage, String performedBy, String note,
             List<MicroLotSelection> lotSelections) {
+        return advanceStage(caseId, nextStage, performedBy, note, lotSelections, null);
+    }
+
+    @Override
+    @Transactional
+    public MicroCase advanceStage(String caseId, MicroCaseStage nextStage, String performedBy, String note,
+            List<MicroLotSelection> lotSelections, String sourceSampleItemId) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
         if (nextStage == null) {
             throw new IllegalArgumentException("nextStage is required");
         }
+        accessService.requireResults(caseId, performedBy);
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
         MicroCaseStage currentStage = MicroCaseStage.valueOf(microCase.getStage());
@@ -73,17 +86,31 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
         if (lotSelections != null && !lotSelections.isEmpty() && !MicroCaseStage.SETUP_RECORDED.equals(nextStage)) {
             throw new IllegalArgumentException("MICROBIOLOGY_LOTS_ONLY_ALLOWED_DURING_SETUP");
         }
+        boolean observation = EnumSet
+                .of(MicroCaseStage.POSITIVE_SIGNAL, MicroCaseStage.GROWTH_DETECTED, MicroCaseStage.NO_GROWTH_READY)
+                .contains(nextStage);
+        if (observation) {
+            if (sourceSampleItemId == null || sourceSampleItemId.isBlank()) {
+                throw new IllegalArgumentException("MICROBIOLOGY_CULTURE_SOURCE_SAMPLE_REQUIRED");
+            }
+            if (specimenDAO.getByCaseAndSampleItem(caseId, sourceSampleItemId) == null) {
+                throw new IllegalArgumentException("MICROBIOLOGY_CULTURE_SOURCE_NOT_CASE_MEMBER");
+            }
+        } else if (sourceSampleItemId != null) {
+            throw new IllegalArgumentException("MICROBIOLOGY_CULTURE_SOURCE_ONLY_ALLOWED_FOR_OBSERVATION");
+        }
         microCase.setStage(nextStage.name());
         MicroCase updated = caseDAO.update(microCase);
         MicroCaseActivity activity = recordActivity(caseId, MicroCaseActivityType.STAGE_CHANGED, performedBy, note,
-                "{\"from\":\"" + currentStage.name() + "\",\"to\":\"" + nextStage.name() + "\"}");
+                "{\"from\":\"" + currentStage.name() + "\",\"to\":\"" + nextStage.name() + "\"}",
+                observation ? sourceSampleItemId : null);
         reagentLotService.recordSelections(caseId, MicroInventoryUsageContext.CULTURE_SETUP, activity.getId(),
                 lotSelections, performedBy);
         return updated;
     }
 
     private MicroCaseActivity recordActivity(String caseId, MicroCaseActivityType activityType, String performedBy,
-            String note, String structuredData) {
+            String note, String structuredData, String sourceSampleItemId) {
         MicroCaseActivity activity = new MicroCaseActivity();
         activity.setCaseId(caseId);
         activity.setActivityType(activityType.name());
@@ -91,6 +118,7 @@ public class MicroCaseStateServiceImpl implements MicroCaseStateService {
         activity.setPerformedBy(performedBy);
         activity.setNote(note);
         activity.setStructuredData(structuredData);
+        activity.setResultSourceSampleItemId(sourceSampleItemId);
         activityDAO.insert(activity);
         return activity;
     }

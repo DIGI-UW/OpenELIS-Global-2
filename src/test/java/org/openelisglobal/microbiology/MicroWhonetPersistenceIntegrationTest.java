@@ -101,8 +101,9 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         sampleType.setSysUserId(performedBy);
         typeOfSampleService.update(sampleType);
 
-        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, "WHONET-INTEGRATION", "Gram negative rods",
-                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
+        MicroIsolate isolate = isolateService.createIsolate(scenario.caseId, scenario.sampleItemId,
+                "WHONET-INTEGRATION", "Gram negative rods", "Lactose fermenting colonies",
+                MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, performedBy);
         isolateService.updateIdentification(isolate.getId(), scenario.organismId, "Reference organism (integration)",
                 MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, MicroIsolateIdentificationStatus.CONFIRMED,
                 "MALDI_TOF", new BigDecimal("99.5"), performedBy);
@@ -114,9 +115,9 @@ public class MicroWhonetPersistenceIntegrationTest extends BaseWebContextSensiti
         MicroCase released = reportReleaseService.releaseFinal(scenario.caseId, performedBy);
 
         assertTrue(released.getClosedAt().after(new Timestamp(collectionDate.getTime() + 1_000)));
-        assertEquals(List.of(released), caseDAO.getFinalizedBacteriologyByCollectionDateRange(collectionDate,
+        assertEquals(List.of(released), caseDAO.getFinalizedForExportByCollectionDateRange("WHONET", collectionDate,
                 new Timestamp(collectionDate.getTime() + 1_000)));
-        assertFalse(caseDAO.getFinalizedBacteriologyByCollectionDateRange(
+        assertFalse(caseDAO.getFinalizedForExportByCollectionDateRange("WHONET",
                 new Timestamp(collectionDate.getTime() - 1_000), collectionDate).contains(released));
 
         LocalDate exportDate = collectionDate.toLocalDateTime().toLocalDate();

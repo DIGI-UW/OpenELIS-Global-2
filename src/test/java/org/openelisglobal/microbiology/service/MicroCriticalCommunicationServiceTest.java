@@ -61,12 +61,19 @@ public class MicroCriticalCommunicationServiceTest {
     @Mock
     private AlertService alertService;
 
+    @Mock
+    private org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO specimenDAO;
+    @Mock
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO caseAnalysisDAO;
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
     private MicroCriticalCommunicationService service;
 
     @Before
     public void setUp() {
         service = new MicroCriticalCommunicationServiceImpl(communicationDAO, caseDAO, activityDAO, isolateDAO,
-                resultService, alertService);
+                resultService, alertService, specimenDAO, caseAnalysisDAO, accessService);
     }
 
     @Test
@@ -153,10 +160,10 @@ public class MicroCriticalCommunicationServiceTest {
     }
 
     @Test
-    public void logsEverySupportedTargetAgainstTheCurrentCase() {
+    public void logsAnIsolateTargetAgainstTheCurrentCase() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
-        microCase.setSampleItemId("sample-item-1");
+        microCase.setSampleId("order-1");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         MicroIsolate isolate = new MicroIsolate();
         isolate.setId("iso-1");
@@ -203,5 +210,41 @@ public class MicroCriticalCommunicationServiceTest {
 
         assertEquals(MicroCriticalCommunicationStatus.ACKNOWLEDGED.name(), communication.getAcknowledgementStatus());
         verify(alertService, never()).acknowledgeAlert(any(Long.class), any(Integer.class));
+    }
+
+    @Test
+    public void criticalCommunicationRejectsASpecimenOutsideExplicitCaseMembership() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+
+        org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.logCommunication("case-1", MicroCriticalCommunicationTargetType.SAMPLE_ITEM,
+                        "item-from-another-case", "Provider", null, "PHONE", "Call", true, "1"));
+
+        verify(communicationDAO, never()).insert(any(MicroCriticalCommunication.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
+        org.mockito.Mockito.verifyZeroInteractions(alertService);
+    }
+
+    @Test
+    public void criticalCommunicationRejectsAResultWhoseAnalysisBelongsToAnotherCase() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        org.openelisglobal.analysis.valueholder.Analysis analysis = new org.openelisglobal.analysis.valueholder.Analysis();
+        analysis.setId("analysis-other");
+        org.openelisglobal.result.valueholder.Result result = new org.openelisglobal.result.valueholder.Result();
+        result.setId("result-other");
+        result.setAnalysis(analysis);
+        when(resultService.getResultById("result-other")).thenReturn(result);
+
+        org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.logCommunication("case-1", MicroCriticalCommunicationTargetType.RESULT, "result-other",
+                        "Provider", null, "PHONE", "Call", true, "1"));
+
+        verify(communicationDAO, never()).insert(any(MicroCriticalCommunication.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
+        org.mockito.Mockito.verifyZeroInteractions(alertService);
     }
 }

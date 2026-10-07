@@ -30,6 +30,7 @@ public class MicroReportReleaseRestController extends MicrobiologyRestController
     }
 
     @GetMapping("/preview")
+    @PreAuthorize("isAuthenticated()")
     public ResponseEntity<MicroReportProjectionForm> preview(@PathVariable String caseId) {
         return ResponseEntity.ok(toProjectionForm(projectionService.preview(caseId)));
     }

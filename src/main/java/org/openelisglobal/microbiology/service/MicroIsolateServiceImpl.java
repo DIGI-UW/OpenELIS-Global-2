@@ -5,6 +5,7 @@ import java.util.List;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseAmendmentDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
@@ -27,28 +28,39 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
     private final MicroCaseActivityDAO activityDAO;
     private final MicroCaseAmendmentDAO amendmentDAO;
     private final MicroIdentificationHistoryService identificationHistoryService;
+    private final MicroCaseSpecimenDAO specimenDAO;
+    private final MicrobiologyCaseAccessService accessService;
 
     public MicroIsolateServiceImpl(MicroCaseDAO caseDAO, MicroIsolateDAO isolateDAO, MicroCaseActivityDAO activityDAO,
-            MicroCaseAmendmentDAO amendmentDAO, MicroIdentificationHistoryService identificationHistoryService) {
+            MicroCaseAmendmentDAO amendmentDAO, MicroIdentificationHistoryService identificationHistoryService,
+            MicroCaseSpecimenDAO specimenDAO, MicrobiologyCaseAccessService accessService) {
         this.caseDAO = caseDAO;
         this.isolateDAO = isolateDAO;
         this.activityDAO = activityDAO;
         this.amendmentDAO = amendmentDAO;
         this.identificationHistoryService = identificationHistoryService;
+        this.specimenDAO = specimenDAO;
+        this.accessService = accessService;
     }
 
     @Override
     @Transactional
-    public MicroIsolate createIsolate(String caseId, String isolateLabel, String gramStain, String colonyMorphology,
-            MicroIsolateSignificance significance, String performedBy) {
+    public MicroIsolate createIsolate(String caseId, String sourceSampleItemId, String isolateLabel, String gramStain,
+            String colonyMorphology, MicroIsolateSignificance significance, String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
+        accessService.requireResults(caseId, performedBy);
+        MicroCaseServiceImpl.requireText(sourceSampleItemId, "sourceSampleItemId");
         MicroCaseServiceImpl.requireText(isolateLabel, "isolateLabel");
         MicroCaseServiceImpl.requireText(gramStain, "gramStain");
         MicroCase microCase = caseDAO.get(caseId).orElseThrow(() -> new IllegalArgumentException("Case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
+        if (specimenDAO.getByCaseAndSampleItem(caseId, sourceSampleItemId) == null) {
+            throw new IllegalArgumentException("The isolate source must be a member specimen of this case");
+        }
 
         MicroIsolate isolate = new MicroIsolate();
         isolate.setCaseId(caseId);
+        isolate.setSourceSampleItemId(sourceSampleItemId);
         isolate.setAmendmentId(activeAmendmentId(microCase));
         isolate.setIsolateLabel(isolateLabel);
         isolate.setOrganismId(null);
@@ -94,8 +106,21 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         if (!MicroIsolateIdentificationStatus.CONFIRMED.equals(identificationStatus)) {
             throw new IllegalArgumentException("identificationStatus must be CONFIRMED");
         }
-        MicroIsolate isolate = isolateDAO.get(isolateId)
+        MicroIsolate observed = isolateDAO.get(isolateId)
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        MicroCase observedCase = caseDAO.get(observed.getCaseId())
+                .orElseThrow(() -> new IllegalArgumentException("Case not found"));
+        caseDAO.lockOrder(observedCase.getSampleId());
+        caseDAO.getForUpdate(observedCase.getId());
+        // Another transaction may have established the identity while this
+        // request waited. Choose the write role from the refreshed isolate.
+        MicroIsolate isolate = isolateDAO.getForUpdate(isolateId);
+        if (MicroIsolateIdentificationStatus.CONFIRMED.name().equals(isolate.getIdentificationStatus())
+                || optionalId(isolate.getOrganismId()) != null) {
+            accessService.requireValidation(isolate.getCaseId(), performedBy);
+        } else {
+            accessService.requireResults(isolate.getCaseId(), performedBy);
+        }
         if (isolate.getCancelledAt() != null) {
             throw new MicroAmendmentConflictException("ISOLATE_CANCELLED");
         }
@@ -128,6 +153,7 @@ public class MicroIsolateServiceImpl implements MicroIsolateService {
         MicroIsolate snapshot = new MicroIsolate();
         snapshot.setId(isolate.getId());
         snapshot.setCaseId(isolate.getCaseId());
+        snapshot.setSourceSampleItemId(isolate.getSourceSampleItemId());
         snapshot.setIsolateLabel(isolate.getIsolateLabel());
         snapshot.setOrganismId(isolate.getOrganismId());
         snapshot.setPreliminaryOrganismText(isolate.getPreliminaryOrganismText());

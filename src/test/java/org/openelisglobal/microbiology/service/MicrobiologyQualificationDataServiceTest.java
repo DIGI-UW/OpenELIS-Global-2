@@ -29,7 +29,6 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroBreakpointStandard;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicrobiologyQualificationDataServiceTest {
@@ -99,7 +98,7 @@ public class MicrobiologyQualificationDataServiceTest {
         MicroAstPanel panel = new MicroAstPanel();
         panel.setId("panel-generated");
         panel.setName("Gram negative AST panel (UAT)");
-        when(referenceService.getActiveAstPanels(MicroWorkflowType.BACTERIOLOGY)).thenReturn(List.of(panel));
+        when(referenceService.getActiveAstPanels("Enterobacterales")).thenReturn(List.of(panel));
         MicroBreakpointStandard standard = new MicroBreakpointStandard();
         standard.setId("standard-generated");
         standard.setAuthority("CLSI");
@@ -111,7 +110,7 @@ public class MicrobiologyQualificationDataServiceTest {
                         invocation.getArgument(1)));
 
         AtomicInteger isolateSequence = new AtomicInteger();
-        when(isolateService.createIsolate(anyString(), anyString(), any(), anyString(), any(), anyString()))
+        when(isolateService.createIsolate(anyString(), anyString(), anyString(), any(), anyString(), any(), anyString()))
                 .thenAnswer(invocation -> isolate("isolate-generated-" + isolateSequence.incrementAndGet()));
         AtomicInteger runSequence = new AtomicInteger();
         when(astService.startRun(anyString(), anyString(), anyString(), anyString()))
@@ -128,7 +127,7 @@ public class MicrobiologyQualificationDataServiceTest {
         assertEquals(5, dataset.isolateIds().size());
         assertEquals(80, dataset.readingCount());
         assertEquals(91, dataset.timelineEventCount());
-        verify(isolateService, times(5)).createIsolate(anyString(), anyString(), any(), anyString(), any(), anyString());
+        verify(isolateService, times(5)).createIsolate(anyString(), anyString(), anyString(), any(), anyString(), any(), anyString());
         verify(astService, times(5)).startRun(anyString(), anyString(), anyString(), anyString());
         verify(astService, times(80)).recordReading(anyString(), anyString(), any(MicroAstMethod.class), any(),
                 anyString());
@@ -144,6 +143,7 @@ public class MicrobiologyQualificationDataServiceTest {
     private MicrobiologyUatScenarioForm scenario(String key) {
         MicrobiologyUatScenarioForm form = new MicrobiologyUatScenarioForm();
         form.scenarioKey = key;
+        form.sampleItemId = "sample-item-1";
         form.caseId = "case-" + key;
         return form;
     }

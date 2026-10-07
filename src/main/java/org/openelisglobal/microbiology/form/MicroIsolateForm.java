@@ -7,6 +7,7 @@ public class MicroIsolateForm {
 
     public String id;
     public String caseId;
+    public String sourceSampleItemId;
     public String isolateLabel;
     public String organismId;
     public String preliminaryOrganismText;

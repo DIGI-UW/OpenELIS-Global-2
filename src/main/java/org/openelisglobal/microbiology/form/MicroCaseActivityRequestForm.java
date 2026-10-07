@@ -8,5 +8,6 @@ import java.util.List;
 public class MicroCaseActivityRequestForm {
     public String nextStage;
     public String note;
+    public String sourceSampleItemId;
     public List<MicroLotSelectionRequestForm> lotSelections = new ArrayList<>();
 }

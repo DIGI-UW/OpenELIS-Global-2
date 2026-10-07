@@ -8,8 +8,8 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 
 public interface MicroIsolateService {
 
-    MicroIsolate createIsolate(String caseId, String isolateLabel, String gramStain, String colonyMorphology,
-            MicroIsolateSignificance significance, String performedBy);
+    MicroIsolate createIsolate(String caseId, String sourceSampleItemId, String isolateLabel, String gramStain,
+            String colonyMorphology, MicroIsolateSignificance significance, String performedBy);
 
     MicroIsolate updateIdentification(String isolateId, String organismId, String preliminaryOrganismText,
             MicroIsolateSignificance significance, MicroIsolateIdentificationStatus identificationStatus,

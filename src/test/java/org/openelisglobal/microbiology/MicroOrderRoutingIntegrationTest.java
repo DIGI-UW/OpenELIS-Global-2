@@ -1,24 +1,22 @@
 package org.openelisglobal.microbiology;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.assertNull;
 
-import java.time.LocalDate;
+import java.sql.Timestamp;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.analysis.valueholder.Analysis;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
-import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
-import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
+import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroOrderRoutingService;
-import org.openelisglobal.microbiology.valueholder.MicroCase;
-import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
+import org.openelisglobal.microbiology.valueholder.MicroCaseTestRole;
+import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,87 +25,122 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
 
     @Autowired
     private MicrobiologyTestFixtures fixtures;
-
     @Autowired
     private MicroOrderRoutingService routingService;
-
     @Autowired
     private MicroCaseService caseService;
-
     @Autowired
-    private MicroCaseOrderDetailService orderDetailService;
-
-    private String methodId;
+    private MicroCaseAnalysisService caseAnalysisService;
+    @Autowired
+    private TestService testService;
+    @Autowired
+    private MicroCaseDAO caseDAO;
+    @Autowired
+    private SampleItemService sampleItemService;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        methodId = fixtures.createMethodId();
-        fixtures.createReferenceData(methodId);
-        fixtures.createTbCultureSetup(methodId);
     }
 
     @Test
-    public void routesNonMicroBacteriologyAndSiblingWorkflowCases() {
-        SampleItem sampleItem = fixtures.createSampleWithSampleItem("OGC782M3");
-        org.openelisglobal.test.valueholder.Test nonMicroTest = fixtures.createCatalogTest();
-        org.openelisglobal.test.valueholder.Test bacteriologyTest = fixtures.createCatalogCultureTest(methodId,
-                MicroWorkflowType.BACTERIOLOGY);
-        org.openelisglobal.test.valueholder.Test tbTest = fixtures.createCatalogCultureTest(methodId,
-                MicroWorkflowType.MYCOBACTERIOLOGY_TB);
+    public void ordinaryTestsOpenNoCaseAndMicroTestsGroupByCatalogLabUnit() {
+        var item = fixtures.createSampleWithSampleItem("AMRV2GROUP");
+        var firstUnit = fixtures.createLabUnit();
+        var secondUnit = fixtures.createLabUnit();
+        var ordinary = fixtures.createAnalysis(item, fixtures.createCatalogTest());
+        var culture = fixtures.createAnalysis(item,
+                fixtures.createCatalogCultureTest(fixtures.createMethodId(), firstUnit));
+        var direct = fixtures.createAnalysis(item,
+                fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, firstUnit));
+        var otherUnit = fixtures.createAnalysis(item,
+                fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, secondUnit));
+        String actor = fixtures.defaultUserId();
 
-        routingService.routeAnalysesForSampleItem(sampleItem, List.of(analysis(nonMicroTest)),
-                fixtures.defaultUserId());
-        assertEquals(0, caseService.getSiblingCases(sampleItem.getId()).size());
-
-        routingService.routeAnalysesForSampleItem(sampleItem, List.of(analysis(bacteriologyTest), analysis(tbTest)),
-                fixtures.defaultUserId());
-
-        assertEquals(2, caseService.getSiblingCases(sampleItem.getId()).size());
-    }
-
-    @Test
-    public void persistedOrderCreatesOneCaseAndCaseInformationSurvivesResave() {
-        SampleItem persistedItem = fixtures.createSampleWithSampleItem("OGC782M3D");
-        org.openelisglobal.test.valueholder.Test cultureTest = fixtures.createCatalogCultureTest(methodId,
-                MicroWorkflowType.BACTERIOLOGY);
-        Analysis persistedAnalysis = fixtures.createAnalysis(persistedItem, cultureTest);
-        MicroCaseOrderDetailRequestForm orderDetail = new MicroCaseOrderDetailRequestForm();
-        orderDetail.cultureMethodId = methodId;
-        orderDetail.culturePurpose = "CLINICAL_DIAGNOSTIC";
-        orderDetail.patientOrigin = "EMERGENCY";
-        orderDetail.admissionDate = "2026-08-03";
-        orderDetail.numberOfSets = 2;
-        orderDetail.clinicalHistory = "Fever and hypotension";
-        orderDetail.antibioticExposure = true;
-
-        List<MicroCase> first = routingService.routeAnalysesForSampleItem(persistedItem, List.of(persistedAnalysis),
-                fixtures.defaultUserId());
-        orderDetailService.saveOrderDetail(first.get(0).getId(), orderDetail, fixtures.defaultUserId());
-        List<MicroCase> repeated = routingService.routeAnalysesForSampleItem(persistedItem, List.of(persistedAnalysis),
-                fixtures.defaultUserId());
-
+        assertEquals(0, routingService.routeAnalysesForSampleItem(item, List.of(ordinary), actor).size());
+        assertEquals(0, caseService.getSiblingCases(item.getId()).size());
+        var first = routingService.routeAnalysesForSampleItem(item, List.of(culture, direct), actor);
         assertEquals(1, first.size());
-        assertEquals(first.get(0).getId(), repeated.get(0).getId());
-        assertEquals(1, caseService.getSiblingCases(persistedItem.getId()).size());
-        MicroCaseOrderDetail persisted = orderDetailService.getOrderDetail(first.get(0).getId());
-        assertEquals(Integer.valueOf(2), persisted.getNumberOfSets());
-        assertEquals("CLINICAL_DIAGNOSTIC", persisted.getCulturePurpose());
-        assertEquals(LocalDate.of(2026, 8, 3), persisted.getAdmissionDate());
-        assertTrue(persisted.getAntibioticExposure());
-
-        MicroCaseDetailForm compiled = caseService.getCaseDetail(first.get(0).getId());
-        assertEquals("EMERGENCY", compiled.orderDetail.patientOrigin);
-        assertEquals("CLINICAL_DIAGNOSTIC", compiled.orderDetail.culturePurpose);
-        assertEquals("2026-08-03", compiled.orderDetail.admissionDate);
-        assertEquals("Fever and hypotension", compiled.orderDetail.clinicalHistory);
-        assertTrue(compiled.orderDetail.antibioticExposure);
+        assertEquals(firstUnit.getId(), first.get(0).getTestSectionId());
+        assertEquals(2, caseAnalysisService.getCaseAnalyses(first.get(0).getId()).size());
+        var second = routingService.routeAnalysesForSampleItem(item, List.of(otherUnit), actor);
+        assertEquals(secondUnit.getId(), second.get(0).getTestSectionId());
+        assertEquals(2, caseService.getSiblingCases(item.getId()).size());
     }
 
-    private Analysis analysis(org.openelisglobal.test.valueholder.Test test) {
-        Analysis analysis = new Analysis();
-        analysis.setTest(test);
-        return analysis;
+    @Test
+    public void persistedDirectOnlyTestOpensCaseWithExplicitMemberAndAnalysisOwner() {
+        var item = fixtures.createSampleWithSampleItem("AMRV2DIRECT");
+        var unit = fixtures.createLabUnit();
+        var test = fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, unit);
+        test.setAntimicrobialResistance(false);
+        testService.update(test);
+        var analysis = fixtures.createAnalysis(item, test);
+        var routed = routingService.routeAnalysesForSampleItem(item, List.of(analysis), fixtures.defaultUserId());
+
+        assertEquals(1, routed.size());
+        var microCase = routed.get(0);
+        assertEquals(item.getSample().getId(), microCase.getSampleId());
+        assertEquals(item.getTypeOfSampleId(), microCase.getSampleTypeId());
+        assertEquals(unit.getId(), microCase.getTestSectionId());
+        assertEquals(List.of(item.getId()), caseService.getSpecimenIds(microCase.getId()));
+        assertEquals(microCase.getId(), caseAnalysisService.getAnalysisLink(analysis.getId()).getCaseId());
+        assertEquals("DIRECT", caseAnalysisService.getAnalysisLink(analysis.getId()).getCaseRole());
+        assertNull(caseService.getCaseDetail(microCase.getId()).orderDetail);
+    }
+
+    @Test
+    public void addingTestsUsesActualMemberCaseBeforeAnOlderGroupMatch() {
+        var firstItem = fixtures.createSampleWithSampleItem("AMRV2MEMBER");
+        var secondItem = new SampleItem();
+        secondItem.setSample(firstItem.getSample());
+        secondItem.setTypeOfSample(firstItem.getTypeOfSample());
+        secondItem.setSortOrder("2");
+        secondItem.setStatusId(firstItem.getStatusId());
+        secondItem.setSysUserId(fixtures.defaultUserId());
+        sampleItemService.insert(secondItem);
+        var destinationUnit = fixtures.createLabUnit();
+        var originalUnit = fixtures.createLabUnit();
+        var firstAnalysis = fixtures.createAnalysis(firstItem,
+                fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, destinationUnit));
+        var secondAnalysis = fixtures.createAnalysis(secondItem,
+                fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, originalUnit));
+        var olderCase = routingService
+                .routeAnalysesForSampleItem(firstItem, List.of(firstAnalysis), fixtures.defaultUserId()).get(0);
+        var memberCase = routingService
+                .routeAnalysesForSampleItem(secondItem, List.of(secondAnalysis), fixtures.defaultUserId()).get(0);
+        // Model two separate cases now in the same unit. This is a routing
+        // regression, not acceptance evidence for the transfer operation.
+        olderCase.setCreatedAt(Timestamp.valueOf("2026-10-01 12:00:00"));
+        caseDAO.update(olderCase);
+        memberCase.setCreatedAt(Timestamp.valueOf("2026-10-02 12:00:00"));
+        memberCase.setTestSectionId(destinationUnit.getId());
+        caseDAO.update(memberCase);
+        var added = fixtures.createAnalysis(secondItem,
+                fixtures.createCatalogMicroTest(MicroCaseTestRole.DIRECT, destinationUnit));
+
+        var routed = routingService.routeAnalysesForSampleItem(secondItem, List.of(added), fixtures.defaultUserId());
+
+        assertEquals(memberCase.getId(), routed.get(0).getId());
+        assertEquals(memberCase.getId(), caseAnalysisService.getAnalysisLink(added.getId()).getCaseId());
+        assertEquals(memberCase.getId(), caseAnalysisService.getAnalysisLink(secondAnalysis.getId()).getCaseId());
+        assertEquals(olderCase.getId(), caseAnalysisService.getAnalysisLink(firstAnalysis.getId()).getCaseId());
+        assertEquals(List.of(firstItem.getId()), caseService.getSpecimenIds(olderCase.getId()));
+        assertEquals(List.of(secondItem.getId()), caseService.getSpecimenIds(memberCase.getId()));
+        assertEquals(2, caseDAO.getByOrder(firstItem.getSample().getId()).size());
+    }
+
+    @Test
+    public void caseCompletionTestKeepsItsRoleWithoutCreatingACultureProtocol() {
+        var item = fixtures.createSampleWithSampleItem("AMRV2CASE");
+        var unit = fixtures.createLabUnit();
+        var test = fixtures.createCatalogMicroTest(MicroCaseTestRole.CASE, unit);
+        var analysis = fixtures.createAnalysis(item, test);
+        var routed = routingService.routeAnalysesForSampleItem(item, List.of(analysis), fixtures.defaultUserId());
+
+        assertEquals(1, routed.size());
+        assertEquals("CASE", caseAnalysisService.getAnalysisLink(analysis.getId()).getCaseRole());
+        assertEquals(List.of(item.getId()), caseService.getSpecimenIds(routed.get(0).getId()));
     }
 }

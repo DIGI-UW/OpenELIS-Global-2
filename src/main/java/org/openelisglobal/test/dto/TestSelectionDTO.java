@@ -10,14 +10,20 @@ public class TestSelectionDTO {
     private final String id;
     private final String name;
     private final String description;
-    private final String cultureWorkflowType;
+    private final boolean opensMicrobiologyCase;
+    private final String microbiologyCaseRole;
+    private final boolean collectedInSets;
+    private final String testSectionId;
     private final List<TestMethodDto> methods;
 
     public TestSelectionDTO(Test test, List<TestMethodDto> methods) {
         this.id = test.getId();
         this.name = test.getLocalizedName();
         this.description = test.getDescription();
-        this.cultureWorkflowType = test.getCultureWorkflowType();
+        this.opensMicrobiologyCase = test.isOpensMicrobiologyCase();
+        this.microbiologyCaseRole = test.getMicrobiologyCaseRole();
+        this.collectedInSets = test.isCollectedInSets();
+        this.testSectionId = test.getTestSection() == null ? null : test.getTestSection().getId();
         this.methods = methods;
     }
 
@@ -33,8 +39,20 @@ public class TestSelectionDTO {
         return description;
     }
 
-    public String getCultureWorkflowType() {
-        return cultureWorkflowType;
+    public boolean isOpensMicrobiologyCase() {
+        return opensMicrobiologyCase;
+    }
+
+    public String getMicrobiologyCaseRole() {
+        return microbiologyCaseRole;
+    }
+
+    public boolean isCollectedInSets() {
+        return collectedInSets;
+    }
+
+    public String getTestSectionId() {
+        return testSectionId;
     }
 
     public List<TestMethodDto> getMethods() {

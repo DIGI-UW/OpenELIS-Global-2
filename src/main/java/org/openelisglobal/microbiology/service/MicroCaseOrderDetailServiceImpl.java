@@ -32,21 +32,24 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     private final MicroCaseActivityDAO activityDAO;
     private final MicrobiologyReferenceService referenceService;
     private final ObjectMapper objectMapper;
+    private final MicrobiologyCaseAccessService accessService;
 
     @Autowired
     public MicroCaseOrderDetailServiceImpl(MicroCaseOrderDetailDAO orderDetailDAO, MicroCaseDAO caseDAO,
-            MicroCaseActivityDAO activityDAO, MicrobiologyReferenceService referenceService) {
-        this(orderDetailDAO, caseDAO, activityDAO, referenceService, new ObjectMapper());
+            MicroCaseActivityDAO activityDAO, MicrobiologyReferenceService referenceService,
+            MicrobiologyCaseAccessService accessService) {
+        this(orderDetailDAO, caseDAO, activityDAO, referenceService, new ObjectMapper(), accessService);
     }
 
     MicroCaseOrderDetailServiceImpl(MicroCaseOrderDetailDAO orderDetailDAO, MicroCaseDAO caseDAO,
-            MicroCaseActivityDAO activityDAO, MicrobiologyReferenceService referenceService,
-            ObjectMapper objectMapper) {
+            MicroCaseActivityDAO activityDAO, MicrobiologyReferenceService referenceService, ObjectMapper objectMapper,
+            MicrobiologyCaseAccessService accessService) {
         this.orderDetailDAO = orderDetailDAO;
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.referenceService = referenceService;
         this.objectMapper = objectMapper;
+        this.accessService = accessService;
     }
 
     @Override
@@ -54,6 +57,7 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
     public MicroCaseOrderDetail saveOrderDetail(String caseId, MicroCaseOrderDetailRequestForm request,
             String performedBy) {
         MicroCaseServiceImpl.requireText(caseId, "caseId");
+        accessService.requireResults(caseId, performedBy);
         var microCase = caseDAO.get(caseId)
                 .orElseThrow(() -> new IllegalArgumentException("Microbiology case not found"));
         MicroCaseMutationGuard.requireMutable(microCase);
@@ -71,7 +75,6 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
             detail.setUpdatedBy(performedBy);
         }
         apply(detail, request, false);
-        detail.setCultureMethodId(microCase.getCultureMethodId());
 
         if (isNew) {
             orderDetailDAO.insert(detail);
@@ -96,7 +99,6 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
                 && !referenceService.isActivePatientOriginCode(patientOrigin)) {
             throw new IllegalArgumentException("Unknown or inactive patient origin code");
         }
-        detail.setCultureMethodId(request.cultureMethodId);
         detail.setPatientOrigin(patientOrigin);
         String culturePurpose = normalizeCulturePurpose(request.culturePurpose, requireCulturePurpose);
         if (culturePurpose == null && detail.getCulturePurpose() != null) {

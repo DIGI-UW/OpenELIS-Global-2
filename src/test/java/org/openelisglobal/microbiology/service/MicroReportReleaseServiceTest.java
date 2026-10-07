@@ -50,12 +50,15 @@ public class MicroReportReleaseServiceTest {
     @Mock
     private MicroCaseAmendmentService amendmentService;
 
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
     private MicroReportReleaseService service;
 
     @Before
     public void setUp() {
         service = new MicroReportReleaseServiceImpl(caseDAO, activityDAO, readinessService, communicationDAO,
-                reportProjectionService, reportVersionService, amendmentService);
+                reportProjectionService, reportVersionService, amendmentService, accessService);
     }
 
     @Test
@@ -195,4 +198,29 @@ public class MicroReportReleaseServiceTest {
         verify(activityDAO, never()).insert(any());
     }
 
+    @Test
+    public void finalReleaseRequiresValidationInTheCaseUnitBeforeAnyProjection() {
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("unit rights"))
+                .when(accessService).requireValidation("case-1", "17");
+
+        org.junit.Assert.assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.releaseFinal("case-1", "17"));
+
+        verify(readinessService, never()).getReadiness(anyString());
+        verify(reportProjectionService, never()).releaseFinal(anyString(), anyString());
+        verify(reportVersionService, never()).recordInitialFinal(anyString(), any(), anyString());
+        verify(caseDAO, never()).update(any(MicroCase.class));
+    }
+
+    @Test
+    public void partialReleaseRequiresResultsInTheCaseUnitBeforeAnyProjection() {
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("unit rights"))
+                .when(accessService).requireResults("case-1", "17");
+
+        org.junit.Assert.assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.releasePreliminary("case-1", "17"));
+
+        verify(reportProjectionService, never()).releasePreliminary(anyString(), anyString());
+        verify(caseDAO, never()).update(any(MicroCase.class));
+    }
 }

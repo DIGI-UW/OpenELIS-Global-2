@@ -2,7 +2,6 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -16,14 +15,15 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
+import org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.organization.valueholder.Organization;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -37,6 +37,7 @@ import org.openelisglobal.sampleorganization.service.SampleOrganizationService;
 import org.openelisglobal.sampleorganization.valueholder.SampleOrganization;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -44,6 +45,9 @@ public class MicroCaseServiceTest {
 
     @Mock
     private MicroCaseDAO caseDAO;
+
+    @Mock
+    private MicroCaseSpecimenDAO specimenDAO;
 
     @Mock
     private MicroCaseActivityDAO activityDAO;
@@ -75,12 +79,14 @@ public class MicroCaseServiceTest {
     @Test
     public void createOrGetCaseReturnsExistingCaseWithoutDuplicateActivity() {
         MicroCase existing = new MicroCase();
-        existing.setSampleItemId("1001");
-        existing.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
-        when(caseDAO.getBySampleItemAndWorkflow("1001", MicroWorkflowType.BACTERIOLOGY.name())).thenReturn(existing);
+        existing.setId("case-1");
+        existing.setSampleId("100");
+        existing.setTestSectionId("9");
+        when(caseDAO.getRoutingCandidates("100", "5", "9", null, "1001")).thenReturn(java.util.List.of(existing));
+        when(specimenDAO.getByCaseAndSampleItem("case-1", "1001")).thenReturn(member("case-1", "1001"));
 
         MicroCaseService service = service();
-        MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
+        MicroCase result = service.createOrGetCase(sampleItem(), catalogTest(), "1");
 
         assertEquals(existing, result);
         verify(caseDAO, never()).insert(any(MicroCase.class));
@@ -91,17 +97,25 @@ public class MicroCaseServiceTest {
     public void createOrGetCaseCreatesReceivedCaseAndTimelineActivity() {
         MicroCaseService service = service();
 
-        MicroCase result = service.createOrGetCase("1001", MicroWorkflowType.BACTERIOLOGY, "1", "1");
+        MicroCase result = service.createOrGetCase(sampleItem(), catalogTest(), "1");
 
-        assertEquals("1001", result.getSampleItemId());
-        assertEquals(MicroWorkflowType.BACTERIOLOGY.name(), result.getWorkflowType());
+        assertEquals("100", result.getSampleId());
+        assertEquals("5", result.getSampleTypeId());
+        assertEquals("9", result.getTestSectionId());
         assertEquals(MicroCaseStage.RECEIVED.name(), result.getStage());
         assertNotNull(result.getCreatedAt());
         verify(caseDAO).insert(result);
         ArgumentCaptor<MicroCaseActivity> activityCaptor = ArgumentCaptor.forClass(MicroCaseActivity.class);
-        verify(activityDAO).insert(activityCaptor.capture());
-        assertEquals(result.getId(), activityCaptor.getValue().getCaseId());
-        assertEquals(MicroCaseActivityType.CASE_CREATED.name(), activityCaptor.getValue().getActivityType());
+        verify(activityDAO, org.mockito.Mockito.times(2)).insert(activityCaptor.capture());
+        assertEquals(result.getId(), activityCaptor.getAllValues().get(0).getCaseId());
+        assertEquals(MicroCaseActivityType.CASE_CREATED.name(), activityCaptor.getAllValues().get(0).getActivityType());
+        assertEquals(MicroCaseActivityType.SPECIMEN_ADDED.name(),
+                activityCaptor.getAllValues().get(1).getActivityType());
+        verify(caseDAO).lockOrder("100");
+        ArgumentCaptor<MicroCaseSpecimen> memberCaptor = ArgumentCaptor.forClass(MicroCaseSpecimen.class);
+        verify(specimenDAO).insert(memberCaptor.capture());
+        assertEquals(result.getId(), memberCaptor.getValue().getCaseId());
+        assertEquals("1001", memberCaptor.getValue().getSampleItemId());
     }
 
     @Test
@@ -144,7 +158,7 @@ public class MicroCaseServiceTest {
     public void getCaseDetailCompilesPatientAccessionAndSpecimenContext() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
-        microCase.setSampleItemId("1001");
+        microCase.setSampleId("100");
         Sample sample = new Sample();
         sample.setAccessionNumber("UATMICRO001");
         SampleItem sampleItem = new SampleItem();
@@ -158,6 +172,7 @@ public class MicroCaseServiceTest {
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
         when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
         when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
+        when(specimenDAO.getByCaseId("case-1")).thenReturn(java.util.List.of(member("case-1", "1001")));
         when(sampleItemService.getData("1001")).thenReturn(sampleItem);
         when(sampleHumanService.getPatientForSample(sample)).thenReturn(patient);
         when(patientService.getLastFirstName(patient)).thenReturn("Microbiology, UAT");
@@ -210,32 +225,62 @@ public class MicroCaseServiceTest {
     }
 
     @Test
-    public void getCaseDetailIncludesSiblingWorkflowLinksAndPreservationWarning() {
+    public void getCaseDetailIncludesSeparateRelatedCasesOnTheSameOrder() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
-        microCase.setSampleItemId("1001");
-        microCase.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
+        microCase.setSampleId("100");
+        microCase.setTestSectionId("9");
         microCase.setStage(MicroCaseStage.SETUP_RECORDED.name());
         MicroCase sibling = new MicroCase();
         sibling.setId("case-2");
-        sibling.setSampleItemId("1001");
-        sibling.setWorkflowType(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name());
+        sibling.setSampleId("100");
+        sibling.setTestSectionId("10");
         sibling.setStage(MicroCaseStage.RECEIVED.name());
         when(caseDAO.get("case-1")).thenReturn(java.util.Optional.of(microCase));
         when(activityDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
         when(isolateDAO.getByCaseId("case-1")).thenReturn(java.util.List.of());
-        when(caseDAO.getBySampleItem("1001")).thenReturn(java.util.List.of(microCase, sibling));
+        when(caseDAO.getByOrder("100")).thenReturn(java.util.List.of(microCase, sibling));
 
         MicroCaseDetailForm form = service().getCaseDetail("case-1");
 
-        assertTrue(form.workflowChangeRequiresConfirmation);
         assertEquals(1, form.siblingCases.size());
         assertEquals("case-2", form.siblingCases.get(0).id);
-        assertEquals(MicroWorkflowType.MYCOBACTERIOLOGY_TB.name(), form.siblingCases.get(0).workflowType);
+        assertEquals("10", form.siblingCases.get(0).testSectionId);
+    }
+
+    private MicroCaseSpecimen member(String caseId, String sampleItemId) {
+        MicroCaseSpecimen member = new MicroCaseSpecimen();
+        member.setCaseId(caseId);
+        member.setSampleItemId(sampleItemId);
+        return member;
+    }
+
+    private SampleItem sampleItem() {
+        Sample sample = new Sample();
+        sample.setId("100");
+        TypeOfSample type = new TypeOfSample();
+        type.setId("5");
+        SampleItem item = new SampleItem();
+        item.setId("1001");
+        item.setSample(sample);
+        item.setTypeOfSample(type);
+        return item;
+    }
+
+    private org.openelisglobal.test.valueholder.Test catalogTest() {
+        TestSection unit = new TestSection();
+        unit.setId("9");
+        var test = new org.openelisglobal.test.valueholder.Test();
+        test.setId("42");
+        test.setTestSection(unit);
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole("CULTURE");
+        return test;
     }
 
     private MicroCaseService service() {
         return new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO, sampleItemService,
-                sampleHumanService, patientService, sampleOrganizationService, systemUserService, nceSpecimenService);
+                sampleHumanService, patientService, sampleOrganizationService, systemUserService, nceSpecimenService,
+                specimenDAO);
     }
 }

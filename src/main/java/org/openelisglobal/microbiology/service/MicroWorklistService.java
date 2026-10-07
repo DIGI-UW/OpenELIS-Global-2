@@ -5,5 +5,5 @@ import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 
 public interface MicroWorklistService {
 
-    MicroWorklistPageForm getWorklistPage(MicroWorklistQueryForm query);
+    MicroWorklistPageForm getWorklistPage(MicroWorklistQueryForm query, String systemUserId);
 }

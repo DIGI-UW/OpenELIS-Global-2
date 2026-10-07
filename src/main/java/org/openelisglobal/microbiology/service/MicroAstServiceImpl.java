@@ -77,6 +77,7 @@ public class MicroAstServiceImpl implements MicroAstService {
     private final MicroAstPanelAntibioticDAO panelAntibioticDAO;
     private final MicroAstRunAntibioticDAO runAntibioticDAO;
     private final MicroAntibioticDAO antibioticDAO;
+    private final MicrobiologyCaseAccessService accessService;
 
     public MicroAstServiceImpl(MicroAstRunDAO runDAO, MicroAstReadingDAO readingDAO, MicroIsolateDAO isolateDAO,
             MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO, MicroBreakpointService breakpointService,
@@ -84,7 +85,7 @@ public class MicroAstServiceImpl implements MicroAstService {
             MicroReagentLotService reagentLotService, MicroOrganismDAO organismDAO, SampleItemService sampleItemService,
             MicroAstPanelDAO panelDAO, MicroAstOverrideEventDAO overrideEventDAO, SystemUserService systemUserService,
             MicroAstPanelAntibioticDAO panelAntibioticDAO, MicroAstRunAntibioticDAO runAntibioticDAO,
-            MicroAntibioticDAO antibioticDAO,
+            MicroAntibioticDAO antibioticDAO, MicrobiologyCaseAccessService accessService,
             @org.springframework.beans.factory.annotation.Value("${org.openelisglobal.microbiology.defaultBreakpointAuthority:CLSI}") String defaultBreakpointAuthority,
             @org.springframework.beans.factory.annotation.Value("${org.openelisglobal.microbiology.defaultBreakpointVersion:2026}") String defaultBreakpointVersion) {
         this.defaultBreakpointAuthority = defaultBreakpointAuthority;
@@ -106,6 +107,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         this.panelAntibioticDAO = panelAntibioticDAO;
         this.runAntibioticDAO = runAntibioticDAO;
         this.antibioticDAO = antibioticDAO;
+        this.accessService = accessService;
     }
 
     @Override
@@ -171,6 +173,7 @@ public class MicroAstServiceImpl implements MicroAstService {
                 || isolate.getOrganismId() == null || isolate.getOrganismId().trim().isEmpty()) {
             throw new IllegalStateException("AST_ISOLATE_IDENTIFICATION_REQUIRED");
         }
+        accessService.requireResults(isolate.getCaseId(), performedBy);
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
         MicroOrganism organism = organismDAO.get(isolate.getOrganismId())
                 .orElseThrow(() -> new IllegalArgumentException("AST_ORGANISM_NOT_FOUND"));
@@ -288,6 +291,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireResults(isolate.getCaseId(), performedBy);
         MicroCase microCase = requireMutableCase(isolate.getCaseId());
         if (isAmendmentInProgress(microCase) && !source.isReportable()) {
             throw new MicroAstConflictException("AST_AMENDMENT_SOURCE_MUST_BE_REPORTABLE");
@@ -354,6 +358,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireResults(isolate.getCaseId(), performedBy);
         MicroCase microCase = requireMutableRun(run, isolate.getCaseId());
         MicroBreakpointRule rule = findRule(run, isolate, microCase, antibioticId, method);
         MicroAstInterpretation interpretation = interpretationService.interpret(rule, method, rawValue);
@@ -394,6 +399,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         requireUnreviewedRun(run);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireValidation(isolate.getCaseId(), performedBy);
         requireMutableRun(run, isolate.getCaseId());
         String fromInterpretation = effectiveInterpretation(reading);
         reading.setOverrideInterpretation(overrideInterpretation.name());
@@ -420,6 +426,7 @@ public class MicroAstServiceImpl implements MicroAstService {
                 .orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireValidation(isolate.getCaseId(), performedBy);
         requireMutableRun(run, isolate.getCaseId());
         recordOverrideEvent(readingId, MicroAstOverrideAction.REVERT, reading.getOverrideInterpretation(),
                 reading.getInterpretation(), reason, performedBy);
@@ -459,6 +466,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = runDAO.get(runId).orElseThrow(() -> new IllegalArgumentException("AST run not found"));
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireValidation(isolate.getCaseId(), performedBy);
         requireMutableRun(run, isolate.getCaseId());
         requireReviewableLifecycle(run);
         requireCompleteOrderedResults(runId);
@@ -494,11 +502,12 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroCaseServiceImpl.requireText(batch.runId(), "runId");
         MicroAstRun run = requireRun(batch.runId());
+        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
+                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireResults(isolate.getCaseId(), performedBy);
         if (batch.sourceEventId() != null && batch.sourceEventId().equals(run.getSourceEventId())) {
             return run;
         }
-        MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
-                .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
         MicroCase microCase = requireMutableRun(run, isolate.getCaseId());
         if (!MicroAstRunStatus.AWAITING_RESULTS.name().equals(run.getStatus())
                 && !MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())) {
@@ -551,6 +560,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = requireRun(runId);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireResults(isolate.getCaseId(), performedBy);
         requireMutableRun(run, isolate.getCaseId());
         if (!MicroAstRunStatus.AWAITING_RESULTS.name().equals(run.getStatus())
                 && !MicroAstRunStatus.RESULTS_IN.name().equals(run.getStatus())
@@ -575,6 +585,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = requireRun(runId);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireValidation(isolate.getCaseId(), performedBy);
         requireMutableRun(run, isolate.getCaseId());
         run.setAnalyzerFlagsAcknowledgedAt(MicroCaseServiceImpl.now());
         run.setAnalyzerFlagsAcknowledgedBy(performedBy);
@@ -592,6 +603,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun run = requireRun(runId);
         MicroIsolate isolate = isolateDAO.get(run.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireValidation(isolate.getCaseId(), performedBy);
         requireMutableRun(run, isolate.getCaseId());
         if (!MicroAstRunStatus.QC_FAILED.name().equals(run.getStatus())) {
             throw new MicroAstConflictException("AST_QC_FAILURE_NOT_ACTIVE");
@@ -614,6 +626,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         MicroAstRun source = requireRun(runId);
         MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireResults(isolate.getCaseId(), performedBy);
         requireMutableRun(source, isolate.getCaseId());
         if (!MicroAstRunStatus.QC_FAILED.name().equals(source.getStatus())
                 && !MicroAstRunStatus.RESULTS_IN.name().equals(source.getStatus())) {
@@ -648,6 +661,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         }
         MicroIsolate isolate = isolateDAO.get(selected.getIsolateId())
                 .orElseThrow(() -> new IllegalArgumentException("Isolate not found"));
+        accessService.requireResults(isolate.getCaseId(), performedBy);
         requireMutableCase(isolate.getCaseId());
         for (MicroAstRun run : runDAO.getByIsolateId(selected.getIsolateId())) {
             if (run.isReportable()) {
@@ -904,8 +918,8 @@ public class MicroAstServiceImpl implements MicroAstService {
         String organismGroup = isolate.getOrganismId() == null ? null
                 : organismDAO.get(isolate.getOrganismId()).map(value -> value.getOrganismGroup()).orElse(null);
         String specimenTypeId = null;
-        if (microCase.getSampleItemId() != null) {
-            SampleItem sampleItem = sampleItemService.getData(microCase.getSampleItemId());
+        if (isolate.getSourceSampleItemId() != null) {
+            SampleItem sampleItem = sampleItemService.getData(isolate.getSourceSampleItemId());
             specimenTypeId = sampleItem == null ? null : sampleItemService.getTypeOfSampleId(sampleItem);
         }
         String technique = run.getTechnique();

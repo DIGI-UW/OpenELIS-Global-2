@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -42,24 +43,25 @@ public class MicroCaseOrderDetailServiceTest {
     @Mock
     private MicrobiologyReferenceService referenceService;
 
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
     private MicroCaseOrderDetailService service;
 
     @Before
     public void setUp() {
         when(referenceService.isActivePatientOriginCode(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
         service = new MicroCaseOrderDetailServiceImpl(orderDetailDAO, caseDAO, activityDAO, referenceService,
-                new ObjectMapper());
+                new ObjectMapper(), accessService);
     }
 
     @Test
     public void saveOrderDetailCreatesRecordWhenNoneExists() {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
-        microCase.setCultureMethodId("configured-method");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(null);
         MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
-        request.cultureMethodId = "submitted-method";
         request.culturePurpose = "CLINICAL_DIAGNOSTIC";
         request.patientOrigin = "INPATIENT";
         request.admissionDate = "2026-08-03";
@@ -70,7 +72,6 @@ public class MicroCaseOrderDetailServiceTest {
         MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "1");
 
         assertEquals("case-1", saved.getCaseId());
-        assertEquals("configured-method", saved.getCultureMethodId());
         assertEquals("CLINICAL_DIAGNOSTIC", saved.getCulturePurpose());
         assertEquals("INPATIENT", saved.getPatientOrigin());
         assertEquals(LocalDate.of(2026, 8, 3), saved.getAdmissionDate());
@@ -165,5 +166,73 @@ public class MicroCaseOrderDetailServiceTest {
         assertThrows(MicroCaseLockedException.class, () -> service.saveOrderDetail("case-1", request, "2"));
 
         verify(orderDetailDAO, never()).update(existing);
+    }
+
+    @Test
+    public void inpatientAdmissionDateIsOptionalAtCaseEntry() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "INPATIENT";
+
+        MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "7");
+
+        assertNull(saved.getAdmissionDate());
+        assertEquals("7", saved.getCreatedBy());
+    }
+
+    @Test
+    public void outpatientCaseDetailsClearAdmissionDate() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "OUTPATIENT";
+        request.admissionDate = "2026-08-03";
+
+        assertNull(service.saveOrderDetail("case-1", request, "7").getAdmissionDate());
+    }
+
+    @Test
+    public void malformedAdmissionDateDoesNotPersistCaseDetails() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "INPATIENT";
+        request.admissionDate = "2026-02-31";
+
+        assertThrows(IllegalArgumentException.class, () -> service.saveOrderDetail("case-1", request, "7"));
+
+        verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
+    }
+
+    @Test
+    public void inactivePatientOriginDoesNotPersistCaseDetails() {
+        MicroCase microCase = new MicroCase();
+        microCase.setId("case-1");
+        when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
+        when(referenceService.isActivePatientOriginCode("RETIRED")).thenReturn(false);
+        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        request.patientOrigin = "RETIRED";
+
+        assertThrows(IllegalArgumentException.class, () -> service.saveOrderDetail("case-1", request, "7"));
+
+        verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
+    }
+
+    @Test
+    public void caseInformationWriteRequiresResultsInTheCaseUnit() {
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("unit rights"))
+                .when(accessService).requireResults("case-1", "17");
+
+        assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.saveOrderDetail("case-1", new MicroCaseOrderDetailRequestForm(), "17"));
+
+        verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
+        verify(orderDetailDAO, never()).update(any(MicroCaseOrderDetail.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
     }
 }

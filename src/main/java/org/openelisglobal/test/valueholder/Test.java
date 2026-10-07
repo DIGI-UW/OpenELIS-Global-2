@@ -71,7 +71,11 @@ public class Test extends EnumValueItemImpl {
     // existing antimicrobialResistance field below — no parallel column)
     private String domain = "CLINICAL";
 
-    private String cultureWorkflowType;
+    private boolean opensMicrobiologyCase;
+
+    private String microbiologyCaseRole = "DIRECT";
+
+    private boolean collectedInSets;
 
     private String stickerRequiredFlag;
 
@@ -299,12 +303,28 @@ public class Test extends EnumValueItemImpl {
         this.domain = domain;
     }
 
-    public String getCultureWorkflowType() {
-        return cultureWorkflowType;
+    public boolean isOpensMicrobiologyCase() {
+        return opensMicrobiologyCase;
     }
 
-    public void setCultureWorkflowType(String cultureWorkflowType) {
-        this.cultureWorkflowType = cultureWorkflowType;
+    public void setOpensMicrobiologyCase(boolean opensMicrobiologyCase) {
+        this.opensMicrobiologyCase = opensMicrobiologyCase;
+    }
+
+    public String getMicrobiologyCaseRole() {
+        return microbiologyCaseRole;
+    }
+
+    public void setMicrobiologyCaseRole(String microbiologyCaseRole) {
+        this.microbiologyCaseRole = microbiologyCaseRole;
+    }
+
+    public boolean isCollectedInSets() {
+        return collectedInSets;
+    }
+
+    public void setCollectedInSets(boolean collectedInSets) {
+        this.collectedInSets = collectedInSets;
     }
 
     public String getStickerRequiredFlag() {

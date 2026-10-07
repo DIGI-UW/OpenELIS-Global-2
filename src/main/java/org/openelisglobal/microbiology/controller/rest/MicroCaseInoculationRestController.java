@@ -34,9 +34,9 @@ public class MicroCaseInoculationRestController extends MicrobiologyRestControll
     @PostMapping
     public ResponseEntity<MicroCaseInoculationForm> record(@PathVariable String caseId,
             @RequestBody MicroCaseInoculationRequestForm request, HttpServletRequest httpRequest) {
-        MicroCaseInoculation inoculation = inoculationService.record(caseId, request.sourceInoculationId,
-                request.containerIdentifier, request.media, request.incubation, request.atmosphere,
-                lotSelections(request.lotSelections), authenticatedUserId(httpRequest));
+        MicroCaseInoculation inoculation = inoculationService.record(caseId, request.sourceSampleItemId,
+                request.sourceInoculationId, request.containerIdentifier, request.media, request.incubation,
+                request.atmosphere, lotSelections(request.lotSelections), authenticatedUserId(httpRequest));
         return ResponseEntity.ok(inoculationService.getByCaseId(caseId).stream()
                 .filter(form -> inoculation.getId().equals(form.id)).findFirst().orElseThrow());
     }

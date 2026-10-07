@@ -8,10 +8,11 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
+import org.openelisglobal.microbiology.service.MicroCaseAnalysisService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroOrderRoutingService;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.test.valueholder.TestSection;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,41 +28,34 @@ public class MicroOrderRoutingIdempotencyTest extends BaseWebContextSensitiveTes
     @Autowired
     private MicroCaseService caseService;
 
-    private String sampleItemId;
+    @Autowired
+    private MicroCaseAnalysisService caseAnalysisService;
+
+    private SampleItem sampleItem;
     private String methodId;
+    private TestSection labUnit;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
         methodId = fixtures.createMethodId();
-        sampleItemId = fixtures.createSampleWithSampleItem("OGC782M3I").getId();
-        fixtures.createReferenceData(methodId);
+        sampleItem = fixtures.createSampleWithSampleItem("AMRV2IDEM");
+        labUnit = fixtures.createLabUnit();
     }
 
     @Test
     public void repeatedRoutingDoesNotDuplicateCases() {
-        Analysis bacteriology = analysis(MicroWorkflowType.BACTERIOLOGY.name(), methodId);
+        var catalogTest = fixtures.createCatalogCultureTest(methodId, labUnit);
+        Analysis culture = fixtures.createAnalysis(sampleItem, catalogTest);
 
-        routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId), List.of(bacteriology),
-                fixtures.defaultUserId());
-        routingService.routeAnalysesForSampleItem(sampleItem(sampleItemId), List.of(bacteriology),
-                fixtures.defaultUserId());
+        var first = routingService.routeAnalysesForSampleItem(sampleItem, List.of(culture), fixtures.defaultUserId());
+        var second = routingService.routeAnalysesForSampleItem(sampleItem, List.of(culture), fixtures.defaultUserId());
 
-        assertEquals(1, caseService.getSiblingCases(sampleItemId).size());
-    }
-
-    private SampleItem sampleItem(String id) {
-        SampleItem sampleItem = new SampleItem();
-        sampleItem.setId(id);
-        return sampleItem;
-    }
-
-    private Analysis analysis(String workflowType, String methodId) {
-        org.openelisglobal.test.valueholder.Test test = fixtures.createCatalogCultureTest(methodId,
-                MicroWorkflowType.valueOf(workflowType));
-        Analysis analysis = new Analysis();
-        analysis.setTest(test);
-        return analysis;
+        assertEquals(first.get(0).getId(), second.get(0).getId());
+        assertEquals(1, caseService.getSiblingCases(sampleItem.getId()).size());
+        assertEquals(1, caseService.getSpecimens(first.get(0).getId()).size());
+        assertEquals(1, caseAnalysisService.getCaseAnalyses(first.get(0).getId()).size());
+        assertEquals(culture.getId(), caseAnalysisService.getCaseAnalyses(first.get(0).getId()).get(0).getAnalysisId());
     }
 }

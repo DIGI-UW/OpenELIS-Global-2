@@ -49,6 +49,28 @@ public class Program extends BaseObject<String> {
     @JsonProperty("manuallyChanged")
     private Boolean manuallyChanged;
 
+    @JsonProperty("showOnMicrobiologyCase")
+    private boolean showOnMicrobiologyCase;
+
+    @JsonProperty("reportingTrackId")
+    private String reportingTrackId;
+
+    public boolean isShowOnMicrobiologyCase() {
+        return showOnMicrobiologyCase;
+    }
+
+    public void setShowOnMicrobiologyCase(boolean value) {
+        showOnMicrobiologyCase = value;
+    }
+
+    public String getReportingTrackId() {
+        return reportingTrackId;
+    }
+
+    public void setReportingTrackId(String value) {
+        reportingTrackId = value;
+    }
+
     // OGC Programs V2: CLINICAL / ENVIRONMENTAL / VECTOR. Mirrors panel.domain
     // (OGC-224) and test_section.domain (OGC-1020) so the picker can filter
     // by order.domain. Existing rows backfilled to CLINICAL by Liquibase 105.

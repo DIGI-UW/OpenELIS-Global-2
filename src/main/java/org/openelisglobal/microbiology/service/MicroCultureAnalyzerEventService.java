@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.service;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.List;
 import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerEventPersistenceService;
 import org.openelisglobal.analyzer.service.AnalyzerEventRegistration;
@@ -47,13 +48,15 @@ public class MicroCultureAnalyzerEventService {
             return event;
         }
         try {
-            MicroCase microCase = resolveCase(command);
+            CultureTarget target = resolveTarget(command);
+            MicroCase microCase = target.microCase();
             if (!MicroCaseStage.INCUBATING.name().equals(microCase.getStage())) {
                 throw new IllegalArgumentException("CULTURE_ANALYZER_CASE_NOT_INCUBATING");
             }
             String note = text(command.note()).isEmpty() ? "Analyzer reported a positive culture signal"
                     : command.note().trim();
-            stateService.advanceStage(microCase.getId(), MicroCaseStage.POSITIVE_SIGNAL, performedBy, note);
+            stateService.advanceStage(microCase.getId(), MicroCaseStage.POSITIVE_SIGNAL, performedBy, note, List.of(),
+                    target.sourceSampleItemId());
             persistenceService.markApplied(event, microCase.getId());
         } catch (RuntimeException exception) {
             persistenceService.markFailed(event, failureReason(exception));
@@ -61,21 +64,33 @@ public class MicroCultureAnalyzerEventService {
         return event;
     }
 
-    private MicroCase resolveCase(MicroCultureAnalyzerEventCommand command) {
-        if (!text(command.targetCaseId()).isEmpty()) {
-            return caseDAO.get(command.targetCaseId().trim())
-                    .orElseThrow(() -> new IllegalArgumentException("CULTURE_ANALYZER_CASE_NOT_MATCHED"));
+    private CultureTarget resolveTarget(MicroCultureAnalyzerEventCommand command) {
+        if (text(command.sourceId()).isEmpty()) {
+            throw new IllegalArgumentException("CULTURE_ANALYZER_SOURCE_SAMPLE_REQUIRED");
         }
-        var caseIds = inoculationDAO.getByContainerIdentifier(command.sourceId().trim()).stream()
-                .map(value -> value.getCaseId()).distinct().toList();
-        if (caseIds.isEmpty()) {
+        String targetCaseId = text(command.targetCaseId());
+        var sources = inoculationDAO.getByContainerIdentifier(command.sourceId().trim()).stream()
+                .filter(value -> targetCaseId.isEmpty() || targetCaseId.equals(value.getCaseId()))
+                .map(value -> new CultureSource(value.getCaseId(), value.getSourceSampleItemId())).distinct().toList();
+        if (sources.isEmpty()) {
             throw new IllegalArgumentException("CULTURE_ANALYZER_SOURCE_NOT_MATCHED");
         }
-        if (caseIds.size() > 1) {
+        if (sources.size() > 1) {
             throw new IllegalArgumentException("CULTURE_ANALYZER_SOURCE_AMBIGUOUS");
         }
-        return caseDAO.get(caseIds.get(0))
+        CultureSource source = sources.get(0);
+        if (text(source.sourceSampleItemId()).isEmpty()) {
+            throw new IllegalArgumentException("CULTURE_ANALYZER_SOURCE_SAMPLE_REQUIRED");
+        }
+        MicroCase microCase = caseDAO.get(source.caseId())
                 .orElseThrow(() -> new IllegalArgumentException("CULTURE_ANALYZER_CASE_NOT_MATCHED"));
+        return new CultureTarget(microCase, source.sourceSampleItemId());
+    }
+
+    private record CultureSource(String caseId, String sourceSampleItemId) {
+    }
+
+    private record CultureTarget(MicroCase microCase, String sourceSampleItemId) {
     }
 
     private AnalyzerEvent toEvent(MicroCultureAnalyzerEventCommand command) {

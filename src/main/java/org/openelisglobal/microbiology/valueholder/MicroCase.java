@@ -19,22 +19,30 @@ public class MicroCase extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id = UUID.randomUUID().toString();
 
-    @Column(name = "sample_item_id", nullable = false, precision = 10, scale = 0)
+    @Column(name = "sample_id", nullable = false, precision = 10, scale = 0)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    private String sampleItemId;
+    private String sampleId;
 
-    @Column(name = "workflow_type", nullable = false, length = 40)
-    private String workflowType;
+    @Column(name = "sample_type_id", nullable = false, precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sampleTypeId;
+
+    @Column(name = "test_section_id", nullable = false, precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String testSectionId;
+
+    @Column(name = "program_id", precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String programId;
+
+    @Column(name = "migration_review_required", nullable = false)
+    private boolean migrationReviewRequired;
 
     @Column(name = "stage", nullable = false, length = 40)
     private String stage = MicroCaseStage.RECEIVED.name();
 
     @Column(name = "priority", nullable = false, length = 40)
     private String priority = "ROUTINE";
-
-    @Column(name = "culture_method_id", precision = 10, scale = 0)
-    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
-    private String cultureMethodId;
 
     @Column(name = "created_at", nullable = false)
     private Timestamp createdAt = new Timestamp(System.currentTimeMillis());
@@ -61,20 +69,44 @@ public class MicroCase extends BaseObject<String> {
         this.id = id;
     }
 
-    public String getSampleItemId() {
-        return sampleItemId;
+    public String getSampleId() {
+        return sampleId;
     }
 
-    public void setSampleItemId(String sampleItemId) {
-        this.sampleItemId = sampleItemId;
+    public void setSampleId(String sampleId) {
+        this.sampleId = sampleId;
     }
 
-    public String getWorkflowType() {
-        return workflowType;
+    public String getSampleTypeId() {
+        return sampleTypeId;
     }
 
-    public void setWorkflowType(String workflowType) {
-        this.workflowType = workflowType;
+    public void setSampleTypeId(String sampleTypeId) {
+        this.sampleTypeId = sampleTypeId;
+    }
+
+    public String getTestSectionId() {
+        return testSectionId;
+    }
+
+    public void setTestSectionId(String testSectionId) {
+        this.testSectionId = testSectionId;
+    }
+
+    public String getProgramId() {
+        return programId;
+    }
+
+    public void setProgramId(String programId) {
+        this.programId = programId;
+    }
+
+    public boolean isMigrationReviewRequired() {
+        return migrationReviewRequired;
+    }
+
+    public void setMigrationReviewRequired(boolean migrationReviewRequired) {
+        this.migrationReviewRequired = migrationReviewRequired;
     }
 
     public String getStage() {
@@ -91,14 +123,6 @@ public class MicroCase extends BaseObject<String> {
 
     public void setPriority(String priority) {
         this.priority = priority;
-    }
-
-    public String getCultureMethodId() {
-        return cultureMethodId;
-    }
-
-    public void setCultureMethodId(String cultureMethodId) {
-        this.cultureMethodId = cultureMethodId;
     }
 
     public Timestamp getCreatedAt() {

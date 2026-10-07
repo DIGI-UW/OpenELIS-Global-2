@@ -5,6 +5,7 @@ import java.io.IOException;
 import javax.sql.DataSource;
 import liquibase.integration.spring.SpringLiquibase;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.DependsOn;
@@ -36,9 +37,10 @@ public class BaseTestConfig {
 
     @Bean("liquibase")
     @Profile("test")
-    public SpringLiquibase testLiquibase() {
+    public SpringLiquibase testLiquibase(
+            @Value("${test.liquibase.changelog:classpath:liquibase/base-changelog.xml}") String changelog) {
         SpringLiquibase liquibase = new SpringLiquibase();
-        liquibase.setChangeLog("classpath:liquibase/base-changelog.xml");
+        liquibase.setChangeLog(changelog);
         liquibase.setDataSource(dataSource);
         liquibase.setContexts("test");
         return liquibase;

@@ -7,6 +7,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
 import org.junit.Test;
@@ -16,11 +17,13 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivityType;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
+import org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 
 @RunWith(MockitoJUnitRunner.class)
@@ -38,12 +41,18 @@ public class MicroCaseStateServiceTest {
     @Mock
     private MicroReagentLotService reagentLotService;
 
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
+    @Mock
+    private MicroCaseSpecimenDAO specimenDAO;
+
     private MicroCaseStateService service;
     private MicroCase microCase;
 
     @Before
     public void setUp() {
-        service = new MicroCaseStateServiceImpl(caseDAO, activityDAO, reagentLotService);
+        service = new MicroCaseStateServiceImpl(caseDAO, activityDAO, reagentLotService, accessService, specimenDAO);
         microCase = new MicroCase();
         microCase.setId("case-1");
         microCase.setStage(MicroCaseStage.RECEIVED.name());
@@ -65,13 +74,14 @@ public class MicroCaseStateServiceTest {
     public void positiveSignalRemainsDistinctFromObservedGrowth() {
         microCase.setStage(MicroCaseStage.INCUBATING.name());
         when(caseDAO.update(microCase)).thenReturn(microCase);
+        when(specimenDAO.getByCaseAndSampleItem("case-1", "101")).thenReturn(new MicroCaseSpecimen());
 
         MicroCase positive = service.advanceStage("case-1", MicroCaseStage.POSITIVE_SIGNAL, "1",
-                "Bottle flagged positive");
+                "Bottle flagged positive", List.of(), "101");
         assertEquals(MicroCaseStage.POSITIVE_SIGNAL.name(), positive.getStage());
 
         MicroCase growth = service.advanceStage("case-1", MicroCaseStage.GROWTH_DETECTED, "1",
-                "Subculture growth observed");
+                "Subculture growth observed", List.of(), "101");
         assertEquals(MicroCaseStage.GROWTH_DETECTED.name(), growth.getStage());
         verify(caseDAO, org.mockito.Mockito.times(2)).update(microCase);
     }
@@ -80,9 +90,10 @@ public class MicroCaseStateServiceTest {
     public void noGrowthCanBeRecordedDirectlyFromIncubation() {
         microCase.setStage(MicroCaseStage.INCUBATING.name());
         when(caseDAO.update(microCase)).thenReturn(microCase);
+        when(specimenDAO.getByCaseAndSampleItem("case-1", "101")).thenReturn(new MicroCaseSpecimen());
 
         MicroCase updated = service.advanceStage("case-1", MicroCaseStage.NO_GROWTH_READY, "42",
-                "Incubation complete with no growth");
+                "Incubation complete with no growth", List.of(), "101");
 
         assertEquals(MicroCaseStage.NO_GROWTH_READY.name(), updated.getStage());
         ArgumentCaptor<MicroCaseActivity> activity = ArgumentCaptor.forClass(MicroCaseActivity.class);
@@ -92,6 +103,7 @@ public class MicroCaseStateServiceTest {
         assertEquals("Incubation complete with no growth", activity.getValue().getNote());
         assertEquals("{\"from\":\"INCUBATING\",\"to\":\"NO_GROWTH_READY\"}", activity.getValue().getStructuredData());
         assertNotNull(activity.getValue().getOccurredAt());
+        assertEquals("101", activity.getValue().getResultSourceSampleItemId());
     }
 
     @Test(expected = IllegalArgumentException.class)
@@ -110,5 +122,31 @@ public class MicroCaseStateServiceTest {
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
 
         service.advanceStage("case-1", MicroCaseStage.AMENDED, "1", "not supported in MVP");
+    }
+
+    @Test
+    public void genericStageChangeCannotBypassTheReleasePipeline() {
+        microCase.setStage(MicroCaseStage.REVIEW_READY.name());
+
+        org.junit.Assert.assertThrows(IllegalArgumentException.class,
+                () -> service.advanceStage("case-1", MicroCaseStage.FINAL_RELEASED, "1", "bypass release"));
+
+        assertEquals(MicroCaseStage.REVIEW_READY.name(), microCase.getStage());
+        verify(caseDAO, never()).update(any(MicroCase.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
+    }
+
+    @Test
+    public void unitRightsAreRequiredBeforeChangingStage() {
+        org.mockito.Mockito.doThrow(new org.springframework.security.access.AccessDeniedException("unit rights"))
+                .when(accessService).requireResults("case-1", "17");
+
+        org.junit.Assert.assertThrows(org.springframework.security.access.AccessDeniedException.class,
+                () -> service.advanceStage("case-1", MicroCaseStage.SETUP_RECORDED, "17", "forbidden"));
+
+        assertEquals(MicroCaseStage.RECEIVED.name(), microCase.getStage());
+        verify(caseDAO, never()).update(any(MicroCase.class));
+        verify(activityDAO, never()).insert(any(MicroCaseActivity.class));
+        verify(reagentLotService, never()).recordSelections(any(), any(), any(), any(), any());
     }
 }

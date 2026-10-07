@@ -36,4 +36,12 @@ public class MicroCaseAnalysisDAOImpl extends BaseDAOImpl<MicroCaseAnalysis, Str
         query.setParameter("analysisId", analysisId);
         return query.uniqueResultOptional().orElse(null);
     }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroCaseAnalysis getByAnalysis(String analysisId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroCaseAnalysis l where l.analysisId = :analysisId", MicroCaseAnalysis.class)
+                .setParameter("analysisId", analysisId).uniqueResultOptional().orElse(null);
+    }
 }

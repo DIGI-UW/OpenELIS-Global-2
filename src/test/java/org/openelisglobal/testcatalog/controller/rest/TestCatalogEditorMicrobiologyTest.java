@@ -1,7 +1,8 @@
 package org.openelisglobal.testcatalog.controller.rest;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.junit.Before;
 import org.junit.Test;
@@ -12,7 +13,6 @@ import org.openelisglobal.microbiology.fixture.MicrobiologyTestFixtures;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testcatalog.controller.rest.TestCatalogEditorRestController.BasicInfo;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
 import org.springframework.transaction.annotation.Transactional;
@@ -76,34 +76,47 @@ public class TestCatalogEditorMicrobiologyTest extends BaseWebContextSensitiveTe
     }
 
     @Test
-    public void basicInfoRoundTripsCultureWorkflowType() {
+    public void basicInfoRoundTripsCaseOpeningRoleAndSetsWithoutChangingSurveillanceFlag() {
+        boolean surveillance = testService.get(catalogTestId).getAntimicrobialResistance();
         BasicInfo update = new BasicInfo();
-        update.cultureWorkflowType = "BACTERIOLOGY";
-
-        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(catalogTestId, update, authedRequest());
-
+        update.opensMicrobiologyCase = true;
+        update.microbiologyCaseRole = "CULTURE";
+        update.collectedInSets = true;
+        var saved = controller.saveBasicInfo(catalogTestId, update, authedRequest());
         assertEquals(200, saved.getStatusCode().value());
-        assertEquals("BACTERIOLOGY", saved.getBody().cultureWorkflowType);
-        org.openelisglobal.test.valueholder.Test reloaded = testService.getTestById(catalogTestId);
-        assertEquals("BACTERIOLOGY", reloaded.getCultureWorkflowType());
+        var reloaded = testService.getTestById(catalogTestId);
+        assertTrue(reloaded.isOpensMicrobiologyCase());
+        assertEquals("CULTURE", reloaded.getMicrobiologyCaseRole());
+        assertTrue(reloaded.isCollectedInSets());
+        assertEquals(surveillance, reloaded.getAntimicrobialResistance());
 
         BasicInfo clear = new BasicInfo();
-        clear.cultureWorkflowType = "";
-        ResponseEntity<BasicInfo> cleared = controller.saveBasicInfo(catalogTestId, clear, authedRequest());
-
-        assertEquals(200, cleared.getStatusCode().value());
-        assertNull(cleared.getBody().cultureWorkflowType);
-        assertNull(testService.getTestById(catalogTestId).getCultureWorkflowType());
+        clear.opensMicrobiologyCase = false;
+        clear.collectedInSets = false;
+        clear.microbiologyCaseRole = "DIRECT";
+        assertEquals(200, controller.saveBasicInfo(catalogTestId, clear, authedRequest()).getStatusCode().value());
+        assertFalse(testService.getTestById(catalogTestId).isOpensMicrobiologyCase());
+        assertEquals(surveillance, testService.getTestById(catalogTestId).getAntimicrobialResistance());
     }
 
     @Test
-    public void basicInfoRejectsInvalidCultureWorkflowType() {
+    public void basicInfoRejectsInvalidCaseRoleWithoutChangingMaster() {
         BasicInfo bad = new BasicInfo();
-        bad.cultureWorkflowType = "IMPLEMENTATION_DETAIL";
+        bad.microbiologyCaseRole = "IMPLEMENTATION_DETAIL";
+        assertEquals(422, controller.saveBasicInfo(catalogTestId, bad, authedRequest()).getStatusCode().value());
+        assertEquals("DIRECT", testService.get(catalogTestId).getMicrobiologyCaseRole());
+        assertFalse(testService.get(catalogTestId).isOpensMicrobiologyCase());
+    }
 
-        ResponseEntity<BasicInfo> response = controller.saveBasicInfo(catalogTestId, bad, authedRequest());
-
-        assertEquals(422, response.getStatusCode().value());
+    @Test
+    public void collectedInSetsRequiresAnOpenCultureCase() {
+        BasicInfo bad = new BasicInfo();
+        bad.opensMicrobiologyCase = true;
+        bad.microbiologyCaseRole = "DIRECT";
+        bad.collectedInSets = true;
+        assertEquals(422, controller.saveBasicInfo(catalogTestId, bad, authedRequest()).getStatusCode().value());
+        assertFalse(testService.get(catalogTestId).isCollectedInSets());
+        assertFalse(testService.get(catalogTestId).isOpensMicrobiologyCase());
     }
 
     private static MockHttpServletRequest authedRequest() {

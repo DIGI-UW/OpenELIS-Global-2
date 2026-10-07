@@ -14,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseNonconformanceRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
@@ -21,6 +22,7 @@ import org.openelisglobal.microbiology.valueholder.MicroAstRun;
 import org.openelisglobal.microbiology.valueholder.MicroAstTechnique;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseActivity;
+import org.openelisglobal.microbiology.valueholder.MicroCaseSpecimen;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.qaevent.form.NonConformingEventForm;
@@ -105,6 +107,13 @@ public class MicroCaseNonconformanceServiceTest {
         MicroAstRunDAO runDAO = mock(MicroAstRunDAO.class);
         MicroIsolateDAO isolateDAO = mock(MicroIsolateDAO.class);
         MicroAstService astService = mock(MicroAstService.class);
+        MicroCaseSpecimenDAO specimenDAO = mock(MicroCaseSpecimenDAO.class);
+        MicrobiologyCaseAccessService accessService = mock(MicrobiologyCaseAccessService.class);
+        MicroCaseSpecimen member = new MicroCaseSpecimen();
+        member.setCaseId("case-1");
+        member.setSampleItemId("1001");
+        when(specimenDAO.getByCaseAndSampleItem("case-1", "1001")).thenReturn(member);
+        when(specimenDAO.getByCaseId(org.mockito.ArgumentMatchers.anyString())).thenReturn(List.of(member));
         MicroCase microCase = microCase("case-1", stage);
         Sample sample = new Sample();
         sample.setAccessionNumber("ACC-1");
@@ -120,7 +129,8 @@ public class MicroCaseNonconformanceServiceTest {
         when(nceReportService.report(any(NonConformingEventForm.class), org.mockito.ArgumentMatchers.eq("17")))
                 .thenReturn(nce);
         MicroCaseNonconformanceService service = new MicroCaseNonconformanceServiceImpl(caseDAO, activityDAO,
-                sampleItemService, nceReportService, rejectionService, runDAO, isolateDAO, astService);
+                sampleItemService, nceReportService, rejectionService, runDAO, isolateDAO, astService, specimenDAO,
+                accessService);
         return new Fixture(service, caseDAO, activityDAO, nceReportService, rejectionService, runDAO, isolateDAO,
                 astService, microCase);
     }
@@ -128,14 +138,15 @@ public class MicroCaseNonconformanceServiceTest {
     private MicroCase microCase(String id, MicroCaseStage stage) {
         MicroCase microCase = new MicroCase();
         microCase.setId(id);
-        microCase.setSampleItemId("1001");
-        microCase.setWorkflowType("BACTERIOLOGY");
+        microCase.setSampleId("100");
+        microCase.setTestSectionId("7");
         microCase.setStage(stage.name());
         return microCase;
     }
 
     private MicroCaseNonconformanceRequestForm request(String disposition, String eventType) {
         MicroCaseNonconformanceRequestForm request = new MicroCaseNonconformanceRequestForm();
+        request.sampleItemId = "1001";
         request.categoryId = "3";
         request.typeId = "19";
         request.reportingUnitId = 7;

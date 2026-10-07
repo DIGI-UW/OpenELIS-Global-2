@@ -5,6 +5,7 @@ import java.sql.Timestamp;
 public class MicroCaseInoculationForm {
     public String id;
     public String caseId;
+    public String sourceSampleItemId;
     public String sourceInoculationId;
     public String methodId;
     public String containerIdentifier;

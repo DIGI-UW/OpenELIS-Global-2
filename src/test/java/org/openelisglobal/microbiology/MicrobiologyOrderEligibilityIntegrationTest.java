@@ -18,7 +18,6 @@ import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.program.service.ProgramService;
@@ -77,7 +76,7 @@ public class MicrobiologyOrderEligibilityIntegrationTest extends BaseWebContextS
         userId = fixtures.defaultUserId();
         String methodId = fixtures.createMethodId();
         fixtures.createReferenceData(methodId);
-        cultureTest = fixtures.createCatalogCultureTest(methodId, MicroWorkflowType.BACTERIOLOGY);
+        cultureTest = fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit());
         routineTest = fixtures.createCatalogTest();
         patient = fixtures.createPatient("MICROELIG");
         sampleType = fixtures.getOrCreateActiveSampleType();

@@ -98,9 +98,12 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
         List<Candidate> candidates = new ArrayList<>();
         for (MicroCase microCase : population.cases) {
-            PatientContext context = population.contextsByCase.getOrDefault(microCase.getId(), new PatientContext());
             for (MicroIsolate isolate : valuesFor(population.isolatesByCase, microCase.getId())) {
-                candidates.add(new Candidate(microCase, isolate, context));
+                PatientContext context = population.contextsByIsolate.get(isolate.getId());
+                if (context.collectionTimestamp == null || (!context.collectionTimestamp.before(query.fromInclusive)
+                        && context.collectionTimestamp.before(query.toExclusive))) {
+                    candidates.add(new Candidate(microCase, isolate, context));
+                }
             }
         }
         candidates = candidates.stream().filter(
@@ -129,13 +132,16 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         Map<String, MicroWhonetWarningForm> warnings = new LinkedHashMap<>();
         String dedupBasis = NONE.equals(query.dedup) ? COLLECTION_DATE : query.dedupBasis;
         List<Candidate> candidatesWithoutDedupDate = candidates.stream()
-                .filter(candidate -> dedupTimestamp(candidate, dedupBasis) == null).toList();
+                .filter(candidate -> candidate.context.collectionTimestamp == null
+                        || dedupTimestamp(candidate, dedupBasis) == null)
+                .toList();
         for (Candidate candidate : candidatesWithoutDedupDate) {
             String label = hasText(candidate.context.accessionNumber) ? candidate.context.accessionNumber
                     : candidate.isolate.getIsolateLabel();
             addWarning(warnings, "DEDUPLICATION_DATE_REQUIRED", null, candidate.microCase.getId(), label, 1);
         }
-        candidates = candidates.stream().filter(candidate -> dedupTimestamp(candidate, dedupBasis) != null).toList();
+        candidates = candidates.stream().filter(candidate -> candidate.context.collectionTimestamp != null
+                && dedupTimestamp(candidate, dedupBasis) != null).toList();
         if (!NONE.equals(query.dedup) && query.excludeContaminants) {
             candidates = candidates.stream().filter(candidate -> !MicroIsolateSignificance.CONTAMINANT.name()
                     .equals(candidate.isolate.getSignificance())).toList();
@@ -246,7 +252,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         MicroWhonetFilterOptionsForm options = new MicroWhonetFilterOptionsForm();
 
         Map<String, String> specimenLabels = new HashMap<>();
-        for (PatientContext context : population.contextsByCase.values()) {
+        for (PatientContext context : population.contextsByIsolate.values()) {
             if (hasText(context.specimenTypeId)) {
                 specimenLabels.putIfAbsent(context.specimenTypeId,
                         hasText(context.specimenTypeLabel) ? context.specimenTypeLabel : context.specimenTypeId);
@@ -263,7 +269,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
         }
         options.organisms.addAll(toOptions(organismLabels));
 
-        List<String> originCodes = population.contextsByCase.values().stream().map(context -> context.patientOrigin)
+        List<String> originCodes = population.contextsByIsolate.values().stream().map(context -> context.patientOrigin)
                 .filter(this::hasText).distinct().sorted().toList();
         Map<String, String> originLabels = indexBy(patientOriginDAO.getByCodes(originCodes),
                 MicroPatientOrigin::getCode).values().stream()
@@ -281,33 +287,37 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
     }
 
     private Population loadPopulation(NormalizedQuery query) {
-        List<MicroCase> cases = caseDAO.getFinalizedBacteriologyByCollectionDateRange(query.fromInclusive,
+        List<MicroCase> cases = caseDAO.getFinalizedForExportByCollectionDateRange("WHONET", query.fromInclusive,
                 query.toExclusive);
         if (cases.isEmpty()) {
-            return new Population(List.of(), Map.of(), List.of(), Map.of(), Map.of());
+            return new Population(List.of(), Map.of(), List.of(), Map.of(), Map.of(), Map.of());
         }
         List<String> caseIds = cases.stream().map(MicroCase::getId).toList();
-        List<String> sampleItemIds = cases.stream().map(MicroCase::getSampleItemId).filter(this::hasText).distinct()
-                .toList();
+        Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
+                MicroIsolate::getCaseId);
+        List<MicroIsolate> allIsolates = cases.stream()
+                .flatMap(value -> valuesFor(isolatesByCase, value.getId()).stream()).toList();
+        List<String> sampleItemIds = allIsolates.stream().map(MicroIsolate::getSourceSampleItemId).filter(this::hasText)
+                .distinct().toList();
         Map<String, MicroWhonetPatientContext> patientContextsBySampleItem = indexBy(
                 worklistContextDAO.getWhonetPatientContexts(sampleItemIds), MicroWhonetPatientContext::sampleItemId);
         Map<String, MicroCaseOrderDetail> detailsByCase = indexBy(caseOrderDetailDAO.getByCaseIds(caseIds),
                 MicroCaseOrderDetail::getCaseId);
         Map<String, PatientContext> contextsByCase = new LinkedHashMap<>();
         for (MicroCase microCase : cases) {
-            contextsByCase.put(microCase.getId(),
-                    patientContext(patientContextsBySampleItem.get(microCase.getSampleItemId()),
-                            detailsByCase.get(microCase.getId())));
+            contextsByCase.put(microCase.getId(), patientContext(null, detailsByCase.get(microCase.getId())));
         }
-        Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
-                MicroIsolate::getCaseId);
-        List<MicroIsolate> allIsolates = cases.stream()
-                .flatMap(value -> valuesFor(isolatesByCase, value.getId()).stream()).toList();
+        Map<String, PatientContext> contextsByIsolate = new LinkedHashMap<>();
+        for (MicroIsolate isolate : allIsolates) {
+            contextsByIsolate.put(isolate.getId(),
+                    patientContext(patientContextsBySampleItem.get(isolate.getSourceSampleItemId()),
+                            detailsByCase.get(isolate.getCaseId())));
+        }
         List<String> organismIds = allIsolates.stream().map(MicroIsolate::getOrganismId).filter(this::hasText)
                 .distinct().sorted().toList();
         List<MicroOrganism> organisms = organismIds.isEmpty() ? List.of() : organismDAO.getByIds(organismIds);
         Map<String, MicroOrganism> organismsById = indexBy(organisms, MicroOrganism::getId);
-        return new Population(cases, isolatesByCase, allIsolates, contextsByCase, organismsById);
+        return new Population(cases, isolatesByCase, allIsolates, contextsByCase, contextsByIsolate, organismsById);
     }
 
     private NormalizedQuery normalize(MicroWhonetExportQueryForm query) {
@@ -624,7 +634,7 @@ public class MicroWhonetDatasetServiceImpl implements MicroWhonetDatasetService 
 
     private record Population(List<MicroCase> cases, Map<String, List<MicroIsolate>> isolatesByCase,
             List<MicroIsolate> allIsolates, Map<String, PatientContext> contextsByCase,
-            Map<String, MicroOrganism> organismsById) {
+            Map<String, PatientContext> contextsByIsolate, Map<String, MicroOrganism> organismsById) {
     }
 
     private record Candidate(MicroCase microCase, MicroIsolate isolate, PatientContext context) {

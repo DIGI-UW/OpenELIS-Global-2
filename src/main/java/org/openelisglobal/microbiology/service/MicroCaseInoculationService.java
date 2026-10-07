@@ -6,8 +6,9 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 
 public interface MicroCaseInoculationService {
 
-    MicroCaseInoculation record(String caseId, String sourceInoculationId, String containerIdentifier, String media,
-            String incubation, String atmosphere, List<MicroLotSelection> lotSelections, String performedBy);
+    MicroCaseInoculation record(String caseId, String sourceSampleItemId, String sourceInoculationId,
+            String containerIdentifier, String media, String incubation, String atmosphere,
+            List<MicroLotSelection> lotSelections, String performedBy);
 
     List<MicroCaseInoculationForm> getByCaseId(String caseId);
 }

@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+    <property name="amr.cutover.mappingFile"
+        value="liquibase/amr-cutover-empty-map.csv" />
+    <property name="amr.cutover.actorId" value="1" />
+    <property name="amr.cutover.at" value="2026-10-06 12:00:00" />
+    <include file="liquibase/base-changelog.xml" />
+    <include file="liquibase/amr-v2-sequence.xml" />
+    <include
+        file="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-program-foundation.xml" />
+</databaseChangeLog>

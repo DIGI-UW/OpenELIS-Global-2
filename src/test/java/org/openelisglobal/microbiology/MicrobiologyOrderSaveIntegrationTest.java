@@ -22,7 +22,6 @@ import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -70,7 +69,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         userId = fixtures.defaultUserId();
         String methodId = fixtures.createMethodId();
         fixtures.createReferenceData(methodId);
-        cultureTest = fixtures.createCatalogCultureTest(methodId, MicroWorkflowType.BACTERIOLOGY);
+        cultureTest = fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit());
         patient = fixtures.createPatient("OGC782M4");
         sampleType = fixtures.getOrCreateActiveSampleType();
     }
@@ -154,7 +153,6 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
 
     private MicroCaseOrderDetailRequestForm orderDetail() {
         MicroCaseOrderDetailRequestForm detail = new MicroCaseOrderDetailRequestForm();
-        detail.cultureMethodId = cultureTest.getMethod().getId();
         detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         detail.patientOrigin = "INPATIENT";
         detail.admissionDate = "2026-08-17";
@@ -167,7 +165,6 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
     private void assertOrderDetail(MicroCase microCase, MicroCaseOrderDetailRequestForm expected) {
         MicroCaseOrderDetail actual = orderDetailService.getOrderDetail(microCase.getId());
         assertNotNull(actual);
-        assertEquals(expected.cultureMethodId, actual.getCultureMethodId());
         assertEquals(expected.patientOrigin, actual.getPatientOrigin());
         assertEquals(expected.culturePurpose, actual.getCulturePurpose());
         assertEquals(LocalDate.parse(expected.admissionDate), actual.getAdmissionDate());

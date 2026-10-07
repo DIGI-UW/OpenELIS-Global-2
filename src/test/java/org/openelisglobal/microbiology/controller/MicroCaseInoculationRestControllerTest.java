@@ -23,13 +23,14 @@ public class MicroCaseInoculationRestControllerTest {
     public void recordUsesAuthenticatedActorAndReturnsCreatedRecord() {
         MicroCaseInoculationService service = org.mockito.Mockito.mock(MicroCaseInoculationService.class);
         MicroCaseInoculationRequestForm request = new MicroCaseInoculationRequestForm();
+        request.sourceSampleItemId = "101";
         request.containerIdentifier = "BOTTLE-001";
         request.media = "Blood agar";
         MicroCaseInoculation inoculation = new MicroCaseInoculation();
         inoculation.setId("inoculation-1");
         MicroCaseInoculationForm form = new MicroCaseInoculationForm();
         form.id = "inoculation-1";
-        when(service.record(eq("case-1"), eq(null), eq("BOTTLE-001"), eq("Blood agar"), eq(null), eq(null),
+        when(service.record(eq("case-1"), eq("101"), eq(null), eq("BOTTLE-001"), eq("Blood agar"), eq(null), eq(null),
                 eq(List.of()), eq("42"))).thenReturn(inoculation);
         when(service.getByCaseId("case-1")).thenReturn(List.of(form));
 
@@ -38,7 +39,7 @@ public class MicroCaseInoculationRestControllerTest {
 
         assertEquals(200, response.getStatusCode().value());
         assertEquals("inoculation-1", response.getBody().id);
-        verify(service).record("case-1", null, "BOTTLE-001", "Blood agar", null, null, List.of(), "42");
+        verify(service).record("case-1", "101", null, "BOTTLE-001", "Blood agar", null, null, List.of(), "42");
     }
 
     private MockHttpServletRequest requestFor(String userId) {

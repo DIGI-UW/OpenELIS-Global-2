@@ -7,13 +7,21 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 
 public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
 
-    MicroCase getBySampleItemAndWorkflow(String sampleItemId, String workflowType);
+    void lockOrder(String sampleId);
+
+    MicroCase getForUpdate(String caseId);
+
+    List<MicroCase> getRoutingCandidates(String sampleId, String sampleTypeId, String testSectionId,
+            String collectedInSetsTestId, String sampleItemId);
+
+    List<MicroCase> getByOrder(String sampleId);
 
     List<MicroCase> getBySampleItem(String sampleItemId);
 
     List<MicroCase> getBySampleItemIds(List<String> sampleItemIds);
 
-    List<MicroCase> getOpenCases();
+    List<MicroCase> getOpenCases(boolean allUnits, java.util.Set<String> unitIds);
 
-    List<MicroCase> getFinalizedBacteriologyByCollectionDateRange(Timestamp fromInclusive, Timestamp toExclusive);
+    List<MicroCase> getFinalizedForExportByCollectionDateRange(String exportKey, Timestamp fromInclusive,
+            Timestamp toExclusive);
 }

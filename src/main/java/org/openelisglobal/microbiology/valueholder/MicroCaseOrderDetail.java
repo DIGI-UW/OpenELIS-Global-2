@@ -1,7 +1,6 @@
 package org.openelisglobal.microbiology.valueholder;
 
 import jakarta.persistence.Column;
-import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
@@ -9,7 +8,6 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.UUID;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.hibernate.converter.StringToIntegerConverter;
 
 @Entity
 @Table(name = "micro_case_order_detail", schema = "clinlims")
@@ -21,15 +19,8 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
     @Column(name = "id", length = 36)
     private String id = UUID.randomUUID().toString();
 
-    @Column(name = "case_id", length = 36, unique = true)
+    @Column(name = "case_id", nullable = false, length = 36, unique = true)
     private String caseId;
-
-    @Convert(converter = StringToIntegerConverter.class)
-    @Column(name = "sample_id", unique = true)
-    private String sampleId;
-
-    @Column(name = "culture_method_id", length = 20)
-    private String cultureMethodId;
 
     @Column(name = "patient_origin", length = 255)
     private String patientOrigin;
@@ -64,12 +55,6 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
     @Column(name = "updated_by", length = 20)
     private String updatedBy;
 
-    @Column(name = "discarded_at")
-    private Timestamp discardedAt;
-
-    @Column(name = "discarded_by", length = 20)
-    private String discardedBy;
-
     @Override
     public String getId() {
         return id;
@@ -86,22 +71,6 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
 
     public void setCaseId(String caseId) {
         this.caseId = caseId;
-    }
-
-    public String getSampleId() {
-        return sampleId;
-    }
-
-    public void setSampleId(String sampleId) {
-        this.sampleId = sampleId;
-    }
-
-    public String getCultureMethodId() {
-        return cultureMethodId;
-    }
-
-    public void setCultureMethodId(String cultureMethodId) {
-        this.cultureMethodId = cultureMethodId;
     }
 
     public String getPatientOrigin() {
@@ -192,19 +161,4 @@ public class MicroCaseOrderDetail extends BaseObject<String> {
         this.updatedBy = updatedBy;
     }
 
-    public Timestamp getDiscardedAt() {
-        return discardedAt;
-    }
-
-    public void setDiscardedAt(Timestamp discardedAt) {
-        this.discardedAt = discardedAt;
-    }
-
-    public String getDiscardedBy() {
-        return discardedBy;
-    }
-
-    public void setDiscardedBy(String discardedBy) {
-        this.discardedBy = discardedBy;
-    }
 }

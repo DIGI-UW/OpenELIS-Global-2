@@ -13,6 +13,7 @@ import java.util.Set;
 import org.openelisglobal.microbiology.dao.MicroAstRunDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseActivityDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseDAO;
+import org.openelisglobal.microbiology.dao.MicroCaseSpecimenDAO;
 import org.openelisglobal.microbiology.dao.MicroIsolateDAO;
 import org.openelisglobal.microbiology.form.MicroCaseNonconformanceRequestForm;
 import org.openelisglobal.microbiology.valueholder.MicroAstAttemptType;
@@ -50,20 +51,23 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
     private final MicroIsolateDAO isolateDAO;
     private final MicroAstService astService;
     private final ObjectMapper objectMapper;
+    private final MicroCaseSpecimenDAO specimenDAO;
+    private final MicrobiologyCaseAccessService accessService;
 
     @Autowired
     public MicroCaseNonconformanceServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             SampleItemService sampleItemService, NceReportService nceReportService,
             SampleItemRejectionService rejectionService, MicroAstRunDAO astRunDAO, MicroIsolateDAO isolateDAO,
-            MicroAstService astService) {
+            MicroAstService astService, MicroCaseSpecimenDAO specimenDAO, MicrobiologyCaseAccessService accessService) {
         this(caseDAO, activityDAO, sampleItemService, nceReportService, rejectionService, astRunDAO, isolateDAO,
-                astService, new ObjectMapper());
+                astService, new ObjectMapper(), specimenDAO, accessService);
     }
 
     MicroCaseNonconformanceServiceImpl(MicroCaseDAO caseDAO, MicroCaseActivityDAO activityDAO,
             SampleItemService sampleItemService, NceReportService nceReportService,
             SampleItemRejectionService rejectionService, MicroAstRunDAO astRunDAO, MicroIsolateDAO isolateDAO,
-            MicroAstService astService, ObjectMapper objectMapper) {
+            MicroAstService astService, ObjectMapper objectMapper, MicroCaseSpecimenDAO specimenDAO,
+            MicrobiologyCaseAccessService accessService) {
         this.caseDAO = caseDAO;
         this.activityDAO = activityDAO;
         this.sampleItemService = sampleItemService;
@@ -73,6 +77,8 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
         this.isolateDAO = isolateDAO;
         this.astService = astService;
         this.objectMapper = objectMapper;
+        this.specimenDAO = specimenDAO;
+        this.accessService = accessService;
     }
 
     @Override
@@ -84,6 +90,12 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
         requireText(authenticatedUserId, "authenticatedUserId");
         MicroCase currentCase = caseDAO.get(caseId)
                 .orElseThrow(() -> new IllegalArgumentException("Microbiology case not found"));
+        accessService.requireResults(caseId, authenticatedUserId);
+        MicroCaseMutationGuard.requireMutable(currentCase);
+        requireText(request.sampleItemId, "sampleItemId");
+        if (specimenDAO.getByCaseAndSampleItem(caseId, request.sampleItemId) == null) {
+            throw new IllegalArgumentException("The specimen must belong to this case");
+        }
         MicroCaseNonconformanceDisposition disposition = disposition(request.disposition);
         MicroCaseNonconformanceEventType eventType = eventType(request.eventType);
         if (eventType == MicroCaseNonconformanceEventType.SPECIMEN_LOST
@@ -94,16 +106,19 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
             requireRetestSource(currentCase, request);
         }
 
-        SampleItem item = sampleItemService.get(currentCase.getSampleItemId());
+        SampleItem item = sampleItemService.get(request.sampleItemId);
         if (item == null || item.getSample() == null) {
             throw new IllegalArgumentException("Case sample item is unavailable");
         }
         List<MicroCase> affectedCases = disposition == MicroCaseNonconformanceDisposition.REJECT_TEST
-                ? caseDAO.getBySampleItem(currentCase.getSampleItemId())
+                ? caseDAO.getBySampleItem(request.sampleItemId)
                 : List.of(currentCase);
         String createdAstRunId = null;
         if (disposition == MicroCaseNonconformanceDisposition.REJECT_TEST) {
-            affectedCases.forEach(this::requireRejectable);
+            for (MicroCase affectedCase : affectedCases) {
+                accessService.requireResults(affectedCase.getId(), authenticatedUserId);
+                requireRejectable(affectedCase);
+            }
         }
 
         NonConformingEventForm nceForm = toNceForm(request, item);
@@ -111,9 +126,17 @@ public class MicroCaseNonconformanceServiceImpl implements MicroCaseNonconforman
         if (disposition == MicroCaseNonconformanceDisposition.REJECT_TEST) {
             String reason = eventType == MicroCaseNonconformanceEventType.SPECIMEN_LOST ? "Specimen lost"
                     : request.description.trim();
-            rejectionService.reject(currentCase.getSampleItemId(), reason, authenticatedUserId);
+            rejectionService.reject(request.sampleItemId, reason, authenticatedUserId);
             for (MicroCase affectedCase : affectedCases) {
-                transitionRejected(affectedCase, eventType, authenticatedUserId, nce);
+                boolean remainingSpecimen = specimenDAO.getByCaseId(affectedCase.getId()).stream()
+                        .filter(member -> !request.sampleItemId.equals(member.getSampleItemId()))
+                        .anyMatch(member -> !sampleItemService.get(member.getSampleItemId()).isRejected());
+                if (remainingSpecimen) {
+                    recordActivity(affectedCase.getId(), MicroCaseActivityType.NONCONFORMANCE_REPORTED,
+                            authenticatedUserId, nce, request.description);
+                } else {
+                    transitionRejected(affectedCase, eventType, authenticatedUserId, nce);
+                }
             }
         } else {
             recordActivity(currentCase.getId(), MicroCaseActivityType.NONCONFORMANCE_REPORTED, authenticatedUserId, nce,

@@ -9,9 +9,7 @@ import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
 
 /**
- * Links one routed OpenELIS analysis to its microbiology case. The link
- * snapshots the configured reportable analyte so later configuration changes
- * cannot silently alter an in-flight case's patient-report target.
+ * Retains analysis ownership and the catalog role at the time of ordering.
  */
 @Entity
 @Table(name = "micro_case_analysis", schema = "clinlims")
@@ -29,6 +27,12 @@ public class MicroCaseAnalysis extends BaseObject<String> {
     @Column(name = "analysis_id", nullable = false, precision = 10, scale = 0)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String analysisId;
+
+    @Column(name = "case_role", nullable = false, length = 20)
+    private String caseRole;
+
+    @Column(name = "collected_in_sets", nullable = false)
+    private boolean collectedInSets;
 
     @Column(name = "reportable_test_analyte_id", precision = 10, scale = 0)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
@@ -62,6 +66,22 @@ public class MicroCaseAnalysis extends BaseObject<String> {
 
     public void setAnalysisId(String analysisId) {
         this.analysisId = analysisId;
+    }
+
+    public String getCaseRole() {
+        return caseRole;
+    }
+
+    public void setCaseRole(String caseRole) {
+        this.caseRole = caseRole;
+    }
+
+    public boolean isCollectedInSets() {
+        return collectedInSets;
+    }
+
+    public void setCollectedInSets(boolean collectedInSets) {
+        this.collectedInSets = collectedInSets;
     }
 
     public String getReportableTestAnalyteId() {

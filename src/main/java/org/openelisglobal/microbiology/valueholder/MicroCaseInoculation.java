@@ -22,6 +22,10 @@ public class MicroCaseInoculation extends BaseObject<String> {
     @Column(name = "case_id", nullable = false, length = 36)
     private String caseId;
 
+    @Column(name = "source_sample_item_id", nullable = false, precision = 10, scale = 0)
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sourceSampleItemId;
+
     @Column(name = "source_inoculation_id", length = 36)
     private String sourceInoculationId;
 
@@ -70,6 +74,14 @@ public class MicroCaseInoculation extends BaseObject<String> {
 
     public String getSourceInoculationId() {
         return sourceInoculationId;
+    }
+
+    public String getSourceSampleItemId() {
+        return sourceSampleItemId;
+    }
+
+    public void setSourceSampleItemId(String sourceSampleItemId) {
+        this.sourceSampleItemId = sourceSampleItemId;
     }
 
     public void setSourceInoculationId(String sourceInoculationId) {

@@ -22,6 +22,10 @@ public class MicroIsolate extends BaseObject<String> {
     @Column(name = "case_id", nullable = false, length = 36)
     private String caseId;
 
+    @Column(name = "source_sample_item_id", nullable = false, precision = 10, scale = 0)
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sourceSampleItemId;
+
     @Column(name = "amendment_id", length = 36)
     private String amendmentId;
 
@@ -74,6 +78,14 @@ public class MicroIsolate extends BaseObject<String> {
 
     public void setCaseId(String caseId) {
         this.caseId = caseId;
+    }
+
+    public String getSourceSampleItemId() {
+        return sourceSampleItemId;
+    }
+
+    public void setSourceSampleItemId(String sourceSampleItemId) {
+        this.sourceSampleItemId = sourceSampleItemId;
     }
 
     public String getAmendmentId() {

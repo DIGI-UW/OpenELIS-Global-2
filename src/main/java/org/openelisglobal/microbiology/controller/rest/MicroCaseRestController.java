@@ -3,20 +3,16 @@ package org.openelisglobal.microbiology.controller.rest;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.ArrayList;
 import java.util.List;
-import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.microbiology.form.MicroCaseActivityRequestForm;
 import org.openelisglobal.microbiology.form.MicroCaseDetailForm;
 import org.openelisglobal.microbiology.form.MicroCaseLookupForm;
 import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
-import org.openelisglobal.microbiology.form.MicroCaseWorkflowChangeRequestForm;
 import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.microbiology.service.MicroCaseService;
 import org.openelisglobal.microbiology.service.MicroCaseStateService;
-import org.openelisglobal.microbiology.service.MicroCaseWorkflowService;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -31,34 +27,28 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/cases")
-@PreAuthorize(MicrobiologyRestControllerSupport.BENCH_ACCESS)
+@PreAuthorize("isAuthenticated()")
 public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroCaseService caseService;
     private final MicrobiologyCaseAccessService accessService;
-    private final UserModuleService userModuleService;
     private final MicroCaseStateService stateService;
     private final MicroCaseOrderDetailService orderDetailService;
-    private final MicroCaseWorkflowService workflowService;
 
     public MicroCaseRestController(MicroCaseService caseService, MicrobiologyCaseAccessService accessService,
-            UserModuleService userModuleService, MicroCaseStateService stateService,
-            MicroCaseOrderDetailService orderDetailService, MicroCaseWorkflowService workflowService) {
+            MicroCaseStateService stateService, MicroCaseOrderDetailService orderDetailService) {
         this.caseService = caseService;
         this.accessService = accessService;
-        this.userModuleService = userModuleService;
         this.stateService = stateService;
         this.orderDetailService = orderDetailService;
-        this.workflowService = workflowService;
     }
 
     @GetMapping("/{caseId}")
     public ResponseEntity<MicroCaseDetailForm> getCaseDetail(@PathVariable String caseId, HttpServletRequest request) {
-        if (!accessService.canAccessCase(caseId, authenticatedUserId(request),
-                userModuleService.isUserAdmin(request))) {
+        if (!accessService.canReadCase(caseId, authenticatedUserId(request))) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        MicroCaseDetailForm detail = caseService.getCaseDetail(caseId);
+        MicroCaseDetailForm detail = getCaseDetailForUser(caseId, authenticatedUserId(request));
         if (detail == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
@@ -68,10 +58,7 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     @GetMapping
     public ResponseEntity<List<MicroCaseLookupForm>> getCasesForSampleItem(@RequestParam String sampleItemId,
             HttpServletRequest request) {
-        if (!accessService.canAccessSampleItem(sampleItemId, authenticatedUserId(request),
-                userModuleService.isUserAdmin(request))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        authenticatedUserId(request);
         List<MicroCaseLookupForm> rows = new ArrayList<>();
         for (MicroCase microCase : caseService.getSiblingCases(sampleItemId)) {
             rows.add(toLookupForm(microCase));
@@ -82,38 +69,42 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     @PostMapping("/{caseId}/activities")
     public ResponseEntity<MicroCaseDetailForm> recordActivity(@PathVariable String caseId,
             @RequestBody MicroCaseActivityRequestForm request, HttpServletRequest httpRequest) {
+        accessService.requireResults(caseId, authenticatedUserId(httpRequest));
         MicroCaseStage nextStage = requiredEnum(MicroCaseStage.class, request.nextStage, "nextStage");
-        if (request.lotSelections == null || request.lotSelections.isEmpty()) {
+        if (request.sourceSampleItemId != null) {
+            stateService.advanceStage(caseId, nextStage, authenticatedUserId(httpRequest), request.note,
+                    lotSelections(request.lotSelections), request.sourceSampleItemId);
+        } else if (request.lotSelections == null || request.lotSelections.isEmpty()) {
             stateService.advanceStage(caseId, nextStage, authenticatedUserId(httpRequest), request.note);
         } else {
             stateService.advanceStage(caseId, nextStage, authenticatedUserId(httpRequest), request.note,
                     lotSelections(request.lotSelections));
         }
-        return ResponseEntity.ok(caseService.getCaseDetail(caseId));
+        return ResponseEntity.ok(getCaseDetailForUser(caseId, authenticatedUserId(httpRequest)));
     }
 
     @PutMapping("/{caseId}/order-detail")
     public ResponseEntity<MicroCaseDetailForm> saveOrderDetail(@PathVariable String caseId,
             @RequestBody MicroCaseOrderDetailRequestForm request, HttpServletRequest httpRequest) {
+        accessService.requireResults(caseId, authenticatedUserId(httpRequest));
         orderDetailService.saveOrderDetail(caseId, request, authenticatedUserId(httpRequest));
-        return ResponseEntity.ok(caseService.getCaseDetail(caseId));
+        return ResponseEntity.ok(getCaseDetailForUser(caseId, authenticatedUserId(httpRequest)));
     }
 
-    @PutMapping("/{caseId}/workflow")
-    public ResponseEntity<MicroCaseDetailForm> changeWorkflow(@PathVariable String caseId,
-            @RequestBody MicroCaseWorkflowChangeRequestForm request, HttpServletRequest httpRequest) {
-        MicroWorkflowType workflowType = request.workflowType == null ? null
-                : MicroWorkflowType.valueOf(request.workflowType);
-        workflowService.changeWorkflow(caseId, workflowType, request.cultureMethodId, request.reason,
-                request.preserveExistingWorkConfirmed, authenticatedUserId(httpRequest));
-        return ResponseEntity.ok(caseService.getCaseDetail(caseId));
+    private MicroCaseDetailForm getCaseDetailForUser(String caseId, String userId) {
+        MicroCaseDetailForm detail = caseService.getCaseDetail(caseId);
+        if (detail != null) {
+            detail.canEnterResults = accessService.canEnterResults(caseId, userId);
+            detail.canValidateResults = accessService.canValidateResults(caseId, userId);
+        }
+        return detail;
     }
 
     private MicroCaseLookupForm toLookupForm(MicroCase microCase) {
         MicroCaseLookupForm form = new MicroCaseLookupForm();
         form.id = microCase.getId();
-        form.sampleItemId = microCase.getSampleItemId();
-        form.workflowType = microCase.getWorkflowType();
+        form.sampleId = microCase.getSampleId();
+        form.testSectionId = microCase.getTestSectionId();
         form.stage = microCase.getStage();
         form.priority = microCase.getPriority();
         return form;

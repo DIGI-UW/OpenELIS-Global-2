@@ -1,5 +1,6 @@
 package org.openelisglobal.microbiology.daoimpl;
 
+import jakarta.persistence.LockModeType;
 import java.util.List;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
@@ -15,6 +16,16 @@ public class MicroIsolateDAOImpl extends BaseDAOImpl<MicroIsolate, String> imple
 
     public MicroIsolateDAOImpl() {
         super(MicroIsolate.class);
+    }
+
+    @Override
+    public MicroIsolate getForUpdate(String isolateId) {
+        MicroIsolate isolate = entityManager.find(MicroIsolate.class, isolateId);
+        if (isolate == null) {
+            throw new IllegalArgumentException("Isolate not found");
+        }
+        entityManager.refresh(isolate, LockModeType.PESSIMISTIC_WRITE);
+        return isolate;
     }
 
     @Override

@@ -4,7 +4,6 @@ import java.util.List;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.microbiology.form.MicroWhonetPatientContext;
 import org.openelisglobal.microbiology.form.MicroWorklistActivityContext;
-import org.openelisglobal.microbiology.form.MicroWorklistCultureTimingContext;
 import org.openelisglobal.microbiology.form.MicroWorklistInoculationContext;
 import org.openelisglobal.microbiology.form.MicroWorklistRecentActivityContext;
 import org.openelisglobal.microbiology.form.MicroWorklistSpecimenContext;
@@ -22,5 +21,4 @@ public interface MicroWorklistContextDAO extends BaseDAO<MicroCase, String> {
 
     List<MicroWorklistInoculationContext> getFirstInoculationContexts(List<String> caseIds);
 
-    List<MicroWorklistCultureTimingContext> getCultureTimingContexts(List<String> methodIds);
 }

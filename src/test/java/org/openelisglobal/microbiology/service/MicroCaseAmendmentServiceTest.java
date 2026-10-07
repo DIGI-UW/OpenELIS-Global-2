@@ -2,10 +2,13 @@ package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyZeroInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
@@ -29,6 +32,8 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseAmendmentStatus;
 import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroCaseAmendmentServiceTest {
@@ -54,12 +59,38 @@ public class MicroCaseAmendmentServiceTest {
     @Mock
     private MicroIdentificationHistoryService identificationHistoryService;
 
+    @Mock
+    private MicrobiologyCaseAccessService accessService;
+
     private MicroCaseAmendmentService service;
 
     @Before
     public void setUp() {
         service = new MicroCaseAmendmentServiceImpl(caseDAO, amendmentDAO, activityDAO, reportVersionService, astRunDAO,
-                isolateDAO, identificationHistoryService);
+                isolateDAO, identificationHistoryService, accessService);
+    }
+
+    @Test
+    public void openingRequiresCaseUnitValidationBeforeCapturingHistoryOrUnlocking() {
+        assertValidationDenied(() -> service.openAmendment("case-1", "Correction", "9"));
+    }
+
+    @Test
+    public void completionRequiresCaseUnitValidationBeforePublishingOrClosing() {
+        assertValidationDenied(() -> service.completeAmendment("case-1",
+                new MicroReportProjectionResult("Amended report", true, List.of()), "9"));
+    }
+
+    @Test
+    public void cancellationRequiresCaseUnitValidationBeforeRevertingClinicalHistory() {
+        assertValidationDenied(() -> service.cancelAmendment("case-1", "Correction cancelled", "9"));
+    }
+
+    private void assertValidationDenied(Runnable operation) {
+        doThrow(new ResponseStatusException(HttpStatus.FORBIDDEN)).when(accessService).requireValidation("case-1", "9");
+        assertEquals(403, assertThrows(ResponseStatusException.class, operation::run).getStatusCode().value());
+        verifyZeroInteractions(caseDAO, amendmentDAO, activityDAO, reportVersionService, astRunDAO, isolateDAO,
+                identificationHistoryService);
     }
 
     @Test

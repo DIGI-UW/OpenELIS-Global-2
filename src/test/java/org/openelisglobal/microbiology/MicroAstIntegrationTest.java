@@ -28,7 +28,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 import org.openelisglobal.microbiology.valueholder.MicroIsolate;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationStatus;
 import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -71,10 +70,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
     @Test
     public void astRunInterpretsAgainstItsSnapshottedBreakpointStandard() {
         AlternativeBreakpointData alternative = fixtures.createAlternativeBreakpoint(referenceData);
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
-                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+        MicroCase microCase = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId),
+                fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit()), fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), sampleItemId, "ISO-1",
+                "Gram negative rods", "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
         identify(isolate);
 
@@ -95,10 +94,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void astRunStoresReadingsInterpretationOverrideAndReview() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
-                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+        MicroCase microCase = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId),
+                fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit()), fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), sampleItemId, "ISO-1",
+                "Gram negative rods", "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
         identify(isolate);
 
@@ -118,10 +117,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void repeatAttemptPersistsProvenanceAndExplicitReportableSelection() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
-                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+        MicroCase microCase = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId),
+                fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit()), fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), sampleItemId, "ISO-1",
+                "Gram negative rods", "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
         identify(isolate);
         MicroAstRun original = astService.startRun(isolate.getId(), referenceData.panel().getId(),
@@ -152,10 +151,10 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void reviewedWorklistFiltersCountsAndPagesAtTheDatabaseBoundary() {
-        MicroCase microCase = caseService.createOrGetCase(sampleItemId, MicroWorkflowType.BACTERIOLOGY, methodId,
-                fixtures.defaultUserId());
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
-                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+        MicroCase microCase = caseService.createOrGetCase(fixtures.getSampleItem(sampleItemId),
+                fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit()), fixtures.defaultUserId());
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), sampleItemId, "ISO-1",
+                "Gram negative rods", "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 fixtures.defaultUserId());
         identify(isolate);
         MicroAstRun run = astService.startRun(isolate.getId(), referenceData.panel().getId(),
@@ -167,16 +166,16 @@ public class MicroAstIntegrationTest extends BaseWebContextSensitiveTest {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
         query.grain = "ast";
         query.status = "reviewed";
-        query.workflow = MicroWorkflowType.BACTERIOLOGY.name();
+        query.testSectionId = microCase.getTestSectionId();
         query.q = run.getId();
         query.pageSize = 1;
 
-        MicroWorklistPageForm firstPage = worklistService.getWorklistPage(query);
+        MicroWorklistPageForm firstPage = worklistService.getWorklistPage(query, fixtures.defaultUserId());
         assertEquals(1, firstPage.total);
         assertEquals(run.getId(), firstPage.rows.get(0).astRunId);
 
         query.page = 2;
-        MicroWorklistPageForm secondPage = worklistService.getWorklistPage(query);
+        MicroWorklistPageForm secondPage = worklistService.getWorklistPage(query, fixtures.defaultUserId());
         assertEquals(1, secondPage.total);
         assertEquals(0, secondPage.rows.size());
     }

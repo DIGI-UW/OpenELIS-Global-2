@@ -10,4 +10,7 @@ public interface MicroCaseStateService {
 
     MicroCase advanceStage(String caseId, MicroCaseStage nextStage, String performedBy, String note,
             List<MicroLotSelection> lotSelections);
+
+    MicroCase advanceStage(String caseId, MicroCaseStage nextStage, String performedBy, String note,
+            List<MicroLotSelection> lotSelections, String sourceSampleItemId);
 }

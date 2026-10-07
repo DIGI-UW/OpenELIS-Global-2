@@ -39,7 +39,6 @@ import org.openelisglobal.microbiology.valueholder.MicroIsolateSignificance;
 import org.openelisglobal.microbiology.valueholder.MicroOrganism;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersion;
 import org.openelisglobal.microbiology.valueholder.MicroReportVersionType;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.testanalyte.service.TestAnalyteService;
@@ -173,12 +172,13 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         sampleItem.setTypeOfSample(fixtures.createTypeOfSample());
         sampleItem.setSysUserId(userId);
         sampleItemService.update(sampleItem);
-        MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), MicroWorkflowType.BACTERIOLOGY, methodId,
-                userId);
-        linkReportableAnalysis(microCase, sampleItem, referenceData, userId);
+        var cultureTest = fixtures.createCatalogCultureTest(methodId, fixtures.createLabUnit());
+        MicroCase microCase = caseService.createOrGetCase(sampleItem, cultureTest, userId);
+        linkReportableAnalysis(microCase, sampleItem, cultureTest, userId);
 
-        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), "ISO-1", "Gram negative rods",
-                "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT, userId);
+        MicroIsolate isolate = isolateService.createIsolate(microCase.getId(), sampleItem.getId(), "ISO-1",
+                "Gram negative rods", "Lactose fermenting colonies", MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
+                userId);
         isolateService.updateIdentification(isolate.getId(), referenceData.organism().getId(),
                 referenceData.organism().getDisplayName(), MicroIsolateSignificance.CLINICALLY_SIGNIFICANT,
                 MicroIsolateIdentificationStatus.CONFIRMED, "MALDI_TOF", new BigDecimal("99.5"), userId);
@@ -193,9 +193,8 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
                 referenceData.panel().getId(), referenceData.organism().getDisplayName(), userId);
     }
 
-    private void linkReportableAnalysis(MicroCase microCase, SampleItem sampleItem, ReferenceData referenceData,
-            String userId) {
-        org.openelisglobal.test.valueholder.Test test = fixtures.createCatalogTest();
+    private void linkReportableAnalysis(MicroCase microCase, SampleItem sampleItem,
+            org.openelisglobal.test.valueholder.Test test, String userId) {
         Analysis analysis = new Analysis();
         analysis.setSampleItem(sampleItem);
         analysis.setTest(test);
@@ -232,8 +231,10 @@ public class MicroAmendmentIntegrationTest extends BaseWebContextSensitiveTest {
         testResult.setSysUserId(userId);
         testResultService.insert(testResult);
 
-        referenceData.cultureSetup().setReportableTestAnalyteId(testAnalyte.getId());
-        caseAnalysisService.linkAnalysis(microCase, analysis, referenceData.cultureSetup());
+        new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
+            var link = caseAnalysisService.linkAnalysis(microCase, analysis, userId);
+            link.setReportableTestAnalyteId(testAnalyte.getId());
+        });
     }
 
     private record FinalCase(String caseId, String isolateId, String organismId, String panelId,

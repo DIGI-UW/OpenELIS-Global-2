@@ -5,6 +5,7 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class MicroCaseNonconformanceRequestForm {
+    public String sampleItemId;
     public String categoryId;
     public String typeId;
     public Integer reportingUnitId;
