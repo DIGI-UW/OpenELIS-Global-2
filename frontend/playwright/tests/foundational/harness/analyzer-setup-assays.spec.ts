@@ -165,7 +165,7 @@ test.describe("Results the mapping does not cover", () => {
       page,
       `Held bench ${run}`,
       senderId,
-      ["FLUB"],
+      { assaysOff: ["FLUB"] },
     );
     const tests = {
       sars: await activeTestId(page, "SARS-CoV-2 PCR", specimen),
