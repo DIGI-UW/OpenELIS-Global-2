@@ -58,12 +58,14 @@ services:
         condition: service_completed_successfully
     networks:
       - default
+    # `compose up --wait` gives up once a check fails after the start period,
+    # so the start period, not the caller's --wait-timeout, bounds a slow boot.
     healthcheck:
       test: ["CMD", "/healthcheck.sh"]
       timeout: 10s
       interval: 30s
       retries: 3
-      start_period: 2m
+      start_period: 10m
 
   fhir.openelis.org:
     container_name: external-fhir-api

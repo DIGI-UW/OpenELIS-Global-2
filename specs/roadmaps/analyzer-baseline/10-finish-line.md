@@ -34,6 +34,11 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
 - Upgrade path: "Tests at each level + rehearsal (Recommended)".
 - An analyzer whose profile disappears later: "Offer the same reset
   (Recommended)".
+- Harness configuration (7 Oct, after the harness shards failed to start):
+  "Only what analyzers use (Recommended)", and "I want to make sure that the
+  config we're loading is not being tested by other tests that run on the
+  analyzer harness, and I want to raise the 4 minute timeout since that seems
+  arbitrary".
 
 ### Facts
 
@@ -67,6 +72,23 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
   `.github/scripts/test_analyzer_overlay.py` checks they are releases at the
   submodule commits; `publish-images.yml` already reads the Bridge submodule
   commit to bundle its profiles.
+- The harness configuration (`projects/analyzer-harness/dictionary/`) is all
+  32 files of `volume/configuration/backend/` (Indonesian address hierarchy,
+  water standards, vector, environmental, QA, roles, OCL) plus 6
+  `analyzer-harness-*` files; develop's harness loads 2. Each dictionary, test,
+  sample type, test section, test result and panel file ends with a full
+  display-list rebuild (`DisplayListService.refreshLists()`, about 16 s on a CI
+  runner), so the webapp started in over 4 minutes and the harness shards
+  failed at "Start containers" (run 37639207944). `example-test-results.csv`
+  also gives the base catalog's DNA PCR a second Positive answer, so the
+  harness fixture `reporting-field-values.sql` fails ("query returned more
+  than one row"). The baseline profiles resolve eight LOINCs: 20447-9,
+  94500-6, 85362-2 and 89372-7 (rows of `example-tests.csv`), and 85477-8,
+  85478-6, 85479-4 and 89578-3 (`analyzer-harness-tests.csv`).
+- The webapp health limit is the container's own check (start period 2m,
+  three checks 30 s apart, in `projects/analyzer-harness/docker-compose.base.yml`,
+  copied from `build.docker-compose.yml`); Compose stops waiting when Docker
+  marks the container unhealthy, before CI's `--wait-timeout 900`.
 - Dead code this stack orphaned: `findHeldMappingResultsByProfile` (the DAO,
   its implementation, the service and its implementation). The Playwright
   config still names the deleted `ogc-1054-m2-shared-mapping.spec.ts`.
@@ -75,6 +97,9 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
 
 ```
 - [ ] F1 The top PR's CI is honest: the Build + Test failure (AnalyzerAdoptionIntegrationTest, which passes locally) is found and fixed at its cause; every E2E failure is accounted for by a spec this step rewrites
+- [x] F1a The adoption integration test creates and deletes its own catalog tests (earlier suites in CI's class order leave the test table empty)
+- [ ] F1b The harness loads only what the analyzer stories use: the `analyzer-harness-*` files, with the generic rows the baseline profiles resolve (HIV-1 Viral Load, SARS-CoV-2 PCR, Xpert MTB/RIF, Rifampin Resistance) moved into them; the rest of the copied generic dictionary is deleted. Nothing else that runs on the harness (the foundational, storage and reporting fixtures, every harness spec) reads a row only the harness configuration provides or changes; checked by booting the harness and loading its fixtures
+- [ ] F1c The harness webapp's health grace period lets CI's own wait (15 minutes) govern: a slow start shows as a slow job, never as "unhealthy" at 4 minutes
 - [ ] F2 Delete the dead code this stack orphaned and the stale M2 entry in playwright.config.ts
 - [ ] F3 Specs in their end state, each setting up its own analyzers through the setup screens or the shared API sequence and sending only manufacturer fixtures: the MVP journeys (a GeneXpert HIV-1 viral load and a respiratory panel with its components, each to an accepted clinical result; two GeneXperts on one listener; FluoroCycler file to clinical result; a catalog test deactivated after mapping, held, reactivated and recovered, on Influenza B), with the seven per-code scenarios and the unknown-value recovery retired; a new QuantStudio file story to an accepted clinical result; the setup-assays held-result story on fixtures (Influenza B turned off; RSV under a code the profile does not declare); the adoption spec on its own catalog test; the microbiology AST spec with its own source analyzer; the M1 lineage text on the baseline ID. Then `sendGeneXpertAstm` and the setup picker's profile pin are deleted
 - [ ] F4 E2E user story: an instrument code changed in the Assays step is the code results arrive under (Cepheid fixture replayed with that code) and they land on the right test. Outbound orders from OE2 are deferred

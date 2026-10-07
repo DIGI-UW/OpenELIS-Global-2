@@ -141,11 +141,15 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     test; the operator maps it like any other override, from the held row or
     the editor, as a row of that analyzer's mapping. What the default profile
     covers never limits what a lab can run.
-14. The harness runs on its own copy of OE2's generic default dictionary
-    (`volume/configuration/backend` shape), loaded through the CSV path, with
-    answers and components for every outcome each shipped instrument sends.
-    Legacy 2.3.x rows that share LOINC 94500-6 get their correct LOINC through
-    the harness CSVs. The main generic dictionary is out of scope.
+14. The harness loads only the configuration the analyzer stories use, as
+    `analyzer-harness-*` CSVs in the `volume/configuration/backend` shape
+    loaded through the CSV path: the tests each shipped profile resolves by
+    LOINC, their sections and sample types, and answers and components for
+    every outcome each shipped instrument sends. Nothing else that runs on the
+    harness depends on a row this configuration adds or changes. Legacy 2.3.x
+    rows that share LOINC 94500-6 get their correct LOINC through the harness
+    CSVs. The main generic dictionary is out of scope (decided 7 Oct: "Only
+    what analyzers use").
 15. Mock traffic is manufacturer-shaped, replayed from vendor-documented
     example messages (GeneXpert: Cepheid 301-2002 Rev E §6.3.4.1.9 to
     6.3.4.1.11, 303-0251 §2.1, 302-7279 §4), never generated from our
@@ -325,7 +329,7 @@ Each step is one file. It is self-contained: its Facts section holds everything 
 | 4    | [Remediation inside setup and verification](analyzer-baseline/04-setup-remediation.md)       | the setup wizard shows every unresolved row with its reason, lets the operator fix it in place, and never shows raw server text.                                                                                                           |
 | 5    | [Verify vendor vocabulary](analyzer-baseline/05-vendor-vocabulary.md)                        | every code, value and record type a baseline profile declares is cited from the vendor's own LIS or host-interface document.                                                                                                               |
 | 6    | [Profile contract, templates, and the shipped set](analyzer-baseline/06-profile-contract.md) | the Bridge enforces one profile contract, ships templates and a guide, ships GeneXpert as the first baseline profile, and carries every parsed fact into the bundle.                                                                       |
-| 7    | [Harness copy of the generic dictionary](analyzer-baseline/07-harness-dictionary.md)         | the harness runs on a copy of OE2's generic dictionary that lets every shipped analyzer bind out of the box; the Bridge and mock pins are bumped; the baseline E2E is green.                                                               |
+| 7    | [Harness dictionary](analyzer-baseline/07-harness-dictionary.md)                             | the harness loads only the configuration the analyzer stories use, so every shipped analyzer binds out of the box; the Bridge and mock pins are bumped; the baseline E2E is green.                                                         |
 | 8    | [Manufacturer-shaped mock traffic](analyzer-baseline/08-mock-traffic.md)                     | the mock replays vendor-documented messages for every outcome, and a contract test keeps it aligned with the pinned baseline profile.                                                                                                      |
 | 9    | [Validate and sync the spec](analyzer-baseline/09-spec-sync.md)                              | `specs/analyzers/spec.md` describes the analyzer setup that landed, so it can be read without this roadmap.                                                                                                                                |
 | 10   | [Finish line](analyzer-baseline/10-finish-line.md)                                           | the remaining work as one ordered list, ending in the recorded evidence for the three analyzer workflows.                                                                                                                                  |
