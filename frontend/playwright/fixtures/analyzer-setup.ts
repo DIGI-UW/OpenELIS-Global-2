@@ -86,15 +86,31 @@ export class AnalyzerSetupPage {
   }
 
   /**
-   * From the instrument step, through Assays as the defaults left them (less
-   * the assays named in `assaysOff`), to Verify.
+   * From the instrument step, through Assays as the defaults left them, to
+   * Verify: less the assays named in `assaysOff`, and with the code the
+   * instrument sends set for each assay in `instrumentCodes`.
    */
-  async continueToVerify(assaysOff: string[] = []) {
+  async continueToVerify({
+    assaysOff = [],
+    instrumentCodes = {},
+  }: {
+    assaysOff?: string[];
+    instrumentCodes?: Record<string, string>;
+  } = {}) {
     await this.continueToAssays();
     for (const code of assaysOff) {
       const assay = this.page.getByTestId(`analyzer-assay-${code}`);
       await assay.locator("label").first().click();
       await expect(assay.getByRole("checkbox")).not.toBeChecked();
+    }
+    for (const [code, sent] of Object.entries(instrumentCodes)) {
+      const field = this.page
+        .getByTestId(`analyzer-assay-${code}`)
+        .getByRole("textbox", {
+          name: `Code the instrument sends for ${code}`,
+        });
+      await field.fill(sent);
+      await expect(field).toHaveValue(sent);
     }
     await this.page.getByRole("button", { name: "Continue to Verify" }).click();
     await expect(this.page).toHaveURL(

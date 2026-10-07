@@ -477,3 +477,45 @@ test.describe("A QuantStudio from setup to a clinical result", () => {
     }
   });
 });
+
+test.describe("An instrument that sends its own test code", () => {
+  test("the code set in the Assays step is the code results arrive under, and they land on the right test", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    const run = randomUUID().slice(0, 8);
+    const senderId = `GX-CODE-${run}`;
+    // The lab's instrument is configured to send HIVU where the profile says HIVVL.
+    const analyzer = await activateShippedGeneXpert(
+      page,
+      `Own codes GeneXpert ${run}`,
+      senderId,
+      { instrumentCodes: { HIVVL: "HIVU" } },
+    );
+    const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
+    const order = await createClinicalOrder(page, {
+      testIds: [testId],
+      specimenName: "Plasma",
+    });
+    await sendGeneXpertFixture(
+      page.request,
+      analyzer.bridgeConnectionId,
+      order.accession,
+      { assay: "hivvl", outcome: "quantified" },
+      senderId,
+      { HIVVL: "HIVU" },
+    );
+    type Row = WorklistRow & { componentId?: string | null };
+    const own = async () =>
+      (await worklistFor<Row>(page, analyzer.id, order.accession)).find(
+        (row) => !row.componentId,
+      );
+    // The Bridge translates the lab's code back to the profile's, so the result binds as usual.
+    await expect.poll(async () => (await own())?.testId).toBe(testId);
+    expect((await own())?.importIssueReason).toBeFalsy();
+    await acceptAll(page, analyzer, [order.accession]);
+    await expect
+      .poll(() => savedValue(page, order, testId, "HIV-1 viral load"))
+      .toBe("1010");
+  });
+});

@@ -34,7 +34,8 @@ export type Connection = { senderId: string } | { importDirectory: string };
 
 /**
  * Set an analyzer up on a shipped baseline profile through the setup screens:
- * the assays named in `assaysOff` turned off, its shipped mapping confirmed, its
+ * the assays named in `assaysOff` turned off, the codes in `instrumentCodes`
+ * entered as the ones the instrument sends, its shipped mapping confirmed, its
  * connection set, and the connection active.
  */
 export async function activateShippedAnalyzer(
@@ -42,7 +43,10 @@ export async function activateShippedAnalyzer(
   profile: ShippedProfile,
   name: string,
   connection: Connection,
-  assaysOff: string[] = [],
+  assays: {
+    assaysOff?: string[];
+    instrumentCodes?: Record<string, string>;
+  } = {},
 ): Promise<Analyzer> {
   const list = new AnalyzerListPage(page);
   const setup = new AnalyzerSetupPage(page);
@@ -52,7 +56,7 @@ export async function activateShippedAnalyzer(
   await setup.selectProfile(profile.displayName);
   await setup.fillName(name);
   await setup.selectLabUnit("Molecular Biology");
-  await setup.continueToVerify(assaysOff);
+  await setup.continueToVerify(assays);
   const mapping = (await (
     await page.request.get(
       `${API}/analyzer-types/${profile.profileId}/mapping?revision=${profile.revision}`,
