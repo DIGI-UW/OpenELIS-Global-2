@@ -160,17 +160,25 @@ Each PR description and its Jira evidence link must identify:
 ### Commit, stack and CI procedure
 
 Create each bounded branch in its own durable worktree from the preceding
-reviewed stack head. Commit a coherent tested increment, open a draft PR with
+published stack head whose focused functional gate passes. Commit a coherent tested increment, open a draft PR with
 that predecessor as its base, then attach it with `gh stack link 4610 <PR>`.
 Import/inspect its local stack metadata with `gh stack checkout <own-branch>` and
 `gh stack view`; use `gh stack push` for subsequent stack-aware publication.
-Do not advance dependent implementation while its prerequisite gate is failing.
-A committed draft is reviewable work, not acceptance or permission to merge.
+Advance after focused functional, preservation/security and applicable video/mock
+checks pass and the PR is published. Do not wait for full CI or human review to
+start the next implementation slice. Stop dependent work only when a required
+functional behavior is missing or failing. Keep the stack ordered and each owning
+worktree free of uncommitted source between increments; preserve the original
+V02 snapshot separately. A published draft is not permission to merge.
 
-For each review revision, run `scripts/run-ci-checks.sh --artifact-dir <durable-path>`
-from a clean committed tree while GitHub CI runs. Keep its generated checkouts
+Run `scripts/run-ci-checks.sh --artifact-dir <durable-path>` on committed code
+checkpoints in parallel with GitHub CI. These broad runs are secondary to
+implementation progression; do not pause coding or rerun them just for a
+documentation-only update. Record failures on the owning PR for the final
+stabilization pass after V01–V15 implementation. Keep its generated checkouts
 under the repository's `.worktrees/` directory. Inspect the three checkpoints via
-`gh pr checks <PR>`: Backend, Frontend and E2E must all exist and pass. Retain the
+`gh pr checks <PR>`: Backend, Frontend and E2E must all exist and pass before
+final acceptance/merge, not before starting the next slice. Retain the
 source SHA and each local lane's outcome; check cleanup of the owned containers,
 volumes and networks. Parent-branch CI does not verify new child changes.
 

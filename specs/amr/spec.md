@@ -78,8 +78,12 @@ It changes no application interface, database schema or clinical record.
 
 ## Acceptance boundary
 
-Each iteration requires its source-linked user outcome, engineering invariants,
-negative/security cases and exact gate to pass on the same revision. UI proof
+Implementation advances when the slice's source-linked user outcome, engineering
+invariants, negative/security cases and focused gate pass on the same revision,
+and its committed work is published in a reviewable stacked PR. Pending full CI
+or CI-only failures do not block the next implementation slice. Record them for
+final stabilization; a failing functional dependency still blocks dependent work.
+Full CI, review and release acceptance must close before merge/deployment. UI proof
 shows persisted behavior after reload, not merely a successful request. Compare
 with the named mock section and record deliberate design deviations for review.
 Every user-facing slice supplies a video of the implemented workflow, including

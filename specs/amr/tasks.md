@@ -51,11 +51,15 @@ remain with their owners and are linked, not copied into new specifications.
 - At each commit and goal continuation, reconcile the current branch, PR, source
   revision, remaining acceptance and next bounded change. After two unsuccessful
   repair attempts on the same gate, diagnose the approach before expanding work.
-- Run local CI parity and GitHub CI in parallel on the same committed revision.
-  Inspect all three required checkpoints. Focused tests do not replace either
-  full CI or persisted browser checks for changed user workflows.
+- Advance once the focused functional gate and applicable video/mock comparison
+  pass and the increment is committed/published in `gh stack`. Full CI and human
+  review are not prerequisites for starting the next implementation slice.
+- Run local CI parity and GitHub CI in parallel on committed code checkpoints;
+  record pending checks and failures on the owning PR. Finish implementation,
+  then resolve CI issues in V16 stabilization before final acceptance/merge.
+  A failing functional dependency still blocks dependent work.
 - Each slice deletes superseded consumers/expectations, not just adds V2 code.
-- **Done when:** run the linked exact gate; inspect evidence; fix and repeat that
+- **Implemented when:** run the linked exact focused gate; inspect evidence; fix and repeat that
   gate until green; review the stated outcome against the direct mock reference.
   Every user-facing change includes the [recorded mock comparison](plan.md#video-and-mock-comparison).
   An HTTP success, skipped test or missing dependency never closes a step.
@@ -192,7 +196,7 @@ Tests ship with each behavior; the final row is not permission to defer tests.
 | V02c — coherent runtime cutover                        | V02b; canonical membership/routing, catalog switch, shared preview/save/edit, case-unit read/write permissions and every affected old caller. Remove workflow/protocol and reception draft authority together. | Persisted ordinary/direct/culture/mixed orders, resave/cancel/edit, case read/write permissions; frontend/backend contract checks; fresh and upgraded startup; scoped retired-caller scan. Register the candidate only with this coherent runtime. |
 | V02d — transfers                                       | V02c; extract separate-case transfers, both-unit permissions, refreshed write ownership and final/amendment restrictions.                                                                                      | Persisted and browser transfers, denial without mutation, concurrent write after transfer, unchanged IDs/history and separate destination cases.                                                                                                   |
 | V02e — no-result splits                                | V02d; implement case-scoped eligibility, atomic membership/pending-culture moves and reason on both histories.                                                                                                 | Persisted/browser allowed and denied splits, failure rollback, unrelated ordinary results, preserved IDs/provenance and no case joining.                                                                                                           |
-| V02 completion gate (not a separate implementation PR) | V02c–e checks already pass; verify the complete V02 requirements and reconcile the existing coverage matrix/evidence.                                                                                          | Exact V02 gate, affected shared-order/security regressions, persisted browser journeys, rendered comparison and full local/GitHub CI on the review revision.                                                                                       |
+| V02 completion gate (not a separate implementation PR) | V02c–e checks already pass; verify the complete V02 requirements and reconcile the existing coverage matrix/evidence.                                                                                          | Exact V02 focused gate, affected shared-order/security regressions, persisted browser journeys and recorded mock comparison. Full CI is tracked for final stabilization.                                                                           |
 
 If the V02c dependency audit reveals a smaller independently coherent change,
 record that boundary here before extracting it. Do not publish an active cutover
@@ -212,7 +216,8 @@ and repository review remain pending; this is not V02 acceptance. The PR records
 the exact review revision and evidence. This recovery round stops at V02a.
 
 The next implementation after this bounded remediation round is V02b, beginning
-from the reviewed V02a branch in stack #4610. Do not resume edits on the preserved
+from the published V02a branch in stack #4610; its 15-test focused gate passes.
+Full CI and human review do not block starting V02b. Do not resume edits on the preserved
 204-file worktree. Extract only the declared boundary into its owning worktree;
 carry necessary fixes and tests together. A sub-PR passing its own checks does not
 mark V02 accepted. Finish V02c–e and the completion gate before V03.
@@ -221,7 +226,7 @@ The recovery audit in [the engineering plan](plan.md#recovery-audit) records
 confirmed blockers and unresolved checks. Each extracted PR must state which
 findings it resolves, its exact tested revision, and what remains. Existing
 uncommitted test counts are historical supporting evidence, not passing evidence
-for a recovery PR. V03 starts only after V02 acceptance; later iteration order and
+for a recovery PR. V03 starts after V02 functional completion; later iteration order and
 all 112 criterion owners remain unchanged.
 
 ## 03 — case information
@@ -501,7 +506,12 @@ referred-in local work preserves original specimen identity; exclusions explain 
       every required outcome is implemented or explicitly outside scope.
 - [ ] State excluded micro QC and isolate-storage capabilities explicitly in CPHL
       acceptance material; do not imply that AST QC handling fills those gaps.
-- [ ] Run the [final gate](plan.md#final-integration-gate) once; obtain migration/
+- [ ] After V01–V15 implementation, resolve the recorded CI issues in bounded
+      commits/PRs within `gh stack`; rerun the affected checks and full local CI.
+- [ ] Pass all three GitHub checkpoints on the final stack revision, inspect
+      skipped checks and retain exact evidence. Pending/failing CI blocks final
+      acceptance and merge, not earlier implementation progression.
+- [ ] Run the [final gate](plan.md#final-integration-gate); obtain migration/
       deployment approval and human acceptance on that revision.
 
 **Acceptance:** V2-only AMR runtime/persistence, preserved clinical/audit meaning,
