@@ -7,6 +7,7 @@ import {
   selectMicrobiologyOrderTest as selectTest,
   startMicrobiologyOrder as startSupportedOrder,
 } from "../../../helpers/microbiology-order-entry";
+import { videoPause } from "../../../helpers/video-pause";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
 
 async function saveEntryAndOpenCollect(page: Page) {
@@ -138,6 +139,7 @@ async function attachResponsiveEvidence(
       subjectWidth.clientWidth,
     );
     const path = testInfo.outputPath(`${evidenceName}-${name}.png`);
+    await videoPause(page, 1500, testInfo);
     await subject.screenshot({
       path,
       animations: "disabled",
@@ -208,11 +210,13 @@ test.describe("microbiology reception without Program overrides", () => {
       has: page.getByRole("link", { name: labNumber, exact: true }),
     });
     await expect(rows).toHaveCount(1, { timeout: LONG_TIMEOUT });
+    await rows.scrollIntoViewIfNeeded();
+    await videoPause(page, 2000, testInfo);
   });
 
   test("a manually selected Microbiology Program does not turn an ordinary test into a case", async ({
     page,
-  }) => {
+  }, testInfo) => {
     test.setTimeout(120_000);
     const seeded = await seedOrderCatalog(page);
     const labNumber = await startSupportedOrder(page, seeded);
@@ -225,6 +229,8 @@ test.describe("microbiology reception without Program overrides", () => {
     await program.press("ArrowDown");
     await program.press("Enter");
     await expect(program).toHaveValue("Microbiology");
+    await program.scrollIntoViewIfNeeded();
+    await videoPause(page, 1500, testInfo);
     await expect(
       page.getByTestId("microbiology-order-entry-section"),
     ).toHaveCount(0);
@@ -232,13 +238,16 @@ test.describe("microbiology reception without Program overrides", () => {
     await collectAndRoute(page);
     await reloadThroughBarcode(page, labNumber);
     await expect(program).toHaveValue("Microbiology");
+    await program.scrollIntoViewIfNeeded();
+    await videoPause(page, 1500, testInfo);
     await expect(page.getByLabel(nonCultureTestName)).toBeChecked();
     await page.goto(
       `/Microbiology/worklist?q=${encodeURIComponent(labNumber)}`,
       { waitUntil: "domcontentloaded" },
     );
-    await expect(page.getByText(/No cultures match/)).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
+    const emptyWorklist = page.getByText(/No cultures match/);
+    await expect(emptyWorklist).toBeVisible({ timeout: LONG_TIMEOUT });
+    await emptyWorklist.scrollIntoViewIfNeeded();
+    await videoPause(page, 2000, testInfo);
   });
 });

@@ -244,6 +244,38 @@ not runtime or V02 acceptance. V02c is next. Full CI and human review do not blo
 carry necessary fixes and tests together. A sub-PR passing its own checks does not
 mark V02 accepted. Finish V02c–e and the completion gate before V03.
 
+V02c1 is published as [draft PR #4619](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4619)
+above V02b. Runtime revision `64e8b5f848` passed 37 focused backend and 43
+frontend tests. Browser revision `a6ff6de125` passed both persisted reception
+journeys: a culture order saves/reloads without a forced Program or reception
+details, while an ordinary test with manually selected Microbiology Program
+creates no case. Keyboard Program selection and Program-section widths at
+1440×1000 and 393×851 are covered. The same journeys are registered in the local
+`core-demo-video` project for paced evidence; their normal CI registration stays
+in `core-app`.
+
+The scoped mock comparison uses design revision
+`516c88efbdd2edbc9ea108f69d7b57f4ceb9ec9b`, V2 FR-02.2 and the shared
+`designs/sample-collection/clinical-order-entry-v4.html` Request details section.
+The rendered implementation keeps Program optional and independent, uses the
+ordinary questionnaire, and removes the reception microbiology tile. A remaining
+shared-layout difference is explicit: the implementation has a separate Program
+section and Clinical Information section, while the shared mock combines Program
+and provisional diagnosis under Request details. V16 must reconcile that shared
+layout; this comparison does not claim whole-page visual parity or acceptance of
+case-information behavior (V03). The existing workflow-based worklist remains
+for replacement in V02c2/V07.
+
+Local recordings and screenshots are preserved under
+`.devin/artifacts/v02c1-reception/`. PR video attachment publication is pending:
+the Chrome extension rejected file upload because file-URL access is disabled.
+Do not claim review-accessible video delivery until the attachment is published.
+Full-CI follow-ups include the participant authentication setup's fixed database
+container name and the project-registration validator reporting `setup` for a
+spec that the runner correctly lists under `core-app`. Neither is passing
+application evidence. V02c2 remains the next implementation boundary; V02d and
+V03 remain gated by the complete V02 checks above.
+
 The recovery audit in [the engineering plan](plan.md#recovery-audit) records
 confirmed blockers and unresolved checks. Each extracted PR must state which
 findings it resolves, its exact tested revision, and what remains. Existing

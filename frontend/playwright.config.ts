@@ -188,7 +188,10 @@ export default defineConfig({
     // Core demo video — same core demos with slowMo and video (local only)
     {
       name: "core-demo-video",
-      testMatch: CORE_DEMO_TESTS,
+      testMatch: [
+        ...CORE_DEMO_TESTS,
+        "**/foundational/core/microbiology-order-entry.spec.ts",
+      ],
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
