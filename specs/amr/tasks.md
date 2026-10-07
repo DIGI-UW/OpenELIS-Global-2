@@ -372,12 +372,28 @@ pass, covering both conflicts, membership conflicts, and clinical/history
 preservation through full upgrade, rollback and reapply. Applied production
 migration history remains unchanged; these are still unregistered candidates.
 
-Remaining V02c2 work includes the remaining frontend response/caller alignment,
-shared preview/save/edit contract audit, candidate startup/upgrade checks,
-full migration regression, and persisted browser/video comparison. The catalog
-case-opening controls and culture-setup admin retirement have 43 passing frontend
-checks, but have not yet been accepted in the browser. Transfer implementation
-and its snapshot-dependent tests remain in V02d; no-result splits remain V02e.
+The complete `AmrCutoverMigrationTest` gate passed at `33d5f9afd5`: 34 tests,
+zero failures, errors or skips (396.8 seconds). This covers the full candidate
+migration regression class, not application startup or V02 acceptance.
+
+Remaining V02c2 implementation and acceptance:
+
+- [ ] Implement the unsaved What this order will open panel using the same
+      authoritative catalog/grouping rules as save, with ordinary Results lines,
+      split-lab-unit warnings and applicable named reflex rules (AC-V2-103).
+      `MicroCaseRoutingKey` exists, but no preview caller currently uses it.
+- [ ] Implement explicit bottle set numbers in shared order entry/save and derive
+      the case set count, per-set header lines and nonblocking set warnings
+      (AC-V2-104). The existing editable number-of-sets field is not acceptance
+      of this behavior; set numbering remains V02 scope.
+- [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason
+      and preservation when cancelling a case's last micro test (FR-02.8).
+- [ ] Bind the documented mapping file, actor and migration timestamp in runtime
+      startup; verify fresh installation, upgrade and restart before activation.
+- [ ] Complete persisted browser/video comparison against the pinned mocks. The catalog
+      case-opening controls and culture-setup admin retirement have 43 passing frontend
+      checks, but have not yet been accepted in the browser. Transfer implementation
+      and its snapshot-dependent tests remain in V02d; no-result splits remain V02e.
 
 This is a prerequisite within V02c2, not a new slice or runtime acceptance.
 Keep both candidate migrations unregistered until the catalog, routing,
@@ -686,120 +702,120 @@ row links the functional criterion; dependent gates are also required before
 acceptance. V00 verifies this mapping, not application behavior. All listed
 application tests remain implementation deliverables until run on the slice.
 
-| Criterion           | Primary owner | Dependent verification                                         |
-| ------------------- | ------------- | -------------------------------------------------------------- |
-| [AC-V2-01][ac-1]    | V02           | V01 migration; V07 worklist                                    |
-| [AC-V2-02][ac-2]    | V04           | V02 routing; V11 reflex; V12 direct-only release               |
-| [AC-V2-03][ac-3]    | V02           | V03 context                                                    |
-| [AC-V2-04][ac-4]    | V02           | V07 destination worklist; V12 final lock                       |
-| [AC-V2-05][ac-5]    | V02           | V16 consumer scan                                              |
-| [AC-V2-06][ac-6]    | V03           | V02 reception save                                             |
-| [AC-V2-07][ac-7]    | V03           | V12 final checklist                                            |
-| [AC-V2-08][ac-8]    | V04           | V02 catalog eligibility                                        |
-| [AC-V2-09][ac-9]    | V04           | V12 provenance; V15 external populations                       |
-| [AC-V2-10][ac-10]   | V06           | V05 media                                                      |
-| [AC-V2-11][ac-11]   | V07           | V06 timing; V16 offline                                        |
-| [AC-V2-12][ac-12]   | V06           | V07 attention                                                  |
-| [AC-V2-13][ac-13]   | V06           | V07 extended due date                                          |
-| [AC-V2-14][ac-14]   | V15           | V04 flag; V12 patient delivery                                 |
-| [AC-V2-15][ac-15]   | V09           | V12 partial release                                            |
-| [AC-V2-16][ac-16]   | V08           | V09 isolates; V10 susceptibility                               |
-| [AC-V2-17][ac-17]   | V08           | V10 review; V12 locking                                        |
-| [AC-V2-18][ac-18]   | V08           | V09 ownership; V12 amendment                                   |
-| [AC-V2-19][ac-19]   | V10           | V12 selected output                                            |
-| [AC-V2-20][ac-20]   | V12           | V06 continued work                                             |
-| [AC-V2-21][ac-21]   | V10           | V11 WHO interpretation                                         |
-| [AC-V2-22][ac-22]   | V16           | All UI slices; V16 locale audit                                |
-| [AC-V2-23][ac-23]   | V06           | V07 read log                                                   |
-| [AC-V2-24][ac-24]   | V04           | V12 component print                                            |
-| [AC-V2-25][ac-25]   | V08           | V09 identification history                                     |
-| [AC-V2-26][ac-26]   | V09           | V08 return                                                     |
-| [AC-V2-27][ac-27]   | V11           | V10 versioned results; V12 print                               |
-| [AC-V2-28][ac-28]   | V04           | V12 placement                                                  |
-| [AC-V2-29][ac-29]   | V12           | V06 continued work                                             |
-| [AC-V2-30][ac-30]   | V04           | V09 isolate sample                                             |
-| [AC-V2-31][ac-31]   | V04           | V12 patient delivery; V15 independent eligibility              |
-| [AC-V2-32][ac-32]   | V04           | V12 amendment                                                  |
-| [AC-V2-33][ac-33]   | V04           | V12 report choices                                             |
-| [AC-V2-34][ac-34]   | V04           | V11 discordance                                                |
-| [AC-V2-35][ac-35]   | V08           | V02 shared order integrity                                     |
-| [AC-V2-36][ac-36]   | V08           | V11 molecular results                                          |
-| [AC-V2-37][ac-37]   | V04           | V08 deduplication                                              |
-| [AC-V2-38][ac-38]   | V04           | V09 organism; V10 panels                                       |
-| [AC-V2-39][ac-39]   | V04           | V09 provenance                                                 |
-| [AC-V2-40][ac-40]   | V04           | V12 flags; V13 critical call                                   |
-| [AC-V2-41][ac-41]   | V16           | V04/V05/V07/V09/V10/V11/V12/V13 preservation gates             |
-| [AC-V2-42][ac-42]   | V01           | V02 collisions and separate membership; V12 history            |
-| [AC-V2-43][ac-43]   | V09           | V10 panel defaults; V11 NTM                                    |
-| [AC-V2-44][ac-44]   | V15           | V12 final release                                              |
-| [AC-V2-45][ac-45]   | V12           | V08 holding; every mutation slice                              |
-| [AC-V2-46][ac-46]   | V12           | V08 late placement; V09 isolate                                |
-| [AC-V2-47][ac-47]   | V11           | V10 QC/expert review; V12 final gate                           |
-| [AC-V2-48][ac-48]   | V13           | V12 report; shared callbacks                                   |
-| [AC-V2-49][ac-49]   | V02           | Every write slice; V07 worklist and direct links               |
-| [AC-V2-50][ac-50]   | V15           | V03 purpose; future consumers excluded from delivery claim     |
-| [AC-V2-51][ac-51]   | V04           | Shared reagent eligibility                                     |
-| [AC-V2-52][ac-52]   | V12           | Shared patient results                                         |
-| [AC-V2-53][ac-53]   | V12           | V15 environmental certificate                                  |
-| [AC-V2-54][ac-54]   | V06           | V02 explicit sets; V12 independent release                     |
-| [AC-V2-55][ac-55]   | V06           | V09 lineage                                                    |
-| [AC-V2-56][ac-56]   | V10           | V09 sources; V12 one reading per agent                         |
-| [AC-V2-57][ac-57]   | V09           | V04 result; V07 label                                          |
-| [AC-V2-58][ac-58]   | V15           | V02 grouping; V03 per-case purpose                             |
-| [AC-V2-59][ac-59]   | V04           | Shared Runs/QC; V12 validation                                 |
-| [AC-V2-60][ac-60]   | V12           | V02 rights; V04 validation                                     |
-| [AC-V2-61][ac-61]   | V04           | V12 complete component rendering                               |
-| [AC-V2-62][ac-62]   | V09           | Shared shipment; V08 returns                                   |
-| [AC-V2-63][ac-63]   | V02           | V01 identities; V12 no-result boundary                         |
-| [AC-V2-64][ac-64]   | V05           | V07 bulk/undo stock invariant                                  |
-| [AC-V2-65][ac-65]   | V05           | Shared Inventory visibility                                    |
-| [AC-V2-66][ac-66]   | V05           | V06 row defaults                                               |
-| [AC-V2-67][ac-67]   | V04           | V12 notes print                                                |
-| [AC-V2-68][ac-68]   | V04           | V12 withheld notes                                             |
-| [AC-V2-69][ac-69]   | V05           | V07 bulk defaults and unchanged stock                          |
-| [AC-V2-70][ac-70]   | V04           | V06 bottle source; V12 partial; V13 critical                   |
-| [AC-V2-71][ac-71]   | V06           | V09 source lineage                                             |
-| [AC-V2-72][ac-72]   | V06           | V07 explicit confirmation                                      |
-| [AC-V2-73][ac-73]   | V07           | V09 isolate; V10 panel targets                                 |
-| [AC-V2-74][ac-74]   | V14           | V09 identification; V10 cancelled default; V12 reference print |
-| [AC-V2-75][ac-75]   | V09           | V08 placement; V12 direct release                              |
-| [AC-V2-76][ac-76]   | V07           | V05 lot eligibility; V06 rows                                  |
-| [AC-V2-77][ac-77]   | V04           | V06 source; V12 withheld notes                                 |
-| [AC-V2-78][ac-78]   | V07           | V02 sample grouping; V05 defaults                              |
-| [AC-V2-79][ac-79]   | V07           | V06 reading/audit                                              |
-| [AC-V2-80][ac-80]   | V07           | V06 eligibility; V12 no automatic release                      |
-| [AC-V2-81][ac-81]   | V07           | V16 deleted consumers                                          |
-| [AC-V2-82][ac-82]   | V06           | V04 catalog results; V09 isolates                              |
-| [AC-V2-83][ac-83]   | V06           | V07 labels; V09 parentage                                      |
-| [AC-V2-84][ac-84]   | V04           | V12 amendment                                                  |
-| [AC-V2-85][ac-85]   | V07           | Shared Workplan; V16 privacy/keyboard                          |
-| [AC-V2-86][ac-86]   | V07           | V05 links                                                      |
-| [AC-V2-87][ac-87]   | V07           | V06 concurrent readings; V02 rights                            |
-| [AC-V2-88][ac-88]   | V02           | V03 Program; V07 transfer visibility                           |
-| [AC-V2-89][ac-89]   | V06           | V07 bulk timing                                                |
-| [AC-V2-90][ac-90]   | V03           | V02 sample ownership; shared reception                         |
-| [AC-V2-91][ac-91]   | V02           | V12 independent releases                                       |
-| [AC-V2-92][ac-92]   | V03           | V15 track selection                                            |
-| [AC-V2-93][ac-93]   | V06           | V07 future due time                                            |
-| [AC-V2-94][ac-94]   | V07           | V06 reason/audit                                               |
-| [AC-V2-95][ac-95]   | V06           | V08 analyzer provenance                                        |
-| [AC-V2-96][ac-96]   | V12           | V10 selection; shared patient report                           |
-| [AC-V2-97][ac-97]   | V04           | V06 positive signal; V12 validation                            |
-| [AC-V2-98][ac-98]   | V10           | V09 isolate target                                             |
-| [AC-V2-99][ac-99]   | V03           | Shared questionnaires; V12 required fields                     |
-| [AC-V2-100][ac-100] | V04           | V12 blank component suppression                                |
-| [AC-V2-101][ac-101] | V06           | V07 printed codes                                              |
-| [AC-V2-102][ac-102] | V04           | V06 idempotent culture signal                                  |
-| [AC-V2-103][ac-103] | V02           | V02 atomic preview/save; shared order integrity                |
-| [AC-V2-104][ac-104] | V02           | V06 bottle rows; shared reception                              |
-| [AC-V2-105][ac-105] | V04           | V12 release; shared validation                                 |
-| [AC-V2-106][ac-106] | V09           | V12 required original specimen; V15 referred-in                |
-| [AC-V2-107][ac-107] | V15           | V09 producer identity                                          |
-| [AC-V2-108][ac-108] | V04           | V12 provenance                                                 |
-| [AC-V2-109][ac-109] | V05           | V07 bulk lots                                                  |
-| [AC-V2-110][ac-110] | V05           | V07 bulk/undo; shared Inventory                                |
-| [AC-V2-111][ac-111] | V03           | Shared reception and configured FHIR mirror                    |
-| [AC-V2-112][ac-112] | V07           | V06 controlled clock; OGC-1411 laboratory month boundary       |
+| Criterion           | Primary owner | Dependent verification                                                |
+| ------------------- | ------------- | --------------------------------------------------------------------- |
+| [AC-V2-01][ac-1]    | V02           | V01 migration; V07 worklist                                           |
+| [AC-V2-02][ac-2]    | V04           | V02 routing; V11 reflex; V12 direct-only release                      |
+| [AC-V2-03][ac-3]    | V02           | V03 context                                                           |
+| [AC-V2-04][ac-4]    | V02           | V07 destination worklist; V12 final lock                              |
+| [AC-V2-05][ac-5]    | V02           | V16 consumer scan                                                     |
+| [AC-V2-06][ac-6]    | V03           | V02 reception save                                                    |
+| [AC-V2-07][ac-7]    | V03           | V12 final checklist                                                   |
+| [AC-V2-08][ac-8]    | V04           | V02 catalog eligibility                                               |
+| [AC-V2-09][ac-9]    | V04           | V12 provenance; V15 external populations                              |
+| [AC-V2-10][ac-10]   | V06           | V05 media                                                             |
+| [AC-V2-11][ac-11]   | V07           | V06 timing; V16 offline                                               |
+| [AC-V2-12][ac-12]   | V06           | V07 attention                                                         |
+| [AC-V2-13][ac-13]   | V06           | V07 extended due date                                                 |
+| [AC-V2-14][ac-14]   | V15           | V04 flag; V12 patient delivery                                        |
+| [AC-V2-15][ac-15]   | V09           | V12 partial release                                                   |
+| [AC-V2-16][ac-16]   | V08           | V09 isolates; V10 susceptibility                                      |
+| [AC-V2-17][ac-17]   | V08           | V10 review; V12 locking                                               |
+| [AC-V2-18][ac-18]   | V08           | V09 ownership; V12 amendment                                          |
+| [AC-V2-19][ac-19]   | V10           | V12 selected output                                                   |
+| [AC-V2-20][ac-20]   | V12           | V06 continued work                                                    |
+| [AC-V2-21][ac-21]   | V10           | V11 WHO interpretation                                                |
+| [AC-V2-22][ac-22]   | V16           | All UI slices; V16 locale audit                                       |
+| [AC-V2-23][ac-23]   | V06           | V07 read log                                                          |
+| [AC-V2-24][ac-24]   | V04           | V12 component print                                                   |
+| [AC-V2-25][ac-25]   | V08           | V09 identification history                                            |
+| [AC-V2-26][ac-26]   | V09           | V08 return                                                            |
+| [AC-V2-27][ac-27]   | V11           | V10 versioned results; V12 print                                      |
+| [AC-V2-28][ac-28]   | V04           | V12 placement                                                         |
+| [AC-V2-29][ac-29]   | V12           | V06 continued work                                                    |
+| [AC-V2-30][ac-30]   | V04           | V09 isolate sample                                                    |
+| [AC-V2-31][ac-31]   | V04           | V12 patient delivery; V15 independent eligibility                     |
+| [AC-V2-32][ac-32]   | V04           | V12 amendment                                                         |
+| [AC-V2-33][ac-33]   | V04           | V12 report choices                                                    |
+| [AC-V2-34][ac-34]   | V04           | V11 discordance                                                       |
+| [AC-V2-35][ac-35]   | V08           | V02 shared order integrity                                            |
+| [AC-V2-36][ac-36]   | V08           | V11 molecular results                                                 |
+| [AC-V2-37][ac-37]   | V04           | V08 deduplication                                                     |
+| [AC-V2-38][ac-38]   | V04           | V09 organism; V10 panels                                              |
+| [AC-V2-39][ac-39]   | V04           | V09 provenance                                                        |
+| [AC-V2-40][ac-40]   | V04           | V12 flags; V13 critical call                                          |
+| [AC-V2-41][ac-41]   | V16           | V04/V05/V07/V09/V10/V11/V12/V13 preservation gates                    |
+| [AC-V2-42][ac-42]   | V01           | V02 collisions and separate membership; V12 history                   |
+| [AC-V2-43][ac-43]   | V09           | V10 panel defaults; V11 NTM                                           |
+| [AC-V2-44][ac-44]   | V15           | V12 final release                                                     |
+| [AC-V2-45][ac-45]   | V12           | V08 holding; every mutation slice                                     |
+| [AC-V2-46][ac-46]   | V12           | V08 late placement; V09 isolate                                       |
+| [AC-V2-47][ac-47]   | V11           | V10 QC/expert review; V12 final gate                                  |
+| [AC-V2-48][ac-48]   | V13           | V12 report; shared callbacks                                          |
+| [AC-V2-49][ac-49]   | V02           | Every write slice; V07 worklist and direct links                      |
+| [AC-V2-50][ac-50]   | V15           | V03 purpose; future consumers excluded from delivery claim            |
+| [AC-V2-51][ac-51]   | V04           | Shared reagent eligibility                                            |
+| [AC-V2-52][ac-52]   | V12           | Shared patient results                                                |
+| [AC-V2-53][ac-53]   | V12           | V15 environmental certificate                                         |
+| [AC-V2-54][ac-54]   | V06           | V02 explicit sets; V12 independent release                            |
+| [AC-V2-55][ac-55]   | V06           | V09 lineage                                                           |
+| [AC-V2-56][ac-56]   | V10           | V09 sources; V12 one reading per agent                                |
+| [AC-V2-57][ac-57]   | V09           | V04 result; V07 label                                                 |
+| [AC-V2-58][ac-58]   | V15           | V02 grouping; V03 per-case purpose                                    |
+| [AC-V2-59][ac-59]   | V04           | Shared Runs/QC; V12 validation                                        |
+| [AC-V2-60][ac-60]   | V12           | V02 rights; V04 validation                                            |
+| [AC-V2-61][ac-61]   | V04           | V12 complete component rendering                                      |
+| [AC-V2-62][ac-62]   | V09           | Shared shipment; V08 returns                                          |
+| [AC-V2-63][ac-63]   | V02           | V01 identities; V12 no-result boundary                                |
+| [AC-V2-64][ac-64]   | V05           | V07 bulk/undo stock invariant                                         |
+| [AC-V2-65][ac-65]   | V05           | Shared Inventory visibility                                           |
+| [AC-V2-66][ac-66]   | V05           | V06 row defaults                                                      |
+| [AC-V2-67][ac-67]   | V04           | V12 notes print                                                       |
+| [AC-V2-68][ac-68]   | V04           | V12 withheld notes                                                    |
+| [AC-V2-69][ac-69]   | V05           | V07 bulk defaults and unchanged stock                                 |
+| [AC-V2-70][ac-70]   | V04           | V06 bottle source; V12 partial; V13 critical                          |
+| [AC-V2-71][ac-71]   | V06           | V09 source lineage                                                    |
+| [AC-V2-72][ac-72]   | V06           | V07 explicit confirmation                                             |
+| [AC-V2-73][ac-73]   | V07           | V09 isolate; V10 panel targets                                        |
+| [AC-V2-74][ac-74]   | V14           | V09 identification; V10 cancelled default; V12 reference print        |
+| [AC-V2-75][ac-75]   | V09           | V08 placement; V12 direct release                                     |
+| [AC-V2-76][ac-76]   | V07           | V05 lot eligibility; V06 rows                                         |
+| [AC-V2-77][ac-77]   | V04           | V06 source; V12 withheld notes                                        |
+| [AC-V2-78][ac-78]   | V07           | V02 sample grouping; V05 defaults                                     |
+| [AC-V2-79][ac-79]   | V07           | V06 reading/audit                                                     |
+| [AC-V2-80][ac-80]   | V07           | V06 eligibility; V12 no automatic release                             |
+| [AC-V2-81][ac-81]   | V07           | V16 deleted consumers                                                 |
+| [AC-V2-82][ac-82]   | V06           | V04 catalog results; V09 isolates                                     |
+| [AC-V2-83][ac-83]   | V06           | V07 labels; V09 parentage                                             |
+| [AC-V2-84][ac-84]   | V04           | V12 amendment                                                         |
+| [AC-V2-85][ac-85]   | V07           | Shared Workplan; V16 privacy/keyboard                                 |
+| [AC-V2-86][ac-86]   | V07           | V05 links                                                             |
+| [AC-V2-87][ac-87]   | V07           | V06 concurrent readings; V02 rights                                   |
+| [AC-V2-88][ac-88]   | V02           | V03 Program; V07 transfer visibility                                  |
+| [AC-V2-89][ac-89]   | V06           | V07 bulk timing                                                       |
+| [AC-V2-90][ac-90]   | V03           | V02 sample ownership; shared reception                                |
+| [AC-V2-91][ac-91]   | V02           | V12 independent releases                                              |
+| [AC-V2-92][ac-92]   | V03           | V15 track selection                                                   |
+| [AC-V2-93][ac-93]   | V06           | V07 future due time                                                   |
+| [AC-V2-94][ac-94]   | V07           | V06 reason/audit                                                      |
+| [AC-V2-95][ac-95]   | V06           | V08 analyzer provenance                                               |
+| [AC-V2-96][ac-96]   | V12           | V10 selection; shared patient report                                  |
+| [AC-V2-97][ac-97]   | V04           | V06 positive signal; V12 validation                                   |
+| [AC-V2-98][ac-98]   | V10           | V09 isolate target                                                    |
+| [AC-V2-99][ac-99]   | V03           | Shared questionnaires; V12 required fields                            |
+| [AC-V2-100][ac-100] | V04           | V12 blank component suppression                                       |
+| [AC-V2-101][ac-101] | V06           | V07 printed codes                                                     |
+| [AC-V2-102][ac-102] | V04           | V06 idempotent culture signal                                         |
+| [AC-V2-103][ac-103] | V02           | V02 atomic preview/save; V04 reflex configuration; V06 culture signal |
+| [AC-V2-104][ac-104] | V02           | V06 bottle rows; shared reception                                     |
+| [AC-V2-105][ac-105] | V04           | V12 release; shared validation                                        |
+| [AC-V2-106][ac-106] | V09           | V12 required original specimen; V15 referred-in                       |
+| [AC-V2-107][ac-107] | V15           | V09 producer identity                                                 |
+| [AC-V2-108][ac-108] | V04           | V12 provenance                                                        |
+| [AC-V2-109][ac-109] | V05           | V07 bulk lots                                                         |
+| [AC-V2-110][ac-110] | V05           | V07 bulk/undo; shared Inventory                                       |
+| [AC-V2-111][ac-111] | V03           | Shared reception and configured FHIR mirror                           |
+| [AC-V2-112][ac-112] | V07           | V06 controlled clock; OGC-1411 laboratory month boundary              |
 
 Supplemental gates: V02 proves idempotent/all-or-nothing shared order saves and
 separate transfers; V05 proves no culture stock writes; V08 proves failed placement
