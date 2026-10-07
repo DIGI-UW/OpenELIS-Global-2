@@ -276,6 +276,18 @@ spec that the runner correctly lists under `core-app`. Neither is passing
 application evidence. V02c2 remains the next implementation boundary; V02d and
 V03 remain gated by the complete V02 checks above.
 
+V02c2 is in progress on `feat/1383-ogc-1427-v02c2-runtime`, based on
+V02c1 revision `12f9cef582`. Its first increment closes a reproduced sequence
+hazard: a membership history-ID or target-column collision previously failed
+only after the preceding structural cutover committed. The candidate now checks
+membership targets before retiring the old schema. The combined-sequence
+regressions assert unchanged clinical records, applied migration history and
+old runtime storage on rejection, and successful upgrade/rollback/reapply.
+This is a prerequisite within V02c2, not a new slice or runtime acceptance.
+Keep both candidate migrations unregistered until the catalog, routing,
+permissions and affected-caller gate is complete. Video attachment publication
+for V02c1 remains outstanding and is not satisfied by this migration work.
+
 The recovery audit in [the engineering plan](plan.md#recovery-audit) records
 confirmed blockers and unresolved checks. Each extracted PR must state which
 findings it resolves, its exact tested revision, and what remains. Existing

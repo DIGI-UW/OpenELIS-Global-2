@@ -4,6 +4,7 @@
   logicalFilePath="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-membership.xml"
   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
   <changeSet id="20261006-OGC-1427-amr-v2-membership" author="OpenELIS" dbms="postgresql" runInTransaction="true">
+    <sqlFile path="amr-v2-membership-target-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <sqlFile path="amr-v2-observation-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <sqlFile path="amr-v2-membership-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <addColumn schemaName="clinlims" tableName="micro_case_activity">

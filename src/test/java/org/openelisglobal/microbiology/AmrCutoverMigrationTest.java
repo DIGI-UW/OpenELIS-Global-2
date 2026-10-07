@@ -719,6 +719,73 @@ public class AmrCutoverMigrationTest {
         assertTrue(columnExists("micro_case_inoculation", "source_sample_item_id"));
     }
 
+    @Test
+    public void completeSequenceRejectsMembershipHistoryCollisionBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.configuration_import_run(id,source,status,started_at,summary)"
+                    + " values ('amr-v2-membership-20261006','EXISTING_IMPORT','EXPORTED',"
+                    + "timestamp '2026-09-01 12:34:56','preserve this prior import')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String history = allHistory();
+        expectFailure(completeSequence(), "membership migration history identifier already exists");
+        assertTrue("A later membership failure must not leave the old runtime without its schema",
+                columnExists("micro_case", "workflow_type"));
+        assertTrue(tableExists("micro_culture_setup"));
+        assertEquals(history, allHistory());
+        assertEquals(before, clinicalSnapshot());
+        assertEquals("preserve this prior import", scalar(
+                "select summary from clinlims.configuration_import_run" + " where id='amr-v2-membership-20261006'"));
+    }
+
+    @Test
+    public void completeSequenceRejectsMembershipColumnCollisionBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("alter table clinlims.test add column collected_in_sets boolean default true");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String history = allHistory();
+        expectFailure(completeSequence(), "collected_in_sets");
+        assertTrue("Target-column conflicts must be rejected before retiring workflow authority",
+                columnExists("micro_case", "workflow_type"));
+        assertTrue(tableExists("micro_culture_setup"));
+        assertEquals(history, allHistory());
+        assertEquals(before, clinicalSnapshot());
+        assertEquals("0", scalar("select count(*) from clinlims.test where collected_in_sets is not true"));
+    }
+
+    @Test
+    public void completeSequencePreservesUpgradeAndSupportsRollbackReapply() throws Exception {
+        seed();
+        Map<String, String> before = clinicalSnapshot();
+        String history = allHistory();
+        Liquibase migration = completeSequence();
+        migration.update(CONTEXTS);
+        assertTargetSchema();
+        assertTrue(columnExists("test", "collected_in_sets"));
+        assertEquals(before, clinicalSnapshot());
+        migration.rollback(2, "default");
+        assertTrue(columnExists("micro_case", "workflow_type"));
+        assertFalse(columnExists("test", "collected_in_sets"));
+        assertEquals(history, allHistory());
+        assertEquals(before, clinicalSnapshot());
+        migration.update(CONTEXTS);
+        assertTargetSchema();
+        assertEquals(before, clinicalSnapshot());
+    }
+
+    private Liquibase completeSequence() {
+        Liquibase migration = changelog("liquibase/amr-v2-sequence.xml");
+        migration.setChangeLogParameter("amr.cutover.mappingFile", MAP);
+        migration.setChangeLogParameter("amr.cutover.actorId", "1");
+        migration.setChangeLogParameter("amr.cutover.at", "2026-10-06 12:00:00");
+        return migration;
+    }
+
     private void addSecondCultureMember() throws Exception {
         try (Statement statement = connection.createStatement()) {
             statement.executeUpdate(
