@@ -220,7 +220,6 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
     @Test
     public void twoUsesOnOneDayBecomeOneDailyTotal() {
         for (long id = 9601; id <= 9602; id++) {
-            jdbc.update("DELETE FROM clinlims.inventory_usage WHERE id = ?", id);
             jdbc.update(
                     "INSERT INTO clinlims.inventory_usage (id, inventory_item_id, lot_id, quantity_used,"
                             + " usage_date, performed_by_user, last_updated) VALUES (?, ?, 1002, ?, NOW(), 1, NOW())",

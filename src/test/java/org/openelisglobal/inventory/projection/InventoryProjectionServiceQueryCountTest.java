@@ -2,8 +2,6 @@ package org.openelisglobal.inventory.projection;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
@@ -21,11 +19,11 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
+import org.openelisglobal.inventory.dao.InventoryUsageDAO;
 import org.openelisglobal.inventory.dao.InventoryUsageDAO.DailyUsage;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryOrderCycleService;
-import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
@@ -47,7 +45,7 @@ public class InventoryProjectionServiceQueryCountTest {
     private InventoryLotDAO inventoryLotDAO;
 
     @Mock
-    private InventoryUsageService inventoryUsageService;
+    private InventoryUsageDAO inventoryUsageDAO;
 
     @InjectMocks
     private InventoryProjectionServiceImpl service;
@@ -93,17 +91,15 @@ public class InventoryProjectionServiceQueryCountTest {
         }
         when(inventoryItemService.getAllActive()).thenReturn(items);
         when(inventoryLotDAO.getAvailableQuantityByItem()).thenReturn(onHand);
-        when(inventoryUsageService.getDailyTotals(any(), any())).thenReturn(totals);
+        when(inventoryUsageDAO.getDailyTotals(any(), any())).thenReturn(totals);
 
         List<InventoryProjection> board = service.getBoard();
 
         assertEquals(ITEM_COUNT, board.size());
         verify(inventoryItemService, times(1)).getAllActive();
         verify(inventoryLotDAO, times(1)).getAvailableQuantityByItem();
-        verify(inventoryUsageService, times(1)).getDailyTotals(any(), any());
-        verify(inventoryUsageService, never()).getByDateRange(any(), any());
-        verifyNoMoreInteractions(inventoryLotDAO);
-        verify(inventoryUsageService, never()).getByInventoryItemId(anyLong());
+        verify(inventoryUsageDAO, times(1)).getDailyTotals(any(), any());
+        verifyNoMoreInteractions(inventoryLotDAO, inventoryUsageDAO);
     }
 
     @Test
@@ -116,7 +112,7 @@ public class InventoryProjectionServiceQueryCountTest {
         }
         when(inventoryItemService.getAllActive()).thenReturn(List.of(busy, quiet));
         when(inventoryLotDAO.getAvailableQuantityByItem()).thenReturn(Map.of(1L, 40.0, 2L, 40.0));
-        when(inventoryUsageService.getDailyTotals(any(), any())).thenReturn(totals);
+        when(inventoryUsageDAO.getDailyTotals(any(), any())).thenReturn(totals);
 
         List<InventoryProjection> board = service.getBoard();
         InventoryProjection busyRow = board.stream().filter(row -> row.getItemId() == 1L).findFirst().orElseThrow();

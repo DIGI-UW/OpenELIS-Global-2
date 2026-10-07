@@ -1,7 +1,6 @@
 package org.openelisglobal.inventory.daoimpl;
 
 import java.sql.Timestamp;
-import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import org.hibernate.Session;
@@ -100,21 +99,12 @@ public class InventoryUsageDAOImpl extends BaseDAOImpl<InventoryUsage, Long> imp
             query.setParameter("endDate", endDate);
             List<DailyUsage> totals = new ArrayList<>();
             for (Object[] row : query.list()) {
-                totals.add(new DailyUsage((Long) row[0], toLocalDate(row[1]), ((Number) row[2]).doubleValue()));
+                totals.add(new DailyUsage((Long) row[0], ((java.sql.Date) row[1]).toLocalDate(),
+                        ((Number) row[2]).doubleValue()));
             }
             return totals;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting daily usage totals", e);
         }
-    }
-
-    private static LocalDate toLocalDate(Object day) {
-        if (day instanceof LocalDate date) {
-            return date;
-        }
-        if (day instanceof java.sql.Date date) {
-            return date.toLocalDate();
-        }
-        return new java.sql.Date(((java.util.Date) day).getTime()).toLocalDate();
     }
 }

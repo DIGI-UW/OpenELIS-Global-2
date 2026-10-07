@@ -9,10 +9,10 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
+import org.openelisglobal.inventory.dao.InventoryUsageDAO;
 import org.openelisglobal.inventory.dao.InventoryUsageDAO.DailyUsage;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryOrderCycleService;
-import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryOrderCycle;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +32,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
     private InventoryLotDAO inventoryLotDAO;
 
     @Autowired
-    private InventoryUsageService inventoryUsageService;
+    private InventoryUsageDAO inventoryUsageDAO;
 
     @Override
     @Transactional(readOnly = true)
@@ -98,9 +98,6 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
         return byItem;
     }
 
-    /**
-     * One slot per day of the window, oldest first; days with no use stay at zero.
-     */
     private record UsageWindow(Map<Long, double[]> dailyUse, Map<Long, LocalDate> latestUsage) {
     }
 
@@ -112,7 +109,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
 
         Map<Long, double[]> dailyUse = new HashMap<>();
         Map<Long, LocalDate> latestUsage = new HashMap<>();
-        for (DailyUsage total : inventoryUsageService.getDailyTotals(from, to)) {
+        for (DailyUsage total : inventoryUsageDAO.getDailyTotals(from, to)) {
             long offset = ChronoUnit.DAYS.between(windowStart, total.day());
             if (offset < 0 || offset >= InventoryProjectionCalculator.WINDOW_DAYS) {
                 continue;

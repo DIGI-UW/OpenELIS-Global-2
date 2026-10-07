@@ -3,7 +3,6 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
-import org.openelisglobal.inventory.dao.InventoryUsageDAO;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
@@ -31,8 +30,6 @@ public interface InventoryUsageService extends BaseObjectService<InventoryUsage,
 
     /** Usage with startDate <= usageDate < endDate. */
     List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate);
-
-    List<InventoryUsageDAO.DailyUsage> getDailyTotals(Timestamp startDate, Timestamp endDate);
 
     /**
      * Record inventory usage for a test result
