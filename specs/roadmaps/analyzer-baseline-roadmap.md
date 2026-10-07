@@ -215,6 +215,14 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     Xpress CoV-2/Flu/RSV plus). Each declared test cites its document and
     section. Real captures are checks of a site's configuration, never a
     source for a profile.
+20. A bad item degrades, never stops. A profile, draft, connection or
+    listener that cannot load or start is set aside with its reason, shown in
+    health and in the views OE2 reads; everything else keeps running.
+    Integrity checks (pins, fingerprints, validation) stay; their failure
+    isolates the item. A result is never read against a profile that could
+    not be resolved: it is held, visibly. Clinical validity comes from
+    transparency and management, never from a component refusing to run.
+    (Decided 6 Oct: "issues need to degrade the system gracefully!")
 
 Deferred and not in this roadmap: moving Analyzer Types under Admin.
 
