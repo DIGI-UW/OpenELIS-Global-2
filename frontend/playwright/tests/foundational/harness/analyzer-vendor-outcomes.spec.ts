@@ -1,5 +1,4 @@
 import { randomUUID } from "node:crypto";
-import type { Page } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
 import { withAuthedPage } from "../../../helpers/api-session";
 import {
@@ -10,7 +9,7 @@ import {
 import { createClinicalOrder } from "../../../helpers/analyzer-clinical-order";
 import { sendGeneXpertFixture } from "../../../helpers/analyzer-native-traffic";
 import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
-import { API } from "../../../helpers/analyzer-profile-api";
+import { activeTestId } from "../../../helpers/analyzer-catalog-api";
 
 /** The harness test each baseline GeneXpert assay code binds, and its specimen. */
 const TESTS: Record<string, { name: string; specimen: string }> = {
@@ -219,24 +218,6 @@ const read = (row: StagedRow) =>
     : (row.dictionaryResultList?.find((option) => option.id == row.result)
         ?.displayValue ?? row.result);
 
-/** The catalog test of this name on this specimen. */
-async function testId(page: Page, name: string, specimen: string) {
-  const response = await page.request.get(
-    `${API}/test-catalog/tests?status=active&search=${encodeURIComponent(name)}&pageSize=100`,
-  );
-  const rows = (
-    (await response.json()) as {
-      rows: Array<{ testId: string; name: string; sampleTypes: string[] }>;
-    }
-  ).rows.filter(
-    (row) =>
-      (row.name === name || row.name.startsWith(`${name}(`)) &&
-      row.sampleTypes.includes(specimen),
-  );
-  expect(rows, `One active ${name} on ${specimen}`).toHaveLength(1);
-  return rows[0].testId;
-}
-
 test.describe("Every documented GeneXpert outcome", () => {
   const run = randomUUID().slice(0, 8);
   const senderId = `GX-OUT-${run}`;
@@ -257,7 +238,7 @@ test.describe("Every documented GeneXpert outcome", () => {
       const specimen = TESTS[codes[0]].specimen;
       const ordered = new Map<string, string>();
       for (const code of codes) {
-        ordered.set(code, await testId(page, TESTS[code].name, specimen));
+        ordered.set(code, await activeTestId(page, TESTS[code].name, specimen));
       }
       const order = await createClinicalOrder(page, {
         testIds: [...new Set(ordered.values())],
