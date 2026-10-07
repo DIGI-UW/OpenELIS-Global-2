@@ -386,3 +386,116 @@ describe("SampleTestSection — search with no matches", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("culture bottle set entry", () => {
+  const bottleTest = { id: "42", name: "Blood culture", collectedInSets: true };
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/user-sample-types")
+        callback([{ id: "5", value: "Blood" }]);
+      if (url.startsWith("/rest/sample-type-tests"))
+        callback({
+          tests: [bottleTest],
+          panels: [{ id: "9", name: "Culture panel", testIds: "42" }],
+        });
+    });
+  });
+
+  it("defaults the first bottle selected through a panel to set 1", async () => {
+    const setSamples = vi.fn();
+    renderSection(setSamples);
+    fireEvent.click(
+      (await screen.findByText("Culture panel")).closest("label"),
+    );
+    expect(setSamples.mock.calls.at(-1)[0][0].cultureSetNumber).toBe(1);
+  });
+
+  it("inherits the preceding bottle's explicit set across ordinary samples", async () => {
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [
+        { ...sample, tests: [bottleTest], cultureSetNumber: 3 },
+        { ...sample, tests: [] },
+        { ...sample, tests: [] },
+      ],
+    });
+    await screen.findAllByText("Blood culture");
+    fireEvent.click(document.querySelector('label[for="test-2-42"]'));
+    expect(setSamples.mock.calls.at(-1)[0][2].cultureSetNumber).toBe(3);
+  });
+
+  it("loads catalog flags for saved selections, exposes invalid input, and keeps explicit edits", async () => {
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [
+        {
+          ...sample,
+          sampleTypeRequestId: "81",
+          tests: [{ id: "42", name: "Blood culture" }],
+          cultureSetNumber: "",
+        },
+      ],
+    });
+    const input = await screen.findByRole("spinbutton", { name: "Set number" });
+    expect(input).toHaveAttribute("aria-invalid", "true");
+    expect(setSamples).not.toHaveBeenCalled();
+    fireEvent.change(input, { target: { value: "2" } });
+    expect(setSamples.mock.calls.at(-1)[0][0]).toMatchObject({
+      sampleTypeRequestId: "81",
+      cultureSetNumber: "2",
+    });
+  });
+
+  it("disables set edits in read-only mode", async () => {
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleTestSection
+          samples={[{ ...sample, tests: [bottleTest], cultureSetNumber: 2 }]}
+          setSamples={vi.fn()}
+          isReadOnly
+          workflowType="clinical"
+        />
+      </IntlProvider>,
+    );
+    expect(
+      await screen.findByRole("spinbutton", { name: "Set number" }),
+    ).toBeDisabled();
+  });
+});
+
+it("duplicates a saved specimen as a new request without reusing its identity", async () => {
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    if (url === "/rest/environmental-sample-types")
+      callback([{ id: "5", value: "Water" }]);
+    else if (url.startsWith("/rest/sample-type-tests"))
+      callback({ tests: [], panels: [] });
+    else callback([]);
+  });
+  const setSamples = vi.fn();
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <SampleTestSection
+        samples={[
+          {
+            ...sample,
+            sampleTypeRequestId: "81",
+            sampleItemId: "91",
+            clientKey: "original",
+          },
+        ]}
+        setSamples={setSamples}
+        isReadOnly={false}
+        workflowType="environmental"
+      />
+    </IntlProvider>,
+  );
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Duplicate sample" }),
+  );
+  const [original, duplicate] = setSamples.mock.calls.at(-1)[0];
+  expect(original.sampleTypeRequestId).toBe("81");
+  expect(duplicate.sampleTypeRequestId).toBeUndefined();
+  expect(duplicate.sampleItemId).toBeUndefined();
+  expect(duplicate.clientKey).toBeUndefined();
+});

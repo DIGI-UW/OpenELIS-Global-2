@@ -421,8 +421,18 @@ Remaining V02c2 implementation and acceptance:
       Focused validation: 51 backend tests passed (10 order-save integration,
       34 request-service, four ORM and three migration scenarios), plus 16 frontend
       request-mapping/order-load tests. This is not the full migration regression
-      rerun or browser acceptance. Required next: entry controls, first/inherited
-      defaults, required-on-set save validation, derived count/header and warnings.
+      rerun or browser acceptance.
+      Clinical entry now shows the catalog-driven set-number field. Selecting a
+      collected-in-sets test directly or through a panel defaults the first bottle
+      to 1 and later bottles to the preceding bottle's explicit set. Reloading
+      saved requests does not invent missing numbers, and read-only mode prevents
+      edits. Pending-request save checks the catalog and rejects a missing set for
+      a collected-in-sets test; ordinary requests remain optional. Duplicating a
+      specimen clears its request/item/client identity so it becomes a new bottle.
+      This follow-up passed 12 backend order-save tests, 31 frontend tests and the
+      frontend production build; it does not establish browser acceptance.
+      Required next: collection/save-path validation beyond pending requests,
+      environmental presentation, derived count/header, warnings and browser proof.
 - [ ] Open cases on initial clinical order save, including requested specimens.
       Current clinical Step 1 sends requested sample types with empty sample XML;
       physical specimens and runtime routing arrive at collection. The existing

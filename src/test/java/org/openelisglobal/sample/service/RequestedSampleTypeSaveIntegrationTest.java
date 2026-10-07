@@ -54,6 +54,9 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
 
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -67,6 +70,38 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         patient = fixtures.createPatient("REQSPEC");
         sampleType = fixtures.getOrCreateActiveSampleType();
         secondSampleType = fixtures.createTypeOfSample();
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void bottleRequestCannotBeSavedWithoutAnExplicitSet() {
+        var test = fixtures.createCatalogTest();
+        test.setCollectedInSets(true);
+        test.setSysUserId(userId);
+        testService.update(test);
+        var request = requested("1");
+        request.setRequestedTests(test.getId());
+        persist(newSample(), List.of(request));
+    }
+
+    @Test
+    public void ordinaryRequestDoesNotNeedASetAndBottleAcceptsExplicitSet() {
+        var test = fixtures.createCatalogTest();
+        var ordinary = requested("1");
+        ordinary.setRequestedTests(test.getId());
+        Sample ordinaryOrder = newSample();
+        persist(ordinaryOrder, List.of(ordinary));
+        assertEquals(null,
+                sampleTypeRequestService.getRequestsBySampleId(ordinaryOrder.getId()).get(0).getCultureSetNumber());
+        test.setCollectedInSets(true);
+        test.setSysUserId(userId);
+        testService.update(test);
+        var bottle = requested("1");
+        bottle.setRequestedTests(test.getId());
+        bottle.setCultureSetNumber(2);
+        Sample bottleOrder = newSample();
+        persist(bottleOrder, List.of(bottle));
+        assertEquals(Integer.valueOf(2),
+                sampleTypeRequestService.getRequestsBySampleId(bottleOrder.getId()).get(0).getCultureSetNumber());
     }
 
     @Test

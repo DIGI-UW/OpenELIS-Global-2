@@ -1,4 +1,6 @@
 {
+  "order.cultureSetNumber": "Set number",
+  "order.cultureSetNumber.required": "Enter a whole set number of 1 or greater.",
   "reporting.title": "Custom Data Export",
   "reporting.description": "Choose your report, reporting period and columns, then download a spreadsheet-ready CSV.",
   "reporting.builder": "Back to report builder",

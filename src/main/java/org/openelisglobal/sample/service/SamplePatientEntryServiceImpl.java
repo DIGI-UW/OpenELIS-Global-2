@@ -841,6 +841,15 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 sortOrder++;
                 continue;
             }
+            if (requested.getCultureSetNumber() == null
+                    && !GenericValidator.isBlankOrNull(requested.getRequestedTests())) {
+                for (String testId : requested.getRequestedTests().split(",")) {
+                    Test selectedTest = testService.get(testId.trim());
+                    if (selectedTest != null && selectedTest.isCollectedInSets()) {
+                        throw new IllegalArgumentException("A set number is required for each culture bottle");
+                    }
+                }
+            }
             boolean isNew = request == null;
             if (isNew) {
                 request = new SampleTypeRequest();

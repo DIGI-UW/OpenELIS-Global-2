@@ -253,6 +253,12 @@ const SampleTestSection = ({
       ...source,
       index: newIndex,
       sampleXML: null,
+      sampleItemId: undefined,
+      sampleTypeRequestId: undefined,
+      clientKey: undefined,
+      cultureSetNumber: hasSetTest(source, sourceIndex)
+        ? samples.filter(hasSetTest).at(-1)?.cultureSetNumber || 1
+        : "",
     };
     setSamples([...samples, duplicate]);
 
@@ -317,7 +323,30 @@ const SampleTestSection = ({
     return "purple";
   };
 
-  const applySamples = (updated) => setSamples(updated);
+  const hasSetTest = (sample, index) =>
+    (sample.tests || []).some((selected) => {
+      const id = String(selected.id || selected);
+      const catalog = (testsPerSample[index] || []).find(
+        (test) => String(test.id) === id,
+      );
+      return (catalog || selected).collectedInSets === true;
+    });
+
+  const applySamples = (updated) => {
+    // Default only when a selection first becomes a bottle; never renumber a
+    // saved bottle or refill a field the user deliberately cleared.
+    updated.forEach((sample, index) => {
+      if (
+        hasSetTest(sample, index) &&
+        !hasSetTest(samples[index] || {}, index) &&
+        !sample.cultureSetNumber
+      ) {
+        const preceding = updated.slice(0, index).filter(hasSetTest).at(-1);
+        sample.cultureSetNumber = preceding?.cultureSetNumber || 1;
+      }
+    });
+    setSamples(updated);
+  };
 
   const handleRemoveSample = (index) => {
     applySamples(samples.filter((_, i) => i !== index));
@@ -1408,6 +1437,37 @@ const SampleTestSection = ({
                   ))}
                 </Select>
               </Column>
+
+              {hasSetTest(sample, sampleIndex) && (
+                <Column lg={8} md={4} sm={4}>
+                  <TextInput
+                    id={`cultureSetNumber-${sampleIndex}`}
+                    type="number"
+                    min={1}
+                    step={1}
+                    required
+                    labelText={intl.formatMessage({
+                      id: "order.cultureSetNumber",
+                    })}
+                    value={sample.cultureSetNumber ?? ""}
+                    invalid={
+                      !Number.isInteger(Number(sample.cultureSetNumber)) ||
+                      Number(sample.cultureSetNumber) < 1
+                    }
+                    invalidText={intl.formatMessage({
+                      id: "order.cultureSetNumber.required",
+                    })}
+                    onChange={(event) =>
+                      handleEnvFieldChange(
+                        sampleIndex,
+                        "cultureSetNumber",
+                        event.target.value,
+                      )
+                    }
+                    disabled={isReadOnly}
+                  />
+                </Column>
+              )}
 
               {workflowType === "vector" && (
                 <>
