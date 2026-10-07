@@ -363,6 +363,37 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void aNumberOnAComponentIsSavedWithTheComponentsDigits() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " significant_digits, lastupdated) VALUES ('c-main-1145', ?, 'PRIMARY', 'Viral load', true, 'Y', 0,"
+                + " NOW()), ('c-log-1145', ?, 'LOG', 'Log viral load', false, 'Y', 2, NOW())", MULTI_TYPE_TEST,
+                MULTI_TYPE_TEST);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                        + " significant_digits, component_id, lastupdated) VALUES (97311, ?, 'N', '', true, 1, 0,"
+                        + " 'c-main-1145', NOW()), (97312, ?, 'N', '', true, 2, 2, 'c-log-1145', NOW())",
+                MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("UPDATE clinlims.analyzer_results SET component_id = 'c-log-1145', result = '3.00',"
+                + " test_result_type = 'N' WHERE id = ?::numeric", stagedRowId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setResult("3.00");
+        acceptService.acceptAndPersist(List.of(item), "1");
+
+        AnalyzerResultItem released = acceptedItem();
+        released.setResult("3.00");
+        released.setTypeOfSampleId(String.valueOf(TYPE_B));
+        acceptService.acceptAndPersist(List.of(released), "1");
+
+        assertEquals("the log is kept to its component's two decimals", "2",
+                jdbc.queryForObject(
+                        "SELECT r.significant_digits::text FROM clinlims.result r"
+                                + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        String.class, ACCESSION));
+    }
+
+    @org.junit.Test
     public void releasingAHeldResultKeepsItsStagedCompletionDate() {
         jdbc.update("UPDATE clinlims.analyzer_results SET complete_date = '2026-09-01 10:00:00' WHERE id = ?::numeric",
                 stagedRowId);

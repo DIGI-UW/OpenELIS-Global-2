@@ -379,7 +379,7 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setLastUpdated(result.getLastupdated());
         resultItem.setReadOnly((held && !awaitingReview) || result.isReadOnly() || result.getTestId() == null);
         resultItem.setResult(held && !awaitingReview ? result.getRawResultValue() : getResultForItem(result));
-        resultItem.setSignificantDigits(getSignificantDigitsFromAnalyzerResults(result));
+        resultItem.setSignificantDigits(acceptService.significantDigitsFor(result));
         resultItem.setTestResultType(result.getResultType());
         resultItem
                 .setDictionaryResultList(held && !awaitingReview ? new ArrayList<>() : getDictionaryResultList(result));
@@ -662,22 +662,6 @@ public class AnalyzerResultsController extends BaseController {
         }
     }
 
-    private String getSignificantDigitsFromAnalyzerResults(AnalyzerResults result) {
-        if (result.getTestId() == null) {
-            return null;
-        }
-
-        List<TestResult> testResults = testResultService.getActiveTestResultsByTest(result.getTestId());
-
-        if (GenericValidator.isBlankOrNull(result.getResult()) || testResults.isEmpty()) {
-            return null;
-        }
-
-        TestResult testResult = testResults.get(0);
-
-        return testResult.getSignificantDigits();
-    }
-
     private String getRoundedToSignificantDigits(AnalyzerResults result) {
         if (result.getTestId() != null) {
 
@@ -688,7 +672,7 @@ public class AnalyzerResultsController extends BaseController {
                 return result.getResult();
             }
 
-            String significantDigitsAsString = getSignificantDigitsFromAnalyzerResults(result);
+            String significantDigitsAsString = acceptService.significantDigitsFor(result);
             if (GenericValidator.isBlankOrNull(significantDigitsAsString) || "-1".equals(significantDigitsAsString)) {
                 return result.getResult();
             }
