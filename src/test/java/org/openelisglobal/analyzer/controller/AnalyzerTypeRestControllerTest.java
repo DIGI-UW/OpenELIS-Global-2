@@ -64,7 +64,7 @@ public class AnalyzerTypeRestControllerTest {
     @Test
     public void getAnalyzerTypesReturnsComposedLabFacingCatalog() {
         AnalyzerTypeCatalogView expected = new AnalyzerTypeCatalogView("1.0", "sha256:test",
-                new AnalyzerTypeCatalogView.CatalogSummary(0, 0, 0, 0), List.of());
+                new AnalyzerTypeCatalogView.CatalogSummary(0, 0, 0, 0), List.of(), List.of());
         when(catalogService.getCatalog()).thenReturn(expected);
 
         assertSame(expected, controller.getAnalyzerTypes().getBody());

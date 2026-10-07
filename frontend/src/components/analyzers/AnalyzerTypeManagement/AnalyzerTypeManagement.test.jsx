@@ -417,6 +417,31 @@ describe("AnalyzerTypeManagement", () => {
     expect(await screen.findByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
   });
 
+  it("names each profile file the Bridge set aside and still lists the others", async () => {
+    getAnalyzerTypeCatalog.mockImplementation((callback) =>
+      callback({
+        ...catalog,
+        issues: [
+          {
+            source: "file [/app/analyzer-profiles/broken.json]",
+            reason: "Unexpected character",
+          },
+        ],
+      }),
+    );
+
+    renderPage();
+
+    expect(await screen.findByText("Cepheid GeneXpert MTB/RIF")).toBeVisible();
+    expect(
+      screen.getByText("Some analyzer profiles could not be loaded"),
+    ).toBeVisible();
+    expect(
+      screen.getByText(/file \[\/app\/analyzer-profiles\/broken\.json\]/),
+    ).toBeVisible();
+    expect(screen.getByText(/Unexpected character/)).toBeVisible();
+  });
+
   it("restores filters from the URL and round-trips changes through browser history", async () => {
     window.history.replaceState(
       {},
