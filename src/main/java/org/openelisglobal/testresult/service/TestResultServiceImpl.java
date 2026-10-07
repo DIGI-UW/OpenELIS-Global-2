@@ -84,9 +84,22 @@ public class TestResultServiceImpl extends AuditableBaseObjectServiceImpl<TestRe
 
         options.removeIf(o -> !TypeOfTestResultServiceImpl.ResultType.isDictionaryVariant(o.getTestResultType()));
         // SORT_ORDER is a numeric column mapped as String; sort numerically, nulls
-        // last.
-        options.sort(Comparator.comparingInt(o -> parseSortOrder(o.getSortOrder())));
+        // last. Equal or missing sort orders fall back to creation order (id), so
+        // the list never depends on the order the database happens to return.
+        options.sort(Comparator.comparingInt((TestResult o) -> parseSortOrder(o.getSortOrder()))
+                .thenComparingLong(o -> parseId(o.getId())));
         return options;
+    }
+
+    private static long parseId(String id) {
+        if (id == null || id.isBlank()) {
+            return Long.MAX_VALUE;
+        }
+        try {
+            return Long.parseLong(id.trim());
+        } catch (NumberFormatException e) {
+            return Long.MAX_VALUE;
+        }
     }
 
     private static int parseSortOrder(String s) {
