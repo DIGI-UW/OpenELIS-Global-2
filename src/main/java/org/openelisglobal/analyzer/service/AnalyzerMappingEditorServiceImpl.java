@@ -222,8 +222,11 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                     && Objects.equals(old.getTestId(), row.testId())
                     && Objects.equals(old.getComponentId(), row.componentId())
                     && Objects.equals(old.getCallComponentId(), row.callComponentId());
-            // An edit that does not state an assay's switch or code keeps what it had.
-            Boolean enabled = row.enabled() != null ? row.enabled() : old == null || old.isEnabled();
+            // An edit that does not state an assay's switch or code keeps what it had,
+            // except that mapping a row that was not mapped is the lab choosing to run it.
+            boolean newlyMapped = row.mappingState() == AnalyzerMappingState.BOUND
+                    && (old == null || old.getMappingState() != AnalyzerMappingState.BOUND);
+            Boolean enabled = row.enabled() != null ? row.enabled() : old == null || old.isEnabled() || newlyMapped;
             String instrumentCode = row.enabled() != null || row.instrumentCode() != null ? row.instrumentCode()
                     : old == null ? null : old.getInstrumentCode();
             return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
@@ -315,7 +318,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
                 definition.normalizedCoding(), state, origin, testId, componentId, selected, suggested, testReason,
                 results, key.subIdentity(), callComponentId, record.componentCode(),
-                key.subIdentity().isEmpty() ? definition.callComponent() : null, current == null || current.enabled(),
+                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled(),
                 current == null ? null : current.instrumentCode());
     }
 
