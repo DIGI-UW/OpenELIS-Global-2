@@ -66,14 +66,6 @@ beforeEach(() => {
 });
 
 describe("microbiology reference administration", () => {
-  it("offers only workflow identifiers supported by the backend", () => {
-    const values = REFERENCE_DEFINITIONS["culture-setups"].fields
-      .find((field) => field.key === "workflowType")
-      .options.map((option) => option.value);
-
-    expect(values).toEqual(["BACTERIOLOGY", "MYCOBACTERIOLOGY_TB", "MYCOLOGY"]);
-  });
-
   it("loads the complete antibiotic option list for AST panels", async () => {
     getReferencePage.mockResolvedValue({ rows: [], total: 0 });
     getReferenceOptions.mockResolvedValue([]);
@@ -375,68 +367,6 @@ describe("microbiology reference administration", () => {
     await waitFor(() => expect(importCsv).toHaveFocus());
   });
 
-  it("saves structured culture timing through Carbon number inputs", async () => {
-    const user = userEvent.setup();
-    const setQuery = vi.fn();
-    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
-    getReferenceOptions.mockResolvedValue([
-      { id: "method-1", label: "Routine blood culture" },
-    ]);
-    saveReference.mockResolvedValue({});
-
-    renderPage(
-      <ReferenceDataPage
-        definition={REFERENCE_DEFINITIONS["culture-setups"]}
-        query={{ ...query, edit: "new" }}
-        setQuery={setQuery}
-      />,
-    );
-
-    await user.selectOptions(
-      await screen.findByLabelText(messages["microbiology.admin.field.method"]),
-      "method-1",
-    );
-    await user.type(
-      screen.getByLabelText(messages["microbiology.admin.field.name"]),
-      "Routine blood culture",
-    );
-    await user.selectOptions(
-      screen.getByLabelText(messages["microbiology.admin.field.workflow"]),
-      "BACTERIOLOGY",
-    );
-    await user.type(
-      screen.getByLabelText(
-        messages["microbiology.admin.field.incubationHours"],
-      ),
-      "24",
-    );
-    await user.type(
-      screen.getByLabelText(
-        messages["microbiology.admin.field.subcultureAtHours"],
-      ),
-      "48",
-    );
-    const maxIncubationInput = screen.getByLabelText(
-      messages["microbiology.admin.field.maxIncubationDays"],
-    );
-    await user.type(maxIncubationInput, "7");
-    await user.clear(maxIncubationInput);
-    await user.type(maxIncubationInput, "5");
-    await user.click(
-      screen.getByRole("button", { name: messages["button.save"] }),
-    );
-
-    expect(saveReference).toHaveBeenCalledWith(
-      "culture-setups",
-      expect.objectContaining({
-        methodId: "method-1",
-        incubationHours: 24,
-        subcultureAtHours: 48,
-        maxIncubationDays: 5,
-      }),
-    );
-  });
-
   it("renders the refreshed AST panel rows after publishing a version", async () => {
     const user = userEvent.setup();
     let published = false;
@@ -450,7 +380,6 @@ describe("microbiology reference administration", () => {
       id,
       logicalKey: "panel-logical-key",
       name: "Gram negative panel",
-      workflowType: "BACTERIOLOGY",
       versionNumber,
       current,
       active: true,
@@ -560,28 +489,6 @@ describe("microbiology reference administration", () => {
       }),
     );
     expect(setReferenceActive).toHaveBeenCalledWith("organisms", "eco", false);
-  });
-
-  it("offers existing Methods when creating culture defaults", async () => {
-    const setQuery = vi.fn();
-    getReferencePage.mockResolvedValue({ rows: [], total: 0 });
-    getReferenceOptions.mockResolvedValue([
-      { id: "method-1", label: "Routine culture", code: "CULT" },
-    ]);
-
-    renderPage(
-      <ReferenceDataPage
-        definition={REFERENCE_DEFINITIONS["culture-setups"]}
-        query={{ ...query, edit: "new" }}
-        setQuery={setQuery}
-      />,
-    );
-
-    expect(
-      await screen.findByRole("option", {
-        name: "Routine culture (CULT)",
-      }),
-    ).toBeInTheDocument();
   });
 
   it("renders breakpoint lifecycle detail and opens activation state", async () => {

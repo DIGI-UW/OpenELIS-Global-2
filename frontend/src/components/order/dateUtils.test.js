@@ -8,7 +8,6 @@ import {
   shortestHoldingMinutes,
   daysBetweenIsoDates,
   formatIsoDateForBackend,
-  isCollectionDateBeforeAdmissionDate,
   normalizeDateForState,
   todayLocalIso,
 } from "./dateUtils";
@@ -51,17 +50,7 @@ describe("order date utilities", () => {
     expect(normalizeDateForState("2026-08-13", "fr-FR")).toBe("2026-08-13");
   });
 
-  it("detects a collection date before admission without rejecting empty dates", () => {
-    expect(
-      isCollectionDateBeforeAdmissionDate("2026-08-02", "2026-08-03"),
-    ).toBe(true);
-    expect(
-      isCollectionDateBeforeAdmissionDate("2026-08-03", "2026-08-03"),
-    ).toBe(false);
-    expect(isCollectionDateBeforeAdmissionDate("", "2026-08-03")).toBe(false);
-  });
-
-  it("computes calendar days between admission and collection", () => {
+  it("computes calendar days between two ISO dates", () => {
     expect(daysBetweenIsoDates("2026-08-03", "2026-08-07")).toBe(4);
     expect(daysBetweenIsoDates("", "2026-08-07")).toBeNull();
   });

@@ -43,8 +43,6 @@ import LabelsSection, {
 } from "../barcodeWorkflow/LabelsSection";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
-import MicrobiologyOrderEntrySection from "../microbiology/MicrobiologyOrderEntrySection";
-import { isMicrobiologyOrder } from "../order/orderDataUtils";
 const AddOrder = (props) => {
   const { setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -880,12 +878,6 @@ const AddOrder = (props) => {
   return (
     <>
       <Stack gap={10}>
-        <MicrobiologyOrderEntrySection
-          samples={samples}
-          orderFormValues={orderFormValues}
-          setOrderFormValues={setOrderFormValues}
-          enabled={isMicrobiologyOrder(orderFormValues, samples)}
-        />
         <div className="orderLegendBody">
           <Grid>
             <Column lg={16} md={8} sm={4}>

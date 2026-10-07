@@ -23,7 +23,6 @@ import {
   formatHoldingMinutes,
   formatIsoDateForBackend,
   formatPickerDateForIso,
-  isCollectionDateBeforeAdmissionDate,
 } from "../../dateUtils";
 import {
   getHandlingRequirements,
@@ -66,7 +65,6 @@ const SampleCollectionCard = ({
   printDisabled = false,
   isReadOnly,
   canRemove,
-  admissionDate = "",
   workflowType = "clinical",
   labNumber = "",
   onSameForAll,
@@ -100,10 +98,6 @@ const SampleCollectionCard = ({
   const { configurationProperties = {} } =
     useContext(ConfigurationContext) || {};
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
-  const collectionDateBeforeAdmission = isCollectionDateBeforeAdmissionDate(
-    sample.collectionDate,
-    admissionDate,
-  );
 
   useEffect(() => {
     let active = true;
@@ -584,10 +578,6 @@ const SampleCollectionCard = ({
             value={formatIsoDateForBackend(sample.collectionDate, dateLocale)}
             updateStateValue
             disallowFutureDate
-            invalid={collectionDateBeforeAdmission}
-            invalidText={intl.formatMessage({
-              id: "collect.sample.collectionDateBeforeAdmission",
-            })}
             onChange={(value) =>
               handleFieldChange(
                 "collectionDate",

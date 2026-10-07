@@ -22,8 +22,7 @@ const { orderContextValue, programSectionProps, configurationValue } =
           sampleTypeId: "blood",
           tests: [
             {
-              id: "culture-test",
-              cultureWorkflowType: "BACTERIOLOGY",
+              id: "test-1",
             },
           ],
         },
@@ -189,19 +188,6 @@ describe("ClinicalOrderEnter", () => {
     orderContextValue.saveStatus = "saved";
     orderContextValue.error = null;
     orderContextValue.fieldErrors = {};
-  });
-
-  it("shares selected samples with the Program section", () => {
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ClinicalOrderEnter />
-      </IntlProvider>,
-    );
-
-    expect(screen.getByTestId("program-section")).toBeInTheDocument();
-    expect(programSectionProps).toHaveBeenCalledWith(
-      expect.objectContaining({ samples: orderContextValue.samples }),
-    );
   });
 });
 

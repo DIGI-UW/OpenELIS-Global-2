@@ -25,7 +25,6 @@ import { getEnforcement } from "./api/sampleAcceptanceApi";
 import {
   buildLoadedOrderData,
   buildSubmissionSampleOrderItems,
-  buildSubmittedMicrobiologyOrderDetail,
 } from "./orderDataUtils";
 import {
   currentLocalTime,
@@ -907,10 +906,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           ...orderData.sampleOrderItems,
           progressStep: progressStep || "",
         }),
-        microbiologyOrderDetail: buildSubmittedMicrobiologyOrderDetail(
-          orderData,
-          effectiveSamples,
-        ),
         initialSampleConditionList: [],
         testSectionList: [],
         ...(labelPersistRequest ? { labelPersistRequest } : {}),
@@ -1163,10 +1158,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         // Include per-sample vector observations merged above.
         environmentalFields: envFields,
       }),
-      microbiologyOrderDetail: buildSubmittedMicrobiologyOrderDetail(
-        orderData,
-        samples,
-      ),
       requestedSampleTypes: toRequestedSampleTypes(samples),
       initialSampleConditionList: [],
       testSectionList: [],

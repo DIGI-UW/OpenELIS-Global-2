@@ -26,11 +26,11 @@ describe("convertRequestsToSamples", () => {
     expect(samples[1].quantity).toBe("");
   });
 
-  it("preserves workflow and Method metadata when restoring selected tests", () => {
+  it("preserves test and Method metadata when restoring selected tests", () => {
     const selectedTest = {
       id: "42",
       name: "Blood culture",
-      cultureWorkflowType: "BACTERIOLOGY",
+
       methods: [
         {
           methodId: "7",
