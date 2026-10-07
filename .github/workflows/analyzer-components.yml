@@ -1,0 +1,66 @@
+name: Analyzer Bridge and mock together
+
+# The Bridge and the analyzer mock each test only themselves in their own
+# repositories. The tests that need both run here, against the submodule
+# commits OpenELIS records, which are the versions that go together.
+on:
+  workflow_call:
+
+permissions:
+  contents: read
+
+jobs:
+  contracts:
+    name: Bridge and mock contracts
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "21"
+          cache: maven
+      - name: Mock fixtures and templates against the Bridge's profiles
+        working-directory: tools/analyzer-mock-server
+        env:
+          ANALYZER_BRIDGE_PROFILES_DIR: ${{ github.workspace }}/tools/openelis-analyzer-bridge/src/main/resources/analyzer-profiles
+        run: |
+          python -m pip install -r requirements.txt pytest
+          python -m pytest -m needs_bridge -v
+      - name: Bridge profiles against the mock's files
+        working-directory: tools/openelis-analyzer-bridge
+        run: |
+          (cd astm-http-lib && mvn -B -q install -DskipTests)
+          mvn -B test -Dtest=PriorityProfileMockFixtureTest \
+            -DanalyzerMockDir=${{ github.workspace }}/tools/analyzer-mock-server
+
+  bridge-acceptance:
+    name: Bridge acceptance with the mock
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          submodules: recursive
+      # Builds the Bridge image and drives it with traffic the mock replays,
+      # including the delivery-outage scenarios.
+      - name: Run the Bridge acceptance suite
+        working-directory: tools/openelis-analyzer-bridge
+        env:
+          ANALYZER_MOCK_DIR: ${{ github.workspace }}/tools/analyzer-mock-server
+        run: ./scripts/e2e-tests/run-all.sh
+      - name: Capture service logs on failure
+        if: failure()
+        working-directory: tools/openelis-analyzer-bridge
+        run: docker compose -f docker-compose.test.yml logs --no-color --tail=400 > e2e-service-logs.txt || true
+      - name: Upload service logs
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: bridge-acceptance-logs
+          path: tools/openelis-analyzer-bridge/e2e-service-logs.txt
+          if-no-files-found: ignore
