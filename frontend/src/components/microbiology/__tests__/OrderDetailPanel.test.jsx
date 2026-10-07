@@ -50,7 +50,7 @@ describe("OrderDetailPanel", () => {
       screen.getByLabelText("Patient origin"),
       "EMERGENCY",
     );
-    await user.type(screen.getByLabelText("Number of sets"), "2");
+    expect(screen.getByLabelText("Number of sets")).toHaveAttribute("readonly");
     await user.type(
       screen.getByLabelText("Clinical history"),
       "Fever, suspected sepsis",
@@ -65,7 +65,6 @@ describe("OrderDetailPanel", () => {
         culturePurpose: "ACTIVE_SCREENING",
         patientOrigin: "EMERGENCY",
         admissionDate: null,
-        numberOfSets: 2,
         clinicalHistory: "Fever, suspected sepsis",
         antibioticExposure: true,
       }),
@@ -96,7 +95,7 @@ describe("OrderDetailPanel", () => {
     expect(
       screen.getByRole("radio", { name: "Clinical diagnosis or treatment" }),
     ).toBeChecked();
-    expect(screen.getByLabelText("Number of sets")).toHaveValue(3);
+    expect(screen.getByLabelText("Number of sets")).toHaveValue("3");
     expect(
       screen.getByLabelText(/Patient has recent antibiotic exposure/i),
     ).toBeChecked();
@@ -125,4 +124,20 @@ describe("OrderDetailPanel", () => {
       screen.queryByRole("button", { name: "Save order detail" }),
     ).not.toBeInTheDocument();
   });
+});
+
+it("refreshes the derived count when case membership is reloaded", () => {
+  const service = { saveOrderDetail: vi.fn() };
+  const view = renderPanel({ orderDetail: { numberOfSets: 1 }, service });
+  expect(screen.getByLabelText("Number of sets")).toHaveValue("1");
+  view.rerender(
+    <IntlProvider locale="en" messages={messages}>
+      <OrderDetailPanel
+        caseId="case-1"
+        orderDetail={{ numberOfSets: 2 }}
+        service={service}
+      />
+    </IntlProvider>,
+  );
+  expect(screen.getByLabelText("Number of sets")).toHaveValue("2");
 });

@@ -106,7 +106,6 @@ public class MicroCaseOrderDetailServiceImpl implements MicroCaseOrderDetailServ
         }
         detail.setCulturePurpose(culturePurpose);
         detail.setAdmissionDate(parseAdmissionDate(request.admissionDate, patientOrigin));
-        detail.setNumberOfSets(request.numberOfSets);
         detail.setClinicalHistory(request.clinicalHistory);
         detail.setAntibioticExposure(request.antibioticExposure);
     }

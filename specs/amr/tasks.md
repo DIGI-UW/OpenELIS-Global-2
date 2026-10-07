@@ -437,8 +437,22 @@ Remaining V02c2 implementation and acceptance:
       it also reads existing analyses so omitting tests on edit cannot bypass the
       check. Failed collection rolls back the order. Fifteen backend order-save
       tests and 41 frontend tests pass, along with the frontend production build.
+      The set-summary follow-up derives the case count from distinct explicit
+      numbers on specimens whose case-analysis membership was recorded as collected
+      in sets. The case-detail response no longer reads the old manually entered
+      count, and the editor sends no count and displays it read-only. The header
+      groups bottle sites, collection times and container types by set; missing
+      historical assignments remain explicitly unassigned, never inferred.
+      Validation: 26 backend tests (case integration/routing/detail services),
+      47 frontend tests and the frontend production build passed. Persisted tests
+      cover distinct counts, correction/reload, an obsolete captured count and a
+      separate case sharing a specimen. Browser parity is still outstanding.
+      The superseded `micro_case_order_detail.number_of_sets` column is not read or
+      written by runtime services. Its remaining entity mapping/storage must be
+      removed by the final cutover after preserving historical captured values as
+      audit evidence; leaving it indefinitely is not the accepted final schema.
       Required next: audit other fulfillment entry points, environmental
-      presentation, derived count/header, warnings and browser proof.
+      presentation, set warnings, final-schema retirement and browser proof.
 - [ ] Open cases on initial clinical order save, including requested specimens.
       Current clinical Step 1 sends requested sample types with empty sample XML;
       physical specimens and runtime routing arrive at collection. The existing

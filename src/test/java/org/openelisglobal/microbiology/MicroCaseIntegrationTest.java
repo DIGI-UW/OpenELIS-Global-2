@@ -34,6 +34,15 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroIsolateService isolateService;
 
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroOrderRoutingService routingService;
+    @Autowired
+    private org.openelisglobal.sampleitem.service.SampleItemService sampleItemService;
+    @Autowired
+    private org.openelisglobal.test.service.TestService testService;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseOrderDetailDAO orderDetailDAO;
+
     private String sampleItemId;
     private String methodId;
     private ReferenceData referenceData;
@@ -85,6 +94,50 @@ public class MicroCaseIntegrationTest extends BaseWebContextSensitiveTest {
         assertEquals(1, detail.isolates.size());
         assertEquals("ISO-1", detail.isolates.get(0).isolateLabel);
         assertTrue(detail.activities.size() >= 3);
+    }
+
+    @Test
+    public void setCountComesFromDistinctBottleAssignmentsNotCapturedOrderCount() {
+        cultureTest.setCollectedInSets(true);
+        testService.update(cultureTest);
+        var first = fixtures.getSampleItem(sampleItemId);
+        first.setCultureSetNumber(1);
+        first.setContainer("Aerobic");
+        sampleItemService.update(first);
+        var firstAnalysis = fixtures.createAnalysis(first, cultureTest);
+        var owner = routingService
+                .routeAnalysesForSampleItem(first, java.util.List.of(firstAnalysis), fixtures.defaultUserId()).get(0);
+        var second = fixtures.createSampleWithSampleItem("SETSECOND");
+        second.setSample(first.getSample());
+        second.setTypeOfSample(first.getTypeOfSample());
+        second.setCultureSetNumber(3);
+        second.setSysUserId(fixtures.defaultUserId());
+        sampleItemService.update(second);
+        var secondAnalysis = fixtures.createAnalysis(second, cultureTest);
+        assertEquals(owner.getId(),
+                routingService
+                        .routeAnalysesForSampleItem(second, java.util.List.of(secondAnalysis), fixtures.defaultUserId())
+                        .get(0).getId());
+        var historical = new org.openelisglobal.microbiology.valueholder.MicroCaseOrderDetail();
+        historical.setCaseId(owner.getId());
+        historical.setNumberOfSets(99);
+        historical.setSysUserId(fixtures.defaultUserId());
+        orderDetailDAO.insert(historical);
+        var detail = caseService.getCaseDetail(owner.getId());
+        assertEquals(Integer.valueOf(2), detail.orderDetail.numberOfSets);
+        assertEquals(2, detail.specimens.size());
+        assertTrue(detail.specimens.stream().allMatch(specimen -> specimen.collectedInSets));
+        assertTrue(detail.specimens.stream().anyMatch(specimen -> "Aerobic".equals(specimen.containerType)));
+        second = sampleItemService.get(second.getId());
+        second.setCultureSetNumber(1);
+        sampleItemService.update(second);
+        assertEquals(Integer.valueOf(1), caseService.getCaseDetail(owner.getId()).orderDetail.numberOfSets);
+        assertEquals(Integer.valueOf(99), orderDetailDAO.getByCaseId(owner.getId()).getNumberOfSets());
+        var otherAnalysis = fixtures.createAnalysis(first, otherUnitTest);
+        var otherCase = routingService
+                .routeAnalysesForSampleItem(first, java.util.List.of(otherAnalysis), fixtures.defaultUserId()).get(0);
+        assertTrue(caseService.getCaseDetail(otherCase.getId()).specimens.stream()
+                .noneMatch(specimen -> specimen.collectedInSets));
     }
 
 }

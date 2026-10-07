@@ -19,6 +19,17 @@ public class MicroCaseAnalysisDAOImpl extends BaseDAOImpl<MicroCaseAnalysis, Str
 
     @Override
     @Transactional(readOnly = true)
+    public List<String> getSetSpecimenIds(String caseId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery(
+                        "select distinct a.sampleItem.id from MicroCaseAnalysis l, Analysis a"
+                                + " where l.analysisId = a.id and l.caseId = :caseId and l.collectedInSets = true",
+                        String.class)
+                .setParameter("caseId", caseId).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<MicroCaseAnalysis> getByCaseId(String caseId) {
         Query<MicroCaseAnalysis> query = entityManager.unwrap(Session.class).createQuery(
                 "from MicroCaseAnalysis c where c.caseId = :caseId order by c.analysisId", MicroCaseAnalysis.class);

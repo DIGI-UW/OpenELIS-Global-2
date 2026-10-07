@@ -2,13 +2,13 @@ import React, { useContext } from "react";
 import {
   Checkbox,
   InlineNotification,
-  NumberInput,
   RadioButton,
   RadioButtonGroup,
   Select,
   SelectItem,
   Tag,
   TextArea,
+  TextInput,
 } from "@carbon/react";
 import { format } from "date-fns";
 import { useIntl } from "react-intl";
@@ -229,22 +229,16 @@ const MicrobiologyOrderDetailFields = ({
           </div>
         )}
       </div>
-      <NumberInput
+      <TextInput
         id={`${idPrefix}-number-of-sets`}
-        label={intl.formatMessage({
+        labelText={intl.formatMessage({
           id: "microbiology.orderDetail.numberOfSets",
         })}
         helperText={intl.formatMessage({
-          id: "microbiology.orderDetail.numberOfSets.helper",
+          id: "microbiology.orderDetail.numberOfSets.derived",
         })}
-        value={fields.numberOfSets}
-        min={1}
-        max={10}
-        allowEmpty
-        onChange={(event, state = {}) =>
-          onChange("numberOfSets", state.value ?? event.target.value)
-        }
-        disabled={isReadOnly}
+        value={fields.numberOfSets ?? ""}
+        readOnly
       />
       <div className="microbiology-order-detail-fields__wide">
         <TextArea

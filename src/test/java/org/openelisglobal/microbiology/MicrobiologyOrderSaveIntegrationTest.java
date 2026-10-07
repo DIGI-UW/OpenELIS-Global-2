@@ -156,7 +156,6 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         detail.patientOrigin = "INPATIENT";
         detail.admissionDate = "2026-08-17";
-        detail.numberOfSets = 2;
         detail.clinicalHistory = "Persistent fever after antibiotics";
         detail.antibioticExposure = true;
         return detail;
@@ -168,7 +167,7 @@ public class MicrobiologyOrderSaveIntegrationTest extends BaseWebContextSensitiv
         assertEquals(expected.patientOrigin, actual.getPatientOrigin());
         assertEquals(expected.culturePurpose, actual.getCulturePurpose());
         assertEquals(LocalDate.parse(expected.admissionDate), actual.getAdmissionDate());
-        assertEquals(expected.numberOfSets, actual.getNumberOfSets());
+        assertEquals(null, actual.getNumberOfSets());
         assertEquals(expected.clinicalHistory, actual.getClinicalHistory());
         assertEquals(expected.antibioticExposure, actual.getAntibioticExposure());
     }

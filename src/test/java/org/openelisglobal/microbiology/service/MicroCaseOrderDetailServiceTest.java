@@ -65,7 +65,6 @@ public class MicroCaseOrderDetailServiceTest {
         request.culturePurpose = "CLINICAL_DIAGNOSTIC";
         request.patientOrigin = "INPATIENT";
         request.admissionDate = "2026-08-03";
-        request.numberOfSets = 2;
         request.clinicalHistory = "Fever, suspected sepsis";
         request.antibioticExposure = true;
 
@@ -75,7 +74,7 @@ public class MicroCaseOrderDetailServiceTest {
         assertEquals("CLINICAL_DIAGNOSTIC", saved.getCulturePurpose());
         assertEquals("INPATIENT", saved.getPatientOrigin());
         assertEquals(LocalDate.of(2026, 8, 3), saved.getAdmissionDate());
-        assertEquals(Integer.valueOf(2), saved.getNumberOfSets());
+        assertEquals(null, saved.getNumberOfSets());
         assertEquals("Fever, suspected sepsis", saved.getClinicalHistory());
         assertEquals(Boolean.TRUE, saved.getAntibioticExposure());
         assertNotNull(saved.getCreatedAt());
@@ -87,7 +86,7 @@ public class MicroCaseOrderDetailServiceTest {
     }
 
     @Test
-    public void saveOrderDetailUpdatesExistingRecordInPlace() {
+    public void saveOrderDetailUpdatesExistingRecordInPlace() throws Exception {
         MicroCase microCase = new MicroCase();
         microCase.setId("case-1");
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
@@ -95,19 +94,20 @@ public class MicroCaseOrderDetailServiceTest {
         existing.setId("detail-1");
         existing.setCaseId("case-1");
         existing.setPatientOrigin("EMERGENCY");
+        existing.setNumberOfSets(2);
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(existing);
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        MicroCaseOrderDetailRequestForm request = new ObjectMapper().readValue("{\"numberOfSets\":77}",
+                MicroCaseOrderDetailRequestForm.class);
         request.patientOrigin = "INPATIENT";
         request.culturePurpose = "ACTIVE_SCREENING";
         request.admissionDate = "2026-08-03";
-        request.numberOfSets = 3;
 
         MicroCaseOrderDetail saved = service.saveOrderDetail("case-1", request, "2");
 
         assertEquals("detail-1", saved.getId());
         assertEquals("INPATIENT", saved.getPatientOrigin());
         assertEquals("ACTIVE_SCREENING", saved.getCulturePurpose());
-        assertEquals(Integer.valueOf(3), saved.getNumberOfSets());
+        assertEquals(Integer.valueOf(2), saved.getNumberOfSets());
         verify(orderDetailDAO).update(existing);
         verify(orderDetailDAO, never()).insert(any(MicroCaseOrderDetail.class));
     }
@@ -137,7 +137,8 @@ public class MicroCaseOrderDetailServiceTest {
         existing.setCaseId("case-1");
         existing.setCulturePurpose("CLINICAL_DIAGNOSTIC");
         when(orderDetailDAO.getByCaseId("case-1")).thenReturn(existing);
-        MicroCaseOrderDetailRequestForm request = new MicroCaseOrderDetailRequestForm();
+        MicroCaseOrderDetailRequestForm request = new ObjectMapper().readValue("{\"numberOfSets\":77}",
+                MicroCaseOrderDetailRequestForm.class);
         request.culturePurpose = "ACTIVE_SCREENING";
 
         service.saveOrderDetail("case-1", request, "2");

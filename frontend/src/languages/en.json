@@ -1,4 +1,9 @@
 {
+  "microbiology.sets.title": "Culture sets",
+  "microbiology.sets.count": "{sets, plural, one {# set} other {# sets}}, {bottles, plural, one {# bottle} other {# bottles}}",
+  "microbiology.sets.number": "Set {number}",
+  "microbiology.sets.unassigned": "Set not recorded",
+  "microbiology.orderDetail.numberOfSets.derived": "Counted from the set numbers assigned to this case’s bottles.",
   "order.cultureSetNumber": "Set number",
   "order.cultureSetNumber.required": "Enter a whole set number of 1 or greater.",
   "reporting.title": "Custom Data Export",

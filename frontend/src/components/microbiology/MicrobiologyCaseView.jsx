@@ -1,3 +1,4 @@
+import CultureSetSummary from "./CultureSetSummary";
 import React, { forwardRef, useEffect, useRef, useState } from "react";
 import {
   Accordion,
@@ -714,6 +715,7 @@ const MicrobiologyCaseView = ({
             </Button>
           </div>
         </header>
+        <CultureSetSummary specimens={caseDetail.specimens} />
 
         {finalReleased && (
           <InlineNotification

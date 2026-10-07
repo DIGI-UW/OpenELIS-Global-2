@@ -8,6 +8,8 @@ public interface MicroCaseAnalysisDAO extends BaseDAO<MicroCaseAnalysis, String>
 
     List<MicroCaseAnalysis> getByCaseId(String caseId);
 
+    List<String> getSetSpecimenIds(String caseId);
+
     MicroCaseAnalysis getByCaseAndAnalysis(String caseId, String analysisId);
 
     MicroCaseAnalysis getByAnalysis(String analysisId);

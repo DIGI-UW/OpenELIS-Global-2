@@ -44,6 +44,9 @@ import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 public class MicroCaseServiceTest {
 
     @Mock
+    private org.openelisglobal.microbiology.dao.MicroCaseAnalysisDAO caseAnalysisDAO;
+
+    @Mock
     private MicroCaseDAO caseDAO;
 
     @Mock
@@ -139,7 +142,7 @@ public class MicroCaseServiceTest {
 
         assertNotNull(form.orderDetail);
         assertEquals("Emergency department", form.orderDetail.patientOrigin);
-        assertEquals(Integer.valueOf(2), form.orderDetail.numberOfSets);
+        assertEquals(null, form.orderDetail.numberOfSets);
     }
 
     @Test
@@ -292,6 +295,6 @@ public class MicroCaseServiceTest {
     private MicroCaseService service() {
         return new MicroCaseServiceImpl(caseDAO, activityDAO, isolateDAO, orderDetailDAO, sampleItemService,
                 sampleHumanService, patientService, sampleOrganizationService, systemUserService, nceSpecimenService,
-                specimenDAO, testSectionService);
+                specimenDAO, testSectionService, caseAnalysisDAO);
     }
 }

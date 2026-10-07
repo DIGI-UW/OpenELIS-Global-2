@@ -173,7 +173,6 @@ public class MicrobiologyOrderEligibilityIntegrationTest extends BaseWebContextS
         MicroCaseOrderDetailRequestForm detail = new MicroCaseOrderDetailRequestForm();
         detail.culturePurpose = "CLINICAL_DIAGNOSTIC";
         detail.patientOrigin = "INPATIENT";
-        detail.numberOfSets = 2;
         detail.clinicalHistory = "Persistent fever after antibiotics";
         detail.antibioticExposure = true;
         return detail;

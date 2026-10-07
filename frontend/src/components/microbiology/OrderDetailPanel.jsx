@@ -47,8 +47,6 @@ const OrderDetailPanel = ({
       admissionDate: fields.admissionDate || null,
       clinicalHistory: fields.clinicalHistory,
       antibioticExposure: fields.antibioticExposure,
-      numberOfSets:
-        fields.numberOfSets === "" ? null : Number(fields.numberOfSets),
     };
     service.saveOrderDetail(caseId, payload).then((detail) => {
       setSaving(false);
@@ -81,7 +79,7 @@ const OrderDetailPanel = ({
       </div>
       <div className="microbiology-card__body">
         <MicrobiologyOrderDetailFields
-          fields={fields}
+          fields={{ ...fields, numberOfSets: orderDetail?.numberOfSets }}
           onChange={(name, value) => setField(name)(value)}
           showCultureMethod={false}
           patientOrigins={patientOrigins}
