@@ -203,6 +203,14 @@ independent-reading acceptance. Authorization fixes in existing writers stay
 where needed for safe case ownership; they are not deferred merely because the
 writer's full feature belongs to a later slice.
 
+V02a is published as [draft PR #4614](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4614)
+in stack #4610 after #4612. Its four unsafe-input regressions failed before the
+fix; the full migration rehearsal now passes 15 tests with no failures, errors
+or skips, including recognized observation preservation through upgrade and
+rollback. The active application changelog is unchanged. Full local/GitHub CI
+and repository review remain pending; this is not V02 acceptance. The PR records
+the exact review revision and evidence. This recovery round stops at V02a.
+
 The next implementation after this bounded remediation round is V02b, beginning
 from the reviewed V02a branch in stack #4610. Do not resume edits on the preserved
 204-file worktree. Extract only the declared boundary into its owning worktree;

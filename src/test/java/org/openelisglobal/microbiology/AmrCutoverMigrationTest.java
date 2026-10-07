@@ -275,6 +275,28 @@ public class AmrCutoverMigrationTest {
     }
 
     @Test
+    public void candidateCutoverPreservesRecognizedObservationHistory() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_activity"
+                    + "(id,case_id,activity_type,occurred_at,performed_by,note,structured_data) values "
+                    + "('recognized-positive','case-bacteria','STAGE_CHANGED',timestamp '2026-09-01 12:34:56',1,"
+                    + "'Original bottle signal','{\"from\":\"INCUBATING\",\"to\":\"POSITIVE_SIGNAL\"}')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String applied = appliedHistory();
+        Liquibase migration = cutover(MAP);
+        migration.update(CONTEXTS);
+        assertTargetSchema();
+        assertEquals(before, clinicalSnapshot());
+        assertEquals(applied, appliedHistory());
+        migration.rollback(1, "default");
+        assertEquals(before, clinicalSnapshot());
+        assertTrue(columnExists("micro_case", "sample_item_id"));
+    }
+
+    @Test
     public void candidateCutoverRejectsUnresolvableObservationBeforeCutover() throws Exception {
         seed();
         try (Statement statement = connection.createStatement()) {
