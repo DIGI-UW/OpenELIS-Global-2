@@ -213,11 +213,19 @@ fix; the full migration rehearsal now passes 15 tests with no failures, errors
 or skips, including recognized observation preservation through upgrade and
 rollback. The active application changelog is unchanged. Full local/GitHub CI
 and repository review remain pending; this is not V02 acceptance. The PR records
-the exact review revision and evidence. This recovery round stops at V02a.
+the exact review revision and evidence. The bounded recovery round finished at V02a.
 
-The next implementation after this bounded remediation round is V02b, beginning
-from the published V02a branch in stack #4610; its 15-test focused gate passes.
-Full CI and human review do not block starting V02b. Do not resume edits on the preserved
+V02b is now [draft PR #4617](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4617),
+stacked above V02a in stack #4610. Its first committed increment (`53789ad725`)
+passed two PostgreSQL rehearsals: fresh membership schema and clinical preservation
+through upgrade and full rollback. The complete focused suite subsequently passed
+29 tests with no failures, errors or skips, covering fresh/upgrade/rollback/reapply,
+clinical and applied-history preservation, ambiguous ownership, case-member
+provenance constraints and refusal to erase later clinical work. The cross-case
+observation regression reproduced the defect before the constraint fix. The
+candidate remains unregistered; the PR records the tested source and the additional
+isolate-specific fixture verification. This establishes the migration prerequisite,
+not runtime or V02 acceptance. V02c is next. Full CI and human review do not block focused implementation. Do not resume edits on the preserved
 204-file worktree. Extract only the declared boundary into its owning worktree;
 carry necessary fixes and tests together. A sub-PR passing its own checks does not
 mark V02 accepted. Finish V02c–e and the completion gate before V03.

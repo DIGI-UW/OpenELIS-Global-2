@@ -282,6 +282,18 @@ snapshot and historical test logs; do not turn them into runtime fallback code.
 
 ### V02 — routing
 
+V02a/V02b use the migration-only prerequisite gate below. It rehearses the
+unregistered candidates against PostgreSQL; it does not establish runtime or
+browser acceptance. V02c must additionally verify the complete registered
+migration sequence on fresh and existing databases before activating it, including
+failure before destructive cutover when a later candidate cannot apply.
+
+```bash
+scripts/run-java21 mvn -B -ntp -Dtest=AmrCutoverMigrationTest test
+```
+
+The runtime routing gate remains:
+
 ```bash
 scripts/run-java21 mvn -B -ntp -Dtest=MicrobiologyOrderSaveIntegrationTest,MicroOrderRoutingIdempotencyTest,MicrobiologyBenchRestControllerSecurityTest,MicrobiologyOrmValidationTest test
 python3 .ai/skills/playwright/scripts/validate-playwright-project.py playwright/tests/foundational/core/microbiology-order-entry.spec.ts

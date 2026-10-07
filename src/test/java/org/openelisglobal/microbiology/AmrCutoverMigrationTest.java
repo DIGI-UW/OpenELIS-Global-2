@@ -388,6 +388,7 @@ public class AmrCutoverMigrationTest {
     public void membershipMigrationPreservesClinicalDataAndRehearsesCompleteRollback() throws Exception {
         seed();
         Map<String, String> original = clinicalSnapshot();
+        String historicalChangesets = allHistory();
         Liquibase cutover = cutover(MAP);
         cutover.update(CONTEXTS);
         Liquibase membership = membershipMigration();
@@ -396,13 +397,336 @@ public class AmrCutoverMigrationTest {
                 scalar("select source_sample_item_id from clinlims.micro_isolate where id='isolate-original'"));
         assertEquals("CULTURE", scalar("select case_role from clinlims.micro_case_analysis where id='link-bacteria'"));
         assertEquals(original, clinicalSnapshot());
+        assertEquals(historicalChangesets, appliedHistory());
         membership.rollback(1, "default");
         assertFalse(columnExists("micro_isolate", "source_sample_item_id"));
         assertFalse(columnExists("micro_case_analysis", "case_role"));
         assertEquals(original, clinicalSnapshot());
+        assertEquals(historicalChangesets, appliedHistory());
         cutover.rollback(1, "default");
         assertEquals(original, clinicalSnapshot());
+        assertEquals(historicalChangesets, appliedHistory());
         assertTrue(columnExists("micro_case", "sample_item_id"));
+        assertEquals(historicalChangesets, allHistory());
+        cutover.update(CONTEXTS);
+        membership.update(CONTEXTS);
+        assertEquals(original, clinicalSnapshot());
+        assertEquals(historicalChangesets, appliedHistory());
+        assertEquals("990001",
+                scalar("select source_sample_item_id from clinlims.micro_isolate where id='isolate-original'"));
+    }
+
+    @Test
+    public void observationSourceMustBelongToItsCase() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        membershipMigration().update(CONTEXTS);
+        connection.setAutoCommit(false);
+        try {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("update clinlims.micro_case_activity set result_source_sample_item_id=990003"
+                        + " where id=md5('amr-v2-migration:case-bacteria')::uuid::text");
+            }
+            connection.commit();
+            fail("An observation cannot use a specimen outside its case");
+        } catch (java.sql.SQLException exception) {
+            assertEquals("23503", exception.getSQLState());
+            assertTrue(exception.getMessage(), exception.getMessage().contains("fk_micro_activity_result_source"));
+            connection.rollback();
+        }
+        assertEquals("990001", scalar("select result_source_sample_item_id from clinlims.micro_case_activity"
+                + " where id=md5('amr-v2-migration:case-bacteria')::uuid::text"));
+        addSecondCultureMember();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("update clinlims.micro_case_activity set result_source_sample_item_id=990004"
+                    + " where id=md5('amr-v2-migration:case-bacteria')::uuid::text");
+        }
+        connection.commit();
+        assertEquals("990004", scalar("select result_source_sample_item_id from clinlims.micro_case_activity"
+                + " where id=md5('amr-v2-migration:case-bacteria')::uuid::text"));
+    }
+
+    @Test
+    public void cultureObservationOwnershipPreservesHistoricalActorsAndRollback() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_activity"
+                    + "(id,case_id,activity_type,occurred_at,performed_by,note,structured_data) values "
+                    + "('original-positive','case-tb','STAGE_CHANGED',timestamp '2026-09-01 12:34:56',1,"
+                    + "'Original bottle signal','{\"from\":\"INCUBATING\",\"to\":\"POSITIVE_SIGNAL\"}')");
+            statement.executeUpdate(
+                    "update clinlims.micro_case set stage='NO_GROWTH_READY'" + " where id='case-no-analysis'");
+        }
+        connection.commit();
+        Map<String, String> original = clinicalSnapshot();
+        Liquibase cutover = cutover(MAP);
+        cutover.update(CONTEXTS);
+        Liquibase membership = membershipMigration();
+        membership.update(CONTEXTS);
+        assertTrue(columnExists("micro_case_activity", "result_source_sample_item_id"));
+        assertEquals("990001", scalar("select result_source_sample_item_id from clinlims.micro_case_activity"
+                + " where id='original-positive'"));
+        assertEquals("990003", scalar("select result_source_sample_item_id from clinlims.micro_case_activity"
+                + " where id=md5('amr-v2-migration:case-no-analysis')::uuid::text"));
+        assertEquals(original, clinicalSnapshot());
+        membership.rollback(1, "default");
+        assertFalse(columnExists("micro_case_activity", "result_source_sample_item_id"));
+        cutover.rollback(1, "default");
+        assertEquals(original, clinicalSnapshot());
+    }
+
+    @Test
+    public void membershipRejectsAmbiguousCultureObservationBeforeChangingSchema() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_specimen"
+                    + "(id,case_id,sample_item_id,created_at) values ('observation-member','case-tb',990002,timestamp '2026-09-01 12:34:56')");
+            statement.executeUpdate("insert into clinlims.micro_case_activity"
+                    + "(id,case_id,activity_type,occurred_at,performed_by,structured_data) values "
+                    + "('ambiguous-positive','case-tb','STAGE_CHANGED',timestamp '2026-09-01 12:34:56',1,'{\"to\":\"POSITIVE_SIGNAL\"}')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        expectFailure(membershipMigration(), "unambiguous source specimen for each existing culture observation");
+        assertEquals(before, clinicalSnapshot());
+        assertFalse(columnExists("micro_case_activity", "result_source_sample_item_id"));
+    }
+
+    @Test
+    public void membershipRollbackCannotEraseChangedMigratedObservationOwnership() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        Liquibase membership = membershipMigration();
+        membership.update(CONTEXTS);
+        addSecondCultureMember();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("update clinlims.micro_case_activity set result_source_sample_item_id=990004"
+                    + " where id=md5('amr-v2-migration:case-bacteria')::uuid::text");
+        }
+        connection.commit();
+        try {
+            membership.rollback(1, "default");
+            fail("Rollback must preserve observation ownership recorded after migration");
+        } catch (LiquibaseException expected) {
+            assertTrue(expected.getMessage().contains("AMR membership rollback refused"));
+        }
+        assertEquals("990004", scalar("select result_source_sample_item_id from clinlims.micro_case_activity"
+                + " where id=md5('amr-v2-migration:case-bacteria')::uuid::text"));
+    }
+
+    @Test
+    public void membershipMigrationRejectsDuplicateAnalysisOwnersBeforeSchemaChanges() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_analysis(id,case_id,analysis_id)"
+                    + " values ('duplicate-owner','case-tb',990010)");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        expectFailure(membershipMigration(), "one owner for each analysis");
+        assertEquals(before, clinicalSnapshot());
+        assertFalse(columnExists("micro_isolate", "source_sample_item_id"));
+        assertFalse(columnExists("test", "collected_in_sets"));
+    }
+
+    @Test
+    public void membershipMigrationRejectsAmbiguousIsolateOriginBeforeSchemaChanges() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_specimen(id,case_id,sample_item_id,created_at)"
+                    + " values ('ambiguous-source','case-unassigned',990003,timestamp '2026-09-01 12:34:56')");
+            statement.executeUpdate(
+                    "insert into clinlims.micro_isolate(id,case_id,isolate_label,organism_id,significance,identification_status)"
+                            + " values ('ambiguous-isolate','case-unassigned','2','organism-original','CLINICALLY_SIGNIFICANT','CONFIRMED')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        expectFailure(membershipMigration(), "unambiguous source specimen for each existing isolate");
+        assertEquals(before, clinicalSnapshot());
+        assertFalse(columnExists("micro_isolate", "source_sample_item_id"));
+    }
+
+    @Test
+    public void membershipRollbackPreservesLaterClinicalWorkAndItsSource() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        Liquibase membership = membershipMigration();
+        membership.update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("update clinlims.micro_ast_reading set raw_value=4.0 where id='reading-repeat'");
+        }
+        connection.commit();
+        try {
+            membership.rollback(1, "default");
+            fail("Membership rollback must preserve later clinical work and provenance");
+        } catch (LiquibaseException exception) {
+            StringBuilder messages = new StringBuilder();
+            for (Throwable cause = exception; cause != null; cause = cause.getCause()) {
+                messages.append(cause.getMessage()).append('\n');
+            }
+            assertTrue(messages.toString(),
+                    messages.toString().contains("clinical work or catalog changed after migration"));
+        }
+        assertEquals("4.0000", scalar("select raw_value from clinlims.micro_ast_reading where id='reading-repeat'"));
+        assertEquals("990001",
+                scalar("select source_sample_item_id from clinlims.micro_isolate where id='isolate-original'"));
+        assertTrue(columnExists("micro_case_analysis", "case_role"));
+    }
+
+    @Test
+    public void membershipRollbackPreservesLaterCaseOwnershipAndItsSource() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        Liquibase membership = membershipMigration();
+        membership.update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("update clinlims.micro_case set test_section_id=990002,program_id=990003"
+                    + " where id='case-bacteria'");
+        }
+        connection.commit();
+        try {
+            membership.rollback(1, "default");
+            fail("Membership rollback must preserve later case ownership and provenance");
+        } catch (LiquibaseException exception) {
+            assertTrue(exception.toString(),
+                    exception.toString().contains("clinical work or catalog changed after migration"));
+        }
+        assertEquals("990002|990003", scalar(
+                "select test_section_id||'|'||program_id from clinlims.micro_case" + " where id='case-bacteria'"));
+        assertEquals("990001",
+                scalar("select source_sample_item_id from clinlims.micro_isolate where id='isolate-original'"));
+        assertTrue(columnExists("micro_case_analysis", "case_role"));
+    }
+
+    @Test
+    public void membershipBackfillsCultureSpecimenWithoutChangingClinicalHistory() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "insert into clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by)"
+                            + " values ('activity-subculture','case-bacteria','SUBCULTURE_RECORDED',timestamp '2026-09-01 12:34:56','1')");
+            statement.executeUpdate(
+                    "insert into clinlims.micro_case_inoculation(id,case_id,activity_id,source_inoculation_id,"
+                            + "container_identifier,media,occurred_at,performed_by) values ('subculture-original','case-bacteria',"
+                            + "'activity-subculture','inoculation-original','AMR-SUB-PLATE','Blood agar',timestamp '2026-09-01 12:34:56','1')");
+        }
+        connection.commit();
+        Map<String, String> original = clinicalSnapshot();
+        cutover(MAP).update(CONTEXTS);
+        Liquibase membership = membershipMigration();
+        membership.update(CONTEXTS);
+
+        assertTrue("Cultures must carry explicit specimen provenance",
+                columnExists("micro_case_inoculation", "source_sample_item_id"));
+        assertEquals("990001|990001", scalar("select string_agg(source_sample_item_id::text,'|' order by id)"
+                + " from clinlims.micro_case_inoculation"));
+        assertEquals(original, clinicalSnapshot());
+        membership.rollback(1, "default");
+        assertFalse(columnExists("micro_case_inoculation", "source_sample_item_id"));
+        assertEquals(original, clinicalSnapshot());
+    }
+
+    @Test
+    public void membershipRejectsAmbiguousCultureSpecimenBeforeSchemaChanges() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("insert into clinlims.micro_case_specimen(id,case_id,sample_item_id,created_at)"
+                    + " values ('culture-ambiguous-member','case-unassigned',990003,timestamp '2026-09-01 12:34:56')");
+            statement.executeUpdate(
+                    "insert into clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by)"
+                            + " values ('culture-ambiguous-activity','case-unassigned','INOCULATION_RECORDED',timestamp '2026-09-01 12:34:56','1')");
+            statement.executeUpdate(
+                    "insert into clinlims.micro_case_inoculation(id,case_id,activity_id,container_identifier,"
+                            + "media,occurred_at,performed_by) values ('culture-ambiguous','case-unassigned',"
+                            + "'culture-ambiguous-activity','AMR-AMB-PLATE','Blood agar',timestamp '2026-09-01 12:34:56','1')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        expectFailure(membershipMigration(), "unambiguous source specimen for each existing culture");
+        assertEquals(before, clinicalSnapshot());
+        assertFalse(columnExists("micro_case_inoculation", "source_sample_item_id"));
+        assertFalse(columnExists("test", "collected_in_sets"));
+    }
+
+    @Test
+    public void cultureProvenanceConstraintsRejectForeignMembersAndParentsAtCommit() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        membershipMigration().update(CONTEXTS);
+        connection.setAutoCommit(false);
+        try {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate("update clinlims.micro_case_inoculation set source_sample_item_id=990002"
+                        + " where id='inoculation-original'");
+            }
+            connection.commit();
+            fail("A culture cannot use a specimen outside its case");
+        } catch (java.sql.SQLException exception) {
+            assertEquals("23503", exception.getSQLState());
+            assertTrue(exception.getMessage(), exception.getMessage().contains("fk_micro_culture_source_member"));
+            connection.rollback();
+        }
+        addSecondCultureMember();
+        connection.commit();
+        try {
+            try (Statement statement = connection.createStatement()) {
+                statement.executeUpdate(
+                        "insert into clinlims.micro_case_activity(id,case_id,activity_type,occurred_at,performed_by)"
+                                + " values ('mismatched-parent-activity','case-bacteria','SUBCULTURE_RECORDED',timestamp '2026-09-01 12:34:56','1')");
+                statement.executeUpdate(
+                        "insert into clinlims.micro_case_inoculation(id,case_id,activity_id,source_inoculation_id,"
+                                + "source_sample_item_id,container_identifier,media,occurred_at,performed_by)"
+                                + " values ('mismatched-parent','case-bacteria','mismatched-parent-activity','inoculation-original',"
+                                + "990004,'AMR-MISMATCH','Blood agar',timestamp '2026-09-01 12:34:56','1')");
+            }
+            connection.commit();
+            fail("A subculture cannot change its parent's specimen");
+        } catch (java.sql.SQLException exception) {
+            assertEquals("23503", exception.getSQLState());
+            assertTrue(exception.getMessage(), exception.getMessage().contains("fk_micro_subculture_source_member"));
+            connection.rollback();
+        }
+        assertEquals("990001", scalar("select source_sample_item_id from clinlims.micro_case_inoculation"
+                + " where id='inoculation-original'"));
+        assertEquals("0", scalar("select count(*) from clinlims.micro_case_inoculation where id='mismatched-parent'"));
+    }
+
+    @Test
+    public void membershipRollbackPreservesLaterCultureProvenance() throws Exception {
+        seed();
+        cutover(MAP).update(CONTEXTS);
+        Liquibase membership = membershipMigration();
+        membership.update(CONTEXTS);
+        addSecondCultureMember();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("update clinlims.micro_case_inoculation set source_sample_item_id=990004"
+                    + " where id='inoculation-original'");
+        }
+        connection.commit();
+        try {
+            membership.rollback(1, "default");
+            fail("Rollback must preserve later culture provenance");
+        } catch (LiquibaseException exception) {
+            assertTrue(exception.toString(),
+                    exception.toString().contains("clinical work or catalog changed after migration"));
+        }
+        assertEquals("990004", scalar("select source_sample_item_id from clinlims.micro_case_inoculation"
+                + " where id='inoculation-original'"));
+        assertTrue(columnExists("micro_case_inoculation", "source_sample_item_id"));
+    }
+
+    private void addSecondCultureMember() throws Exception {
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "insert into clinlims.sample_item(id,sort_order,samp_id,typeosamp_id,status_id,collection_date)"
+                            + " select 990004,2,samp_id,typeosamp_id,status_id,collection_date from clinlims.sample_item where id=990001");
+            statement.executeUpdate("insert into clinlims.micro_case_specimen(id,case_id,sample_item_id,created_at)"
+                    + " values ('second-culture-member','case-bacteria',990004,timestamp '2026-09-01 12:34:56')");
+        }
     }
 
     private Liquibase membershipMigration() {
@@ -481,7 +805,7 @@ public class AmrCutoverMigrationTest {
 
     private String appliedHistory() throws Exception {
         return scalar("select jsonb_agg(to_jsonb(h) order by orderexecuted)::text from clinlims.databasechangelog h "
-                + "where id!='20261006-OGC-1426-amr-v2-cutover'");
+                + "where id not in ('20261006-OGC-1426-amr-v2-cutover','20261006-OGC-1427-amr-v2-membership')");
     }
 
     private String allHistory() throws Exception {

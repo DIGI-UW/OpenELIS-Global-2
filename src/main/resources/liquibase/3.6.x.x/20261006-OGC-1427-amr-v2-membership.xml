@@ -9,7 +9,7 @@
     <addColumn schemaName="clinlims" tableName="micro_case_activity">
       <column name="result_source_sample_item_id" type="numeric(10)"/>
     </addColumn>
-    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_activity" baseColumnNames="result_source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_micro_activity_result_source"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_activity" baseColumnNames="case_id,result_source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_specimen" referencedColumnNames="case_id,sample_item_id" constraintName="fk_micro_activity_result_source"/>
     <createIndex schemaName="clinlims" tableName="micro_case_activity" indexName="idx_micro_activity_result_source"><column name="result_source_sample_item_id"/></createIndex>
     <sqlFile path="amr-v2-observation-ownership.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <addColumn schemaName="clinlims" tableName="test">
