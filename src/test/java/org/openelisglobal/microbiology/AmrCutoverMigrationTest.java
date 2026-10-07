@@ -372,6 +372,46 @@ public class AmrCutoverMigrationTest {
         assertFalse(tableExists("micro_case_specimen"));
     }
 
+    @Test
+    public void freshMembershipMigrationCreatesCanonicalSourceAndOwnershipConstraints() throws Exception {
+        cutover("liquibase/amr-cutover-empty-map.csv").update(CONTEXTS);
+        membershipMigration().update(CONTEXTS);
+        assertTrue(columnExists("micro_isolate", "source_sample_item_id"));
+        assertTrue(columnExists("micro_case_analysis", "case_role"));
+        assertTrue(columnExists("test", "collected_in_sets"));
+        assertEquals("0", scalar("select count(*) from clinlims.micro_isolate"));
+        assertEquals("1", scalar("select count(*) from information_schema.table_constraints"
+                + " where constraint_schema='clinlims' and constraint_name='uq_micro_case_analysis_owner'"));
+    }
+
+    @Test
+    public void membershipMigrationPreservesClinicalDataAndRehearsesCompleteRollback() throws Exception {
+        seed();
+        Map<String, String> original = clinicalSnapshot();
+        Liquibase cutover = cutover(MAP);
+        cutover.update(CONTEXTS);
+        Liquibase membership = membershipMigration();
+        membership.update(CONTEXTS);
+        assertEquals("990001",
+                scalar("select source_sample_item_id from clinlims.micro_isolate where id='isolate-original'"));
+        assertEquals("CULTURE", scalar("select case_role from clinlims.micro_case_analysis where id='link-bacteria'"));
+        assertEquals(original, clinicalSnapshot());
+        membership.rollback(1, "default");
+        assertFalse(columnExists("micro_isolate", "source_sample_item_id"));
+        assertFalse(columnExists("micro_case_analysis", "case_role"));
+        assertEquals(original, clinicalSnapshot());
+        cutover.rollback(1, "default");
+        assertEquals(original, clinicalSnapshot());
+        assertTrue(columnExists("micro_case", "sample_item_id"));
+    }
+
+    private Liquibase membershipMigration() {
+        Liquibase migration = changelog("liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-membership.xml");
+        migration.setChangeLogParameter("amr.cutover.actorId", "1");
+        migration.setChangeLogParameter("amr.cutover.at", "2026-10-06 12:00:00");
+        return migration;
+    }
+
     private Liquibase cutover(String mappings) {
         Liquibase migration = changelog(CUTOVER);
         migration.setChangeLogParameter("amr.cutover.mappingFile", mappings);
@@ -412,9 +452,12 @@ public class AmrCutoverMigrationTest {
                 "micro_ast_reading", "micro_ast_override_event", "micro_case_amendment", "micro_report_version",
                 "micro_report_version_source", "micro_case_analysis", "micro_case_inoculation",
                 "micro_inventory_usage_link" }) {
-            snapshot.put(table,
-                    scalar("select coalesce(jsonb_agg(to_jsonb(r) order by id),'[]'::jsonb)::text from clinlims."
-                            + table + " r"));
+            String projection = "to_jsonb(r)"
+                    + (("micro_isolate".equals(table) || "micro_case_inoculation".equals(table))
+                            ? "-'source_sample_item_id'"
+                            : "micro_case_analysis".equals(table) ? "-'case_role'-'collected_in_sets'" : "");
+            snapshot.put(table, scalar("select coalesce(jsonb_agg(" + projection
+                    + " order by id),'[]'::jsonb)::text from clinlims." + table + " r"));
         }
         snapshot.put("results", scalar(
                 "select jsonb_agg(to_jsonb(r) order by id)::text from clinlims.result r where id between 990001 and 990099"));
@@ -423,7 +466,7 @@ public class AmrCutoverMigrationTest {
         snapshot.put("audit", scalar(
                 "select coalesce(jsonb_agg(to_jsonb(a) order by id),'[]'::jsonb)::text from clinlims.history a"));
         snapshot.put("activities", scalar(
-                "select jsonb_agg(to_jsonb(a) order by id)::text from clinlims.micro_case_activity a where activity_type!='V2_MIGRATED'"));
+                "select jsonb_agg(to_jsonb(a)-'result_source_sample_item_id' order by id)::text from clinlims.micro_case_activity a where activity_type!='V2_MIGRATED'"));
         snapshot.put("panels", scalar(
                 "select jsonb_agg(to_jsonb(p)-'workflow_type' order by id)::text from clinlims.micro_ast_panel p"));
         snapshot.put("clinicalContext", scalar(

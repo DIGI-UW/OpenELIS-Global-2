@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  logicalFilePath="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-membership.xml"
+  xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+  <changeSet id="20261006-OGC-1427-amr-v2-membership" author="OpenELIS" dbms="postgresql" runInTransaction="true">
+    <sqlFile path="amr-v2-observation-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <sqlFile path="amr-v2-membership-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <addColumn schemaName="clinlims" tableName="micro_case_activity">
+      <column name="result_source_sample_item_id" type="numeric(10)"/>
+    </addColumn>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_activity" baseColumnNames="result_source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_micro_activity_result_source"/>
+    <createIndex schemaName="clinlims" tableName="micro_case_activity" indexName="idx_micro_activity_result_source"><column name="result_source_sample_item_id"/></createIndex>
+    <sqlFile path="amr-v2-observation-ownership.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <addColumn schemaName="clinlims" tableName="test">
+      <column name="collected_in_sets" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+    </addColumn>
+    <addColumn schemaName="clinlims" tableName="micro_case_analysis">
+      <column name="case_role" type="varchar(20)"/>
+      <column name="collected_in_sets" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
+    </addColumn>
+    <sql>UPDATE clinlims.micro_case_analysis l SET case_role = t.microbiology_case_role FROM clinlims.analysis a JOIN clinlims.test t ON t.id = a.test_id WHERE a.id = l.analysis_id</sql>
+    <addNotNullConstraint schemaName="clinlims" tableName="micro_case_analysis" columnName="case_role" columnDataType="varchar(20)"/>
+    <addUniqueConstraint schemaName="clinlims" tableName="micro_case_analysis" columnNames="analysis_id" constraintName="uq_micro_case_analysis_owner"/>
+    <addColumn schemaName="clinlims" tableName="micro_isolate">
+      <column name="source_sample_item_id" type="numeric(10)"/>
+    </addColumn>
+    <sql>UPDATE clinlims.micro_isolate i SET source_sample_item_id = m.sample_item_id FROM clinlims.micro_case_specimen m WHERE m.case_id = i.case_id</sql>
+    <addNotNullConstraint schemaName="clinlims" tableName="micro_isolate" columnName="source_sample_item_id" columnDataType="numeric(10)"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" baseColumnNames="case_id,source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_specimen" referencedColumnNames="case_id,sample_item_id" constraintName="fk_micro_isolate_source_member"/>
+    <createIndex schemaName="clinlims" tableName="micro_isolate" indexName="idx_micro_isolate_source"><column name="source_sample_item_id"/></createIndex>
+    <addColumn schemaName="clinlims" tableName="micro_case_inoculation">
+      <column name="source_sample_item_id" type="numeric(10)"/>
+    </addColumn>
+    <sql>UPDATE clinlims.micro_case_inoculation i SET source_sample_item_id = m.sample_item_id FROM clinlims.micro_case_specimen m WHERE m.case_id = i.case_id</sql>
+    <addNotNullConstraint schemaName="clinlims" tableName="micro_case_inoculation" columnName="source_sample_item_id" columnDataType="numeric(10)"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="case_id,source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_specimen" referencedColumnNames="case_id,sample_item_id" constraintName="fk_micro_culture_source_member" deferrable="true" initiallyDeferred="true"/>
+    <addUniqueConstraint schemaName="clinlims" tableName="micro_case_inoculation" columnNames="case_id,id,source_sample_item_id" constraintName="uq_micro_culture_specimen"/>
+    <addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="case_id,source_inoculation_id,source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_inoculation" referencedColumnNames="case_id,id,source_sample_item_id" constraintName="fk_micro_subculture_source_member" deferrable="true" initiallyDeferred="true"/>
+    <sqlFile path="amr-cutover-fingerprint.sql" relativeToChangelogFile="true" splitStatements="false"/>
+    <sql><![CDATA[
+      INSERT INTO clinlims.configuration_import_run(id,source,status,started_at,finished_at,summary,sys_user_id)
+      VALUES ('amr-v2-membership-20261006','AMR_V2_MEMBERSHIP','EXPORTED','${amr.cutover.at}'::timestamp,
+        '${amr.cutover.at}'::timestamp,jsonb_build_object(
+          'clinicalFingerprint',pg_temp.amr_clinical_fingerprint(),
+          'cases',(SELECT coalesce(jsonb_agg(to_jsonb(c) ORDER BY id),'[]'::jsonb) FROM clinlims.micro_case c),
+          'members',(SELECT coalesce(jsonb_agg(to_jsonb(m) ORDER BY id),'[]'::jsonb) FROM clinlims.micro_case_specimen m),
+          'activities',(SELECT coalesce(jsonb_agg(to_jsonb(a) ORDER BY id),'[]'::jsonb) FROM clinlims.micro_case_activity a),
+          'catalog',(SELECT coalesce(jsonb_agg(jsonb_build_object('id',id,'opens',opens_microbiology_case,
+            'role',microbiology_case_role,'sets',collected_in_sets) ORDER BY id),'[]'::jsonb) FROM clinlims.test)
+        )::text,'${amr.cutover.actorId}'::numeric)
+    ]]></sql>
+    <rollback>
+      <sqlFile path="amr-cutover-fingerprint.sql" relativeToChangelogFile="true" splitStatements="false"/>
+      <sqlFile path="amr-v2-membership-rollback-check.sql" relativeToChangelogFile="true" splitStatements="false"/>
+      <dropIndex schemaName="clinlims" tableName="micro_case_activity" indexName="idx_micro_activity_result_source"/>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_activity" constraintName="fk_micro_activity_result_source"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_activity" columnName="result_source_sample_item_id"/>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" constraintName="fk_micro_subculture_source_member"/>
+      <dropUniqueConstraint schemaName="clinlims" tableName="micro_case_inoculation" constraintName="uq_micro_culture_specimen"/>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" constraintName="fk_micro_culture_source_member"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="source_sample_item_id"/>
+      <dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_isolate" constraintName="fk_micro_isolate_source_member"/>
+      <dropIndex schemaName="clinlims" tableName="micro_isolate" indexName="idx_micro_isolate_source"/>
+      <dropColumn schemaName="clinlims" tableName="micro_isolate" columnName="source_sample_item_id"/>
+      <dropUniqueConstraint schemaName="clinlims" tableName="micro_case_analysis" constraintName="uq_micro_case_analysis_owner"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="case_role"/>
+      <dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="collected_in_sets"/>
+      <dropColumn schemaName="clinlims" tableName="test" columnName="collected_in_sets"/>
+      <delete schemaName="clinlims" tableName="configuration_import_run"><where>id='amr-v2-membership-20261006' AND source='AMR_V2_MEMBERSHIP'</where></delete>
+    </rollback>
+  </changeSet>
+</databaseChangeLog>
