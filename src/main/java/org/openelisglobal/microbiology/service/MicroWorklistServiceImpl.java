@@ -126,6 +126,9 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
                 ? toAstRows(worklistCases, isolatesByCase, runsByIsolate)
                 : toCultureRows(worklistCases, isolatesByCase, runsByIsolate, communicationsByCase, casesByOrder,
                         membersByCase);
+        if (!AST_GRAIN.equals(normalized.grain)) {
+            addPendingCaseRows(rows, worklistCases, membersByCase);
+        }
         applyOrganismLabels(rows);
         enrichRows(rows, specimenContextBySampleItem, activityContextByCase, panelsById, orderDetailsByCase);
         Map<String, String> patientOriginLabels = AST_GRAIN.equals(normalized.grain) ? patientOriginLabels(rows)
@@ -509,6 +512,36 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
             }
         }
         return rows;
+    }
+
+    private void addPendingCaseRows(List<MicroWorklistRowForm> rows, List<MicroCase> authorizedCases,
+            Map<String, List<MicroCaseSpecimen>> membersByCase) {
+        List<MicroCase> pendingCases = authorizedCases.stream()
+                .filter(c -> valuesFor(membersByCase, c.getId()).isEmpty()).toList();
+        var contexts = groupBy(contextDAO.getRequestedContexts(pendingCases.stream().map(MicroCase::getId).toList()),
+                org.openelisglobal.microbiology.form.MicroWorklistRequestedContext::caseId);
+        for (MicroCase owner : pendingCases) {
+            var requests = valuesFor(contexts, owner.getId());
+            if (requests.isEmpty()) {
+                continue;
+            }
+            var row = new MicroWorklistRowForm();
+            row.rowId = owner.getId() + ":pending";
+            row.grain = CULTURES_GRAIN;
+            row.caseId = owner.getId();
+            row.awaitingCollection = true;
+            row.testSectionId = owner.getTestSectionId();
+            row.stage = owner.getStage();
+            row.priority = owner.getPriority();
+            row.createdAt = owner.getCreatedAt();
+            row.dueAction = "AWAITING_COLLECTION";
+            row.urgency = urgency(owner, false, false);
+            row.accessionNumber = requests.get(0).accessionNumber();
+            row.patientDisplay = requests.get(0).patientDisplay();
+            row.specimenDisplay = requests.stream().map(r -> r.specimenDisplay()).distinct()
+                    .collect(java.util.stream.Collectors.joining(", "));
+            rows.add(row);
+        }
     }
 
     private List<MicroWorklistRowForm> toAstRows(List<MicroCase> openCases,

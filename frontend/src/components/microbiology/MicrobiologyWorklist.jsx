@@ -79,6 +79,7 @@ const STAGE_OPTIONS = [
 ];
 const URGENCY_OPTIONS = ["HIGH", "ROUTINE"];
 const DUE_OPTIONS = [
+  "AWAITING_COLLECTION",
   "NEEDS_WORKFLOW",
   "SETUP",
   "ISOLATE_ID",
@@ -1526,58 +1527,61 @@ const MicrobiologyWorklist = ({ service = MicrobiologyService, now }) => {
                                                 }
                                               />
                                             )}
-                                            {!isAstGrain && (
-                                              <OverflowMenuItem
-                                                itemText={intl.formatMessage({
-                                                  id: "microbiology.worklist.markPositive",
-                                                })}
-                                                disabled={
-                                                  row.stage !== "INCUBATING"
-                                                }
-                                                onClick={() =>
-                                                  history.push(
-                                                    caseActionUrl(
-                                                      "setup",
-                                                      "mark-positive",
-                                                    ),
-                                                  )
-                                                }
-                                              />
-                                            )}
-                                            {!isAstGrain && (
-                                              <OverflowMenuItem
-                                                itemText={intl.formatMessage({
-                                                  id: "microbiology.worklist.markNoGrowth",
-                                                })}
-                                                disabled={
-                                                  row.stage !== "INCUBATING"
-                                                }
-                                                onClick={() =>
-                                                  history.push(
-                                                    caseActionUrl(
-                                                      "setup",
-                                                      "mark-no-growth",
-                                                    ),
-                                                  )
-                                                }
-                                              />
-                                            )}
-                                            {!isAstGrain && (
-                                              <OverflowMenuItem
-                                                itemText={intl.formatMessage({
-                                                  id: "microbiology.worklist.markLost",
-                                                })}
-                                                isDelete
-                                                onClick={() =>
-                                                  history.push(
-                                                    caseActionUrl(
-                                                      "nonconformance",
-                                                      "mark-lost",
-                                                    ),
-                                                  )
-                                                }
-                                              />
-                                            )}
+                                            {!isAstGrain &&
+                                              !row.awaitingCollection && (
+                                                <OverflowMenuItem
+                                                  itemText={intl.formatMessage({
+                                                    id: "microbiology.worklist.markPositive",
+                                                  })}
+                                                  disabled={
+                                                    row.stage !== "INCUBATING"
+                                                  }
+                                                  onClick={() =>
+                                                    history.push(
+                                                      caseActionUrl(
+                                                        "setup",
+                                                        "mark-positive",
+                                                      ),
+                                                    )
+                                                  }
+                                                />
+                                              )}
+                                            {!isAstGrain &&
+                                              !row.awaitingCollection && (
+                                                <OverflowMenuItem
+                                                  itemText={intl.formatMessage({
+                                                    id: "microbiology.worklist.markNoGrowth",
+                                                  })}
+                                                  disabled={
+                                                    row.stage !== "INCUBATING"
+                                                  }
+                                                  onClick={() =>
+                                                    history.push(
+                                                      caseActionUrl(
+                                                        "setup",
+                                                        "mark-no-growth",
+                                                      ),
+                                                    )
+                                                  }
+                                                />
+                                              )}
+                                            {!isAstGrain &&
+                                              !row.awaitingCollection && (
+                                                <OverflowMenuItem
+                                                  itemText={intl.formatMessage({
+                                                    id: "microbiology.worklist.markLost",
+                                                  })}
+                                                  isDelete
+                                                  onClick={() =>
+                                                    history.push(
+                                                      caseActionUrl(
+                                                        "nonconformance",
+                                                        "mark-lost",
+                                                      ),
+                                                    )
+                                                  }
+                                                />
+                                              )}
                                           </OverflowMenu>
                                         </TableCell>
                                       );

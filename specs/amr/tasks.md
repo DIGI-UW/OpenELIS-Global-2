@@ -516,8 +516,15 @@ Remaining V02c2 implementation and acceptance:
       covering pending context, partial collection, counts and set warnings.
       The frontend run passed 46 tests and its
       production build passed; these are not rendered/video acceptance.
-      Still required before accepting this gate: pending worklist presentation
-      (current culture rows require collected specimens), add/remove and last-test
+      Worklist discovery now adds one Awaiting collection case row when active
+      requested ownership exists and no collected specimen belongs to the case.
+      It loads pending context in one query scoped to authorized case IDs, keeps
+      sample/result targets absent, and offers Open case without culture writes.
+      Validation passed 48 backend tests (request lifecycle, worklist service,
+      query validation and endpoint security), 19 frontend worklist tests and
+      the frontend production build. This does not accept V07's culture-row
+      timing/actions or bulk behavior, or replace rendered/video proof.
+      Still required before accepting this gate: add/remove and last-test
       cancellation, permission review, and persisted browser/video comparison.
       See the [engineering plan](plan.md#request-stage-case-ownership-v02).
 - [ ] Prove shared order add/edit/cancel behavior, including confirmation/reason

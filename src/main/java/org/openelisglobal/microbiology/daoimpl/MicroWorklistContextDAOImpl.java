@@ -20,6 +20,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> implements MicroWorklistContextDAO {
 
+    static final String REQUESTED_CONTEXT_HQL = "select distinct membership.caseId, sample.accessionNumber, person.lastName, person.firstName, type.description "
+            + "from MicroCaseRequestedTest membership join SampleTypeRequest request on request.id = membership.requestId "
+            + "join request.sample sample join request.typeOfSample type "
+            + "left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id "
+            + "left join Patient patient on patient.id = sampleHuman.patientId left join patient.person person "
+            + "where membership.caseId in (:caseIds) and request.status = :status";
+
     static final String SPECIMEN_CONTEXT_HQL = "select sampleItem.id, sample.accessionNumber, person.lastName, person.firstName, type.description, sampleItem.collectionDate, type.id "
             + "from SampleItem sampleItem join sampleItem.sample sample "
             + "left join SampleHuman sampleHuman on sampleHuman.sampleId = sample.id "
@@ -53,6 +60,22 @@ public class MicroWorklistContextDAOImpl extends BaseDAOImpl<MicroCase, String> 
 
     public MicroWorklistContextDAOImpl() {
         super(MicroCase.class);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<org.openelisglobal.microbiology.form.MicroWorklistRequestedContext> getRequestedContexts(
+            List<String> caseIds) {
+        if (caseIds.isEmpty()) {
+            return List.of();
+        }
+        return entityManager.createQuery(REQUESTED_CONTEXT_HQL, Object[].class).setParameter("caseIds", caseIds)
+                .setParameter("status",
+                        org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.REQUESTED)
+                .getResultList().stream()
+                .map(values -> new org.openelisglobal.microbiology.form.MicroWorklistRequestedContext(text(values[0]),
+                        text(values[1]), patientDisplay(values[2], values[3]), text(values[4])))
+                .toList();
     }
 
     @Override

@@ -104,6 +104,30 @@ public class MicroWorklistServiceTest {
     }
 
     @Test
+    public void pendingCaseUsesOnlyAuthorizedContextAndHasNoCollectedTarget() {
+        var owner = microCase("pending", "order-1", "unit-1", MicroCaseStage.RECEIVED, "STAT");
+        membersByCase.clear();
+        when(accessService.getWorklistAccess("7"))
+                .thenReturn(new MicrobiologyWorklistAccess(false, java.util.Set.of("unit-1")));
+        when(caseDAO.getOpenCases(false, java.util.Set.of("unit-1"))).thenReturn(List.of(owner));
+        when(contextDAO.getRequestedContexts(List.of("pending")))
+                .thenReturn(List.of(new org.openelisglobal.microbiology.form.MicroWorklistRequestedContext("pending",
+                        "ORDER-1", "Patient, Test", "Blood")));
+        var query = new MicroWorklistQueryForm();
+        query.due = "AWAITING_COLLECTION";
+        var page = service.getWorklistPage(query, "7");
+        assertEquals(1, page.total);
+        var row = page.rows.get(0);
+        assertEquals("pending:pending", row.rowId);
+        assertEquals("ORDER-1", row.accessionNumber);
+        assertEquals("Patient, Test", row.patientDisplay);
+        assertTrue(row.awaitingCollection);
+        org.junit.Assert.assertNull(row.sampleItemId);
+        assertEquals("HIGH", row.urgency);
+        verify(contextDAO).getRequestedContexts(List.of("pending"));
+    }
+
+    @Test
     public void labUnitOptionsRespectAccessEvenWhenNoRowsMatch() {
         var allowed = new org.openelisglobal.test.valueholder.TestSection();
         allowed.setId("unit-1");

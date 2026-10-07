@@ -11,6 +11,8 @@ import org.openelisglobal.microbiology.valueholder.MicroCase;
 
 public interface MicroWorklistContextDAO extends BaseDAO<MicroCase, String> {
 
+    List<org.openelisglobal.microbiology.form.MicroWorklistRequestedContext> getRequestedContexts(List<String> caseIds);
+
     List<MicroWorklistSpecimenContext> getSpecimenContexts(List<String> sampleItemIds);
 
     List<MicroWhonetPatientContext> getWhonetPatientContexts(List<String> sampleItemIds);

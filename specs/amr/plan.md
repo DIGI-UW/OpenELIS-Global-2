@@ -459,8 +459,11 @@ actor is recorded for request, specimen and case writes. After fulfillment, anal
 work; the request link remains ordering provenance. Case detail exposes requested
 specimens separately from collected result targets, retains order/patient context
 before collection, and derives set counts/warnings from both lists without double
-counting. Pending worklist discovery remains required: culture rows currently
-require collected specimen membership. Add/remove and
+counting. Worklist discovery includes one case row marked Awaiting collection
+for authorized cases with pending requests and no collected specimen membership.
+That row has no specimen/result target and no culture write action. Its context
+is fetched in bulk using the authorized case IDs. V07 still owns the full worklist
+rewrite, including culture-row timing, actions and bulk operations. Add/remove and
 last-test cancellation must preserve history and enforce FR-02.8, and must never
 join previously separate cases. These remaining consumers and rendered verification are still required;
 shared-save integration tests alone do not establish browser acceptance.

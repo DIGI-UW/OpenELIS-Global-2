@@ -12312,6 +12312,7 @@
   "microbiology.cultureAction.positive.note": "Culture marked positive",
   "microbiology.isolate.saveError": "Unable to save isolate",
   "microbiology.case.requestedSpecimens": "Requested specimens",
+  "microbiology.enum.AWAITING_COLLECTION": "Awaiting collection",
   "microbiology.case.awaitingCollection": "Awaiting collection",
   "microbiology.case.specimens": "Specimens",
   "microbiology.case.labUnit": "Lab unit",

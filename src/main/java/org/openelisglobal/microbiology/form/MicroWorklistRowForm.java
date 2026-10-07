@@ -10,6 +10,7 @@ public class MicroWorklistRowForm {
     public String grain;
     public String caseId;
     public String sampleItemId;
+    public boolean awaitingCollection;
     public String accessionNumber;
     public String patientDisplay;
     public String specimenDisplay;

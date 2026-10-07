@@ -35,6 +35,40 @@ const renderWorklist = (
   );
 
 describe("MicrobiologyWorklist", () => {
+  it("opens an awaiting-collection case without offering culture mutations", async () => {
+    const user = userEvent.setup();
+    renderWorklist({
+      getWorklistRows: vi.fn().mockResolvedValue({
+        rows: [
+          {
+            rowId: "pending:pending",
+            caseId: "pending",
+            accessionNumber: "PENDING-1",
+            patientDisplay: "Patient, Pending",
+            specimenDisplay: "Blood",
+            awaitingCollection: true,
+            stage: "RECEIVED",
+            dueAction: "AWAITING_COLLECTION",
+            urgency: "ROUTINE",
+            priority: "ROUTINE",
+          },
+        ],
+        total: 1,
+      }),
+    });
+    await screen.findByText("PENDING-1");
+    expect(screen.getAllByText("Awaiting collection").length).toBeGreaterThan(
+      0,
+    );
+    await user.click(screen.getByRole("button", { name: "Row actions" }));
+    expect(screen.queryByText("Mark positive")).not.toBeInTheDocument();
+    expect(screen.queryByText("Mark no growth")).not.toBeInTheDocument();
+    await user.click(await screen.findByText("Open case"));
+    expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
+      "/Microbiology/cases/pending",
+    );
+  });
+
   afterEach(() => {
     vi.useRealTimers();
   });

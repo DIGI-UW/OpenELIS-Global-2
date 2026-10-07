@@ -69,6 +69,9 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
     @Autowired
     private org.openelisglobal.microbiology.service.MicroCaseService caseDetails;
 
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroWorklistContextDAO worklistContext;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -103,6 +106,10 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         assertEquals(order.getAccessionNumber(), pendingDetail.accessionNumber);
         assertEquals(patient.getId(), pendingDetail.patientId);
         assertEquals(2, pendingDetail.requestedSpecimens.size());
+        var discovery = worklistContext.getRequestedContexts(List.of(owner.getId()));
+        assertEquals(1, discovery.size());
+        assertEquals(order.getAccessionNumber(), discovery.get(0).accessionNumber());
+        assertTrue(worklistContext.getRequestedContexts(List.of("unrelated-case")).isEmpty());
         assertEquals(2, pendingDetail.setWarnings.stream().filter(w -> "SINGLE_BOTTLE".equals(w.code())).count());
         assertTrue(pendingDetail.specimens.isEmpty());
         assertEquals(Integer.valueOf(2), pendingDetail.orderDetail.numberOfSets);
@@ -126,6 +133,10 @@ public class RequestedSampleTypeSaveIntegrationTest extends BaseWebContextSensit
         assertEquals(1, partialDetail.specimens.size());
         assertEquals(requests.get(0).getId(), partialDetail.requestedSpecimens.get(0).requestId);
         assertEquals(Integer.valueOf(2), partialDetail.orderDetail.numberOfSets);
+        assertEquals(1, worklistContext.getRequestedContexts(List.of(owner.getId())).size());
+        persist(order, new SamplePatientEntryForm(),
+                bottleXml(test.getId(), "sampleTypeRequestId='" + requests.get(0).getId() + "'"));
+        assertTrue(worklistContext.getRequestedContexts(List.of(owner.getId())).isEmpty());
     }
 
     @Test
