@@ -438,7 +438,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
             max={999999999}
             step={1}
             required
-            disabled={lotFieldsLocked}
+            disabled={isEdit || lotFieldsLocked}
           />
 
           <DatePicker

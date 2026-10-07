@@ -10,7 +10,8 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
-import java.util.concurrent.TimeUnit;
+import javax.sql.DataSource;
+import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
@@ -19,6 +20,7 @@ import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.TransactionType;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 public class InventoryConsumptionConcurrencyIntegrationTest extends BaseWebContextSensitiveTest {
 
@@ -36,16 +38,35 @@ public class InventoryConsumptionConcurrencyIntegrationTest extends BaseWebConte
     @Autowired
     private InventoryTransactionService inventoryTransactionService;
 
-    private Long lotId;
+    @Autowired
+    private DataSource dataSource;
+
+    private final List<Long> lotIds = new ArrayList<>();
 
     @Before
     public void setUp() throws Exception {
         executeDataSetWithStateManagement("testdata/inventory-test-data.xml");
-        // The fixture's own lots have expired, so consumption needs a live one.
+        // The fixture's own lots have expired, so consumption needs live ones; two
+        // with the same expiry leave their FEFO order to the database.
+        lotIds.add(insertLot("CONCURRENT-1"));
+        lotIds.add(insertLot("CONCURRENT-2"));
+    }
+
+    @After
+    public void deleteCommittedRows() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        for (Long lotId : lotIds) {
+            jdbc.update("DELETE FROM clinlims.inventory_usage WHERE lot_id = ?", lotId);
+            jdbc.update("DELETE FROM clinlims.inventory_transaction WHERE lot_id = ?", lotId);
+            jdbc.update("DELETE FROM clinlims.inventory_lot WHERE id = ?", lotId);
+        }
+    }
+
+    private Long insertLot(String lotNumber) {
         InventoryLot lot = new InventoryLot();
         lot.setFhirUuid(UUID.randomUUID());
         lot.setInventoryItem(inventoryItemService.get(1000L));
-        lot.setLotNumber("CONCURRENT-1");
+        lot.setLotNumber(lotNumber);
         lot.setExpirationDate(Timestamp.valueOf("2099-01-01 00:00:00"));
         lot.setReceiptDate(Timestamp.valueOf("2025-01-01 00:00:00"));
         lot.setInitialQuantity(100.0);
@@ -53,7 +74,7 @@ public class InventoryConsumptionConcurrencyIntegrationTest extends BaseWebConte
         lot.setQcStatus(QCStatus.PASSED);
         lot.setStatus(LotStatus.ACTIVE);
         lot.setSysUserId("1");
-        lotId = inventoryLotService.insert(lot);
+        return inventoryLotService.insert(lot);
     }
 
     @Test
@@ -74,7 +95,6 @@ public class InventoryConsumptionConcurrencyIntegrationTest extends BaseWebConte
         }
         start.countDown();
         pool.shutdown();
-        pool.awaitTermination(60, TimeUnit.SECONDS);
 
         List<String> failures = new ArrayList<>();
         for (Future<Throwable> outcome : outcomes) {
@@ -84,8 +104,15 @@ public class InventoryConsumptionConcurrencyIntegrationTest extends BaseWebConte
             }
         }
         assertEquals("no bench should be refused while stock lasts: " + failures, 0, failures.size());
-        assertEquals(Double.valueOf(100.0 - BENCHES * 5.0), inventoryLotService.get(lotId).getCurrentQuantity());
-        assertEquals(BENCHES, inventoryTransactionService.getByLotId(lotId).stream()
-                .filter(t -> t.getTransactionType() == TransactionType.CONSUMPTION).count());
+
+        double remaining = 0;
+        long consumptions = 0;
+        for (Long lotId : lotIds) {
+            remaining += inventoryLotService.get(lotId).getCurrentQuantity();
+            consumptions += inventoryTransactionService.getByLotId(lotId).stream()
+                    .filter(t -> t.getTransactionType() == TransactionType.CONSUMPTION).count();
+        }
+        assertEquals(200.0 - BENCHES * 5.0, remaining, 0.0001);
+        assertEquals(BENCHES, consumptions);
     }
 }

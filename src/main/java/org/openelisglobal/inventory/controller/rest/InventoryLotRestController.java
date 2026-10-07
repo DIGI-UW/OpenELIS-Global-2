@@ -273,6 +273,10 @@ public class InventoryLotRestController extends BaseRestController {
             lot.setId(Long.valueOf(id));
             lot.setSysUserId(sysUserId);
 
+            // Quantity changes go through adjust, so they leave a transaction behind.
+            lot.setCurrentQuantity(existingLot.getCurrentQuantity());
+            inventoryLotService.refuseStatusThatMovesStock(existingLot, lot.getStatus());
+
             // Preserve fhirUuid from existing lot (immutable field)
             if (lot.getFhirUuid() == null) {
                 lot.setFhirUuid(existingLot.getFhirUuid());
@@ -297,6 +301,8 @@ public class InventoryLotRestController extends BaseRestController {
             return ResponseEntity.ok(updatedLot);
         } catch (LocalizedValidationException e) {
             return ResponseEntity.badRequest().body(InventoryErrorBody.localized(e));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
         } catch (ObjectNotFoundException e) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).body(InventoryErrorBody.notFound(e));
         } catch (Exception e) {
@@ -355,11 +361,9 @@ public class InventoryLotRestController extends BaseRestController {
 
             InventoryLot lot = inventoryLotService.updateLotStatus(Long.valueOf(id), request.getStatus(), sysUserId);
             return ResponseEntity.ok(lot);
-        } catch (IllegalStateException e) {
-            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
-        } catch (IllegalArgumentException e) {
+        } catch (IllegalArgumentException | IllegalStateException e) {
             LogEvent.logError(e);
-            return ResponseEntity.badRequest().build();
+            return ResponseEntity.badRequest().body(InventoryErrorBody.error(e.getMessage()));
         } catch (Exception e) {
             LogEvent.logError(e);
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
