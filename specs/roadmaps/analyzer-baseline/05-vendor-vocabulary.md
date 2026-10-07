@@ -59,6 +59,7 @@ from the vendor's own LIS or host-interface document.
   versions (original Xpress SARS-CoV-2 with PRESUMPTIVE POS, MTB/RIF G4,
   earlier HIV-1 VL) follow as their own assay definitions. A cartridge a lab
   runs that the profile does not declare is a per-analyzer row.
+- Found 6 Oct, decided 6 Oct ("yes" to declaring the vendor-cited codes and leaving the values unverified): Cepheid's GeneXpert LIS Interface Protocol Specification 302-2261 Rev C (Sept 2020), appendix A, lists the Xpert MTB/RIF host panel `MTBRIF` with result codes `MTB`, `INV`, `QC`, `RIF` and no values. The profile declares `MTB` and `RIF` as text results cited to it; the value strings, the Ultra assay by name and rule 12's three results stay unverified until a vendor LIS document or a verified capture settles them. No Cepheid LIS guidance for MTB/RIF Ultra exists on the portal or in `openelis-work`.
 - Not verified: MTB/RIF Ultra wire codes and values (only package-insert
   display text seen: MTB DETECTED HIGH/MEDIUM/LOW/VERY LOW, MTB Trace
   DETECTED, RIF Resistance DETECTED/NOT DETECTED/INDETERMINATE, INVALID,
