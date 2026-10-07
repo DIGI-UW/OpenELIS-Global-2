@@ -259,7 +259,13 @@ uses; they are restated so a step can be run without re-reading those files.
   landed.
 - The top OE2 PR (step 7) bumps the pins (`tools/openelis-analyzer-bridge`
   and `tools/analyzer-mock-server` submodules, and image tags) to the Bridge
-  and mock releases and carries the baseline E2E, green.
+  and mock releases and carries the baseline E2E, green. Order: the pins move
+  to the Bridge and mock PR heads as soon as they exist (CI builds both from
+  the submodules); a maintainer reviews and cuts the Bridge release, then the
+  mock release; only then do the image tags move, which is what turns the
+  `deployment-contract` check green. Bridge and mock edits are made inside
+  the submodule checkouts of the OE2 worktree, and each task's tick and pin
+  bump ride in the OE2 commit that lands it.
 - Distro follow-on, out of scope here: each distro removes profiles core now
   carries, unsets the shipped-pattern override, rebuilds any remaining
   instrument as a fresh baseline profile, runs the migration.
