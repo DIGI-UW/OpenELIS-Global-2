@@ -1,64 +1,13 @@
 import { test, expect } from "../../../helpers/test-base";
 import type { Locator, Page, TestInfo } from "@playwright/test";
 import {
-  MICROBIOLOGY_ALTERNATE_CULTURE_METHOD_NAME as alternateCultureMethodName,
-  clickMicrobiologyOrderTest as clickTestToggle,
-  MICROBIOLOGY_CULTURE_METHOD_NAME as cultureMethodName,
   MICROBIOLOGY_CULTURE_TEST_NAME as cultureTestName,
   MICROBIOLOGY_NON_CULTURE_TEST_NAME as nonCultureTestName,
-  MICROBIOLOGY_TB_CULTURE_TEST_NAME as tbCultureTestName,
   seedMicrobiologyOrderCatalog as seedOrderCatalog,
   selectMicrobiologyOrderTest as selectTest,
   startMicrobiologyOrder as startSupportedOrder,
-  fillMicrobiologyOrderHeader as startSupportedOrderInPlace,
 } from "../../../helpers/microbiology-order-entry";
 import { LONG_TIMEOUT } from "../../../helpers/timeouts";
-
-async function fillMicrobiologyDetails(page: Page) {
-  const details = page.getByTestId("microbiology-order-entry-section");
-  await expect(details).toBeVisible({ timeout: LONG_TIMEOUT });
-  await expect(page.getByRole("combobox", { name: "Program" })).toBeDisabled();
-  await expect(
-    page.getByText("Microbiology is derived from the selected culture test."),
-  ).toBeVisible();
-  await expect(
-    details.getByText(cultureMethodName, { exact: true }),
-  ).toBeVisible();
-  await expect(
-    details.getByRole("radio", {
-      name: "Clinical diagnosis or treatment",
-    }),
-  ).toBeChecked();
-  await expect(
-    page.getByRole("combobox", { name: "Culture Protocol" }),
-  ).toHaveCount(0);
-  const patientOrigin = page.getByLabel("Patient Origin");
-  await expect(patientOrigin.locator("option")).toHaveCount(7, {
-    timeout: LONG_TIMEOUT,
-  });
-  await expect(
-    patientOrigin.locator('option[value="LONG_TERM_CARE"]'),
-  ).toHaveText("Long-term Care");
-  await expect(patientOrigin.locator('option[value="UNKNOWN"]')).toHaveText(
-    "Unknown",
-  );
-  await patientOrigin.selectOption("INPATIENT");
-  const displayedAdmissionDate = await fillConfiguredDate(
-    page.getByLabel("Date of admission"),
-    "2026-08-03",
-  );
-  await page.getByRole("spinbutton", { name: "Number of Sets" }).fill("2");
-  await page
-    .getByLabel("Clinical History")
-    .fill("Persistent fever after antibiotics");
-  await page
-    .locator('label[for="microbiology-order-entry-antibiotic-exposure"]')
-    .click();
-  await expect(
-    page.getByLabel("Notify clinician immediately for a positive culture"),
-  ).toHaveCount(0);
-  return displayedAdmissionDate;
-}
 
 async function saveEntryAndOpenCollect(page: Page) {
   const saveAndNext = page.getByRole("button", { name: "Save and next" });
@@ -206,286 +155,90 @@ async function attachResponsiveEvidence(
   }
 }
 
-test.describe("microbiology order entry on the supported workflow", () => {
-  test("persists culture details and changes the bench protocol on the routed case", async ({
+// V02c1 / FR-02.2: reception treats microbiology like ordinary tests.
+// Canonical direct-test grouping and catalog controls are accepted in V02c2.
+test.describe("microbiology reception without Program overrides", () => {
+  test("saves and reloads a culture order without forcing a Program or reception details", async ({
     page,
   }, testInfo) => {
     test.setTimeout(120_000);
     const seeded = await seedOrderCatalog(page);
     const labNumber = await startSupportedOrder(page, seeded);
-    const department = page.getByLabel("Department / Ward / Unit");
-    await expect(department).toBeDisabled();
-    await expect(department).toHaveValue("");
-    await expect(department.locator("option:checked")).toHaveText(
-      "Select facility first...",
-    );
+    const program = page.getByRole("combobox", { name: "Program" });
+    await expect(program).toBeEnabled();
+    await expect(program).toHaveValue("");
     await selectTest(page, cultureTestName);
+    await expect(program).toBeEnabled();
+    await expect(program).toHaveValue("");
     await expect(
       page.getByTestId("microbiology-order-entry-section"),
-    ).toContainText("Bacteriology");
-    const displayedAdmissionDate = await fillMicrobiologyDetails(page);
+    ).toHaveCount(0);
+    await expect(
+      page.getByLabel("Clinical History", { exact: true }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("combobox", { name: "Culture Protocol" }),
+    ).toHaveCount(0);
     await attachResponsiveEvidence(
       page,
       testInfo,
-      page.getByTestId("microbiology-order-entry-section"),
-      "microbiology-order-entry",
+      page.locator(".program-section"),
+      "program-remains-independent",
     );
     await saveEntryAndOpenCollect(page);
-
+    await collectAndRoute(page);
     await reloadThroughBarcode(page, labNumber);
-    await expect(page.getByRole("combobox", { name: "Program" })).toHaveValue(
-      "Microbiology",
-    );
-    await expect(
-      page.getByRole("combobox", { name: "Program" }),
-    ).toBeDisabled();
-    const reloadedDetails = page.getByTestId(
-      "microbiology-order-entry-section",
-    );
-    await expect(
-      reloadedDetails.getByText(cultureMethodName, { exact: true }),
-    ).toBeVisible();
-    await expect(
-      reloadedDetails.getByRole("combobox", { name: "Culture Protocol" }),
-    ).toHaveCount(0);
-    await expect(
-      reloadedDetails.getByRole("radio", {
-        name: "Clinical diagnosis or treatment",
-      }),
-    ).toBeChecked();
-    await expect(page.getByLabel("Patient Origin")).toHaveValue("INPATIENT");
-    await expect(page.getByLabel("Date of admission")).toHaveValue(
-      displayedAdmissionDate,
-    );
-    await expect(
-      page.getByRole("spinbutton", { name: "Number of Sets" }),
-    ).toHaveValue("2");
-    await expect(page.getByLabel("Clinical History")).toHaveValue(
-      "Persistent fever after antibiotics",
-    );
-    await expect(
-      page.locator("#microbiology-order-entry-antibiotic-exposure"),
-    ).toBeChecked();
-    await expect(
-      page.getByLabel("Notify clinician immediately for a positive culture"),
-    ).toHaveCount(0);
-    const admissionDate = page.getByLabel("Date of admission");
-    await expect(admissionDate).toBeDisabled();
-    await page.getByRole("button", { name: "Edit", exact: true }).click();
-    await expect(admissionDate).toBeEnabled();
-
-    await page.getByTestId("order-step-prepare").click();
-    await expectOrderStepUrl(page, "collect", labNumber);
-    const collectionDate = page
-      .getByTestId("sample-collection-card-0")
-      .getByLabel("Collection Date", { exact: false });
-    await fillConfiguredDate(collectionDate, "2026-01-01");
-    await expect(
-      page.getByText("Collection date cannot be before date of admission."),
-    ).toBeVisible();
-    await expect(
-      page.getByRole("button", { name: "Save and next" }),
-    ).toBeDisabled();
-
-    const displayedCollectionDate = await collectAndRoute(page);
-    await reloadThroughBarcode(page, labNumber);
-    await expect(
-      page.getByText(`Collection date: ${displayedCollectionDate}`),
-    ).toBeVisible();
-    await expect(
-      page.getByText(
-        "Collected 10 days after admission - hospital-origin for surveillance.",
-      ),
-    ).toBeVisible();
-
-    await page.goto(
-      `/Microbiology/worklist?q=${encodeURIComponent(labNumber)}`,
-      { waitUntil: "domcontentloaded" },
-    );
-    const rows = page.locator('[data-testid^="microbiology-worklist-row-"]');
-    await expect(rows).toHaveCount(1, { timeout: LONG_TIMEOUT });
-    await expect(rows).toContainText(labNumber);
-    await expect(rows).toContainText("Bacteriology");
-
-    await rows.getByRole("link", { name: labNumber, exact: true }).click();
-    await expect(
-      page.getByRole("heading", { name: "Microbiology case" }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await expect(page).toHaveURL(/\/Microbiology\/cases\/[^?]+\?.*q=/);
-
-    await expect(page).toHaveURL(/section=setup/);
-    await expect(
-      page.getByRole("button", { name: "Inoculation", exact: true }),
-    ).toHaveAttribute("aria-expanded", "true");
-    const protocolPanel = page.locator(
-      'section[aria-labelledby="microbiology-case-protocol-title"]',
-    );
-    await expect(
-      protocolPanel.getByText(cultureMethodName, { exact: true }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await protocolPanel
-      .getByRole("button", { name: "Change protocol" })
-      .click();
-    await expect(page).toHaveURL(/section=setup.*action=change-protocol/);
-    await attachResponsiveEvidence(
-      page,
-      testInfo,
-      protocolPanel,
-      "microbiology-protocol",
-    );
-
-    const protocol = protocolPanel.getByRole("combobox", {
-      name: "Culture protocol",
-    });
-    await protocol.selectOption({ label: alternateCultureMethodName });
-    const saveProtocol = protocolPanel.getByRole("button", {
-      name: "Save protocol",
-    });
-    await expect(saveProtocol).toBeDisabled();
-    await protocolPanel
-      .getByRole("textbox", { name: "Reason for protocol change" })
-      .fill("Bench review requires the alternate protocol");
-    await expect(saveProtocol).toBeEnabled();
-    await saveProtocol.click();
-
-    await expect(page).toHaveURL(/section=setup(?!.*action=)/);
-    await expect(
-      protocolPanel.getByText(alternateCultureMethodName, { exact: true }),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-    await page.getByRole("button", { name: "Timeline", exact: true }).click();
-    await expect(page).toHaveURL(/section=timeline/);
-    await expect(
-      page.getByText(/Bench review requires the alternate protocol/),
-    ).toBeVisible({ timeout: LONG_TIMEOUT });
-  });
-
-  test("keeps a non-culture order out of the microbiology worklist", async ({
-    page,
-  }) => {
-    test.setTimeout(120_000);
-    const seeded = await seedOrderCatalog(page);
-    const labNumber = await startSupportedOrder(page, seeded);
-    await selectTest(page, nonCultureTestName);
-    await expect(
-      page.getByTestId("microbiology-order-entry-section"),
-    ).toHaveCount(0);
-    await saveEntryAndOpenCollect(page);
-    await collectAndRoute(page);
-
-    await page.goto(
-      `/Microbiology/worklist?q=${encodeURIComponent(labNumber)}`,
-      { waitUntil: "domcontentloaded" },
-    );
-    await expect(page.getByText(/No cultures match/)).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-  });
-
-  test("starts a clean order after a culture order", async ({ page }) => {
-    test.setTimeout(180_000);
-    const seeded = await seedOrderCatalog(page);
-
-    await startSupportedOrder(page, seeded);
-    await selectTest(page, cultureTestName);
-    await fillMicrobiologyDetails(page);
-    await saveEntryAndOpenCollect(page);
-    await collectAndRoute(page);
-
-    // Start the next order the way a user does, without leaving the
-    // application, so any state held from the culture order would still be
-    // present.
-    await page
-      .getByRole("link", { name: "Add Clinical Order", exact: true })
-      .click();
-    await expect(page).toHaveURL(/\/order\/clinical$/i, {
-      timeout: LONG_TIMEOUT,
-    });
-    await page.getByRole("button", { name: "New Order" }).click();
-    await expect(page).toHaveURL(/\/order\/clinical\/enter$/i, {
-      timeout: LONG_TIMEOUT,
-    });
-
-    await expect(
-      page.getByTestId("microbiology-order-entry-section"),
-    ).toHaveCount(0);
-    await expect(page.getByRole("combobox", { name: "Program" })).toBeEnabled();
-    await expect(page.getByLabel("Clinical History")).toHaveCount(0);
-
-    const routineLabNumber = await startSupportedOrderInPlace(page, seeded);
-    await selectTest(page, nonCultureTestName);
-    await expect(
-      page.getByTestId("microbiology-order-entry-section"),
-    ).toHaveCount(0);
-    await saveEntryAndOpenCollect(page);
-    await collectAndRoute(page);
-
-    await page.goto(
-      `/Microbiology/worklist?q=${encodeURIComponent(routineLabNumber)}`,
-      { waitUntil: "domcontentloaded" },
-    );
-    await expect(page.getByText(/No cultures match/)).toBeVisible({
-      timeout: LONG_TIMEOUT,
-    });
-  });
-
-  test("confirms before discarding details with the final culture test", async ({
-    page,
-  }) => {
-    test.setTimeout(120_000);
-    const seeded = await seedOrderCatalog(page);
-    await startSupportedOrder(page, seeded);
-    await selectTest(page, cultureTestName);
-    await fillMicrobiologyDetails(page);
-
-    await clickTestToggle(page, cultureTestName);
-    const dialog = page.getByRole("dialog", {
-      name: "Remove microbiology workflow?",
-    });
-    await expect(dialog).toBeVisible();
-    await dialog.getByRole("button", { name: "Cancel" }).click();
+    await expect(program).toHaveValue("");
+    await expect(program).toBeDisabled();
     await expect(page.getByLabel(cultureTestName)).toBeChecked();
-    await expect(page.getByLabel("Clinical History")).toHaveValue(
-      "Persistent fever after antibiotics",
-    );
-
-    await clickTestToggle(page, cultureTestName);
-    await dialog.getByRole("button", { name: /Discard details$/ }).click();
     await expect(
       page.getByTestId("microbiology-order-entry-section"),
     ).toHaveCount(0);
-    await expect(page.getByRole("combobox", { name: "Program" })).toBeEnabled();
+    await attachResponsiveEvidence(
+      page,
+      testInfo,
+      page.locator(".program-section"),
+      "saved-program-reloaded",
+    );
+    await page.goto(
+      `/Microbiology/worklist?q=${encodeURIComponent(labNumber)}`,
+      { waitUntil: "domcontentloaded" },
+    );
+    const rows = page.getByRole("row").filter({
+      has: page.getByRole("link", { name: labNumber, exact: true }),
+    });
+    await expect(rows).toHaveCount(1, { timeout: LONG_TIMEOUT });
   });
 
-  test("creates bacteriology and TB sibling cases for one specimen", async ({
+  test("a manually selected Microbiology Program does not turn an ordinary test into a case", async ({
     page,
   }) => {
     test.setTimeout(120_000);
     const seeded = await seedOrderCatalog(page);
     const labNumber = await startSupportedOrder(page, seeded);
-    await selectTest(page, cultureTestName);
-    await selectTest(page, tbCultureTestName);
-    const details = page.getByTestId("microbiology-order-entry-section");
-    await expect(details).toContainText("Bacteriology");
-    await expect(details).toContainText("Mycobacteriology/TB");
-    await fillMicrobiologyDetails(page);
+    await selectTest(page, nonCultureTestName);
+    const program = page.getByRole("combobox", { name: "Program" });
+    await program.fill("Microbiology");
+    await expect(
+      page.getByRole("option", { name: "Microbiology", exact: true }),
+    ).toBeVisible();
+    await program.press("ArrowDown");
+    await program.press("Enter");
+    await expect(program).toHaveValue("Microbiology");
+    await expect(
+      page.getByTestId("microbiology-order-entry-section"),
+    ).toHaveCount(0);
     await saveEntryAndOpenCollect(page);
     await collectAndRoute(page);
-
+    await reloadThroughBarcode(page, labNumber);
+    await expect(program).toHaveValue("Microbiology");
+    await expect(page.getByLabel(nonCultureTestName)).toBeChecked();
     await page.goto(
       `/Microbiology/worklist?q=${encodeURIComponent(labNumber)}`,
       { waitUntil: "domcontentloaded" },
     );
-    const rows = page.locator('[data-testid^="microbiology-worklist-row-"]');
-    await expect(rows).toHaveCount(2, { timeout: LONG_TIMEOUT });
-    await expect(
-      rows.filter({
-        has: page.getByText("Bacteriology", { exact: true }),
-      }),
-    ).toHaveCount(1);
-    await expect(
-      rows.filter({
-        has: page.getByText("Mycobacteriology/TB", { exact: true }),
-      }),
-    ).toHaveCount(1);
+    await expect(page.getByText(/No cultures match/)).toBeVisible({
+      timeout: LONG_TIMEOUT,
+    });
   });
 });
