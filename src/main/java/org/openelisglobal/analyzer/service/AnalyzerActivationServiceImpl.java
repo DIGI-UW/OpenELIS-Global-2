@@ -30,6 +30,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     private static final String MAPPINGS_BLOCKER = "analyzer.activation.blocker.mappings";
     private static final String RECOGNITION_BLOCKER = "analyzer.activation.blocker.recognition";
     private static final String CONNECTION_BLOCKER = "analyzer.activation.blocker.connection";
+    private static final String BRIDGE_PROFILE_UNAVAILABLE = "analyzer.connection.readiness.profileUnavailable";
     private static final String BRIDGE_ACKNOWLEDGEMENT_BLOCKER = "analyzer.activation.blocker.bridgeAcknowledgement";
 
     private final AnalyzerService analyzerService;
@@ -173,6 +174,27 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             compensateIfApplied(context, acknowledgement, "ACTIVATE", activationCommandIdSupplier, exception);
             throw exception;
         }
+    }
+
+    @Override
+    @Transactional
+    public void resetUnavailableProfile(String analyzerId, String actor) {
+        Analyzer analyzer = lockAnalyzer(analyzerId);
+        String exactActor = requireText(actor, "actor");
+        if (analyzer.getMapping() == null) {
+            return;
+        }
+        boolean unavailable = validateActivation(analyzer).blockers().stream().anyMatch(
+                blocker -> PROFILE_BLOCKER.equals(blocker.code()) || BRIDGE_PROFILE_UNAVAILABLE.equals(blocker.code()));
+        if (!unavailable) {
+            throw new AnalyzerRequestException("analyzer.reset.error.profileAvailable",
+                    "The analyzer type is still available. Adopt a newer revision to move this analyzer to it.");
+        }
+        analyzer.setMapping(null);
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setSysUserId(exactActor);
+        analyzerService.update(analyzer);
     }
 
     private ActivationContext validateActivation(Analyzer analyzer) {
