@@ -10,6 +10,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   activateAnalyzer,
   getAnalyzerActivationReadiness,
+  resetAnalyzerProfile,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
@@ -19,6 +20,7 @@ import AnalyzerConnectionSetup from "./AnalyzerConnectionSetup";
 vi.mock("../../../services/analyzerService", () => ({
   activateAnalyzer: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
+  resetAnalyzerProfile: vi.fn(),
   testConnection: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
@@ -176,6 +178,7 @@ const renderConnection = ({
   onCandidateChange = vi.fn(),
   onClose = vi.fn(),
   onVerifyMappings,
+  onProfileReset,
 } = {}) => {
   const history = createMemoryHistory({
     initialEntries: [
@@ -190,6 +193,7 @@ const renderConnection = ({
           onCandidateChange={onCandidateChange}
           onClose={onClose}
           onVerifyMappings={onVerifyMappings}
+          onProfileReset={onProfileReset}
         />
       </IntlProvider>
     </Router>,
@@ -245,7 +249,7 @@ describe("AnalyzerConnectionSetup", () => {
 
     expect(
       await screen.findByText(
-        `This connection is pinned to ${profileRef.profileId} revision ${profileRef.revision}, which the Analyzer Bridge no longer has. Choose the analyzer type again to reconnect it.`,
+        `This connection is pinned to ${profileRef.profileId} revision ${profileRef.revision}, which the Analyzer Bridge no longer has. Reset the analyzer type, then choose an available one to reconnect it. The analyzer keeps its name, lab units, connection and history.`,
       ),
     ).toBeVisible();
     expect(
@@ -254,6 +258,76 @@ describe("AnalyzerConnectionSetup", () => {
       ),
     ).toBeVisible();
     expect(screen.queryByText("raw Bridge text")).not.toBeInTheDocument();
+  });
+
+  describe("when the Bridge no longer has the analyzer's type", () => {
+    const stranded = {
+      ...candidate,
+      connection: {
+        ...connection,
+        fields: [],
+        actualRuntimeState: "ERROR",
+        readiness: {
+          ready: false,
+          blockers: [
+            {
+              key: "profile-unavailable",
+              messageKey: "analyzer.connection.readiness.profileUnavailable",
+              fieldKeys: [],
+            },
+          ],
+        },
+      },
+    };
+
+    it("resets the analyzer type and hands the analyzer back for setup again", async () => {
+      const onProfileReset = vi.fn();
+      resetAnalyzerProfile.mockImplementation((_id, callback) =>
+        callback({ ok: true }),
+      );
+      renderConnection({ shown: stranded, onProfileReset });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset analyzer type" }),
+      );
+
+      expect(resetAnalyzerProfile).toHaveBeenCalledWith(
+        "42",
+        expect.any(Function),
+      );
+      expect(onProfileReset).toHaveBeenCalledTimes(1);
+    });
+
+    it("says so when the reset is refused, and keeps the analyzer as it is", async () => {
+      const onProfileReset = vi.fn();
+      resetAnalyzerProfile.mockImplementation((_id, callback) =>
+        callback({
+          ok: false,
+          messageKey: "analyzer.reset.error.profileAvailable",
+        }),
+      );
+      renderConnection({ shown: stranded, onProfileReset });
+
+      await userEvent.click(
+        await screen.findByRole("button", { name: "Reset analyzer type" }),
+      );
+
+      expect(
+        await screen.findByText(
+          "This analyzer's type is still available. Adopt a newer revision to move it.",
+        ),
+      ).toBeVisible();
+      expect(onProfileReset).not.toHaveBeenCalled();
+    });
+
+    it("offers no reset while the type is available", async () => {
+      renderConnection({ onProfileReset: vi.fn() });
+
+      await screen.findByLabelText("Transport");
+      expect(
+        screen.queryByRole("button", { name: "Reset analyzer type" }),
+      ).not.toBeInTheDocument();
+    });
   });
 
   it("renders and saves generic Bridge fields without analyzer-specific branching", async () => {
