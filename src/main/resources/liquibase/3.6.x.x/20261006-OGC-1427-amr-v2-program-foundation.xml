@@ -6,6 +6,7 @@
   <!-- Storage needed by the V2 mappings. Program administration and export
        track configuration are accepted in their owning slices. -->
   <changeSet id="20261006-OGC-1427-amr-v2-program-foundation" author="OpenELIS" dbms="postgresql">
+    <sqlFile path="amr-v2-program-target-preflight.sql" relativeToChangelogFile="true" splitStatements="false"/>
     <addColumn schemaName="clinlims" tableName="program">
       <column name="show_on_microbiology_case" type="boolean" defaultValueBoolean="false"><constraints nullable="false"/></column>
       <column name="reporting_track_id" type="numeric(10)"/>

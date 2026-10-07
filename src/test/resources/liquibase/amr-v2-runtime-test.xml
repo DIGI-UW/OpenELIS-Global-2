@@ -9,6 +9,4 @@
     <property name="amr.cutover.at" value="2026-10-06 12:00:00" />
     <include file="liquibase/base-changelog.xml" />
     <include file="liquibase/amr-v2-sequence.xml" />
-    <include
-        file="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-program-foundation.xml" />
 </databaseChangeLog>

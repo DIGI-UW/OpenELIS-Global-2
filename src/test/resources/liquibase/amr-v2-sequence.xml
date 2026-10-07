@@ -7,4 +7,6 @@
         file="liquibase/3.6.x.x/20261006-OGC-1426-amr-v2-cutover.xml" />
     <include
         file="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-membership.xml" />
+    <include
+        file="liquibase/3.6.x.x/20261006-OGC-1427-amr-v2-program-foundation.xml" />
 </databaseChangeLog>

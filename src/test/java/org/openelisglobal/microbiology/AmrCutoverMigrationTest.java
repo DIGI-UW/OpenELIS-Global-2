@@ -759,6 +759,45 @@ public class AmrCutoverMigrationTest {
     }
 
     @Test
+    public void completeSequenceRejectsProgramColumnCollisionBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate("alter table clinlims.program add column reporting_track_id numeric(10)");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String history = allHistory();
+        expectFailure(completeSequence(), "reporting_track_id");
+        assertTrue("Program conflicts must fail before retiring the old runtime schema",
+                columnExists("micro_case", "workflow_type"));
+        assertTrue(tableExists("micro_culture_setup"));
+        assertEquals(history, allHistory());
+        assertEquals(before, clinicalSnapshot());
+    }
+
+    @Test
+    public void completeSequenceRejectsExportTableCollisionBeforeCutover() throws Exception {
+        seed();
+        try (Statement statement = connection.createStatement()) {
+            statement.executeUpdate(
+                    "create table clinlims.micro_export_reporting_track (id varchar(36) primary key, existing_value text)");
+            statement.executeUpdate(
+                    "insert into clinlims.micro_export_reporting_track values ('existing', 'preserve existing data')");
+        }
+        connection.commit();
+        Map<String, String> before = clinicalSnapshot();
+        String history = allHistory();
+        expectFailure(completeSequence(), "micro_export_reporting_track");
+        assertTrue("Export conflicts must fail before retiring the old runtime schema",
+                columnExists("micro_case", "workflow_type"));
+        assertTrue(tableExists("micro_culture_setup"));
+        assertEquals(history, allHistory());
+        assertEquals(before, clinicalSnapshot());
+        assertEquals("preserve existing data",
+                scalar("select existing_value from clinlims.micro_export_reporting_track"));
+    }
+
+    @Test
     public void completeSequencePreservesUpgradeAndSupportsRollbackReapply() throws Exception {
         seed();
         Map<String, String> before = clinicalSnapshot();
@@ -767,8 +806,10 @@ public class AmrCutoverMigrationTest {
         migration.update(CONTEXTS);
         assertTargetSchema();
         assertTrue(columnExists("test", "collected_in_sets"));
+        assertTrue(columnExists("program", "reporting_track_id"));
+        assertTrue(tableExists("micro_export_reporting_track"));
         assertEquals(before, clinicalSnapshot());
-        migration.rollback(2, "default");
+        migration.rollback(3, "default");
         assertTrue(columnExists("micro_case", "workflow_type"));
         assertFalse(columnExists("test", "collected_in_sets"));
         assertEquals(history, allHistory());

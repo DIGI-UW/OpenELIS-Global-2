@@ -356,6 +356,18 @@ filter and URL/request parameter. Two regressions failed before removal; all
 24 reference-administration tests pass, including published-version refresh.
 The frontend production build also passes. These checks do not establish
 persisted browser behavior or acceptance of later panel-administration features.
+At revision `d3a4dec04c`, 414 backend service/controller and persisted
+routing/membership/ownership/catalog checks passed against the candidate schema,
+with zero failures, errors or skips. This supersedes the earlier partial backend
+regression run, but does not establish production startup or browser acceptance.
+
+The complete migration rehearsal now includes Program/export foundation after
+cutover and membership. Program-column and export-table collisions reproduced
+partial cutover; the shared target preflight now rejects these before structural
+retirement and also protects standalone Program migration. Five sequence tests
+pass, covering both conflicts, membership conflicts, and clinical/history
+preservation through full upgrade, rollback and reapply. Applied production
+migration history remains unchanged; these are still unregistered candidates.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,
