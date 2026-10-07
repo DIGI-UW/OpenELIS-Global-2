@@ -314,6 +314,17 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     );
   };
 
+  // A reset analyzer has no analyzer type; setup starts again at the instrument step.
+  const reloadAfterReset = () => {
+    getAnalyzer(candidate.id, (response) => {
+      const analyzer = response?.analyzers?.[0] || response;
+      if (analyzer?.id) {
+        setCandidate(analyzer);
+      }
+      editStep("instrument");
+    });
+  };
+
   const editStep = (step) => {
     const params = new URLSearchParams(location.search);
     params.set("setup", step);
@@ -612,6 +623,7 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                     onCandidateChange={setCandidate}
                     onClose={onClose}
                     onVerifyMappings={() => editStep("verify")}
+                    onProfileReset={reloadAfterReset}
                     onReadinessChange={setConnectReadiness}
                   />
                 ) : (

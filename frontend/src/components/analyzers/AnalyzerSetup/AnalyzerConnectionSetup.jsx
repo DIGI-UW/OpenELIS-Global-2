@@ -5,6 +5,7 @@ import { useIntl } from "react-intl";
 import {
   activateAnalyzer,
   getAnalyzerActivationReadiness,
+  resetAnalyzerProfile,
   testConnection,
   updateAnalyzer,
 } from "../../../services/analyzerService";
@@ -182,6 +183,7 @@ const AnalyzerConnectionSetup = ({
   onClose,
   onVerifyMappings,
   onReadinessChange,
+  onProfileReset,
 }) => {
   const intl = useIntl();
   const fields = candidate?.connection?.fields || EMPTY_FIELDS;
@@ -198,6 +200,8 @@ const AnalyzerConnectionSetup = ({
     Boolean(candidate?.id),
   );
   const [activationError, setActivationError] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [resetRefusal, setResetRefusal] = useState(null);
 
   const submitting = action !== null;
   const alreadyActive =
@@ -238,6 +242,21 @@ const AnalyzerConnectionSetup = ({
         return;
       }
       setReadiness(result);
+    });
+  };
+
+  const resetProfile = () => {
+    setResetting(true);
+    setResetRefusal(null);
+    resetAnalyzerProfile(candidate.id, (result) => {
+      setResetting(false);
+      if (result?.ok) {
+        onProfileReset?.();
+        return;
+      }
+      setResetRefusal(
+        result?.messageKey || "analyzer.setup.connect.reset.failed",
+      );
     });
   };
 
@@ -465,6 +484,30 @@ const AnalyzerConnectionSetup = ({
               )}
             />
           ))}
+        {onProfileReset &&
+          (candidate?.connection?.readiness?.blockers || []).some(
+            (blocker) =>
+              blocker.messageKey ===
+              "analyzer.connection.readiness.profileUnavailable",
+          ) && (
+            <Button
+              type="button"
+              kind="tertiary"
+              size="sm"
+              disabled={submitting || resetting}
+              onClick={resetProfile}
+            >
+              {intl.formatMessage({ id: "analyzer.setup.connect.reset" })}
+            </Button>
+          )}
+        {resetRefusal && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: resetRefusal })}
+          />
+        )}
         {readiness?.blockers.map((blocker, index) => (
           <InlineNotification
             key={`${blocker.code}-${index}`}
