@@ -47,7 +47,7 @@ const HARNESS_FOUNDATIONAL_TESTS = [
 const HARNESS_DEMO_TESTS = ["**/demo/harness/ogc-1054-m3-guided-setup.spec.ts"];
 const HARNESS_VIDEO_TESTS = [
   "**/demo/harness/ogc-1054-m3-guided-setup.spec.ts",
-  "**/foundational/harness/ogc-1054-analyzer-mvp.spec.ts",
+  "**/foundational/harness/analyzer-setup-to-result.spec.ts",
   "**/foundational/harness/ogc-1054-delivery-issues.spec.ts",
 ];
 

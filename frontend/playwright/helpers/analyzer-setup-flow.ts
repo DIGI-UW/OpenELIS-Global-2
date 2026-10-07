@@ -23,6 +23,12 @@ export const FLUOROCYCLER: ShippedProfile = {
   revision: 1,
 };
 
+export const QUANTSTUDIO: ShippedProfile = {
+  displayName: "Thermo Fisher QuantStudio QS5/QS7",
+  profileId: "thermo-quantstudio",
+  revision: 1,
+};
+
 /** How the instrument reaches the Bridge: a sender on the shared listener, or a watched directory. */
 export type Connection = { senderId: string } | { importDirectory: string };
 
@@ -43,7 +49,7 @@ export async function activateShippedAnalyzer(
   await list.goto();
   await list.clickAdd();
   await setup.expectOpen();
-  await setup.selectProfile(profile.displayName, profile);
+  await setup.selectProfile(profile.displayName);
   await setup.fillName(name);
   await setup.selectLabUnit("Molecular Biology");
   await setup.continueToVerify(assaysOff);
