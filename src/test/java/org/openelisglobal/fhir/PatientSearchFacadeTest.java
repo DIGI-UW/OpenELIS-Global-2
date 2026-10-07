@@ -267,4 +267,45 @@ public class PatientSearchFacadeTest extends BaseWebContextSensitiveTest {
         assertEquals(0, search("telecom", "unknown@example.com").get("total").asInt());
     }
 
+    @Test
+    public void search_byAddressCity_matchesPatient() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("address-city", "Kampala")));
+
+        assertEquals(0, search("address-city", "Nairobi").get("total").asInt());
+    }
+
+    @Test
+    public void search_byTelecomSystem_narrowsTheFieldsSearched() throws Exception {
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("telecom", "phone|87654321")));
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(search("telecom", "fax|3456")));
+
+        assertEquals(0, search("telecom", "email|87654321").get("total").asInt());
+    }
+
+    @Test
+    public void search_byContactSystemTheParameterCannotHold_returnsNothing() throws Exception {
+        assertEquals(0, search("phone", "email|john@gmail.com").get("total").asInt());
+        assertEquals(0, search("email", "phone|12345678").get("total").asInt());
+        assertEquals(0, search("telecom", "sms|12345678").get("total").asInt());
+    }
+
+    @Test
+    public void search_leavesOutAPatientWithoutFhirUuidInsteadOfFailingThePage() throws Exception {
+        executeDataSetWithStateManagement("testdata/facade-patient-missing-uuid.xml");
+
+        JsonNode bundle = search();
+
+        assertEquals(1, bundle.get("total").asInt());
+        assertEquals(List.of(JOHN_DOE_UUID), patientIds(bundle));
+        assertEquals(1, search("email", "email|").get("total").asInt());
+    }
+
+    @Test
+    public void search_byContactSystemAlone_matchesPatientsHoldingThatContact() throws Exception {
+        assertEquals(3, search("phone", "phone|").get("total").asInt());
+        assertEquals(3, search("email", "email|").get("total").asInt());
+
+        assertEquals(0, search("email", "phone|").get("total").asInt());
+    }
+
 }

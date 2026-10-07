@@ -49,11 +49,8 @@ public class PatientSearchDao extends BaseFhirDao {
     private static final String ST_IDENTITY = "ST";
     private static final String GUID_IDENTITY = "GUID";
 
-    private final FacadeHelperDao facadeHelperDao;
-
-    public PatientSearchDao(FhirPropertyResolver propertyResolver, FacadeHelperDao facadeHelperDao) {
+    public PatientSearchDao(FhirPropertyResolver propertyResolver) {
         super(propertyResolver);
-        this.facadeHelperDao = facadeHelperDao;
     }
 
     public List<Patient> search(PatientSearchParams params, int offset, int pageSize) {
@@ -93,7 +90,7 @@ public class PatientSearchDao extends BaseFhirDao {
         addPredicate(context, createBirthDatePredicate(context, params.getBirthDate()));
         addPredicate(context, createGenderPredicate(context, params.getGender()));
         addPredicate(context, createLastUpdatedPredicate(context, params.getLastUpdated()));
-        addPredicate(context, facadeHelperDao.createNamePredicate(context, params.getName()));
+        addPredicate(context, createHumanNamePredicate(context, params.getName()));
 
         addPredicate(context, createStringPredicate(context, FhirConstants.CITY_SEARCH_HANDLER, params.getCity()));
 
@@ -108,17 +105,17 @@ public class PatientSearchDao extends BaseFhirDao {
         /*
          * Searches every ContactPoint-related field.
          */
-        addPredicate(context, facadeHelperDao.createTelecomPredicate(context, params.getTelecom()));
+        addPredicate(context, createTelecomPredicate(context, params.getTelecom()));
 
         /*
          * Searches only the email field.
          */
-        addPredicate(context, facadeHelperDao.createEmailPredicate(context, params.getEmail()));
+        addPredicate(context, createEmailPredicate(context, params.getEmail()));
 
         /*
          * Searches telephone-related fields, excluding email and fax.
          */
-        addPredicate(context, facadeHelperDao.createPhonePredicate(context, params.getPhone()));
+        addPredicate(context, createPhonePredicate(context, params.getPhone()));
 
     }
 

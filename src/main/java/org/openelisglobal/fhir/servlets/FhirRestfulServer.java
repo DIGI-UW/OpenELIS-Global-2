@@ -3,6 +3,7 @@ package org.openelisglobal.fhir.servlets;
 import ca.uhn.fhir.context.FhirContext;
 import ca.uhn.fhir.rest.server.IResourceProvider;
 import ca.uhn.fhir.rest.server.RestfulServer;
+import ca.uhn.fhir.rest.server.interceptor.SearchPreferHandlingInterceptor;
 import jakarta.servlet.ServletException;
 import java.util.ArrayList;
 import java.util.List;
@@ -30,5 +31,8 @@ public class FhirRestfulServer extends RestfulServer {
         List<IResourceProvider> providers = new ArrayList<>(providerMap.values());
 
         setResourceProviders(providers);
+
+        registerInterceptor(new SearchPreferHandlingInterceptor());
+        registerInterceptor(new StrictSearchParameterInterceptor());
     }
 }

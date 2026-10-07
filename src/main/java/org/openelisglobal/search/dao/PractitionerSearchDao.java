@@ -18,12 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class PractitionerSearchDao extends BaseFhirDao {
 
-    private final FacadeHelperDao facadeHelperDao;
-
-    public PractitionerSearchDao(FhirPropertyResolver propertyResolver, FacadeHelperDao facadeHelperDao) {
+    public PractitionerSearchDao(FhirPropertyResolver propertyResolver) {
 
         super(propertyResolver);
-        this.facadeHelperDao = facadeHelperDao;
     }
 
     /**
@@ -120,7 +117,7 @@ public class PractitionerSearchDao extends BaseFhirDao {
         /*
          * Standard HumanName search across given and family name.
          */
-        addPredicate(context, facadeHelperDao.createNamePredicate(context, params.getName()));
+        addPredicate(context, createHumanNamePredicate(context, params.getName()));
 
         addPredicate(context,
                 createStringPredicate(context, FhirConstants.FIRST_NAME_SEARCH_HANDLER, params.getGiven()));
@@ -140,17 +137,17 @@ public class PractitionerSearchDao extends BaseFhirDao {
         /*
          * Searches every ContactPoint-related field.
          */
-        addPredicate(context, facadeHelperDao.createTelecomPredicate(context, params.getTelecom()));
+        addPredicate(context, createTelecomPredicate(context, params.getTelecom()));
 
         /*
          * Searches only the email field.
          */
-        addPredicate(context, facadeHelperDao.createEmailPredicate(context, params.getEmail()));
+        addPredicate(context, createEmailPredicate(context, params.getEmail()));
 
         /*
          * Searches telephone-related fields, excluding email and fax.
          */
-        addPredicate(context, facadeHelperDao.createPhonePredicate(context, params.getPhone()));
+        addPredicate(context, createPhonePredicate(context, params.getPhone()));
 
         addPredicate(context, createLastUpdatedPredicate(context, params.getLastUpdated()));
     }
