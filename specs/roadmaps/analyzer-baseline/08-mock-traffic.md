@@ -38,7 +38,7 @@ contract test keeps it aligned with the pinned baseline profile.
 - [x] T8.2 (24 fixtures under `fixtures/genexpert/<assay>/<outcome>.astm`; 301-2002 examples belong to assays the profile does not declare, so none) Fixtures from the Cepheid examples per Facts
 - [x] T8.3 (mock #53) Endpoint: POST /simulate/fixture/{profile}/{assay}/{outcome} with sample_id, patient, optional code overrides
 - [x] T8.4 (mock `a80ca1e`: the generative route refuses a replay-only template and names the fixture route) Delete `templates/genexpert.json` (HL7; hand-written codes and values break rule 15, and no HL7 baseline profile exists to rebuild it from). The `genexpert_astm` template keeps only its transport and its fixtures: its `profileRef` to genexpert-astm 4 and its `fieldOverrides` seeding go, so it can no longer generate a message, only replay one. `hain_fluorocycler` and the QuantStudio templates pin `hain-fluorocycler-xt` and `thermo-quantstudio` revision 1. Lands with T6.19, before the rest of T7.6 (decided 7 Oct: "Delete first, then rewrite (Recommended)"); OE2 callers of the generative route (`analyzer-native-traffic.ts`, `ogc-1054-delivery-issues.spec.ts`, `deploy-published-testing.py`) move to fixtures in the same OE2 change
-- [ ] T8.5 Green and PR done (mock #53, draft). Open: the release tag is a maintainer step after review
+- [x] T8.5 (mock #53 ready for review; 7 Oct: no release tag is needed, step 10 F9) Green and PR done (mock #53, draft). Open: the release tag is a maintainer step after review
 ```
 
 ### Verify

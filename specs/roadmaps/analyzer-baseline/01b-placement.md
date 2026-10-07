@@ -85,8 +85,8 @@ a.test.id = ?`, no ordering, no status filter. Callers take the first
 - [x] T1b.11 Bundle storage: add bundle_json (TEXT) to analyzer_delivery_receipt via new changeset; write at import; never delete; expose GET /rest/analyzer/deliveries/{id}/bundle
 - [x] T1b.12 Review page: per row the state, reason, tubes, matching analyses, the instrument patient beside the order's patient, "View bundle", a chooser for several matches, and "Place on another order" with a required reason
 - [x] T1b.13 i18n keys in en.json for every new state and control
-- [ ] T1b.14 Moved to T7.2: E2E for each placement state, and a FILE plate with one mistyped sample name. They need the harness to bind answers, which arrives with steps 6 and 7
-- [ ] T1b.15 Format cold; commit; stack PR on step 1
+- [x] T1b.14 (moved 7 Oct to step 10 F5, the placement user stories) Moved to T7.2: E2E for each placement state, and a FILE plate with one mistyped sample name. They need the harness to bind answers, which arrives with steps 6 and 7
+- [x] T1b.15 (#4583) Format cold; commit; stack PR on step 1
 ```
 
 ### Verify
