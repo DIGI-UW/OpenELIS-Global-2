@@ -168,11 +168,16 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
                 MessageUtil.getMessage("report.reason"), MessageUtil.getMessage("referral.sent.date"),
                 MessageUtil.getMessage("referral.report.date"));
         ClinicalPatientData above = null;
+        PdfPTable block = null;
         for (ClinicalPatientData item : reportItems) {
             boolean newTest = above == null || !item.getAccessionNumber().equals(above.getAccessionNumber())
                     || !item.getTestName().equals(above.getTestName());
-            PdfPTable block = newTest ? new PdfPTable(new float[] { 136, 206, 233, 120, 64, 64 }) : table;
             if (newTest) {
+                if (block != null) {
+                    addLocalTestBlock(table, block);
+                }
+                block = new PdfPTable(new float[] { 136, 206, 233, 120, 64, 64 });
+                block.setHeaderRows(1);
                 block.addCell(cell(item.getAccessionNumber(), LABEL_FONT));
                 block.addCell(cell(item.getTestName(), LABEL_FONT));
                 block.addCell(cell(withUnits(item.getResult(), item.getUom()), LABEL_FONT));
@@ -188,17 +193,21 @@ public class ReferredOutReport extends PatientReport implements IReportParameter
             block.addCell(cell("", CELL_FONT));
             block.addCell(cell(item.getReferralSentDate(), CELL_FONT));
             block.addCell(cell(item.getReferralResultReportDate(), CELL_FONT));
-            if (newTest) {
-                PdfPCell group = new PdfPCell(block);
-                group.setColspan(6);
-                group.setPadding(0);
-                table.addCell(group);
-            }
             above = item;
+        }
+        if (block != null) {
+            addLocalTestBlock(table, block);
         }
         document.add(table);
         document.close();
         return out.toByteArray();
+    }
+
+    private static void addLocalTestBlock(PdfPTable table, PdfPTable block) {
+        PdfPCell group = new PdfPCell(block);
+        group.setColspan(6);
+        group.setPadding(0);
+        table.addCell(group);
     }
 
     private static PdfPCell cell(String text, Font font) {

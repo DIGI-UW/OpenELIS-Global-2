@@ -46,6 +46,49 @@ public class ReferredOutReportTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void everyReferralRetainsItsLocalTestContextAcrossPages() throws Exception {
+        ReferredOutReport report = new ReferredOutReport() {
+            @Override
+            protected void createReportItems() {
+                for (int i = 0; i < 36; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        reportItems.add(referral("GROUP-" + i, "Local-" + i, "1200", "copies/mL", "Reason-" + i,
+                                "REF-" + i + "-" + j, "1150", "05/06/2024", "10/06/2024"));
+                    }
+                }
+                for (int i = 0; i < 100; i++) {
+                    reportItems.add(referral("LONG-GROUP", "Long-local-test", "2400", "copies/mL", "Long-reason",
+                            "LONG-REF-" + i, "2300", "05/06/2024", "10/06/2024"));
+                }
+            }
+        };
+        ReportForm form = new ReportForm();
+        form.setLowerDateRange("01/01/2024");
+        form.setUpperDateRange("12/12/2024");
+        form.setLocationCode("921");
+        report.initializeReport(form);
+        byte[] pdf = report.runReport();
+        org.openelisglobal.testsupport.PdfRegression.everyPage(pdf, "referrals-multiple-continuation",
+                "External Referrals Report: Reference Lab");
+        List<String> pages = org.openelisglobal.testsupport.PdfRegression.pages(pdf);
+        for (int i = 0; i < 36; i++) {
+            for (int j = 0; j < 3; j++) {
+                String marker = "REF-" + i + "-" + j;
+                org.openelisglobal.testsupport.PdfRegression.samePage(pages, marker, "GROUP-" + i);
+                org.openelisglobal.testsupport.PdfRegression.samePage(pages, marker, "Local-" + i);
+                org.openelisglobal.testsupport.PdfRegression.samePage(pages, marker, "Reason-" + i);
+            }
+        }
+        for (int i = 0; i < 100; i++) {
+            String marker = "LONG-REF-" + i;
+            org.openelisglobal.testsupport.PdfRegression.samePage(pages, marker, "LONG-GROUP");
+            org.openelisglobal.testsupport.PdfRegression.samePage(pages, marker, "Long-local-test");
+            org.openelisglobal.testsupport.PdfRegression.samePage(pages, marker, "Long-reason");
+            org.openelisglobal.testsupport.PdfRegression.samePage(pages, marker, "2400 copies/mL");
+        }
+    }
+
+    @Test
     public void listsEachReferredTestUnderItsLocalTest() throws Exception {
         List<String> lines = render();
 
