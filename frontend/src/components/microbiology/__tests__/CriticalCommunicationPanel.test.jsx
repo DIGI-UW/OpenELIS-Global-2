@@ -12,7 +12,7 @@ const renderPanel = (service, props = {}) =>
     <IntlProvider locale="en" messages={messages}>
       <CriticalCommunicationPanel
         caseId="case-1"
-        sampleItemId="sample-1"
+        specimens={[{ sampleItemId: "sample-1", label: "Blood specimen" }]}
         service={service}
         {...props}
       />
@@ -20,6 +20,43 @@ const renderPanel = (service, props = {}) =>
   );
 
 describe("CriticalCommunicationPanel", () => {
+  it("logs communication against the selected member specimen", async () => {
+    const user = userEvent.setup();
+    const service = {
+      getCriticalCommunications: vi.fn().mockResolvedValue([]),
+      logCriticalCommunication: vi.fn().mockResolvedValue({ id: "comm-2" }),
+    };
+    renderPanel(service, {
+      specimens: [
+        { sampleItemId: "sample-1", label: "Blood specimen" },
+        { sampleItemId: "sample-2", label: "Urine specimen" },
+      ],
+    });
+    await user.selectOptions(
+      await screen.findByLabelText("Critical result target"),
+      "SAMPLE_ITEM",
+    );
+    await user.selectOptions(
+      screen.getByLabelText("Target record"),
+      "sample-2",
+    );
+    await user.type(screen.getByLabelText("Recipient"), "Provider on call");
+    await user.type(
+      screen.getByLabelText("Message"),
+      "Critical specimen result",
+    );
+    await user.click(screen.getByRole("button", { name: "Log communication" }));
+    await waitFor(() =>
+      expect(service.logCriticalCommunication).toHaveBeenCalledWith(
+        "case-1",
+        expect.objectContaining({
+          targetType: "SAMPLE_ITEM",
+          targetId: "sample-2",
+        }),
+      ),
+    );
+  });
+
   it("offers projected patient-report results as communication targets", async () => {
     const user = userEvent.setup();
     const service = {

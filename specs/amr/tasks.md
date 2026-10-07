@@ -340,6 +340,11 @@ case counts. Unit options remain available when the selected view has no rows,
 including reviewed susceptibility results. Two regressions failed before the
 change; 87 affected frontend tests and 18 worklist service tests pass. This is
 focused contract evidence; persisted browser verification remains pending.
+Critical communication now offers explicit case-member specimens as targets,
+replacing the removed single-specimen response field. The regression failed
+before the fix; 43 panel/case-screen tests pass, including the case-screen
+connection and logging against the selected specimen. The backend's existing
+membership rejection remains in place; browser acceptance is still pending.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,

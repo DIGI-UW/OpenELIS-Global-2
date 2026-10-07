@@ -26,7 +26,7 @@ const statusTagType = (status) => {
 const CriticalCommunicationPanel = ({
   readOnly = false,
   caseId,
-  sampleItemId,
+  specimens = [],
   isolates = [],
   projectedResultIds = [],
   entryTargetType = "",
@@ -52,6 +52,12 @@ const CriticalCommunicationPanel = ({
 
   const effectiveTargetType = targetLocked ? entryTargetType : targetType;
   const targetOptions = useMemo(() => {
+    if (effectiveTargetType === "SAMPLE_ITEM") {
+      return specimens.map((specimen) => ({
+        id: specimen.sampleItemId,
+        label: specimen.label || specimen.sampleItemId,
+      }));
+    }
     if (effectiveTargetType === "ISOLATE") {
       return isolates.map((isolate) => ({
         id: isolate.id,
@@ -62,13 +68,9 @@ const CriticalCommunicationPanel = ({
       return projectedResultIds.map((id) => ({ id, label: id }));
     }
     return [];
-  }, [effectiveTargetType, isolates, projectedResultIds]);
+  }, [effectiveTargetType, specimens, isolates, projectedResultIds]);
   const defaultTargetId =
-    effectiveTargetType === "CASE"
-      ? caseId
-      : effectiveTargetType === "SAMPLE_ITEM"
-        ? sampleItemId || ""
-        : targetOptions[0]?.id || "";
+    effectiveTargetType === "CASE" ? caseId : targetOptions[0]?.id || "";
   const effectiveTargetId = targetLocked
     ? entryTargetId
     : targetId || defaultTargetId;

@@ -1058,7 +1058,7 @@ const MicrobiologyCaseView = ({
                   <CriticalCommunicationPanel
                     readOnly={!canEnterResults}
                     caseId={caseDetail.id}
-                    sampleItemId={caseDetail.sampleItemId}
+                    specimens={caseDetail.specimens || []}
                     isolates={caseDetail.isolates}
                     projectedResultIds={projectedResultIds}
                     entryTargetType={

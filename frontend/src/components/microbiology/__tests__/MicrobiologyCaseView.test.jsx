@@ -611,6 +611,15 @@ describe("MicrobiologyCaseView", () => {
       "aria-expanded",
       "true",
     );
+    await userEvent
+      .setup()
+      .selectOptions(
+        screen.getByLabelText("Critical result target"),
+        "SAMPLE_ITEM",
+      );
+    expect(screen.getByRole("option", { name: "UATMICRO001-1" })).toHaveValue(
+      "1001",
+    );
   });
 
   it("canonicalizes an unscoped case to its current AST step", async () => {
