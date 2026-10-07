@@ -1,5 +1,6 @@
 import MicrobiologyService, {
   getAstPanels,
+  recordCaseActivity,
   logCriticalCommunication,
   releaseFinalReport,
   revertAstOverride,
@@ -18,6 +19,21 @@ vi.mock("../../utils/Utils", () => ({
 }));
 
 describe("MicrobiologyService", () => {
+  it.each([undefined, { status: 0 }, { status: 403 }, { status: 409 }])(
+    "rejects a failed culture outcome response %o",
+    async (response) => {
+      postToOpenElisServerJsonResponse.mockImplementationOnce(
+        (url, body, callback) => callback(response),
+      );
+      await expect(
+        recordCaseActivity("case-1", {
+          sourceSampleItemId: "sample-1",
+          nextStage: "POSITIVE_SIGNAL",
+        }),
+      ).rejects.toThrow();
+    },
+  );
+
   it("loads panel options without the retired workflow query parameter", async () => {
     const panels = [{ id: "panel-1", label: "Gram negative panel" }];
     getFromOpenElisServer.mockImplementationOnce((url, callback) =>

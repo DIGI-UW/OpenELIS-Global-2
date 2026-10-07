@@ -10,11 +10,11 @@ export const getCaseDetail = (caseId) =>
   });
 
 export const recordCaseActivity = (caseId, payload) =>
-  new Promise((resolve) => {
+  new Promise((resolve, reject) => {
     postToOpenElisServerJsonResponse(
       `/rest/microbiology/cases/${caseId}/activities`,
       JSON.stringify(payload),
-      resolve,
+      settleJsonResponse(resolve, reject),
     );
   });
 

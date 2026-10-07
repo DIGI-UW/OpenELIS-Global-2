@@ -315,7 +315,11 @@ to be completed. Culture entry and culture outcomes now select an explicit case
 specimen. Subcultures inherit their parent's specimen only when it remains a
 case member, and failed inoculation saves preserve the draft. Three checks
 failed before integration; the 44 affected culture/case-screen checks now pass.
-Isolate creation still needs explicit specimen integration.
+Culture-outcome writes also reject failed/network responses through the existing
+service error handler. Four regressions reproduced false success; 45 service,
+case-screen and transition checks now pass, including specimen retention after
+rejection and completion only after a successful retry. Isolate creation still
+needs explicit specimen integration.
 
 Remaining V02c2 work includes the remaining frontend response/caller alignment,
 shared preview/save/edit contract audit, candidate startup/upgrade checks,
