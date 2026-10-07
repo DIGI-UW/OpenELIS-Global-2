@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { expect, test } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
+import { analyzerByName, type Analyzer } from "../../../helpers/analyzer-api";
 import { createAnalyzerClinicalOrder } from "../../../helpers/analyzer-clinical-order";
 import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { csrfToken } from "../../../helpers/api-session";
@@ -16,35 +17,11 @@ test.use({ viewport: { width: 1600, height: 1000 } });
 
 const API = "/api/OpenELIS-Global/rest";
 
-type Analyzer = {
-  id: string;
-  name: string;
-  profileId: string;
-  profileRevision: number;
-  bridgeConnectionId: string;
-  status: string;
-};
-
 async function capture(page: Page, testInfo: TestInfo, name: string) {
   await testInfo.attach(name, {
     body: await page.screenshot({ fullPage: false }),
     contentType: "image/png",
   });
-}
-
-async function analyzerByName(
-  page: Page,
-  name: string,
-  profileId: string,
-): Promise<Analyzer> {
-  const response = await page.request.get(`${API}/analyzer/analyzers`);
-  expect(response.ok()).toBeTruthy();
-  const payload = (await response.json()) as { analyzers: Analyzer[] };
-  const matches = payload.analyzers.filter(
-    (candidate) => candidate.name === name && candidate.profileId === profileId,
-  );
-  expect(matches, `One provisioned ${name} connection`).toHaveLength(1);
-  return matches[0];
 }
 
 /** Review the supplied choices in the UI; this never edits or excludes a row. */
