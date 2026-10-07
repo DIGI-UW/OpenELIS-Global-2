@@ -41,12 +41,12 @@ default `/home/ubuntu/openelis-testing`) holds what belongs to the host:
 - `.openelis-ci/`: the image override and `target.json`.
 
 After the application reports ready, the deploy creates missing default
-analyzers (`seed-analyzers.sh --ensure-connections --no-mock-network`) in Setup.
-Each analyzer has its own mapping, and the deploy never selects, excludes or
-confirms mapping rows or activates a connection. Existing connections retain
-their configuration and activation state. On the first deployment, the delivery
-check that follows stops because the GeneXpert connection is not active yet:
-confirm its mapping **and activate it** in OpenELIS, then retry deployment.
+analyzers (`seed-analyzers.sh --ensure-connections --no-mock-network`) and sets
+each new one up as an operator would: its shipped defaults confirmed, applied
+and activated. An analyzer whose defaults leave a row unresolved stays in Setup
+for review in OpenELIS. The delivery check that follows replays a Cepheid HIV-1
+viral load message to the GeneXpert and waits for it in OpenELIS. Existing
+connections retain their configuration and activation state:
 `--ensure-connections` preserves existing connections, including inactive ones.
 Deployment does not guess whether a connection was intentionally disabled.
 

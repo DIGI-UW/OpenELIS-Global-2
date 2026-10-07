@@ -190,7 +190,7 @@ def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, au
 
 
 def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, sleep=time.sleep, timeout=120):
-    pushed = http("POST", mock_url + "/simulate/astm/genexpert_astm",
+    pushed = http("POST", mock_url + "/simulate/fixture/genexpert_astm/hivvl/quantified",
                   {"destination": SMOKE_DESTINATION, "sample_id": accession, "sender_id": SMOKE_SENDER_ID})
     if pushed.get("pushed") != 1:
         raise RuntimeError(f"Mock did not deliver the smoke result: {pushed}")
@@ -199,6 +199,11 @@ def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, slee
     deadline = time.monotonic() + timeout
     while True:
         response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}")
+        # The review list is paged by accession; read the page that holds this one.
+        page = next((term["value"] for term in response.get("paging", {}).get("searchTermToPage", [])
+                     if term.get("id") == accession), "1")
+        if page != "1":
+            response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}&page={page}")
         rows = [row for row in response.get("resultList", []) if row.get("accessionNumber") == accession]
         if rows:
             return {"accession": accession, "rows": len(rows)}

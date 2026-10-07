@@ -8,8 +8,10 @@ set -euo pipefail
 
 # --no-mock-network: the mock sends to each connection's own Bridge listener
 #   port, so a stack without the Docker socket skips per-analyzer networks.
-# Analyzers are created in Setup: a person confirms each analyzer's mapping and
-# activates it in OpenELIS. The seed never confirms a mapping.
+# A newly created analyzer is set up as an operator would in the setup screens:
+# its shipped defaults confirmed, applied and activated. An analyzer whose
+# defaults leave a row unresolved stays in Setup. This seed runs on dev, demo and
+# testing stacks only, never at a lab.
 ENSURE_CONNECTIONS=false
 MOCK_NETWORK=true
 for arg in "$@"; do
@@ -187,6 +189,64 @@ PY
     return 1
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
+  if [ "$action" = "create" ]; then
+    set_up_like_an_operator "$(find_analyzer_id "$name")" "$name"
+  fi
+}
+
+api_send() {
+  local method="$1"
+  local url="$2"
+  local body="$3"
+  curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" -X "$method" "$url" \
+    -u "$TEST_USER:$TEST_PASS" -H "Content-Type: application/json" --data-binary "$body"
+}
+
+# Confirm every resolved row of the analyzer's own mapping, apply it and activate, as Verify,
+# Apply and "Finish and activate" do. Unresolved rows leave the analyzer in Setup.
+set_up_like_an_operator() {
+  local analyzer_id="$1"
+  local name="$2"
+  local request
+  local status
+  fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
+  request="$(python3 - "$RESPONSE_FILE" <<'PY'
+import json
+import sys
+
+with open(sys.argv[1], encoding="utf-8") as handle:
+    mapping = json.load(handle)
+confirmed, excluded, unresolved = [], [], []
+for test in mapping.get("tests", []):
+    sub = test.get("subIdentity") or ""
+    rows = [(test.get("mappingState"), None)] + [(r.get("mappingState"), r.get("rawValue")) for r in test.get("results", [])]
+    for state, raw in rows:
+        row = {"sourceRowKey": test["sourceRowKey"], "subIdentity": sub, "rawValue": raw}
+        {"BOUND": confirmed, "EXCLUDED": excluded}.get(state, unresolved).append(row)
+if unresolved:
+    print("")
+else:
+    print(json.dumps({
+        "baseMappingFingerprint": mapping["mappingFingerprint"],
+        "recognitionFingerprint": mapping["controlRecognition"]["recognitionFingerprint"],
+        "confirmedRows": confirmed,
+        "excludedRows": excluded,
+    }))
+PY
+)"
+  if [ -z "$request" ]; then
+    echo "  Left in Setup: $name has unresolved mapping rows to review in OpenELIS"
+    return 0
+  fi
+  status="$(api_send POST "$ANALYZER_API/$analyzer_id/mapping/confirm" "$request")"
+  [ "$status" = "200" ] || { echo "ERROR: Could not confirm $name's mapping (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  fetch_json "$ANALYZER_API/$analyzer_id/mapping" "$RESPONSE_FILE" "$name mapping"
+  request="$(python3 -c 'import json,sys; m=json.load(open(sys.argv[1])); print(json.dumps({"mappingId": m["mappingId"], "revision": m["mappingRevision"], "mappingFingerprint": m["mappingFingerprint"]}))' "$RESPONSE_FILE")"
+  status="$(api_send PUT "$ANALYZER_API/$analyzer_id/mapping/apply" "$request")"
+  [ "$status" = "200" ] || { echo "ERROR: Could not apply $name's mapping (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  status="$(api_send POST "$ANALYZER_API/$analyzer_id/activate" '{}')"
+  [ "$status" = "200" ] || { echo "ERROR: Could not activate $name (HTTP $status)" >&2; sed 's/^/  /' "$RESPONSE_FILE" >&2; return 1; }
+  echo "  Confirmed, applied and activated: $name"
 }
 
 lookup_mock_network_ip() {
