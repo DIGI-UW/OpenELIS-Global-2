@@ -223,6 +223,12 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     not be resolved: it is held, visibly. Clinical validity comes from
     transparency and management, never from a component refusing to run.
     (Decided 6 Oct: "issues need to degrade the system gracefully!")
+21. Readers at the OE2 and Bridge boundary ignore fields they do not know.
+    A field added within a schema version is optional and breaks nobody; a
+    breaking change bumps `schemaVersion`, which the reader refuses with a
+    clear message. What a reader depends on it checks explicitly. Fields one
+    side must never receive (local ownership, operational QC) are refused by
+    name, not by refusing everything unknown. (Agreed 6 Oct.)
 
 Deferred and not in this roadmap: moving Analyzer Types under Admin; pairing
 the Bridge to its OE2 instance instead of password authentication (6 Oct: "I
