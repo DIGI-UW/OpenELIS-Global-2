@@ -18,12 +18,10 @@ NC='\033[0m'
 
 FORCE_RELOAD_CONFIG=false
 LOCAL_MODE=false
-SKIP_PLUGINS=false
 for arg in "$@"; do
   case $arg in
     --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
     --local) LOCAL_MODE=true ;;
-    --skip-plugins) SKIP_PLUGINS=true ;;
   esac
 done
 
@@ -64,24 +62,11 @@ mkdir -p "$HARNESS_VOLUME/menu"
 mkdir -p "$HARNESS_VOLUME/logs/oeLogs"
 mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/programs"
-mkdir -p "$HARNESS_VOLUME/configuration/backend"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# --- Copy authoritative harness startup catalog into volume ---
-# These CSVs are loaded by ConfigurationInitializationService on OE startup.
-# Do not introduce a second source tree for harness test metadata.
-CONFIG_TEMPLATES="$HARNESS_DIR/config-templates"
-if [ -d "$CONFIG_TEMPLATES" ]; then
-  cp -r "$CONFIG_TEMPLATES"/* "$HARNESS_VOLUME/configuration/backend/" 2>/dev/null || true
-  echo -e "  ${GREEN}✓ Configuration templates copied to volume${NC}"
-fi
-
-# Clear configuration checksums so CSVs are reloaded on next OE startup.
-# Always clear when DB was reset (checksums are on filesystem but data is in DB —
-# when DB is dropped, checksums become stale and OE skips loading CSVs).
-# Also clear when FORCE_RELOAD_CONFIG is set explicitly.
-rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
-echo -e "  ${GREEN}✓ Cleared configuration checksums (CSVs will reload on next startup)${NC}"
+# Harness molecular tests and result choices are mounted read-only from
+# config-templates and loaded by OE's normal configuration service.
+# Local Catalog Import uploads live in the worktree-scoped configuration volume.
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---
 copy_if_missing() {
@@ -171,7 +156,7 @@ fi
 # --- WAR check ---
 WAR="$REPO_ROOT/target/OpenELIS-Global.war"
 if [ ! -f "$WAR" ]; then
-  echo -e "  ${YELLOW}WARN: $WAR not found. Run ./build.sh or mvn clean install -DskipTests -Dmaven.test.skip=true from repo root.${NC}"
+  echo -e "  ${YELLOW}INFO: $WAR not found yet. scripts/dev-stack up builds it from source.${NC}"
 else
   echo -e "  ${GREEN}✓ WAR found${NC}"
 fi

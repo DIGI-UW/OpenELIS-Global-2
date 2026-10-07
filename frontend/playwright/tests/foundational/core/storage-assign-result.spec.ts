@@ -10,9 +10,8 @@ import { LONG_TIMEOUT } from "../../../helpers/timeouts";
  * regression smoke.
  *
  * What this spec verifies:
- *   - The legacy /result route still resolves: the unified worklist is the
- *     default (resultsEntryUnifiedRoute on), so /result forwards to /Results
- *     (catches accidental route removal)
+ *   - The legacy /result address still resolves: it redirects to /Results,
+ *     the only results page (catches accidental route removal)
  *   - The worklist shell renders (catches accidental unmount)
  *
  * What this spec deliberately does NOT verify:

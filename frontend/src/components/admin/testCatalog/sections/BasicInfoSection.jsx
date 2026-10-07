@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useState } from "react";
+import React, { useCallback, useContext, useEffect, useState } from "react";
 import { useHistory, useLocation } from "react-router-dom";
 import {
   Stack,
@@ -23,6 +23,7 @@ import {
   postToOpenElisServerFullResponse,
   postToOpenElisServerJsonResponse,
   putToOpenElisServerJsonResponse,
+  resolveApiErrorMessage,
 } from "../../../utils/Utils";
 import { NotificationContext } from "../../../layout/Layout";
 import useDomains from "../../../common/useDomains";
@@ -78,6 +79,22 @@ const CULTURE_WORKFLOW_TYPES = [
   "MYCOLOGY",
 ];
 
+const QC_THRESHOLD_FIELDS = [
+  { field: "qcBlankThreshold", labelKey: "test.qc.blankThreshold" },
+  { field: "qcRpdThreshold", labelKey: "test.qc.rpdThreshold" },
+  { field: "qcRecoveryWindowPct", labelKey: "test.qc.recoveryWindowPct" },
+];
+
+const isBlankValue = (value) =>
+  value === undefined || value === null || String(value).trim() === "";
+
+// Mirrors the server: whole minutes, and non-negative numbers for QC limits.
+const holdingTimeValid = (value) =>
+  isBlankValue(value) || /^\d{1,9}$/.test(String(value).trim());
+
+const thresholdValid = (value) =>
+  isBlankValue(value) || /^\d{1,10}(\.\d{1,5})?$/.test(String(value).trim());
+
 const BasicInfoSection = ({ testId }) => {
   const domains = useDomains();
   const intl = useIntl();
@@ -93,6 +110,7 @@ const BasicInfoSection = ({ testId }) => {
   const [loading, setLoading] = useState(!isCreate);
   const [error, setError] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [staleSave, setStaleSave] = useState(null);
   const [form, setForm] = useState(null);
   const [pendingDomain, setPendingDomain] = useState(null);
   const [domainRadioKey, setDomainRadioKey] = useState(0);
@@ -104,6 +122,11 @@ const BasicInfoSection = ({ testId }) => {
   // FR-58 — the same gaps, fetched proactively on load, shown as a persistent
   // checklist beside the status toggle for an inactive test.
   const [completenessGaps, setCompletenessGaps] = useState([]);
+  // FR-18 (OGC-1119) — the LOINC integrity warnings activation re-surfaces:
+  // shown beside the toggle right after the test goes Active, never a block.
+  const [activationWarnings, setActivationWarnings] = useState(null);
+  // The field a 422 save named as unstorable.
+  const [serverInvalidField, setServerInvalidField] = useState(null);
 
   // Create-mode state (FR-2).
   const [createForm, setCreateForm] = useState({
@@ -169,9 +192,46 @@ const BasicInfoSection = ({ testId }) => {
     );
   }, []);
 
-  const update = (patch) => setForm((prev) => ({ ...prev, ...patch }));
+  const update = (patch) => {
+    setServerInvalidField(null);
+    setForm((prev) => ({ ...prev, ...patch }));
+  };
   const updateCreate = (patch) =>
     setCreateForm((prev) => ({ ...prev, ...patch }));
+
+  // OGC-189 (M2) — the Lab Unit picker is a *chooser*, so it offers only active
+  // units. The grandfathered-select rule: a test already assigned to a
+  // deactivated unit keeps showing that unit, marked inactive, so the control
+  // never renders blank and never writes that blank back on save. Losing the
+  // assignment this way is the OGC-1191 data-loss class.
+  const labUnitOptionsFor = useCallback(
+    (currentId) => {
+      const active = labUnits.filter((unit) => unit.isActive !== false);
+      const current = labUnits.find((unit) => unit.id === currentId);
+      if (current && current.isActive === false) {
+        return [current, ...active];
+      }
+      return active;
+    },
+    [labUnits],
+  );
+
+  // The grandfathered value is labelled so the inactive state is visible rather
+  // than implied by its absence from the rest of the list.
+  const labUnitItemToString = useCallback(
+    (item) => {
+      if (!item) {
+        return "";
+      }
+      return item.isActive === false
+        ? intl.formatMessage(
+            { id: "label.testCatalog.basicInfo.labUnit.inactive" },
+            { name: item.name },
+          )
+        : item.name;
+    },
+    [intl],
+  );
 
   // OGC-1145 FR-1/2/3 — shared sample-types multi-select with removable chips.
   // Only domain-compatible types are offered; already-selected incompatible ones
@@ -327,6 +387,7 @@ const BasicInfoSection = ({ testId }) => {
 
   const handleSave = () => {
     setSaving(true);
+    setServerInvalidField(null);
     putToOpenElisServerJsonResponse(
       `/rest/test-catalog/tests/${testId}/basic-info`,
       JSON.stringify(form),
@@ -336,6 +397,7 @@ const BasicInfoSection = ({ testId }) => {
         // A successful save echoes the BasicInfo body, which has no status
         // field; the helper folds an error response's status into the JSON.
         if (res && res.testId && !res.status) {
+          setForm((prev) => ({ ...prev, lastupdated: res.lastupdated }));
           addNotification({
             kind: "success",
             title: intl.formatMessage({
@@ -343,6 +405,20 @@ const BasicInfoSection = ({ testId }) => {
             }),
             message: intl.formatMessage({
               id: "label.testCatalog.basicInfo.saved",
+            }),
+          });
+        } else if (res && res.status === 409 && res.conflict === "stale") {
+          setNotificationVisible(false);
+          setStaleSave(resolveApiErrorMessage(intl, res, "server.error.msg"));
+        } else if (res && res.status === 422 && res.invalidField) {
+          setServerInvalidField(res.invalidField);
+          addNotification({
+            kind: "error",
+            title: intl.formatMessage({
+              id: "label.testCatalog.section.basic-info",
+            }),
+            message: intl.formatMessage({
+              id: "error.testCatalog.basicInfo.invalidValue",
             }),
           });
         } else if (
@@ -393,7 +469,16 @@ const BasicInfoSection = ({ testId }) => {
             ...(res.orderable !== undefined
               ? { orderable: res.orderable }
               : {}),
+            ...(res.lastupdated ? { lastupdated: res.lastupdated } : {}),
           });
+          const integrity = res.loincIntegrity;
+          setActivationWarnings(
+            integrity &&
+              (integrity.noLoinc ||
+                (integrity.duplicates && integrity.duplicates.length > 0))
+              ? integrity
+              : null,
+          );
           setNotificationVisible(true);
           addNotification({
             kind: "success",
@@ -461,8 +546,8 @@ const BasicInfoSection = ({ testId }) => {
           titleText={intl.formatMessage({
             id: "label.testCatalog.basicInfo.labUnit",
           })}
-          items={labUnits}
-          itemToString={(item) => (item ? item.name : "")}
+          items={labUnitOptionsFor(createForm.labUnitId)}
+          itemToString={labUnitItemToString}
           selectedItem={labUnits.find((u) => u.id === createForm.labUnitId)}
           onChange={({ selectedItem }) =>
             updateCreate({ labUnitId: selectedItem ? selectedItem.id : "" })
@@ -579,6 +664,17 @@ const BasicInfoSection = ({ testId }) => {
     );
   }
 
+  const timeHoldingInvalid =
+    !holdingTimeValid(form.timeHolding) || serverInvalidField === "timeHolding";
+  const invalidThresholds = QC_THRESHOLD_FIELDS.map(
+    ({ field }) => field,
+  ).filter(
+    (field) => !thresholdValid(form[field]) || serverInvalidField === field,
+  );
+  const showQcThresholds =
+    (form.domain && form.domain !== "CLINICAL") ||
+    QC_THRESHOLD_FIELDS.some(({ field }) => !isBlankValue(form[field]));
+
   return (
     <Stack gap={6}>
       <TextInput
@@ -615,8 +711,8 @@ const BasicInfoSection = ({ testId }) => {
         titleText={intl.formatMessage({
           id: "label.testCatalog.basicInfo.labUnit",
         })}
-        items={labUnits}
-        itemToString={(item) => (item ? item.name : "")}
+        items={labUnitOptionsFor(form.labUnitId)}
+        itemToString={labUnitItemToString}
         selectedItem={labUnits.find((u) => u.id === form.labUnitId) || null}
         onChange={({ selectedItem }) =>
           update({ labUnitId: selectedItem ? selectedItem.id : "" })
@@ -713,6 +809,60 @@ const BasicInfoSection = ({ testId }) => {
           />
         ))}
       </Select>
+      <TextInput
+        id="basic-info-time-holding"
+        labelText={intl.formatMessage({ id: "test.timeHolding" })}
+        value={form.timeHolding || ""}
+        onChange={(e) => update({ timeHolding: e.target.value })}
+        invalid={timeHoldingInvalid}
+        invalidText={intl.formatMessage({
+          id: "error.testCatalog.basicInfo.timeHolding",
+        })}
+      />
+      <Toggle
+        id="basic-info-in-lab-only"
+        labelText={intl.formatMessage({ id: "test.inLabOnly" })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.inLabOnly}
+        onToggle={(checked) => update({ inLabOnly: checked })}
+      />
+      <Toggle
+        id="basic-info-notify-results"
+        labelText={intl.formatMessage({ id: "test.notifyResults" })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.notifyResults}
+        onToggle={(checked) => update({ notifyResults: checked })}
+      />
+      {showQcThresholds && (
+        <fieldset
+          className="cds--fieldset"
+          data-testid="basic-info-qc-thresholds"
+        >
+          <legend className="cds--label">
+            <FormattedMessage id="test.qc.thresholds.heading" />
+          </legend>
+          <p className="cds--form__helper-text">
+            <FormattedMessage id="test.qc.thresholds.description" />
+          </p>
+          <Stack gap={5}>
+            {QC_THRESHOLD_FIELDS.map(({ field, labelKey }) => (
+              <TextInput
+                key={field}
+                id={`basic-info-${field}`}
+                labelText={intl.formatMessage({ id: labelKey })}
+                value={form[field] || ""}
+                onChange={(e) => update({ [field]: e.target.value })}
+                invalid={invalidThresholds.includes(field)}
+                invalidText={intl.formatMessage({
+                  id: "error.testCatalog.basicInfo.qcThreshold",
+                })}
+              />
+            ))}
+          </Stack>
+        </fieldset>
+      )}
       <Toggle
         id="basic-info-active"
         labelText={intl.formatMessage({
@@ -727,9 +877,38 @@ const BasicInfoSection = ({ testId }) => {
           } else {
             // Activation sets orderable, so deactivation clears it again.
             update({ active: checked, orderable: false });
+            setActivationWarnings(null);
           }
         }}
       />
+      {activationWarnings && activationWarnings.noLoinc && (
+        <InlineNotification
+          kind="warning"
+          lowContrast
+          hideCloseButton
+          data-testid="activation-no-loinc-warning"
+          title={intl.formatMessage({ id: "warning.testCatalog.noLoinc" })}
+        />
+      )}
+      {activationWarnings &&
+        activationWarnings.duplicates &&
+        activationWarnings.duplicates.length > 0 && (
+          <InlineNotification
+            kind="warning"
+            lowContrast
+            hideCloseButton
+            data-testid="activation-duplicate-loinc-warning"
+            title={intl.formatMessage(
+              { id: "warning.testCatalog.duplicateLoinc" },
+              {
+                code: activationWarnings.loinc,
+                testName: activationWarnings.duplicates
+                  .map((d) => d.name)
+                  .join(", "),
+              },
+            )}
+          />
+        )}
       {!form.active && completenessGaps.length > 0 && (
         <InlineNotification
           kind="info"
@@ -753,11 +932,35 @@ const BasicInfoSection = ({ testId }) => {
         onToggle={(checked) => update({ orderable: checked })}
       />
 
+      {staleSave && (
+        <div data-testid="basic-info-stale-save">
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({ id: "error.title" })}
+            subtitle={staleSave}
+          />
+          <Button
+            kind="secondary"
+            size="sm"
+            onClick={() => window.location.reload()}
+          >
+            <FormattedMessage id="label.results.refresh" />
+          </Button>
+        </div>
+      )}
+
       <div>
         <Button
           kind="primary"
           disabled={
-            saving || editSampleTypesMissing || editIncompatibleTypes.length > 0
+            saving ||
+            Boolean(staleSave) ||
+            timeHoldingInvalid ||
+            invalidThresholds.length > 0 ||
+            editSampleTypesMissing ||
+            editIncompatibleTypes.length > 0
           }
           onClick={handleSave}
         >

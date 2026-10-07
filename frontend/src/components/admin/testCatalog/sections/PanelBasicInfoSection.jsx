@@ -1,6 +1,7 @@
 import React, { useContext, useEffect, useState } from "react";
 import {
   Button,
+  InlineNotification,
   RadioButton,
   RadioButtonGroup,
   Stack,
@@ -21,13 +22,23 @@ import { NotificationKinds } from "../../../common/CustomNotification";
 /**
  * OGC-224 — Panel editor · Basic Info (FRS v2.2).
  *
- * Panel Name (required) · Domain (radio; only Clinical enabled at launch —
- * Environmental / Vector disabled with the later-phase note) · Sample Types
+ * Panel Name (required) · Domain (radio; set on the panel itself, never worked
+ * out from the sample types its tests use — OGC-1209) · Sample Types
  * (read-only, DERIVED from the member tests) · Description · Active toggle.
  * Activation rule: with zero tests the toggle is disabled (not clickable)
  * with helper text; editing never auto-flips the state. There is no code
  * field — the panel's LOINC (Terminology section) is its identifier.
  */
+// OGC-1232 — the rule named on a refused (422) Basic Info save, and what to
+// tell the operator about it. A domain conflict carries its own message.
+const REFUSAL_MESSAGES = {
+  "name.required": "error.panel.nameRequired",
+  "name.tooLong": "error.panel.nameTooLong",
+  "name.duplicate": "error.panel.nameDuplicate",
+  "description.tooLong": "error.panel.descriptionTooLong",
+  "activation.needsTest": "helper.panel.needsTest",
+};
+
 const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
   const intl = useIntl();
   const { addNotification, setNotificationVisible } =
@@ -42,6 +53,10 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
   );
   const [active, setActive] = useState(isCreate ? false : !!panel?.active);
   const [saving, setSaving] = useState(false);
+  // OGC-1232 — the domain guard's refusal, kept on screen until the operator
+  // changes the domain again or a save goes through, so the form never shows a
+  // domain the panel does not have without saying why.
+  const [domainConflict, setDomainConflict] = useState(null);
 
   useEffect(() => {
     if (!isCreate && panel) {
@@ -56,10 +71,24 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
   const canActivate = memberCount > 0;
   const derivedTypes = isCreate ? [] : panel?.sampleTypes || [];
 
-  const notify = (kind, messageId) => {
+  const domainLabel = (value) =>
+    intl.formatMessage({
+      id: `label.domain.${value}`,
+      defaultMessage: value,
+    });
+
+  const conflictValues = (conflict) => ({
+    domain: domainLabel(conflict.domain),
+    count: (conflict.tests || []).length,
+    tests: (conflict.tests || [])
+      .map((t) => `${t.name} (${domainLabel(t.domain)})`)
+      .join(", "),
+  });
+
+  const notify = (kind, messageId, values) => {
     addNotification({
       title: intl.formatMessage({ id: "notification.title" }),
-      message: intl.formatMessage({ id: messageId }),
+      message: intl.formatMessage({ id: messageId }, values),
       kind,
     });
     setNotificationVisible(true);
@@ -73,8 +102,28 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
         setSaving(false);
         if (response && response.ok) {
           const saved = await response.json();
+          setDomainConflict(null);
           notify(NotificationKinds.success, "success.add.edited.msg");
           onSaved(saved);
+          return;
+        }
+        let body = null;
+        if (response && response.status === 422) {
+          try {
+            body = await response.json();
+          } catch (e) {
+            body = null;
+          }
+        }
+        if (body && body.domainConflict) {
+          setDomainConflict(body.domainConflict);
+          notify(
+            NotificationKinds.error,
+            "error.panel.domainConflict",
+            conflictValues(body.domainConflict),
+          );
+        } else if (body && REFUSAL_MESSAGES[body.refusal]) {
+          notify(NotificationKinds.error, REFUSAL_MESSAGES[body.refusal]);
         } else {
           notify(NotificationKinds.error, "error.panel.save");
         }
@@ -128,7 +177,10 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
           name="panel-domain"
           valueSelected={domain}
           orientation="horizontal"
-          onChange={(value) => setDomain(value)}
+          onChange={(value) => {
+            setDomain(value);
+            setDomainConflict(null);
+          }}
         >
           <RadioButton
             labelText={intl.formatMessage({ id: "label.domain.CLINICAL" })}
@@ -139,13 +191,11 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
             labelText={intl.formatMessage({ id: "label.domain.ENVIRONMENTAL" })}
             value="ENVIRONMENTAL"
             id="panel-domain-environmental"
-            disabled
           />
           <RadioButton
             labelText={intl.formatMessage({ id: "label.domain.VECTOR" })}
             value="VECTOR"
             id="panel-domain-vector"
-            disabled
           />
         </RadioButtonGroup>
         <p className="panel-helper-text" style={helperStyle}>
@@ -160,6 +210,22 @@ const PanelBasicInfoSection = ({ panel, isCreate, onSaved }) => {
           )}{" "}
           {intl.formatMessage({ id: "note.panel.domainLaterPhase" })}
         </p>
+        {domainConflict && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            data-testid="panel-domain-conflict"
+            style={{ marginTop: "0.5rem", maxWidth: "100%" }}
+            title={intl.formatMessage(
+              { id: "error.panel.domainConflict" },
+              conflictValues(domainConflict),
+            )}
+            subtitle={intl.formatMessage({
+              id: "helper.panel.domainConflict.remedy",
+            })}
+          />
+        )}
       </div>
       <div>
         <div className="cds--label">

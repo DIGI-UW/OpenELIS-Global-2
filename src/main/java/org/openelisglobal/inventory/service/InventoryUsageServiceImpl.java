@@ -60,6 +60,12 @@ public class InventoryUsageServiceImpl extends AuditableBaseObjectServiceImpl<In
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<InventoryUsage> getByDateRange(Timestamp startDate, Timestamp endDate) {
+        return inventoryUsageDAO.getByDateRange(startDate, endDate);
+    }
+
+    @Override
     @Transactional
     public InventoryUsage recordUsage(Long lotId, Long itemId, Double quantityUsed, Long testResultId, Long analysisId,
             String sysUserId) {

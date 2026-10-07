@@ -65,6 +65,11 @@ services:
         - TZ=${TZ:-UTC}
         - SPRING_LIQUIBASE_CONTEXTS=test
         - ORG_OPENELISGLOBAL_UAT_SCENARIOS_ENABLED=${OE_UAT_SCENARIOS_ENABLED:-false}
+        # The EQA scheduler sweep (deadline alerts, and the bridge that carries
+        # validated results into a participant cycle and readies it to submit)
+        # runs every five minutes in production. The participant E2E lane waits
+        # for that sweep, so it runs every ten seconds here.
+        - ORG_OPENELISGLOBAL_EQA_ALERT_POLL_FREQUENCY=10000
         # context.xml doesn't seem to be able to pick up environment variables directly, so we are passing them in as CATALINA_OPTS
         - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
     volumes:
@@ -72,6 +77,7 @@ services:
         - ./volume/lucene:/var/lib/lucene_index
         - ./volume/programs/:/var/lib/openelis-global/programs
         - ./volume/logs/oeLogs:/var/lib/openelis-global/logs
+        - reporting-data:/var/lib/openelis-global/reporting
         - ./volume/logs/tomcatLogs/:/usr/local/tomcat/logs
         - ./volume/tomcat/oe_server.xml:/usr/local/tomcat/conf/server.xml
         - ./volume/properties/SystemConfiguration.properties:/var/lib/openelis-global/properties/SystemConfiguration.properties
@@ -175,3 +181,4 @@ volumes:
   certs-vol:
   keys-vol:
   lucene_index-vol:
+  reporting-data:

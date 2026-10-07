@@ -1,5 +1,10 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fetchFromOpenElisServer, getFromOpenElisServer } from "./Utils";
+import {
+  fetchFromOpenElisServer,
+  getFromOpenElisServer,
+  labNumberForSearch,
+  parseIsoDate,
+} from "./Utils";
 
 const settlePromiseChain = async () => {
   await new Promise((resolve) => setTimeout(resolve, 0));
@@ -36,6 +41,30 @@ describe("getFromOpenElisServer", () => {
     );
     expect(consoleError).not.toHaveBeenCalled();
     expect(callback).not.toHaveBeenCalled();
+  });
+
+  it("treats an error status as a failure, not as data (OGC-1222)", async () => {
+    // Spring answers a 500 with a JSON body. Passing that body to the caller
+    // as if it were data is what turned a dead program id into a blank page.
+    const consoleError = vi
+      .spyOn(console, "error")
+      .mockImplementation(() => undefined);
+    const json = vi.fn();
+    const callback = vi.fn();
+    const fetchPromise = Promise.resolve({
+      ok: false,
+      status: 500,
+      headers: { get: () => "application/json" },
+      json,
+    } as unknown as Response);
+    vi.stubGlobal("fetch", vi.fn().mockReturnValue(fetchPromise));
+
+    getFromOpenElisServer("/rest/user-programs", callback);
+    await settlePromiseChain();
+
+    expect(callback).toHaveBeenCalledWith(undefined);
+    expect(json).not.toHaveBeenCalled();
+    expect(consoleError).toHaveBeenCalled();
   });
 
   it("still reports a real network failure and completes with undefined", async () => {
@@ -124,5 +153,40 @@ describe("fetchFromOpenElisServer", () => {
       fetchFromOpenElisServer("/rest/TestActivation"),
     ).rejects.toThrow("Request failed (500): /rest/TestActivation");
     expect(json).not.toHaveBeenCalled();
+  });
+});
+
+describe("labNumberForSearch", () => {
+  it("drops a numeric analysis suffix and keeps every other accession whole", () => {
+    expect(labNumberForSearch("DEV01260000000001-2")).toBe("DEV01260000000001");
+    expect(labNumberForSearch(" DEV01260000000001 ")).toBe("DEV01260000000001");
+    expect(labNumberForSearch("IH-2-01")).toBe("IH-2-01");
+    expect(labNumberForSearch("HARN-QS7-2026-00001")).toBe(
+      "HARN-QS7-2026-00001",
+    );
+    expect(labNumberForSearch(undefined)).toBe("");
+  });
+});
+
+// Review of #4474: flatpickr's parser read a typed 10/20/2026 as 1 January of
+// the current year, and that date was saved without a warning.
+describe("parseIsoDate", () => {
+  it("reads a real yyyy-MM-dd as that local date", () => {
+    const date = parseIsoDate("2026-12-24");
+    expect(date).toBeInstanceOf(Date);
+    expect(
+      date && [date.getFullYear(), date.getMonth(), date.getDate()],
+    ).toEqual([2026, 11, 24]);
+  });
+
+  it("refuses text in any other shape", () => {
+    ["10/20/2026", "2026-1-5", "24-12-2026", "", "tomorrow"].forEach((text) =>
+      expect(parseIsoDate(text)).toBe(false),
+    );
+  });
+
+  it("refuses a day the month does not have", () => {
+    expect(parseIsoDate("2026-02-30")).toBe(false);
+    expect(parseIsoDate("2026-13-01")).toBe(false);
   });
 });

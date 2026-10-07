@@ -2,7 +2,9 @@ package org.openelisglobal.labelpreset.controller.rest;
 
 import java.io.ByteArrayOutputStream;
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.labelpreset.dto.OrderLabelRequestView;
+import org.openelisglobal.labelpreset.service.LabelQuantityRefusedException;
 import org.openelisglobal.labelpreset.service.OrderLabelReprintService;
 import org.openelisglobal.sample.service.SampleService;
 import org.openelisglobal.sample.valueholder.Sample;
@@ -13,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
@@ -66,6 +69,9 @@ public class OrderLabelReprintController {
 
     @GetMapping("/api/orders/{id}/labels")
     public ResponseEntity<List<OrderLabelRequestView>> getOrderLabels(@PathVariable("id") String orderId) {
+        if (!isNumericId(orderId)) {
+            return ResponseEntity.badRequest().build();
+        }
         return ResponseEntity.ok(orderLabelReprintService.listByOrder(orderId));
     }
 
@@ -97,7 +103,41 @@ public class OrderLabelReprintController {
     @GetMapping("/api/barcode/print/{orderId}/{presetId}")
     public ResponseEntity<byte[]> printFromSnapshot(@PathVariable("orderId") String orderId,
             @PathVariable("presetId") Integer presetId) {
-        ByteArrayOutputStream pdf = orderLabelReprintService.renderFromSnapshot(orderId, presetId);
+        return pdfResponse(orderLabelReprintService.renderFromSnapshot(orderId, presetId));
+    }
+
+    // ── GET /api/orders/{id}/labels/pdf ───────────────────────────────────────
+
+    /**
+     * The order's saved labels as one PDF, narrowed by any of {@code presetId} (one
+     * label type), {@code sampleItemId} (one tube) and {@code scope} ({@code order}
+     * or {@code sample}). With no filter, every saved label of the order. Backs the
+     * Print row / Print column / Print all actions of the Labels section on Prepare
+     * Samples (OGC-1422, FR-I6, FR-I7); {@code 404} when nothing matches.
+     */
+    @GetMapping("/api/orders/{id}/labels/pdf")
+    public ResponseEntity<?> printOrderLabels(@PathVariable("id") String orderId,
+            @RequestParam(name = "presetId", required = false) Integer presetId,
+            @RequestParam(name = "sampleItemId", required = false) String sampleItemId,
+            @RequestParam(name = "scope", required = false) String scope,
+            @RequestParam(name = "quantity", required = false) Integer quantity) {
+        if (!isNumericId(orderId) || (sampleItemId != null && !isNumericId(sampleItemId))) {
+            return ResponseEntity.badRequest().build();
+        }
+        try {
+            return pdfResponse(
+                    orderLabelReprintService.renderFromSnapshot(orderId, presetId, sampleItemId, scope, quantity));
+        } catch (LabelQuantityRefusedException e) {
+            return ResponseEntity.unprocessableEntity()
+                    .body(Map.of("messageKey", e.getMessageKey(), "message", e.getMessage()));
+        }
+    }
+
+    private static boolean isNumericId(String id) {
+        return id != null && id.matches("\\d+");
+    }
+
+    private ResponseEntity<byte[]> pdfResponse(ByteArrayOutputStream pdf) {
         if (pdf == null || pdf.size() == 0) {
             return ResponseEntity.notFound().build();
         }

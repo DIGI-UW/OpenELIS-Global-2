@@ -1,9 +1,12 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 
 public interface AnalyzerInstanceService {
+
+    AnalyzerInstanceView ensureConnection(String analyzerId, ObjectNode values, String actor);
 
     AnalyzerInstanceView create(AnalyzerInstanceRequest request, String actor);
 

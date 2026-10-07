@@ -186,7 +186,7 @@ public abstract class PatientVLReport extends RetroCIPatientReport {
         data.setReceptiondate(DateUtil.convertTimestampToStringDateAndTime(reportSample.getReceivedTimestamp()));
         Timestamp collectionDate = reportSample.getCollectionDate();
 
-        if (collectionDate != null) {
+        if (collectionDate != null && reportPatient.getBirthDate() != null) {
             long collectionTime = collectionDate.getTime() - reportPatient.getBirthDate().getTime();
 
             if (collectionTime < THREE_YEARS) {

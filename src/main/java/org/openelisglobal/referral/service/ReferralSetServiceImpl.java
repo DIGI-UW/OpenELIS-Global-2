@@ -40,6 +40,7 @@ import org.openelisglobal.referral.valueholder.ReferralStatus;
 import org.openelisglobal.referral.valueholder.ReferralStatusHistory;
 import org.openelisglobal.referral.valueholder.ReferralSubcontract;
 import org.openelisglobal.referral.valueholder.ReferralType;
+import org.openelisglobal.result.action.util.ResultUtil;
 import org.openelisglobal.result.service.ResultService;
 import org.openelisglobal.result.valueholder.Result;
 import org.openelisglobal.sample.action.util.SamplePatientUpdateData;
@@ -269,7 +270,8 @@ public class ReferralSetServiceImpl implements ReferralSetService {
 
             referral.setRequestDate(new Timestamp(new Date().getTime()));
             referral.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
-            referral.setRequesterName(referralItem.getReferrer());
+            referral.setRequesterName(
+                    ResultUtil.requesterNameFor(referralItem.getReferrer(), null, updateData.getCurrentUserId()));
             referral.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
             referral.setSubcontract(buildSubcontractFromItem(referralItem, updateData.getCurrentUserId()));
             for (SampleTestCollection sampleItemTest : updateData.getSampleItemsTests()) {
@@ -284,6 +286,13 @@ public class ReferralSetServiceImpl implements ReferralSetService {
                 }
             }
             referral.setReferralReasonId(referralItem.getReferralReasonId());
+
+            // The Result Entry route flags the analysis when it raises a referral.
+            // Order Entry did not, so the same referral left the analysis looking
+            // like ordinary in-house work to every report and to the Result Entry
+            // screen. Flag the one analysis the referral is attached to: the same
+            // test can sit on two sample items, and only this one was referred.
+            markAnalysisReferredOut(referral.getAnalysis(), updateData.getCurrentUserId());
 
             referralService.insert(referral);
             insertInitialDraftHistory(referral.getId(), updateData.getCurrentUserId());
@@ -316,7 +325,11 @@ public class ReferralSetServiceImpl implements ReferralSetService {
             existing.setOrganization(organizationService.get(referralItem.getReferredInstituteId()));
         }
         existing.setReferralReasonId(referralItem.getReferralReasonId());
-        existing.setRequesterName(referralItem.getReferrer());
+        // Only when the form names someone: an edit that leaves the field empty
+        // must not erase who raised the referral in the first place.
+        if (!GenericValidator.isBlankOrNull(referralItem.getReferrer())) {
+            existing.setRequesterName(referralItem.getReferrer());
+        }
         if (!GenericValidator.isBlankOrNull(referralItem.getReferredSendDate())) {
             existing.setSentDate(DateUtil.convertStringDateToTruncatedTimestamp(referralItem.getReferredSendDate()));
         }
@@ -461,6 +474,23 @@ public class ReferralSetServiceImpl implements ReferralSetService {
             return fallbackTestName == null ? "" : fallbackTestName;
         }
         return sb.toString();
+    }
+
+    /**
+     * Flag the analysis as referred out, the way the Result Entry route does. The
+     * analysis is already persisted by the time Order Entry raises its referrals,
+     * so the flag has to be written; when it is not yet persisted the caller's own
+     * insert carries it.
+     */
+    private void markAnalysisReferredOut(Analysis analysis, String currentUserId) {
+        if (analysis == null || analysis.isReferredOut()) {
+            return;
+        }
+        analysis.setReferredOut(true);
+        if (!GenericValidator.isBlankOrNull(analysis.getId())) {
+            analysis.setSysUserId(currentUserId);
+            analysisService.update(analysis);
+        }
     }
 
     /**

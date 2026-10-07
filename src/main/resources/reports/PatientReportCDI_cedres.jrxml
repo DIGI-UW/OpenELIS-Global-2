@@ -915,7 +915,7 @@
 				<textElement verticalAlignment="Middle">
 					<font size="8"/>
 				</textElement>
-				<textFieldExpression class="java.lang.String"><![CDATA["B = " + $R{report.belowNormal} + "  E = " + $R{report.aboveNormal} + "  * = " + $R{report.abnormal}]]></textFieldExpression>
+				<textFieldExpression class="java.lang.String"><![CDATA["B = " + $R{report.belowNormal} + "  E = " + $R{report.aboveNormal} + "  * = " + $R{report.abnormal} + "  BB = " + $R{report.criticalBelowNormal} + "  EE = " + $R{report.criticalAboveNormal}]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="63" y="16" width="489" height="14"/>

@@ -78,11 +78,11 @@ export async function fillMicrobiologyOrderHeader(
   await patientSearch
     .getByRole("button", { name: "Search", exact: true })
     .click();
-  const patientRow = patientSearch.getByTestId(
-    `patient-search-result-${seeded.patientId}`,
+  const patientRow = patientSearch.locator(
+    `[data-cy="patient-result-row-${seeded.patientId}"]`,
   );
   await expect(patientRow).toBeVisible({ timeout: LONG_TIMEOUT });
-  await patientRow.getByRole("button", { name: "Select" }).click();
+  await patientRow.locator("label").first().click();
   await expect(
     page.getByRole("heading", { name: "UAT Microbiology", exact: true }),
   ).toBeVisible({ timeout: UI_TIMEOUT });
@@ -92,7 +92,9 @@ export async function fillMicrobiologyOrderHeader(
     .getByLabel("Sample Type");
   await expect(sampleType).toBeVisible({ timeout: LONG_TIMEOUT });
   await sampleType.selectOption(seeded.sampleTypeId);
-  await expect(page.getByLabel(MICROBIOLOGY_CULTURE_TEST_NAME)).toBeVisible({
+  await expect(
+    page.getByLabel(MICROBIOLOGY_CULTURE_TEST_NAME, { exact: true }),
+  ).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
 
@@ -100,7 +102,8 @@ export async function fillMicrobiologyOrderHeader(
 }
 
 export async function clickMicrobiologyOrderTest(page: Page, name: string) {
-  const checkbox = page.getByLabel(name);
+  // exact: the selected tag's close button is named "Remove <name>".
+  const checkbox = page.getByLabel(name, { exact: true });
   await expect(checkbox).toBeVisible({ timeout: LONG_TIMEOUT });
   const checkboxId = await checkbox.getAttribute("id");
   if (!checkboxId) {
@@ -113,7 +116,8 @@ export async function clickMicrobiologyOrderTest(page: Page, name: string) {
 }
 
 export async function selectMicrobiologyOrderTest(page: Page, name: string) {
-  const checkbox = page.getByLabel(name);
+  // exact: the selected tag's close button is named "Remove <name>".
+  const checkbox = page.getByLabel(name, { exact: true });
   if (!(await checkbox.isChecked())) {
     await clickMicrobiologyOrderTest(page, name);
   }

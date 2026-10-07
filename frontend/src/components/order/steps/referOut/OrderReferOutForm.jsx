@@ -4,6 +4,8 @@ import { format } from "date-fns";
 import {
   Button,
   ComboBox,
+  Select,
+  SelectItem,
   TextInput,
   TextArea,
   TimePicker,
@@ -13,9 +15,11 @@ import {
   Column,
 } from "@carbon/react";
 import CustomDatePicker from "../../../common/CustomDatePicker";
+import { filterByTypedLabel } from "../../comboFilter";
 
 const EMPTY_VALUES = {
   referredInstituteId: "",
+  referralReasonId: "",
   agreementReference: "",
   handoffDate: "",
   handoffTime: "",
@@ -29,6 +33,7 @@ const EMPTY_VALUES = {
 const OrderReferOutForm = ({
   initialValues = {},
   referralOrganizations = [],
+  referralReasons = [],
   onSave,
   onCancel,
   isSaving = false,
@@ -53,6 +58,7 @@ const OrderReferOutForm = ({
   const [values, setValues] = useState(() => ({
     ...EMPTY_VALUES,
     referredInstituteId: initialValues.referredInstituteId || "",
+    referralReasonId: initialValues.referralReasonId || "",
     agreementReference: initialValues.agreementReference || "",
     expectedReturnDate: initialValues.expectedReturnDate || "",
     cocContactName: initialValues.cocContactName || "",
@@ -165,6 +171,7 @@ const OrderReferOutForm = ({
 
     onSave({
       referredInstituteId: values.referredInstituteId,
+      referralReasonId: values.referralReasonId,
       referredSendDate: handoffDatetime ? values.handoffDate : "",
       agreementReference: values.agreementReference.trim(),
       handoffDatetime,
@@ -189,6 +196,7 @@ const OrderReferOutForm = ({
               })}
               items={referralOrganizations}
               itemToString={(item) => (item ? item.value : "")}
+              shouldFilterItem={filterByTypedLabel(selectedOrg?.value)}
               selectedItem={selectedOrg}
               onChange={({ selectedItem }) =>
                 setField(
@@ -203,6 +211,32 @@ const OrderReferOutForm = ({
                 defaultMessage: "Select a referring lab",
               })}
             />
+          </Column>
+          <Column lg={8} md={4} sm={4}>
+            <Select
+              id="referOut-reason"
+              labelText={intl.formatMessage({
+                id: "label.referOut.field.reason",
+                defaultMessage: "Reason",
+              })}
+              value={values.referralReasonId}
+              onChange={(e) => setField("referralReasonId", e.target.value)}
+            >
+              <SelectItem
+                value=""
+                text={intl.formatMessage({
+                  id: "label.referOut.field.reason.placeholder",
+                  defaultMessage: "Select a reason (optional)",
+                })}
+              />
+              {referralReasons.map((reason) => (
+                <SelectItem
+                  key={reason.id}
+                  value={reason.id}
+                  text={reason.value}
+                />
+              ))}
+            </Select>
           </Column>
           <Column lg={8} md={4} sm={4}>
             <TextInput

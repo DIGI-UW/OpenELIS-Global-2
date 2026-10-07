@@ -12,7 +12,6 @@ const CustomSelect = (props) => {
         onChange={handleSelect}
         labelText={props.labelText || ""}
         id={props.id}
-        defaultValue={props.value ? props.value : ""}
         value={props.value ? props.value : ""}
         disabled={props.disabled}
       >

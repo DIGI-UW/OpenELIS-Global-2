@@ -38,6 +38,15 @@ public class EQALabEnrollmentTestMap extends BaseObject<Long> {
     @Column(name = "panel_id")
     private Long panelId;
 
+    /**
+     * The analyte this test reports for the scheme (qa/030). Auto-submission needs
+     * it because eqa_participant_result.analyte_id is NOT NULL and the clinical
+     * catalog cannot supply one: result.analyte_id is filled from test_analyte,
+     * which most test configurations do not have.
+     */
+    @Column(name = "analyte_id")
+    private Long analyteId;
+
     @Column(name = "sys_user_id", nullable = false)
     private String sysUserId;
 

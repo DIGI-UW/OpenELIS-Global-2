@@ -12,11 +12,15 @@ import {
 } from "@carbon/react";
 import { Printer, Warning } from "@carbon/icons-react";
 import OrderWorkflowLayout from "../OrderWorkflowLayout";
-import SaveFailureNotice from "../SaveFailureNotice";
+import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import InlineNceForm from "../../nonconform/common/InlineNceForm";
 import { useOrderContext } from "../OrderContext";
 import { useNewOrderReset } from "../useNewOrderReset";
-import { describeUnmetRequirements } from "../saveRequirements";
+import {
+  describeUnmetRequirements,
+  hasRequesterOrRequestor,
+} from "../saveRequirements";
+import SaveRequirementsNotice from "../SaveRequirementsNotice";
 import { NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -40,6 +44,7 @@ const VectorOrderEnter = () => {
   const {
     orderData,
     setOrderData,
+    seedOrderData,
     samples,
     setSamples,
     labNumber,
@@ -67,7 +72,7 @@ const VectorOrderEnter = () => {
     const current =
       orderData?.sampleOrderItems?.environmentalFields?.workflowType;
     if (current !== WORKFLOW_TYPE) {
-      setOrderData((prev) => ({
+      seedOrderData((prev) => ({
         ...prev,
         patientUpdateStatus: "NO_ACTION",
         patientProperties: {
@@ -98,9 +103,9 @@ const VectorOrderEnter = () => {
   }, [labNumber, orderData?.sampleOrderItems?.labNo, location.pathname]);
 
   const handleLabNumberChange = useCallback(
-    (newLabNo) => {
+    (newLabNo, { generated = false } = {}) => {
       setLocalLabNumber(newLabNo);
-      setOrderData((prev) => ({
+      (generated ? seedOrderData : setOrderData)((prev) => ({
         ...prev,
         sampleOrderItems: {
           ...prev.sampleOrderItems,
@@ -108,7 +113,7 @@ const VectorOrderEnter = () => {
         },
       }));
     },
-    [setOrderData],
+    [setOrderData, seedOrderData],
   );
 
   const envFields = orderData?.sampleOrderItems?.environmentalFields || {};
@@ -126,6 +131,10 @@ const VectorOrderEnter = () => {
     {
       met: hasCollectionSite,
       labelId: "order.save.requirement.collectionSite",
+    },
+    {
+      met: hasRequesterOrRequestor(orderData?.sampleOrderItems),
+      labelId: "order.save.requirement.requesterOrRequestor",
     },
     { met: hasSampleTypes, labelId: "order.save.requirement.sampleType" },
   ];
@@ -154,7 +163,7 @@ const VectorOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -175,7 +184,7 @@ const VectorOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -206,7 +215,7 @@ const VectorOrderEnter = () => {
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "server.error.msg" }),
+        message: saveFailureMessage(intl, error),
       });
       setNotificationVisible(true);
     }
@@ -216,6 +225,7 @@ const VectorOrderEnter = () => {
     <OrderWorkflowLayout
       title="order.step.enter"
       canProceed={canProceed}
+      canSave={canSave}
       onSave={handleSave}
       onSaveAndNext={handleSaveAndNext}
       extraButtons={
@@ -352,6 +362,7 @@ const VectorOrderEnter = () => {
           orderData={orderData}
           setOrderData={setOrderData}
           isReadOnly={isReadOnly && !isEditMode}
+          domain="VECTOR"
         />
 
         {/* Sample & Test Selection */}
@@ -377,6 +388,7 @@ const VectorOrderEnter = () => {
           labNumber={localLabNumber}
           isReadOnly={isReadOnly && !isEditMode}
         />
+        <SaveRequirementsNotice requirements={saveRequirements} />
       </Stack>
     </OrderWorkflowLayout>
   );

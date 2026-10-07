@@ -66,6 +66,13 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
     private boolean voided = false;
     private boolean labPerformedSampling = false;
     private String voidReason;
+    private String receivedById;
+    private String arrivalCondition;
+    private BigDecimal arrivalTemperature;
+    private String arrivalRecordedById;
+    private Timestamp arrivalRecordedAt;
+    private transient boolean arrivalTemperatureRejected;
+    private transient boolean receivedByDefaulted;
 
     private String collectionLocationId;
     private String collectionNotes;
@@ -384,6 +391,78 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
 
     public void setLabPerformedSampling(boolean labPerformedSampling) {
         this.labPerformedSampling = labPerformedSampling;
+    }
+
+    /** The system user who received the sample at the laboratory (OGC-1424). */
+    public String getReceivedById() {
+        return receivedById;
+    }
+
+    public void setReceivedById(String receivedById) {
+        this.receivedById = receivedById;
+    }
+
+    /**
+     * The condition the sample arrived in, an {@code ArrivalCondition} name, or
+     * null when not recorded (OGC-1424).
+     */
+    public String getArrivalCondition() {
+        return arrivalCondition;
+    }
+
+    public void setArrivalCondition(String arrivalCondition) {
+        this.arrivalCondition = arrivalCondition;
+    }
+
+    /** The measured temperature on arrival in degrees C, optional. */
+    public BigDecimal getArrivalTemperature() {
+        return arrivalTemperature;
+    }
+
+    public void setArrivalTemperature(BigDecimal arrivalTemperature) {
+        this.arrivalTemperature = arrivalTemperature;
+    }
+
+    public String getArrivalRecordedById() {
+        return arrivalRecordedById;
+    }
+
+    public void setArrivalRecordedById(String arrivalRecordedById) {
+        this.arrivalRecordedById = arrivalRecordedById;
+    }
+
+    /**
+     * Set when a step save sent a measured temperature that could not be stored
+     * (not a number, or outside -100 to 60 °C), so the save keeps the stored value
+     * instead of clearing it. Not persisted.
+     */
+    /**
+     * Set when the receiver was not chosen but defaulted to the saving user, so an
+     * update only keeps it when the receipt itself is recorded in that save. Not
+     * persisted.
+     */
+    public boolean isReceivedByDefaulted() {
+        return receivedByDefaulted;
+    }
+
+    public void setReceivedByDefaulted(boolean receivedByDefaulted) {
+        this.receivedByDefaulted = receivedByDefaulted;
+    }
+
+    public boolean isArrivalTemperatureRejected() {
+        return arrivalTemperatureRejected;
+    }
+
+    public void setArrivalTemperatureRejected(boolean arrivalTemperatureRejected) {
+        this.arrivalTemperatureRejected = arrivalTemperatureRejected;
+    }
+
+    public Timestamp getArrivalRecordedAt() {
+        return arrivalRecordedAt;
+    }
+
+    public void setArrivalRecordedAt(Timestamp arrivalRecordedAt) {
+        this.arrivalRecordedAt = arrivalRecordedAt;
     }
 
     public String getCollectionLocationId() {

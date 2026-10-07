@@ -1,4 +1,11 @@
 import React, { useContext, useState, useEffect } from "react";
+import {
+  DEFAULT_SERVER_PAGE_SIZE,
+  serverPageSizeFrom,
+  startingRecNoFor,
+} from "../../utils/offsetPaging";
+import { serverPageArrowsProps } from "../../utils/serverPaging";
+import ServerPageArrows from "../../common/ServerPageArrows";
 import type { ChangeEvent, FormEvent, ReactNode } from "react";
 import {
   Heading,
@@ -99,7 +106,6 @@ function OrganizationManagement() {
   const intl = useIntl();
 
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(10);
   const [deactivateButton, setDeactivateButton] = useState(true);
   const [modifyButton, setModifyButton] = useState(true);
   const [selectedRowIds, setSelectedRowIds] = useState<string[]>([]);
@@ -109,10 +115,12 @@ function OrganizationManagement() {
   const [isSearching, setIsSearching] = useState(false);
   const [panelSearchTerm, setPanelSearchTerm] = useState("");
   const [totalRecordCount, setTotalRecordCount] = useState("");
-  const [startingRecNo, setStartingRecNo] = useState<number | string>(1);
   const [fromRecordCount, setFromRecordCount] = useState("");
   const [toRecordCount, setToRecordCount] = useState("");
-  const [paging, setPaging] = useState(1);
+  const [serverPageSize, setServerPageSize] = useState(
+    DEFAULT_SERVER_PAGE_SIZE,
+  );
+  const startingRecNo = startingRecNoFor(page, serverPageSize);
   const [organizationsManagmentListShow, setOrganizationsManagmentListShow] =
     useState<OrganizationTableRow[]>([]);
 
@@ -127,22 +135,9 @@ function OrganizationManagement() {
     );
   }
 
-  const handleNextPage = () => {
-    setPaging((pager) => Math.max(pager, 2));
-    setStartingRecNo(fromRecordCount);
-    setSelectedRowIds([]);
-  };
-
-  const handlePreviousPage = () => {
-    setPaging((pager) => Math.max(pager - 1, 1));
-    setStartingRecNo(Math.max(fromRecordCount as unknown as number, 1));
-    setSelectedRowIds([]);
-  };
-
   const handlePanelSearchChange = (event: ChangeEvent<HTMLInputElement>) => {
     setIsSearching(true);
-    setPaging(1);
-    setStartingRecNo(1);
+    setPage(1);
     const query = event.target.value;
     setPanelSearchTerm(query);
     setSelectedRowIds([]);
@@ -167,17 +162,22 @@ function OrganizationManagement() {
     invalidateServerData();
   };
 
-  const handlePageChange = ({
-    page,
-    pageSize,
-  }: {
-    page: number;
-    pageSize: number;
-  }) => {
-    setPage(page);
-    setPageSize(pageSize);
-    setSelectedRowIds([]);
+  const handlePageChange = ({ page: newPage }: { page: number }) => {
+    if (newPage !== page) {
+      setPage(newPage);
+      setSelectedRowIds([]);
+    }
   };
+  const arrows = serverPageArrowsProps({
+    paging: {
+      currentPage: page,
+      totalPages: Math.max(
+        Math.ceil((Number(totalRecordCount) || 0) / serverPageSize),
+        1,
+      ),
+    },
+    onPageRequest: (pageNumber) => handlePageChange({ page: pageNumber }),
+  });
 
   // Browsing and searching are the same list from two endpoints, so which one
   // is read follows the search box rather than both being read at once.
@@ -185,7 +185,7 @@ function OrganizationManagement() {
     useServerData<OrganizationMenuResponse>(
       panelSearchTerm
         ? `/rest/SearchOrganizationMenu?search=Y&startingRecNo=${startingRecNo}&searchString=${panelSearchTerm}`
-        : `/rest/OrganizationMenu?paging=${paging}&startingRecNo=${startingRecNo}`,
+        : `/rest/OrganizationMenu?startingRecNo=${startingRecNo}`,
     );
   const invalidateServerData = useInvalidateServerData();
 
@@ -213,6 +213,14 @@ function OrganizationManagement() {
       setFromRecordCount(organizationsManagmentList.fromRecordCount);
       setToRecordCount(organizationsManagmentList.toRecordCount);
       setTotalRecordCount(organizationsManagmentList.totalRecordCount);
+      setServerPageSize((previous) =>
+        serverPageSizeFrom(
+          organizationsManagmentList.fromRecordCount,
+          organizationsManagmentList.toRecordCount,
+          organizationsManagmentList.totalRecordCount,
+          previous,
+        ),
+      );
       setOrganizationsManagmentListShow(newOrganizationsManagementListArray);
     }
   }, [organizationsManagmentList]);
@@ -241,8 +249,7 @@ function OrganizationManagement() {
   useEffect(() => {
     if (isSearching && panelSearchTerm === "") {
       setIsSearching(false);
-      setPaging(1);
-      setStartingRecNo(1);
+      setPage(1);
     }
   }, [isSearching, panelSearchTerm]);
 
@@ -293,8 +300,6 @@ function OrganizationManagement() {
           fromRecordCount={fromRecordCount}
           toRecordCount={toRecordCount}
           totalRecordCount={totalRecordCount}
-          handlePreviousPage={handlePreviousPage}
-          handleNextPage={handleNextPage}
           deleteDeactivate={deleteDeactivateOrganizationManagament}
           id={selectedRowIds[0]}
           otherParmsInLink={`&startingRecNo=1`}
@@ -332,11 +337,9 @@ function OrganizationManagement() {
           <>
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
+                {arrows.show && <ServerPageArrows {...arrows} />}
                 <DataTable
-                  rows={organizationsManagmentListShow.slice(
-                    (page - 1) * pageSize,
-                    page * pageSize,
-                  )}
+                  rows={organizationsManagmentListShow}
                   headers={[
                     {
                       key: "select",
@@ -443,9 +446,10 @@ function OrganizationManagement() {
                 <Pagination
                   onChange={handlePageChange}
                   page={page}
-                  pageSize={pageSize}
-                  pageSizes={[10, 20]}
-                  totalItems={organizationsManagmentListShow.length}
+                  pageSize={serverPageSize}
+                  pageSizes={[serverPageSize]}
+                  pageSizeInputDisabled
+                  totalItems={Number(totalRecordCount) || 0}
                   forwardText={intl.formatMessage({
                     id: "pagination.forward",
                   })}

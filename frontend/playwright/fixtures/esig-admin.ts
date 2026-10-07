@@ -7,16 +7,37 @@
 import { Page, expect } from "@playwright/test";
 import { UI_TIMEOUT, NAV_TIMEOUT } from "../helpers/timeouts";
 
-export class SiteInformationPage {
-  constructor(private page: Page) {}
+/**
+ * The admin settings menus that share the same table + Modify + Save screen.
+ * Each shows one site_information domain: Site Information holds the identity
+ * settings (electronic signature), Result Entry Configuration the result ones.
+ */
+export type SettingsMenu =
+  | "SiteInformationMenu"
+  | "ResultConfigurationMenu"
+  | "SampleEntryConfigurationMenu";
 
-  /** Navigate to Admin > Site Information */
+const SETTINGS_MENU_HEADING: Record<SettingsMenu, RegExp> = {
+  SiteInformationMenu: /site information/i,
+  ResultConfigurationMenu: /result entry configuration/i,
+  SampleEntryConfigurationMenu: /order entry configuration/i,
+};
+
+export class SiteInformationPage {
+  constructor(
+    private page: Page,
+    private menu: SettingsMenu = "SiteInformationMenu",
+  ) {}
+
+  /** Navigate to the admin settings menu this page object was built for. */
   async goto() {
-    await this.page.goto("/MasterListsPage/SiteInformationMenu", {
+    await this.page.goto(`/MasterListsPage/${this.menu}`, {
       waitUntil: "domcontentloaded",
     });
     await expect(
-      this.page.getByRole("heading", { name: /site information/i }),
+      this.page.getByRole("heading", {
+        name: SETTINGS_MENU_HEADING[this.menu],
+      }),
     ).toBeVisible({ timeout: NAV_TIMEOUT });
   }
 
@@ -65,6 +86,27 @@ export class SiteInformationPage {
     ).toBeVisible({ timeout: NAV_TIMEOUT });
   }
 
+  /**
+   * Set a text site_information setting via the admin UI: select its row,
+   * Modify, replace the value, Save.
+   */
+  async setTextSetting(settingName: string, value: string) {
+    const row = this.page.locator("tr", { hasText: settingName });
+    await expect(row).toBeVisible({ timeout: UI_TIMEOUT });
+    await row.locator("label").first().click();
+    await this.page
+      .getByRole("button", { name: "Modify", exact: true })
+      .click();
+    const field = this.page.getByRole("textbox", { name: "Value" });
+    await expect(field).toBeVisible({ timeout: UI_TIMEOUT });
+    await field.fill(value);
+    await this.page.getByRole("button", { name: "Save", exact: true }).click();
+    await this.page.waitForLoadState("domcontentloaded");
+    await expect(
+      this.page.getByRole("button", { name: "Modify", exact: true }),
+    ).toBeVisible({ timeout: NAV_TIMEOUT });
+  }
+
   /** Read the current value of a setting from the table. */
   async getSettingValue(settingName: string): Promise<string> {
     const row = this.page.locator("tr", { hasText: settingName });
@@ -74,4 +116,35 @@ export class SiteInformationPage {
     const valueCell = cells.nth(3); // select, name, description, value
     return (await valueCell.textContent()) || "";
   }
+}
+
+/**
+ * Which admin menu each boolean setting is edited on: the e-signature flag
+ * lives in site identity, the patient sex and age rules in sample entry.
+ */
+const SETTING_MENU: Record<string, SettingsMenu> = {
+  electronicSignatureEnabled: "SiteInformationMenu",
+  "Patient sex required": "SampleEntryConfigurationMenu",
+  "Patient age required": "SampleEntryConfigurationMenu",
+};
+
+/** Read a boolean site_information setting off its admin menu. */
+export async function isSettingOn(
+  page: Page,
+  setting: string,
+): Promise<boolean> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  return /true/i.test(await menu.getSettingValue(setting));
+}
+
+/** Set a boolean site_information setting through its admin menu. */
+export async function setSetting(
+  page: Page,
+  setting: string,
+  on: boolean,
+): Promise<void> {
+  const menu = new SiteInformationPage(page, SETTING_MENU[setting]);
+  await menu.goto();
+  await menu.setBooleanSetting(setting, on);
 }

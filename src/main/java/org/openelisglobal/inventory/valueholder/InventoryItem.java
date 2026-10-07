@@ -39,6 +39,10 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
 
+    @Column(name = "code", nullable = false, unique = true, length = 64)
+    @Size(max = 64)
+    private String code;
+
     @Column(name = "name", nullable = false, length = 255)
     @NotNull
     @Size(min = 1, max = 255)

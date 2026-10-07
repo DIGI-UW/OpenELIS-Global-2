@@ -154,8 +154,9 @@ public class SampleEntryTestsForTypeProvider extends BaseQueryProvider {
         xml.append("<test>");
         XMLUtil.appendKeyValue("name", TestServiceImpl.getUserLocalizedTestName(test), xml);
         XMLUtil.appendKeyValue("id", test.getId(), xml);
-        XMLUtil.appendKeyValue("userBenchChoice",
-                String.valueOf(USER_TEST_SECTION_ID.equals(test.getTestSection().getId())), xml);
+        boolean userBenchChoice = test.getTestSection() != null
+                && USER_TEST_SECTION_ID.equals(test.getTestSection().getId());
+        XMLUtil.appendKeyValue("userBenchChoice", String.valueOf(userBenchChoice), xml);
         if (isVariableTypeOfSample) {
             addVariableSampleTypes(test, xml);
         }

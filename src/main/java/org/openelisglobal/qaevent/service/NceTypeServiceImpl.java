@@ -47,6 +47,16 @@ public class NceTypeServiceImpl extends AuditableBaseObjectServiceImpl<NceType, 
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<IdValuePair> getAllTypesAsIdValuePairs() {
+        List<IdValuePair> result = new ArrayList<>();
+        for (NceType row : baseObjectDAO.getAllNceType()) {
+            result.add(new IdValuePair(String.valueOf(row.getId()), row.getLocalizedName()));
+        }
+        return result;
+    }
+
+    @Override
     protected NceTypeDAO getBaseObjectDAO() {
         return baseObjectDAO;
     }

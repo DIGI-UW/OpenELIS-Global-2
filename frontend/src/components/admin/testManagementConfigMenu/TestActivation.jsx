@@ -9,6 +9,7 @@ import {
   Modal,
 } from "@carbon/react";
 import { postToOpenElisServerJsonResponse } from "../../utils/Utils";
+import { requestFailed } from "../../utils/requestOutcome";
 import {
   useInvalidateServerData,
   useServerData,
@@ -672,13 +673,13 @@ function TestActivation() {
   }
 
   function testActivationPostCallback(res) {
-    if (res) {
+    if (!requestFailed(res)) {
       addNotification({
         title: intl.formatMessage({
           id: "notification.title",
         }),
         message: intl.formatMessage({
-          id: "notification.user.post.save.success",
+          id: "save.success",
         }),
         kind: NotificationKinds.success,
       });
@@ -1214,7 +1215,7 @@ function TestActivation() {
       <Modal
         open={isConfirmModalOpen}
         size="md"
-        modalHeading={<FormattedMessage id="label.test.order.confirm" />}
+        modalHeading={<FormattedMessage id="label.test.activation.confirm" />}
         primaryButtonText={<FormattedMessage id="column.name.accept" />}
         secondaryButtonText={<FormattedMessage id="back.action.button" />}
         onRequestSubmit={() => {

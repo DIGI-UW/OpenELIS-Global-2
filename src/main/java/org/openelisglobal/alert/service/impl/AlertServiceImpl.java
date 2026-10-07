@@ -126,6 +126,9 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
     public Alert acknowledgeAlert(Long alertId, Integer userId, String acknowledgmentNotes) {
         Alert alert = alertDAO.get(alertId)
                 .orElseThrow(() -> new IllegalArgumentException("Alert not found: " + alertId));
+        if (alert.getStatus() != AlertStatus.OPEN) {
+            throw new IllegalStateException("Only an open alert can be acknowledged");
+        }
 
         SystemUser user = systemUserService.get(userId.toString());
         if (user == null) {
@@ -135,10 +138,6 @@ public class AlertServiceImpl extends BaseObjectServiceImpl<Alert, Long> impleme
         alert.setStatus(AlertStatus.ACKNOWLEDGED);
         alert.setAcknowledgedAt(OffsetDateTime.now());
         alert.setAcknowledgedBy(user);
-        // Assigned unconditionally, as resolveAlert does with resolutionNotes: a
-        // re-acknowledgment moves acknowledgedAt forward, so leaving an earlier note
-        // in place would attribute it to an acknowledgment that did not produce it,
-        // and a note entered by mistake could never be cleared.
         alert.setAcknowledgmentNotes(
                 acknowledgmentNotes == null || acknowledgmentNotes.isBlank() ? null : acknowledgmentNotes);
 

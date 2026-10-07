@@ -61,7 +61,7 @@ RUN --mount=type=cache,target=/root/.m2,sharing=locked \
 ##
 # Run Stage
 #
-FROM tomcat:10-jre21
+FROM tomcat:10-jre21 AS dev-runtime
 
 ADD install/createDefaultPassword.sh ./
 
@@ -72,7 +72,6 @@ RUN rm -rf /usr/local/tomcat/webapps/* \
 
 #Deploy the war into tomcat image and point root to it
 ADD install/tomcat-resources/ROOT.war /usr/local/tomcat/webapps/ROOT.war
-COPY --from=build /build/target/OpenELIS-Global.war /usr/local/tomcat/webapps/OpenELIS-Global.war
 
 #rewrite cataline.properties with our catalina.properties so it contains:
 #    org.apache.catalina.STRICT_SERVLET_COMPLIANCE=true
@@ -118,3 +117,8 @@ RUN chown tomcat_admin:tomcat /docker-entrypoint.sh; \
 USER root
 
 ENTRYPOINT [ "/docker-entrypoint.sh" ]
+
+# The local launcher mounts its already-built WAR onto the same runtime stage.
+# Published development images retain the complete application.
+FROM dev-runtime AS packaged
+COPY --from=build /build/target/OpenELIS-Global.war /usr/local/tomcat/webapps/OpenELIS-Global.war

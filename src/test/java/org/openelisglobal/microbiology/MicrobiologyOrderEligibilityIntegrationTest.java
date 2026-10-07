@@ -67,10 +67,18 @@ public class MicrobiologyOrderEligibilityIntegrationTest extends BaseWebContextS
     private Patient patient;
     private TypeOfSample sampleType;
 
+    /**
+     * The orders here are saved through the real services, which take the analysis
+     * status from the JVM-wide status cache. A sibling class that reloads
+     * {@code status_of_sample} leaves that cache stale, and a stale lookup answers
+     * {@code -1}, which the analysis insert then fails on. Provision the workflow
+     * statuses (and refresh the cache) first, as the other microbiology tests do.
+     */
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        fixtures.ensureRequiredWorkflowStatuses();
         userId = fixtures.defaultUserId();
         String methodId = fixtures.createMethodId();
         fixtures.createReferenceData(methodId);

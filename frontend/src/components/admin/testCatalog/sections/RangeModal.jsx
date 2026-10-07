@@ -80,6 +80,8 @@ const RangeModal = ({
         highCritical: "",
         lowValid: "",
         highValid: "",
+        lowReporting: "",
+        highReporting: "",
       };
     }
     return {
@@ -95,15 +97,19 @@ const RangeModal = ({
       highCritical: numOrEmpty(range.highCritical),
       lowValid: numOrEmpty(range.lowValid),
       highValid: numOrEmpty(range.highValid),
+      lowReporting: numOrEmpty(range.lowReporting),
+      highReporting: numOrEmpty(range.highReporting),
     };
   });
   const [ageError, setAgeError] = useState(false);
   const [boundsError, setBoundsError] = useState(false);
+  const [reportingError, setReportingError] = useState(false);
 
   const set = (patch) =>
     setDraft((prev) => {
       setAgeError(false);
       setBoundsError(false);
+      setReportingError(false);
       return { ...prev, ...patch };
     });
 
@@ -138,6 +144,16 @@ const RangeModal = ({
         return;
       }
     }
+    const lowReporting = parseOrNull(draft.lowReporting);
+    const highReporting = parseOrNull(draft.highReporting);
+    if (
+      lowReporting !== null &&
+      highReporting !== null &&
+      lowReporting > highReporting
+    ) {
+      setReportingError(true);
+      return;
+    }
     onSave({
       id: draft.id,
       componentId: draft.componentId || null,
@@ -151,6 +167,8 @@ const RangeModal = ({
       highCritical: parseOrNull(draft.highCritical),
       lowValid: parseOrNull(draft.lowValid),
       highValid: parseOrNull(draft.highValid),
+      lowReporting,
+      highReporting,
     });
   };
 
@@ -295,6 +313,26 @@ const RangeModal = ({
           {numField("lowValid", "label.testCatalog.ranges.modal.lowValid")}
           {numField("highValid", "label.testCatalog.ranges.modal.highValid")}
         </div>
+        <div style={{ display: "flex", gap: "1rem" }}>
+          {numField(
+            "lowReporting",
+            "label.testCatalog.ranges.modal.lowReporting",
+          )}
+          {numField(
+            "highReporting",
+            "label.testCatalog.ranges.modal.highReporting",
+          )}
+        </div>
+        {reportingError && (
+          <InlineNotification
+            kind="error"
+            lowContrast
+            hideCloseButton
+            title={intl.formatMessage({
+              id: "error.testCatalog.ranges.reportingInverted",
+            })}
+          />
+        )}
         {boundsError && (
           <InlineNotification
             kind="error"

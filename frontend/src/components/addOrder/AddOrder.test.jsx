@@ -3,6 +3,7 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
+import { ConfigurationContext } from "../layout/Layout";
 
 // ---------------------------------------------------------------------------
 // OGC-285 M5b — AddOrder mounts ONE order-level LabelsSection (API mode), fed by
@@ -273,6 +274,49 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
       { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
     ]);
   });
+
+  test("carries the proposed quantities as labelPersistRequest when the section is left untouched", async () => {
+    wireAggregationResponse(labelRequestFixture());
+    const { setOrderFormValues } = renderAddOrder();
+    expect(await screen.findByTestId("labels-section-root")).toBeVisible();
+
+    // A save made without touching the section used to carry no label request
+    // at all, so the presets' defaults never reached the order (OGC-1219).
+    const updater = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => typeof arg === "function");
+    expect(updater).toBeTruthy();
+
+    const next = updater(baseOrderFormValues());
+    expect(next.labelPersistRequest.order_cells).toEqual([
+      { preset_id: 1, qty: 2 },
+    ]);
+    expect(next.labelPersistRequest.sample_rows).toEqual([
+      { sample_id_local: "0", cells: [{ preset_id: 17, qty: 1 }] },
+      { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
+    ]);
+  });
+
+  test("offers no labels section and lifts no label request on Modify Order", () => {
+    wireAggregationResponse(labelRequestFixture());
+    const { setOrderFormValues } = renderAddOrder({ isModifyOrder: true });
+
+    // Modify Order saves through /rest/SampleEdit, which rejects an unknown
+    // labelPersistRequest with a 400, so nothing label-related may reach it.
+    expect(
+      utilsMock.postToOpenElisServerJsonResponse.mock.calls.some(
+        (c) => c[0] === "/api/orderEntry/labelRequest",
+      ),
+    ).toBe(false);
+    expect(screen.queryByTestId("labels-section-root")).toBeNull();
+    const lifted = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .filter((arg) => typeof arg === "function")
+      .map((updater) => updater(baseOrderFormValues()))
+      .some((next) => "labelPersistRequest" in next);
+    expect(lifted).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -519,5 +563,145 @@ describe("AddOrder — Lab Number reassignment is deliberate on modify (OGC-1191
       .reverse()
       .find((arg) => arg && "newAccessionNumber" in arg);
     expect(cleared.newAccessionNumber).toBe("");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1366 — the priority select sent the label "Routine" instead of the enum
+// code ROUTINE, so SampleEdit answered 400 and the order kept its old priority.
+// ---------------------------------------------------------------------------
+describe("AddOrder — priority select (OGC-1366)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+  });
+
+  test("offers every OrderPriority code with its translated label", () => {
+    const { container } = renderAddOrder();
+
+    const options = within(container.querySelector("#priorityId")).getAllByRole(
+      "option",
+    );
+    expect(options.map((o) => [o.value, o.textContent])).toEqual([
+      ["ROUTINE", messages["sample.priority.ROUTINE"]],
+      ["ASAP", messages["sample.priority.ASAP"]],
+      ["STAT", messages["sample.priority.STAT"]],
+      ["TIMED", messages["sample.priority.TIMED"]],
+      ["FUTURE_STAT", messages["sample.priority.FUTURE_STAT"]],
+    ]);
+  });
+
+  test("choosing Routine on a STAT order stores the code ROUTINE", () => {
+    const stat = baseOrderFormValues();
+    stat.sampleOrderItems.priority = "STAT";
+    const { setOrderFormValues, container } = renderAddOrder({
+      orderFormValues: stat,
+    });
+
+    fireEvent.change(container.querySelector("#priorityId"), {
+      target: { value: "ROUTINE" },
+    });
+
+    const updated = setOrderFormValues.mock.calls
+      .map(([arg]) => arg)
+      .reverse()
+      .find((arg) => arg?.sampleOrderItems?.priority);
+    expect(updated.sampleOrderItems.priority).toBe("ROUTINE");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// OGC-1375 — requester names are marked for assistive technology when the site
+// requires them, and a blank "Date of next visit" is not filled in with today.
+// ---------------------------------------------------------------------------
+describe("AddOrder — requester marking and next visit default (OGC-1375)", () => {
+  beforeEach(() => {
+    utilsMock.getFromOpenElisServer.mockReset();
+    utilsMock.postToOpenElisServerJsonResponse.mockReset();
+  });
+
+  const renderWithRequesterRequired = (requesterRequired) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{
+            configurationProperties: {
+              restrictFreeTextProviderEntry: "false",
+              REQUESTER_REQUIRED: requesterRequired,
+              currentDateAsText: "29/09/2026",
+            },
+          }}
+        >
+          <AddOrder
+            orderFormValues={baseOrderFormValues()}
+            setOrderFormValues={vi.fn()}
+            samples={samplesFixture()}
+            error={() => null}
+            isModifyOrder={false}
+            changed={{}}
+            setChanged={vi.fn()}
+            stagedAttachments={[]}
+            setStagedAttachments={vi.fn()}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+  test("requester names carry aria-required when REQUESTER_REQUIRED is on", () => {
+    const { container } = renderWithRequesterRequired("true");
+
+    expect(container.querySelector("#requesterFirstName")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+    expect(container.querySelector("#requesterLastName")).toHaveAttribute(
+      "aria-required",
+      "true",
+    );
+  });
+
+  test("requester names are not marked when REQUESTER_REQUIRED is off", () => {
+    const { container } = renderWithRequesterRequired("false");
+
+    expect(container.querySelector("#requesterFirstName")).not.toHaveAttribute(
+      "aria-required",
+    );
+  });
+
+  test("the first render fills request and received dates but leaves next visit blank", () => {
+    const setOrderFormValues = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{
+            configurationProperties: {
+              restrictFreeTextProviderEntry: "false",
+              currentDateAsText: "29/09/2026",
+            },
+          }}
+        >
+          <AddOrder
+            orderFormValues={baseOrderFormValues()}
+            setOrderFormValues={setOrderFormValues}
+            samples={samplesFixture()}
+            error={() => null}
+            isModifyOrder={false}
+            changed={{}}
+            setChanged={vi.fn()}
+            stagedAttachments={[]}
+            setStagedAttachments={vi.fn()}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+    const initialised = setOrderFormValues.mock.calls
+      .map(([arg]) => arg)
+      .find((arg) => arg?.sampleOrderItems?.requestDate === "29/09/2026");
+    expect(initialised).toBeDefined();
+    expect(initialised.sampleOrderItems.receivedDateForDisplay).toBe(
+      "29/09/2026",
+    );
+    expect(initialised.sampleOrderItems.nextVisitDate || "").toBe("");
   });
 });

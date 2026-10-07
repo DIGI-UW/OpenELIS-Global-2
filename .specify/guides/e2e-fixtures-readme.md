@@ -11,8 +11,10 @@ consistent.
   `--profile=harness` for analyzer harness lane)
 - **Overview**: `src/test/resources/FIXTURE_LOADER_README.md`
 
-This loader is the preferred way to ensure baseline E2E data exists (patients,
-samples, storage hierarchy, etc.).
+This internal loader supplies baseline data to the isolated CI lane runners.
+Use `scripts/run-ci-checks.sh` to run those lanes. Interactive and manual
+development use `scripts/dev-stack` and application scenarios; do not run this
+loader against a development database.
 
 ## Cypress usage
 

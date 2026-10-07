@@ -8,6 +8,7 @@ import org.junit.After;
 import org.junit.Before;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.common.services.StaleSaveGuard;
 import org.openelisglobal.login.valueholder.UserSessionData;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
@@ -21,6 +22,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpSession;
+import org.springframework.test.util.ReflectionTestUtils;
 
 /**
  * OGC-748 Basic Info — round-trip against a real DB: load a test's basic-info,
@@ -35,9 +37,13 @@ import org.springframework.mock.web.MockHttpSession;
 public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSensitiveTest {
 
     private static final long TEST_ID = 95001L;
+    private static final long LAB_UNIT_ID = 95090L;
 
     @Autowired
     private TestService testService;
+
+    @Autowired
+    private StaleSaveGuard staleSaveGuard;
 
     @Autowired
     private TestResultComponentService componentService;
@@ -143,6 +149,44 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertTrue(!Boolean.TRUE.equals(reloaded.getOrderable()));
     }
 
+    /**
+     * OGC-1376: an editor opened before someone else saved the test used to save
+     * everything it showed, silently undoing that change.
+     */
+    @org.junit.Test
+    public void basicInfo_aSaveFromAStaleEditorIsRefusedAndChangesNothing() {
+        ReflectionTestUtils.setField(controller, "staleSaveGuard", staleSaveGuard);
+        String loaded = controller.getBasicInfo(String.valueOf(TEST_ID)).getBody().lastupdated;
+        BasicInfo stale = new BasicInfo();
+        stale.orderable = false;
+        stale.lastupdated = String.valueOf(Long.parseLong(loaded) - 60_000);
+
+        ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), stale, authedRequest());
+
+        assertEquals(409, resp.getStatusCode().value());
+        assertEquals("stale", resp.getBody().conflict);
+        assertEquals("error.testCatalog.staleSave", resp.getBody().messageKey);
+        assertEquals(loaded, resp.getBody().lastupdated);
+        assertTrue(Boolean.TRUE.equals(testService.getTestById(String.valueOf(TEST_ID)).getOrderable()));
+    }
+
+    @org.junit.Test
+    public void basicInfo_consecutiveSavesWithTheReturnedVersionAreAccepted() {
+        ReflectionTestUtils.setField(controller, "staleSaveGuard", staleSaveGuard);
+        BasicInfo first = new BasicInfo();
+        first.orderable = false;
+        first.lastupdated = controller.getBasicInfo(String.valueOf(TEST_ID)).getBody().lastupdated;
+        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(String.valueOf(TEST_ID), first, authedRequest());
+        assertEquals(200, saved.getStatusCode().value());
+
+        BasicInfo second = new BasicInfo();
+        second.orderable = true;
+        second.lastupdated = saved.getBody().lastupdated;
+        assertEquals(200,
+                controller.saveBasicInfo(String.valueOf(TEST_ID), second, authedRequest()).getStatusCode().value());
+        assertTrue(Boolean.TRUE.equals(testService.getTestById(String.valueOf(TEST_ID)).getOrderable()));
+    }
+
     @org.junit.Test
     public void basicInfo_rejectsInvalidDomain() {
         BasicInfo bad = new BasicInfo();
@@ -176,8 +220,8 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         assertEquals(String.valueOf(TEST_ID), env.testId);
         assertEquals("CLINICAL", env.domain);
         // The full v1 section set, in order, is the whole point of the envelope (M2).
-        assertEquals(java.util.List.of("basic-info", "sample-results", "methods", "ranges", "storage", "panels",
-                "terminology", "analyzers", "display-order"), env.applicableSections);
+        assertEquals(java.util.List.of("basic-info", "sample-results", "methods", "ranges", "qc-targets", "storage",
+                "panels", "terminology", "analyzers", "display-order"), env.applicableSections);
     }
 
     @org.junit.Test
@@ -277,18 +321,18 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
                     id, "ListIT-" + id, "ListIT-" + id, UUID.randomUUID().toString(), dom);
         }
 
-        TestCatalogEditorRestController.TestListPage vector = controller.listTests("VECTOR", "all", null, null,
+        TestCatalogEditorRestController.TestListPage vector = controller.listTests("VECTOR", "all", null, null, null,
                 "ListIT-", false, 1, 25);
         assertEquals(1, vector.total);
         assertEquals("VECTOR", vector.rows.get(0).domain);
 
-        TestCatalogEditorRestController.TestListPage all = controller.listTests(null, "all", null, null, "ListIT-",
-                false, 1, 2);
+        TestCatalogEditorRestController.TestListPage all = controller.listTests(null, "all", null, null, null,
+                "ListIT-", false, 1, 2);
         assertEquals(3, all.total);
         assertEquals(2, all.rows.size()); // page size 2 of 3 total
 
-        TestCatalogEditorRestController.TestListPage page2 = controller.listTests(null, "all", null, null, "ListIT-",
-                false, 2, 2);
+        TestCatalogEditorRestController.TestListPage page2 = controller.listTests(null, "all", null, null, null,
+                "ListIT-", false, 2, 2);
         assertEquals(1, page2.rows.size());
     }
 
@@ -298,9 +342,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95021L, "StatusIT-active2", "CLINICAL", true, false);
         seedTest(95022L, "StatusIT-inactive", "CLINICAL", false, false);
 
-        assertEquals(3, controller.listTests(null, "all", null, null, "StatusIT-", false, 1, 25).total);
-        assertEquals(2, controller.listTests(null, "active", null, null, "StatusIT-", false, 1, 25).total);
-        assertEquals(1, controller.listTests(null, "inactive", null, null, "StatusIT-", false, 1, 25).total);
+        assertEquals(3, controller.listTests(null, "all", null, null, null, "StatusIT-", false, 1, 25).total);
+        assertEquals(2, controller.listTests(null, "active", null, null, null, "StatusIT-", false, 1, 25).total);
+        assertEquals(1, controller.listTests(null, "inactive", null, null, null, "StatusIT-", false, 1, 25).total);
     }
 
     @org.junit.Test
@@ -309,9 +353,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95024L, "AmrIT-no1", "CLINICAL", true, false);
         seedTest(95025L, "AmrIT-no2", "CLINICAL", true, false);
 
-        assertEquals(3, controller.listTests(null, "all", null, null, "AmrIT-", false, 1, 25).total);
-        assertEquals(1, controller.listTests(null, "all", true, null, "AmrIT-", false, 1, 25).total);
-        assertEquals(2, controller.listTests(null, "all", false, null, "AmrIT-", false, 1, 25).total);
+        assertEquals(3, controller.listTests(null, "all", null, null, null, "AmrIT-", false, 1, 25).total);
+        assertEquals(1, controller.listTests(null, "all", true, null, null, "AmrIT-", false, 1, 25).total);
+        assertEquals(2, controller.listTests(null, "all", false, null, null, "AmrIT-", false, 1, 25).total);
     }
 
     @org.junit.Test
@@ -320,9 +364,9 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95027L, "alphaSrchIT", "CLINICAL", true, false);
 
         // a lowercase query matches both mixed-case names (case-insensitive)
-        assertEquals(2, controller.listTests(null, "all", null, null, "srchit", false, 1, 25).total);
+        assertEquals(2, controller.listTests(null, "all", null, null, null, "srchit", false, 1, 25).total);
         // a distinct fragment narrows to one
-        assertEquals(1, controller.listTests(null, "all", null, null, "ZEBRA", false, 1, 25).total);
+        assertEquals(1, controller.listTests(null, "all", null, null, null, "ZEBRA", false, 1, 25).total);
     }
 
     @org.junit.Test
@@ -332,11 +376,168 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
         seedTest(95030L, "cherry SortIT", "CLINICAL", true, false);
 
         java.util.List<TestCatalogEditorRestController.TestListRow> rows = controller.listTests(null, "all", null, null,
-                "SortIT", false, 1, 25).rows;
+                null, "SortIT", false, 1, 25).rows;
         assertEquals(3, rows.size());
         assertEquals("Apple SortIT", rows.get(0).name);
         assertEquals("banana SortIT", rows.get(1).name);
         assertEquals("cherry SortIT", rows.get(2).name);
+    }
+
+    @org.junit.Test
+    public void listTests_filtersByLabUnit() {
+        seedLabUnit();
+        seedTest(95031L, "Hema LabUnitIT", "CLINICAL", true, false);
+        seedTest(95032L, "Other LabUnitIT", "CLINICAL", true, false);
+        jdbc.update("UPDATE clinlims.test SET test_section_id = ? WHERE id = ?", LAB_UNIT_ID, 95031L);
+
+        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
+                String.valueOf(LAB_UNIT_ID), "LabUnitIT", false, 1, 25);
+
+        assertEquals(1, page.total);
+        assertEquals("Hema LabUnitIT", page.rows.get(0).name);
+        assertEquals(2, controller.listTests(null, "all", null, null, null, "LabUnitIT", false, 1, 25).total);
+    }
+
+    @org.junit.Test
+    public void basicInfo_roundTripsHoldingTimeInLabOnlyAndNotifyResults() {
+        BasicInfo update = new BasicInfo();
+        update.timeHolding = "120";
+        update.inLabOnly = true;
+        update.notifyResults = true;
+
+        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(String.valueOf(TEST_ID), update, authedRequest());
+
+        assertEquals(200, saved.getStatusCode().value());
+        assertEquals("120", saved.getBody().timeHolding);
+        assertTrue(saved.getBody().inLabOnly);
+        assertTrue(saved.getBody().notifyResults);
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertEquals("120", reloaded.getTimeHolding());
+        assertTrue(reloaded.isInLabOnly());
+        assertTrue(reloaded.isNotifyResults());
+    }
+
+    @org.junit.Test
+    public void basicInfo_aSaveWithoutTheNewFieldsLeavesThemAlone() {
+        jdbc.update(
+                "UPDATE clinlims.test SET time_holding = 90, in_lab_only = true, notify_results = true WHERE id = ?",
+                TEST_ID);
+        BasicInfo update = new BasicInfo();
+        update.orderable = false;
+
+        assertEquals(200,
+                controller.saveBasicInfo(String.valueOf(TEST_ID), update, authedRequest()).getStatusCode().value());
+
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertEquals("90", reloaded.getTimeHolding());
+        assertTrue(reloaded.isInLabOnly());
+        assertTrue(reloaded.isNotifyResults());
+    }
+
+    @org.junit.Test
+    public void basicInfo_aBlankHoldingTimeClearsItAndFalseFlagsTurnThemOff() {
+        jdbc.update(
+                "UPDATE clinlims.test SET time_holding = 90, in_lab_only = true, notify_results = true WHERE id = ?",
+                TEST_ID);
+        BasicInfo update = new BasicInfo();
+        update.timeHolding = "";
+        update.inLabOnly = false;
+        update.notifyResults = false;
+
+        assertEquals(200,
+                controller.saveBasicInfo(String.valueOf(TEST_ID), update, authedRequest()).getStatusCode().value());
+
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertEquals(null, reloaded.getTimeHolding());
+        assertTrue(!reloaded.isInLabOnly());
+        assertTrue(!reloaded.isNotifyResults());
+    }
+
+    @org.junit.Test
+    public void basicInfo_refusesAHoldingTimeThatIsNotAWholeNumberOfMinutes() {
+        jdbc.update("UPDATE clinlims.test SET time_holding = 90 WHERE id = ?", TEST_ID);
+        for (String bad : new String[] { "-5", "1.5", "two hours", "99999999999" }) {
+            BasicInfo update = new BasicInfo();
+            update.timeHolding = bad;
+            update.orderable = false;
+
+            ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), update, authedRequest());
+
+            assertEquals(bad, 422, resp.getStatusCode().value());
+            assertEquals(bad, "timeHolding", resp.getBody().invalidField);
+        }
+        Test reloaded = testService.getTestById(String.valueOf(TEST_ID));
+        assertEquals("90", reloaded.getTimeHolding());
+        assertTrue(Boolean.TRUE.equals(reloaded.getOrderable()));
+    }
+
+    @org.junit.Test
+    public void basicInfo_savesUpdatesAndClearsQcThresholds() {
+        BasicInfo create = new BasicInfo();
+        create.qcBlankThreshold = "0.5";
+        create.qcRpdThreshold = "20";
+        create.qcRecoveryWindowPct = "";
+
+        ResponseEntity<BasicInfo> saved = controller.saveBasicInfo(String.valueOf(TEST_ID), create, authedRequest());
+
+        assertEquals(200, saved.getStatusCode().value());
+        assertEquals("0.5", saved.getBody().qcBlankThreshold);
+        assertEquals("20", saved.getBody().qcRpdThreshold);
+        assertEquals("", saved.getBody().qcRecoveryWindowPct);
+        assertEquals(1, thresholdRows());
+
+        BasicInfo change = new BasicInfo();
+        change.qcBlankThreshold = "0.5";
+        change.qcRpdThreshold = "15";
+        change.qcRecoveryWindowPct = "10";
+        controller.saveBasicInfo(String.valueOf(TEST_ID), change, authedRequest());
+        assertEquals("15", testService.getQcThreshold(String.valueOf(TEST_ID)).get().getRpdThreshold()
+                .stripTrailingZeros().toPlainString());
+        assertEquals("10", testService.getQcThreshold(String.valueOf(TEST_ID)).get().getRecoveryWindowPct()
+                .stripTrailingZeros().toPlainString());
+
+        BasicInfo untouched = new BasicInfo();
+        untouched.orderable = true;
+        controller.saveBasicInfo(String.valueOf(TEST_ID), untouched, authedRequest());
+        assertEquals(1, thresholdRows());
+
+        BasicInfo clear = new BasicInfo();
+        clear.qcBlankThreshold = "";
+        clear.qcRpdThreshold = " ";
+        clear.qcRecoveryWindowPct = "";
+        ResponseEntity<BasicInfo> cleared = controller.saveBasicInfo(String.valueOf(TEST_ID), clear, authedRequest());
+        assertEquals(200, cleared.getStatusCode().value());
+        assertEquals(0, thresholdRows());
+        assertEquals("", cleared.getBody().qcBlankThreshold);
+    }
+
+    @org.junit.Test
+    public void basicInfo_refusesANegativeOrNonNumericQcThreshold() {
+        for (String bad : new String[] { "-1", "abc" }) {
+            BasicInfo update = new BasicInfo();
+            update.qcRpdThreshold = bad;
+            update.orderable = false;
+
+            ResponseEntity<BasicInfo> resp = controller.saveBasicInfo(String.valueOf(TEST_ID), update, authedRequest());
+
+            assertEquals(bad, 422, resp.getStatusCode().value());
+            assertEquals(bad, "qcRpdThreshold", resp.getBody().invalidField);
+        }
+        assertEquals(0, thresholdRows());
+        assertTrue(Boolean.TRUE.equals(testService.getTestById(String.valueOf(TEST_ID)).getOrderable()));
+    }
+
+    private int thresholdRows() {
+        return jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.test_qc_threshold WHERE test_id = ?", Integer.class,
+                TEST_ID);
+    }
+
+    private void seedLabUnit() {
+        jdbc.update("INSERT INTO clinlims.localization (id, description) VALUES (?, 'LabUnitIT')", LAB_UNIT_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_section (id, name, description, is_external, sort_order,"
+                        + " name_localization_id) VALUES (?, 'LabUnitIT', 'LabUnitIT', 'N', ?, ?)",
+                LAB_UNIT_ID, LAB_UNIT_ID, LAB_UNIT_ID);
     }
 
     private void seedTest(long id, String name, String domain, boolean active, boolean amr) {
@@ -347,7 +548,10 @@ public class TestCatalogEditorBasicInfoIntegrationTest extends BaseWebContextSen
 
     private void cleanup() {
         try {
+            jdbc.update("DELETE FROM clinlims.test_qc_threshold WHERE test_id = ?", TEST_ID);
             jdbc.update("DELETE FROM clinlims.test WHERE id = ? OR (id >= 95010 AND id <= 95099)", TEST_ID);
+            jdbc.update("DELETE FROM clinlims.test_section WHERE id = ?", LAB_UNIT_ID);
+            jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", LAB_UNIT_ID);
         } catch (Exception ignored) {
             // ignore
         }

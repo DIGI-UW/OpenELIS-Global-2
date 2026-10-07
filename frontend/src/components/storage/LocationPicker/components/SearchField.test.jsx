@@ -4,7 +4,7 @@
  * `hierarchicalPath` per result; clicking a result fires onSelect.
  */
 
-import React from "react";
+import React, { useState } from "react";
 import {
   render as rtlRender,
   screen,
@@ -324,6 +324,30 @@ describe("SearchField", () => {
     });
   });
 
+  it("leaves Space to the input so multi-word location names can be typed", () => {
+    const onSelect = vi.fn();
+    const preventDefault = vi.fn();
+    render(
+      <SearchField
+        query="Main"
+        results={[
+          { id: 1, type: "room", name: "Main Lab" },
+          { id: 2, type: "room", name: "Secondary Lab" },
+        ]}
+        onQueryChange={vi.fn()}
+        onResultsChange={vi.fn()}
+        onSelect={onSelect}
+      />,
+    );
+
+    const input = screen.getByRole("combobox");
+    fireEvent.keyDown(input, { key: "ArrowDown" });
+    fireEvent.keyDown(input, { key: " ", preventDefault });
+
+    expect(onSelect).not.toHaveBeenCalled();
+    expect(preventDefault).not.toHaveBeenCalled();
+  });
+
   it("calls onSelect with the picked result on click", () => {
     const onSelect = vi.fn();
     const result = {
@@ -345,6 +369,50 @@ describe("SearchField", () => {
       screen.getByRole("option", { name: /Main Lab > Freezer 1/ }),
     );
     expect(onSelect).toHaveBeenCalledWith(result);
+  });
+
+  it("does not search again for the path it just put in the input after a pick", () => {
+    const result = {
+      id: 5,
+      type: "device",
+      name: "Freezer 1",
+      hierarchicalPath: "Main Lab › Freezer 1",
+    };
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(url.includes("q=Free") ? [result] : []),
+    );
+    // The picker owns query/results; this stands in for its reducer.
+    function Harness() {
+      const [query, setQuery] = useState("Free");
+      const [results, setResults] = useState([]);
+      return (
+        <SearchField
+          query={query}
+          results={results}
+          onQueryChange={setQuery}
+          onResultsChange={setResults}
+          onSelect={vi.fn()}
+        />
+      );
+    }
+    render(<Harness />);
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(
+      screen.getByRole("option", { name: /Main Lab › Freezer 1/ }),
+    );
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+
+    expect(screen.getByRole("combobox")).toHaveValue("Main Lab › Freezer 1");
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
+    expect(
+      screen.queryByText(/no storage locations match/i),
+    ).not.toBeInTheDocument();
   });
 
   it("uses tabIndex=-1 on every option (canonical ARIA combobox: input is sole tab stop)", () => {
@@ -428,5 +496,53 @@ describe("SearchField", () => {
       />,
     );
     expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
+
+  test("testSearchField_NewCallbackIdentityEachRender_DoesNotRefetch", () => {
+    Utils.getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb([
+        {
+          id: 1,
+          type: "ROOM",
+          name: "Cold Room",
+          hierarchicalPath: "Cold Room",
+        },
+      ]),
+    );
+
+    // The real parent passes these as inline arrows, so every render hands the
+    // component a fresh identity. That must not retrigger the search, or each
+    // response re-renders and refetches forever.
+    const { rerender } = render(
+      <SearchField
+        query="col"
+        results={[]}
+        onQueryChange={() => {}}
+        onResultsChange={() => {}}
+        onSelect={() => {}}
+      />,
+    );
+
+    act(() => {
+      vi.advanceTimersByTime(300);
+    });
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
+
+    for (let i = 0; i < 3; i++) {
+      rerender(
+        <SearchField
+          query="col"
+          results={[]}
+          onQueryChange={() => {}}
+          onResultsChange={() => {}}
+          onSelect={() => {}}
+        />,
+      );
+    }
+
+    act(() => {
+      vi.advanceTimersByTime(1000);
+    });
+    expect(Utils.getFromOpenElisServer).toHaveBeenCalledTimes(1);
   });
 });

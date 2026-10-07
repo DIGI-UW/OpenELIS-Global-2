@@ -1,5 +1,6 @@
 package org.openelisglobal.esig.service;
 
+import java.sql.Timestamp;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.esig.valueholder.ElectronicSignature;
@@ -71,6 +72,47 @@ public interface ElectronicSignatureService extends BaseObjectService<Electronic
      * @return list of signatures ordered by most recent first
      */
     List<ElectronicSignature> getSignaturesByMeaning(SignatureMeaning meaning);
+
+    /**
+     * Get signatures within a date range (QA Overview activity feed).
+     *
+     * @param startDate start of range (inclusive)
+     * @param endDate   end of range (inclusive)
+     * @return list of signatures ordered by most recent first
+     */
+    List<ElectronicSignature> getSignaturesInDateRange(Timestamp startDate, Timestamp endDate);
+
+    /**
+     * Count signatures within a date range (QA Overview weekly counter).
+     *
+     * @param startDate start of range (inclusive)
+     * @param endDate   end of range (inclusive)
+     * @return number of signatures executed in the range
+     */
+    long countSignaturesInDateRange(Timestamp startDate, Timestamp endDate);
+
+    /**
+     * Search signatures with combined optional filters, paginated (E-Sig Log).
+     *
+     * @param startDate  start of range (inclusive, required)
+     * @param endDate    end of range (inclusive, required)
+     * @param signerId   optional signer filter
+     * @param meaning    optional meaning filter
+     * @param recordType optional record type filter
+     * @param page       0-based page index
+     * @param pageSize   rows per page
+     * @return matching page of signatures ordered by most recent first
+     */
+    List<ElectronicSignature> searchSignatures(Timestamp startDate, Timestamp endDate, Long signerId,
+            SignatureMeaning meaning, String recordType, int page, int pageSize);
+
+    /**
+     * Count signatures matching the same filters as searchSignatures.
+     *
+     * @return total matching rows across all pages
+     */
+    long countSearchSignatures(Timestamp startDate, Timestamp endDate, Long signerId, SignatureMeaning meaning,
+            String recordType);
 
     // ========================
     // First-Use Certification

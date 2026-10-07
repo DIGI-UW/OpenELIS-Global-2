@@ -79,4 +79,28 @@ describe("CollectTestPickerSection", () => {
     ]);
     expect(container).toBeEmptyDOMElement();
   });
+
+  // The tags used to pass dismissTooltipLabel alone, so every close button was
+  // named Carbon's English "Dismiss"; see removeLabel in the component for why
+  // both props are needed.
+  it("names each selected test and panel's close button after what it removes", () => {
+    renderPicker([
+      {
+        sampleTypeId: "5",
+        sampleTypeName: "Blood",
+        tests: [{ id: "9", name: "Malaria RDT" }],
+        panels: [{ id: "4", name: "Renal Panel" }],
+      },
+    ]);
+
+    expect(
+      screen.getByRole("button", { name: "Remove Malaria RDT" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Remove Renal Panel" }),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Dismiss" }),
+    ).not.toBeInTheDocument();
+  });
 });

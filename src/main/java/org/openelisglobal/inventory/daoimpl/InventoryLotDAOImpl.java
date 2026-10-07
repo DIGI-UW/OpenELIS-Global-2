@@ -57,7 +57,9 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             String hql = "FROM InventoryLot l " + "WHERE l.inventoryItem.id = :itemId "
                     + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
                     + "AND l.currentQuantity > 0 "
-                    + "ORDER BY l.expirationDate ASC NULLS LAST, l.calculatedExpiryAfterOpening ASC NULLS LAST";
+                    // Use the lowest of the printed expiration date and calculated
+                    // expiration date, ignoring any null values
+                    + "ORDER BY least(l.expirationDate, l.calculatedExpiryAfterOpening) ASC NULLS LAST";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
             query.setParameter("itemId", itemId);
@@ -139,19 +141,6 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             return results.isEmpty() ? null : results.get(0);
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting lot by barcode", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.storageLocation.id = :locationId ORDER BY l.expirationDate";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("locationId", locationId);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lots by storage location ID", e);
         }
     }
 
