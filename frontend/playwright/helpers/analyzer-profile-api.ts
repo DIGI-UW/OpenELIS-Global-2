@@ -62,7 +62,7 @@ export async function publish(page: Page, draft: Draft, tests: ProfileTest[]) {
   );
 }
 
-/** A new analyzer type, copied from the shipped GeneXpert, with only these tests. */
+/** A new analyzer type, copied from the baseline GeneXpert, with only these tests. */
 export async function createProfile(
   page: Page,
   displayName: string,
@@ -73,13 +73,14 @@ export async function createProfile(
       types: Array<{ profileId: string; revision: number; status: string }>;
     }
   ).types.find(
-    (type) => type.profileId === "genexpert-astm" && type.status === "ACTIVE",
+    (type) =>
+      type.profileId === "cepheid-genexpert-astm" && type.status === "ACTIVE",
   );
   expect(shipped, "the shipped GeneXpert type").toBeTruthy();
   const draft: Draft = await send(
     page,
     "post",
-    "/analyzer-types/genexpert-astm/duplicate",
+    "/analyzer-types/cepheid-genexpert-astm/duplicate",
     { sourceRevision: shipped!.revision, displayName },
   );
   await publish(page, draft, tests);
