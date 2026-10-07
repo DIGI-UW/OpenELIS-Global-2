@@ -8,8 +8,15 @@ import {
 } from "../../../helpers/analyzer-api";
 import { activeTestId } from "../../../helpers/analyzer-catalog-api";
 import { createClinicalOrder } from "../../../helpers/analyzer-clinical-order";
-import { sendGeneXpertFixture } from "../../../helpers/analyzer-native-traffic";
-import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
+import {
+  sendGeneXpertFixture,
+  writeFluoroCyclerFile,
+} from "../../../helpers/analyzer-native-traffic";
+import {
+  FLUOROCYCLER,
+  activateShippedAnalyzer,
+  activateShippedGeneXpert,
+} from "../../../helpers/analyzer-setup-flow";
 import { API } from "../../../helpers/analyzer-profile-api";
 
 type Order = Awaited<ReturnType<typeof createClinicalOrder>>;
@@ -60,19 +67,29 @@ async function savedValue(
   return [...new Set(values)].join(" | ");
 }
 
-/** Accept every row the analyzer sent for this accession, as the reviewer does, and save. */
-async function acceptAll(page: Page, analyzer: Analyzer, accession: string) {
+/**
+ * Accept every row the analyzer sent for these accessions, as the reviewer
+ * does, and save. Matched rows open already accepted, and Save takes every
+ * accepted row on the screen, so the accessions are saved together.
+ */
+async function acceptAll(page: Page, analyzer: Analyzer, accessions: string[]) {
   await page.goto(`/AnalyzerResults?id=${analyzer.id}`, {
     waitUntil: "domcontentloaded",
   });
-  const rows = page.getByRole("row", { name: new RegExp(accession) });
-  await expect(rows.first()).toBeVisible();
-  const accept = rows.locator('label[for$=".isAccepted"]');
-  for (let index = 0; index < (await accept.count()); index += 1) {
-    await accept.nth(index).click();
+  for (const accession of accessions) {
+    const rows = page.getByRole("row", { name: new RegExp(accession) });
+    await expect(rows.first()).toBeVisible();
+    const box = rows.locator('input[id$=".isAccepted"]');
+    for (let index = 0; index < (await box.count()); index += 1) {
+      await box.nth(index).setChecked(true);
+    }
   }
   await page.getByRole("button", { name: "Save", exact: true }).click();
-  await expect(rows).toHaveCount(0);
+  for (const accession of accessions) {
+    await expect(
+      page.getByRole("row", { name: new RegExp(accession) }),
+    ).toHaveCount(0);
+  }
 }
 
 test.describe("A GeneXpert from setup to a clinical result", () => {
@@ -111,7 +128,7 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
             .length,
       )
       .toBeGreaterThan(0);
-    await acceptAll(page, analyzer, order.accession);
+    await acceptAll(page, analyzer, [order.accession]);
     await expect
       .poll(() => savedValue(page, order, testId, "HIV-1 viral load"))
       .toBe("1010");
@@ -156,7 +173,7 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
             .length,
       )
       .toBeGreaterThan(0);
-    await acceptAll(page, analyzer, order.accession);
+    await acceptAll(page, analyzer, [order.accession]);
 
     const saved = (testId: string, component: string) =>
       savedValue(page, order, testId, component);
@@ -230,10 +247,63 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
       ).toHaveLength(0);
     }
     for (const [index, instrument] of instruments.entries()) {
-      await acceptAll(page, instrument.analyzer, orders[index].accession);
+      await acceptAll(page, instrument.analyzer, [orders[index].accession]);
       await expect
         .poll(() => savedValue(page, orders[index], testId, "HIV-1 viral load"))
         .toBe(instrument.value);
+    }
+  });
+});
+
+test.describe("A FluoroCycler from setup to a clinical result", () => {
+  test("a results file in the watched folder reaches each order and is accepted", async ({
+    page,
+  }) => {
+    test.setTimeout(240_000);
+    const run = randomUUID().slice(0, 8);
+    const directory = `/data/analyzer-imports/fluorocycler-xt/incoming/${run}`;
+    const analyzer = await activateShippedAnalyzer(
+      page,
+      FLUOROCYCLER,
+      `Results FluoroCycler ${run}`,
+      { importDirectory: directory },
+    );
+    const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
+    const orders: Order[] = [];
+    for (let index = 0; index < 2; index += 1) {
+      orders.push(
+        await createClinicalOrder(page, {
+          testIds: [testId],
+          specimenName: "Plasma",
+        }),
+      );
+    }
+    const emitted = await writeFluoroCyclerFile(
+      page.request,
+      directory,
+      orders.map((order) => order.accession),
+    );
+    expect(emitted).toHaveLength(orders.length);
+    for (const order of orders) {
+      await expect
+        .poll(
+          async () =>
+            (await worklistFor<WorklistRow>(page, analyzer.id, order.accession))
+              .length,
+        )
+        .toBeGreaterThan(0);
+    }
+    await acceptAll(
+      page,
+      analyzer,
+      orders.map((order) => order.accession),
+    );
+    for (const [index, order] of orders.entries()) {
+      await expect
+        .poll(async () =>
+          Number(await savedValue(page, order, testId, "HIV-1 viral load")),
+        )
+        .toBe(Number(emitted[index].result));
     }
   });
 });
