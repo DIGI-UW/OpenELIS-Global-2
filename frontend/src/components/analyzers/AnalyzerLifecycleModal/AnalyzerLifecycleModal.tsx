@@ -10,6 +10,7 @@ import {
 import { useIntl } from "react-intl";
 
 import {
+  activateAnalyzer,
   deactivateAnalyzer,
   reactivateAnalyzer,
   type AnalyzerActivationResultView,
@@ -18,7 +19,7 @@ import {
 import { analyzerErrorText } from "../analyzerErrors";
 import type { Analyzer } from "../types";
 
-export type AnalyzerLifecycleAction = "deactivate" | "reactivate";
+export type AnalyzerLifecycleAction = "activate" | "deactivate" | "reactivate";
 
 interface AnalyzerLifecycleModalProps {
   action: AnalyzerLifecycleAction;
@@ -81,7 +82,7 @@ const AnalyzerLifecycleModal = ({
     );
   };
 
-  const handleReactivation = (
+  const handleActivation = (
     response: AnalyzerActivationResultView | undefined,
   ) => {
     if (response?.activated) {
@@ -109,8 +110,10 @@ const AnalyzerLifecycleModal = ({
     setBlockers([]);
     if (isDeactivation) {
       deactivateAnalyzer(analyzer.id, handleDeactivation);
+    } else if (action === "activate") {
+      activateAnalyzer(analyzer.id, handleActivation);
     } else {
-      reactivateAnalyzer(analyzer.id, handleReactivation);
+      reactivateAnalyzer(analyzer.id, handleActivation);
     }
   };
 

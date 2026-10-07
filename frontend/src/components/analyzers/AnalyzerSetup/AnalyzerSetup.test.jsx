@@ -487,6 +487,9 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
+    expect(
+      screen.getByRole("region", { name: "Set up GX bench 1" }),
+    ).toBeVisible();
   });
 
   it("edits completed setup sections through bookmarkable URLs", async () => {
@@ -581,13 +584,6 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(screen.getByText("Specimen ID starts with QC")).toBeVisible();
     expect(screen.getByText(/Casey Iiams-Hauser/)).toBeVisible();
     expect(getAnalyzerMapping).toHaveBeenCalledWith("42", expect.any(Function));
-
-    const reviewLink = screen.getByRole("link", {
-      name: "Review mappings",
-    });
-    const reviewUrl = new URL(reviewLink.href);
-    expect(reviewUrl.pathname).toBe("/analyzers/42/mapping");
-    expect(reviewUrl.searchParams.get("returnTo")).toBe(entry);
 
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Connect" }),
@@ -754,7 +750,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
   });
 
-  it("blocks Connect and uses the analyzer's own mapping editor when verification needs attention", async () => {
+  it("blocks Connect and resolves in the embedded mapping editor when verification needs attention", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback({
         id: "42",
@@ -794,7 +790,9 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(
       screen.getByRole("button", { name: "Continue to Connect" }),
     ).toBeDisabled();
-    expect(screen.getByRole("link", { name: "Review mappings" })).toBeVisible();
+    expect(
+      screen.queryByRole("link", { name: "Review mappings" }),
+    ).not.toBeInTheDocument();
   });
 
   it("returns to and updates the same candidate through browser history", async () => {

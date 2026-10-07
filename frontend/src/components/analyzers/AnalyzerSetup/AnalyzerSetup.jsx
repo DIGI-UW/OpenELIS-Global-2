@@ -279,12 +279,6 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
   const createTypeTarget = `/analyzers/types?action=create&returnTo=${encodeURIComponent(
     returnTo,
   )}`;
-  const currentSetupUrl = `${location.pathname}${location.search}`;
-  const mappingEditorTarget = analyzerId
-    ? `/analyzers/${encodeURIComponent(
-        analyzerId,
-      )}/mapping?returnTo=${encodeURIComponent(currentSetupUrl)}`
-    : "/analyzers/types";
 
   const continueToConnect = () => {
     if (!verification.complete || selectingBinding) {
@@ -334,7 +328,12 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     >
       <header className="analyzer-setup__header">
         <h2 id="analyzer-setup-title">
-          {intl.formatMessage({ id: "analyzer.setup.title" })}
+          {candidate?.name
+            ? intl.formatMessage(
+                { id: "analyzer.setup.title.named" },
+                { name: candidate.name },
+              )
+            : intl.formatMessage({ id: "analyzer.setup.title" })}
         </h2>
         <Button
           kind="ghost"
@@ -580,11 +579,6 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
                   )}
 
                   <div className="analyzer-setup__verify-actions">
-                    <CarbonLink as={RouterLink} to={mappingEditorTarget}>
-                      {intl.formatMessage({
-                        id: "analyzer.setup.verify.review",
-                      })}
-                    </CarbonLink>
                     <Button
                       type="button"
                       renderIcon={ArrowRight}

@@ -778,6 +778,22 @@ describe("AnalyzerTypeMappingEditor", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("says so when the analyzer type declares no tests, instead of an empty list", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ ...mapping, tests: [] }),
+    );
+    renderEditor();
+
+    expect(
+      await screen.findByText(
+        messages["analyzerType.mappingEditor.tests.none"],
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId("analyzer-type-mapping-row"),
+    ).not.toBeInTheDocument();
+  });
+
   it.each(["UNCONFIRMED", "STALE"])(
     "does not apply a %s mapping to held results",
     async (state) => {

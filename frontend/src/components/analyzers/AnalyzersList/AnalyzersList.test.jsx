@@ -13,6 +13,7 @@
 // ========== MOCKS (BEFORE IMPORTS - Jest hoisting) ==========
 
 vi.mock("../../../services/analyzerService", () => ({
+  activateAnalyzer: vi.fn(),
   createAnalyzer: vi.fn(),
   deactivateAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
@@ -50,6 +51,7 @@ import AnalyzersList from "./AnalyzersList";
 
 // 8. Utilities (import functions, not just for mocking)
 import {
+  activateAnalyzer,
   deactivateAnalyzer,
   getAnalyzer,
   getAnalyzers,
@@ -483,6 +485,72 @@ describe("AnalyzersList", () => {
     await userEvent.click(screen.getByTestId("analyzer-row-overflow-42"));
     expect(screen.getByRole("menuitem", { name: "Reactivate" })).toBeVisible();
     expect(screen.getByRole("menuitem", { name: "Deactivate" })).toBeVisible();
+  });
+
+  test("offers Activate, not Deactivate, for an analyzer still being set up", async () => {
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [createMockAnalyzer({ id: "43", status: "SETUP" })],
+        }),
+      );
+    });
+
+    renderWithIntl(<AnalyzersList />);
+
+    await userEvent.click(
+      await screen.findByTestId("analyzer-row-overflow-43"),
+    );
+    expect(screen.getByRole("menuitem", { name: "Activate" })).toBeVisible();
+    expect(
+      screen.queryByRole("menuitem", { name: "Deactivate" }),
+    ).not.toBeInTheDocument();
+  });
+
+  test("activates an analyzer from setup and lists what blocks it", async () => {
+    window.history.replaceState(
+      {},
+      "",
+      "/analyzers?lifecycle=activate&lifecycleAnalyzerId=43",
+    );
+    getAnalyzers.mockImplementation((_filters, callback) => {
+      act(() =>
+        callback({
+          analyzers: [
+            createMockAnalyzer({
+              id: "43",
+              name: "GeneXpert Lab 2",
+              status: "SETUP",
+            }),
+          ],
+        }),
+      );
+    });
+    activateAnalyzer.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "43",
+        status: "SETUP",
+        ready: false,
+        activated: false,
+        blockers: [{ code: "analyzer.activation.blocker.mappings" }],
+        statusCode: 422,
+      }),
+    );
+
+    renderWithIntl(<AnalyzersList />);
+
+    expect(
+      await screen.findByRole("heading", { name: "Activate analyzer" }),
+    ).toBeVisible();
+    await userEvent.click(
+      screen.getByRole("button", { name: "Activate analyzer" }),
+    );
+
+    expect(activateAnalyzer).toHaveBeenCalledWith("43", expect.any(Function));
+    expect(reactivateAnalyzer).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText("Analyzer mappings must be verified again."),
+    ).toBeVisible();
   });
 
   test("opens an existing analyzer in linkable inline Instrument setup", async () => {

@@ -6,6 +6,7 @@ import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
 import messages from "../../../languages/en.json";
 import {
+  activateAnalyzer,
   deactivateAnalyzer,
   reactivateAnalyzer,
 } from "../../../services/analyzerService";
@@ -14,6 +15,7 @@ import AnalyzerLifecycleModal, {
 } from "./AnalyzerLifecycleModal";
 
 vi.mock("../../../services/analyzerService", () => ({
+  activateAnalyzer: vi.fn(),
   deactivateAnalyzer: vi.fn(),
   reactivateAnalyzer: vi.fn(),
 }));
@@ -91,6 +93,26 @@ describe("AnalyzerLifecycleModal", () => {
 
     expect(
       await screen.findByText(messages["analyzer.lifecycle.reactivate.error"]),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Analyzer not found: 501"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("activates through the activation endpoint and shows its own message when that fails", async () => {
+    vi.mocked(activateAnalyzer).mockImplementation((_id, callback) =>
+      callback({ error: "Analyzer not found: 501" } as never),
+    );
+    renderModal("activate");
+
+    await userEvent.click(
+      screen.getByRole("button", { name: "Activate analyzer" }),
+    );
+
+    expect(activateAnalyzer).toHaveBeenCalledWith("501", expect.any(Function));
+    expect(reactivateAnalyzer).not.toHaveBeenCalled();
+    expect(
+      await screen.findByText(messages["analyzer.lifecycle.activate.error"]),
     ).toBeInTheDocument();
     expect(
       screen.queryByText("Analyzer not found: 501"),
