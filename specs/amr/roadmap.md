@@ -30,25 +30,25 @@ acceptance; their primary assignment is not evidence that all parts already work
 
 ## 1. Spec and roadmap
 
-- [ ] [spec.md](spec.md) reviewed and accepted
-- [ ] V1 specifications under `specs/782-*` removed
+- [x] [spec.md](spec.md) reviewed and accepted
+- [x] V1 specifications under `specs/782-*` removed
 - [ ] Jira OGC-1383 / OGC-1382 children point at these steps
 
 ## 2. Dependencies and open decisions
 
 - [ ] Each dependency in [§14](spec.md#14-shared-openelis-dependencies) verified against current code and assigned to its owning milestone; evidence and any existing delivery PR recorded in that milestone's PR
 - [ ] Required shared behavior delivered before its consumer, in the owning milestone unless already delivered; no silent scope reductions or microbiology-only duplicates
-- [ ] Approved behavior clarifications reflected in the engineering spec and pinned functional specs/mocks ([§15](spec.md#15-clarified-behavior-and-delivery))
+- [x] Approved behavior clarifications reflected in the engineering spec and pinned functional specs/mocks ([§15](spec.md#15-clarified-behavior-and-delivery))
 
 ## 3. Retire the V1 front
 
 [§10 Retire](spec.md#10-v1-disposition-retire-restructure-evolve)
 
-- [ ] Workflow type, culture setups and protocols removed, backend and frontend
-- [ ] Reception Microbiology section, micro draft pipeline and Program guards removed
-- [ ] V1 order routing removed
-- [ ] Retired columns made nullable; no other schema change
-- [ ] Order entry, Results, Validation and existing cases work
+- [x] Workflow type, culture setups and protocols removed, backend and frontend
+- [x] Reception Microbiology section, micro draft pipeline and Program guards removed
+- [x] V1 order routing removed
+- [x] Retired columns made nullable; no other schema change
+- [x] Order entry, Results, Validation and existing cases work
 
 ## 4. Case structure
 
