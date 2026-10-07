@@ -121,7 +121,7 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
   recovered (`SqliteOutboxStore.java:72-83`); a render failure at delivery is
   dead-lettered with its reason (`NormalizedBundleRenderer.java:248-253`,
   `OutboxDispatcher.renderRecovered`); a failed retention purge is retried.
-  Deliberately fail-closed, proposed to stay: security disabled, or the
+  Deliberately fail-closed, and staying (decided 6 Oct: "for now, that's ok"): security disabled, or the
   default password outside dev and test (`SecurityConfig.java:70-90`); it is
   a credential, not data, and an exposed Bridge with a known password is not
   a degraded mode.

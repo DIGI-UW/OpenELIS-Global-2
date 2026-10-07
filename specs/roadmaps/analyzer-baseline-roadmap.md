@@ -224,7 +224,10 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     transparency and management, never from a component refusing to run.
     (Decided 6 Oct: "issues need to degrade the system gracefully!")
 
-Deferred and not in this roadmap: moving Analyzer Types under Admin.
+Deferred and not in this roadmap: moving Analyzer Types under Admin; pairing
+the Bridge to its OE2 instance instead of password authentication (6 Oct: "I
+would love to have a non-password-based authentication that pairs the bridge
+to the OE2 instance instead, but that might be a follow up PR").
 
 ## Repo working agreements
 
