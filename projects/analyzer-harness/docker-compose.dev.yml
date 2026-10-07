@@ -9,6 +9,9 @@ services:
     restart: "no"
 
   db.openelis.org:
+    networks:
+      default:
+        aliases: [db]
     image: postgres:14.4
     restart: always
     env_file:
@@ -18,9 +21,7 @@ services:
       - ./volume/database/dbInit:/docker-entrypoint-initdb.d
 
   oe.openelis.org:
-    image: itechuw/openelis-global-2-dev:develop
-    # scripts/dev-stack builds this image from the branch's Dockerfile.dev so local
-    # source drives the webapp, overriding the pulled :develop image tag.
+    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-backend:dev
     build:
       context: ../..
       dockerfile: Dockerfile.dev
@@ -54,6 +55,9 @@ services:
       - source: common.properties
 
   fhir.openelis.org:
+    networks:
+      default:
+        aliases: [fhir]
     image: hapiproject/hapi:v6.6.0-tomcat
     depends_on:
       db.openelis.org:
@@ -63,6 +67,11 @@ services:
     restart: always
     environment:
       SPRING_CONFIG_LOCATION: file:///run/secrets/hapi_application.yaml
+      CATALINA_OPTS: >-
+        -Dhapi.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore}
+        -Dhapi.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass}
+        -Dhapi.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore}
+        -Dhapi.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}
       TZ: Africa/Nairobi
       JAVA_OPTS: "-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore
         -Djavax.net.ssl.trustStorePassword=tspass
@@ -87,7 +96,7 @@ services:
       start_period: 60s
 
   frontend.openelis.org:
-    image: itechuw/openelis-global-2-frontend-dev:develop
+    image: ${DEV_STACK_PROJECT:?Use scripts/dev-stack}-frontend:dev
     # Local-dev default: `target: dev` selects the Vite dev-server stage
     # of the single multi-stage Dockerfile — HMR + unminified React for
     # legible errors during iteration. For CI-parity (ship-artifact) mode,
@@ -102,6 +111,7 @@ services:
     volumes:
       - ../../frontend/src:/app/src
       - ../../frontend/public:/app/public
+      - ../../volume/translation:/app/public/translation
 
   proxy:
     image: nginx:1.27-alpine

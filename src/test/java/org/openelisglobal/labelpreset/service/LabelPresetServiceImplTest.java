@@ -357,12 +357,23 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
 
     @Test
     public void systemPresetFieldKeys_answersByNameInDisplayOrder_ignoringCaseAndSpace() {
-        Set<String> keys = labelPresetService.systemPresetFieldKeys("  order label ");
+        LabelPreset orderLabel = labelPresetService.list(null, null).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsSystem()) && "Order Label".equals(p.getName())).findFirst()
+                .orElse(null);
+        assertNotNull("the Order Label system preset is seeded", orderLabel);
+        LabelPresetForm before = mirrorForm(orderLabel);
+        try {
+            LabelPresetForm form = mirrorForm(orderLabel);
+            form.setFields(
+                    List.of(entry("LAB_NUMBER", true, 1), entry("SITE_ID", false, 2), entry("PATIENT_NAME", false, 3)));
+            labelPresetService.update(orderLabel.getId(), form, SYS_USER);
 
-        assertNotNull(keys);
-        assertEquals("LAB_NUMBER", keys.iterator().next());
-        assertTrue(keys.contains("PATIENT_NAME"));
-        assertTrue(keys.contains("SITE_ID"));
+            Set<String> keys = labelPresetService.systemPresetFieldKeys("  order label ");
+
+            assertEquals(List.of("LAB_NUMBER", "SITE_ID", "PATIENT_NAME"), new java.util.ArrayList<>(keys));
+        } finally {
+            labelPresetService.update(orderLabel.getId(), before, SYS_USER);
+        }
     }
 
     @Test

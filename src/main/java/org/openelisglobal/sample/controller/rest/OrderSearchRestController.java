@@ -93,7 +93,9 @@ import org.openelisglobal.storage.dao.SampleStorageAssignmentDAO;
 import org.openelisglobal.storage.service.SampleStorageService;
 import org.openelisglobal.storage.valueholder.SampleStorageAssignment;
 import org.openelisglobal.systemuser.controller.UnifiedSystemUserController;
+import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.systemuser.valueholder.SystemUser;
 import org.openelisglobal.test.dto.TestSelectionDTO;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.valueholder.TestSection;
@@ -139,6 +141,9 @@ public class OrderSearchRestController extends BaseRestController {
 
     @Autowired
     private SampleHumanService sampleHumanService;
+
+    @Autowired
+    private SystemUserService systemUserService;
 
     @Autowired
     private PatientService patientService;
@@ -819,6 +824,7 @@ public class OrderSearchRestController extends BaseRestController {
                         sampleItem.getSampleTemperature() != null ? sampleItem.getSampleTemperature() : "");
                 sampleItemData.put("specimenOrigin",
                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                putReceiptAndArrival(sampleItemData, sampleItem);
 
                 String receivedDateDisplay = "";
                 String receivedTimeDisplay = "";
@@ -1900,5 +1906,29 @@ public class OrderSearchRestController extends BaseRestController {
             }
         }
         return false;
+    }
+
+    /**
+     * Who received the sample and the condition it arrived in, with display names
+     * (OGC-1424). Empty strings where nothing was recorded.
+     */
+    void putReceiptAndArrival(Map<String, Object> sampleItemData, SampleItem sampleItem) {
+        sampleItemData.put("receivedById", sampleItem.getReceivedById() == null ? "" : sampleItem.getReceivedById());
+        sampleItemData.put("receivedByName", userName(sampleItem.getReceivedById()));
+        sampleItemData.put("arrivalCondition",
+                sampleItem.getArrivalCondition() == null ? "" : sampleItem.getArrivalCondition());
+        sampleItemData.put("arrivalTemperature", sampleItem.getArrivalTemperature() == null ? ""
+                : sampleItem.getArrivalTemperature().stripTrailingZeros().toPlainString());
+        sampleItemData.put("arrivalRecordedByName", userName(sampleItem.getArrivalRecordedById()));
+        sampleItemData.put("arrivalRecordedAt",
+                sampleItem.getArrivalRecordedAt() == null ? "" : sampleItem.getArrivalRecordedAt().toString());
+    }
+
+    private String userName(String systemUserId) {
+        if (GenericValidator.isBlankOrNull(systemUserId)) {
+            return "";
+        }
+        SystemUser user = systemUserService.getUserById(systemUserId);
+        return user == null ? "" : user.getNameForDisplay().trim();
     }
 }

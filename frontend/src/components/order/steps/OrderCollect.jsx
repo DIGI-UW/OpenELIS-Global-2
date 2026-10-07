@@ -353,6 +353,15 @@ const OrderCollect = () => {
           removeTestFromSample={removeTestFromSample}
           sampleTypes={sampleTypes}
           isReadOnly={isReadOnly && !isEditMode}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
+          referringSite={
+            orderData?.sampleOrderItems?.referringSiteId
+              ? {
+                  id: orderData.sampleOrderItems.referringSiteId,
+                  name: orderData.sampleOrderItems.referringSiteName || "",
+                }
+              : null
+          }
         />
 
         {/* A: the collector could see the ordered tests but not add one. */}
@@ -394,6 +403,8 @@ const OrderCollect = () => {
           isReadOnly={isReadOnly && !isEditMode}
           admissionDate={admissionDate}
           printDisabled={isLoading}
+          workflowType={workflowType}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
           onPrintLabels={(sampleIndex) => {
             if (printLabelsRowRef.current) {
               printLabelsRowRef.current(sampleIndex);

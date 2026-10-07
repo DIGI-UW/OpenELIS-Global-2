@@ -5,6 +5,13 @@
 
 ---
 
+## Development and CI entrypoints
+
+Follow [the setup guide](docs/dev_setup.md): `scripts/dev-stack up` builds the
+current source stack; `scripts/run-ci-checks.sh` runs the complete committed
+candidate locally in parallel with GitHub after every push. A targeted green
+suite is not full CI parity. Published-image deployment is a separate mode.
+
 ## Documentation Hierarchy
 
 When working on this project, follow this documentation order:
@@ -117,11 +124,12 @@ When using `/speckit.implement`, follow **Red-Green-Refactor** cycle:
 
 ### Git Worktrees (MANDATORY)
 
-> Worktrees go in `.worktrees/<short-name>`, never `/tmp` or `/private/tmp`, and
-> every new one needs `scripts/setup-workspace.sh` run inside it
-> (`git worktree add` does not initialize the submodules, several of which are
-> build inputs). Full rules and the reasoning: see [AGENTS.md](AGENTS.md) § "Git
-> Worktrees".
+> Durable feature worktrees go in `.worktrees/<short-name>`. Disposable CI
+> checkouts are created and removed by `scripts/run-ci-checks.sh`; do not use
+> those for feature edits. Every durable new worktree needs
+> `scripts/setup-workspace.sh` run inside it (`git worktree add` does not
+> initialize the submodules, several of which are build inputs). Full rules and
+> the reasoning: see [AGENTS.md](AGENTS.md) § "Git Worktrees".
 
 ### Post-Compaction Context Recovery (MANDATORY)
 

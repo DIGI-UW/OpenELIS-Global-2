@@ -55,6 +55,16 @@ public interface OrderLabelReprintService {
     ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId, String scope);
 
     /**
+     * Like {@link #renderFromSnapshot(String, Integer, String, String)} but prints
+     * {@code quantity} copies of each matched label instead of the saved quantity
+     * (OGC-1169, FR-I5). The quantity may not exceed the preset's maximum for the
+     * label's scope; above it an {@link IllegalArgumentException} is thrown.
+     * {@code null} keeps the saved quantities.
+     */
+    ByteArrayOutputStream renderFromSnapshot(String orderId, Integer presetId, String sampleItemId, String scope,
+            Integer quantity);
+
+    /**
      * Decrease-only quantity update. Allows lowering {@code qty} to the given value
      * (or leaving it unchanged); rejects any value greater than the currently saved
      * qty.
