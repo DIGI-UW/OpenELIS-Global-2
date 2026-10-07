@@ -395,8 +395,15 @@ Remaining V02c2 implementation and acceptance:
       checks pass, as does the frontend production build. The standalone HTTP
       tests cover session-actor propagation, serialization and 400/403 responses;
       the service test covers a missing actor, not the full security filter chain.
-      Still required: exact reflex conditions, bottle set summaries, Referred and
-      Tested elsewhere handling, the new-unit warning, saved-order ownership,
+      The follow-up renders exact reflex comparisons with localized dictionary
+      answers, component/sample scope, both numeric bounds and any/all joins;
+      rules scoped to another sample type are omitted. The nonblocking new-unit
+      warning disappears when other work is selected in that unit. Eight focused
+      backend and 27 frontend checks pass for this follow-up, plus five persisted
+      routing tests with the expanded Spring service wiring and the frontend
+      production build. These checks do not establish visual acceptance.
+      Still required: bottle set summaries, Referred and
+      Tested elsewhere handling, saved-order ownership,
       environmental site grouping, placement beside the Ordered tests table,
       and persisted browser/video comparison. AC-V2-103 remains unaccepted.
 - [ ] Implement explicit bottle set numbers in shared order entry/save and derive

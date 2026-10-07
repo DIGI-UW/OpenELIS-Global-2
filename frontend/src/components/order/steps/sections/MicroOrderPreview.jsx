@@ -49,6 +49,26 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
   if (preview && preview.cases.length === 0) return null;
   const text = (key, values) =>
     intl.formatMessage({ id: `order.microPreview.${key}` }, values);
+  const describeCondition = (condition) => {
+    let subject = condition.testName;
+    if (condition.componentLabel) {
+      subject = text("component", {
+        test: subject,
+        component: condition.componentLabel,
+      });
+    }
+    if (condition.sampleTypeName) {
+      subject = text("specimen", {
+        test: subject,
+        type: condition.sampleTypeName,
+      });
+    }
+    return text(`condition.${condition.relation}`, {
+      subject,
+      value: condition.value,
+      value2: condition.value2,
+    });
+  };
   return (
     <Tile role="region" aria-label={text("title")} aria-live="polite">
       <h3>{text("title")}</h3>
@@ -101,10 +121,25 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
               })}
             </p>
           ))}
+          {preview.newUnitWarnings.map((warning) => (
+            <p key={`unit-${warning.labUnitId}`}>
+              <Tag type="warm-gray">{text("newUnitTag")}</Tag>{" "}
+              {text("newUnit", {
+                test: warning.testName,
+                unit: warning.labUnitName,
+              })}
+            </p>
+          ))}
           {preview.reflexRules.map((rule, index) => (
             <p key={`rule-${index}`}>
               {text("reflex", {
                 name: rule.name,
+                conditions: rule.conditions
+                  .map(describeCondition)
+                  .map((condition) =>
+                    rule.conditions.length > 1 ? `(${condition})` : condition,
+                  )
+                  .join(text(rule.overall === "ALL" ? "and" : "or")),
                 tests: rule.addedTests.join(", "),
               })}
             </p>

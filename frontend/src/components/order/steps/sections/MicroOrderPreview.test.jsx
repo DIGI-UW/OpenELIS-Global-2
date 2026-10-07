@@ -23,9 +23,21 @@ const response = {
       specimens: [{ index: 0, sampleTypeName: "Blood" }],
     },
   ],
+  newUnitWarnings: [
+    { labUnitId: "2", labUnitName: "TB unit", testName: "TB culture" },
+  ],
   ordinaryTests: [{ specimenIndex: 0, testId: "rpr", testName: "RPR" }],
   warnings: [{ specimenIndex: 0, labUnits: ["Microbiology", "TB unit"] }],
-  reflexRules: [{ name: "Positive bottle", addedTests: ["Gram stain"] }],
+  reflexRules: [
+    {
+      name: "Positive bottle",
+      overall: "ANY",
+      conditions: [
+        { testName: "Blood culture", relation: "EQUALS", value: "Positive" },
+      ],
+      addedTests: ["Gram stain"],
+    },
+  ],
 };
 const view = (value = samples, savedOrder = false) => (
   <IntlProvider locale="en" messages={messages}>
@@ -44,10 +56,15 @@ it("shows server-derived case, ordinary Results, split and named reflex lines", 
   ).toBeTruthy();
   expect(
     screen.getByText(
-      "Positive bottle: may add Gram stain when its conditions are met.",
+      "Positive bottle: if Blood culture result equals Positive, may add Gram stain.",
     ),
   ).toBeTruthy();
   expect(screen.getByText("Opens a case")).toBeTruthy();
+  expect(
+    screen.getByText(
+      "TB culture opens a case in TB unit; this order has no other work in that lab unit.",
+    ),
+  ).toBeTruthy();
   expect(previewMicrobiologyOrder).toHaveBeenCalledWith({
     specimens: [{ sampleTypeId: "5", testIds: ["culture", "rpr"] }],
   });
@@ -121,3 +138,41 @@ it("retries a failed preview without changing the order", async () => {
     previewMicrobiologyOrder.mock.calls[1],
   );
 });
+
+it.each([
+  ["ALL", "and"],
+  ["ANY", "or"],
+])(
+  "preserves %s conditions with component and specimen scope",
+  async (overall, connector) => {
+    previewMicrobiologyOrder.mockResolvedValueOnce({
+      ...response,
+      reflexRules: [
+        {
+          name: "Repeat rule",
+          overall,
+          addedTests: ["Repeat culture"],
+          conditions: [
+            {
+              testName: "Culture",
+              componentLabel: "Colony count",
+              sampleTypeName: "Sputum",
+              relation: "BETWEEN",
+              value: "10",
+              value2: "20",
+            },
+            {
+              testName: "Culture",
+              relation: "OUTSIDE_NORMAL_RANGE",
+              value: "ignored",
+            },
+          ],
+        },
+      ],
+    });
+    render(view());
+    await screen.findByText(
+      `Repeat rule: if (Culture — Colony count (Sputum) result is between 10 and 20) ${connector} (Culture result is outside the normal range), may add Repeat culture.`,
+    );
+  },
+);

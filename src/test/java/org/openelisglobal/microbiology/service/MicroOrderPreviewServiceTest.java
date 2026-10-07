@@ -8,7 +8,10 @@ import java.util.Set;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.services.RuleResultScope;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.dictionary.service.DictionaryService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.microbiology.form.MicroOrderPreviewRequestForm;
 import org.openelisglobal.role.service.RoleService;
 import org.openelisglobal.role.valueholder.Role;
@@ -18,7 +21,10 @@ import org.openelisglobal.test.valueholder.TestSection;
 import org.openelisglobal.testreflex.action.bean.ReflexRule;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleAction;
 import org.openelisglobal.testreflex.action.bean.ReflexRuleCondition;
+import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions;
 import org.openelisglobal.testreflex.service.TestReflexService;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.http.HttpStatus;
@@ -31,6 +37,9 @@ public class MicroOrderPreviewServiceTest {
     private MicroCaseService cases;
     private MicroCaseAnalysisService links;
     private MicroOrderPreviewService service;
+    private RuleResultScope scope;
+    private DictionaryService dictionary;
+    private TestResultComponentService components;
 
     @Before
     public void setUp() {
@@ -50,8 +59,15 @@ public class MicroOrderPreviewServiceTest {
         when(type.getId()).thenReturn("5");
         when(type.getLocalizedName()).thenReturn("Sputum");
         when(types.get("5")).thenReturn(type);
+        scope = mock(RuleResultScope.class);
+        dictionary = mock(DictionaryService.class);
+        components = mock(TestResultComponentService.class);
+        when(scope.resultTypeForComponent(anyString(), any(), any())).thenReturn("D");
+        Dictionary positive = mock(Dictionary.class);
+        when(positive.getLocalizedName()).thenReturn("Positive");
+        when(dictionary.getDictionaryById("901")).thenReturn(positive);
         service = new MicroOrderPreviewServiceImpl(new MicroOrderRoutingServiceImpl(cases, links, tests), tests, types,
-                users, roles, reflex);
+                users, roles, reflex, scope, dictionary, components);
     }
 
     @Test
@@ -62,8 +78,11 @@ public class MicroOrderPreviewServiceTest {
         catalog("gram", "Gram stain", "1", false);
         ReflexRule rule = new ReflexRule();
         rule.setRuleName("Positive culture follow-up");
+        rule.setOverall(ReflexRuleOptions.OverallOptions.ANY);
         ReflexRuleCondition condition = new ReflexRuleCondition();
         condition.setTestId("culture");
+        condition.setRelation(ReflexRuleOptions.NumericRelationOptions.EQUALS);
+        condition.setValue("901");
         rule.setConditions(Set.of(condition));
         ReflexRuleAction action = new ReflexRuleAction();
         action.setReflexTestId("gram");
@@ -72,14 +91,58 @@ public class MicroOrderPreviewServiceTest {
 
         var preview = service.preview(request("culture", "tb", "rpr"), "user");
         assertEquals(2, preview.cases().size());
+        assertEquals(1, preview.newUnitWarnings().size());
+        assertEquals("2", preview.newUnitWarnings().get(0).labUnitId());
+        assertEquals("TB culture", preview.newUnitWarnings().get(0).testName());
         assertEquals(List.of("Culture"), preview.cases().get(0).testNames());
         assertEquals("RPR", preview.ordinaryTests().get(0).testName());
         assertEquals(List.of("Microbiology", "TB"), preview.warnings().get(0).labUnits());
         assertEquals("Positive culture follow-up", preview.reflexRules().get(0).name());
         assertEquals(List.of("Gram stain"), preview.reflexRules().get(0).addedTests());
+        assertEquals("Positive", preview.reflexRules().get(0).conditions().get(0).value());
+        assertEquals("EQUALS", preview.reflexRules().get(0).conditions().get(0).relation());
+        assertEquals("ANY", preview.reflexRules().get(0).overall());
         rule.setActive(false);
         assertTrue(service.preview(request("culture"), "user").reflexRules().isEmpty());
         verifyZeroInteractions(cases, links);
+    }
+
+    @Test
+    public void numericComponentKeepsBothBoundsInsteadOfLookingUpDictionaryIds() {
+        catalog("culture", "Culture", "1", true);
+        catalog("repeat", "Repeat culture", "1", true);
+        TestResultComponent component = new TestResultComponent();
+        component.setId("component-2");
+        component.setTestId("culture");
+        component.setLabel("Colony count");
+        when(components.get("component-2")).thenReturn(component);
+        when(scope.resultTypeForComponent(eq("culture"), eq("component-2"), any())).thenReturn("N");
+        ReflexRuleCondition condition = new ReflexRuleCondition();
+        condition.setTestId("culture");
+        condition.setComponentId("component-2");
+        condition.setSampleId("5");
+        condition.setRelation(ReflexRuleOptions.NumericRelationOptions.BETWEEN);
+        condition.setValue("10");
+        condition.setValue2("20");
+        ReflexRuleAction action = new ReflexRuleAction();
+        action.setReflexTestId("repeat");
+        ReflexRule rule = new ReflexRule();
+        rule.setRuleName("Repeat borderline count");
+        rule.setOverall(ReflexRuleOptions.OverallOptions.ALL);
+        rule.setConditions(Set.of(condition));
+        rule.setActions(Set.of(action));
+        when(reflex.getAllReflexRules()).thenReturn(List.of(rule));
+
+        var line = service.preview(request("culture"), "user").reflexRules().get(0);
+        assertEquals("ALL", line.overall());
+        assertEquals("Colony count", line.conditions().get(0).componentLabel());
+        assertEquals("Sputum", line.conditions().get(0).sampleTypeName());
+        assertEquals("10", line.conditions().get(0).value());
+        assertEquals("20", line.conditions().get(0).value2());
+        verifyZeroInteractions(dictionary);
+
+        condition.setSampleId("other-type");
+        assertTrue(service.preview(request("culture"), "user").reflexRules().isEmpty());
     }
 
     @Test
@@ -89,6 +152,22 @@ public class MicroOrderPreviewServiceTest {
                 () -> service.preview(request("denied"), "user"));
         assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
         verifyZeroInteractions(cases, links, reflex);
+    }
+
+    @Test
+    public void newUnitWarningDoesNotBlockAndOtherWorkInTheUnitRemovesIt() {
+        catalog("culture", "Culture", "1", true);
+        catalog("rpr", "RPR", "1", false);
+        var first = service.preview(request("culture"), "user");
+        assertEquals(1, first.cases().size());
+        assertEquals(1, first.newUnitWarnings().size());
+        assertTrue(service.preview(request("culture", "rpr"), "user").newUnitWarnings().isEmpty());
+        var multipleSpecimens = request("culture");
+        multipleSpecimens.specimens.add(request("culture").specimens.get(0));
+        var repeated = service.preview(multipleSpecimens, "user");
+        assertEquals(1, repeated.cases().size());
+        assertTrue(repeated.newUnitWarnings().isEmpty());
+        verifyZeroInteractions(cases, links);
     }
 
     @Test

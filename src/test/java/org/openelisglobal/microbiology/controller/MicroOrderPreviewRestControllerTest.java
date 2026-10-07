@@ -43,7 +43,7 @@ public class MicroOrderPreviewRestControllerTest {
         when(service.preview(any(), eq("42"))).thenReturn(new MicroOrderPreviewForm(
                 List.of(new MicroOrderPreviewForm.CaseLine("1", "Microbiology",
                         List.of(new MicroOrderPreviewForm.SpecimenLine(0, "Blood")), List.of("Culture"), true)),
-                List.of(), List.of(), List.of()));
+                List.of(), List.of(), List.of(), List.of()));
         mvc.perform(post("/rest/microbiology/order-preview").session(session).contentType(MediaType.APPLICATION_JSON)
                 .content("{\"specimens\":[{\"sampleTypeId\":\"5\",\"testIds\":[\"culture\"]}]}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.cases[0].labUnitName").value("Microbiology"))

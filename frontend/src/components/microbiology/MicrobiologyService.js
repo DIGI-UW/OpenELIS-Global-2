@@ -538,7 +538,8 @@ export const previewMicrobiologyOrder = (payload) =>
           !Array.isArray(response.cases) ||
           !Array.isArray(response.ordinaryTests) ||
           !Array.isArray(response.warnings) ||
-          !Array.isArray(response.reflexRules)
+          !Array.isArray(response.reflexRules) ||
+          !Array.isArray(response.newUnitWarnings)
         ) {
           reject(new Error("Invalid order preview response"));
           return;

@@ -12316,5 +12316,20 @@
   "order.microPreview.stays": "{test} stays in Results",
   "order.microPreview.splitTag": "Separate cases",
   "order.microPreview.split": "Sample {number} opens {count} cases: {units}.",
-  "order.microPreview.reflex": "{name}: may add {tests} when its conditions are met."
+  "order.microPreview.reflex": "{name}: if {conditions}, may add {tests}.",
+  "order.microPreview.component": "{test} — {component}",
+  "order.microPreview.specimen": "{test} ({type})",
+  "order.microPreview.and": " and ",
+  "order.microPreview.or": " or ",
+  "order.microPreview.condition.EQUALS": "{subject} result equals {value}",
+  "order.microPreview.condition.NOT_EQUALS": "{subject} result does not equal {value}",
+  "order.microPreview.condition.LESS_THAN": "{subject} result is less than {value}",
+  "order.microPreview.condition.LESS_THAN_OR_EQUAL": "{subject} result is at most {value}",
+  "order.microPreview.condition.GREATER_THAN": "{subject} result is greater than {value}",
+  "order.microPreview.condition.GREATER_THAN_OR_EQUAL": "{subject} result is at least {value}",
+  "order.microPreview.condition.BETWEEN": "{subject} result is between {value} and {value2}",
+  "order.microPreview.condition.INSIDE_NORMAL_RANGE": "{subject} result is within the normal range",
+  "order.microPreview.condition.OUTSIDE_NORMAL_RANGE": "{subject} result is outside the normal range",
+  "order.microPreview.newUnitTag": "New lab unit",
+  "order.microPreview.newUnit": "{test} opens a case in {unit}; this order has no other work in that lab unit."
 }
