@@ -38,6 +38,7 @@ import AnalyzerLifecycleModal, {
 import AnalyzerSetup, {
   type AnalyzerSetupStep,
 } from "../AnalyzerSetup/AnalyzerSetup";
+import BridgePairing from "../BridgePairing/BridgePairing";
 
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 import type { Analyzer, AnalyzerStatus } from "../types";
@@ -488,6 +489,8 @@ const AnalyzersList = () => {
           onClose={closeSetup}
         />
       )}
+
+      <BridgePairing />
 
       {firstAttentionAnalyzer && (
         <Callout
