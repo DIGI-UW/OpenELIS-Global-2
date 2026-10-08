@@ -177,6 +177,7 @@ public class InventoryItemRestController extends BaseRestController {
             existingItem.setManufacturer(item.getManufacturer());
             existingItem.setUnits(item.getUnits());
             existingItem.setLowStockThreshold(item.getLowStockThreshold());
+            existingItem.setLeadTimeDays(item.getLeadTimeDays());
 
             // Type-specific fields
             existingItem.setStabilityAfterOpening(item.getStabilityAfterOpening());

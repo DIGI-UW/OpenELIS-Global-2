@@ -167,7 +167,7 @@ const InventoryItemsBoard = () => {
   const openItemEditor = async (row) => {
     try {
       const item = await InventoryItemAPI.getById(row.itemId);
-      setAction({ kind: "editItem", item });
+      setAction({ kind: "editItem", item, row });
     } catch (err) {
       notify({
         kind: NotificationKinds.error,
@@ -856,6 +856,11 @@ const InventoryItemsBoard = () => {
         <InventoryItemForm
           open
           item={action.item}
+          observedLeadTime={
+            action.row?.leadTimeTier === "OBSERVED"
+              ? action.row.leadTimeDays
+              : null
+          }
           onClose={closeAction}
           onSave={() => onActionSaved("catalog.item.save.success")}
         />

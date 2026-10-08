@@ -2,6 +2,7 @@ package org.openelisglobal.inventory.projection;
 
 import java.time.LocalDate;
 import java.util.Arrays;
+import java.util.List;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.projection.InventoryProjection.LeadTimeTier;
 
@@ -14,6 +15,23 @@ public final class InventoryProjectionCalculator {
     public static final int DEFAULT_LEAD_TIME_DAYS = 30;
 
     private InventoryProjectionCalculator() {
+    }
+
+    public static final int MIN_CYCLES_FOR_OBSERVED_LEAD_TIME = 3;
+
+    public static final int LEAD_TIME_HISTORY_DAYS = 365;
+
+    /**
+     * Median of the completed cycles' days; null below
+     * MIN_CYCLES_FOR_OBSERVED_LEAD_TIME.
+     */
+    public static Integer observedLeadTime(List<Integer> cycleDays) {
+        if (cycleDays == null || cycleDays.size() < MIN_CYCLES_FOR_OBSERVED_LEAD_TIME) {
+            return null;
+        }
+        double[] days = cycleDays.stream().mapToDouble(Integer::doubleValue).toArray();
+        long rounded = Math.round(median(days));
+        return rounded <= 0 ? null : (int) rounded;
     }
 
     public static LeadTime resolveLeadTime(Integer setDays, Integer observedDays) {
