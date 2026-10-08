@@ -12,6 +12,9 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
+import org.openelisglobal.localization.service.LocalizationService;
+import org.openelisglobal.localization.service.LocalizationValueService;
+import org.openelisglobal.localization.valueholder.Localization;
 import org.openelisglobal.test.service.TestService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -32,6 +35,12 @@ public class TestNameLocaleReadTest extends BaseWebContextSensitiveTest {
     private TestService testService;
 
     @Autowired
+    private LocalizationService localizationService;
+
+    @Autowired
+    private LocalizationValueService localizationValueService;
+
+    @Autowired
     private DataSource dataSource;
 
     @PersistenceContext
@@ -44,6 +53,8 @@ public class TestNameLocaleReadTest extends BaseWebContextSensitiveTest {
         executeDataSetWithStateManagement("testdata/test.xml");
         jdbc = new JdbcTemplate(dataSource);
         jdbc.update("update clinlims.test set name_localization_id = 3 where id = 1");
+        jdbc.update("update clinlims.localization set lastupdated = now() where id = 3");
+        jdbc.update("update clinlims.localization_value set last_updated = now() where localization_id = 3");
     }
 
     @After
@@ -72,6 +83,30 @@ public class TestNameLocaleReadTest extends BaseWebContextSensitiveTest {
         entityManager.flush();
 
         assertEquals("Complete Blood Count", storedName());
+    }
+
+    @Test
+    public void renamingATestUpdatesItsStoredNameWithTheEnglishName() {
+        LocaleContextHolder.setLocale(Locale.FRENCH);
+        Localization name = localizationService.get("3");
+        name.setLocalizedValue(Locale.ENGLISH, "Blood Count Renamed");
+        name.setLocalizedValue(Locale.FRENCH, "Numération renommée");
+
+        localizationService.update(name);
+        entityManager.flush();
+
+        assertEquals("Blood Count Renamed", storedName());
+    }
+
+    @Test
+    public void editingATranslationKeepsTheStoredNameOnTheEnglishName() {
+        localizationValueService.setTranslation("3", "fr", "Seulement en français", "1");
+        entityManager.flush();
+        assertEquals("blood test", storedName());
+
+        localizationValueService.setTranslation("3", "en", "Blood Count From The Editor", "1");
+        entityManager.flush();
+        assertEquals("Blood Count From The Editor", storedName());
     }
 
     private String storedName() {

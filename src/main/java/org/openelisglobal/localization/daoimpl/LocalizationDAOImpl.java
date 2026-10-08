@@ -34,6 +34,20 @@ public class LocalizationDAOImpl extends BaseDAOImpl<Localization, String> imple
     }
 
     @Override
+    public void syncStoredTestNames(String localizationId) {
+        if (localizationId == null) {
+            return;
+        }
+        entityManager.flush();
+        entityManager
+                .createNativeQuery("UPDATE clinlims.test t SET name = lv.value"
+                        + " FROM clinlims.localization_value lv WHERE t.name_localization_id = CAST(:id AS numeric)"
+                        + " AND lv.localization_id = t.name_localization_id AND lv.locale = 'en'"
+                        + " AND BTRIM(lv.value) <> '' AND t.name IS DISTINCT FROM lv.value")
+                .setParameter("id", localizationId).executeUpdate();
+    }
+
+    @Override
     public List<Localization> findMissingTranslationsForLocale(String locale) {
         String jpql = "SELECT l FROM Localization l WHERE NOT EXISTS ("
                 + "SELECT 1 FROM LocalizationValue lv WHERE lv.localization.id = l.id "
