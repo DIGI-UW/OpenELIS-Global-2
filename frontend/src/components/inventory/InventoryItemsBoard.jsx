@@ -30,6 +30,7 @@ import {
   Checkbox,
   Modal,
   NumberInput,
+  Pagination,
 } from "@carbon/react";
 import { ArrowUp, ArrowDown, Subtract, Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
@@ -117,6 +118,8 @@ const compare = (a, b) => {
   return String(a).localeCompare(String(b));
 };
 
+const PAGE_SIZES = [25, 50, 100];
+
 const InventoryItemsBoard = () => {
   const intl = useIntl();
   const [rows, setRows] = useState([]);
@@ -137,6 +140,8 @@ const InventoryItemsBoard = () => {
   const [countSaving, setCountSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [sort, setSort] = useState({ key: null, ascending: true });
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
   const [detailLot, setDetailLot] = useState(null);
 
   const [action, setAction] = useState(null);
@@ -396,6 +401,17 @@ const InventoryItemsBoard = () => {
       return sort.ascending ? compare(left, right) : compare(right, left);
     });
   }, [rows, lotsByItem, search, statusFilter, locationFilter, tagFilter, sort]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [search, statusFilter, locationFilter, tagFilter, sort]);
+
+  // A stock-take covers everything in scope, so count mode shows every row.
+  const paged = !countMode && visibleRows.length > PAGE_SIZES[0];
+  const currentPage = Math.min(page, Math.ceil(visibleRows.length / pageSize));
+  const pagedRows = paged
+    ? visibleRows.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+    : visibleRows;
 
   const toggleSort = (key) =>
     setSort((current) =>
@@ -1025,7 +1041,7 @@ const InventoryItemsBoard = () => {
                 </TableCell>
               </TableRow>
             )}
-            {visibleRows.map((row) => {
+            {pagedRows.map((row) => {
               const isOpen = expandedId === row.itemId;
               const statusTag = STATUS_TAGS[row.status] || STATUS_TAGS.ADEQUATE;
               return (
@@ -1170,6 +1186,33 @@ const InventoryItemsBoard = () => {
           </TableBody>
         </Table>
       </TableContainer>
+      {paged && (
+        <Pagination
+          page={currentPage}
+          pageSize={pageSize}
+          pageSizes={PAGE_SIZES}
+          totalItems={visibleRows.length}
+          onChange={({ page: nextPage, pageSize: nextSize }) => {
+            setPage(nextPage);
+            setPageSize(nextSize);
+          }}
+          forwardText={intl.formatMessage({ id: "pagination.forward" })}
+          backwardText={intl.formatMessage({ id: "pagination.backward" })}
+          itemsPerPageText={intl.formatMessage({
+            id: "pagination.items-per-page",
+          })}
+          pageNumberText={intl.formatMessage({ id: "pagination.page-number" })}
+          itemRangeText={(min, max, total) =>
+            intl.formatMessage(
+              { id: "pagination.item-range" },
+              { min, max, total },
+            )
+          }
+          pageRangeText={(current, total) =>
+            intl.formatMessage({ id: "pagination.page-range" }, { total })
+          }
+        />
+      )}
 
       <LotDetailsPanel
         open={detailLot !== null}
