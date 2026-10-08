@@ -432,6 +432,8 @@ describe("culture set assignments", () => {
         },
       ],
     });
+    expect(await screen.findByLabelText("Container type")).toBeInTheDocument();
+    expect(screen.getByLabelText("Body site")).toBeInTheDocument();
     const duplicate = await screen.findByRole("button", { name: /duplicate/i });
     fireEvent.click(duplicate);
     expect(setSamples.mock.calls.at(-1)[0][1]).toMatchObject({

@@ -154,13 +154,11 @@ describe("BasicInfoSection domain-switch modal", () => {
   it("persists case opening independently of the AMR flag", async () => {
     renderSection();
     await screen.findByLabelText("Clinical");
-    expect(
-      screen.queryByLabelText("Microbiology role"),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByLabelText("Case role")).not.toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
     );
-    fireEvent.change(screen.getByLabelText("Microbiology role"), {
+    fireEvent.change(screen.getByLabelText("Case role"), {
       target: { value: "CULTURE" },
     });
     fireEvent.click(screen.getByRole("switch", { name: /Collected in sets/ }));
@@ -185,11 +183,11 @@ describe("BasicInfoSection domain-switch modal", () => {
     fireEvent.click(
       screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
     );
-    fireEvent.change(screen.getByLabelText("Microbiology role"), {
+    fireEvent.change(screen.getByLabelText("Case role"), {
       target: { value: "CULTURE" },
     });
     fireEvent.click(screen.getByRole("switch", { name: /Collected in sets/ }));
-    fireEvent.change(screen.getByLabelText("Microbiology role"), {
+    fireEvent.change(screen.getByLabelText("Case role"), {
       target: { value: "DIRECT" },
     });
     expect(
