@@ -5,7 +5,7 @@ import org.openelisglobal.test.valueholder.Test;
 
 /** Shared grouping decision for order preview and persistence. */
 public record MicroCaseRoutingKey(String sampleId, String sampleTypeId, String testSectionId,
-        String collectedInSetsTestId) {
+        String collectedInSetsTestId, String siteId) {
 
     public static MicroCaseRoutingKey forTest(SampleItem specimen, Test test) {
         if (specimen == null || test == null || !test.isOpensMicrobiologyCase()) {
@@ -17,7 +17,10 @@ public record MicroCaseRoutingKey(String sampleId, String sampleTypeId, String t
         if (sets && !"CULTURE".equals(test.getMicrobiologyCaseRole())) {
             throw new IllegalArgumentException("Only a culture test can be collected in sets");
         }
+        boolean environmental = specimen.getSample() != null && org.openelisglobal.common.domain.Domain
+                .fromRaw(specimen.getSample().getDomain()) == org.openelisglobal.common.domain.Domain.ENVIRONMENTAL;
         return new MicroCaseRoutingKey(specimen.getSample() == null ? null : specimen.getSample().getId(),
-                sets ? null : specimen.getTypeOfSampleId(), test.getTestSection().getId(), sets ? test.getId() : null);
+                sets ? null : specimen.getTypeOfSampleId(), test.getTestSection().getId(), sets ? test.getId() : null,
+                sets || !environmental ? null : specimen.getCollectionLocationId());
     }
 }

@@ -42,14 +42,17 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
     private final RuleResultScope ruleScope;
     private final DictionaryService dictionaryService;
     private final TestResultComponentService componentService;
+    private final MicroOrderSiteService sites;
 
     public MicroOrderPreviewServiceImpl(MicroOrderRoutingService routingService, TestService testService,
             TypeOfSampleService sampleTypeService, UserService userService, RoleService roleService,
             TestReflexService reflexService, RuleResultScope ruleScope, DictionaryService dictionaryService,
             TestResultComponentService componentService, MicroCultureSetWarningService setWarningService,
-            org.openelisglobal.dictionary.service.SampleContainerClassificationService containers) {
+            org.openelisglobal.dictionary.service.SampleContainerClassificationService containers,
+            MicroOrderSiteService sites) {
         this.setWarningService = setWarningService;
         this.containers = containers;
+        this.sites = sites;
         this.routingService = routingService;
         this.testService = testService;
         this.sampleTypeService = sampleTypeService;
@@ -74,6 +77,9 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
                 : userService.getUserTestSections(userId, reception.getId());
         Set<String> permitted = units == null ? Set.of()
                 : units.stream().map(IdValuePair::getId).collect(Collectors.toSet());
+        boolean environmental = org.openelisglobal.common.domain.Domain
+                .fromRaw(request.domain) == org.openelisglobal.common.domain.Domain.ENVIRONMENTAL;
+        Map<String, String> siteNames = new LinkedHashMap<>();
         Map<String, Test> catalog = new LinkedHashMap<>();
         List<MicroOrderDraftGrouping.Selection> selections = new ArrayList<>();
         List<TestLine> ordinary = new ArrayList<>();
@@ -89,6 +95,23 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
             }
             SampleItem specimen = new SampleItem();
             specimen.setTypeOfSample(type);
+            if (environmental) {
+                var order = new org.openelisglobal.sample.valueholder.Sample();
+                order.setDomain(request.domain);
+                specimen.setSample(order);
+                String siteId = input.collectionLocationId == null || input.collectionLocationId.isBlank()
+                        ? request.samplingSiteId
+                        : input.collectionLocationId;
+                if (siteId == null || siteId.isBlank()) {
+                    // One unsaved order-level site; no placeholder is ever persisted.
+                    siteId = "draft-order-site";
+                    siteNames.put(siteId, request.samplingSiteName);
+                } else {
+                    siteId = siteId.trim();
+                    siteNames.put(siteId, sites.siteName(siteId));
+                }
+                specimen.setCollectionLocationId(siteId);
+            }
             sampleNames.add(type.getLocalizedName());
             List<Test> selected = new ArrayList<>();
             for (String testId : new LinkedHashSet<>(input.testIds)) {
@@ -102,6 +125,8 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
                 if (test.getTestSection() == null || !permitted.contains(test.getTestSection().getId())) {
                     throw new ResponseStatusException(HttpStatus.FORBIDDEN);
                 }
+                if (environmental && test.isOpensMicrobiologyCase())
+                    MicroOrderSiteService.requireEnvironmentalUnit(test);
                 selected.add(test);
                 if (!test.isOpensMicrobiologyCase()) {
                     ordinary.add(new TestLine(index, test.getId(), test.getLocalizedName()));
@@ -125,6 +150,7 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
                         bottle.containerType = input.container;
                         bottle.containerPopulation = containers.population(input.container);
                         bottle.bodySite = input.bodySite;
+                        bottle.collectionLocationId = selections.get(i).specimen().getCollectionLocationId();
                         if (hasText(input.collectionDate) && hasText(input.collectionTime)) {
                             var date = java.time.LocalDate.parse(input.collectionDate);
                             var time = java.time.LocalTime.parse(input.collectionTime);
@@ -136,7 +162,8 @@ public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
             return new CaseLine(group.key().testSectionId(), tests.get(0).getTestSection().getTestSectionName(),
                     group.specimenIndexes().stream().map(i -> new SpecimenLine(i, sampleNames.get(i))).toList(),
                     tests.stream().map(Test::getLocalizedName).toList(),
-                    tests.stream().anyMatch(Test::isCollectedInSets), bottles, setWarningService.evaluate(bottles));
+                    tests.stream().anyMatch(Test::isCollectedInSets), siteNames.get(group.key().siteId()), bottles,
+                    setWarningService.evaluate(bottles));
         }).toList();
         if (cases.isEmpty()) {
             return new MicroOrderPreviewForm(cases, ordinary, List.of(), List.of(), List.of());

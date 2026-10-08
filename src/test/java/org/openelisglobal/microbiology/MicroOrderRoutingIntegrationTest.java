@@ -102,6 +102,91 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void environmentalRequestsGroupBySiteAndKeepOwnershipWhenCollected() {
+        order.setDomain("E");
+        test.getTestSection().setDomain("ENVIRONMENTAL");
+        var firstSite = site();
+        var secondSite = site();
+        var first = request(test.getId());
+        first.setCollectionLocationId(firstSite);
+        var replicate = request(test.getId());
+        replicate.setCollectionLocationId(firstSite);
+        var separate = request(test.getId());
+        separate.setCollectionLocationId(secondSite);
+        routing.routeOrder(order, actor);
+        routing.routeOrder(order, actor);
+        assertEquals(2, cases.getByOrder(order.getId()).size());
+        String firstCase = requests.getActiveByRequestAndTest(first.getId(), test.getId()).getCaseId();
+        assertEquals(firstCase, requests.getActiveByRequestAndTest(replicate.getId(), test.getId()).getCaseId());
+        assertNotEquals(firstCase, requests.getActiveByRequestAndTest(separate.getId(), test.getId()).getCaseId());
+        assertEquals(firstSite, cases.get(firstCase).orElseThrow().getSiteId());
+
+        SampleItem sample = new SampleItem();
+        sample.setSample(order);
+        sample.setTypeOfSample(type);
+        sample.setCollectionLocationId(firstSite);
+        sample.setSortOrder("1");
+        sample.setStatusId(fixtures.ensureSampleEnteredStatus());
+        sample.setSysUserId(actor);
+        samples.insert(sample);
+        fixtures.createAnalysis(sample, test);
+        first.setSampleItem(sample);
+        first.setStatus(SampleTypeRequest.Status.COLLECTED);
+        routing.routeOrder(order, actor);
+        em.flush();
+        em.clear();
+        assertEquals(2, cases.getByOrder(order.getId()).size());
+        assertEquals(firstCase, requests.getActiveByRequestAndTest(first.getId(), test.getId()).getCaseId());
+        assertEquals(1, membership.getCaseSamples(firstCase).size());
+    }
+
+    @Test
+    public void environmentalCollectedAnalysesRouteByTheirSampleSites() {
+        order.setDomain("E");
+        test.getTestSection().setDomain("ENVIRONMENTAL");
+        for (String site : new String[] { site(), site() }) {
+            SampleItem sample = new SampleItem();
+            sample.setSample(order);
+            sample.setTypeOfSample(type);
+            sample.setCollectionLocationId(site);
+            sample.setSortOrder("1");
+            sample.setStatusId(fixtures.ensureSampleEnteredStatus());
+            sample.setSysUserId(actor);
+            samples.insert(sample);
+            routing.routeAnalysis(fixtures.createAnalysis(sample, test), actor);
+        }
+        routing.routeOrder(order, actor);
+        assertEquals(2, cases.getByOrder(order.getId()).size());
+    }
+
+    @Test
+    public void environmentalSetCulturesGroupAcrossSitesAndTypes() {
+        order.setDomain("E");
+        test.getTestSection().setDomain("ENVIRONMENTAL");
+        test.setMicrobiologyCaseRole("CULTURE");
+        test.setCollectedInSets(true);
+        var first = request(test.getId());
+        first.setCollectionLocationId(site());
+        var second = request(test.getId());
+        second.setCollectionLocationId(site());
+        second.setTypeOfSample(fixtures.createTypeOfSample());
+        routing.routeOrder(order, actor);
+        assertEquals(1, cases.getByOrder(order.getId()).size());
+        assertEquals(requests.getActiveByRequestAndTest(first.getId(), test.getId()).getCaseId(),
+                requests.getActiveByRequestAndTest(second.getId(), test.getId()).getCaseId());
+    }
+
+    private String site() {
+        var site = new org.openelisglobal.vector.valueholder.VectorSamplingSite();
+        site.setCode("V2_" + UUID.randomUUID().toString().substring(0, 12));
+        site.setName(site.getCode());
+        site.setActive(true);
+        em.persist(site);
+        em.flush();
+        return site.getId().toString();
+    }
+
+    @Test
     public void newCaseInheritsEligibleOrderProgramAndReusedCaseKeepsIt() {
         var original = program(true);
         var association = new org.openelisglobal.program.valueholder.ProgramSample();

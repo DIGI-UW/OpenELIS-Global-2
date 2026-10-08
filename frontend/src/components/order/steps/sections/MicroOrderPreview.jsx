@@ -10,16 +10,26 @@ import {
 } from "@carbon/react";
 import { previewMicrobiologyOrder } from "../../../microbiology/MicrobiologyService";
 
-export default function MicroOrderPreview({ samples, savedOrder = false }) {
+export default function MicroOrderPreview({
+  samples,
+  savedOrder = false,
+  domain,
+  samplingSiteId,
+  samplingSiteName,
+}) {
   const intl = useIntl();
   const [result, setResult] = useState(null);
   const [failedPayload, setFailedPayload] = useState(null);
   const [attempt, setAttempt] = useState(0);
   const payload = JSON.stringify({
+    ...(domain ? { domain, samplingSiteId, samplingSiteName } : {}),
     specimens: samples
       .filter((sample) => sample.sampleTypeId)
       .map((sample) => ({
         sampleTypeId: sample.sampleTypeId,
+        ...(sample.collectionLocationId
+          ? { collectionLocationId: sample.collectionLocationId }
+          : {}),
         ...(sample.container != null ? { container: sample.container } : {}),
         ...(sample.bodySite != null ? { bodySite: sample.bodySite } : {}),
         ...(sample.collectionDate
@@ -118,6 +128,9 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
                     .join(", "),
                 })}
               </div>
+              {entry.siteName && (
+                <div>{text("site", { site: entry.siteName })}</div>
+              )}
               <CultureSetSummary
                 specimens={entry.bottles}
                 warnings={entry.setWarnings}

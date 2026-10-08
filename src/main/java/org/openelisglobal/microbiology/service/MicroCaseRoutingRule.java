@@ -16,10 +16,16 @@ public final class MicroCaseRoutingRule {
         public final String caseId;
         public final String labUnitId;
         public final String sampleTypeId;
+        public final String siteId;
         public final Set<String> samples = new LinkedHashSet<>();
         public final Set<String> setsTests = new LinkedHashSet<>();
 
         public Candidate(String caseId, String labUnitId, String sampleTypeId) {
+            this(caseId, labUnitId, sampleTypeId, null);
+        }
+
+        public Candidate(String caseId, String labUnitId, String sampleTypeId, String siteId) {
+            this.siteId = siteId;
             this.caseId = caseId;
             this.labUnitId = labUnitId;
             this.sampleTypeId = sampleTypeId;
@@ -40,15 +46,20 @@ public final class MicroCaseRoutingRule {
 
     public static Candidate choose(List<Candidate> oldestFirst, String labUnitId, String sampleTypeId,
             String setsTestId, String sampleKey) {
+        return choose(oldestFirst, labUnitId, sampleTypeId, setsTestId, sampleKey, null);
+    }
+
+    public static Candidate choose(List<Candidate> oldestFirst, String labUnitId, String sampleTypeId,
+            String setsTestId, String sampleKey, String siteId) {
         for (Candidate candidate : oldestFirst) {
             if (Objects.equals(labUnitId, candidate.labUnitId) && candidate.samples.contains(sampleKey)) {
                 return candidate;
             }
         }
         for (Candidate candidate : oldestFirst) {
-            if (Objects.equals(labUnitId, candidate.labUnitId)
-                    && (setsTestId == null ? Objects.equals(sampleTypeId, candidate.sampleTypeId)
-                            : candidate.setsTests.contains(setsTestId))) {
+            if (Objects.equals(labUnitId, candidate.labUnitId) && (setsTestId == null
+                    ? Objects.equals(sampleTypeId, candidate.sampleTypeId) && Objects.equals(siteId, candidate.siteId)
+                    : candidate.setsTests.contains(setsTestId))) {
                 return candidate;
             }
         }

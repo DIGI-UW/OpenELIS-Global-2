@@ -221,6 +221,8 @@ const flattenSampleManifestFields = (
       cultureSetNumber: s.cultureSetNumber ?? xml.cultureSetNumber ?? "",
       bodySite: s.bodySite || xml.bodySite || "",
       locationDetails: s.locationDetails || xml.locationDetails || "",
+      collectionLocationId:
+        s.collectionLocationId || xml.collectionLocationId || "",
       gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
       gpsLongitude: s.gpsLongitude || xml.gpsLongitude || "",
       labPerformedSampling:
@@ -674,6 +676,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           // deconvolution. Same VectorSamplingSite id space as collectionLocationId.
           const collectionLocationId =
             sampleItem.collectionLocationId ||
+            envFields.samplingSiteId ||
             envFields.vecCollectionSiteId ||
             "";
 

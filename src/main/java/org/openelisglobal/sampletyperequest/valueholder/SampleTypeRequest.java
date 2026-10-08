@@ -102,6 +102,18 @@ public class SampleTypeRequest extends BaseObject<Integer> {
     @Column(name = "created_date", nullable = false, updatable = false)
     private Timestamp createdDate;
 
+    @Column(name = "collection_location_id")
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String collectionLocationId;
+
+    public String getCollectionLocationId() {
+        return collectionLocationId;
+    }
+
+    public void setCollectionLocationId(String collectionLocationId) {
+        this.collectionLocationId = collectionLocationId;
+    }
+
     // Getters and Setters
 
     @Override

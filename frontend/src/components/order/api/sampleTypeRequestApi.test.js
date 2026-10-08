@@ -89,6 +89,7 @@ describe("requested specimens sent with the order", () => {
         cultureSetNumber: null,
         container: null,
         bodySite: null,
+        collectionLocationId: null,
         collectionDate: null,
         collectionTime: null,
         typeOfSampleId: "5",
@@ -103,6 +104,7 @@ describe("requested specimens sent with the order", () => {
         cultureSetNumber: null,
         container: null,
         bodySite: null,
+        collectionLocationId: null,
         collectionDate: null,
         collectionTime: null,
         typeOfSampleId: "6",
@@ -181,4 +183,18 @@ it("restores and resends specimen identity and recorded culture bottle details",
     collectionDate: "2026-10-07",
     collectionTime: "14:25",
   });
+});
+
+it("retains per-specimen site identity through requested and collected stages", () => {
+  const row = {
+    sampleTypeId: "5",
+    collectionLocationId: "12",
+    tests: [{ id: "42" }],
+  };
+  expect(toRequestedSampleTypes([row])[0].collectionLocationId).toBe("12");
+  expect(
+    convertRequestsToSamples([
+      { id: "8", typeOfSampleId: "5", collectionLocationId: "12" },
+    ])[0].collectionLocationId,
+  ).toBe("12");
 });

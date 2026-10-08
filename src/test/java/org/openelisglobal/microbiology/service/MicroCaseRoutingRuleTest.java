@@ -7,6 +7,16 @@ import org.junit.Test;
 
 public class MicroCaseRoutingRuleTest {
     @Test
+    public void ordinaryEnvironmentalWorkGroupsBySiteWhileSetCulturesIgnoreIt() {
+        var first = new MicroCaseRoutingRule.Candidate("first", "unit", "swab", "1");
+        first.setsTests.add("culture");
+        var second = new MicroCaseRoutingRule.Candidate("second", "unit", "swab", "2");
+        assertSame(second, MicroCaseRoutingRule.choose(List.of(first, second), "unit", "swab", null, "new", "2"));
+        assertNull(MicroCaseRoutingRule.choose(List.of(first), "unit", "swab", null, "new", "2"));
+        assertSame(first, MicroCaseRoutingRule.choose(List.of(first), "unit", "other", "culture", "new", "2"));
+    }
+
+    @Test
     public void existingSampleMembershipWinsOverAnOlderMatchingType() {
         var oldest = new MicroCaseRoutingRule.Candidate("oldest", "unit", "blood");
         var member = new MicroCaseRoutingRule.Candidate("member", "unit", "blood");

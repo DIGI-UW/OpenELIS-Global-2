@@ -28,6 +28,7 @@ public class SampleTypeRequestDTO {
     private Integer cultureSetNumber;
     private String container;
     private String bodySite;
+    private String collectionLocationId;
     private String collectionDate;
     private String collectionTime;
 
@@ -45,6 +46,7 @@ public class SampleTypeRequestDTO {
         this.cultureSetNumber = entity.getCultureSetNumber();
         this.container = entity.getContainer();
         this.bodySite = entity.getBodySite();
+        this.collectionLocationId = entity.getCollectionLocationId();
         this.collectionDate = entity.getCollectionDate() == null ? null : entity.getCollectionDate().toString();
         this.collectionTime = entity.getCollectionTime();
         this.requestedQuantity = entity.getRequestedQuantity();
@@ -56,6 +58,14 @@ public class SampleTypeRequestDTO {
         this.status = entity.getStatus() != null ? entity.getStatus().name() : null;
         this.sampleItemId = entity.getSampleItem() != null ? entity.getSampleItem().getId() : null;
         this.createdDate = entity.getCreatedDate() != null ? entity.getCreatedDate().toString() : null;
+    }
+
+    public String getCollectionLocationId() {
+        return collectionLocationId;
+    }
+
+    public void setCollectionLocationId(String collectionLocationId) {
+        this.collectionLocationId = collectionLocationId;
     }
 
     // Getters and Setters

@@ -221,3 +221,35 @@ it("refreshes set counts and warnings when only a bottle assignment changes", as
     }),
   );
 });
+
+it("sends environmental site overrides and names the case site", async () => {
+  previewMicrobiologyOrder.mockResolvedValueOnce({
+    ...response,
+    cases: [{ ...response.cases[0], siteName: "Ward 2" }],
+  });
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <MicroOrderPreview
+        samples={[
+          {
+            sampleTypeId: "5",
+            collectionLocationId: "12",
+            tests: [{ id: "culture" }],
+          },
+        ]}
+        domain="ENVIRONMENTAL"
+        samplingSiteId="11"
+        samplingSiteName="Ward 1"
+      />
+    </IntlProvider>,
+  );
+  await screen.findByText("Site: Ward 2");
+  expect(previewMicrobiologyOrder).toHaveBeenCalledWith({
+    domain: "ENVIRONMENTAL",
+    samplingSiteId: "11",
+    samplingSiteName: "Ward 1",
+    specimens: [
+      { sampleTypeId: "5", collectionLocationId: "12", testIds: ["culture"] },
+    ],
+  });
+});

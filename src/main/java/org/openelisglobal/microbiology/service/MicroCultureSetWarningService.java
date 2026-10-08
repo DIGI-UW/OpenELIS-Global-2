@@ -46,8 +46,10 @@ public class MicroCultureSetWarningService {
                     && bottles.stream().anyMatch(b -> "PAEDIATRIC".equals(b.containerPopulation))) {
                 warnings.add(new MicroCultureSetWarningForm(number, "MIXED_POPULATIONS", intervalMinutes));
             }
-            if (bottles.stream().map(bottle -> normalize(bottle.bodySite)).filter(Objects::nonNull).distinct()
-                    .count() > 1) {
+            if (bottles.stream().map(bottle -> normalize(
+                    bottle.collectionLocationId == null || bottle.collectionLocationId.isBlank() ? bottle.bodySite
+                            : bottle.collectionLocationId))
+                    .filter(Objects::nonNull).distinct().count() > 1) {
                 warnings.add(new MicroCultureSetWarningForm(number, "DIFFERENT_SITES", intervalMinutes));
             }
             var times = bottles.stream().map(bottle -> bottle.collectionDate).filter(Objects::nonNull)

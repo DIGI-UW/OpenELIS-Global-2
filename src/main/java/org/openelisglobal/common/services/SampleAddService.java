@@ -259,7 +259,8 @@ public class SampleAddService {
                 if (stc.sampleTypeRequestId != null && stc.sampleTypeRequestId < 1) {
                     throw new IllegalArgumentException("Requested specimen identity must be positive");
                 }
-                for (String field : List.of("cultureSetNumber", "container", "bodySite", "date", "time")) {
+                for (String field : List.of("cultureSetNumber", "container", "bodySite", "date", "time",
+                        "collectionLocationId")) {
                     if (sampleItem.attributeValue(field) != null)
                         stc.suppliedCollectionFields.add(field);
                 }

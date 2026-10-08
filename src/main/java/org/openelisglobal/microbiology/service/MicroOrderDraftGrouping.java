@@ -46,10 +46,10 @@ public final class MicroOrderDraftGrouping {
             MicroCaseRoutingKey key = MicroCaseRoutingKey.forTest(selected.sample, selected.test);
             String sampleKey = Integer.toString(selected.index);
             var chosen = MicroCaseRoutingRule.choose(candidates, key.testSectionId(),
-                    selected.sample.getTypeOfSampleId(), key.collectedInSetsTestId(), sampleKey);
+                    selected.sample.getTypeOfSampleId(), key.collectedInSetsTestId(), sampleKey, key.siteId());
             if (chosen == null) {
                 chosen = new MicroCaseRoutingRule.Candidate(Integer.toString(candidates.size()), key.testSectionId(),
-                        selected.sample.getTypeOfSampleId());
+                        selected.sample.getTypeOfSampleId(), key.siteId());
                 candidates.add(chosen);
                 keys.put(chosen.caseId, key);
                 tests.put(chosen.caseId, new LinkedHashSet<>());

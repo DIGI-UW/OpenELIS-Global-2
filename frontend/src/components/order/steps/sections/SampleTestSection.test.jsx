@@ -361,6 +361,38 @@ describe("SampleTestSection selected-tag close buttons", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("lets an environmental sample override the order site without changing its tests", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/rest/environmental-sample-types")
+        callback([{ id: "5", value: "Swab" }]);
+      if (url === "/rest/admin/vector/sampling-sites")
+        callback([
+          { id: 11, code: "WARD1", name: "Ward 1", active: true },
+          { id: 12, code: "WARD2", name: "Ward 2", active: true },
+        ]);
+      if (url === "/rest/vector/dictionary/sample-containers") callback([]);
+      if (url.startsWith("/rest/sample-type-tests")) callback(catalogue);
+    });
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [selected],
+      workflowType: "environmental",
+    });
+    const site = await screen.findByLabelText("Sampling site");
+    await waitFor(() =>
+      expect(
+        screen.getByRole("option", { name: "Ward 2 (WARD2)" }),
+      ).toBeInTheDocument(),
+    );
+    fireEvent.change(site, { target: { value: "12" } });
+    expect(setSamples).toHaveBeenCalledWith([
+      expect.objectContaining({
+        collectionLocationId: "12",
+        tests: selected.tests,
+      }),
+    ]);
+  });
+
   it("names them the same way in the per-sample manifest picker", async () => {
     const user = userEvent.setup();
     getFromOpenElisServer.mockImplementation((url, callback) => {

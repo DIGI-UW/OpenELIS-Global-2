@@ -34,9 +34,22 @@ const SampleTestSection = ({
   setSamples,
   isReadOnly,
   workflowType,
+  orderData,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
+
+  const [samplingSites, setSamplingSites] = useState([]);
+  useEffect(() => {
+    if (workflowType !== "environmental") return;
+    let current = true;
+    getFromOpenElisServer("/rest/admin/vector/sampling-sites", (sites) => {
+      if (current && Array.isArray(sites)) setSamplingSites(sites);
+    });
+    return () => {
+      current = false;
+    };
+  }, [workflowType]);
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [testsPerSample, setTestsPerSample] = useState({});
@@ -317,6 +330,7 @@ const SampleTestSection = ({
       gpsLatitude: parent.gpsLatitude || "",
       gpsLongitude: parent.gpsLongitude || "",
       locationDetails: parent.locationDetails || "",
+      collectionLocationId: parent.collectionLocationId || "",
       collectionDate: parent.collectionDate || "",
       collectionTime: parent.collectionTime || "",
       qcMetadata: {
@@ -831,6 +845,9 @@ const SampleTestSection = ({
                   />
                 </th>
                 <th>
+                  <FormattedMessage id="env.sample.samplingSite" />
+                </th>
+                <th>
                   <FormattedMessage
                     id="env.sample.locationDetails"
                     defaultMessage="Location Details"
@@ -963,6 +980,50 @@ const SampleTestSection = ({
                           }
                           disabled={isReadOnly}
                         />
+                      </td>
+                      <td className="env-manifest-cell">
+                        <Select
+                          id={`sample-site-${sampleIndex}`}
+                          labelText={intl.formatMessage({
+                            id: "env.sample.samplingSite",
+                          })}
+                          hideLabel
+                          value={sample.collectionLocationId || ""}
+                          onChange={(event) =>
+                            handleEnvFieldChange(
+                              sampleIndex,
+                              "collectionLocationId",
+                              event.target.value,
+                            )
+                          }
+                          disabled={isReadOnly}
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage(
+                              { id: "env.sample.useOrderSite" },
+                              {
+                                site:
+                                  orderData?.sampleOrderItems
+                                    ?.environmentalFields?.samplingSiteName ||
+                                  "",
+                              },
+                            )}
+                          />
+                          {samplingSites
+                            .filter(
+                              (site) =>
+                                site.active !== false ||
+                                String(site.id) === sample.collectionLocationId,
+                            )
+                            .map((site) => (
+                              <SelectItem
+                                key={site.id}
+                                value={String(site.id)}
+                                text={`${site.name} (${site.code})`}
+                              />
+                            ))}
+                        </Select>
                       </td>
                       <td className="env-manifest-cell">
                         <TextInput
@@ -1117,7 +1178,7 @@ const SampleTestSection = ({
                     </tr>
                     {isExpanded && sample.sampleTypeId && (
                       <tr className="env-manifest-row--expanded">
-                        <td colSpan={11}>
+                        <td colSpan={12}>
                           {renderTestPanelPicker(sampleIndex)}
                         </td>
                       </tr>
@@ -1147,7 +1208,7 @@ const SampleTestSection = ({
                           </td>
                           <td
                             className="env-manifest-cell env-manifest-cell--inherited"
-                            colSpan={5}
+                            colSpan={6}
                           >
                             <em>
                               <FormattedMessage

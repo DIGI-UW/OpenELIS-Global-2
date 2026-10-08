@@ -31,6 +31,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 
 public class MicroOrderPreviewServiceTest {
+    private MicroOrderSiteService sites;
     private TestService tests;
     private TypeOfSampleService types;
     private TestReflexService reflex;
@@ -64,9 +65,47 @@ public class MicroOrderPreviewServiceTest {
         when(dictionary.getDictionaryById("901")).thenReturn(positive);
         MicroOrderRoutingService routing = mock(MicroOrderRoutingService.class);
         when(routing.previewNewOrder(anyList())).thenAnswer(call -> MicroOrderDraftGrouping.group(call.getArgument(0)));
+        sites = mock(MicroOrderSiteService.class);
+        when(sites.siteName("11")).thenReturn("Ward 1");
+        when(sites.siteName("12")).thenReturn("Ward 2");
         service = new MicroOrderPreviewServiceImpl(routing, tests, types, users, roles, reflex, scope, dictionary,
                 components, new MicroCultureSetWarningService(30),
-                mock(org.openelisglobal.dictionary.service.SampleContainerClassificationService.class));
+                mock(org.openelisglobal.dictionary.service.SampleContainerClassificationService.class), sites);
+    }
+
+    @Test
+    public void environmentalPreviewMatchesSiteGroupingAndTheSetException() {
+        catalog("culture", "Culture", "1", true);
+        tests.get("culture").getTestSection().setDomain("ENVIRONMENTAL");
+        var request = request("culture");
+        request.domain = "ENVIRONMENTAL";
+        request.samplingSiteId = "11";
+        var second = new MicroOrderPreviewRequestForm.Specimen();
+        second.sampleTypeId = "5";
+        second.collectionLocationId = "12";
+        second.testIds = List.of("culture");
+        request.specimens.add(second);
+        var preview = service.preview(request, "user");
+        assertEquals(2, preview.cases().size());
+        assertEquals(List.of("Ward 1", "Ward 2"), preview.cases().stream().map(line -> line.siteName()).toList());
+        when(tests.get("culture").isCollectedInSets()).thenReturn(true);
+        when(tests.get("culture").getMicrobiologyCaseRole()).thenReturn("CULTURE");
+        request.specimens.forEach(specimen -> specimen.cultureSetNumber = 1);
+        var setPreview = service.preview(request, "user");
+        assertEquals(1, setPreview.cases().size());
+        assertEquals(List.of("DIFFERENT_SITES"),
+                setPreview.cases().getFirst().setWarnings().stream().map(warning -> warning.code()).toList());
+    }
+
+    @Test
+    public void inlineOrderSiteIsPreviewedWithoutCreatingAStoredSite() {
+        catalog("culture", "Culture", "1", true);
+        tests.get("culture").getTestSection().setDomain("ENVIRONMENTAL");
+        var request = request("culture");
+        request.domain = "ENVIRONMENTAL";
+        request.samplingSiteName = "New ward";
+        assertEquals("New ward", service.preview(request, "user").cases().getFirst().siteName());
+        verifyZeroInteractions(sites);
     }
 
     @Test

@@ -31,6 +31,19 @@ public class MicroCultureSetWarningServiceTest {
     }
 
     @Test
+    public void environmentalWarningsUseSamplingSitesInsteadOfClinicalBodySites() {
+        var first = bottle(1, "Aerobic", "Same point", null);
+        var second = bottle(1, "Anaerobic", "Same point", null);
+        first.collectionLocationId = "11";
+        second.collectionLocationId = "12";
+        assertEquals(List.of("DIFFERENT_SITES"), new MicroCultureSetWarningService(30).evaluate(List.of(first, second))
+                .stream().map(warning -> warning.code()).toList());
+        second.collectionLocationId = "11";
+        second.bodySite = "Another point";
+        assertTrue(new MicroCultureSetWarningService(30).evaluate(List.of(first, second)).isEmpty());
+    }
+
+    @Test
     public void collectionIntervalUsesConfiguredThresholdAndStrictBoundaryAcrossMidnight() {
         var first = bottle(1, "Aerobic", "Left", "2026-10-07 23:50:00");
         var second = bottle(1, "Anaerobic", "Left", "2026-10-08 00:20:00");

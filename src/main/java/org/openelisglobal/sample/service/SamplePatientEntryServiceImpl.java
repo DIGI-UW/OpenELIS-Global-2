@@ -578,6 +578,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     if (sampleTestCollection.suppliedCollectionFields.contains("bodySite")) {
                         savedItem.setBodySite(sampleTestCollection.item.getBodySite());
                     }
+                    if (!GenericValidator.isBlankOrNull(sampleTestCollection.item.getCollectionLocationId()))
+                        savedItem.setCollectionLocationId(sampleTestCollection.item.getCollectionLocationId());
                     savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
                     // Keep existing typeOfSample if incoming is null (don't change sample type
                     // during collection)
@@ -871,6 +873,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setCultureSetNumber(requested.getCultureSetNumber());
             request.setContainer(requested.getContainer());
             request.setBodySite(requested.getBodySite());
+            if (!GenericValidator.isBlankOrNull(requested.getCollectionLocationId()))
+                request.setCollectionLocationId(requested.getCollectionLocationId());
             request.setCollectionDate(GenericValidator.isBlankOrNull(requested.getCollectionDate()) ? null
                     : java.sql.Date.valueOf(java.time.LocalDate.parse(requested.getCollectionDate())));
             request.setCollectionTime(GenericValidator.isBlankOrNull(requested.getCollectionTime()) ? null
@@ -985,6 +989,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 collection.item.setContainer(request.getContainer());
             if (!collection.suppliedCollectionFields.contains("bodySite"))
                 collection.item.setBodySite(request.getBodySite());
+            if (!collection.suppliedCollectionFields.contains("collectionLocationId")
+                    && request.getCollectionLocationId() != null)
+                collection.item.setCollectionLocationId(request.getCollectionLocationId());
             // A timestamp is available only when both its date and time were recorded.
             if (!collection.suppliedCollectionFields.contains("date")
                     && !collection.suppliedCollectionFields.contains("time") && request.getCollectionDate() != null

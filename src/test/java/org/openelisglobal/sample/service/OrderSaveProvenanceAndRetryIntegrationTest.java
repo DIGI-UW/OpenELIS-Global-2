@@ -84,8 +84,6 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     @jakarta.persistence.PersistenceContext
     private jakarta.persistence.EntityManager entityManager;
     @Autowired
-    private org.openelisglobal.test.service.TestSectionService testSections;
-    @Autowired
     private org.openelisglobal.microbiology.dao.MicroCaseDAO microCases;
     @Autowired
     private org.openelisglobal.microbiology.dao.MicroCaseRequestDAO microRequests;
@@ -145,6 +143,12 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         SampleTypeRequestDTO second = requested();
         second.setCultureSetNumber(2);
         second.setBodySite("Right arm");
+        var site = new org.openelisglobal.vector.valueholder.VectorSamplingSite();
+        site.setCode("V2_" + UUID.randomUUID().toString().substring(0, 12));
+        site.setName("Requested site");
+        site.setActive(true);
+        entityManager.persist(site);
+        second.setCollectionLocationId(site.getId().toString());
         second.setContainer("Configured bottle");
         second.setCollectionDate("2026-10-07");
         second.setCollectionTime("14:25");
@@ -160,6 +164,7 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         assertEquals(1, items.size());
         assertEquals(Integer.valueOf(2), items.getFirst().getCultureSetNumber());
         assertEquals("Right arm", items.getFirst().getBodySite());
+        assertEquals(site.getId().toString(), items.getFirst().getCollectionLocationId());
         assertEquals("Configured bottle", items.getFirst().getContainer());
         assertEquals(Timestamp.valueOf("2026-10-07 14:25:00"), items.getFirst().getCollectionDate());
         assertEquals(items.getFirst().getId(), sampleTypeRequestService.get(chosen.getId()).getSampleItem().getId());
@@ -171,7 +176,7 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         Sample sample = newSample();
         org.openelisglobal.test.valueholder.Test test = entityManager
                 .find(org.openelisglobal.test.valueholder.Test.class, catalogTest().getId());
-        test.setTestSection(testSections.getAllActiveTestSections().getFirst());
+        test.setTestSection(fixtures.createLabUnit());
         test.setOpensMicrobiologyCase(true);
         test.setMicrobiologyCaseRole("CASE");
         entityManager.flush();

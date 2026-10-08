@@ -9,6 +9,7 @@ public class MicroCaseSpecimenForm {
     public String sampleTypeId;
     public String specimenType;
     public String bodySite;
+    public String collectionLocationId;
     public Integer cultureSetNumber;
     public String containerType;
     public String containerPopulation;

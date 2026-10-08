@@ -850,6 +850,7 @@ public class OrderSearchRestController extends BaseRestController {
                 sampleXML.put("container", sampleItem.getContainer() != null ? sampleItem.getContainer() : "");
                 sampleXML.put("cultureSetNumber", sampleItem.getCultureSetNumber());
                 sampleXML.put("bodySite", sampleItem.getBodySite() != null ? sampleItem.getBodySite() : "");
+                sampleXML.put("collectionLocationId", sampleItem.getCollectionLocationId());
                 sampleXML.put("locationDetails",
                         sampleItem.getLocationDetails() != null ? sampleItem.getLocationDetails() : "");
                 sampleXML.put("gpsLatitude", sampleItem.getGpsLatitude() != null ? sampleItem.getGpsLatitude() : "");

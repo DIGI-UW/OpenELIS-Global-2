@@ -11,7 +11,7 @@ public record MicroOrderPreviewForm(List<CaseLine> cases, List<TestLine> ordinar
     }
 
     public record CaseLine(String labUnitId, String labUnitName, List<SpecimenLine> specimens, List<String> testNames,
-            boolean collectedInSets, List<MicroCaseSpecimenForm> bottles,
+            boolean collectedInSets, String siteName, List<MicroCaseSpecimenForm> bottles,
             List<MicroCultureSetWarningForm> setWarnings) {
     }
 

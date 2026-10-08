@@ -38,6 +38,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     private final TestService tests;
     private final PanelItemService panels;
     private final ProgramSampleService programSamples;
+    private final MicroOrderSiteService sites;
 
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.common.services.IStatusService statuses;
@@ -45,7 +46,8 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     public MicroOrderRoutingServiceImpl(MicroCaseDAO cases, MicroCaseRequestDAO requests, MicroCaseAnalysisDAO links,
             MicroCaseMembershipService membership, MicroCaseAnalysisService caseAnalyses,
             SampleTypeRequestService sampleRequests, SampleItemService samples, AnalysisService analyses,
-            TestService tests, PanelItemService panels, ProgramSampleService programSamples) {
+            TestService tests, PanelItemService panels, ProgramSampleService programSamples,
+            MicroOrderSiteService sites) {
         this.cases = cases;
         this.requests = requests;
         this.links = links;
@@ -57,6 +59,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         this.tests = tests;
         this.panels = panels;
         this.programSamples = programSamples;
+        this.sites = sites;
     }
 
     @Override
@@ -109,7 +112,16 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
             }
             String key = request.getSampleItem() == null ? "request:" + request.getId()
                     : "sample:" + request.getSampleItem().getId();
-            MicroCase owner = owner(request.getSample(), request.getTypeOfSample().getId(), key, test, actor);
+            String siteId = sites.resolve(request.getSample(),
+                    request.getSampleItem() == null ? request.getCollectionLocationId()
+                            : request.getSampleItem().getCollectionLocationId(),
+                    test);
+            if (siteId != null && request.getCollectionLocationId() == null) {
+                request.setCollectionLocationId(siteId);
+                request.setSysUserId(actor);
+                sampleRequests.update(request);
+            }
+            MicroCase owner = owner(request.getSample(), request.getTypeOfSample().getId(), key, test, actor, siteId);
             ownership = membership.ownRequest(owner.getId(), request.getId(), test.getId(), role(test),
                     test.isCollectedInSets(), actor);
         }
@@ -157,8 +169,8 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         SampleItem sample = analysis.getSampleItem();
         requireOrder(sample.getSample(), actor);
         cases.lockOrder(sample.getSample().getId());
-        MicroCase owner = owner(sample.getSample(), sample.getTypeOfSampleId(), "sample:" + sample.getId(), test,
-                actor);
+        MicroCase owner = owner(sample.getSample(), sample.getTypeOfSampleId(), "sample:" + sample.getId(), test, actor,
+                sites.resolve(sample.getSample(), sample.getCollectionLocationId(), test));
         membership.addSample(owner.getId(), sample.getId(), actor);
         MicroCaseAnalysis link = caseAnalyses.linkAnalysis(owner, analysis, null);
         link.setCaseRole(role(test));
@@ -198,10 +210,10 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         routeRequest(requested, test, actor);
     }
 
-    private MicroCase owner(Sample order, String typeId, String sampleKey, Test test, String actor) {
+    private MicroCase owner(Sample order, String typeId, String sampleKey, Test test, String actor, String siteId) {
         var candidates = candidates(order.getId());
         var chosen = MicroCaseRoutingRule.choose(candidates, test.getTestSection().getId(), typeId,
-                test.isCollectedInSets() ? test.getId() : null, sampleKey);
+                test.isCollectedInSets() ? test.getId() : null, sampleKey, siteId);
         if (chosen != null)
             return cases.get(chosen.caseId).orElseThrow();
         MicroCase created = new MicroCase();
@@ -209,6 +221,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         created.setSampleTypeId(typeId);
         created.setLabUnitId(test.getTestSection().getId());
         created.setCreatedBy(actor);
+        created.setSiteId(siteId);
         var orderProgram = programSamples.getProgrammeSampleBySample(Integer.valueOf(order.getId()), null);
         if (orderProgram != null && orderProgram.getProgram().isShowOnMicroCase()) {
             created.setProgramId(orderProgram.getProgram().getId());
@@ -222,7 +235,8 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         for (MicroCase c : cases.getByOrder(orderId)) {
             if (c.getStatus() != MicroCaseStatus.ACTIVE)
                 continue;
-            var candidate = new MicroCaseRoutingRule.Candidate(c.getId(), c.getLabUnitId(), c.getSampleTypeId());
+            var candidate = new MicroCaseRoutingRule.Candidate(c.getId(), c.getLabUnitId(), c.getSampleTypeId(),
+                    c.getSiteId());
             for (var member : membership.getCaseSamples(c.getId())) {
                 if (member.getSplitOutAt() == null)
                     candidate.samples.add("sample:" + member.getSampleItemId());
