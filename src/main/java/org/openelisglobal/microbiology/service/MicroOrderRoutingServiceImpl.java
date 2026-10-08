@@ -72,12 +72,35 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
 
     @Override
     public void routeOrder(Sample order, String actor) {
+        routeOrder(order, actor, null);
+    }
+
+    @Override
+    public void routeOrder(Sample order, String actor, String cancelReason) {
         requireOrder(order, actor);
         cases.lockOrder(order.getId());
         // Establish set-culture ownership before other work on the same bottles.
+        // Cancel requests that were removed from the order
+        for (MicroCase c : cases.getByOrder(order.getId())) {
+            for (org.openelisglobal.microbiology.valueholder.MicroCaseRequest req : membership
+                    .getCaseRequests(c.getId())) {
+                if (req.getCancelledAt() == null) {
+                    org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest str = sampleRequests
+                            .get(req.getSampleTypeRequestId());
+                    if (str == null || str
+                            .getStatus() == org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.CANCELLED
+                            || !ids(str.getRequestedTests()).contains(req.getTestId())) {
+                        membership.cancelRequest(req.getId(), cancelReason, actor);
+                    }
+                }
+            }
+        }
+
         List<RequestedTest> work = new ArrayList<>();
-        for (SampleTypeRequest request : sampleRequests.getRequestsBySampleId(order.getId())) {
-            if (request.getStatus() == SampleTypeRequest.Status.CANCELLED)
+        for (org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest request : sampleRequests
+                .getRequestsBySampleId(order.getId())) {
+            if (request
+                    .getStatus() == org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest.Status.CANCELLED)
                 continue;
             Set<String> ids = ids(request.getRequestedTests());
             for (String panelId : ids(request.getRequestedPanels())) {

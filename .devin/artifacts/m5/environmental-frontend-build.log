@@ -1,0 +1,277 @@
+
+> openelis-global-react-app@0.1.0 build
+> vite build
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:41:35). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+vite v8.3.2 building client environment for production...
+transforming...
+✓ 2912 modules transformed.
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+152 |  }
+153 |  
+154 |  .filterSetContent :global(.cds--tree-node__label) {
+    |                            ^
+155 |    display: flex;
+156 |    align-items: center;
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+158 |  }
+159 |  
+160 |  .filterSetContent :global(.cds--tree-node__label .cds--checkbox-wrapper) {
+    |                            ^
+161 |    margin: 0;
+162 |  }.timelineTestCell {
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+1677 |  }
+1678 |  
+1679 |  .rightSection :global(.cds--skeleton) {
+     |                        ^
+1680 |    width: 100%;
+1681 |  }
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+1686 |  }
+1687 |  
+1688 |  .leftHeaderActions > :global(.cds--content-switcher),
+     |                               ^
+1689 |  .viewOptsContentSwitcherContainer :global(.cds--content-switcher) {
+1690 |    display: grid;
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+1687 |  
+1688 |  .leftHeaderActions > :global(.cds--content-switcher),
+1689 |  .viewOptsContentSwitcherContainer :global(.cds--content-switcher) {
+     |                                            ^
+1690 |    display: grid;
+1691 |    grid-template-columns: 1fr 1fr;
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+1844 |  }
+1845 |  
+1846 |  .tableContainer :global(.cds--data-table-header) {
+     |                          ^
+1847 |    padding: 0.75rem 1rem 0.25rem 1rem;
+1848 |  }
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+1847 |    padding: 0.75rem 1rem 0.25rem 1rem;
+1848 |  }
+1849 |  .tableContainer :global(.cds--data-table-header) *:not(:first-child) {
+     |                          ^
+1850 |    margin: 0.25rem 0rem;
+1851 |  }
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+1850 |    margin: 0.25rem 0rem;
+1851 |  }
+1852 |  .tableContainer :global(.cds--data-table-header) h4 {
+     |                          ^
+1853 |    font-size: var(--cds-heading-compact-02-font-size, 1rem);
+1854 |    font-weight: var(--cds-heading-compact-02-font-weight, 600);
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+9000 |  }
+9001 |  
+9002 |  :global(.cds--cc--area path.area) {
+     |          ^
+9003 |    stroke: none;
+9004 |    fill: #a7f0ba;
+[lightningcss minify] 'global' is not recognized as a valid pseudo-class. Did you mean '::global' (pseudo-element) or is this a typo?
+9045 |  }
+9046 |  
+9047 |  .range-tabs :global(.cds--tabs--scrollable__nav-link) {
+     |                      ^
+9048 |    width: 7rem;
+9049 |  }/* --brand-03 is consumed by empty-state.scss and error-state.scss */
+rendering chunks...
+computing gzip size...
+dist/index.html                                                       4.54 kB │ gzip:     1.13 kB
+dist/assets/IBMPlexMono-Regular-Latin3-D5ixRkKn.woff2                 5.50 kB
+dist/assets/IBMPlexMono-Light-Latin3-DVnSc6uU.woff2                   5.60 kB
+dist/assets/IBMPlexSerif-Regular-Latin3-Cu2RQN9N.woff2                5.72 kB
+dist/assets/IBMPlexMono-Italic-Latin3-OD725688.woff2                  5.80 kB
+dist/assets/IBMPlexSerif-Light-Latin3-5SnwmE0L.woff2                  5.84 kB
+dist/assets/IBMPlexMono-LightItalic-Latin3-DENcM8oQ.woff2             5.93 kB
+dist/assets/IBMPlexSerif-SemiBold-Latin3-D32Uj1Q_.woff2               6.00 kB
+dist/assets/IBMPlexSerif-Italic-Latin3-Dgc6se3g.woff2                 6.01 kB
+dist/assets/IBMPlexSerif-LightItalic-Latin3-Q8lXOOGi.woff2            6.03 kB
+dist/assets/IBMPlexSerif-SemiBoldItalic-Latin3-BMQQIc17.woff2         6.20 kB
+dist/assets/IBMPlexMono-SemiBold-Latin3-DmXS6LfU.woff2                6.41 kB
+dist/assets/IBMPlexSans-Regular-Latin3-YgIOj63u.woff2                 6.63 kB
+dist/assets/IBMPlexMono-Regular-Pi-BN9AbYph.woff2                     6.66 kB
+dist/assets/IBMPlexMono-Light-Pi-CM1vErLg.woff2                       6.69 kB
+dist/assets/IBMPlexMono-SemiBoldItalic-Latin3-Cfk9myZV.woff2          6.76 kB
+dist/assets/IBMPlexSerif-Regular-Pi-gemN5yRx.woff2                    6.76 kB
+dist/assets/IBMPlexSerif-Light-Pi-DZD2eTd-.woff2                      6.78 kB
+dist/assets/IBMPlexSerif-SemiBold-Pi-CHsbuILD.woff2                   6.80 kB
+dist/assets/IBMPlexSans-Light-Latin3-DJ2XKfKy.woff2                   6.83 kB
+dist/assets/IBMPlexSans-SemiBoldItalic-Latin3-DdSQj-UE.woff2          6.93 kB
+dist/assets/IBMPlexSans-SemiBold-Latin3-5H-B3uz2.woff2                6.99 kB
+dist/assets/IBMPlexSans-Regular-Pi-PrQ87YB7.woff2                     7.04 kB
+dist/assets/IBMPlexSans-LightItalic-Latin3-DzSoSeyw.woff2             7.07 kB
+dist/assets/IBMPlexMono-LightItalic-Pi-B-xaAOq9.woff2                 7.08 kB
+dist/assets/IBMPlexSans-Italic-Latin3-B_7AjNcc.woff2                  7.08 kB
+dist/assets/IBMPlexSerif-Italic-Pi-BZ0f2Rvd.woff2                     7.10 kB
+dist/assets/IBMPlexSerif-LightItalic-Pi-DsrWiOXn.woff2                7.13 kB
+dist/assets/IBMPlexMono-Italic-Pi-D91NrSMF.woff2                      7.15 kB
+dist/assets/IBMPlexSans-Light-Pi-C7bE6V3x.woff2                       7.19 kB
+dist/assets/IBMPlexSans-Italic-Pi-88cYqkas.woff2                      7.21 kB
+dist/assets/IBMPlexSerif-SemiBoldItalic-Pi-BcIG0YK9.woff2             7.23 kB
+dist/assets/IBMPlexSans-SemiBold-Pi-DThB1Cgd.woff2                    7.32 kB
+dist/assets/IBMPlexSans-LightItalic-Pi-CIHY6cv-.woff2                 7.48 kB
+dist/assets/IBMPlexSans-SemiBoldItalic-Pi-CX8qTp8-.woff2              7.51 kB
+dist/assets/IBMPlexMono-SemiBold-Pi-Bte-OkZr.woff2                    7.56 kB
+dist/assets/IBMPlexMono-SemiBoldItalic-Pi-DJqk7lgC.woff2              7.94 kB
+dist/assets/IBMPlexMono-Light-Cyrillic-BjCvLBZ-.woff2                11.56 kB
+dist/assets/IBMPlexMono-Regular-Cyrillic-8BgFXQ8b.woff2              11.57 kB
+dist/assets/IBMPlexMono-Regular-Latin2-BZhY9sze.woff2                12.58 kB
+dist/assets/IBMPlexMono-SemiBold-Cyrillic-vq5lWOOK.woff2             12.65 kB
+dist/assets/IBMPlexMono-Light-Latin2-CcfNDqPI.woff2                  12.74 kB
+dist/assets/IBMPlexMono-Italic-Latin2-_JN-37bV.woff2                 13.41 kB
+dist/assets/IBMPlexMono-LightItalic-Latin2-B5th8ee8.woff2            13.50 kB
+dist/assets/IBMPlexMono-SemiBold-Latin2-psYpKdxM.woff2               13.53 kB
+dist/assets/IBMPlexMono-Regular-Latin1-yD-U28DY.woff2                13.55 kB
+dist/assets/IBMPlexMono-Light-Latin1-CwX3YoKl.woff2                  13.74 kB
+dist/assets/IBMPlexMono-Italic-Cyrillic-BkTPtUld.woff2               13.88 kB
+dist/assets/IBMPlexMono-LightItalic-Cyrillic-B8QjOn3s.woff2          14.20 kB
+dist/assets/IBMPlexMono-SemiBoldItalic-Latin2-DFbl2Eum.woff2         14.31 kB
+dist/assets/IBMPlexMono-SemiBold-Latin1-m4s4ekQY.woff2               14.50 kB
+dist/assets/IBMPlexSans-Regular-Cyrillic-wMg2A6YC.woff2              14.60 kB
+dist/assets/IBMPlexSans-Regular-Latin2-C7xERvdh.woff2                14.69 kB
+dist/assets/IBMPlexSans-Light-Cyrillic-DgZQI1c7.woff2                14.73 kB
+dist/assets/IBMPlexSerif-Light-Latin2-JNz6tYxV.woff2                 14.82 kB
+dist/assets/IBMPlexSerif-Regular-Latin2-CwiqRsPK.woff2               14.83 kB
+dist/assets/IBMPlexMono-LightItalic-Latin1-BptaAVOj.woff2            14.84 kB
+dist/assets/IBMPlexSerif-SemiBold-Latin2-Dx1UZ6sE.woff2              14.93 kB
+dist/assets/IBMPlexMono-Italic-Latin1-CJZ85pZk.woff2                 15.02 kB
+dist/assets/IBMPlexMono-SemiBoldItalic-Cyrillic-EpUkFyhz.woff2       15.06 kB
+dist/assets/IBMPlexSans-Light-Latin2-uxpmXHTb.woff2                  15.11 kB
+dist/assets/IBMPlexSans-SemiBold-Latin2-DhyErpNP.woff2               15.14 kB
+dist/assets/IBMPlexSans-SemiBold-Cyrillic-DReJFRkU.woff2             15.18 kB
+dist/assets/IBMPlexSans-Italic-Latin2-BaBNnUNM.woff2                 15.31 kB
+dist/assets/IBMPlexSerif-LightItalic-Latin2-WlWBDj6w.woff2           15.39 kB
+dist/assets/IBMPlexSans-SemiBoldItalic-Latin2-DAsI6BbJ.woff2         15.52 kB
+dist/assets/IBMPlexSerif-Italic-Latin2-MTSk5h5p.woff2                15.62 kB
+dist/assets/IBMPlexMono-SemiBoldItalic-Latin1-CVrP0g9z.woff2         15.66 kB
+dist/assets/IBMPlexSans-LightItalic-Latin2-BhVXDEf_.woff2            15.79 kB
+dist/assets/IBMPlexSerif-SemiBoldItalic-Latin2-0kozz4wV.woff2        15.86 kB
+dist/assets/IBMPlexSans-Italic-Cyrillic-B-0GrdM4.woff2               16.32 kB
+dist/assets/IBMPlexSans-LightItalic-Cyrillic-RggQnpaw.woff2          16.56 kB
+dist/assets/IBMPlexSans-Regular-Latin1-CfnRdg7E.woff2                16.74 kB
+dist/assets/IBMPlexSans-SemiBoldItalic-Cyrillic-C8M0pTWq.woff2       16.77 kB
+dist/assets/IBMPlexSerif-SemiBold-Cyrillic-D51gLlx-.woff2            16.85 kB
+dist/assets/IBMPlexSerif-Regular-Cyrillic-DkM6_-PF.woff2             16.85 kB
+dist/assets/IBMPlexSerif-Light-Cyrillic-Fb9un6y1.woff2               16.89 kB
+dist/assets/IBMPlexSans-Light-Latin1-CdSW_1MM.woff2                  17.45 kB
+dist/assets/IBMPlexSans-SemiBold-Latin1-DvvB0TSA.woff2               17.57 kB
+dist/assets/IBMPlexSerif-Regular-Latin1-7mFJY-EO.woff2               17.66 kB
+dist/assets/IBMPlexSerif-Light-Latin1-j3I1d7tf.woff2                 18.04 kB
+dist/assets/IBMPlexSerif-SemiBold-Latin1-SWkkqchR.woff2              18.08 kB
+dist/assets/IBMPlexSans-Italic-Latin1-pUaZPwnJ.woff2                 18.30 kB
+dist/assets/IBMPlexSans-SemiBoldItalic-Latin1-QNv51rtN.woff2         18.35 kB
+dist/assets/IBMPlexSans-LightItalic-Latin1-WY6VzAi_.woff2            18.70 kB
+dist/assets/IBMPlexSerif-Italic-Latin1-DETbFN8n.woff2                18.82 kB
+dist/assets/IBMPlexSerif-LightItalic-Latin1-IRNjwEwz.woff2           19.10 kB
+dist/assets/IBMPlexSerif-LightItalic-Cyrillic-DI71WAKK.woff2         19.48 kB
+dist/assets/IBMPlexSerif-Italic-Cyrillic-BDqKB_Oj.woff2              19.64 kB
+dist/assets/IBMPlexSerif-SemiBoldItalic-Latin1-2DWFeFAr.woff2        19.73 kB
+dist/assets/IBMPlexSerif-SemiBoldItalic-Cyrillic-S56kJYo7.woff2      20.04 kB
+dist/assets/MicrobiologySurveillanceFilters-C0OqMJFB.css              0.58 kB │ gzip:     0.21 kB
+dist/assets/AyncAvatar-Da0lWh05.css                                   0.64 kB │ gzip:     0.30 kB
+dist/assets/MicrobiologyWhonetPage-CvvaJu3i.css                       4.39 kB │ gzip:     1.03 kB
+dist/assets/AnalyzerTypesPage-D9VlChXG.css                            5.45 kB │ gzip:     1.08 kB
+dist/assets/FreezerMonitoringDashboard-jwFxquBs.css                   7.14 kB │ gzip:     1.57 kB
+dist/assets/AnalyzerTypeMappingPage-D6GVSYb8.css                      7.18 kB │ gzip:     1.28 kB
+dist/assets/MicrobiologyWorklistPage-CBo8RscT.css                     9.54 kB │ gzip:     1.75 kB
+dist/assets/AnalyzersPage-CLse3oLF.css                                9.95 kB │ gzip:     1.48 kB
+dist/assets/Layout-Bh5uFSUI.css                                      12.37 kB │ gzip:     3.01 kB
+dist/assets/MicrobiologyPage-UbW3nRgJ.css                            13.72 kB │ gzip:     2.60 kB
+dist/assets/results-viewer-1W8SMt1D.css                             254.12 kB │ gzip:    25.99 kB
+dist/assets/index-Bcz2g2Rq.css                                    1,173.21 kB │ gzip:   131.84 kB
+dist/assets/clamp-BCZdoG0B.js                                         0.09 kB │ gzip:     0.11 kB │ map:      0.84 kB
+dist/assets/mergeRefs-D7jyx0Qm.js                                     0.17 kB │ gzip:     0.16 kB │ map:      0.95 kB
+dist/assets/LayerContext-Dmqk_qxt.js                                  0.18 kB │ gzip:     0.16 kB │ map:      0.80 kB
+dist/assets/comboBoxSearch-BKMXh3VM.js                                0.19 kB │ gzip:     0.18 kB │ map:      0.65 kB
+dist/assets/startOfDay-CNTrL2tM.js                                    0.25 kB │ gzip:     0.21 kB │ map:      1.40 kB
+dist/assets/es-DAFK_1rh.js                                            0.51 kB │ gzip:     0.27 kB │ map:      6.19 kB
+dist/assets/defineProperty-CqlHYGuI.js                                0.76 kB │ gzip:     0.43 kB │ map:      2.64 kB
+dist/assets/message-Dwlq1-_k.js                                       0.76 kB │ gzip:     0.47 kB │ map:      3.06 kB
+dist/assets/Stack-CYtufHI3.js                                         0.83 kB │ gzip:     0.50 kB │ map:      3.81 kB
+dist/assets/AffectedAnalyzerList-CIhLgCW1.js                          0.90 kB │ gzip:     0.45 kB │ map:      2.22 kB
+dist/assets/Layer-B2i0R0Hv.js                                         0.91 kB │ gzip:     0.55 kB │ map:      4.37 kB
+dist/assets/MicrobiologyPerformance-DmmCCaU-.js                       1.02 kB │ gzip:     0.56 kB │ map:      3.44 kB
+dist/assets/CustomLabNumberInput-GlgQet-7.js                          1.09 kB │ gzip:     0.64 kB │ map:      4.06 kB
+dist/assets/rolldown-runtime-Dd_uD5pT.js                              1.10 kB │ gzip:     0.62 kB
+dist/assets/useControllableState-CVrBNCeC.js                          1.18 kB │ gzip:     0.54 kB │ map:      3.60 kB
+dist/assets/ButtonSet-DIvUXlZM.js                                     1.37 kB │ gzip:     0.77 kB │ map:      5.50 kB
+dist/assets/InlineLoading-CCWnYD-E.js                                 1.50 kB │ gzip:     0.71 kB │ map:      5.98 kB
+dist/assets/ListBoxTrigger-Dp2CUyx7.js                                2.11 kB │ gzip:     0.89 kB │ map:      8.31 kB
+dist/assets/Checkbox-D6l_vTm-.js                                      2.71 kB │ gzip:     1.17 kB │ map:      9.06 kB
+dist/assets/MicrobiologySurveillanceFilters-DtJZQczH.js               3.41 kB │ gzip:     1.20 kB │ map:     11.39 kB
+dist/assets/StructuredList-DUZ53LDm.js                                3.79 kB │ gzip:     1.31 kB │ map:     12.97 kB
+dist/assets/_getTag-QZ5RoCMD.js                                       4.35 kB │ gzip:     1.83 kB │ map:     32.90 kB
+dist/assets/SelectItem-Dva2jw-S.js                                    4.36 kB │ gzip:     1.77 kB │ map:     15.00 kB
+dist/assets/Heading-BHk6MOHC.js                                       4.66 kB │ gzip:     1.97 kB │ map:     18.75 kB
+dist/assets/WhonetRoutes-DjcJTQFn.js                                  4.76 kB │ gzip:     1.90 kB │ map:     16.35 kB
+dist/assets/Tag-yPtqoPUO.js                                           4.95 kB │ gzip:     1.89 kB │ map:     17.26 kB
+dist/assets/analyzerService-COPpBRX9.js                               5.21 kB │ gzip:     1.58 kB │ map:     30.43 kB
+dist/assets/TextInput-BacJs3Of.js                                     5.24 kB │ gzip:     1.99 kB │ map:     18.70 kB
+dist/assets/Questionnaire-COGVTK9s.js                                 5.34 kB │ gzip:     1.75 kB │ map:     19.68 kB
+dist/assets/toggleClass-By7UZNtT.js                                   8.43 kB │ gzip:     2.96 kB │ map:     32.43 kB
+dist/assets/GenericSampleResults-CKrTpKba.js                          8.66 kB │ gzip:     3.06 kB │ map:     33.80 kB
+dist/assets/Tile-ClEb1QbI.js                                          9.38 kB │ gzip:     2.79 kB │ map:     29.70 kB
+dist/assets/Modal-PORhksZg.js                                        10.44 kB │ gzip:     3.72 kB │ map:     40.04 kB
+dist/assets/FilterableMultiSelect-BGKKTpqC.js                        13.46 kB │ gzip:     5.03 kB │ map:     51.75 kB
+dist/assets/Tabs-DaWX-LXv.js                                         13.90 kB │ gzip:     4.45 kB │ map:     53.99 kB
+dist/assets/MicrobiologyWhonetPage-D7SWny0v.js                       16.62 kB │ gzip:     4.47 kB │ map:     52.66 kB
+dist/assets/AnalyzerTypeMappingPage-Cp2Hl6cR.js                      17.49 kB │ gzip:     4.56 kB │ map:     69.04 kB
+dist/assets/NumberInput-NpNQkozH.js                                  18.42 kB │ gzip:     6.61 kB │ map:     77.60 kB
+dist/assets/Index-DdQQS2FK.js                                        18.56 kB │ gzip:     6.06 kB │ map:     67.61 kB
+dist/assets/CustomDatePicker-D8y6n3BS.js                             23.68 kB │ gzip:     5.31 kB │ map:    119.72 kB
+dist/assets/MicrobiologyWorklistPage-2NcPkBAl.js                     26.20 kB │ gzip:     6.44 kB │ map:    106.30 kB
+dist/assets/purify.es-Bvo9QlJ8.js                                    28.13 kB │ gzip:    11.11 kB │ map:    129.49 kB
+dist/assets/Utils-hhV2fUDc.js                                        30.18 kB │ gzip:     8.51 kB │ map:    165.24 kB
+dist/assets/AnalyzersPage-DcQc5m5I.js                                37.47 kB │ gzip:     9.95 kB │ map:    142.19 kB
+dist/assets/DataTable-CfHsADy_.js                                    43.23 kB │ gzip:    13.60 kB │ map:    179.53 kB
+dist/assets/AnalyzerTypesPage-CSGo_oys.js                            51.09 kB │ gzip:    13.00 kB │ map:    183.89 kB
+dist/assets/downshift.esm-PXu4uCQ5.js                                53.09 kB │ gzip:    15.40 kB │ map:    256.87 kB
+dist/assets/AyncAvatar-Ch7UU6RJ.js                                   57.48 kB │ gzip:    19.73 kB │ map:    305.73 kB
+dist/assets/bucket-4-B1p1NBqz.js                                     74.15 kB │ gzip:    16.25 kB │ map:    158.11 kB
+dist/assets/bucket-2-CL5SVH3J.js                                     74.58 kB │ gzip:    15.76 kB │ map:    159.39 kB
+dist/assets/bucket-17-ZBXtVL3w.js                                    77.55 kB │ gzip:    15.59 kB │ map:    165.01 kB
+dist/assets/results-viewer-DTHJBz9N.js                               83.12 kB │ gzip:    27.04 kB │ map:    313.59 kB
+dist/assets/bucket-14-D6_jlald.js                                    85.07 kB │ gzip:    18.11 kB │ map:    166.09 kB
+dist/assets/useOutsideClick-DTCPKjj-.js                              93.22 kB │ gzip:    19.59 kB │ map:    218.23 kB
+dist/assets/PageBreadCrumb-CCaSjfQL.js                               95.62 kB │ gzip:    22.26 kB │ map:    212.04 kB
+dist/assets/MicrobiologyPage-CWDCm4zJ.js                            102.72 kB │ gzip:    22.60 kB │ map:    368.08 kB
+dist/assets/labClock-CnYja-7B.js                                    118.16 kB │ gzip:    35.95 kB │ map:    409.80 kB
+dist/assets/FreezerMonitoringDashboard-CvBwOKNf.js                  125.03 kB │ gzip:    28.68 kB │ map:    459.39 kB
+dist/assets/index.es-Ca1-LjGq.js                                    150.45 kB │ gzip:    48.88 kB │ map:    630.93 kB
+dist/assets/bucket-15-j_tolDle.js                                   259.33 kB │ gzip:    59.69 kB │ map:    501.19 kB
+dist/assets/es-CRKejgGC.js                                          852.61 kB │ gzip:   206.23 kB │ map:  2,426.84 kB
+dist/assets/ShipmentReport-B-HSar2q.js                              938.90 kB │ gzip:   259.46 kB │ map:  2,074.67 kB
+dist/assets/index-B8LZJjze.js                                     6,451.94 kB │ gzip: 1,441.61 kB │ map: 19,311.46 kB
+dist/assets/Layout-TWdI8-rs.js                                   22,154.60 kB │ gzip: 5,533.84 kB │ map: 25,713.96 kB
+
+[plugin builtin:vite-reporter] 
+(!) Some chunks are larger than 500 kB after minification. Consider:
+- Using dynamic import() to code-split the application
+- Use build.rolldownOptions.output.codeSplitting to improve chunking: https://rolldown.rs/reference/OutputOptions.codeSplitting
+- Adjust chunk size limit for this warning via build.chunkSizeWarningLimit.
+[33m[EVAL] [0mUse of direct `eval` function is strongly discouraged as it poses security risks and may cause issues with minification.
+     [38;5;246m╭[0m[38;5;246m─[0m[38;5;246m[[0m src/components/admin/calculatedValue/CalculatedValueForm.tsx:297:4 [38;5;246m][0m
+     [38;5;246m│[0m
+ [38;5;246m297 │[0m [38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0m[38;5;249m [0meval[38;5;249m([0m[38;5;249mm[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mh[0m[38;5;249me[0m[38;5;249mm[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mc[0m[38;5;249ma[0m[38;5;249ml[0m[38;5;249mO[0m[38;5;249mp[0m[38;5;249me[0m[38;5;249mr[0m[38;5;249ma[0m[38;5;249mt[0m[38;5;249mi[0m[38;5;249mo[0m[38;5;249mn[0m[38;5;249m)[0m[38;5;249m;[0m
+ [38;5;240m    │[0m          ──┬─  
+ [38;5;240m    │[0m            ╰─── Use of direct `eval` here.
+ [38;5;240m    │[0m 
+ [38;5;240m    │[0m [38;5;115mHelp[0m: Consider using indirect eval. For more information, check the documentation: https://rolldown.rs/guide/troubleshooting#avoiding-direct-eval
+[38;5;246m─────╯[0m
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/components/genericSample/GenericSampleOrder.jsx is dynamically imported by src/App.jsx but also statically imported by src/components/notebook/NoteBookInstanceEntryForm.jsx, src/components/notebook/NotebookSampleOrder.jsx, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/components/genericSample/GenericSampleOrderEdit.jsx is dynamically imported by src/App.jsx but also statically imported by src/components/notebook/NoteBookInstanceEntryForm.jsx, dynamic import will not move module into another chunk.
+
+[33m[INEFFECTIVE_DYNAMIC_IMPORT] [0msrc/components/genericSample/GenericSampleOrderImport.jsx is dynamically imported by src/App.jsx but also statically imported by src/components/notebook/NoteBookInstanceEntryForm.jsx, dynamic import will not move module into another chunk.
+
+✓ built in 5.82s
+[33m[PLUGIN_TIMINGS] [0mJavaScript callbacks ran for 4.7s of this 5.8s build (82%).
+1 callback is listed without a time. Its calls overlapped, so the time inside one call includes work from other calls. To find its cost, profile the build with `node --cpu-prof`:
+  - plugin vite:css transform (91 calls)
+See https://rolldown.rs/reference/InputOptions.checks#bundlertimings for more details.
+

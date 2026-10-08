@@ -15,7 +15,8 @@ public class MicroOrderSaveListener {
 
     @EventListener
     public void routeSavedOrder(SamplePatientUpdateDataCreatedEvent event) {
-        routing.routeOrder(event.getUpdateData().getSample(), event.getUpdateData().getCurrentUserId());
+        routing.routeOrder(event.getUpdateData().getSample(), event.getUpdateData().getCurrentUserId(),
+                event.getUpdateData().getCancelReason());
     }
 
     // Collection resolves requested-specimen identity later in the same save.

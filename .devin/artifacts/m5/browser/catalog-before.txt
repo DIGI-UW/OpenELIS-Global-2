@@ -1,0 +1,103 @@
+Test LIMS
+
+Version:   3.3.0-SNAPSHOT
+
+User Manual
+Video Tutorials
+Release Notes
+Open ELIS
+Select Locale
+English
+Francais
+Change Password
+Logout
+Version:: 3.3.0-SNAPSHOT
+Back to main menu
+Reflex Tests Configuration
+Microbiology reference data
+Test Catalogue Management
+Sample Type Editor
+← All Tests
+Panel Editor
+Lab Units Editor
+Import Catalog (CSV)
+Editing: Xpert MTB/RIF(Sputum)
+Basic Info
+Sample & Results
+Methods
+Ranges
+QC Targets
+Sample Storage
+Panels
+Labels
+Terminology
+Reagents
+Analyzers
+Alerts
+Accreditation
+Reflex & Calc
+Localization
+Display Order
+Lab Number Management
+Programs
+Provider Management
+Label Presets
+Vector Surveillance
+Locations & Organizations
+Result Reporting Configuration
+User Management
+Batch test reassignment and cancelation
+Test Management
+Menu Configuration
+General Configurations
+Sample Acceptance Checklist
+Application Properties
+Test Notification Configuration
+Dictionary Menu
+Notify User
+Search Index Management
+Logging Configuration
+Localization
+External Connections
+FHIR Data Export Status
+Stuck analyzer events
+Calendar Management
+Legacy Admin
+Home
+Admin Management
+Test Catalogue Editor
+Xpert MTB/RIF(Sputum)
+← All Tests
+Edit related tests…
+Cancel
+Basic Info
+Name
+The display name is translated — edit it in the Localization section.
+Code
+Description
+Lab Unit
+Sample types
+Total items selected: 1. To clear selection, press Delete or Backspace.
+1
+Select every specimen this test runs on. Configuration is shared across them.
+Sputum
+Domain
+Clinical
+Environmental
+Vector
+AMR surveillance test
+No
+Opens a Microbiology case
+No
+Collected in sets
+No
+SOP Max Holding Time (minutes)
+In Lab Only
+No
+Notify Patient Of Results
+No
+Active
+Yes
+Orderable
+Yes
+Save
