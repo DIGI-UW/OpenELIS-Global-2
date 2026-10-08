@@ -20,7 +20,7 @@
         <hibernate-search.version>6.1.8.Final</hibernate-search.version>
         <postgresql.version>42.7.12</postgresql.version>
         <log4j.version>2.25.5</log4j.version>
-        <springframework.version>6.2.19</springframework.version>
+        <springframework.version>7.0.9</springframework.version>
         <springsecurity.version>6.5.11</springsecurity.version>
         <testContainersVersion>1.19.8</testContainersVersion>
     </properties>
@@ -57,7 +57,7 @@
             <dependency>
                 <groupId>com.sun.mail</groupId>
                 <artifactId>jakarta.mail</artifactId>
-                <version>1.6.5</version>
+                <version>1.6.8</version>
                 <scope>provided</scope>
             </dependency>
             <!-- Transitive via org.hl7.fhir.utilities -> Saxon-HE -> xmlresolver,
@@ -669,7 +669,7 @@
         <dependency>
             <groupId>net.sf.jasperreports</groupId>
             <artifactId>jasperreports</artifactId>
-            <version>6.15.0</version>
+            <version>7.0.7</version>
             <exclusions>
                 <exclusion>
                     <groupId>org.bouncycastle</groupId>
@@ -723,7 +723,7 @@
         <dependency>
             <groupId>org.jsoup</groupId>
             <artifactId>jsoup</artifactId>
-            <version>1.23.1</version>
+            <version>1.23.2</version>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
