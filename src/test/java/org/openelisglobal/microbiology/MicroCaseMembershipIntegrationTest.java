@@ -19,7 +19,6 @@ import org.openelisglobal.microbiology.valueholder.*;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
-import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
@@ -49,8 +48,6 @@ public class MicroCaseMembershipIntegrationTest extends BaseWebContextSensitiveT
     private MicroCaseService caseService;
     @Autowired
     private SampleItemService sampleItemService;
-    @Autowired
-    private TestSectionService testSections;
     @PersistenceContext
     private EntityManager em;
     private SampleItem sample;
@@ -58,12 +55,14 @@ public class MicroCaseMembershipIntegrationTest extends BaseWebContextSensitiveT
     private MicroCase microCase;
     private org.openelisglobal.test.valueholder.Test test;
     private String actor;
+    private String labUnitId;
 
     @Before
     @Override
     public void setUp() throws Exception {
         super.setUp();
         actor = fixtures.defaultUserId();
+        labUnitId = fixtures.createLabUnit().getId();
         sample = fixtures.createSampleWithSampleItem("V2-MEMBERS");
         TypeOfSample type = fixtures.getOrCreateActiveSampleType();
         sample.setTypeOfSample(type);
@@ -83,7 +82,7 @@ public class MicroCaseMembershipIntegrationTest extends BaseWebContextSensitiveT
         MicroCase c = new MicroCase();
         c.setSampleId(sample.getSample().getId());
         c.setSampleTypeId(sample.getTypeOfSample().getId());
-        c.setLabUnitId(testSections.getAllActiveTestSections().getFirst().getId());
+        c.setLabUnitId(labUnitId);
         c.setCreatedBy(actor);
         cases.insert(c);
         return c;
