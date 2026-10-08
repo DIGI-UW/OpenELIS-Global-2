@@ -1,7 +1,7 @@
 """Reports whether the Bridge and mock submodule pins are on their repositories' default branches.
 
 OpenELIS builds the Bridge and analyzer mock images from these pins. Exits non-zero when a pin
-is a commit that is not on its repository's default branch.
+is a commit that is not on its repository's default branch or its URL changes repositories.
 """
 
 import configparser
@@ -30,8 +30,15 @@ def checked_pins(ls_tree, gitmodules):
     for path in CHECKED:
         if path not in commits or path not in urls:
             raise ValueError(f"{path} is not a submodule of this checkout")
-        repository = re.sub(r"^(git@github\.com:|https://github\.com/)", "", urls[path])
-        checked.append((path, commits[path], re.sub(r"\.git$", "", repository)))
+        match = re.fullmatch(
+            r"(?:https://github\.com/|git@github\.com:|ssh://git@github\.com/)"
+            r"([A-Za-z0-9_-]+/[A-Za-z0-9_.-]+)/?",
+            urls[path],
+            flags=re.IGNORECASE,
+        )
+        if not match:
+            raise ValueError(f"{path} must use a GitHub HTTPS or SSH repository URL")
+        checked.append((path, commits[path], match.group(1).removesuffix(".git")))
     return checked
 
 
@@ -77,7 +84,18 @@ def trusted_gitmodules(base_ref):
 
 def main():
     ls_tree = subprocess.run(["git", "ls-tree", "-r", "HEAD"], check=True, capture_output=True, text=True).stdout
-    checked = checked_pins(ls_tree, trusted_gitmodules(os.environ.get("BASE_REF")))
+    try:
+        checked = checked_pins(ls_tree, trusted_gitmodules(os.environ.get("BASE_REF")))
+        gitmodules = subprocess.run(
+            ["git", "show", "HEAD:.gitmodules"], check=True, capture_output=True, text=True
+        ).stdout
+        actual = checked_pins(ls_tree, gitmodules)
+        for (path, _, repository), (_, _, actual_repository) in zip(checked, actual):
+            if repository.casefold() != actual_repository.casefold():
+                raise ValueError(f"{path} must reference {repository}; repository changes are not allowed")
+    except ValueError as error:
+        print(f"Submodule validation failed: {error}")
+        return 1
     failures = unmerged(checked, on_default_branch_via_github(os.environ.get("GITHUB_TOKEN")))
     for path, sha, repository in checked:
         state = "NOT MERGED" if (path, sha, repository) in failures else "merged"

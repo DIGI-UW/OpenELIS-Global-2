@@ -808,10 +808,12 @@ submodules, `git submodule update --init --recursive` is the relevant part.
 from the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` pins.
 For a pull request into `develop`, and for every pull request of a stack based
 on `develop`, the deployment contract job behind the `01` backend checkpoint
-fails when either pin is not on its repository's default branch. Branches that
-target anything else are not checked. A pinned commit reaches the default branch
-when the pull request containing it is merged with a merge commit; a squash
-merge creates a new commit and leaves the pinned one off the branch. Dependabot
+fails when either pin is not on its repository's default branch or the PR
+changes either repository URL to a different repository than the trusted base
+branch. Equivalent GitHub HTTPS and SSH URLs are accepted. Branches that target
+anything else are not checked. A pinned commit reaches the default branch when
+the pull request containing it is merged with a merge commit; a squash merge
+creates a new commit and leaves the pinned one off the branch. Dependabot
 proposes submodule bumps daily.
 
 The same reasoning applies to anything else worth keeping (evidence, triage
