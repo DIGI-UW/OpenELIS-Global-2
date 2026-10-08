@@ -45,7 +45,7 @@
             <column name="ENTERED_DATE" length="7" not-null="true" />
         </property>
         <property name="receivedTimestamp" type="java.sql.Timestamp">
-            <column name="RECEIVED_DATE" length="7" not-null="true" />
+            <column name="RECEIVED_DATE" length="7" />
         </property>
         <property name="collectionDate" type="java.sql.Timestamp">
             <column name="COLLECTION_DATE" length="7" />

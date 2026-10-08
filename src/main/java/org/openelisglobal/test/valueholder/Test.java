@@ -71,6 +71,10 @@ public class Test extends EnumValueItemImpl {
     // existing antimicrobialResistance field below — no parallel column)
     private String domain = "CLINICAL";
 
+    private boolean opensMicrobiologyCase;
+    private String microbiologyCaseRole = "DIRECT";
+    private boolean collectedInSets;
+
     private String stickerRequiredFlag;
 
     private String alternateTestDisplayValue;
@@ -138,6 +142,13 @@ public class Test extends EnumValueItemImpl {
     public void setSortOrder(String sortOrder) {
         this.sortOrder = sortOrder;
     }
+
+    public boolean isOpensMicrobiologyCase() { return opensMicrobiologyCase; }
+    public void setOpensMicrobiologyCase(boolean value) { opensMicrobiologyCase = value; }
+    public String getMicrobiologyCaseRole() { return microbiologyCaseRole; }
+    public void setMicrobiologyCaseRole(String value) { microbiologyCaseRole = value; }
+    public boolean isCollectedInSets() { return collectedInSets; }
+    public void setCollectedInSets(boolean value) { collectedInSets = value; }
 
     public Double getTea() {
         return tea;

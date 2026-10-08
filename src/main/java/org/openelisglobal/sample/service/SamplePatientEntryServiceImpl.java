@@ -111,6 +111,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     // private String currentUserId;
 
     @Autowired
+    private org.openelisglobal.microbiology.service.MicroOrderRoutingService microOrderRoutingService;
+
+    @Autowired
     private OrganizationAddressService organizationAddressService;
     @Autowired
     private TestSectionService testSectionService;
@@ -620,6 +623,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             sampleTestCollection.analysises = new ArrayList<>();
             for (Test test : sampleTestCollection.tests) {
                 test = testService.get(test.getId());
+
+                if (test.isOpensMicrobiologyCase() && "CASE".equals(test.getMicrobiologyCaseRole())) {
+                    microOrderRoutingService.routeCaseTest(savedItem, test, updateData.getCurrentUserId());
+                    continue;
+                }
 
                 // Check if analysis already exists for this sample item + test (for updates)
                 Analysis existingAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(),

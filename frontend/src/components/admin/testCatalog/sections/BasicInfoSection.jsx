@@ -777,6 +777,60 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
+      <Toggle
+        id="basic-info-opens-microbiology-case"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.opensMicrobiologyCase",
+        })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.opensMicrobiologyCase}
+        onToggle={(checked) =>
+          update({
+            opensMicrobiologyCase: checked,
+            ...(!checked ? { collectedInSets: false } : {}),
+          })
+        }
+      />
+      <Select
+        id="basic-info-microbiology-role"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.microbiologyCaseRole",
+        })}
+        value={form.microbiologyCaseRole || "DIRECT"}
+        disabled={!form.opensMicrobiologyCase}
+        onChange={(event) =>
+          update({
+            microbiologyCaseRole: event.target.value,
+            ...(event.target.value !== "CULTURE"
+              ? { collectedInSets: false }
+              : {}),
+          })
+        }
+      >
+        {["CULTURE", "DIRECT", "CASE"].map((role) => (
+          <SelectItem
+            key={role}
+            value={role}
+            text={intl.formatMessage({
+              id: `label.testCatalog.basicInfo.microbiologyCaseRole.${role}`,
+            })}
+          />
+        ))}
+      </Select>
+      <Toggle
+        id="basic-info-collected-in-sets"
+        labelText={intl.formatMessage({
+          id: "label.testCatalog.basicInfo.collectedInSets",
+        })}
+        labelA={intl.formatMessage({ id: "label.no" })}
+        labelB={intl.formatMessage({ id: "label.yes" })}
+        toggled={!!form.collectedInSets}
+        disabled={
+          !form.opensMicrobiologyCase || form.microbiologyCaseRole !== "CULTURE"
+        }
+        onToggle={(checked) => update({ collectedInSets: checked })}
+      />
       <TextInput
         id="basic-info-time-holding"
         labelText={intl.formatMessage({ id: "test.timeHolding" })}

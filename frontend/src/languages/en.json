@@ -12354,5 +12354,11 @@
   "inventory.logUsage.onHand": "{quantity} {units} on hand. Lots are drawn earliest-expiry first.",
   "inventory.logUsage.error.noItem": "Choose an item to log usage against.",
   "inventory.logUsage.error.wholeUnits": "Enter a whole number of units, at least 1.",
-  "inventory.receiveStock.button": "Receive stock"
+  "inventory.receiveStock.button": "Receive stock",
+  "label.testCatalog.basicInfo.opensMicrobiologyCase": "Opens a Microbiology case",
+  "label.testCatalog.basicInfo.microbiologyCaseRole": "Microbiology role",
+  "label.testCatalog.basicInfo.microbiologyCaseRole.CULTURE": "Culture",
+  "label.testCatalog.basicInfo.microbiologyCaseRole.DIRECT": "Direct",
+  "label.testCatalog.basicInfo.microbiologyCaseRole.CASE": "Case",
+  "label.testCatalog.basicInfo.collectedInSets": "Collected in sets"
 }

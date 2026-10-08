@@ -30,6 +30,22 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
     }
 
     @Override
+    public void lockOrder(String sampleId) {
+        if (entityManager.find(org.openelisglobal.sample.valueholder.Sample.class, sampleId,
+                jakarta.persistence.LockModeType.PESSIMISTIC_WRITE) == null) {
+            throw new IllegalArgumentException("Order not found");
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<MicroCase> getByOrder(String sampleId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroCase c where c.sampleId = :sampleId order by c.createdAt, c.id", MicroCase.class)
+                .setParameter("sampleId", sampleId).list();
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<MicroCase> getBySampleItem(String sampleItemId) {
         Query<MicroCase> query = entityManager.unwrap(Session.class).createQuery(

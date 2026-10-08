@@ -23,5 +23,6 @@
   <include relativeToChangelogFile="true" file="011-microbiology-v1-retired-columns-nullable.xml"/>
 
   <include relativeToChangelogFile="true" file="012-microbiology-v2-case-structure.xml"/>
+  <include relativeToChangelogFile="true" file="013-microbiology-v2-routing.xml"/>
 
 </databaseChangeLog>
