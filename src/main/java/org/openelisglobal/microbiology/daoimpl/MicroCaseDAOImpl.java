@@ -41,7 +41,8 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
     @Transactional(readOnly = true)
     public List<MicroCase> getByOrder(String sampleId) {
         return entityManager.unwrap(Session.class)
-                .createQuery("from MicroCase c where c.sampleId = :sampleId order by c.createdAt, c.id", MicroCase.class)
+                .createQuery("from MicroCase c where c.sampleId = :sampleId order by c.createdAt, c.id",
+                        MicroCase.class)
                 .setParameter("sampleId", sampleId).list();
     }
 

@@ -65,7 +65,16 @@ export const toRequestedSampleTypes = (samples = []) =>
   samples
     .filter((sample) => sample && sample.sampleTypeId)
     .map((sample) => ({
+      id: sample.sampleTypeRequestId || null,
+      sampleItemId: sample.sampleItemId || null,
       typeOfSampleId: sample.sampleTypeId,
+      cultureSetNumber: sample.cultureSetNumber
+        ? Number(sample.cultureSetNumber)
+        : null,
+      container: sample.container || null,
+      bodySite: sample.bodySite || null,
+      collectionDate: sample.collectionDate || null,
+      collectionTime: sample.collectionTime || null,
       requestedQuantity: parseFloat(sample.quantity) || null,
       unitOfMeasureId: sample.quantityUnit || null,
       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
@@ -141,7 +150,7 @@ export const convertRequestsToSamples = (pendingRequests) => {
     .map((request, index) => ({
       index: index,
       sampleTypeRequestId: request.id, // Track the original request
-      sampleItemId: "", // Will be populated when collected
+      sampleItemId: request.sampleItemId || "",
       sampleRejected: false,
       rejectionReason: "",
       sampleTypeId: request.typeOfSampleId,
@@ -164,8 +173,11 @@ export const convertRequestsToSamples = (pendingRequests) => {
           : String(request.requestedQuantity),
       quantityUnit: request.unitOfMeasureId || "",
       collectionConditions: "",
-      collectionDate: "",
-      collectionTime: "",
+      cultureSetNumber: request.cultureSetNumber ?? "",
+      container: request.container || "",
+      bodySite: request.bodySite || "",
+      collectionDate: request.collectionDate || "",
+      collectionTime: request.collectionTime || "",
       collectorId: "",
       labPerformedSampling: false,
       receivedDate: "",

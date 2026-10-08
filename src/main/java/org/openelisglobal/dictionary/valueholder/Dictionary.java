@@ -64,6 +64,17 @@ public class Dictionary extends BaseObject<String> {
     @Column(name = "DICT_ENTRY", length = 4000)
     private String dictEntry;
 
+    @Column(name = "container_population", length = 20)
+    private String containerPopulation;
+
+    public String getContainerPopulation() {
+        return containerPopulation;
+    }
+
+    public void setContainerPopulation(String value) {
+        containerPopulation = value;
+    }
+
     @Transient
     private String selectedDictionaryCategoryId;
 

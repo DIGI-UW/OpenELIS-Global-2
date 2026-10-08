@@ -792,32 +792,34 @@ const BasicInfoSection = ({ testId }) => {
           })
         }
       />
-      <Select
-        id="basic-info-microbiology-role"
-        labelText={intl.formatMessage({
-          id: "label.testCatalog.basicInfo.microbiologyCaseRole",
-        })}
-        value={form.microbiologyCaseRole || "DIRECT"}
-        disabled={!form.opensMicrobiologyCase}
-        onChange={(event) =>
-          update({
-            microbiologyCaseRole: event.target.value,
-            ...(event.target.value !== "CULTURE"
-              ? { collectedInSets: false }
-              : {}),
-          })
-        }
-      >
-        {["CULTURE", "DIRECT", "CASE"].map((role) => (
-          <SelectItem
-            key={role}
-            value={role}
-            text={intl.formatMessage({
-              id: `label.testCatalog.basicInfo.microbiologyCaseRole.${role}`,
-            })}
-          />
-        ))}
-      </Select>
+      {form.opensMicrobiologyCase && (
+        <Select
+          id="basic-info-microbiology-role"
+          labelText={intl.formatMessage({
+            id: "label.testCatalog.basicInfo.microbiologyCaseRole",
+          })}
+          value={form.microbiologyCaseRole || "DIRECT"}
+          disabled={!form.opensMicrobiologyCase}
+          onChange={(event) =>
+            update({
+              microbiologyCaseRole: event.target.value,
+              ...(event.target.value !== "CULTURE"
+                ? { collectedInSets: false }
+                : {}),
+            })
+          }
+        >
+          {["CULTURE", "DIRECT", "CASE"].map((role) => (
+            <SelectItem
+              key={role}
+              value={role}
+              text={intl.formatMessage({
+                id: `label.testCatalog.basicInfo.microbiologyCaseRole.${role}`,
+              })}
+            />
+          ))}
+        </Select>
+      )}
       <Toggle
         id="basic-info-collected-in-sets"
         labelText={intl.formatMessage({

@@ -547,6 +547,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         Map<SampleItem, Integer> specimenLabelQuantities = new LinkedHashMap<>();
         Integer orderLabelQuantity = null;
         matchRetriedSampleItems(updateData);
+        prepareRequestedCollectionDetails(updateData);
         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
             SampleItem savedItem = null;
             String sampleItemId = null;
@@ -565,8 +566,18 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     savedItem.setQuantity(sampleTestCollection.item.getQuantity());
                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
+                    String storedContainer = savedItem.getContainer();
                     copyHandlingDetails(sampleTestCollection.item, savedItem);
+                    if (!sampleTestCollection.suppliedCollectionFields.contains("container")) {
+                        savedItem.setContainer(storedContainer);
+                    }
                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
+                    if (sampleTestCollection.suppliedCollectionFields.contains("cultureSetNumber")) {
+                        savedItem.setCultureSetNumber(sampleTestCollection.item.getCultureSetNumber());
+                    }
+                    if (sampleTestCollection.suppliedCollectionFields.contains("bodySite")) {
+                        savedItem.setBodySite(sampleTestCollection.item.getBodySite());
+                    }
                     savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
                     // Keep existing typeOfSample if incoming is null (don't change sample type
                     // during collection)
@@ -602,6 +613,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // entity
             // This prevents "transient instance" errors when creating Analysis objects
             sampleTestCollection.item = savedItem;
+            if (!"V".equals(updateData.getSample().getDomain())) {
+                bindRequestedCollection(sampleTestCollection, updateData);
+            }
 
             // Create QC profile if this sample item is a QC sample (OGC-554)
             if (!GenericValidator.isBlankOrNull(sampleTestCollection.qcType)) {
@@ -672,11 +686,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 Double itemQty = stc.item.getQuantity();
                 int poolCount = itemQty == null ? 0 : itemQty.intValue();
                 if (poolCount <= 1) {
+                    bindRequestedCollection(stc, updateData);
                     continue;
                 }
                 List<SampleItem> siblings = vectorPoolFanOutService.fanOut(stc.item, stc.analysises, poolCount,
                         sysUserId);
                 if (siblings.isEmpty()) {
+                    bindRequestedCollection(stc, updateData);
                     continue;
                 }
                 // Parent is hard-deleted by fanOut; siblings get the labels instead.
@@ -684,6 +700,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 for (SampleItem sibling : siblings) {
                     specimenLabelQuantities.put(sibling, 1);
                 }
+                stc.item = siblings.getFirst();
+                bindRequestedCollection(stc, updateData);
             }
         }
 
@@ -818,7 +836,25 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
             // Matching the specimen rather than the position keeps a cancellation
             // pointing at the specimen that was actually taken off the order.
-            SampleTypeRequest request = takePendingRequestFor(reusable, typeOfSample);
+            SampleTypeRequest request;
+            if (!GenericValidator.isBlankOrNull(requested.getId())) {
+                Integer requestId = Integer.valueOf(requested.getId());
+                request = reusable.stream().filter(row -> requestId.equals(row.getId())).findFirst().orElseThrow(
+                        () -> new IllegalArgumentException("Requested specimen does not belong to this order"));
+                if (!typeOfSample.getId().equals(request.getTypeOfSample().getId())) {
+                    throw new IllegalArgumentException("A requested specimen cannot change sample type");
+                }
+                reusable.remove(request);
+            } else if (!GenericValidator.isBlankOrNull(requested.getSampleItemId())) {
+                request = reusable.stream()
+                        .filter(row -> row.getSampleItem() != null
+                                && requested.getSampleItemId().equals(row.getSampleItem().getId()))
+                        .findFirst().orElse(null);
+                if (request != null)
+                    reusable.remove(request);
+            } else {
+                request = takePendingRequestFor(reusable, typeOfSample);
+            }
             if (request != null && request.getStatus() == SampleTypeRequest.Status.COLLECTED) {
                 sortOrder++;
                 continue;
@@ -832,6 +868,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setTypeOfSample(typeOfSample);
             request.setSortOrder(sortOrder);
             request.setRequestedQuantity(requested.getRequestedQuantity());
+            request.setCultureSetNumber(requested.getCultureSetNumber());
+            request.setContainer(requested.getContainer());
+            request.setBodySite(requested.getBodySite());
+            request.setCollectionDate(GenericValidator.isBlankOrNull(requested.getCollectionDate()) ? null
+                    : java.sql.Date.valueOf(java.time.LocalDate.parse(requested.getCollectionDate())));
+            request.setCollectionTime(GenericValidator.isBlankOrNull(requested.getCollectionTime()) ? null
+                    : java.time.LocalTime.parse(requested.getCollectionTime()).toString());
             request.setRequestedTests(requested.getRequestedTests());
             request.setRequestedPanels(requested.getRequestedPanels());
             request.setStatus(SampleTypeRequest.Status.REQUESTED);
@@ -895,6 +938,73 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 }
             }
         }
+    }
+
+    /**
+     * Preserve a pending specimen's identity and recorded details before creating
+     * its sample.
+     */
+    private void prepareRequestedCollectionDetails(SamplePatientUpdateData updateData) {
+        List<SampleTypeRequest> requests = sampleTypeRequestService
+                .getRequestsBySampleId(updateData.getSample().getId());
+        Set<Integer> claimed = new HashSet<>();
+        for (SampleTestCollection collection : updateData.getSampleItemsTests()) {
+            if (collection.item == null)
+                continue;
+            SampleTypeRequest request = null;
+            if (collection.sampleTypeRequestId != null) {
+                request = requests.stream().filter(row -> collection.sampleTypeRequestId.equals(row.getId()))
+                        .findFirst().orElseThrow(
+                                () -> new IllegalArgumentException("Requested specimen does not belong to this order"));
+                if (!claimed.add(request.getId()))
+                    throw new IllegalArgumentException("Requested specimen is repeated");
+                if (request.getStatus() == SampleTypeRequest.Status.CANCELLED
+                        || !request.getTypeOfSample().getId().equals(collection.item.getTypeOfSampleId())
+                        || (request.getSampleItem() != null
+                                && !request.getSampleItem().getId().equals(collection.existingSampleItemId))) {
+                    throw new IllegalArgumentException("Requested specimen cannot be attached to this sample");
+                }
+            } else if (GenericValidator.isBlankOrNull(collection.existingSampleItemId)) {
+                List<SampleTypeRequest> matching = requests.stream()
+                        .filter(row -> row.getStatus() == SampleTypeRequest.Status.REQUESTED
+                                && !claimed.contains(row.getId())
+                                && row.getTypeOfSample().getId().equals(collection.item.getTypeOfSampleId()))
+                        .toList();
+                if (matching.size() == 1) {
+                    request = matching.getFirst();
+                    claimed.add(request.getId());
+                    collection.sampleTypeRequestId = request.getId();
+                }
+            }
+            if (request == null)
+                continue;
+            if (!collection.suppliedCollectionFields.contains("cultureSetNumber")) {
+                collection.item.setCultureSetNumber(request.getCultureSetNumber());
+            }
+            if (!collection.suppliedCollectionFields.contains("container"))
+                collection.item.setContainer(request.getContainer());
+            if (!collection.suppliedCollectionFields.contains("bodySite"))
+                collection.item.setBodySite(request.getBodySite());
+            // A timestamp is available only when both its date and time were recorded.
+            if (!collection.suppliedCollectionFields.contains("date")
+                    && !collection.suppliedCollectionFields.contains("time") && request.getCollectionDate() != null
+                    && request.getCollectionTime() != null) {
+                collection.item.setCollectionDate(Timestamp.valueOf(request.getCollectionDate().toLocalDate()
+                        .atTime(java.time.LocalTime.parse(request.getCollectionTime()))));
+            }
+        }
+    }
+
+    private void bindRequestedCollection(SampleTestCollection collection, SamplePatientUpdateData updateData) {
+        if (collection.sampleTypeRequestId == null || collection.item.isRejected())
+            return;
+        SampleTypeRequest request = sampleTypeRequestService.get(collection.sampleTypeRequestId);
+        if (request.getStatus() == SampleTypeRequest.Status.COLLECTED)
+            return;
+        request.setStatus(SampleTypeRequest.Status.COLLECTED);
+        request.setSampleItem(collection.item);
+        request.setSysUserId(updateData.getCurrentUserId());
+        sampleTypeRequestService.update(request);
     }
 
     /**

@@ -1,3 +1,4 @@
+import CultureBottleFields from "./CultureBottleFields";
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -54,7 +55,7 @@ const SampleTestSection = ({
       tests: [...(sample.tests || [])],
     }));
 
-  // Environmental manifest dictionary data
+  // Shared container catalog used by environmental samples and culture bottles.
   const [containerTypes, setContainerTypes] = useState([]);
 
   // Per-row expanded state for test/panel picker (environmental manifest)
@@ -87,16 +88,15 @@ const SampleTestSection = ({
     };
   }, [workflowType]);
 
-  // Fetch environmental manifest dictionaries once
+  // Fetch the shared container catalog once.
   useEffect(() => {
-    if (workflowType !== "environmental") return;
     getFromOpenElisServer(
       "/rest/vector/dictionary/sample-containers",
       (data) => {
         if (componentMounted.current) setContainerTypes(data || []);
       },
     );
-  }, [workflowType]);
+  }, []);
 
   const fetchedSampleTypesRef = useRef({});
 
@@ -246,13 +246,42 @@ const SampleTestSection = ({
     setSamples([...samples, newSample]);
   };
 
+  const hasSetTest = (sample, index) =>
+    (sample.tests || []).some((selected) => {
+      const catalog = (testsPerSample[index] || []).find(
+        (test) => String(test.id) === String(selected.id || selected),
+      );
+      return (catalog || selected).collectedInSets === true;
+    });
+
+  const applySamples = (updated) => {
+    const next = updated.map((sample, index) => {
+      if (
+        hasSetTest(sample, index) &&
+        !hasSetTest(samples[index] || {}, index) &&
+        !sample.cultureSetNumber
+      ) {
+        const previous = updated.slice(0, index).filter(hasSetTest).pop();
+        return { ...sample, cultureSetNumber: previous?.cultureSetNumber || 1 };
+      }
+      return sample;
+    });
+    setSamples(next);
+  };
+
   const handleDuplicateSample = (sourceIndex) => {
     const source = samples[sourceIndex];
     const newIndex = samples.length;
     const duplicate = {
       ...source,
       index: newIndex,
+      sampleItemId: "",
+      sampleTypeRequestId: "",
+      clientKey: "",
       sampleXML: null,
+      cultureSetNumber: hasSetTest(source, sourceIndex)
+        ? samples.filter(hasSetTest).pop()?.cultureSetNumber || 1
+        : "",
     };
     setSamples([...samples, duplicate]);
 
@@ -393,7 +422,7 @@ const SampleTestSection = ({
         (t) => !panelTestIds.includes(t.id) || otherPanelTestIds.has(t.id),
       );
     }
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleTestToggle = (sampleIndex, test, isSelected) => {
@@ -402,7 +431,7 @@ const SampleTestSection = ({
     updated[sampleIndex].tests = isSelected
       ? [...currentTests, test]
       : currentTests.filter((t) => t.id !== test.id);
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleRemovePanel = (sampleIndex, panelId) => {
@@ -424,7 +453,7 @@ const SampleTestSection = ({
     updated[sampleIndex].tests = currentTests.filter(
       (t) => !panelTestIds.includes(t.id) || remainingPanelTestIds.has(t.id),
     );
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleRemoveTest = (sampleIndex, testId) => {
@@ -432,7 +461,7 @@ const SampleTestSection = ({
     updated[sampleIndex].tests = updated[sampleIndex].tests.filter(
       (t) => t.id !== testId,
     );
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleVectorFieldChange = (sampleIndex, field, value) => {
@@ -1353,6 +1382,17 @@ const SampleTestSection = ({
                   </>
                 )}
               </h5>
+              {hasSetTest(sample, sampleIndex) && (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={Copy}
+                  disabled={isReadOnly}
+                  onClick={() => handleDuplicateSample(sampleIndex)}
+                >
+                  {intl.formatMessage({ id: "order.cultureBottle.duplicate" })}
+                </Button>
+              )}
               <Link
                 onClick={() => handleRemoveSample(sampleIndex)}
                 disabled={isReadOnly}
@@ -1405,6 +1445,19 @@ const SampleTestSection = ({
                   ))}
                 </Select>
               </Column>
+
+              {hasSetTest(sample, sampleIndex) && (
+                <CultureBottleFields
+                  sample={sample}
+                  sampleIndex={sampleIndex}
+                  isReadOnly={isReadOnly}
+                  containers={containerTypes}
+                  includeCollectionTime
+                  onChange={(field, value) =>
+                    handleEnvFieldChange(sampleIndex, field, value)
+                  }
+                />
+              )}
 
               {workflowType === "vector" && (
                 <>

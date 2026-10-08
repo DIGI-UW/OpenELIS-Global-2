@@ -154,6 +154,9 @@ describe("BasicInfoSection domain-switch modal", () => {
   it("persists case opening independently of the AMR flag", async () => {
     renderSection();
     await screen.findByLabelText("Clinical");
+    expect(
+      screen.queryByLabelText("Microbiology role"),
+    ).not.toBeInTheDocument();
     fireEvent.click(
       screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
     );

@@ -75,9 +75,12 @@
         <property name="domain" type="java.lang.String">
             <column name="DOMAIN" length="20" />
         </property>
-        <property name="opensMicrobiologyCase" type="boolean" column="opens_microbiology_case" not-null="true" />
-        <property name="microbiologyCaseRole" type="java.lang.String" column="microbiology_case_role" not-null="true" />
-        <property name="collectedInSets" type="boolean" column="collected_in_sets" not-null="true" />
+        <property name="opensMicrobiologyCase" type="boolean"
+            column="opens_microbiology_case" not-null="true" />
+        <property name="microbiologyCaseRole" type="java.lang.String"
+            column="microbiology_case_role" not-null="true" />
+        <property name="collectedInSets" type="boolean"
+            column="collected_in_sets" not-null="true" />
         <property name="stickerRequiredFlag" type="java.lang.String">
             <column name="STICKER_REQ_FLAG" length="1" />
         </property>

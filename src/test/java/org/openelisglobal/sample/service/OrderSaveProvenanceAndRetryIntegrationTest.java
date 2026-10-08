@@ -81,6 +81,15 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     @Autowired
     private SampleRequesterService sampleRequesterService;
 
+    @jakarta.persistence.PersistenceContext
+    private jakarta.persistence.EntityManager entityManager;
+    @Autowired
+    private org.openelisglobal.test.service.TestSectionService testSections;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseDAO microCases;
+    @Autowired
+    private org.openelisglobal.microbiology.dao.MicroCaseRequestDAO microRequests;
+
     private String userId;
     private Patient patient;
     private TypeOfSample sampleType;
@@ -125,6 +134,85 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         assertEquals(items.getFirst().getId(), collected.getFirst().getSampleItem().getId());
         assertEquals("the second requested specimen is still awaited", 1,
                 sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId()).size());
+    }
+
+    @Test
+    public void explicitRequestIdentityCollectsTheChosenDuplicateAndCarriesItsRecordedDetails() {
+        Sample sample = newSample();
+        SampleTypeRequestDTO first = requested();
+        first.setCultureSetNumber(1);
+        first.setBodySite("Left arm");
+        SampleTypeRequestDTO second = requested();
+        second.setCultureSetNumber(2);
+        second.setBodySite("Right arm");
+        second.setContainer("Configured bottle");
+        second.setCollectionDate("2026-10-07");
+        second.setCollectionTime("14:25");
+        persist(sample, "<samples></samples>", List.of(first, second));
+        List<SampleTypeRequest> requests = sampleTypeRequestService.getRequestsBySampleId(sample.getId());
+        SampleTypeRequest chosen = requests.stream().filter(row -> Integer.valueOf(2).equals(row.getCultureSetNumber()))
+                .findFirst().orElseThrow();
+        String xml = sampleXml(null, "", UUID.randomUUID().toString()).replace("<sample ",
+                "<sample sampleTypeRequestId='" + chosen.getId() + "' ");
+        persist(sample, samplesXml(xml), null);
+        persist(sample, samplesXml(xml), null);
+        List<SampleItem> items = sampleItemService.getSampleItemsBySampleId(sample.getId());
+        assertEquals(1, items.size());
+        assertEquals(Integer.valueOf(2), items.getFirst().getCultureSetNumber());
+        assertEquals("Right arm", items.getFirst().getBodySite());
+        assertEquals("Configured bottle", items.getFirst().getContainer());
+        assertEquals(Timestamp.valueOf("2026-10-07 14:25:00"), items.getFirst().getCollectionDate());
+        assertEquals(items.getFirst().getId(), sampleTypeRequestService.get(chosen.getId()).getSampleItem().getId());
+        assertEquals(1, sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId()).size());
+    }
+
+    @Test
+    public void collectingAPendingCaseTestKeepsOneCaseAndCreatesNoResultAnalysis() {
+        Sample sample = newSample();
+        org.openelisglobal.test.valueholder.Test test = entityManager
+                .find(org.openelisglobal.test.valueholder.Test.class, catalogTest().getId());
+        test.setTestSection(testSections.getAllActiveTestSections().getFirst());
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole("CASE");
+        entityManager.flush();
+        SampleTypeRequestDTO requested = requested();
+        requested.setRequestedTests(test.getId());
+        persist(sample, "<samples></samples>", List.of(requested));
+        SampleTypeRequest request = sampleTypeRequestService.getRequestsBySampleId(sample.getId()).getFirst();
+        String caseId = microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getCaseId();
+        String xml = sampleXml(test, "", UUID.randomUUID().toString()).replace("<sample ",
+                "<sample sampleTypeRequestId='" + request.getId() + "' ");
+        persist(sample, samplesXml(xml), null);
+        persist(sample, samplesXml(xml), null);
+        assertEquals(1, microCases.getByOrder(sample.getId()).size());
+        assertEquals(1, sampleTypeRequestService.getRequestsBySampleId(sample.getId()).size());
+        SampleItem collected = sampleItemService.getSampleItemsBySampleId(sample.getId()).getFirst();
+        assertTrue(analysisService.getAnalysesBySampleItem(collected).isEmpty());
+        assertEquals(caseId, microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getCaseId());
+        assertEquals(collected.getId(),
+                microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getSampleItemId());
+        assertNull(collected.getCollectionDate());
+        assertNull(collected.getReceivedDate());
+    }
+
+    @Test
+    public void reorderingSameTypeRequestsKeepsTheirIdentitiesAndUpdatesTheChosenBottle() {
+        Sample sample = newSample();
+        SampleTypeRequestDTO first = requested();
+        first.setCultureSetNumber(1);
+        SampleTypeRequestDTO second = requested();
+        second.setCultureSetNumber(2);
+        persist(sample, "<samples></samples>", List.of(first, second));
+        List<SampleTypeRequest> requests = sampleTypeRequestService.getRequestsBySampleId(sample.getId());
+        SampleTypeRequestDTO storedFirst = new SampleTypeRequestDTO(requests.get(0));
+        SampleTypeRequestDTO storedSecond = new SampleTypeRequestDTO(requests.get(1));
+        storedSecond.setBodySite("Right arm");
+        persist(sample, "<samples></samples>", List.of(storedSecond, storedFirst));
+        assertEquals(Integer.valueOf(2),
+                sampleTypeRequestService.get(Integer.valueOf(storedSecond.getId())).getCultureSetNumber());
+        assertEquals("Right arm", sampleTypeRequestService.get(Integer.valueOf(storedSecond.getId())).getBodySite());
+        assertNull(sampleTypeRequestService.get(Integer.valueOf(storedFirst.getId())).getBodySite());
+        assertEquals(2, sampleTypeRequestService.getRequestsBySampleId(sample.getId()).size());
     }
 
     @Test

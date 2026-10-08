@@ -143,12 +143,29 @@ public class Test extends EnumValueItemImpl {
         this.sortOrder = sortOrder;
     }
 
-    public boolean isOpensMicrobiologyCase() { return opensMicrobiologyCase; }
-    public void setOpensMicrobiologyCase(boolean value) { opensMicrobiologyCase = value; }
-    public String getMicrobiologyCaseRole() { return microbiologyCaseRole; }
-    public void setMicrobiologyCaseRole(String value) { microbiologyCaseRole = value; }
-    public boolean isCollectedInSets() { return collectedInSets; }
-    public void setCollectedInSets(boolean value) { collectedInSets = value; }
+    public boolean isOpensMicrobiologyCase() {
+        return opensMicrobiologyCase;
+    }
+
+    public void setOpensMicrobiologyCase(boolean value) {
+        opensMicrobiologyCase = value;
+    }
+
+    public String getMicrobiologyCaseRole() {
+        return microbiologyCaseRole;
+    }
+
+    public void setMicrobiologyCaseRole(String value) {
+        microbiologyCaseRole = value;
+    }
+
+    public boolean isCollectedInSets() {
+        return collectedInSets;
+    }
+
+    public void setCollectedInSets(boolean value) {
+        collectedInSets = value;
+    }
 
     public Double getTea() {
         return tea;

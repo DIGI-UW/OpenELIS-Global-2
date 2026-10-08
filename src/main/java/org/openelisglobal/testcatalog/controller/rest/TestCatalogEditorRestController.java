@@ -649,7 +649,8 @@ public class TestCatalogEditorRestController {
             return ResponseEntity.unprocessableEntity().build();
         }
         String role = body.microbiologyCaseRole == null ? test.getMicrobiologyCaseRole() : body.microbiologyCaseRole;
-        boolean opensCase = body.opensMicrobiologyCase == null ? test.isOpensMicrobiologyCase() : body.opensMicrobiologyCase;
+        boolean opensCase = body.opensMicrobiologyCase == null ? test.isOpensMicrobiologyCase()
+                : body.opensMicrobiologyCase;
         boolean sets = body.collectedInSets == null ? test.isCollectedInSets() : body.collectedInSets;
         if (!List.of("CULTURE", "DIRECT", "CASE").contains(role) || (sets && (!opensCase || !"CULTURE".equals(role)))) {
             return ResponseEntity.unprocessableEntity().build();

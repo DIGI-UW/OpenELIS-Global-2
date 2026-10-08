@@ -24,5 +24,6 @@
 
   <include relativeToChangelogFile="true" file="012-microbiology-v2-case-structure.xml"/>
   <include relativeToChangelogFile="true" file="013-microbiology-v2-routing.xml"/>
+  <include relativeToChangelogFile="true" file="014-sample-collection-set-details.xml"/>
 
 </databaseChangeLog>

@@ -98,6 +98,26 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                         "SELECT case_role FROM clinlims.micro_case_analysis WHERE id='stored-link'"));
                 verifyConstraints(connection);
 
+                assertTrue(columnExists(connection, "sample_type_request", "culture_set_number"));
+                assertTrue(columnExists(connection, "sample_item", "body_site"));
+                assertTrue(columnExists(connection, "dictionary", "container_population"));
+                assertTrue(columnExists(connection, "test", "opens_microbiology_case"));
+                assertNull(scalar(connection, "SELECT culture_set_number FROM clinlims.sample_item WHERE id=888802"));
+                assertNull(scalar(connection, "SELECT body_site FROM clinlims.sample_item WHERE id=888802"));
+                // Shared details and catalog flags are registered, reversible application
+                // changes.
+                new Liquibase("liquibase/3.6.x.x/014-sample-collection-set-details.xml", resources, database)
+                        .rollback(2, "test");
+                assertFalse(columnExists(connection, "sample_item", "culture_set_number"));
+                assertFalse(columnExists(connection, "dictionary", "container_population"));
+                new Liquibase("liquibase/3.6.x.x/013-microbiology-v2-routing.xml", resources, database).rollback(2,
+                        "test");
+                assertFalse(columnExists(connection, "test", "opens_microbiology_case"));
+                assertPreservedFields(originalResult,
+                        scalar(connection, "SELECT row_to_json(r)::text FROM clinlims.result r WHERE id=888803"));
+                app.update(contexts);
+                assertTrue(columnExists(connection, "sample_item", "culture_set_number"));
+
                 Liquibase feature = new Liquibase("liquibase/3.6.x.x/012-microbiology-v2-case-structure.xml", resources,
                         database);
                 feature.rollback(3, "test");

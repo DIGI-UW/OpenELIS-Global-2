@@ -25,6 +25,11 @@ public class SampleTypeRequestDTO {
     private String status;
     private String sampleItemId;
     private String createdDate;
+    private Integer cultureSetNumber;
+    private String container;
+    private String bodySite;
+    private String collectionDate;
+    private String collectionTime;
 
     // Default constructor
     public SampleTypeRequestDTO() {
@@ -37,6 +42,11 @@ public class SampleTypeRequestDTO {
         this.typeOfSampleId = entity.getTypeOfSample() != null ? entity.getTypeOfSample().getId() : null;
         this.typeOfSampleName = entity.getTypeOfSample() != null ? entity.getTypeOfSample().getLocalizedName() : null;
         this.sortOrder = entity.getSortOrder();
+        this.cultureSetNumber = entity.getCultureSetNumber();
+        this.container = entity.getContainer();
+        this.bodySite = entity.getBodySite();
+        this.collectionDate = entity.getCollectionDate() == null ? null : entity.getCollectionDate().toString();
+        this.collectionTime = entity.getCollectionTime();
         this.requestedQuantity = entity.getRequestedQuantity();
         this.unitOfMeasureId = entity.getUnitOfMeasure() != null ? entity.getUnitOfMeasure().getId() : null;
         this.unitOfMeasureName = entity.getUnitOfMeasure() != null ? entity.getUnitOfMeasure().getUnitOfMeasureName()
@@ -177,4 +187,45 @@ public class SampleTypeRequestDTO {
     public void setCreatedDate(String createdDate) {
         this.createdDate = createdDate;
     }
+
+    public Integer getCultureSetNumber() {
+        return cultureSetNumber;
+    }
+
+    public void setCultureSetNumber(Integer cultureSetNumber) {
+        this.cultureSetNumber = cultureSetNumber;
+    }
+
+    public String getContainer() {
+        return container;
+    }
+
+    public void setContainer(String value) {
+        container = value;
+    }
+
+    public String getBodySite() {
+        return bodySite;
+    }
+
+    public void setBodySite(String value) {
+        bodySite = value;
+    }
+
+    public String getCollectionDate() {
+        return collectionDate;
+    }
+
+    public void setCollectionDate(String value) {
+        collectionDate = value;
+    }
+
+    public String getCollectionTime() {
+        return collectionTime;
+    }
+
+    public void setCollectionTime(String value) {
+        collectionTime = value;
+    }
+
 }

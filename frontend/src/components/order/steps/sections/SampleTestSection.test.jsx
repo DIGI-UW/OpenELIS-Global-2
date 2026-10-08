@@ -394,3 +394,51 @@ describe("SampleTestSection selected-tag close buttons", () => {
     ).not.toBeInTheDocument();
   });
 });
+
+describe("culture set assignments", () => {
+  beforeEach(() => {
+    getFromOpenElisServer.mockReset();
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url === "/rest/user-sample-types") cb([{ id: "5", value: "Blood" }]);
+      if (url.startsWith("/rest/sample-type-tests"))
+        cb({
+          tests: [{ id: "42", name: "Blood culture", collectedInSets: true }],
+          panels: [],
+        });
+      if (url.endsWith("sample-containers"))
+        cb([{ id: "9", dictEntry: "B17" }]);
+    });
+  });
+  it("defaults a newly selected set culture to set 1 without changing the previous state", async () => {
+    const setSamples = vi.fn();
+    const previous = [{ ...sample, tests: [], panels: [] }];
+    renderSection(setSamples, { currentSamples: previous });
+    fireEvent.click(await screen.findByLabelText("Blood culture"));
+    expect(setSamples.mock.calls.at(-1)[0][0].cultureSetNumber).toBe(1);
+    expect(previous[0].cultureSetNumber).toBeUndefined();
+    expect(previous[0].tests).toEqual([]);
+  });
+  it("duplicates a bottle into the last assigned set with fresh collection identities", async () => {
+    const setSamples = vi.fn();
+    renderSection(setSamples, {
+      currentSamples: [
+        {
+          ...sample,
+          tests: [{ id: "42", collectedInSets: true }],
+          cultureSetNumber: 3,
+          sampleItemId: "81",
+          sampleTypeRequestId: "17",
+          clientKey: "old-key",
+        },
+      ],
+    });
+    const duplicate = await screen.findByRole("button", { name: /duplicate/i });
+    fireEvent.click(duplicate);
+    expect(setSamples.mock.calls.at(-1)[0][1]).toMatchObject({
+      cultureSetNumber: 3,
+      sampleItemId: "",
+      sampleTypeRequestId: "",
+      clientKey: "",
+    });
+  });
+});

@@ -84,6 +84,13 @@ describe("requested specimens sent with the order", () => {
 
     expect(requested).toEqual([
       {
+        id: null,
+        sampleItemId: null,
+        cultureSetNumber: null,
+        container: null,
+        bodySite: null,
+        collectionDate: null,
+        collectionTime: null,
         typeOfSampleId: "5",
         requestedQuantity: 2.5,
         unitOfMeasureId: "9",
@@ -91,6 +98,13 @@ describe("requested specimens sent with the order", () => {
         requestedPanels: "7",
       },
       {
+        id: null,
+        sampleItemId: null,
+        cultureSetNumber: null,
+        container: null,
+        bodySite: null,
+        collectionDate: null,
+        collectionTime: null,
         typeOfSampleId: "6",
         requestedQuantity: null,
         unitOfMeasureId: null,
@@ -143,5 +157,28 @@ describe("mergeCollectedAndPendingSamples", () => {
   it("falls back when neither source has rows", () => {
     const fallback = [{ index: 0 }];
     expect(mergeCollectedAndPendingSamples([], [], fallback)).toBe(fallback);
+  });
+});
+
+it("restores and resends specimen identity and recorded culture bottle details", () => {
+  const [sample] = convertRequestsToSamples([
+    {
+      id: "17",
+      typeOfSampleId: "5",
+      status: "REQUESTED",
+      cultureSetNumber: 2,
+      container: "B17",
+      bodySite: "Right arm",
+      collectionDate: "2026-10-07",
+      collectionTime: "14:25",
+    },
+  ]);
+  expect(toRequestedSampleTypes([sample])[0]).toMatchObject({
+    id: "17",
+    cultureSetNumber: 2,
+    container: "B17",
+    bodySite: "Right arm",
+    collectionDate: "2026-10-07",
+    collectionTime: "14:25",
   });
 });

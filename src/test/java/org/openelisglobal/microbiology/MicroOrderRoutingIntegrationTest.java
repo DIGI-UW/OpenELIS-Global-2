@@ -28,16 +28,26 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
 public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTest {
-    @Autowired private MicrobiologyTestFixtures fixtures;
-    @Autowired private SampleService orders;
-    @Autowired private SampleItemService samples;
-    @Autowired private TestService tests;
-    @Autowired private TestSectionService units;
-    @Autowired private MicroOrderRoutingService routing;
-    @Autowired private MicroCaseDAO cases;
-    @Autowired private MicroCaseRequestDAO requests;
-    @Autowired private MicroCaseMembershipService membership;
-    @PersistenceContext private EntityManager em;
+    @Autowired
+    private MicrobiologyTestFixtures fixtures;
+    @Autowired
+    private SampleService orders;
+    @Autowired
+    private SampleItemService samples;
+    @Autowired
+    private TestService tests;
+    @Autowired
+    private TestSectionService units;
+    @Autowired
+    private MicroOrderRoutingService routing;
+    @Autowired
+    private MicroCaseDAO cases;
+    @Autowired
+    private MicroCaseRequestDAO requests;
+    @Autowired
+    private MicroCaseMembershipService membership;
+    @PersistenceContext
+    private EntityManager em;
     private Sample order;
     private org.openelisglobal.test.valueholder.Test test;
     private TypeOfSample type;
@@ -64,9 +74,15 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
 
     private SampleTypeRequest request(String ids) {
         SampleTypeRequest r = new SampleTypeRequest();
-        r.setSample(order); r.setTypeOfSample(type); r.setRequestedTests(ids);
+        r.setSample(order);
+        r.setTypeOfSample(type);
+        r.setRequestedTests(ids);
         r.setCreatedDate(Timestamp.valueOf("2026-01-02 10:00:00"));
-        em.persist(r); em.flush(); return r;
+        if (test.isCollectedInSets())
+            r.setCultureSetNumber(1);
+        em.persist(r);
+        em.flush();
+        return r;
     }
 
     @Test
@@ -74,7 +90,8 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         SampleTypeRequest r = request(test.getId());
         routing.routeOrder(order, actor);
         routing.routeOrder(order, actor);
-        em.flush(); em.clear();
+        em.flush();
+        em.clear();
         assertEquals(1, cases.getByOrder(order.getId()).size());
         var owner = requests.getActiveByRequestAndTest(r.getId(), test.getId());
         assertNotNull(owner);
@@ -90,14 +107,19 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         routing.routeOrder(order, actor);
         String caseId = requests.getActiveByRequestAndTest(r.getId(), test.getId()).getCaseId();
         SampleItem sample = new SampleItem();
-        sample.setSample(order); sample.setTypeOfSample(type); sample.setSortOrder("1");
-        sample.setStatusId(fixtures.ensureSampleEnteredStatus()); sample.setSysUserId(actor);
+        sample.setSample(order);
+        sample.setTypeOfSample(type);
+        sample.setSortOrder("1");
+        sample.setStatusId(fixtures.ensureSampleEnteredStatus());
+        sample.setSysUserId(actor);
         samples.insert(sample);
         var analysis = fixtures.createAnalysis(sample, test);
-        r.setSampleItem(sample); r.setStatus(SampleTypeRequest.Status.COLLECTED);
+        r.setSampleItem(sample);
+        r.setStatus(SampleTypeRequest.Status.COLLECTED);
         routing.routeOrder(order, actor);
         routing.routeOrder(order, actor);
-        em.flush(); em.clear();
+        em.flush();
+        em.clear();
         assertEquals(1, cases.getByOrder(order.getId()).size());
         var owner = requests.getActiveByRequestAndTest(r.getId(), test.getId());
         assertEquals(caseId, owner.getCaseId());
@@ -108,15 +130,19 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
 
     @Test
     public void anOrdinaryTestOpensNoCase() {
-        test.setOpensMicrobiologyCase(false); em.flush();
-        request(test.getId()); routing.routeOrder(order, actor);
+        test.setOpensMicrobiologyCase(false);
+        em.flush();
+        request(test.getId());
+        routing.routeOrder(order, actor);
         assertTrue(cases.getByOrder(order.getId()).isEmpty());
     }
 
     @Test
     public void aCaseRoleOpensAnEmptyCaseWithoutAnAnalysis() {
-        test.setMicrobiologyCaseRole("CASE"); em.flush();
-        SampleTypeRequest r = request(test.getId()); routing.routeOrder(order, actor);
+        test.setMicrobiologyCaseRole("CASE");
+        em.flush();
+        SampleTypeRequest r = request(test.getId());
+        routing.routeOrder(order, actor);
         var owner = requests.getActiveByRequestAndTest(r.getId(), test.getId());
         assertNotNull(owner);
         assertNull(owner.getAnalysisId());
@@ -125,7 +151,9 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
 
     @Test
     public void setCulturesShareOneCaseAcrossRequestedSampleTypes() {
-        test.setMicrobiologyCaseRole("CULTURE"); test.setCollectedInSets(true); em.flush();
+        test.setMicrobiologyCaseRole("CULTURE");
+        test.setCollectedInSets(true);
+        em.flush();
         var first = request(test.getId());
         var second = request(test.getId());
         second.setTypeOfSample(fixtures.createTypeOfSample());

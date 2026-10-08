@@ -1,6 +1,7 @@
 package org.openelisglobal.microbiology.service;
 
 import static org.junit.Assert.*;
+
 import java.util.List;
 import org.junit.Test;
 
@@ -17,7 +18,8 @@ public class MicroCaseRoutingRuleTest {
     public void twoRelatedCandidatesChooseTheFirstOpenedCase() {
         var first = new MicroCaseRoutingRule.Candidate("first", "unit", "blood");
         var second = new MicroCaseRoutingRule.Candidate("second", "unit", "blood");
-        first.samples.add("bottle"); second.samples.add("bottle");
+        first.samples.add("bottle");
+        second.samples.add("bottle");
         assertSame(first, MicroCaseRoutingRule.choose(List.of(first, second), "unit", "blood", null, "bottle"));
     }
 
