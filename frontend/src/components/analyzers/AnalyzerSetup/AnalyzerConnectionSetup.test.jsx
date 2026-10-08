@@ -320,6 +320,29 @@ describe("AnalyzerConnectionSetup", () => {
       expect(onProfileReset).not.toHaveBeenCalled();
     });
 
+    it("says it once when the activation check reports the same thing", async () => {
+      getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+        callback({
+          analyzerId: "42",
+          status: "INACTIVE",
+          ready: false,
+          activated: false,
+          blockers: [
+            { code: "analyzer.connection.readiness.profileUnavailable" },
+          ],
+        }),
+      );
+      renderConnection({ shown: stranded, onProfileReset: vi.fn() });
+
+      await screen.findByRole("button", { name: "Reset analyzer type" });
+      await waitFor(() =>
+        expect(getAnalyzerActivationReadiness).toHaveBeenCalled(),
+      );
+      expect(
+        screen.getAllByText(/which the Analyzer Bridge no longer has/),
+      ).toHaveLength(1);
+    });
+
     it("offers no reset while the type is available", async () => {
       renderConnection({ onProfileReset: vi.fn() });
 

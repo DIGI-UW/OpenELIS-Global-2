@@ -508,15 +508,17 @@ const AnalyzerConnectionSetup = ({
             title={intl.formatMessage({ id: resetRefusal })}
           />
         )}
-        {readiness?.blockers.map((blocker, index) => (
-          <InlineNotification
-            key={`${blocker.code}-${index}`}
-            kind="warning"
-            lowContrast
-            hideCloseButton
-            title={formatActivationBlocker(intl, blocker)}
-          />
-        ))}
+        {readiness?.blockers
+          .filter((blocker) => !BRIDGE_DEGRADED_BLOCKERS.has(blocker.code))
+          .map((blocker, index) => (
+            <InlineNotification
+              key={`${blocker.code}-${index}`}
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={formatActivationBlocker(intl, blocker)}
+            />
+          ))}
         {onVerifyMappings && needsMappingVerification(readiness) && (
           <Button
             type="button"
