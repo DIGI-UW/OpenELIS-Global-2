@@ -40,6 +40,7 @@ import org.mockito.InOrder;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
+import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
@@ -429,6 +430,58 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 .orElseThrow(() -> new AssertionError("no adoption row for " + code));
     }
 
+    /**
+     * The upgrade path: changeset 124 leaves an analyzer inactive with no mapping
+     * and its Bridge connection kept. The operator sets it up again on an available
+     * type, the Bridge connection is pinned to it, and it activates.
+     */
+    @Test
+    public void anAnalyzerTheUpgradeLeftWithoutAMappingIsSetUpAgainAndActivates() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.ensureFhirUuid();
+        analyzer.setName("Migrated bench");
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setTestUnitIds(List.of(labUnit()));
+        analyzer.setSysUserId("1");
+        analyzerDAO.insert(analyzer);
+        analyzerId = analyzer.getId();
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("UPDATE analyzer SET bridge_connection_id = ? WHERE id = ?", CONNECTION_ID,
+                Long.valueOf(analyzerId));
+        BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
+        when(bridge.getConnection(CONNECTION_ID)).thenReturn(connection(1));
+        when(bridge.updateConnection(eq(CONNECTION_ID), any(ObjectNode.class))).thenReturn(connection(1));
+        when(bridge.applyRuntimeCommand(eq(CONNECTION_ID), anyInt(), eq("ACTIVATE"), anyString()))
+                .thenAnswer(call -> acknowledgement(call.getArgument(3), 1));
+
+        AnalyzerInstanceRequest request = new AnalyzerInstanceRequest();
+        request.setName("Migrated bench");
+        request.setTestUnitIds(List.of(labUnit()));
+        request.setProfileId(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID);
+        request.setProfileRevision(1);
+        request.setConnectionValues(JSON.createObjectNode());
+        instances.update(analyzerId, request, "1");
+
+        ArgumentCaptor<ObjectNode> repin = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(bridge).updateConnection(eq(CONNECTION_ID), repin.capture());
+        assertEquals(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID,
+                repin.getValue().path("profileRef").path("profileId").asText());
+        Analyzer setUp = analyzerDAO.get(analyzerId).orElseThrow();
+        assertEquals("Migrated bench", setUp.getName());
+        assertEquals(CONNECTION_ID, setUp.getBridgeConnectionId());
+        assertEquals(Analyzer.AnalyzerStatus.INACTIVE, setUp.getStatus());
+        assertTrue("the analyzer has a mapping on the chosen type again",
+                mappingService.findLatestByAnalyzerId(analyzerId).isPresent());
+
+        confirm(mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow());
+        AnalyzerActivationResult result = activations.activate(analyzerId, "1");
+
+        assertTrue("blockers: " + result.blockers(), result.activated());
+        assertEquals("ACTIVE", jdbc.queryForObject("SELECT status FROM analyzer WHERE id = ?", String.class,
+                Long.valueOf(analyzerId)));
+    }
+
     private Analyzer analyzerOnRevisionOne() {
         Analyzer analyzer = new Analyzer();
         analyzer.ensureFhirUuid();
@@ -499,13 +552,17 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     private ObjectNode acknowledgement(String commandId) {
+        return acknowledgement(commandId, 2);
+    }
+
+    private ObjectNode acknowledgement(String commandId, int revision) {
         ObjectNode acknowledgement = JSON.createObjectNode();
         acknowledgement.put("schemaVersion", "1.0");
         acknowledgement.put("commandId", commandId);
         acknowledgement.put("action", "ACTIVATE");
         acknowledgement.put("outcome", "APPLIED");
         acknowledgement.put("connectionId", CONNECTION_ID);
-        acknowledgement.set("profileRef", connection(2).path("profileRef"));
+        acknowledgement.set("profileRef", connection(revision).path("profileRef"));
         acknowledgement.put("configRevision", 1);
         acknowledgement.put("configFingerprint", CONFIG_FINGERPRINT);
         acknowledgement.put("runtimeRevision", 2);
