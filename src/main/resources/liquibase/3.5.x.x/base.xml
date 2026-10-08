@@ -639,4 +639,7 @@
   <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
   <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
 
+  <!-- Analyzer Bridge pairing: OpenELIS's client key pair and the pinned Bridge certificate. -->
+  <include relativeToChangelogFile="true" file="131-analyzer-bridge-pairing.xml"/>
+
 </databaseChangeLog>
