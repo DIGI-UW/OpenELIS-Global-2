@@ -4,12 +4,15 @@ OpenELIS builds the Bridge and analyzer mock images from these pins. Exits non-z
 is a commit that is not on its repository's default branch or its URL changes repositories.
 """
 
+import argparse
+import base64
 import configparser
 import json
 import os
 import re
 import subprocess
 import sys
+import urllib.error
 import urllib.request
 
 CHECKED = ("tools/openelis-analyzer-bridge", "tools/analyzer-mock-server")
@@ -51,8 +54,12 @@ def unmerged(checked, on_default_branch):
     return [(path, sha, repository) for path, sha, repository in checked if not on_default_branch(repository, sha)]
 
 
-def _github(path, token):
-    request = urllib.request.Request(f"https://api.github.com/{path}", headers={"Accept": "application/vnd.github+json"})
+def _github(path, token, data=None):
+    request = urllib.request.Request(
+        f"https://api.github.com/{path}",
+        data=json.dumps(data).encode() if data is not None else None,
+        headers={"Accept": "application/vnd.github+json", "Content-Type": "application/json"},
+    )
     if token:
         request.add_header("Authorization", f"Bearer {token}")
     with urllib.request.urlopen(request, timeout=30) as response:
@@ -82,17 +89,23 @@ def trusted_gitmodules(base_ref):
     ).stdout
 
 
+def validate_repositories(ls_tree, gitmodules, trusted):
+    checked = checked_pins(ls_tree, trusted)
+    actual = checked_pins(ls_tree, gitmodules)
+    for (path, _, repository), (_, _, actual_repository) in zip(checked, actual):
+        if repository.casefold() != actual_repository.casefold():
+            raise ValueError(f"{path} must reference {repository}; repository changes are not allowed")
+    return checked
+
+
 def main():
     ls_tree = subprocess.run(["git", "ls-tree", "-r", "HEAD"], check=True, capture_output=True, text=True).stdout
     try:
-        checked = checked_pins(ls_tree, trusted_gitmodules(os.environ.get("BASE_REF")))
+        trusted = trusted_gitmodules(os.environ.get("BASE_REF"))
         gitmodules = subprocess.run(
             ["git", "show", "HEAD:.gitmodules"], check=True, capture_output=True, text=True
         ).stdout
-        actual = checked_pins(ls_tree, gitmodules)
-        for (path, _, repository), (_, _, actual_repository) in zip(checked, actual):
-            if repository.casefold() != actual_repository.casefold():
-                raise ValueError(f"{path} must reference {repository}; repository changes are not allowed")
+        checked = validate_repositories(ls_tree, gitmodules, trusted)
     except ValueError as error:
         print(f"Submodule validation failed: {error}")
         return 1
@@ -110,5 +123,91 @@ def main():
     return 0
 
 
+STATUS_CONTEXT = "Validation / Submodule pins"
+
+
+def pr_snapshot(repository, sha, token):
+    """Read only Git tree/blob data at one immutable PR commit; never check out PR code."""
+    trees = {}
+
+    def entry(path):
+        tree_sha = sha
+        parts = path.split("/")
+        for index, part in enumerate(parts):
+            if tree_sha not in trees:
+                tree = _github(f"repos/{repository}/git/trees/{tree_sha}", token)
+                if tree.get("truncated"):
+                    raise ValueError("GitHub returned an incomplete Git tree")
+                trees[tree_sha] = {item["path"]: item for item in tree["tree"]}
+            item = trees[tree_sha].get(part)
+            if item is None:
+                raise ValueError(f"Missing {path} in PR commit")
+            if index < len(parts) - 1:
+                if item["type"] != "tree":
+                    raise ValueError(f"{path} has a non-directory parent")
+                tree_sha = item["sha"]
+        return item
+
+    modules = entry(".gitmodules")
+    if modules["type"] != "blob" or modules["mode"] not in ("100644", "100755"):
+        raise ValueError(".gitmodules must be a regular file")
+    blob = _github(f"repos/{repository}/git/blobs/{modules['sha']}", token)
+    if blob["encoding"] != "base64":
+        raise ValueError("Unexpected .gitmodules encoding")
+    gitmodules = base64.b64decode(blob["content"]).decode("utf-8")
+    lines = []
+    for path in CHECKED:
+        pin = entry(path)
+        if pin["mode"] != "160000" or pin["type"] != "commit":
+            raise ValueError(f"{path} is not a submodule of this checkout")
+        lines.append(f"160000 commit {pin['sha']}\t{path}")
+    return "\n".join(lines), gitmodules
+
+
+def check_pull_request(repository, number, token, trusted, run_url, dry_run=False):
+    pr = _github(f"repos/{repository}/pulls/{number}", token)
+    sha = pr["head"]["sha"]
+    if not re.fullmatch(r"[0-9a-f]{40}", sha):
+        raise ValueError("Invalid PR head commit")
+
+    def publish(state, description):
+        print(f"{STATUS_CONTEXT}: {sha} {state}: {description}")
+        if not dry_run:
+            _github(f"repos/{repository}/statuses/{sha}", token, {
+                "context": STATUS_CONTEXT, "state": state,
+                "description": description[:140], "target_url": run_url,
+            })
+
+    publish("pending", "Checking analyzer submodule repositories and upstream commits")
+    try:
+        base = (pr.get("stack") or {}).get("base", {}).get("ref") or pr["base"]["ref"]
+        if base != "develop":
+            publish("success", "Not applicable: PR does not target develop or a develop-based stack")
+            return 0
+        ls_tree, gitmodules = pr_snapshot(repository, sha, token)
+        checked = validate_repositories(ls_tree, gitmodules, trusted)
+        failures = unmerged(checked, on_default_branch_via_github(token))
+        if failures:
+            raise ValueError("Unmerged upstream pin: " + ", ".join(f"{path}@{pin[:12]}" for path, pin, _ in failures))
+    except urllib.error.HTTPError as error:
+        publish("failure", f"GitHub API HTTP {error.code}; could not verify upstream pins")
+        return 1
+    except (ValueError, KeyError, configparser.Error, urllib.error.URLError) as error:
+        publish("failure", str(error))
+        return 1
+    publish("success", "Analyzer repositories match develop and both pins are merged upstream")
+    return 0
+
+
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pull-request", type=int)
+    parser.add_argument("--dry-run", action="store_true", help="Read and validate without publishing commit statuses")
+    args = parser.parse_args()
+    if args.pull_request is not None:
+        with open(".gitmodules", encoding="utf-8") as handle:
+            trusted = handle.read()
+        repository = os.environ["GITHUB_REPOSITORY"]
+        run_url = f"https://github.com/{repository}/actions/runs/{os.environ.get('GITHUB_RUN_ID', '')}"
+        sys.exit(check_pull_request(repository, args.pull_request, os.environ.get("GITHUB_TOKEN"), trusted, run_url, args.dry_run))
     sys.exit(main())

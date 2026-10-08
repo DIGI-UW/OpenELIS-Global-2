@@ -30,10 +30,11 @@ gh pr checks 1234                      # the whole picture
 gh pr checks 1234 | grep -E "fail"     # just the failures
 ```
 
-Three checks are required — `01 Checkpoint - Backend`,
-`02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. Early in a run only some of
-them exist, so **confirm all three are present and none are `pending`** before
-calling a PR green.
+The three build checkpoints are `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, and `03 Checkpoint - E2E`. The trusted
+`Validation / Submodule pins` check is also required after its rollout below.
+Early in a run only some checks exist, so **confirm all required checks are
+present and none are `pending`** before calling a PR green.
 
 Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
 a `workflow_run` follow-up stage, so the underlying run's own conclusion does
@@ -806,15 +807,24 @@ submodules, `git submodule update --init --recursive` is the relevant part.
 
 **Analyzer submodule pins.** OpenELIS builds the Bridge and analyzer mock images
 from the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` pins.
-For a pull request into `develop`, and for every pull request of a stack based
-on `develop`, the deployment contract job behind the `01` backend checkpoint
-fails when either pin is not on its repository's default branch or the PR
-changes either repository URL to a different repository than the trusted base
-branch. Equivalent GitHub HTTPS and SSH URLs are accepted. Branches that target
-anything else are not checked. A pinned commit reaches the default branch when
-the pull request containing it is merged with a merge commit; a squash merge
-creates a new commit and leaves the pinned one off the branch. Dependabot
-proposes submodule bumps daily.
+The `Validation / Submodule pins` status applies to pull requests into `develop`
+and every pull request of a stack based on `develop`. Its `pull_request_target`
+workflow executes only the validator and repository mappings from `develop`. The
+PR's exact commit is read through GitHub's tree/blob API as data; PR scripts are
+never executed and submodules are never initialized by this check. The check
+rejects repository URL changes and pins absent from upstream default branches.
+Equivalent GitHub HTTPS and SSH URLs are accepted. A squash merge creates a new
+upstream commit, so update the pin to that merged commit. Dependabot proposes
+submodule bumps daily.
+
+After installing this workflow on `develop`, dispatch `submodule-pins.yml` with
+its `pull_request` input to verify a result, then require
+`Validation / Submodule pins` in the develop branch rules. The manual dispatch
+also supports rechecking a pin after its upstream PR merges. Keep the existing
+three checkpoints required. This check uses the GitHub Actions identity; it
+prevents PR code from replacing the executing validator but does not prevent a
+writer from deliberately forging a same-named Actions status. Stronger identity
+isolation requires a separate GitHub App as the required status source.
 
 The same reasoning applies to anything else worth keeping (evidence, triage
 notes, reports, artifacts): if losing the file would cost something, it does not

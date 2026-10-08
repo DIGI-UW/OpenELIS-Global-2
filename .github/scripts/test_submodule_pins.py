@@ -1,3 +1,8 @@
+import base64
+import copy
+import json
+import urllib.error
+import yaml
 import importlib.util
 import io
 from contextlib import redirect_stdout
@@ -158,6 +163,150 @@ class SubmodulePinsTest(unittest.TestCase):
         self.assertIn("someone/else", untrusted)
         self.assertEqual(1, result)
         self.assertIn("tools/openelis-analyzer-bridge must reference DIGI-UW/openelis-analyzer-bridge", output.getvalue())
+
+
+class TrustedPullRequestTest(unittest.TestCase):
+    repository = "DIGI-UW/OpenELIS-Global-2"
+    sha = "a" * 40
+    run_url = "https://github.com/DIGI-UW/OpenELIS-Global-2/actions/runs/123"
+
+    def setUp(self):
+        self.prefix = f"repos/{self.repository}"
+        self.responses = {
+            f"{self.prefix}/pulls/4655": {
+                "head": {"sha": self.sha, "repo": {"full_name": "contributor/fork"}},
+                "base": {"ref": "develop"}, "stack": None,
+            },
+            f"{self.prefix}/git/trees/{self.sha}": {"tree": [
+                {"path": ".gitmodules", "sha": "modules", "type": "blob", "mode": "100644"},
+                {"path": "tools", "sha": "tools", "type": "tree", "mode": "040000"},
+                # A PR may replace/delete policy files: none may be fetched or executed.
+                {"path": ".github", "sha": "untrusted-policy", "type": "tree", "mode": "040000"},
+            ]},
+            f"{self.prefix}/git/blobs/modules": {
+                "encoding": "base64", "content": base64.b64encode(GITMODULES.encode()).decode(),
+            },
+            f"{self.prefix}/git/trees/tools": {"tree": []},
+        }
+        for path, sha, repository in pins.checked_pins(LS_TREE, GITMODULES):
+            self.responses[f"{self.prefix}/git/trees/tools"]["tree"].append({
+                "path": path.split("/")[-1], "sha": sha, "type": "commit", "mode": "160000",
+            })
+            self.responses[f"repos/{repository}"] = {"default_branch": "develop"}
+            self.responses[f"repos/{repository}/compare/develop...{sha}"] = {"status": "behind"}
+        self.posts = []
+        self.reads = []
+
+    def api(self, path, token, data=None):
+        if data is not None:
+            self.posts.append((path, data))
+            return {}
+        self.reads.append(path)
+        value = self.responses[path]
+        if isinstance(value, Exception):
+            raise value
+        return copy.deepcopy(value)
+
+    def run_check(self, dry_run=False):
+        with patch.object(pins, "_github", side_effect=self.api), patch.object(
+            pins.subprocess, "run", side_effect=AssertionError("PR validation must not execute Git or PR code")
+        ), redirect_stdout(io.StringIO()):
+            return pins.check_pull_request(self.repository, 4655, "token", GITMODULES, self.run_url, dry_run)
+
+    def test_fork_head_is_read_as_data_and_success_is_posted_to_its_exact_commit(self):
+        self.assertEqual(0, self.run_check())
+        self.assertEqual(["pending", "success"], [data["state"] for _, data in self.posts])
+        for path, data in self.posts:
+            self.assertEqual(f"{self.prefix}/statuses/{self.sha}", path)
+            self.assertEqual(pins.STATUS_CONTEXT, data["context"])
+            self.assertEqual(self.run_url, data["target_url"])
+        self.assertNotIn(f"{self.prefix}/git/trees/untrusted-policy", self.reads)
+        self.assertEqual(1, self.reads.count(f"{self.prefix}/git/trees/tools"))
+
+    def test_modified_pr_policy_cannot_make_an_unmerged_pin_pass(self):
+        compare = next(path for path in self.responses if "/compare/" in path)
+        self.responses[compare] = {"status": "ahead"}
+        self.assertEqual(1, self.run_check())
+        self.assertEqual("failure", self.posts[-1][1]["state"])
+        self.assertIn("Unmerged upstream pin", self.posts[-1][1]["description"])
+        self.assertFalse(any("untrusted-policy" in path for path in self.reads))
+
+    def test_redirected_url_fails_without_comparing_upstream(self):
+        modules = GITMODULES.replace("DIGI-UW/openelis-analyzer-bridge", "someone/else")
+        self.responses[f"{self.prefix}/git/blobs/modules"]["content"] = base64.b64encode(modules.encode()).decode()
+        self.assertEqual(1, self.run_check())
+        self.assertEqual("failure", self.posts[-1][1]["state"])
+        self.assertFalse(any("/compare/" in path for path in self.reads))
+
+    def test_develop_based_stack_is_checked_even_when_immediate_base_is_feature_branch(self):
+        pr = self.responses[f"{self.prefix}/pulls/4655"]
+        pr["base"]["ref"] = "feature/parent"
+        pr["stack"] = {"base": {"ref": "develop"}}
+        self.assertEqual(0, self.run_check())
+        self.assertTrue(any("/compare/" in path for path in self.reads))
+
+    def test_other_target_branches_get_explicit_not_applicable_result(self):
+        self.responses[f"{self.prefix}/pulls/4655"]["base"]["ref"] = "release"
+        self.assertEqual(0, self.run_check())
+        self.assertIn("Not applicable", self.posts[-1][1]["description"])
+        self.assertEqual([f"{self.prefix}/pulls/4655"], self.reads)
+
+    def test_api_errors_fail_closed_with_diagnostics(self):
+        compare = next(path for path in self.responses if "/compare/" in path)
+        for code in (401, 403, 404, 429, 500):
+            with self.subTest(code=code):
+                self.responses[compare] = urllib.error.HTTPError("https://api.github.com/compare", code, "error", {}, None)
+                self.assertEqual(1, self.run_check())
+                self.assertEqual("failure", self.posts[-1][1]["state"])
+                self.assertIn(f"HTTP {code}", self.posts[-1][1]["description"])
+                self.responses[compare].close()
+        self.responses[compare] = urllib.error.URLError("connection unavailable")
+        self.assertEqual(1, self.run_check())
+        self.assertEqual("failure", self.posts[-1][1]["state"])
+
+    def test_missing_pin_incomplete_tree_and_symlinked_modules_fail_closed(self):
+        original = copy.deepcopy(self.responses)
+        for corruption in ("missing pin", "truncated", "symlink"):
+            with self.subTest(corruption=corruption):
+                self.responses = copy.deepcopy(original)
+                if corruption == "missing pin":
+                    self.responses[f"{self.prefix}/git/trees/tools"]["tree"].pop()
+                elif corruption == "truncated":
+                    self.responses[f"{self.prefix}/git/trees/{self.sha}"]["truncated"] = True
+                else:
+                    self.responses[f"{self.prefix}/git/trees/{self.sha}"]["tree"][0]["mode"] = "120000"
+                self.assertEqual(1, self.run_check())
+                self.assertEqual("failure", self.posts[-1][1]["state"])
+
+    def test_dry_run_checks_pins_without_writing_statuses(self):
+        self.assertEqual(0, self.run_check(dry_run=True))
+        self.assertEqual([], self.posts)
+        self.assertTrue(any("/compare/" in path for path in self.reads))
+
+    def test_policy_workflow_executes_only_develop_code(self):
+        workflow = Path(__file__).parents[1] / "workflows" / "submodule-pins.yml"
+        config = yaml.load(workflow.read_text(), Loader=yaml.BaseLoader)
+        self.assertIn("pull_request_target", config["on"])
+        self.assertNotIn("pull_request", config["on"])
+        steps = config["jobs"]["validate"]["steps"]
+        checkouts = [step for step in steps if step.get("uses", "").startswith("actions/checkout@")]
+        self.assertEqual(1, len(checkouts))
+        self.assertEqual("develop", checkouts[0]["with"]["ref"])
+        self.assertEqual("false", checkouts[0]["with"]["persist-credentials"])
+        self.assertNotIn("submodules", checkouts[0]["with"])
+        self.assertEqual({"contents": "read", "pull-requests": "read", "statuses": "write"}, config["permissions"])
+
+    def test_github_transport_posts_json_with_authorization(self):
+        response = Mock()
+        response.__enter__ = Mock(return_value=io.StringIO('{"state":"success"}'))
+        response.__exit__ = Mock(return_value=False)
+        with patch.object(pins.urllib.request, "urlopen", return_value=response) as request:
+            self.assertEqual({"state": "success"}, pins._github("repos/owner/repo/statuses/sha", "test-token", {"state": "success"}))
+        sent = request.call_args.args[0]
+        self.assertEqual("POST", sent.get_method())
+        self.assertEqual("https://api.github.com/repos/owner/repo/statuses/sha", sent.full_url)
+        self.assertEqual("Bearer test-token", sent.get_header("Authorization"))
+        self.assertEqual({"state": "success"}, json.loads(sent.data))
 
 
 if __name__ == "__main__":
