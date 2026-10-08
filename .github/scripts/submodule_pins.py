@@ -1,9 +1,7 @@
-"""Fails when an analyzer submodule pin is not on its repository's default branch.
+"""Reports whether the Bridge and mock submodule pins are on their repositories' default branches.
 
-OE2 builds and ships the Bridge and mock images from these pins, so a pull request into
-develop, including every pull request of a stack based on develop, must not pin a commit
-that was never merged in its own repository. The deployment contract job runs it only for
-pull requests into develop.
+OpenELIS builds the Bridge and analyzer mock images from these pins. Exits non-zero when a pin
+is a commit that is not on its repository's default branch.
 """
 
 import configparser
@@ -72,9 +70,9 @@ def main():
         print(f"{path} -> {repository}@{sha[:12]}: {state}")
     if failures:
         print(
-            "\nPin only commits already on the submodule repository's default branch. "
-            "Merge the submodule pull request first (with a merge commit, so its head stays reachable), "
-            "then point the submodule at it."
+            "\nA pin marked NOT MERGED is a commit that is not on its repository's default branch. "
+            "A commit reaches the default branch when the pull request containing it is merged with a "
+            "merge commit; a squash merge leaves it off."
         )
         return 1
     return 0

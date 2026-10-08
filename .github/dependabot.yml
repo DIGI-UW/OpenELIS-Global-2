@@ -75,8 +75,8 @@ updates:
       docker-images:
         patterns: ["*"]
 
-  # Daily, without a cooldown: a merged Bridge or mock change reaches OpenELIS as a pin bump
-  # the next day, and the pin is the only place their version is recorded.
+  # The submodule pins record the Bridge and mock versions OpenELIS builds, so bumps are daily
+  # and without a cooldown.
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:

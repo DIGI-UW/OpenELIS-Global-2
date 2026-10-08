@@ -20,9 +20,8 @@ jobs:
       - run: python3 -m pip install PyYAML==6.0.2
       - run: node --test .github/scripts/publish-checkpoints.test.cjs
       - run: python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
-      # OpenELIS builds and ships the Bridge and mock from their pins, so a pull request into
-      # develop, including every pull request of a stack based on develop, must pin commits
-      # already merged in those repositories.
+      # Fails when the Bridge or mock pin is not on its repository's default branch. A stacked
+      # pull request reports its parent branch as its base, so the stack's base decides.
       - name: Analyzer submodules are merged upstream
         if: github.event_name == 'pull_request' && (github.event.pull_request.stack.base.ref || github.base_ref) == 'develop'
         env:

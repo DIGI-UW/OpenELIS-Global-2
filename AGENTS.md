@@ -804,16 +804,15 @@ twenty minutes in with `there is no POM in this directory`, which reads like a
 broken Dockerfile rather than a missing checkout step. If you only need the
 submodules, `git submodule update --init --recursive` is the relevant part.
 
-**Analyzer submodule pins.** The Bridge (`tools/openelis-analyzer-bridge`) and
-mock (`tools/analyzer-mock-server`) pins are the only record of which versions
-OpenELIS builds and tests. A pull request into `develop` must pin commits that
-are already on each repository's default branch, and the deployment contract job
-behind the `01` backend checkpoint enforces it. Every pull request of a stack
-based on `develop` counts, so a stack that pins an open Bridge or mock pull
-request stays blocked until that pull request merges; a branch that targets
-something other than `develop` is not checked. Merge Bridge and mock pull
-requests with a merge commit so the pinned commit stays reachable. Dependabot
-opens the daily pin bump after an upstream merge.
+**Analyzer submodule pins.** OpenELIS builds the Bridge and analyzer mock images
+from the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` pins.
+For a pull request into `develop`, and for every pull request of a stack based
+on `develop`, the deployment contract job behind the `01` backend checkpoint
+fails when either pin is not on its repository's default branch. Branches that
+target anything else are not checked. A pinned commit reaches the default branch
+when the pull request containing it is merged with a merge commit; a squash
+merge creates a new commit and leaves the pinned one off the branch. Dependabot
+proposes submodule bumps daily.
 
 The same reasoning applies to anything else worth keeping (evidence, triage
 notes, reports, artifacts): if losing the file would cost something, it does not
