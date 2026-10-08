@@ -33,7 +33,7 @@ jobs:
       # red on every merge while saying nothing about the merge itself, so the
       # step is allowed to fail: the next push or PR update labels whatever it
       # could not reach this time.
-      - uses: prince-chrismc/label-merge-conflicts-action@v2
+      - uses: prince-chrismc/label-merge-conflicts-action@v3
         continue-on-error: true
         with:
           conflict_label_name: "merge conflict"
