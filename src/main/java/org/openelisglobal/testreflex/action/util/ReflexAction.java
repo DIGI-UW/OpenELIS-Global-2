@@ -93,21 +93,12 @@ public abstract class ReflexAction {
             Analysis currentAnalysis = result.getAnalysis();
             analysisService.getData(currentAnalysis);
 
-            // OGC-189 (M4, decision D5): a reflex must never file work into a
-            // deactivated lab unit. The rule is about WHERE THE WORK LANDS, and
-            // a reflexed analysis is filed under the PARENT's lab unit (see the
-            // note on setTestSection below) — so that is the unit to test, not
-            // the reflexed test's own configured one.
-            //
-            // Gating on the reflexed test's own unit instead would get both
-            // edge cases wrong: it would block a reflex that was going to land
-            // in a perfectly active parent unit, and let one through into a
-            // deactivated parent unit.
-            //
-            // The test's own active flag still applies — an inactive test is
-            // not orderable by any route.
+            // Gate the unit where the generated work will actually be filed.
+            // V2 case-opening tests use their catalog unit; ordinary reflexes
+            // retain the triggering analysis's unit.
             EffectiveTestStatusService effectiveTestStatus = SpringContext.getBean(EffectiveTestStatusService.class);
-            TestSection owningSection = currentAnalysis == null ? null : currentAnalysis.getTestSection();
+            TestSection owningSection = test.isOpensMicrobiologyCase() ? test.getTestSection()
+                    : currentAnalysis.getTestSection();
             boolean testItselfInactive = !"Y".equals(test.getIsActive());
             boolean owningSectionInactive = effectiveTestStatus.isLabUnitInactive(owningSection);
             if (testItselfInactive || owningSectionInactive) {
@@ -146,12 +137,7 @@ public abstract class ReflexAction {
                 generatedAnalysis.setSampleItem(currentAnalysis.getSampleItem());
                 generatedAnalysis.setSampleTypeName(currentAnalysis.getSampleTypeName());
             }
-            // The generated analysis inherits the PARENT's lab unit rather than
-            // the reflexed test's own — pre-existing routing, deliberately
-            // unchanged. The gate above tests this same unit, so the check and
-            // the filing now agree: a reflex fires only when the unit it will
-            // actually land in is active (OGC-189 T159).
-            generatedAnalysis.setTestSection(currentAnalysis.getTestSection());
+            generatedAnalysis.setTestSection(owningSection);
         }
     }
 

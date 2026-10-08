@@ -103,7 +103,7 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
         <div>
           {preview.cases.map((entry, index) => (
             <div key={`case-${index}`}>
-              <p>
+              <div>
                 <Tag type="blue">{text("opens")}</Tag>{" "}
                 {text("case", {
                   tests: entry.testNames.join(", "),
@@ -117,7 +117,7 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
                     )
                     .join(", "),
                 })}
-              </p>
+              </div>
               <CultureSetSummary
                 specimens={entry.bottles}
                 warnings={entry.setWarnings}
@@ -125,32 +125,32 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
             </div>
           ))}
           {preview.ordinaryTests.map((entry) => (
-            <p key={`${entry.specimenIndex}-${entry.testId}`}>
+            <div key={`${entry.specimenIndex}-${entry.testId}`}>
               <Tag type="gray">{text("ordinary")}</Tag>{" "}
               {text("stays", { test: entry.testName })}
-            </p>
+            </div>
           ))}
           {preview.warnings.map((warning) => (
-            <p key={`split-${warning.specimenIndex}`}>
+            <div key={`split-${warning.specimenIndex}`}>
               <Tag type="warm-gray">{text("splitTag")}</Tag>{" "}
               {text("split", {
                 number: warning.specimenIndex + 1,
                 count: warning.labUnits.length,
                 units: warning.labUnits.join(", "),
               })}
-            </p>
+            </div>
           ))}
           {preview.newUnitWarnings.map((warning) => (
-            <p key={`unit-${warning.labUnitId}`}>
+            <div key={`unit-${warning.labUnitId}`}>
               <Tag type="warm-gray">{text("newUnitTag")}</Tag>{" "}
               {text("newUnit", {
                 test: warning.testName,
                 unit: warning.labUnitName,
               })}
-            </p>
+            </div>
           ))}
           {preview.reflexRules.map((rule, index) => (
-            <p key={`rule-${index}`}>
+            <div key={`rule-${index}`}>
               {text("reflex", {
                 name: rule.name,
                 conditions: rule.conditions
@@ -161,7 +161,7 @@ export default function MicroOrderPreview({ samples, savedOrder = false }) {
                   .join(text(rule.overall === "ALL" ? "and" : "or")),
                 tests: rule.addedTests.join(", "),
               })}
-            </p>
+            </div>
           ))}
         </div>
       )}
