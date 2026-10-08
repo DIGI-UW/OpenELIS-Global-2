@@ -1,8 +1,9 @@
 """Fails when an analyzer submodule pin is not on its repository's default branch.
 
 OE2 builds and ships the Bridge and mock images from these pins, so a pull request into
-develop must not pin a commit that was never merged in its own repository. Pull requests
-into other branches may pin unmerged work; this check runs only for develop.
+develop, including every pull request of a stack based on develop, must not pin a commit
+that was never merged in its own repository. The deployment contract job runs it only for
+pull requests into develop.
 """
 
 import configparser
