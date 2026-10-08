@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/analyzer/analyzers")
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
+@PreAuthorize("hasRole('GLOBAL_ADMIN')")
 public class AnalyzerActivationRestController extends BaseRestController {
 
     private final AnalyzerActivationService service;

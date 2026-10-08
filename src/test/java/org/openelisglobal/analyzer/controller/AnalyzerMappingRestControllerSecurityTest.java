@@ -72,9 +72,10 @@ public class AnalyzerMappingRestControllerSecurityTest extends SecuritySliceMock
     }
 
     @Test
-    public void mappingReadsAllowAnalyzerSetupAndAdministratorRoles() throws Exception {
-        mockMvc.perform(get(MAPPING).with(user("analyzer").roles("ANALYSER_IMPORT"))).andExpect(status().isOk());
-        mockMvc.perform(get(MAPPING).with(user("admin").roles("ADMIN"))).andExpect(status().isOk());
+    public void mappingIsGlobalAdminWork() throws Exception {
+        mockMvc.perform(get(MAPPING).with(user("analyzer").roles("ANALYSER_IMPORT")))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get(MAPPING).with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))).andExpect(status().isOk());
     }
 
     @Configuration

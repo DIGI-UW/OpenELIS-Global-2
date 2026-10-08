@@ -40,12 +40,15 @@ public class AnalyzerTypeRestControllerSecurityTest extends SecuritySliceMockMvc
     }
 
     @Test
-    public void analyzerTypesAllowEstablishedAnalyzerAndAdministratorRoles() throws Exception {
+    public void analyzerTypesRejectTheAnalyzerImportRole() throws Exception {
         mockMvc.perform(get("/rest/analyzer-types").with(user("analyzer").roles("ANALYSER_IMPORT"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void analyzerTypesAllowGlobalAdmin() throws Exception {
+        mockMvc.perform(get("/rest/analyzer-types").with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-        mockMvc.perform(
-                get("/rest/analyzer-types").with(user("admin").roles("ADMIN")).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
     }
 
     @Configuration

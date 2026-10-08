@@ -36,7 +36,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/analyzer/analyzers")
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
+@PreAuthorize("hasRole('GLOBAL_ADMIN')")
 public class AnalyzerInstanceRestController extends BaseRestController {
 
     private final AnalyzerInstanceService analyzerInstanceService;
@@ -66,6 +66,8 @@ public class AnalyzerInstanceRestController extends BaseRestController {
         return ResponseEntity.status(HttpStatus.CREATED).body(toMap(created));
     }
 
+    // QC and microbiology pages list analyzers for the import role too.
+    @PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
     @GetMapping
     public ResponseEntity<Map<String, Object>> list(@RequestParam(required = false) String search,
             @RequestParam(required = false) String status) {
@@ -79,6 +81,7 @@ public class AnalyzerInstanceRestController extends BaseRestController {
         return ResponseEntity.ok(Map.of("analyzers", analyzers));
     }
 
+    @PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
     @GetMapping("/{id}")
     public ResponseEntity<Map<String, Object>> get(@PathVariable String id) {
         return ResponseEntity.ok(toMap(analyzerInstanceService.get(id)));
