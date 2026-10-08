@@ -200,16 +200,16 @@ public class AnalyzerNormalizedResultContractTest {
     }
 
     @Test
-    public void rejectsANumericResultWhoseRawValueIsNotANumber() throws IOException {
+    public void theStoredNumberIsTheQuantityNotTheRawText() throws IOException {
         Bundle bundle = fixture("normalized-known-test.fhir.json");
         observation(bundle).getExtension().stream()
                 .filter(extension -> extension.getUrl().endsWith("/analyzer-raw-value")).findFirst().orElseThrow()
                 .setValue(new StringType("7.5; java.lang.System.exit(0)"));
 
-        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
-                () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results()
+                .get(0);
 
-        assertEquals("A numeric analyzer result must be a bounded decimal", error.getMessage());
+        assertEquals("7.5", result.number());
     }
 
     private static Observation observation(Bundle bundle) {
