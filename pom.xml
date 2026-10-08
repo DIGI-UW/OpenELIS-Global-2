@@ -270,6 +270,11 @@
                     <groupId>org.bouncycastle</groupId>
                     <artifactId>bcprov-jdk16</artifactId>
                 </exclusion>
+                <!-- Bundles 2011 copies of bcpkix classes that shadow bcpkix-jdk18on. -->
+                <exclusion>
+                    <groupId>org.bouncycastle</groupId>
+                    <artifactId>bcmail-jdk16</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
