@@ -44,7 +44,6 @@ test.describe("Where an instrument's result is placed", () => {
   let testId: string;
 
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(180_000);
     analyzer = await withAuthedPage(browser, async (page) => {
       testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
       return activateShippedGeneXpert(
@@ -80,7 +79,6 @@ test.describe("Where an instrument's result is placed", () => {
   test("a result sent under its tube's ID is placed on that tube's analysis", async ({
     page,
   }) => {
-    test.setTimeout(180_000);
     const placed = await order(page);
     const tube = `${placed.accession}-1`;
     await send(page, tube);
@@ -103,7 +101,6 @@ test.describe("Where an instrument's result is placed", () => {
   test("a mistyped ID is held for the reviewer, who places it on the right order with a reason", async ({
     page,
   }) => {
-    test.setTimeout(180_000);
     const intended = await order(page);
     const typo = mistyped(intended.accession);
     await send(page, typo);
@@ -134,7 +131,6 @@ test.describe("Where an instrument's result is placed", () => {
   test("a patient mismatch is explained on the row and needs a note before it saves", async ({
     page,
   }) => {
-    test.setTimeout(180_000);
     const placed = await order(page);
     await send(page, placed.accession, "quantified", {
       id: `MRN-${run}`,
@@ -161,7 +157,6 @@ test.describe("Where an instrument's result is placed", () => {
   });
 
   test("a rerun replaces the saved result and says so", async ({ page }) => {
-    test.setTimeout(180_000);
     const placed = await order(page);
     await send(page, placed.accession);
     await arrived(page, placed.accession);
@@ -190,7 +185,6 @@ test.describe("Where a results file's sample is placed", () => {
   test("a plate with one mistyped sample name places the rest and holds that one for the reviewer", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
     const run = randomUUID().slice(0, 8);
     const directory = `/data/analyzer-imports/fluorocycler-xt/incoming/${run}`;
     const analyzer = await activateShippedAnalyzer(

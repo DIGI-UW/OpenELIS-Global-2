@@ -224,7 +224,6 @@ test.describe("Every documented GeneXpert outcome", () => {
   let analyzer: Analyzer;
 
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(180_000);
     analyzer = await withAuthedPage(browser, (page) =>
       activateShippedGeneXpert(page, `Outcomes GeneXpert ${run}`, senderId),
     );

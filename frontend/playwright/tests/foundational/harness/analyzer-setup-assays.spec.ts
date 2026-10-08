@@ -155,7 +155,6 @@ test.describe("Results the mapping does not cover", () => {
   test("a result for an assay that is off and one under a code the profile does not declare are held, then recover once the operator maps them", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
     const run = randomUUID().slice(0, 6);
     const senderId = `GX-${run}`;
     const specimen = "Nasopharyngeal Swab";

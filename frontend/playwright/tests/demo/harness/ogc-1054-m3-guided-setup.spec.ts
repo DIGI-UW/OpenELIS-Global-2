@@ -3,7 +3,6 @@ import type { Page, TestInfo } from "@playwright/test";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -21,7 +20,6 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
   test("creates, verifies, connects, activates, links QC, and deactivates through the UI", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(180_000 * TIMEOUT_SCALE);
     const runId = Date.now().toString().slice(-8);
     const analyzerName = `M3 GeneXpert ${runId}`;
     const senderId = `GX-GUIDED-${runId}`;
