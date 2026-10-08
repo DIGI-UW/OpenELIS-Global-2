@@ -3,6 +3,7 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -116,7 +117,7 @@ const compare = (a, b) => {
   return String(a).localeCompare(String(b));
 };
 
-const InventoryItemsBoard = () => {
+const InventoryItemsBoard = ({ active = true }) => {
   const intl = useIntl();
   const [rows, setRows] = useState([]);
   const [lots, setLots] = useState([]);
@@ -170,6 +171,13 @@ const InventoryItemsBoard = () => {
   useEffect(() => {
     refresh().finally(() => setLoading(false));
   }, [refresh]);
+
+  // Carbon keeps tab panels mounted; returning to the tab does not remount it.
+  const wasActive = useRef(active);
+  useEffect(() => {
+    if (active && !wasActive.current) refresh();
+    wasActive.current = active;
+  }, [active, refresh]);
 
   const closeAction = () => setAction(null);
 
