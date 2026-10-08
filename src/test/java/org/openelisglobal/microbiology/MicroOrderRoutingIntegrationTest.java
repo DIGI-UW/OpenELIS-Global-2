@@ -342,6 +342,135 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
+    public void caseRoleReflexOpensRelatedCaseWithoutAnalysisAndRepeatedExecutionKeepsOwnership() {
+        Analysis source = sourceAnalysis();
+        var added = reflexTest(true, true);
+        added.setMicrobiologyCaseRole("CASE");
+        Result trigger = triggerResult(source);
+        trigger.setSysUserId(null);
+        TestReflex rule = new TestReflex();
+        rule.setAddedTest(added);
+        rule.setAddedSampleTypeId(type.getId());
+        var utility = new org.openelisglobal.testreflex.action.util.TestReflexUtil();
+        for (int attempt = 0; attempt < 2; attempt++) {
+            java.util.Optional<Analysis> generated = org.springframework.test.util.ReflectionTestUtils
+                    .invokeMethod(utility, "addReflexTest", rule, trigger, null, order, true, false, null, true, actor);
+            assertTrue(generated.isEmpty());
+        }
+        em.flush();
+        em.clear();
+        assertEquals(2, cases.getByOrder(order.getId()).size());
+        assertEquals(1, analyses.getAnalysesBySampleItem(samples.get(source.getSampleItem().getId())).size());
+        var requested = em.createQuery("from SampleTypeRequest where sample.id = :order", SampleTypeRequest.class)
+                .setParameter("order", order.getId()).getResultList();
+        assertEquals(1, requested.size());
+        var ownership = requests.getActiveByRequestAndTest(requested.getFirst().getId(), added.getId());
+        assertNotNull(ownership);
+        assertNull(ownership.getAnalysisId());
+        assertEquals(actor, ownership.getRequestedBy());
+        assertEquals(added.getTestSection().getId(), cases.get(ownership.getCaseId()).orElseThrow().getLabUnitId());
+        assertTrue(analyses.get(source.getId()).getTriggeredReflex());
+    }
+
+    @Test
+    public void caseRoleReflexRequestsAnUncollectedTargetAndCollectionKeepsItsCase() {
+        Analysis source = sourceAnalysis();
+        var added = reflexTest(true, true);
+        added.setMicrobiologyCaseRole("CASE");
+        var targetType = fixtures.createTypeOfSample();
+        Result trigger = triggerResult(source);
+        TestReflex rule = new TestReflex();
+        rule.setAddedTest(added);
+        rule.setAddedSampleTypeId(targetType.getId());
+        for (int attempt = 0; attempt < 2; attempt++)
+            assertTrue(executeReflex(rule, trigger).isEmpty());
+        em.flush();
+        var pending = em.createQuery("from SampleTypeRequest where sample.id = :order", SampleTypeRequest.class)
+                .setParameter("order", order.getId()).getResultList();
+        assertEquals(1, pending.size());
+        SampleTypeRequest requested = pending.getFirst();
+        assertEquals(targetType.getId(), requested.getTypeOfSample().getId());
+        assertEquals(SampleTypeRequest.Status.REQUESTED, requested.getStatus());
+        assertNull(requested.getSampleItem());
+        assertEquals(1, samples.getSampleItemsBySampleId(order.getId()).size());
+        var ownership = requests.getActiveByRequestAndTest(requested.getId(), added.getId());
+        String ownershipId = ownership.getId();
+        String caseId = ownership.getCaseId();
+        assertNull(ownership.getSampleItemId());
+        assertNull(ownership.getAnalysisId());
+        assertTrue(membership.getCaseSamples(caseId).isEmpty());
+        assertEquals(targetType.getId(), cases.get(caseId).orElseThrow().getSampleTypeId());
+
+        SampleItem collected = new SampleItem();
+        collected.setSample(order);
+        collected.setTypeOfSample(targetType);
+        collected.setSortOrder("2");
+        collected.setStatusId(fixtures.ensureSampleEnteredStatus());
+        collected.setSysUserId(actor);
+        samples.insert(collected);
+        org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.sampletyperequest.service.SampleTypeRequestService.class)
+                .fulfillRequest(requested.getId(), collected.getId());
+        routing.routeOrder(order, actor);
+        assertTrue(executeReflex(rule, trigger).isEmpty());
+        em.flush();
+        em.clear();
+        ownership = requests.getActiveByRequestAndTest(requested.getId(), added.getId());
+        assertEquals(ownershipId, ownership.getId());
+        assertEquals(caseId, ownership.getCaseId());
+        assertEquals(collected.getId(), ownership.getSampleItemId());
+        assertNull(ownership.getAnalysisId());
+        assertEquals(2, cases.getByOrder(order.getId()).size());
+        assertEquals(2, samples.getSampleItemsBySampleId(order.getId()).size());
+        assertEquals(1, membership.getCaseSamples(caseId).size());
+        assertTrue(analyses.getAnalysesBySampleItem(samples.get(collected.getId())).isEmpty());
+    }
+
+    @Test
+    public void caseRoleReflexInfersTheOnlyConfiguredTargetWithoutCreatingASample() {
+        Analysis source = sourceAnalysis();
+        var added = reflexTest(true, true);
+        added.setMicrobiologyCaseRole("CASE");
+        var targetType = fixtures.createTypeOfSample();
+        var binding = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        binding.setTypeOfSampleId(targetType.getId());
+        binding.setTestId(added.getId());
+        binding.setSysUserId(actor);
+        org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.typeofsample.service.TypeOfSampleTestService.class).insert(binding);
+        TestReflex rule = new TestReflex();
+        rule.setAddedTest(added);
+        assertTrue(executeReflex(rule, triggerResult(source)).isEmpty());
+        em.flush();
+        var pending = em.createQuery("from SampleTypeRequest where sample.id = :order", SampleTypeRequest.class)
+                .setParameter("order", order.getId()).getResultList();
+        assertEquals(1, pending.size());
+        assertEquals(targetType.getId(), pending.getFirst().getTypeOfSample().getId());
+        assertEquals(SampleTypeRequest.Status.REQUESTED, pending.getFirst().getStatus());
+        assertNull(pending.getFirst().getSampleItem());
+        assertEquals(1, samples.getSampleItemsBySampleId(order.getId()).size());
+        assertEquals(2, cases.getByOrder(order.getId()).size());
+    }
+
+    private java.util.Optional<Analysis> executeReflex(TestReflex rule, Result trigger) {
+        return org.springframework.test.util.ReflectionTestUtils.invokeMethod(
+                new org.openelisglobal.testreflex.action.util.TestReflexUtil(), "addReflexTest", rule, trigger, null,
+                order, true, false, null, true, actor);
+    }
+
+    @Test
+    public void inactiveCaseRoleReflexCreatesNeitherRequestedWorkNorAnalysis() {
+        Analysis source = sourceAnalysis();
+        var added = reflexTest(true, false);
+        added.setMicrobiologyCaseRole("CASE");
+        assertNull(reflex(source, added));
+        assertEquals(1, cases.getByOrder(order.getId()).size());
+        assertTrue(em.createQuery("from SampleTypeRequest where sample.id = :order", SampleTypeRequest.class)
+                .setParameter("order", order.getId()).getResultList().isEmpty());
+        assertEquals(1, analyses.getAnalysesBySampleItem(source.getSampleItem()).size());
+    }
+
+    @Test
     public void inactiveMicroTargetUnitBlocksTheReflexEvenWhenParentIsActive() {
         Analysis source = sourceAnalysis();
         var added = reflexTest(true, false);
@@ -457,14 +586,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     private Analysis reflex(Analysis source, org.openelisglobal.test.valueholder.Test added) {
-        Result trigger = new Result();
-        trigger.setAnalysis(source);
-        trigger.setSysUserId(actor);
-        trigger.setResultType("N");
-        trigger.setValue("1");
-        trigger.setIsReportable("Y");
-        em.persist(trigger);
-        em.flush();
+        Result trigger = triggerResult(source);
         TestReflex rule = new TestReflex();
         rule.setAddedTest(added);
         rule.setAddedSampleTypeId(type.getId());
@@ -476,4 +598,17 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         action.handleReflex(rule, trigger, null);
         return action.getNewAnalysis();
     }
+
+    private Result triggerResult(Analysis source) {
+        Result trigger = new Result();
+        trigger.setAnalysis(source);
+        trigger.setSysUserId(actor);
+        trigger.setResultType("N");
+        trigger.setValue("1");
+        trigger.setIsReportable("Y");
+        em.persist(trigger);
+        em.flush();
+        return trigger;
+    }
+
 }

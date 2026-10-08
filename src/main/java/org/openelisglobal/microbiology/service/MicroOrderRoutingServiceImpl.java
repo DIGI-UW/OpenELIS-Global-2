@@ -39,6 +39,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     private final PanelItemService panels;
     private final ProgramSampleService programSamples;
     private final MicroOrderSiteService sites;
+    private final org.openelisglobal.typeofsample.service.TypeOfSampleService sampleTypes;
 
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.common.services.IStatusService statuses;
@@ -47,7 +48,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
             MicroCaseMembershipService membership, MicroCaseAnalysisService caseAnalyses,
             SampleTypeRequestService sampleRequests, SampleItemService samples, AnalysisService analyses,
             TestService tests, PanelItemService panels, ProgramSampleService programSamples,
-            MicroOrderSiteService sites) {
+            MicroOrderSiteService sites, org.openelisglobal.typeofsample.service.TypeOfSampleService sampleTypes) {
         this.cases = cases;
         this.requests = requests;
         this.links = links;
@@ -60,6 +61,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         this.panels = panels;
         this.programSamples = programSamples;
         this.sites = sites;
+        this.sampleTypes = sampleTypes;
     }
 
     @Override
@@ -181,21 +183,35 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
 
     @Override
     public void routeCaseTest(SampleItem sample, Test test, String actor) {
-        requireOrder(sample.getSample(), actor);
+        routeCaseTest(sample.getSample(), sample.getTypeOfSampleId(), sample, test, actor);
+    }
+
+    @Override
+    public void routeCaseTest(Sample order, String sampleTypeId, SampleItem sample, Test test, String actor) {
+        requireOrder(order, actor);
+        if (sample != null && (!order.getId().equals(sample.getSample().getId())
+                || !sampleTypeId.equals(sample.getTypeOfSampleId())))
+            throw new IllegalArgumentException("Case work must use a sample of its requested type and order");
+        var type = sampleTypes.get(sampleTypeId);
+        if (type == null)
+            throw new IllegalArgumentException("Unknown requested sample type");
         MicroCaseRoutingRule.requireCatalog(test);
         if (role(test) != MicroCaseRole.CASE)
             throw new IllegalArgumentException("A case-role test is required");
-        cases.lockOrder(sample.getSample().getId());
-        SampleTypeRequest requested = sampleRequests.getRequestsBySampleId(sample.getSample().getId()).stream()
-                .filter(r -> r.getSampleItem() != null && sample.getId().equals(r.getSampleItem().getId())
-                        && r.getStatus() != SampleTypeRequest.Status.CANCELLED)
+        cases.lockOrder(order.getId());
+        SampleTypeRequest requested = sampleRequests.getRequestsBySampleId(order.getId()).stream()
+                .filter(r -> r.getStatus() != SampleTypeRequest.Status.CANCELLED
+                        && sampleTypeId.equals(r.getTypeOfSample().getId())
+                        && (sample == null ? r.getSampleItem() == null
+                                : r.getSampleItem() != null && sample.getId().equals(r.getSampleItem().getId())))
                 .findFirst().orElse(null);
         if (requested == null) {
             requested = new SampleTypeRequest();
-            requested.setSample(sample.getSample());
-            requested.setTypeOfSample(sample.getTypeOfSample());
+            requested.setSample(order);
+            requested.setTypeOfSample(type);
             requested.setSampleItem(sample);
-            requested.setStatus(SampleTypeRequest.Status.COLLECTED);
+            requested.setStatus(
+                    sample == null ? SampleTypeRequest.Status.REQUESTED : SampleTypeRequest.Status.COLLECTED);
             requested.setCreatedDate(new java.sql.Timestamp(System.currentTimeMillis()));
             requested.setSysUserId(actor);
             requested.setRequestedTests(test.getId());

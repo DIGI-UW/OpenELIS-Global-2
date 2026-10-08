@@ -14,4 +14,6 @@ public interface MicroOrderRoutingService {
     void routeAnalysis(Analysis analysis, String actor);
 
     void routeCaseTest(SampleItem sample, Test test, String actor);
+
+    void routeCaseTest(Sample order, String sampleTypeId, SampleItem sample, Test test, String actor);
 }

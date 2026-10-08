@@ -101,6 +101,114 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         sampleType = fixtures.createTypeOfSample();
     }
 
+    @Autowired
+    private org.openelisglobal.dataexchange.service.order.ElectronicOrderService electronicOrders;
+    @Autowired
+    private org.openelisglobal.common.services.IStatusService statuses;
+
+    @Test
+    public void acceptingElectronicRequestedWorkOpensOneCaseBeforeCollectionAndSurvivesRetry() {
+        var test = electronicMicroTest();
+        var electronic = electronicOrder();
+        var requested = requested();
+        requested.setRequestedTests(test.getId());
+        String accession = "EOM" + UUID.randomUUID().toString().substring(0, 9);
+        Sample saved = acceptElectronicOrder(electronic, accession, null, requested);
+        entityManager.flush();
+        entityManager.clear();
+        var storedRequest = sampleTypeRequestService.getRequestsBySampleId(saved.getId()).getFirst();
+        String caseId = microRequests.getActiveByRequestAndTest(storedRequest.getId(), test.getId()).getCaseId();
+        assertTrue(sampleItemService.getSampleItemsBySampleId(saved.getId()).isEmpty());
+        assertNull(sampleService.get(saved.getId()).getReceivedTimestamp());
+        assertEquals(electronic.getId(), sampleService.get(saved.getId()).getClinicalOrderId());
+        assertEquals(
+                statuses.getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Realized),
+                electronicOrders.get(electronic.getId()).getStatusId());
+        requested.setId(storedRequest.getId().toString());
+        acceptElectronicOrder(electronic, accession, saved.getId(), requested);
+        entityManager.flush();
+        entityManager.clear();
+        assertEquals(1, microCases.getByOrder(saved.getId()).size());
+        assertEquals(1, sampleTypeRequestService.getRequestsBySampleId(saved.getId()).size());
+        assertEquals(caseId, microRequests.getActiveByRequestAndTest(storedRequest.getId(), test.getId()).getCaseId());
+        assertTrue(sampleItemService.getSampleItemsBySampleId(saved.getId()).isEmpty());
+    }
+
+    @Test
+    public void routingFailureRollsBackElectronicAcceptanceAlongWithOrderAndRequestedWork() {
+        var test = electronicMicroTest();
+        var electronic = electronicOrder();
+        String electronicId = electronic.getId();
+        String originalStatus = electronic.getStatusId();
+        org.springframework.test.context.transaction.TestTransaction.flagForCommit();
+        org.springframework.test.context.transaction.TestTransaction.end();
+        org.springframework.test.context.transaction.TestTransaction.start();
+        var requested = requested();
+        requested.setRequestedTests(test.getId());
+        String accession = "EOM" + UUID.randomUUID().toString().substring(0, 9);
+        Sample saved = acceptElectronicOrder(electronic, accession, null, requested);
+        String orderId = saved.getId();
+        assertEquals(1, microCases.getByOrder(orderId).size());
+        org.springframework.transaction.support.TransactionSynchronizationManager
+                .registerSynchronization(new org.springframework.transaction.support.TransactionSynchronization() {
+                    @Override
+                    public void beforeCommit(boolean readOnly) {
+                        throw new IllegalStateException("Failure after electronic case routing");
+                    }
+                });
+        org.springframework.test.context.transaction.TestTransaction.flagForCommit();
+        org.junit.Assert.assertThrows(IllegalStateException.class,
+                org.springframework.test.context.transaction.TestTransaction::end);
+        org.springframework.test.context.transaction.TestTransaction.start();
+        entityManager.clear();
+        assertEquals(originalStatus, electronicOrders.get(electronicId).getStatusId());
+        assertNull(sampleService.getSampleByAccessionNumber(accession));
+        assertTrue(microCases.getByOrder(orderId).isEmpty());
+        assertTrue(sampleTypeRequestService.getRequestsBySampleId(orderId).isEmpty());
+    }
+
+    private org.openelisglobal.test.valueholder.Test electronicMicroTest() {
+        var test = entityManager.find(org.openelisglobal.test.valueholder.Test.class, catalogTest().getId());
+        test.setTestSection(fixtures.createLabUnit());
+        test.setOpensMicrobiologyCase(true);
+        test.setMicrobiologyCaseRole("DIRECT");
+        entityManager.flush();
+        return test;
+    }
+
+    private org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder electronicOrder() {
+        var electronic = new org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder();
+        electronic.setExternalId("V2-" + UUID.randomUUID());
+        electronic.setOrderTimestamp(Timestamp.from(Instant.now()));
+        electronic.setPatient(patient);
+        electronic.setStatusId(
+                statuses.getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Entered));
+        electronic.setData("{}");
+        electronic.setType(org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType.FHIR);
+        electronic.setSysUserId(userId);
+        electronicOrders.insert(electronic);
+        return electronic;
+    }
+
+    private Sample acceptElectronicOrder(org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder electronic,
+            String accession, String orderId, SampleTypeRequestDTO requested) {
+        var form = new SamplePatientEntryForm();
+        var order = new org.openelisglobal.sample.bean.SampleOrderItem();
+        form.setSampleOrderItems(order);
+        order.setSampleId(orderId);
+        order.setExternalOrderNumber(electronic.getExternalId());
+        var data = new SamplePatientUpdateData(userId);
+        data.setAccessionNumber(accession);
+        data.initSampleData("<samples></samples>", null, false, order);
+        form.setRequestedSampleTypes(List.of(requested));
+        PatientManagementInfo info = new PatientManagementInfo();
+        info.setPatientPK(patient.getId());
+        form.setPatientProperties(info);
+        samplePatientEntryService.persistData(data, SpringContext.getBean(PatientManagementUpdate.class), info, form,
+                new MockHttpServletRequest());
+        return data.getSample();
+    }
+
     @Test
     public void aTestIsAttachedOnlyToAPanelChosenOnTheSameSample() {
         org.openelisglobal.test.valueholder.Test test = catalogTest();

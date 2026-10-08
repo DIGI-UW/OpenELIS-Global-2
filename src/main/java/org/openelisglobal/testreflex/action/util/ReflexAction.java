@@ -44,6 +44,13 @@ public abstract class ReflexAction {
     protected static final String INTERPERET_TYPE = "I";
 
     private Analysis generatedAnalysis;
+    private CaseWork generatedCaseWork;
+    private String actor;
+
+    public record CaseWork(org.openelisglobal.sample.valueholder.Sample order, String sampleTypeId, SampleItem sample,
+            Test test) {
+    }
+
     private boolean flagAction = false;
 
     private String flag;
@@ -61,8 +68,15 @@ public abstract class ReflexAction {
      * result. Points to the same sample, and sets parent child relationship.
      */
     public void handleReflex(TestReflex reflex, Result result, String actionSelectionId) {
+        handleReflex(reflex, result, actionSelectionId, result.getSysUserId());
+    }
+
+    public void handleReflex(TestReflex reflex, Result result, String actionSelectionId, String actor) {
         this.reflex = reflex;
         this.result = result;
+        this.actor = actor;
+        generatedAnalysis = null;
+        generatedCaseWork = null;
 
         String flag = reflex.getFlags();
         if (!GenericValidator.isBlankOrNull(flag)) {
@@ -118,6 +132,15 @@ public abstract class ReflexAction {
                 return;
             }
 
+            boolean caseOnly = test.isOpensMicrobiologyCase() && "CASE".equals(test.getMicrobiologyCaseRole());
+            Target target = targetForGeneratedTest(test, currentAnalysis, !caseOnly);
+            SampleItem targetItem = target == null ? currentAnalysis.getSampleItem() : target.sample();
+            if (caseOnly) {
+                generatedCaseWork = new CaseWork(currentAnalysis.getSampleItem().getSample(),
+                        target == null ? currentAnalysis.getSampleItem().getTypeOfSampleId() : target.typeId(),
+                        targetItem, test);
+                return;
+            }
             generatedAnalysis = new Analysis();
             generatedAnalysis.setTest(test);
             generatedAnalysis.setIsReportable(currentAnalysis.getIsReportable());
@@ -128,7 +151,6 @@ public abstract class ReflexAction {
                     .setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
             generatedAnalysis.setParentAnalysis(currentAnalysis);
             generatedAnalysis.setParentResult(result);
-            SampleItem targetItem = sampleItemForGeneratedTest(test, currentAnalysis);
             if (targetItem != null) {
                 generatedAnalysis.setSampleItem(targetItem);
                 generatedAnalysis.setSampleTypeName(
@@ -149,7 +171,8 @@ public abstract class ReflexAction {
      * and that pairing is the lab's instruction about where the generated result
      * belongs: trigger on Respiratory Swab, report on DBS. The order is given that
      * specimen when it does not already hold one, because the generated test is the
-     * reason to have it.
+     * reason to have it. A Case-role target instead records requested work when its
+     * specimen has not been collected; it has no result analysis to create.
      *
      * <p>
      * Read from add_sample_type_id and never from sample_type_id - the latter
@@ -163,13 +186,12 @@ public abstract class ReflexAction {
      * test the order holds several eligible specimens for names no single one, and
      * the triggering specimen stays the safer choice over guessing between them.
      */
-    private SampleItem sampleItemForGeneratedTest(Test test, Analysis currentAnalysis) {
+    private Target targetForGeneratedTest(Test test, Analysis currentAnalysis, boolean createSample) {
         if (test == null || currentAnalysis == null || currentAnalysis.getSampleItem() == null) {
             return null;
         }
         if (reflex != null && !GenericValidator.isBlankOrNull(reflex.getAddedSampleTypeId())) {
-            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
-                    currentAnalysis.getSampleItem().getSample(), reflex.getAddedSampleTypeId(), result.getSysUserId());
+            return targetForType(currentAnalysis, reflex.getAddedSampleTypeId(), createSample);
         }
         List<TypeOfSample> configured = SpringContext.getBean(TypeOfSampleService.class)
                 .getTypeOfSampleForTest(test.getId());
@@ -193,10 +215,20 @@ public abstract class ReflexAction {
             }
         }
         if (match == null && configured.size() == 1) {
-            return SpringContext.getBean(RuleResultScope.class).resolveOrCreateSampleItemForTarget(
-                    currentAnalysis.getSampleItem().getSample(), configured.get(0).getId(), result.getSysUserId());
+            return targetForType(currentAnalysis, configured.get(0).getId(), createSample);
         }
-        return match;
+        return match == null ? null : new Target(match.getTypeOfSampleId(), match);
+    }
+
+    private Target targetForType(Analysis currentAnalysis, String typeId, boolean createSample) {
+        RuleResultScope scope = SpringContext.getBean(RuleResultScope.class);
+        SampleItem sample = createSample
+                ? scope.resolveOrCreateSampleItemForTarget(currentAnalysis.getSampleItem().getSample(), typeId, actor)
+                : scope.sampleItemForTarget(currentAnalysis.getSampleItem().getSample(), typeId);
+        return new Target(typeId, sample);
+    }
+
+    private record Target(String typeId, SampleItem sample) {
     }
 
     /*
@@ -222,6 +254,10 @@ public abstract class ReflexAction {
 
     public Analysis getNewAnalysis() {
         return generatedAnalysis;
+    }
+
+    public CaseWork getCaseWork() {
+        return generatedCaseWork;
     }
 
     public boolean isFlagAction() {
