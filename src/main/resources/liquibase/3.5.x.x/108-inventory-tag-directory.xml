@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-tag-directory.xml">
+
+    <!-- OGC-438: per-tag state a free-form tag string cannot hold -->
+    <changeSet author="OGC" id="OGC-438-create-inventory-tag">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="inventory_tag" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <createSequence schemaName="clinlims" sequenceName="inventory_tag_seq" startValue="1"
+            incrementBy="1"/>
+
+        <createTable tableName="inventory_tag" schemaName="clinlims">
+            <column name="id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="inventory_tag_pkey" nullable="false"/>
+            </column>
+            <column name="name" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <!-- 'N' stops the tag being offered; it never removes it from an item -->
+            <column name="is_active" type="VARCHAR(1)" defaultValue="Y">
+                <constraints nullable="false"/>
+            </column>
+            <column name="sys_user_id" type="NUMERIC(10)"/>
+            <!-- BaseObject maps its lastupdated property to a last_updated column. -->
+            <column name="last_updated" type="TIMESTAMP" defaultValueComputed="now()"/>
+        </createTable>
+
+        <sql>
+            ALTER TABLE clinlims.inventory_tag
+            ADD CONSTRAINT chk_inventory_tag_is_active CHECK (is_active IN ('Y', 'N'));
+
+            CREATE UNIQUE INDEX uq_inventory_tag_name
+            ON clinlims.inventory_tag (lower(name));
+        </sql>
+
+        <rollback>
+            <dropTable tableName="inventory_tag" schemaName="clinlims"/>
+            <dropSequence sequenceName="inventory_tag_seq" schemaName="clinlims"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

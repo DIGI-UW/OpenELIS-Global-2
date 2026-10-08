@@ -174,6 +174,16 @@ export const InventoryBoardAPI = {
   get: () => get("/board"),
 };
 
+export const InventoryTagAPI = {
+  getDirectory: () => get("/tags"),
+
+  create: (name) => post("/tags", { name }),
+
+  deactivate: (name) => post("/tags/deactivate", { name }),
+
+  activate: (name) => post("/tags/activate", { name }),
+};
+
 /**
  * Inventory Lot API
  */

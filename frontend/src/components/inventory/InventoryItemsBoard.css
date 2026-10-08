@@ -152,3 +152,24 @@
   gap: 0.125rem;
   margin-top: 0.25rem;
 }
+
+/* FilterableMultiSelect skips the .cds--form-item flex sizing. Size this wrapper:
+   a flex-basis on the column-direction control sets its height, not its width. */
+.board-tag-filter {
+  flex: 0 1 16rem;
+  min-width: 0;
+}
+
+.board-tag-chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem;
+  margin-bottom: 0.5rem;
+}
+
+@media (max-width: 42rem) {
+  .board-tag-filter {
+    flex: 1 1 100%;
+  }
+}

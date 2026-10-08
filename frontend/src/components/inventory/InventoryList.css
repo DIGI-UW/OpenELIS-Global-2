@@ -135,3 +135,15 @@
   color: #525252;
   margin: 0;
 }
+
+.manage-tags-add {
+  display: flex;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin: 1rem 0 0.5rem;
+}
+
+.manage-tags-add .cds--form-item {
+  flex: 1 1 auto;
+  min-width: 0;
+}
