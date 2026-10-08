@@ -10,8 +10,6 @@ import static org.junit.Assert.fail;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.itextpdf.text.pdf.PdfReader;
-import com.itextpdf.text.pdf.parser.PdfTextExtractor;
 import java.math.BigDecimal;
 import java.sql.Date;
 import java.sql.Timestamp;
@@ -39,6 +37,7 @@ import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
 import org.openelisglobal.eqa.valueholder.EQASubmissionStatus;
 import org.openelisglobal.eqa.valueholder.EQAUnblindMethod;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
 
 /**
@@ -819,13 +818,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         byte[] second = labelPDFService.generateLabelSheet(panel.getId());
         assertArrayEquals("regeneration is byte-identical", first, second);
 
-        PdfReader reader = new PdfReader(first);
-        StringBuilder text = new StringBuilder();
-        for (int page = 1; page <= reader.getNumberOfPages(); page++) {
-            text.append(PdfTextExtractor.getTextFromPage(reader, page)).append('\n');
-        }
-        reader.close();
-        String extracted = text.toString();
+        String extracted = PdfText.of(first);
 
         assertTrue("every blind code prints", extracted.contains("IHBLIND-P1") && extracted.contains("IHBLIND-P2"));
         // The sheet also carries the cycle and the analyte under each code. Both
@@ -862,9 +855,7 @@ public class EQABlindingIntegrationTest extends EQASpineTestBase {
         EQAPanel panel = panelWith(scheme, cycle, EQAPanelStatus.SEALED, LocalDate.now().plusDays(7));
         insertPanelSample(panel, "IH-01", "IHLONG-P1", 9811L, "5000", null, null);
 
-        PdfReader reader = new PdfReader(labelPDFService.generateLabelSheet(panel.getId()));
-        String extracted = PdfTextExtractor.getTextFromPage(reader, 1);
-        reader.close();
+        String extracted = PdfText.ofPage(labelPDFService.generateLabelSheet(panel.getId()), 1);
 
         assertTrue("the blind code prints", extracted.contains("IHLONG-P1"));
         // Shortened to the label's width rather than dropped: on the old build the

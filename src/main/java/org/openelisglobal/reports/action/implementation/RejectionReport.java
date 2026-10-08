@@ -17,11 +17,11 @@
 package org.openelisglobal.reports.action.implementation;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -31,6 +31,7 @@ import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.PdfExportSupport;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
@@ -48,27 +49,36 @@ import org.openelisglobal.test.service.TestServiceImpl;
 public abstract class RejectionReport extends Report implements IReportCreator {
     private int PREFIX_LENGTH = AccessionNumberUtil.getMainAccessionNumberGenerator().getInvarientLength();
     protected List<RejectionReportBean> rejections;
-    protected String reportPath = "";
     protected DateRange dateRange;
 
     protected AnalysisService analysisService = SpringContext.getBean(AnalysisService.class);
 
     @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(rejections);
-    }
-
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-        reportParameters.put("activityLabel", getActivityLabel());
-        reportParameters.put("accessionPrefix", AccessionNumberUtil.getMainAccessionNumberGenerator().getPrefix());
-        reportParameters.put("labNumberTitle", MessageUtil.getContextualMessage("quick.entry.accession.number"));
-        reportParameters.put("labName", ConfigurationProperties.getInstance().getPropertyValue(Property.SiteName));
-        reportParameters.put("SUBREPORT_DIR", reportPath);
-        reportParameters.put("startDate", dateRange.getLowDateStr());
-        reportParameters.put("endDate", dateRange.getHighDateStr());
-        reportParameters.put("isReportByTest", isReportByTest());
+    protected byte[] renderReport() {
+        String labNumberTitle = MessageUtil.getContextualMessage("quick.entry.accession.number");
+        String prefix = AccessionNumberUtil.getMainAccessionNumberGenerator().getPrefix();
+        List<String> headers = Arrays.asList(MessageUtil.getMessage("barcode.label.info.collectionDate"),
+                MessageUtil.getMessage("report.receptionDate"),
+                GenericValidator.isBlankOrNull(prefix) ? labNumberTitle : labNumberTitle + " (" + prefix + ")",
+                isReportByTest() ? MessageUtil.getMessage("report.patientCode")
+                        : MessageUtil.getMessage("report.patientCode") + " / "
+                                + MessageUtil.getMessage("report.testName"),
+                MessageUtil.getMessage("report.reasonForRejection"), MessageUtil.getMessage("report.techId"));
+        List<List<String>> rows = new ArrayList<>();
+        RejectionReportBean above = new RejectionReportBean();
+        for (RejectionReportBean item : rejections) {
+            boolean firstOfOrder = !Objects.equals(item.getAccessionNumber(), above.getAccessionNumber());
+            rows.add(Arrays.asList(item.getCollectionDate(),
+                    ManagementReportPdf.whenChanged(item.getReceivedDate(), above.getReceivedDate(), firstOfOrder),
+                    firstOfOrder ? item.getAccessionNumber() : "",
+                    GenericValidator.isBlankOrNull(item.getPatientOrTestName())
+                            ? MessageUtil.getMessage("report.patient.not.registered")
+                            : item.getPatientOrTestName(),
+                    item.getRejectionReason(), item.getTechnician()));
+            above = item;
+        }
+        return ManagementReportPdf.render(PdfExportSupport.pageSize(), MessageUtil.getMessage("reject.report"),
+                getActivityLabel(), dateRange, headers, new float[] { 1.2f, 1.2f, 1.8f, 2.6f, 2.2f, 1.2f }, rows);
     }
 
     protected boolean isReportByTest() {
@@ -159,11 +169,6 @@ public abstract class RejectionReport extends Report implements IReportCreator {
         }
 
         return item;
-    }
-
-    @Override
-    protected String reportFileName() {
-        return "RejectionReport";
     }
 
     protected RejectionReportBean createIdentityRejectionBean(RejectionReportBean item, boolean blankCollectionDate) {

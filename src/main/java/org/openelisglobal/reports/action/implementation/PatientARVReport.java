@@ -16,8 +16,7 @@ package org.openelisglobal.reports.action.implementation;
 import java.sql.Timestamp;
 import java.util.ArrayList;
 import java.util.List;
-import net.sf.jasperreports.engine.JRDataSource;
-import net.sf.jasperreports.engine.data.JRBeanCollectionDataSource;
+import java.util.Objects;
 import org.apache.commons.validator.GenericValidator;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.analysis.valueholder.Analysis;
@@ -62,8 +61,8 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         data.setBirth_date(reportPatient.getBirthDateForDisplay());
         data.setAge(DateUtil.getCurrentAgeForDate(reportPatient.getBirthDate(), reportSample.getCollectionDate()));
         data.setGender(reportPatient.getGender());
-        data.setCollectiondate(
-                reportSample.getCollectionDateForDisplay() + " " + reportSample.getCollectionTimeForDisplay());
+        data.setCollectiondate(reportSample.getCollectionDate() == null ? null
+                : reportSample.getCollectionDateForDisplay() + " " + reportSample.getCollectionTimeForDisplay());
         data.setReceptiondate(DateUtil.convertTimestampToStringDate(reportSample.getReceivedTimestamp()));
 
         SampleOrganization sampleOrg = new SampleOrganization();
@@ -77,13 +76,25 @@ public abstract class PatientARVReport extends RetroCIPatientReport {
         data.getSampleQaEventItems(reportSample);
     }
 
-    @Override
-    public JRDataSource getReportDataSource() throws IllegalStateException {
-        if (!initialized) {
-            throw new IllegalStateException("initializeReport not called first");
-        }
+    /**
+     * Whether the report lists each result beside its reference values for men and
+     * women.
+     */
+    protected boolean usesVersionTwoLayout() {
+        return false;
+    }
 
-        return errorFound ? new JRBeanCollectionDataSource(errorMsgs) : new JRBeanCollectionDataSource(reportItems);
+    @Override
+    protected byte[] renderReport() {
+        StudyArvResultsPdf.Settings settings = new StudyArvResultsPdf.Settings(
+                Objects.toString(reportParameters.get("studyName"), ""), images());
+        return usesVersionTwoLayout() ? StudyArvResultsPdf.versionTwo(reportItems, settings)
+                : StudyArvResultsPdf.versionOne(reportItems, settings);
+    }
+
+    private StudyArvResultsPdf.Images images() {
+        return new StudyArvResultsPdf.Images(reportImage("HEMATO_LaboRef.jpg"), reportImage("IMMUNO_LaboRef.jpg"),
+                reportImage("BIOCH_LaboRef.jpg"), reportImage("SERO_LaboRef.jpg"));
     }
 
     @Override

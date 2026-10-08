@@ -5,7 +5,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.ServletRegistration;
 import org.openelisglobal.common.servlet.barcode.LabelMakerServlet;
 import org.openelisglobal.common.servlet.query.AjaxQueryXMLServlet;
-import org.openelisglobal.common.servlet.reports.ReportsServlet;
 import org.openelisglobal.common.servlet.validation.AjaxTextServlet;
 import org.openelisglobal.common.servlet.validation.AjaxXMLServlet;
 import org.openelisglobal.dataexchange.aggregatereporting.IndicatorAggregationReportingServlet;
@@ -82,10 +81,6 @@ public class AnnotationWebAppInitializer implements WebApplicationInitializer {
         // org.openelisglobal.common.servlet.selectdropdown.AjaxXMLServlet.class);
         // ajaxSelectDropDownXMLServlet.setLoadOnStartup(++startupOrder);
         // ajaxSelectDropDownXMLServlet.addMapping("/ajaxSelectDropDownXML");
-
-        ServletRegistration.Dynamic reportsServlet = servletContext.addServlet("reportsServlet", ReportsServlet.class);
-        reportsServlet.setLoadOnStartup(++startupOrder);
-        reportsServlet.addMapping("/reportsServlet");
 
         ServletRegistration.Dynamic ajaxDataXMLLServlet = servletContext.addServlet("ajaxDataXML",
                 org.openelisglobal.common.servlet.data.AjaxXMLServlet.class);
