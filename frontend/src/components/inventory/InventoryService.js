@@ -175,6 +175,10 @@ export const InventoryBoardAPI = {
     get(`/board${includeInactive ? "?includeInactive=true" : ""}`),
 };
 
+export const InventoryCountAPI = {
+  record: (entries) => post("/count", { entries }),
+};
+
 export const InventoryTagAPI = {
   getDirectory: () => get("/tags"),
 

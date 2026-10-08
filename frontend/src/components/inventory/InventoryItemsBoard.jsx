@@ -29,11 +29,13 @@ import {
   FilterableMultiSelect,
   Checkbox,
   Modal,
+  NumberInput,
 } from "@carbon/react";
 import { ArrowUp, ArrowDown, Subtract, Add } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import {
   InventoryBoardAPI,
+  InventoryCountAPI,
   InventoryItemAPI,
   InventoryLotAPI,
 } from "./InventoryService";
@@ -126,6 +128,10 @@ const InventoryItemsBoard = () => {
   const [activeTags, setActiveTags] = useState([]);
   const [manageTagsOpen, setManageTagsOpen] = useState(false);
   const [showDeactivated, setShowDeactivated] = useState(false);
+  const [countMode, setCountMode] = useState(false);
+  // Keyed by lot id. A blank or absent entry means not counted, not zero.
+  const [counts, setCounts] = useState({});
+  const [countSaving, setCountSaving] = useState(false);
   const [expandedId, setExpandedId] = useState(null);
   const [sort, setSort] = useState({ key: null, ascending: true });
   const [detailLot, setDetailLot] = useState(null);
@@ -174,6 +180,95 @@ const InventoryItemsBoard = () => {
       title: intl.formatMessage({ id: "notification.success" }),
       message: intl.formatMessage({ id: messageId }),
     });
+  };
+
+  const countableLots = (row) =>
+    (lotsByItem.get(row.itemId) || []).filter(
+      (lot) =>
+        !locationFilter || lot.location?.hierarchicalPath === locationFilter,
+    );
+
+  // Includes the expired and QC-failed lots that row.onHand leaves out.
+  const expectedFor = (row) =>
+    countableLots(row).reduce(
+      (total, lot) => total + (lot.currentQuantity || 0),
+      0,
+    );
+
+  const countedEntries = () =>
+    Object.entries(counts)
+      .filter(([, value]) => value !== "" && value != null)
+      .map(([lotId, value]) => ({
+        lotId: Number(lotId),
+        countedQuantity: Number(value),
+      }));
+
+  const setCount = (lotId, value) =>
+    setCounts((prev) => ({ ...prev, [lotId]: value }));
+
+  const leaveCountMode = () => {
+    setCountMode(false);
+    setCounts({});
+  };
+
+  const confirmCount = async () => {
+    const entries = countedEntries();
+    if (entries.length === 0) return;
+    setCountSaving(true);
+    try {
+      const result = await InventoryCountAPI.record(entries);
+      leaveCountMode();
+      refresh();
+      notify({
+        kind: NotificationKinds.success,
+        title: intl.formatMessage({ id: "notification.success" }),
+        message: intl.formatMessage(
+          { id: "inventory.count.done" },
+          { adjusted: result.adjusted, confirmed: result.confirmed },
+        ),
+      });
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setCountSaving(false);
+    }
+  };
+
+  const renderCountEntry = (inputId, key, expected, units, label) => {
+    const raw = counts[key];
+    const entered = raw !== "" && raw != null;
+    const difference = entered ? Number(raw) - expected : null;
+    return (
+      <div className="board-count-entry">
+        <NumberInput
+          id={inputId}
+          size="sm"
+          hideLabel
+          label={label}
+          value={raw ?? ""}
+          onChange={(event, { value }) => setCount(key, value)}
+          min={0}
+          allowEmpty
+        />
+        <span className="board-count-expected">
+          <FormattedMessage
+            id="inventory.count.expected"
+            values={{ expected: intl.formatNumber(expected), units }}
+          />
+        </span>
+        {difference !== null && difference !== 0 && (
+          <Tag size="sm" type={difference > 0 ? "blue" : "red"}>
+            {difference > 0 ? "+" : ""}
+            {intl.formatNumber(difference)}
+          </Tag>
+        )}
+        {difference === 0 && (
+          <Tag size="sm" type="green">
+            <FormattedMessage id="inventory.count.matches" />
+          </Tag>
+        )}
+      </div>
+    );
   };
 
   const restoreItem = async (row) => {
@@ -546,7 +641,7 @@ const InventoryItemsBoard = () => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {itemLots.map((lot) => (
+            {(countMode ? countableLots(row) : itemLots).map((lot) => (
               <TableRow key={lot.id}>
                 <TableCell>
                   <Button
@@ -569,7 +664,22 @@ const InventoryItemsBoard = () => {
                   {renderExpiryTag(lot)}
                 </TableCell>
                 <TableCell>
-                  {intl.formatNumber(lot.currentQuantity)} {row.units}
+                  {countMode ? (
+                    renderCountEntry(
+                      `count-${lot.id}`,
+                      lot.id,
+                      lot.currentQuantity || 0,
+                      row.units,
+                      intl.formatMessage(
+                        { id: "inventory.count.countOf" },
+                        { item: lot.lotNumber },
+                      ),
+                    )
+                  ) : (
+                    <>
+                      {intl.formatNumber(lot.currentQuantity)} {row.units}
+                    </>
+                  )}
                 </TableCell>
                 <TableCell>
                   {labelFor(intl, "lot.status.", lot.status)}
@@ -765,6 +875,16 @@ const InventoryItemsBoard = () => {
           <FormattedMessage id="inventory.item.new" />
         </Button>
         <Button
+          kind={countMode ? "primary" : "tertiary"}
+          size="lg"
+          className="board-count-mode"
+          onClick={() => (countMode ? leaveCountMode() : setCountMode(true))}
+        >
+          <FormattedMessage
+            id={countMode ? "inventory.count.leave" : "inventory.count.enter"}
+          />
+        </Button>
+        <Button
           kind="tertiary"
           size="lg"
           className="board-manage-tags"
@@ -825,6 +945,40 @@ const InventoryItemsBoard = () => {
         </div>
       )}
 
+      {countMode && (
+        <div className="board-count-bar">
+          <p className="board-count-scope">
+            <FormattedMessage
+              id={
+                locationFilter
+                  ? "inventory.count.scoped"
+                  : "inventory.count.unscoped"
+              }
+              values={{ location: locationFilter }}
+            />
+          </p>
+          <div className="board-count-actions">
+            <span className="board-count-tally">
+              <FormattedMessage
+                id="inventory.count.tally"
+                values={{ counted: countedEntries().length }}
+              />
+            </span>
+            <Button
+              kind="primary"
+              size="md"
+              disabled={countSaving || countedEntries().length === 0}
+              onClick={confirmCount}
+            >
+              <FormattedMessage id="inventory.count.confirm" />
+            </Button>
+            <Button kind="ghost" size="md" onClick={leaveCountMode}>
+              <FormattedMessage id="button.cancel" />
+            </Button>
+          </div>
+        </div>
+      )}
+
       <TableContainer>
         <Table size="md" useZebraStyles={false}>
           <TableHead>
@@ -836,6 +990,7 @@ const InventoryItemsBoard = () => {
               {sortableHeader("runOutEarly", "inventory.board.column.runsOut")}
               {sortableHeader("orderByDate", "inventory.orderBy.label")}
               {sortableHeader("status", "common.status")}
+              {sortableHeader("lastCountedOn", "inventory.count.column")}
               <TableHeader>
                 <span className="board-visually-hidden">
                   <FormattedMessage id="common.actions" />
@@ -846,7 +1001,7 @@ const InventoryItemsBoard = () => {
           <TableBody>
             {visibleRows.length === 0 && !error && (
               <TableRow>
-                <TableCell colSpan={8}>
+                <TableCell colSpan={9}>
                   <p className="board-empty">
                     <FormattedMessage
                       id={
@@ -883,8 +1038,39 @@ const InventoryItemsBoard = () => {
                       )}
                     </TableCell>
                     <TableCell>
-                      {intl.formatNumber(row.onHand)}{" "}
-                      <span className="board-units">{row.units}</span>
+                      {countMode ? (
+                        countableLots(row).length === 1 ? (
+                          renderCountEntry(
+                            `count-item-${row.itemId}`,
+                            countableLots(row)[0].id,
+                            countableLots(row)[0].currentQuantity || 0,
+                            row.units,
+                            intl.formatMessage(
+                              { id: "inventory.count.countOf" },
+                              { item: row.name },
+                            ),
+                          )
+                        ) : (
+                          <span className="board-muted">
+                            <FormattedMessage
+                              id={
+                                countableLots(row).length === 0
+                                  ? "inventory.count.nothingHere"
+                                  : "inventory.count.perLot"
+                              }
+                              values={{
+                                expected: intl.formatNumber(expectedFor(row)),
+                                units: row.units,
+                              }}
+                            />
+                          </span>
+                        )
+                      ) : (
+                        <>
+                          {intl.formatNumber(row.onHand)}{" "}
+                          <span className="board-units">{row.units}</span>
+                        </>
+                      )}
                     </TableCell>
                     <TableCell>{renderTrend(row.trendPercent)}</TableCell>
                     <TableCell>{renderRunsOut(row)}</TableCell>
@@ -904,6 +1090,18 @@ const InventoryItemsBoard = () => {
                         <Tag type="gray">
                           <FormattedMessage id="inventory.item.deactivated" />
                         </Tag>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {row.lastCountedOn ? (
+                        intl.formatDate(parseBoardDate(row.lastCountedOn), {
+                          month: "short",
+                          day: "numeric",
+                        })
+                      ) : (
+                        <span className="board-muted">
+                          <FormattedMessage id="inventory.count.neverCounted" />
+                        </span>
                       )}
                     </TableCell>
                     <TableCell className="board-actions-cell">
@@ -951,7 +1149,7 @@ const InventoryItemsBoard = () => {
                     </TableCell>
                   </TableExpandRow>
                   {isOpen && (
-                    <TableExpandedRow colSpan={8}>
+                    <TableExpandedRow colSpan={9}>
                       {renderExpansion(row)}
                     </TableExpandedRow>
                   )}

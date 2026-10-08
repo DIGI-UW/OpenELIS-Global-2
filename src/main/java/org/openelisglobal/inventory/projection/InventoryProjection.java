@@ -25,6 +25,11 @@ public class InventoryProjection {
     private List<String> tags;
     private String units;
 
+    private boolean trackLots;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate lastCountedOn;
+
     private boolean active = true;
 
     private Double onHand;
