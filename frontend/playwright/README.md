@@ -201,43 +201,24 @@ The lower-level package commands below remain the CI interface and are useful
 when debugging Playwright itself:
 
 ```bash
+# From the repository root:
+scripts/dev-stack up
+eval "$(scripts/dev-stack env)"
 cd frontend
-
-# Run all projects
-npm run pw:test
-
-# Run specific project
-npm run pw:test -- --project=core-app
-npm run pw:test -- --project=core-demo
-npm run pw:test -- --project=harness-demo
-npm run pw:test:harness-mvp
-npm run pw:test -- --project=harness-manual-only
-
-# Convenience aliases
-npm run pw:test:core-demo
-npm run pw:test:harness-demo
-npm run pw:test:core-foundational
-npm run pw:test:harness-mvp
-npm run pw:test:harness-manual-only
-npm run pw:test:demo # alias → harness-demo (analyzer story tests)
-
-# Run a specific checkpoint story
-npm run pw:test -- --project=harness-demo playwright/tests/demo/harness/ogc-1054-m2-shared-mapping.spec.ts
-
-# Interactive UI mode
-npm run pw:test:ui
+npm run pw:test -- --project=core-app <spec-path>
+# Use --project=setup to run authentication setup alone.
 ```
 
 ### Examples
 
-**Core-app tests** (build stack — `docker compose -f build.docker-compose.yml`):
+**Core-app tests** (first export `scripts/dev-stack env` from the repository root):
 
 ```bash
 cd frontend
 TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
 ```
 
-**Core demos** (barcode workflow — build stack only):
+**Core demos** (against the configured development stack):
 
 ```bash
 cd frontend
@@ -269,39 +250,11 @@ GENEXPERT_HOST='<ip-or-dns>' GENEXPERT_PORT='1200' TEST_USER=admin TEST_PASS='ad
 
 ### Analyzer Harness Remediation Loop
 
-When remediating an analyzer story, reproduce it locally before using CI as the
-diagnostic loop.
-
-1. Run the authoritative local CI parity path from the repo root:
-
-```bash
-./projects/analyzer-harness/ci-parity-test.sh --preflight-only
-./projects/analyzer-harness/ci-parity-test.sh --project harness-demo
-```
-
-2. If you are fixing a specific failing spec, run that file first:
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo playwright/tests/<failing-spec>.spec.ts
-```
-
-3. For M4 acceptance, run the assembled non-video story and inspect its output
-   and screenshots before recording:
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-mvp
-```
-
-4. Run `harness-demo-video` only after the unchanged non-video story is green
-   and its screenshots, console output, trace, and runtime state are acceptable.
-
-## Video Recording
-
-`core-demo-video` mirrors `core-demo`. `harness-demo-video` runs the same final
-assembled story selected by `pw:test:harness-mvp`, with `slowMo: 500` and video
-enabled.
+Use native Playwright for focused development tests against the development
+stack, with `scripts/dev-stack env` exported. To reproduce an isolated CI lane,
+use `scripts/run-ci-checks.sh --job playwright-analyzers-1` or the other job
+listed by `--list-jobs`. A selected-job pass is partial validation. After a
+push, run the full command alongside GitHub.
 
 ### Stakeholder Evidence Format
 
@@ -341,10 +294,10 @@ TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-demo-video
 # Videos saved to frontend/test-results/<test-name>/video.webm
 ```
 
-The harness video command executes
-`../projects/analyzer-harness/ci-parity-test.sh --mode video`, so the recording
-uses the same fixture, real mock traffic, and readiness gates as the non-video
-acceptance run.
+The harness video command runs the existing `harness-demo-video` Playwright
+project against the configured development stack. It preserves the project's
+video pacing and presentation. Export `scripts/dev-stack env` before entering
+`frontend`; recording does not create a separate stack or load CI fixtures.
 
 Customize slowMo: `PLAYWRIGHT_SLOWMO=300 npm run pw:test:harness-demo-video`
 

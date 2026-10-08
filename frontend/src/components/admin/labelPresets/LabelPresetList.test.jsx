@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
@@ -11,6 +11,7 @@ import messages from "../../../languages/en.json";
 // Mock the server utils
 vi.mock("../../utils/Utils", () => ({
   getFromOpenElisServer: vi.fn(),
+  patchToOpenElisServerFullResponse: vi.fn(),
   postToOpenElisServerFullResponse: vi.fn(),
   putToOpenElisServerFullResponse: vi.fn(),
 }));
@@ -28,7 +29,11 @@ vi.mock("../../layout/Layout", async () => {
   };
 });
 
-import { getFromOpenElisServer } from "../../utils/Utils";
+import {
+  getFromOpenElisServer,
+  patchToOpenElisServerFullResponse,
+  postToOpenElisServerFullResponse,
+} from "../../utils/Utils";
 import { NotificationContext } from "../../layout/Layout";
 
 const mockPresets = [
@@ -66,12 +71,12 @@ const mockPresets = [
   },
 ];
 
-const renderWithProviders = (component) =>
+const renderWithProviders = (component, addNotification = vi.fn()) =>
   render(
     <MemoryRouter>
       <IntlProvider locale="en" messages={messages}>
         <NotificationContext.Provider
-          value={{ addNotification: vi.fn(), notificationVisible: false }}
+          value={{ addNotification, notificationVisible: false }}
         >
           {component}
         </NotificationContext.Provider>
@@ -151,6 +156,112 @@ describe("LabelPresetList", () => {
       expect(
         screen.getByText(messages["admin.labelPresets.status.inactive"]),
       ).toBeInTheDocument();
+    });
+  });
+
+  // ── Save feedback and status toggle (OGC-1227) ───────────────────────────
+
+  test("shows a success toast and reloads after the editor saves a new preset", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      callback(mockPresets);
+    });
+    postToOpenElisServerFullResponse.mockImplementation(
+      (url, payload, callback) => {
+        callback({ status: 201 });
+      },
+    );
+    const addNotification = vi.fn();
+    renderWithProviders(<LabelPresetList />, addNotification);
+    await waitFor(() => {
+      expect(screen.getByText("standard order")).toBeInTheDocument();
+    });
+
+    fireEvent.click(screen.getByTestId("add-preset-btn"));
+    const nameInput = await screen.findByLabelText(
+      messages["admin.labelPresets.field.name"],
+    );
+    fireEvent.change(nameInput, { target: { value: "Toast Preset" } });
+    fireEvent.click(screen.getByText(messages["label.button.save"]));
+
+    await waitFor(() => {
+      expect(addNotification).toHaveBeenCalledWith({
+        kind: "success",
+        title: messages["admin.labelPresets.created"],
+      });
+    });
+    const presetLoads = getFromOpenElisServer.mock.calls.filter(
+      ([url]) => url === "/api/labelPresets",
+    );
+    expect(presetLoads).toHaveLength(2);
+  });
+
+  // ── Site-wide barcode settings (OGC-1217) ────────────────────────────────
+
+  test("renders the site-wide barcode settings card above the preset table", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      if (url === "/api/siteSettings/barcode") {
+        callback({
+          prePrintUseAltAccession: true,
+          prePrintAltAccessionPrefix: "ABCD",
+        });
+      } else {
+        callback(mockPresets);
+      }
+    });
+    renderWithProviders(<LabelPresetList />);
+
+    const card = await screen.findByTestId("site-wide-barcode-settings");
+    await waitFor(() => {
+      expect(screen.getByText("standard order")).toBeInTheDocument();
+    });
+    const table = screen.getByRole("table");
+    expect(
+      card.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      within(card).getByLabelText(
+        messages["admin.labelPresets.siteWide.prePrint.separate"],
+      ),
+    ).toBeChecked();
+    expect(
+      within(card).getByLabelText(
+        messages["admin.labelPresets.siteWide.prefix.label"],
+      ),
+    ).toHaveValue("ABCD");
+  });
+
+  test("Deactivate sends a PATCH to the activate endpoint", async () => {
+    getFromOpenElisServer.mockImplementation((url, callback) => {
+      callback(mockPresets);
+    });
+    patchToOpenElisServerFullResponse.mockImplementation(
+      (url, payload, callback) => {
+        callback({ status: 200, ok: true });
+      },
+    );
+    const addNotification = vi.fn();
+    renderWithProviders(<LabelPresetList />, addNotification);
+    await waitFor(() => {
+      expect(screen.getByText("standard order")).toBeInTheDocument();
+    });
+
+    const row = screen.getByText("standard order").closest("tr");
+    fireEvent.click(within(row).getByRole("button", { name: /options/i }));
+    fireEvent.click(
+      await screen.findByText(messages["admin.labelPresets.action.deactivate"]),
+    );
+
+    await waitFor(() => {
+      expect(patchToOpenElisServerFullResponse).toHaveBeenCalledWith(
+        "/api/labelPresets/1/activate",
+        JSON.stringify({ isActive: false }),
+        expect.any(Function),
+      );
+    });
+    expect(postToOpenElisServerFullResponse).not.toHaveBeenCalled();
+    expect(addNotification).toHaveBeenCalledWith({
+      kind: "success",
+      title: messages["admin.labelPresets.deactivated"],
     });
   });
 

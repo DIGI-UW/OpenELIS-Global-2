@@ -5,11 +5,19 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import jakarta.servlet.http.HttpServletRequest;
 import java.sql.Date;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import org.junit.Before;
 import org.junit.Test;
+import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.eqa.controller.rest.EQAPanelRestController;
 import org.openelisglobal.eqa.dao.EQAPanelSampleDAO;
+import org.openelisglobal.eqa.service.EQABlindingService;
 import org.openelisglobal.eqa.service.EQACycleService;
+import org.openelisglobal.eqa.service.EQALabelPDFService;
 import org.openelisglobal.eqa.service.EQAPanelService;
 import org.openelisglobal.eqa.service.EQAProgramService;
 import org.openelisglobal.eqa.valueholder.EQACycle;
@@ -20,7 +28,9 @@ import org.openelisglobal.eqa.valueholder.EQAPanelStatus;
 import org.openelisglobal.eqa.valueholder.EQAProgram;
 import org.openelisglobal.eqa.valueholder.EQASchemeAnalyst;
 import org.openelisglobal.eqa.valueholder.EQASchemeType;
+import org.openelisglobal.login.valueholder.UserSessionData;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.mock.web.MockHttpServletRequest;
 
 /**
  * OGC-612 [EQA V2.4] — the writes the in-house blinding wizard makes before it
@@ -31,9 +41,20 @@ import org.springframework.beans.factory.annotation.Autowired;
 public class EQAInHouseWizardIntegrationTest extends EQASpineTestBase {
 
     private static final long ANALYTE = 9801L;
+    private static final long TEST_IN_SCHEME = 9731L;
+    private static final long ANALYTE_IN_SCHEME = 9831L;
 
     @Autowired
     private EQACycleService cycleService;
+
+    @Autowired
+    private EQABlindingService blindingService;
+
+    @Autowired
+    private EQALabelPDFService labelPDFService;
+
+    // The shared test context leaves EQA controllers out of its scan.
+    private EQAPanelRestController panelController;
 
     @Autowired
     private EQAPanelService panelService;
@@ -43,6 +64,14 @@ public class EQAInHouseWizardIntegrationTest extends EQASpineTestBase {
 
     @Autowired
     private EQAPanelSampleDAO eqaPanelSampleDAO;
+
+    @Before
+    @Override
+    public void setUp() throws Exception {
+        super.setUp();
+        panelController = new EQAPanelRestController(panelService, blindingService, labelPDFService, programService,
+                cycleService);
+    }
 
     private EQAPanelSample sample(String target) {
         EQAPanelSample sample = new EQAPanelSample();
@@ -133,5 +162,59 @@ public class EQAInHouseWizardIntegrationTest extends EQASpineTestBase {
         assertEquals(Long.valueOf(ADMIN_USER_ID), roster.get(0).getSystemUserId());
 
         assertTrue(programService.setAnalysts(scheme.getId(), List.of(), USER).isEmpty());
+    }
+
+    private EQAProgram schemeCarrying(String name, long testId) {
+        jdbc.update("INSERT INTO clinlims.analyte (id, name, is_active, lastupdated) VALUES (?, ?, 'Y', now())"
+                + " ON CONFLICT (id) DO NOTHING", ANALYTE_IN_SCHEME, "Wizard scheme analyte");
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, guid, lastupdated)"
+                        + " SELECT ?, ?, ?, 'Y', ?, now() WHERE NOT EXISTS (SELECT 1 FROM clinlims.test WHERE id = ?)",
+                testId, "Wizard scheme test", "Wizard scheme test", UUID.randomUUID().toString(), testId);
+        jdbc.update("DELETE FROM clinlims.test_analyte WHERE id = ?", 99831);
+        jdbc.update("INSERT INTO clinlims.test_analyte (id, test_id, analyte_id, lastupdated) VALUES (?, ?, ?, now())",
+                99831, testId, ANALYTE_IN_SCHEME);
+        EQAProgram scheme = insertScheme(name, EQASchemeType.IN_HOUSE, null);
+        programService.assignTest(scheme.getId(), testId);
+        return scheme;
+    }
+
+    private Map<String, Object> panelBody(EQAProgram scheme, String testId) {
+        return Map.of("schemeId", scheme.getId(), "panelName", "Scheme-bound panel", "samples",
+                List.of(Map.of("testId", testId, "targetValue", "4.52")));
+    }
+
+    private HttpServletRequest request() {
+        UserSessionData sessionData = new UserSessionData();
+        sessionData.setSytemUserId(Integer.parseInt(USER));
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.getSession(true).setAttribute(IActionConstants.USER_SESSION_DATA, sessionData);
+        return request;
+    }
+
+    @Test
+    public void createPanel_refusesATestTheSchemeDoesNotCarry() {
+        EQAProgram scheme = schemeCarrying("Wizard off-scheme test", TEST_IN_SCHEME);
+
+        try {
+            panelController.createPanel(request(), panelBody(scheme, "424242"));
+            fail("a test outside the scheme is not panel material");
+        } catch (IllegalArgumentException expected) {
+            assertEquals("Test 424242 is not assigned to this scheme", expected.getMessage());
+        }
+        assertTrue(eqaPanelDAO.getAllMatching("scheme.id", scheme.getId()).isEmpty());
+    }
+
+    @Test
+    public void createPanel_acceptsATestTheSchemeCarries() {
+        EQAProgram scheme = schemeCarrying("Wizard on-scheme test", TEST_IN_SCHEME);
+
+        panelController.createPanel(request(), panelBody(scheme, String.valueOf(TEST_IN_SCHEME)));
+
+        List<EQAPanel> panels = eqaPanelDAO.getAllMatching("scheme.id", scheme.getId());
+        assertEquals(1, panels.size());
+        List<EQAPanelSample> samples = eqaPanelSampleDAO.getAllMatching("panel.id", panels.get(0).getId());
+        assertEquals(1, samples.size());
+        assertEquals(Long.valueOf(ANALYTE_IN_SCHEME), samples.get(0).getAnalyteId());
     }
 }

@@ -123,8 +123,8 @@ export default function GenericSampleOrderEdit({
       });
     }
     if (showUom) {
-      getFromOpenElisServer("/rest/UomCreate", (res) => {
-        setUoms(res.existingUomList || []);
+      getFromOpenElisServer("/rest/uom", (res) => {
+        setUoms(Array.isArray(res) ? res : []);
       });
     }
     if (showNotebookSelection) {

@@ -272,6 +272,7 @@ const SampleAcceptanceChecklist = ({
     notify(NotificationKinds.success, "sampleAcceptance.resample.success", {
       accession: result?.newAccessionNumber || "",
     });
+    onRejected?.();
     load();
   };
 
@@ -355,6 +356,8 @@ const SampleAcceptanceChecklist = ({
 
   const resampledToSampleId = evaluation?.resample?.resampledToSampleId;
   const resampledFromSampleId = evaluation?.resample?.resampledFromSampleId;
+  const resampledToAccession = evaluation?.resample?.resampledToAccession;
+  const resampledFromAccession = evaluation?.resample?.resampledFromAccession;
 
   return (
     <Tile className="sac-tile">
@@ -411,7 +414,12 @@ const SampleAcceptanceChecklist = ({
               defaultMessage:
                 "This sample was rejected and resampled. Replacement order: {accession}.",
             },
-            { accession: newAccession || `#${resampledToSampleId}` },
+            {
+              accession:
+                newAccession ||
+                resampledToAccession ||
+                `#${resampledToSampleId}`,
+            },
           )}
         />
       )}
@@ -425,12 +433,18 @@ const SampleAcceptanceChecklist = ({
             defaultMessage: "Replacement sample",
           })}
           subtitle={intl.formatMessage(
-            {
-              id: "sampleAcceptance.banner.resampledFrom",
-              defaultMessage:
-                "This is a replacement created by a resample of sample #{id}.",
-            },
-            { id: resampledFromSampleId },
+            resampledFromAccession
+              ? {
+                  id: "sampleAcceptance.banner.resampledFrom.accession",
+                  defaultMessage:
+                    "This is a replacement created by a resample of sample {accession}.",
+                }
+              : {
+                  id: "sampleAcceptance.banner.resampledFrom",
+                  defaultMessage:
+                    "This is a replacement created by a resample of sample #{id}.",
+                },
+            { accession: resampledFromAccession, id: resampledFromSampleId },
           )}
         />
       )}

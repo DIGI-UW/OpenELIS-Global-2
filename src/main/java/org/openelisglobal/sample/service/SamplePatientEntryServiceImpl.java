@@ -576,6 +576,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     savedItem.setQuantity(sampleTestCollection.item.getQuantity());
                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
+                    copyHandlingDetails(sampleTestCollection.item, savedItem);
                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
                     savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
                     // Keep existing typeOfSample if incoming is null (don't change sample type
@@ -977,6 +978,45 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
      * the server itself considers microbiology. A submitted payload never makes an
      * order microbiology.
      */
+    /**
+     * Carries the collection and handling details a step save sends for a sample
+     * that already exists. Before OGC-1424 only some of them were copied, so an
+     * edited collection method, GPS position or legacy temperature on a saved
+     * sample was silently dropped. A chosen receiver is stored; a receiver that
+     * only defaulted to the saving user is stored when the receipt is recorded in
+     * this save, never on a sample received earlier. Called before the receipt date
+     * is copied. The arrival keeps its original recorder and time while the
+     * condition and temperature are unchanged, and a rejected temperature never
+     * clears the stored one.
+     */
+    static void copyHandlingDetails(SampleItem incoming, SampleItem saved) {
+        saved.setCollectionMethod(incoming.getCollectionMethod());
+        saved.setSampleTemperature(incoming.getSampleTemperature());
+        saved.setSpecimenOrigin(incoming.getSpecimenOrigin());
+        saved.setContainer(incoming.getContainer());
+        saved.setLocationDetails(incoming.getLocationDetails());
+        saved.setGpsLatitude(incoming.getGpsLatitude());
+        saved.setGpsLongitude(incoming.getGpsLongitude());
+        boolean receiptRecordedNow = saved.getReceivedDate() == null && incoming.getReceivedDate() != null;
+        if (incoming.getReceivedById() != null && (!incoming.isReceivedByDefaulted() || receiptRecordedNow)) {
+            saved.setReceivedById(incoming.getReceivedById());
+        }
+        java.math.BigDecimal temperature = incoming.isArrivalTemperatureRejected() ? saved.getArrivalTemperature()
+                : incoming.getArrivalTemperature();
+        boolean arrivalChanged = !java.util.Objects.equals(incoming.getArrivalCondition(), saved.getArrivalCondition())
+                || !sameTemperature(temperature, saved.getArrivalTemperature());
+        if (arrivalChanged) {
+            saved.setArrivalCondition(incoming.getArrivalCondition());
+            saved.setArrivalTemperature(temperature);
+            saved.setArrivalRecordedById(incoming.getArrivalRecordedById());
+            saved.setArrivalRecordedAt(incoming.getArrivalRecordedAt());
+        }
+    }
+
+    private static boolean sameTemperature(java.math.BigDecimal a, java.math.BigDecimal b) {
+        return a == null ? b == null : b != null && a.compareTo(b) == 0;
+    }
+
     private boolean isMicrobiologyOrder(SamplePatientUpdateData updateData,
             java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
         if (microOrderRoutingService == null) {
@@ -1413,6 +1453,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 String local = String.valueOf(i);
                 if (stc.item != null && stc.item.getId() != null) {
                     sampleIdMap.put(local, stc.item.getId());
+                } else if (stc.existingSampleItemId != null && !stc.existingSampleItemId.isBlank()) {
+                    sampleIdMap.put(local, stc.existingSampleItemId);
                 }
                 List<String> testIds = new ArrayList<>();
                 if (stc.tests != null) {
@@ -1423,6 +1465,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     }
                 }
                 testIdsBySampleLocal.put(local, testIds);
+                String itemId = sampleIdMap.get(local);
+                if (itemId != null) {
+                    testIdsBySampleLocal.put("item-" + itemId, testIds);
+                }
             }
         }
 

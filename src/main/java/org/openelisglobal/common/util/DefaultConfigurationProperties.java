@@ -273,6 +273,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ReflexAction, "Haiti");
         properties.setPropertyValue(Property.AccessionFormat, "SITEYEARNUM");
         properties.setPropertyValue(Property.TRACK_PATIENT_PAYMENT, "false");
+        properties.setPropertyValue(Property.SHOW_FAX_FIELDS, "false");
         properties.setPropertyValue(Property.ACCESSION_NUMBER_VALIDATE, "false");
         properties.setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
         properties.setPropertyValue(Property.DEFAULT_DATE_LOCALE, "fr-FR");

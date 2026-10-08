@@ -1,5 +1,7 @@
 package org.openelisglobal.program.valueholder.pathology;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
+import java.time.LocalDate;
 import java.util.List;
 import org.hl7.fhir.r4.model.Questionnaire;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
@@ -7,6 +9,20 @@ import org.openelisglobal.common.util.IdValuePair;
 import org.openelisglobal.program.valueholder.pathology.PathologyRequest.RequestStatus;
 
 public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
+
+    /**
+     * The day the specimen reached the laboratory, which is not the day the
+     * examination was requested (FR-1). Held without a zone, so rendering it cannot
+     * move it onto a neighbouring day.
+     */
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate receivedDate;
+
+    /**
+     * One localized type name per sample item on the case, so two items of one type
+     * read as that type twice (FR-1). Empty when the sample carries none.
+     */
+    private List<String> specimenTypes;
 
     private String age;
 
@@ -43,6 +59,22 @@ public class PathologyCaseViewDisplayItem extends PathologyDisplayItem {
     private String microscopyExam;
 
     private List<PathologyReport> reports;
+
+    public LocalDate getReceivedDate() {
+        return receivedDate;
+    }
+
+    public void setReceivedDate(LocalDate receivedDate) {
+        this.receivedDate = receivedDate;
+    }
+
+    public List<String> getSpecimenTypes() {
+        return specimenTypes;
+    }
+
+    public void setSpecimenTypes(List<String> specimenTypes) {
+        this.specimenTypes = specimenTypes;
+    }
 
     public String getAge() {
         return age;

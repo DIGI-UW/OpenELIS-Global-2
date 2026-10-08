@@ -140,6 +140,14 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
     }
 
     @Test
+    public void printOrderLabels_nonNumericIds_return400() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", "not-an-id")).andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", "abc"))
+                .andExpect(status().isBadRequest());
+        mockMvc.perform(get("/api/orders/{id}/labels", "not-an-id")).andExpect(status().isBadRequest());
+    }
+
+    @Test
     public void printFromSnapshot_returnsApplicationPdf() throws Exception {
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, preset.getId()))
                 .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
@@ -149,6 +157,28 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
     public void printFromSnapshot_noRows_returns404() throws Exception {
         // A preset id with no persisted rows for this order yields an empty render.
         mockMvc.perform(get("/api/barcode/print/{orderId}/{presetId}", sampleId, 999999))
+                .andExpect(status().isNotFound());
+    }
+
+    // ── OGC-1422: one PDF endpoint behind Print row / column / all ───────────
+
+    @Test
+    public void printOrderLabels_withoutFilters_returnsEveryLabelOfTheOrder() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId)).andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    public void printOrderLabels_filtersBySampleItemPresetAndScope() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", sampleItemId))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("scope", "sample").param("presetId",
+                String.valueOf(preset.getId()))).andExpect(status().isOk());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("scope", "order"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("sampleItemId", "0"))
+                .andExpect(status().isNotFound());
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", "999999"))
                 .andExpect(status().isNotFound());
     }
 
@@ -184,5 +214,34 @@ public class OrderLabelReprintControllerTest extends BaseWebContextSensitiveTest
         } catch (Exception e) {
             // ignored — next run retries
         }
+    }
+
+    // ── OGC-1169: a chosen quantity, capped at the preset maximum ─────────────
+
+    @Test
+    public void printOrderLabels_withQuantityUpToThePresetMax_returnsPdf() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", String.valueOf(preset.getId()))
+                .param("scope", "sample").param("sampleItemId", sampleItemId).param("quantity", "5"))
+                .andExpect(status().isOk()).andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_PDF));
+    }
+
+    @Test
+    public void printOrderLabels_quantityAbovePresetMax_returns422NamingTheRule() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("presetId", String.valueOf(preset.getId()))
+                .param("scope", "sample").param("quantity", "6")).andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.max"));
+    }
+
+    @Test
+    public void printOrderLabels_quantityBelowOne_returns422WithItsOwnRule() throws Exception {
+        mockMvc.perform(get("/api/orders/{id}/labels/pdf", sampleId).param("quantity", "0"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.messageKey").value("error.labels.quantity.min"));
+    }
+
+    @Test
+    public void getOrderLabels_carriesEachLabelsMaximumForItsScope() throws Exception {
+        mockMvc.perform(get("/api/orders/by-accession/{accession}/labels", ACCESSION)).andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].max_qty").value(preset.getMaxPerSample()));
     }
 }

@@ -170,6 +170,9 @@ export const sampleObject = {
   receivedDate: "",
   receivedTime: "",
   receivedBy: "",
+  receivedById: "",
+  arrivalCondition: "",
+  arrivalTemperature: "",
   hasNCE: false,
   nceId: "",
   qcMetadata: null,
@@ -285,6 +288,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   // Storage assignment skipped flag (Label step)
   // Persisted to backend via /rest/order/storage-skipped endpoint
   const [storageSkipped, setStorageSkippedState] = useState(false);
+
+  // Label quantities chosen in the Labels section (OGC-1422, FR-E5). They
+  // travel with the step's save as labelPersistRequest and replace the order's
+  // saved label requests; printing then reads the saved rows (FR-I6).
+  const [labelPersistRequest, setLabelPersistRequest] = useState(null);
 
   // Where the order stands in order entry (OGC-1266 FR-F5), as the server
   // records it: the status, the time each step was completed, and whether
@@ -656,7 +664,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
             envFields.vecCollectionSiteId ||
             "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
         }
       });
 
@@ -905,6 +913,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         ),
         initialSampleConditionList: [],
         testSectionList: [],
+        ...(labelPersistRequest ? { labelPersistRequest } : {}),
       };
 
       const save = new Promise((resolve, reject) => {
@@ -1067,6 +1076,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       buildSampleXML,
       buildReferralItems,
       dateLocale,
+      labelPersistRequest,
     ],
   );
 
@@ -1600,6 +1610,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     fieldErrors,
     stepProgress,
     storageSkipped,
+    labelPersistRequest,
     progress,
     acceptanceMode,
     sampleCheckEnabled,
@@ -1622,6 +1633,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     markStepComplete,
     setStorageSkipped,
     stageStorageSkipped,
+    setLabelPersistRequest,
     adoptProgress,
     // Test assignment actions (Step 2)
     assignTestToSample,

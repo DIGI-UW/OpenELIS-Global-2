@@ -271,3 +271,53 @@ describe("SampleCollectionCard admission-date validation", () => {
     });
   });
 });
+
+describe("SampleCollectionCard print labels while the order loads (OGC-1423)", () => {
+  const renderCard = (props = {}) =>
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <SampleCollectionCard
+            sample={{
+              sampleItemId: "1",
+              sampleTypeId: "5",
+              sampleTypeName: "Blood",
+              tests: [],
+              panels: [],
+            }}
+            sampleIndex={0}
+            sampleTypes={[]}
+            unitOfMeasures={[]}
+            serverReceivedDate="2026-08-13"
+            serverReceivedTime="10:00"
+            onUpdate={vi.fn()}
+            onRemove={vi.fn()}
+            onPrintLabels={vi.fn()}
+            isReadOnly={false}
+            canRemove={false}
+            {...props}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+  it("disables Print Labels while printDisabled is set", () => {
+    renderCard({ printDisabled: true });
+    expect(
+      screen.getByRole("button", {
+        name: messages["collect.sample.printLabels"],
+      }),
+    ).toBeDisabled();
+  });
+
+  it("offers Print Labels once the order has loaded", () => {
+    renderCard({ printDisabled: false });
+    expect(
+      screen.getByRole("button", {
+        name: messages["collect.sample.printLabels"],
+      }),
+    ).toBeEnabled();
+  });
+});

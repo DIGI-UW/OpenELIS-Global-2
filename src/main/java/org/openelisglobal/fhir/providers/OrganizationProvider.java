@@ -76,10 +76,7 @@ public class OrganizationProvider implements IResourceProvider {
     public Organization readOrganization(@IdParam IdType theId) {
         String method = "Read";
         try {
-            if (theId == null || !theId.hasIdPart()) {
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for Read");
-                throw new InvalidRequestException("Organization ID must be provided for Read");
-            }
+            FhirProviderUtils.requireUuidId(theId, "Organization");
             org.openelisglobal.organization.valueholder.Organization organization = organizationService
                     .getOrganizationByFhirId(theId.getIdPart());
             if (organization == null) {
@@ -187,7 +184,7 @@ public class OrganizationProvider implements IResourceProvider {
 
         try {
 
-            FhirProviderUtils.validateIdParam(theId, "Organization", this.getClass().getSimpleName(), method);
+            FhirProviderUtils.requireUuidId(theId, "Organization");
 
             fhirOrganization.setId(theId);
 
@@ -241,7 +238,7 @@ public class OrganizationProvider implements IResourceProvider {
 
         try {
 
-            FhirProviderUtils.validateIdParam(theId, "Organization", this.getClass().getSimpleName(), method);
+            FhirProviderUtils.requireUuidId(theId, "Organization");
 
             org.openelisglobal.organization.valueholder.Organization organization = organizationService
                     .getOrganizationByFhirId(theId.getIdPart());

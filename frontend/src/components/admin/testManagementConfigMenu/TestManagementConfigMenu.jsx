@@ -11,6 +11,7 @@ import {
 import { NotificationContext } from "../../layout/Layout";
 import { AlertDialog } from "../../common/CustomNotification";
 import { FormattedMessage, injectIntl } from "react-intl";
+import useInAppNavigation from "../../common/useInAppNavigation";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
 
 const breadcrumbs = [
@@ -52,10 +53,52 @@ const CATALOGUE_TILES = [
     explain: "configuration.testCatalog.labUnits.explain",
   },
   {
+    id: "TestCatalog",
+    href: "/MasterListsPage/TestCatalog",
+    label: "configuration.test.catalog",
+    explain: "configuration.test.catalog.explain",
+  },
+  {
+    id: "TestActivation",
+    href: "/MasterListsPage/TestActivation",
+    label: "configuration.test.activate",
+    explain: "configuration.test.activate.explain",
+  },
+  {
+    id: "TestOrderability",
+    href: "/MasterListsPage/TestOrderability",
+    label: "configuration.test.orderable",
+    explain: "configuration.test.orderable.explain",
+  },
+  {
+    id: "PanelOrder",
+    href: "/MasterListsPage/PanelOrder",
+    label: "configuration.panel.order",
+    explain: "configuration.panel.order.explain",
+  },
+  {
     id: "MethodManagement",
     href: "/MasterListsPage/MethodManagement",
     label: "configuration.method",
     explain: "configuration.testCatalog.methods.explain",
+  },
+  {
+    id: "UnitsOfMeasure",
+    href: "/MasterListsPage/UnitsOfMeasure",
+    label: "configuration.uom.title",
+    explain: "configuration.testCatalog.uom.explain",
+  },
+  {
+    id: "ResultSelectListAdd",
+    href: "/MasterListsPage/ResultSelectListAdd",
+    label: "configuration.selectList.add",
+    explain: "configuration.selectList.add.explain",
+  },
+  {
+    id: "SelectListRenameEntry",
+    href: "/MasterListsPage/SelectListRenameEntry",
+    label: "configuration.selectList.rename",
+    explain: "configuration.selectList.rename.explain",
   },
   {
     id: "CatalogImport",
@@ -90,25 +133,32 @@ const RULE_TILES = [
   },
 ];
 
-const Tiles = ({ tiles }) => (
-  <UnorderedList>
-    {tiles.map((tile, index) => (
-      <React.Fragment key={tile.id}>
-        {index > 0 && <br />}
-        <ClickableTile href={tile.href} id={tile.id}>
-          <FormattedMessage id={tile.label} />
-          {tile.explain && (
-            <UnorderedList nested>
-              <ListItem>
-                <FormattedMessage id={tile.explain} />
-              </ListItem>
-            </UnorderedList>
-          )}
-        </ClickableTile>
-      </React.Fragment>
-    ))}
-  </UnorderedList>
-);
+const Tiles = ({ tiles }) => {
+  const navigate = useInAppNavigation();
+  return (
+    <UnorderedList>
+      {tiles.map((tile, index) => (
+        <React.Fragment key={tile.id}>
+          {index > 0 && <br />}
+          <ClickableTile
+            href={tile.href}
+            id={tile.id}
+            onClick={navigate(tile.href)}
+          >
+            <FormattedMessage id={tile.label} />
+            {tile.explain && (
+              <UnorderedList nested>
+                <ListItem>
+                  <FormattedMessage id={tile.explain} />
+                </ListItem>
+              </UnorderedList>
+            )}
+          </ClickableTile>
+        </React.Fragment>
+      ))}
+    </UnorderedList>
+  );
+};
 
 const SectionHeading = ({ id }) => (
   <Grid fullWidth={true}>

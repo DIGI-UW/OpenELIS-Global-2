@@ -36,6 +36,13 @@ import LocationsPage, {
 import UserManagement from "./userManagement/UserManagement";
 import UserAddModify from "./userManagement/UserAddModify";
 import ManageMethod from "./testManagement/ManageMethod";
+import UnitsOfMeasure from "./testManagement/UnitsOfMeasure";
+import ViewTestCatalog from "./testManagement/ViewTestCatalog";
+import TestActivation from "./testManagementConfigMenu/TestActivation";
+import TestOrderability from "./testManagementConfigMenu/TestOrderability";
+import PanelOrder from "./testManagementConfigMenu/PanelOrder";
+import ResultSelectListAdd from "./testManagementConfigMenu/ResultSelectListAdd";
+import SelectListRenameEntry from "./testManagementConfigMenu/SelectListRenameEntry";
 import BatchTestReassignmentAndCancelation from "./BatchTestReassignmentAndCancellation/BatchTestReassignmentAndCancelation";
 import TestNotificationConfigMenu from "./testNotificationConfigMenu/TestNotificationConfigMenu";
 import TestNotificationConfigEdit from "./testNotificationConfigMenu/TestNotificationConfigEdit";
@@ -74,12 +81,7 @@ function Admin() {
       />
       <Route path={`${path}/reflex`} component={ReflexTestManagement} />
       <Route path={`${path}/calculatedValue`} component={CalculatedValue} />
-      {/* The legacy View Test Catalog page is gone; its address opens the list. */}
-      <Redirect
-        exact
-        from={`${path}/TestCatalog`}
-        to={`${path}/TestCatalogList`}
-      />
+      <Route exact path={`${path}/TestCatalog`} component={ViewTestCatalog} />
       <Route path={`${path}/TestCatalogList`} component={TestCatalogList} />
       <Route path={`${path}/CatalogImport`} component={CatalogImport} />
       <Route
@@ -101,6 +103,7 @@ function Admin() {
         component={TestCatalogEditor}
       />
       <Route path={`${path}/MethodManagement`} component={ManageMethod} />
+      <Route path={`${path}/UnitsOfMeasure`} component={UnitsOfMeasure} />
       <Route path={`${path}/labNumber`} component={LabNumberManagement} />
       <Route path={`${path}/labelPresets`} component={LabelPresetList} />
       {/* OGC-781: the Programs rework keeps the live /program URL so bookmarks
@@ -179,22 +182,21 @@ function Admin() {
         )}
       />
       <Route
+        path={[`${path}/TestModifyEntry`, `${path}/TestRenameEntry`]}
+        render={() => <Redirect to={`${path}/TestCatalogList`} />}
+      />
+      <Route
         path={[
-          `${path}/TestModifyEntry`,
-          `${path}/TestActivation`,
-          `${path}/TestOrderability`,
-          `${path}/TestRenameEntry`,
           `${path}/UomManagement`,
           `${path}/UomCreate`,
           `${path}/UomRenameEntry`,
         ]}
-        render={() => <Redirect to={`${path}/TestCatalogList`} />}
+        render={() => <Redirect to={`${path}/UnitsOfMeasure`} />}
       />
       <Route
         path={[
           `${path}/PanelManagement`,
           `${path}/PanelCreate`,
-          `${path}/PanelOrder`,
           `${path}/PanelTestAssign`,
           `${path}/PanelRenameEntry`,
         ]}
@@ -229,9 +231,16 @@ function Admin() {
         path={`${path}/LabUnitManagement/:labUnitId?/:section?`}
         component={LabUnitManagement}
       />
+      <Route path={`${path}/TestActivation`} component={TestActivation} />
+      <Route path={`${path}/TestOrderability`} component={TestOrderability} />
+      <Route path={`${path}/PanelOrder`} component={PanelOrder} />
       <Route
-        path={[`${path}/ResultSelectListAdd`, `${path}/SelectListRenameEntry`]}
-        render={() => <Redirect to={`${path}/DictionaryMenu`} />}
+        path={`${path}/ResultSelectListAdd`}
+        component={ResultSelectListAdd}
+      />
+      <Route
+        path={`${path}/SelectListRenameEntry`}
+        component={SelectListRenameEntry}
       />
       <Route
         path={[`${path}/MethodCreate`, `${path}/MethodRenameEntry`]}

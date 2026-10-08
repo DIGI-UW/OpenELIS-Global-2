@@ -91,6 +91,32 @@ const ORDERS = [
     priority: "routine",
     stepProgress: { enter: true, collect: true, label: true, qa: true },
   },
+  {
+    id: "5",
+    labNumber: "LAB-REFERRED",
+    patientName: "Dorothy Vaughan",
+    priority: "routine",
+    workflowType: "clinical",
+    progressStatus: "SAMPLES_PREPARED",
+    complete: true,
+    status: "referred_out",
+    referralSummary: { referredTests: 2, totalTests: 2, referredTo: "CEDRES" },
+    stepProgress: { enter: true, collect: true, label: true },
+    sampleCheckEnabled: true,
+  },
+  {
+    id: "6",
+    labNumber: "LAB-SPLIT",
+    patientName: "Annie Easley",
+    priority: "routine",
+    workflowType: "clinical",
+    progressStatus: "SAMPLES_PREPARED",
+    complete: false,
+    status: "pending_qa",
+    referralSummary: { referredTests: 1, totalTests: 3, referredTo: "CEDRES" },
+    stepProgress: { enter: true, collect: true, label: true },
+    sampleCheckEnabled: true,
+  },
 ];
 
 const renderDashboard = () =>
@@ -327,5 +353,88 @@ describe("arriving from a step", () => {
 
     expect(screen.getByText("Order LAB-DONE complete")).toBeInTheDocument();
     expect(rowOf("LAB-DONE")).toHaveClass("order-highlighted");
+  });
+});
+
+// OGC-1423: the dashboard tells a fully referred order from a split one.
+describe("referred orders", () => {
+  it("shows Referred out for an order whose every test is referred, and the referral line on a split order", async () => {
+    renderDashboard();
+    await listed("LAB-REFERRED");
+    const referred = rowOf("LAB-REFERRED");
+    expect(within(referred).getByText("Referred out")).toBeInTheDocument();
+    expect(
+      within(referred).getByTestId("order-referral-line"),
+    ).toHaveTextContent("All 2 tests referred to CEDRES");
+    const split = rowOf("LAB-SPLIT");
+    expect(within(split).queryByText("Referred out")).toBeNull();
+    expect(within(split).getByTestId("order-referral-line")).toHaveTextContent(
+      "1 of 3 tests referred to CEDRES",
+    );
+    expect(
+      within(rowOf("LAB-ENTERED")).queryByTestId("order-referral-line"),
+    ).toBeNull();
+  });
+
+  it("offers Has referred tests next to Referred Out in the status filter", async () => {
+    renderDashboard();
+    await listed("LAB-ENTERED");
+    await userEvent.click(
+      document.getElementById("status-filter").querySelector("button"),
+    );
+    const labels = screen
+      .getAllByRole("option")
+      .map((option) => option.textContent.trim());
+    expect(labels).toEqual(
+      expect.arrayContaining(["Has referred tests", "Referred Out"]),
+    );
+  });
+
+  it("keeps the rows the server returned for a typed search", async () => {
+    renderDashboard();
+    await listed("LAB-REFERRED");
+    const search = screen.getByRole("searchbox", { name: /filter table/i });
+    await userEvent.type(search, "LAB-REFERRED");
+
+    await waitFor(() => {
+      expect(
+        getFromOpenElisServer.mock.calls.some(([url]) =>
+          url.includes("search=LAB-REFERRED"),
+        ),
+      ).toBe(true);
+    });
+    // Before the fix the table also ran Carbon's own text filter over cells
+    // that are rendered elements, so every row the server matched was hidden.
+    expect(await listed("LAB-REFERRED")).toBeInTheDocument();
+    expect(screen.queryByText("No orders found")).toBeNull();
+  });
+
+  it("takes the filter labels from the message bundle", async () => {
+    render(
+      <IntlProvider
+        locale="en"
+        messages={{
+          ...messages,
+          "order.dashboard.status.hasReferred": "Avec tests référés",
+          "order.dashboard.priority.routine": "Routinier",
+        }}
+      >
+        <OrderDashboard />
+      </IntlProvider>,
+    );
+    await listed("LAB-ENTERED");
+    await userEvent.click(
+      document.getElementById("status-filter").querySelector("button"),
+    );
+    expect(
+      screen.getByRole("option", { name: "Avec tests référés" }),
+    ).toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    await userEvent.click(
+      document.getElementById("priority-filter").querySelector("button"),
+    );
+    expect(
+      screen.getByRole("option", { name: "Routinier" }),
+    ).toBeInTheDocument();
   });
 });

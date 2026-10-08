@@ -10,6 +10,7 @@ import SaveFailureNotice, { saveFailureMessage } from "../SaveFailureNotice";
 import { useOrderContext } from "../OrderContext";
 import PrepareStorageSection from "./sections/PrepareStorageSection";
 import OrderReferOutSection from "./referOut/OrderReferOutSection";
+import { isFullyReferred } from "./referralState";
 import { ConfigurationContext, NotificationContext } from "../../layout/Layout";
 import {
   AlertDialog,
@@ -25,6 +26,7 @@ import { getEnforcement } from "../api/sampleAcceptanceApi";
 import RequestedTestsSection from "./sections/RequestedTestsSection";
 import CollectTestPickerSection from "./sections/CollectTestPickerSection";
 import SamplesCollectionSection from "./sections/SamplesCollectionSection";
+import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
 import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
@@ -45,6 +47,9 @@ const OrderCollect = () => {
   const history = useHistory();
   const workflowPrefix = useWorkflowPrefix();
   const componentMounted = useRef(true);
+  // The Labels section registers its row printer here so a sample card's
+  // Print Labels button prints that tube's labels (FR-C6).
+  const printLabelsRowRef = useRef(null);
 
   const {
     orderId,
@@ -56,6 +61,7 @@ const OrderCollect = () => {
     markStepComplete,
     isReadOnly,
     isEditMode,
+    isLoading,
     testSampleAssignments,
     assignTestToSample,
     removeTestFromSample,
@@ -232,12 +238,15 @@ const OrderCollect = () => {
   };
 
   // Save and next opens Sample check when the laboratory uses it; otherwise
-  // this save finishes order entry (FR-K15) and the dashboard says so.
+  // this save finishes order entry (FR-K15) and the dashboard says so. An
+  // order whose every tube is referred out has nothing for the in-house
+  // Sample check, so it finishes here too (OGC-1423).
+  const fullyReferred = isFullyReferred(samples);
   const handleSaveAndNext = async () => {
     try {
       await saveOrder(false, false, null, false, progressStep);
       markStepComplete("collect");
-      if (sampleCheckEnabled) {
+      if (sampleCheckEnabled && !fullyReferred) {
         history.push(
           labNumber
             ? `${workflowPrefix}/qa?order=${encodeURIComponent(labNumber)}`
@@ -344,6 +353,15 @@ const OrderCollect = () => {
           removeTestFromSample={removeTestFromSample}
           sampleTypes={sampleTypes}
           isReadOnly={isReadOnly && !isEditMode}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
+          referringSite={
+            orderData?.sampleOrderItems?.referringSiteId
+              ? {
+                  id: orderData.sampleOrderItems.referringSiteId,
+                  name: orderData.sampleOrderItems.referringSiteName || "",
+                }
+              : null
+          }
         />
 
         {/* A: the collector could see the ordered tests but not add one. */}
@@ -384,6 +402,25 @@ const OrderCollect = () => {
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
           admissionDate={admissionDate}
+          printDisabled={isLoading}
+          workflowType={workflowType}
+          labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
+          onPrintLabels={(sampleIndex) => {
+            if (printLabelsRowRef.current) {
+              printLabelsRowRef.current(sampleIndex);
+            }
+          }}
+        />
+
+        {/* Labels for the order and every tube, from the presets and the test
+            catalog (FR-I2). The quantities travel with this step's save and
+            printing reads the saved rows (FR-I6, FR-I7). */}
+        <PrepareLabelsSection
+          isReadOnly={isReadOnly && !isEditMode}
+          onSaveBeforePrint={handleSave}
+          registerPrintRow={(printRow) => {
+            printLabelsRowRef.current = printRow;
+          }}
         />
 
         {/* Storage and referral, per sample, saved with this step (FR-E1,

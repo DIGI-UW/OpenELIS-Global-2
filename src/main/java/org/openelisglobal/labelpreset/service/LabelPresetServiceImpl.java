@@ -1,14 +1,21 @@
 package org.openelisglobal.labelpreset.service;
 
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.common.service.AuditableBaseObjectServiceImpl;
 import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
 import org.openelisglobal.labelpreset.form.LabelPresetForm;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.FieldSourceType;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.openelisglobal.labelpreset.valueholder.LabelPresetField;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,6 +71,7 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
 
         LabelPreset preset = new LabelPreset();
         preset.setSysUserId(sysUserId);
+        preset.setName(displayName(form.getName()));
         applyForm(preset, form);
         preset.setIsSystem(false);
         insert(preset);
@@ -85,6 +93,14 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
 
     // ── Update ───────────────────────────────────────────────────────────────
 
+    /**
+     * {@inheritDoc}
+     *
+     * <p>
+     * A System preset keeps its stored display name whatever case the client echoes
+     * it in; normalisation is for collision detection only, never for storage
+     * (OGC-1227 defect 5).
+     */
     @Override
     @Transactional
     public LabelPreset update(Integer id, LabelPresetForm form, String sysUserId) {
@@ -101,6 +117,7 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
             }
         } else {
             checkNameConflict(id, normalized);
+            preset.setName(displayName(form.getName()));
         }
         preset.setSysUserId(sysUserId);
         applyForm(preset, form);
@@ -172,6 +189,27 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
         return input.trim().toLowerCase(Locale.ROOT);
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> systemPresetFieldKeys(String systemPresetName) {
+        String wanted = normalizeName(systemPresetName);
+        if (wanted.isEmpty()) {
+            return null;
+        }
+        Optional<LabelPreset> preset = getAll().stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsSystem()) && normalizeName(p.getName()).equals(wanted))
+                .findFirst();
+        if (preset.isEmpty()) {
+            return null;
+        }
+        Set<String> keys = new LinkedHashSet<>();
+        preset.get().getFields().stream()
+                .sorted(Comparator.comparing(LabelPresetField::getDisplayOrder,
+                        Comparator.nullsLast(Comparator.naturalOrder())))
+                .map(LabelPresetField::getFieldKey).forEach(keys::add);
+        return keys;
+    }
+
     // ── Private helpers ──────────────────────────────────────────────────────
 
     private LabelPreset requireExists(Integer id) {
@@ -180,6 +218,11 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
             throw new IllegalArgumentException("LabelPreset not found: " + id);
         }
         return preset;
+    }
+
+    /** The name as the administrator typed it, trimmed; case is preserved. */
+    private String displayName(String input) {
+        return input != null ? input.trim() : "";
     }
 
     /**
@@ -196,12 +239,11 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
     }
 
     /**
-     * Applies form values to the preset, replacing fields collection. Stores the
-     * trimmed original name (preserves case) — normalization is for collision
-     * detection only.
+     * Applies the scalar form values to the preset and reconciles its content
+     * fields. A {@code null} field list means the request did not mention fields
+     * and the stored ones stay as they are; an empty list clears them.
      */
     private void applyForm(LabelPreset preset, LabelPresetForm form) {
-        preset.setName(form.getName() != null ? form.getName().trim() : "");
         preset.setHeightMm(form.getHeightMm());
         preset.setWidthMm(form.getWidthMm());
         preset.setBarcodeType(form.getBarcodeType());
@@ -213,18 +255,89 @@ public class LabelPresetServiceImpl extends AuditableBaseObjectServiceImpl<Label
         preset.setMaxPerSample(form.getMaxPerSample() != null ? form.getMaxPerSample() : 10);
         preset.setIsActive(form.getIsActive() != null ? form.getIsActive() : true);
 
-        // Replace fields
-        preset.getFields().clear();
-        if (form.getFields() != null) {
-            for (LabelPresetForm.FieldEntry entry : form.getFields()) {
-                LabelPresetField field = new LabelPresetField();
-                field.setPreset(preset);
-                field.setFieldKey(entry.getFieldKey());
-                field.setSourceType(FieldSourceType.SYSTEM);
-                field.setIsRequired(entry.getIsRequired() != null ? entry.getIsRequired() : false);
-                field.setDisplayOrder(entry.getDisplayOrder());
-                preset.getFields().add(field);
+        if (form.getFields() != null || preset.getId() == null) {
+            replaceFields(preset, form.getFields() == null ? List.of() : form.getFields());
+        }
+    }
+
+    /**
+     * Lab Number is on every preset, required and first (FR-008, OGC-1218); the
+     * selectable fields follow in the requested order, renumbered from 2 without
+     * gaps, so the unique display orders always hold whatever a client sent.
+     */
+    static List<LabelPresetForm.FieldEntry> withLabNumberFirst(List<LabelPresetForm.FieldEntry> entries) {
+        List<LabelPresetForm.FieldEntry> others = new ArrayList<>();
+        for (LabelPresetForm.FieldEntry entry : entries) {
+            if (entry == null || entry.getFieldKey() == null
+                    || LabelFieldKey.LAB_NUMBER.name().equals(entry.getFieldKey().trim())) {
+                continue;
             }
+            others.add(entry);
+        }
+        others.sort(Comparator
+                .comparing(entry -> entry.getDisplayOrder() == null ? Integer.MAX_VALUE : entry.getDisplayOrder()));
+        List<LabelPresetForm.FieldEntry> ordered = new ArrayList<>();
+        LabelPresetForm.FieldEntry labNumber = new LabelPresetForm.FieldEntry();
+        labNumber.setFieldKey(LabelFieldKey.LAB_NUMBER.name());
+        labNumber.setIsRequired(true);
+        labNumber.setDisplayOrder(1);
+        ordered.add(labNumber);
+        int position = 2;
+        for (LabelPresetForm.FieldEntry entry : others) {
+            LabelPresetForm.FieldEntry copy = new LabelPresetForm.FieldEntry();
+            copy.setFieldKey(entry.getFieldKey().trim());
+            copy.setIsRequired(Boolean.TRUE.equals(entry.getIsRequired()));
+            copy.setDisplayOrder(position++);
+            ordered.add(copy);
+        }
+        return ordered;
+    }
+
+    /**
+     * Reconciles the preset's content fields with the requested entries, matching
+     * existing rows by field key so row ids survive a save and only the rows the
+     * request dropped are removed.
+     *
+     * <p>
+     * Within one flush Hibernate issues entity inserts before orphan deletes and
+     * runs updates in declaration order, so re-inserting a key or swapping two
+     * display orders collides with the unique {@code (preset_id, display_order)}
+     * and {@code (preset_id, field_key)} indexes and the save dies with a 500
+     * (OGC-1227 defect 2). Retained rows are therefore parked on negative display
+     * orders and flushed first, which also flushes the orphan deletes, before the
+     * final orders and the new rows are written.
+     */
+    private void replaceFields(LabelPreset preset, List<LabelPresetForm.FieldEntry> entries) {
+        Map<String, LabelPresetForm.FieldEntry> requested = new LinkedHashMap<>();
+        for (LabelPresetForm.FieldEntry entry : withLabNumberFirst(entries)) {
+            requested.put(entry.getFieldKey(), entry);
+        }
+
+        List<LabelPresetField> current = preset.getFields();
+        current.removeIf(field -> !requested.containsKey(field.getFieldKey()));
+        if (preset.getId() != null && !current.isEmpty()) {
+            int parked = -1;
+            for (LabelPresetField field : current) {
+                field.setDisplayOrder(parked--);
+            }
+            baseObjectDAO.update(preset);
+        }
+
+        Map<String, LabelPresetField> existing = new LinkedHashMap<>();
+        for (LabelPresetField field : current) {
+            existing.putIfAbsent(field.getFieldKey(), field);
+        }
+        for (Map.Entry<String, LabelPresetForm.FieldEntry> requestedEntry : requested.entrySet()) {
+            LabelPresetField field = existing.get(requestedEntry.getKey());
+            if (field == null) {
+                field = new LabelPresetField();
+                field.setPreset(preset);
+                field.setFieldKey(requestedEntry.getKey());
+                field.setSourceType(FieldSourceType.SYSTEM);
+                current.add(field);
+            }
+            field.setIsRequired(Boolean.TRUE.equals(requestedEntry.getValue().getIsRequired()));
+            field.setDisplayOrder(requestedEntry.getValue().getDisplayOrder());
         }
     }
 }

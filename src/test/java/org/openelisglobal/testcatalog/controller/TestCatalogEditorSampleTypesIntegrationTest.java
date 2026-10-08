@@ -267,7 +267,7 @@ public class TestCatalogEditorSampleTypesIntegrationTest extends BaseWebContextS
     @org.junit.Test
     public void listTests_rowCarriesEverySampleType() {
         saveTypes(String.valueOf(HUMAN_TYPE_A), String.valueOf(HUMAN_TYPE_B));
-        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null,
+        TestCatalogEditorRestController.TestListPage page = controller.listTests(null, "all", null, null, null,
                 "SampleTypesIT", false, 1, 10);
         assertEquals(1, page.rows.size());
         assertEquals("FR-9: the row lists every associated specimen", 2, page.rows.get(0).sampleTypes.size());

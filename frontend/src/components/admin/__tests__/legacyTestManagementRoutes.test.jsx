@@ -5,7 +5,9 @@ import path from "path";
  * The legacy test-management pages are gone. Their addresses survive as
  * redirects to the editor that replaced each one, so a bookmark or an old
  * link still lands somewhere useful, and nothing under
- * testManagementConfigMenu/ but the menu page itself is routed any more.
+ * testManagementConfigMenu/ is routed any more except the menu page and the
+ * pages that have no replacement: result select lists, bulk test activation and
+ * orderability, panel order, and View Test Catalog.
  *
  * This reads the source rather than rendering: Admin pulls in the whole admin
  * route tree, and what is being guarded is the wiring.
@@ -31,10 +33,10 @@ describe("legacy Test Management addresses redirect to the new editors", () => {
   it.each([
     ["TestAdd", "TestCatalogEditor/new/basic-info"],
     ["TestModifyEntry", "TestCatalogList"],
-    ["TestActivation", "TestCatalogList"],
-    ["TestOrderability", "TestCatalogList"],
     ["TestRenameEntry", "TestCatalogList"],
-    ["UomManagement", "TestCatalogList"],
+    ["UomManagement", "UnitsOfMeasure"],
+    ["UomCreate", "UnitsOfMeasure"],
+    ["UomRenameEntry", "UnitsOfMeasure"],
     ["PanelManagement", "TestCatalogList?entity=panels"],
     ["PanelCreate", "TestCatalogList?entity=panels"],
     ["PanelRenameEntry", "TestCatalogList?entity=panels"],
@@ -42,25 +44,29 @@ describe("legacy Test Management addresses redirect to the new editors", () => {
     ["SampleTypeRenameEntry", "SampleTypeEditor"],
     ["TestSectionManagement", "LabUnitManagement"],
     ["TestSectionRenameEntry", "LabUnitManagement"],
-    ["ResultSelectListAdd", "DictionaryMenu"],
-    ["SelectListRenameEntry", "DictionaryMenu"],
     ["MethodCreate", "MethodManagement"],
     ["MethodRenameEntry", "MethodManagement"],
   ])("%s opens %s", (legacyPath, target) => {
     expect(redirectFor(legacyPath)).toBe(target);
   });
 
-  it("sends the old View Test Catalog address to the list", () => {
+  it("serves View Test Catalog at its own address rather than redirecting it", () => {
     expect(admin).toMatch(
-      /from=\{`\$\{path\}\/TestCatalog`\}\s+to=\{`\$\{path\}\/TestCatalogList`\}/,
+      /<Route exact path=\{`\$\{path\}\/TestCatalog`\} component=\{ViewTestCatalog\} \/>/,
     );
   });
 
-  it("routes nothing from the legacy folder but the menu page", () => {
+  it("routes from the legacy folder only the pages that have no replacement", () => {
     const imports = [
       ...admin.matchAll(/from "\.\/testManagementConfigMenu\/([^"]+)"/g),
     ].map((m) => m[1]);
-    expect(imports).toEqual(["TestManagementConfigMenu"]);
-    expect(admin).not.toContain("testManagement/ViewTestCatalog");
+    expect(imports.sort()).toEqual([
+      "PanelOrder",
+      "ResultSelectListAdd",
+      "SelectListRenameEntry",
+      "TestActivation",
+      "TestManagementConfigMenu",
+      "TestOrderability",
+    ]);
   });
 });

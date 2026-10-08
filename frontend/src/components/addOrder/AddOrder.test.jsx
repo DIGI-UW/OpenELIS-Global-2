@@ -274,6 +274,49 @@ describe("AddOrder — order-level label aggregation (OGC-285 M5b)", () => {
       { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
     ]);
   });
+
+  test("carries the proposed quantities as labelPersistRequest when the section is left untouched", async () => {
+    wireAggregationResponse(labelRequestFixture());
+    const { setOrderFormValues } = renderAddOrder();
+    expect(await screen.findByTestId("labels-section-root")).toBeVisible();
+
+    // A save made without touching the section used to carry no label request
+    // at all, so the presets' defaults never reached the order (OGC-1219).
+    const updater = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .reverse()
+      .find((arg) => typeof arg === "function");
+    expect(updater).toBeTruthy();
+
+    const next = updater(baseOrderFormValues());
+    expect(next.labelPersistRequest.order_cells).toEqual([
+      { preset_id: 1, qty: 2 },
+    ]);
+    expect(next.labelPersistRequest.sample_rows).toEqual([
+      { sample_id_local: "0", cells: [{ preset_id: 17, qty: 1 }] },
+      { sample_id_local: "1", cells: [{ preset_id: 17, qty: 1 }] },
+    ]);
+  });
+
+  test("offers no labels section and lifts no label request on Modify Order", () => {
+    wireAggregationResponse(labelRequestFixture());
+    const { setOrderFormValues } = renderAddOrder({ isModifyOrder: true });
+
+    // Modify Order saves through /rest/SampleEdit, which rejects an unknown
+    // labelPersistRequest with a 400, so nothing label-related may reach it.
+    expect(
+      utilsMock.postToOpenElisServerJsonResponse.mock.calls.some(
+        (c) => c[0] === "/api/orderEntry/labelRequest",
+      ),
+    ).toBe(false);
+    expect(screen.queryByTestId("labels-section-root")).toBeNull();
+    const lifted = setOrderFormValues.mock.calls
+      .map((c) => c[0])
+      .filter((arg) => typeof arg === "function")
+      .map((updater) => updater(baseOrderFormValues()))
+      .some((next) => "labelPersistRequest" in next);
+    expect(lifted).toBe(false);
+  });
 });
 
 // ---------------------------------------------------------------------------

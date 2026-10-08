@@ -81,12 +81,10 @@ public class MenuUtil {
             createTree();
         }
 
-        // Apply menu filtering if enabled
-        if (isMenuFilteringEnabled()) {
-            return filterMenuTree(root);
-        }
+        List<MenuItem> menuTree = isMenuFilteringEnabled() ? filterMenuTree(root) : root;
 
-        return root;
+        // Filtered here, not in MenuController, so banner.jsp gets the same tree.
+        return menuService.filterByPrivilege(menuTree);
     }
 
     public static List<MenuItem> getUnfilteredMenuTree() {
@@ -360,7 +358,7 @@ public class MenuUtil {
      *                          included
      * @return The filtered menu tree containing only included items
      */
-    private static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
+    public static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
             Set<String> wildcardParentIds) {
         return filterByIncludes(menuTree, includes, wildcardParentIds, false);
     }

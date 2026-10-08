@@ -382,6 +382,7 @@ export function seedProviderScheme(runTag: string): ProviderSchemeSeed {
         `DELETE FROM ${SCHEMA}.eqa_round WHERE cycle_id IN (${cycles})`,
         `DELETE FROM ${SCHEMA}.eqa_cycle_participant WHERE cycle_id IN (${cycles})`,
         `DELETE FROM ${SCHEMA}.eqa_cycle WHERE scheme_id = ${programId}`,
+        `DELETE FROM ${SCHEMA}.eqa_program_test WHERE eqa_program_id = ${programId}`,
       ]);
       // Test-created rows are gone; the seeded enrollments, scheme and
       // organizations unwind in reverse insert order.

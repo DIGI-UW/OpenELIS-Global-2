@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.labelpreset.dao.LabelPresetDAO;
 import org.openelisglobal.labelpreset.dao.OrderLabelRequestDAO;
 import org.openelisglobal.labelpreset.dao.TestLabelPresetLinkDAO;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
+import org.openelisglobal.labelpreset.valueholder.LabelFieldKey;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.openelisglobal.labelpreset.valueholder.LabelPresetField;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
@@ -63,6 +65,8 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
             throw new IllegalArgumentException("Cannot persist label requests: no Sample with id " + orderId);
         }
 
+        orderLabelRequestDAO.deleteByParentSampleId(orderId);
+
         Map<String, String> resolvedSampleIds = sampleIdMap == null ? Map.of() : sampleIdMap;
         Map<String, List<String>> testIdsByLocal = testIdsBySampleLocal == null ? Map.of() : testIdsBySampleLocal;
 
@@ -81,12 +85,10 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         for (OrderLabelPersistRequest.PersistSampleRow row : payload.getSampleRows()) {
             String localId = row.getSampleIdLocal();
             String sampleItemId = resolvedSampleIds.get(localId);
-            if (sampleItemId == null) {
-                // No persisted sample item for this local id — skip (cannot anchor the row).
-                continue;
-            }
-            SampleItem sampleItem = sampleItemService.get(sampleItemId);
+            SampleItem sampleItem = sampleItemId != null ? sampleItemService.get(sampleItemId)
+                    : existingSampleItemOfOrder(orderId, localId);
             if (sampleItem == null) {
+                // No persisted sample item for this local id — skip (cannot anchor the row).
                 continue;
             }
             List<String> testIds = testIdsByLocal.getOrDefault(localId, List.of());
@@ -103,6 +105,23 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         }
 
         return persisted;
+    }
+
+    /**
+     * A client that already holds the saved sample items (Prepare Samples on a
+     * saved order) may key a row by the sample item's own id instead of a
+     * positional local id. Only an item of this order is accepted.
+     */
+    private SampleItem existingSampleItemOfOrder(String orderId, String candidateId) {
+        if (candidateId == null) {
+            return null;
+        }
+        String id = candidateId.startsWith("item-") ? candidateId.substring("item-".length()) : candidateId;
+        if (!id.matches("\\d+")) {
+            return null;
+        }
+        return sampleItemService.getSampleItemsBySampleId(orderId).stream().filter(item -> id.equals(item.getId()))
+                .findFirst().orElse(null);
     }
 
     private OrderLabelRequest insertRow(Sample parentSample, SampleItem sampleItem, LabelPreset preset, int qty,
@@ -178,7 +197,7 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         for (LabelPresetField field : preset.getFields()) {
             PresetSnapshotDto.PresetSnapshotField snapField = new PresetSnapshotDto.PresetSnapshotField();
             snapField.setFieldKey(field.getFieldKey());
-            snapField.setFieldLabel(field.getFieldKey());
+            snapField.setFieldLabel(fieldLabel(field.getFieldKey()));
             snapField.setIsRequired(field.getIsRequired());
             snapField.setDisplayOrder(field.getDisplayOrder());
             fields.add(snapField);
@@ -195,6 +214,20 @@ public class OrderLabelRequestServiceImpl implements OrderLabelRequestService {
         }
 
         return snapshot;
+    }
+
+    /**
+     * The name a field prints under, frozen into the snapshot in the language of
+     * the person saving the order; an unknown key keeps its raw name so nothing is
+     * hidden.
+     */
+    static String fieldLabel(String fieldKey) {
+        LabelFieldKey key = LabelFieldKey.fromKey(fieldKey);
+        if (key == null) {
+            return fieldKey;
+        }
+        String label = MessageUtil.getMessage(key.getMessageKey());
+        return label == null || label.isBlank() ? fieldKey : label;
     }
 
     /**

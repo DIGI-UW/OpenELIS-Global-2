@@ -669,8 +669,9 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
     }
 
     /**
-     * OGC-1022 (R3) — acknowledging a critical alert records the session user and
-     * the resolution comment; the dashboard sends the comment under "notes".
+     * OGC-1022 (R3): acknowledging a critical alert leaves it Acknowledged and
+     * records the session user and the comment, which the dashboard sends under
+     * "notes".
      */
     @Test
     public void criticalAlert_acknowledge_recordsSessionUserAndComment() throws Exception {
@@ -685,12 +686,12 @@ public class ResultEntryRestControllerTest extends BaseWebContextSensitiveTest {
                 .contentType(MediaType.APPLICATION_JSON).content("{\"notes\":\"physician notified\"}").session(session))
                 .andExpect(status().isOk());
 
-        assertEquals("RESOLVED",
+        assertEquals("ACKNOWLEDGED",
                 jdbc.queryForObject("SELECT status FROM clinlims.alert WHERE id = " + alertId, String.class));
         assertEquals(Integer.valueOf(1),
                 jdbc.queryForObject("SELECT acknowledged_by FROM clinlims.alert WHERE id = " + alertId, Integer.class));
-        assertEquals("physician notified",
-                jdbc.queryForObject("SELECT resolution_notes FROM clinlims.alert WHERE id = " + alertId, String.class));
+        assertEquals("physician notified", jdbc
+                .queryForObject("SELECT acknowledgment_notes FROM clinlims.alert WHERE id = " + alertId, String.class));
     }
 
     /**

@@ -40,7 +40,9 @@ import {
 } from "../utils/serverPaging";
 import ServerPageArrows from "../common/ServerPageArrows";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 export default function Workplan(props) {
+  const navigate = useInAppNavigation();
   const { configurationProperties } = useContext(ConfigurationContext);
   const { notificationVisible, setNotificationVisible, addNotification } =
     useContext(NotificationContext);
@@ -350,6 +352,10 @@ export default function Workplan(props) {
                                       `/Results?accessionNumber=` +
                                       encodeURIComponent(row.accessionNumber)
                                     }
+                                    onClick={navigate(
+                                      `/Results?accessionNumber=` +
+                                        encodeURIComponent(row.accessionNumber),
+                                    )}
                                   >
                                     <u>
                                       {convertAlphaNumLabNumForDisplay(

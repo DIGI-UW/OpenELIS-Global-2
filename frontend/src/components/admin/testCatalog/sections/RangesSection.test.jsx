@@ -229,6 +229,54 @@ describe("RangesSection", () => {
     expect(body.ranges[0].highValid).toBe(20);
   });
 
+  it("edits a range's reporting bounds and refuses them inverted", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/sample-results")) {
+        cb({ components: [] });
+        return;
+      }
+      cb({
+        testId: "42",
+        ranges: [
+          {
+            id: "7",
+            gender: "M",
+            minAge: 0,
+            maxAge: 6570,
+            lowNormal: 4,
+            highNormal: 11,
+            lowReporting: 1,
+            highReporting: 50,
+          },
+        ],
+        coverage: emptyCoverage,
+      });
+    });
+    renderSection();
+
+    fireEvent.click(await screen.findByRole("button", { name: "Edit" }));
+    const dialog = await screen.findByRole("dialog");
+    const low = within(dialog).getByLabelText(
+      messages["label.testCatalog.ranges.modal.lowReporting"],
+    );
+    expect(low).toHaveValue(1);
+    fireEvent.change(low, { target: { value: "60" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    expect(
+      within(dialog).getByText(
+        messages["error.testCatalog.ranges.reportingInverted"],
+      ),
+    ).toBeInTheDocument();
+
+    fireEvent.change(low, { target: { value: "2" } });
+    fireEvent.click(within(dialog).getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(putToOpenElisServer).toHaveBeenCalled());
+    const body = JSON.parse(putToOpenElisServer.mock.calls[0][1]);
+    expect(body.ranges[0].lowReporting).toBe(2);
+    expect(body.ranges[0].highReporting).toBe(50);
+  });
+
   it("deletes a range", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
       cb({

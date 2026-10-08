@@ -125,6 +125,7 @@ public abstract class ConfigurationProperties {
                                                               // failed to
         // reach their destination
         TRACK_PATIENT_PAYMENT("trackPayment", "text"), // If true then patient payment status can be entered
+        SHOW_FAX_FIELDS("showFaxFields", "text"), // If true order entry shows fax fields for facilities and providers
         ACCESSION_NUMBER_VALIDATE("validateAccessionNumber", "text"), // If true then validate the accession number
         ALERT_FOR_INVALID_RESULTS("alertWhenInvalidResult", "text"), // If true then technician will get an alert for
                                                                      // results

@@ -92,8 +92,8 @@ const answerImmediately = (url, callback) => {
     callback(TESTS_BY_TYPE[match[1]]);
     return;
   }
-  if (url === "/rest/UomCreate") {
-    callback({ existingUomList: [] });
+  if (url === "/rest/uom") {
+    callback([]);
     return;
   }
   callback([]);

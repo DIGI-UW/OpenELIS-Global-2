@@ -102,9 +102,9 @@ async function collectAndRoute(page: Page) {
       displayedCollectionDate = displayedDate;
     }
   }
-  // Prepare Samples is complete once every sample names who collected it;
-  // the laboratory took this one itself.
-  await collectionCard.locator('label[for="labPerformedSampling-0"]').click();
+  // Prepare Samples is complete once every sample has a collection date and
+  // time; the collector is optional (OGC-1419) and Lab performed sampling is
+  // not offered on clinical samples (OGC-1424).
   const saveAndNext = page.getByRole("button", { name: "Save and next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
   await saveAndNext.click();
@@ -443,7 +443,9 @@ test.describe("microbiology order entry on the supported workflow", () => {
     });
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Cancel" }).click();
-    await expect(page.getByLabel(cultureTestName)).toBeChecked();
+    await expect(
+      page.getByLabel(cultureTestName, { exact: true }),
+    ).toBeChecked();
     await expect(page.getByLabel("Clinical History")).toHaveValue(
       "Persistent fever after antibiotics",
     );

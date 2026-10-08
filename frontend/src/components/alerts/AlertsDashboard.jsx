@@ -28,6 +28,14 @@ const AlertsDashboard = () => {
   const [searchText, setSearchText] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [alertTypes, setAlertTypes] = useState([]);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/alerts/dashboard/types", (types) => {
+      setAlertTypes(Array.isArray(types) ? types : []);
+    });
+  }, []);
 
   const fetchSummary = useCallback(() => {
     getFromOpenElisServer("/rest/alerts/dashboard/summary", (data) => {
@@ -65,15 +73,17 @@ const AlertsDashboard = () => {
     return () => clearInterval(interval);
   }, [fetchSummary, fetchAlerts]);
 
-  const handleAcknowledge = (alert) => {
+  const handleAlertAction = (alert) => {
     setSelectedAlert(alert);
+    setActionError(null);
     setModalOpen(true);
   };
 
-  const handleAcknowledgeSubmit = (alertId, comment) => {
+  const handleAlertActionSubmit = (alert, comment) => {
+    const resolving = alert.status === "ACKNOWLEDGED";
     const payload = comment ? JSON.stringify({ notes: comment }) : "{}";
     putToOpenElisServer(
-      `/rest/alerts/dashboard/${alertId}/acknowledge`,
+      `/rest/alerts/dashboard/${alert.id}/${resolving ? "resolve" : "acknowledge"}`,
       payload,
       (status) => {
         if (status === 200) {
@@ -81,6 +91,14 @@ const AlertsDashboard = () => {
           setSelectedAlert(null);
           fetchSummary();
           fetchAlerts();
+        } else {
+          setActionError(
+            intl.formatMessage({
+              id: resolving
+                ? "alerts.resolve.error"
+                : "alerts.acknowledge.error",
+            }),
+          );
         }
       },
     );
@@ -110,42 +128,15 @@ const AlertsDashboard = () => {
             }}
           >
             <SelectItem value="" text="" />
-            <SelectItem
-              value="EQA_DEADLINE"
-              text={intl.formatMessage({ id: "alerts.type.eqa_deadline" })}
-            />
-            <SelectItem
-              value="EQA_SUBMISSION_FAILED"
-              text={intl.formatMessage({
-                id: "alerts.type.eqa_submission_failed",
-              })}
-            />
-            <SelectItem
-              value="REQUIRED_BY_DEADLINE"
-              text={intl.formatMessage({
-                id: "alerts.type.required_by_deadline",
-              })}
-            />
-            <SelectItem
-              value="SAMPLE_EXPIRATION"
-              text={intl.formatMessage({ id: "alerts.type.sample_expiration" })}
-            />
-            <SelectItem
-              value="STAT_OVERDUE"
-              text={intl.formatMessage({ id: "alerts.type.stat_overdue" })}
-            />
-            <SelectItem
-              value="CRITICAL_UNACKNOWLEDGED"
-              text={intl.formatMessage({
-                id: "alerts.type.critical_unacknowledged",
-              })}
-            />
-            <SelectItem
-              value="MICROBIOLOGY_CRITICAL"
-              text={intl.formatMessage({
-                id: "alerts.type.microbiology_critical",
-              })}
-            />
+            {alertTypes.map((type) => (
+              <SelectItem
+                key={type}
+                value={type}
+                text={intl.formatMessage({
+                  id: `alerts.type.${type.toLowerCase()}`,
+                })}
+              />
+            ))}
           </Select>
         </Column>
         <Column lg={4} md={4} sm={4}>
@@ -224,7 +215,7 @@ const AlertsDashboard = () => {
         page={page}
         pageSize={pageSize}
         onPageChange={handlePageChange}
-        onAcknowledge={handleAcknowledge}
+        onAction={handleAlertAction}
       />
 
       <EQADeadlineSummary
@@ -239,11 +230,12 @@ const AlertsDashboard = () => {
       <AlertAcknowledgeModal
         open={modalOpen}
         alert={selectedAlert}
+        error={actionError}
         onClose={() => {
           setModalOpen(false);
           setSelectedAlert(null);
         }}
-        onSubmit={handleAcknowledgeSubmit}
+        onSubmit={handleAlertActionSubmit}
       />
     </div>
   );

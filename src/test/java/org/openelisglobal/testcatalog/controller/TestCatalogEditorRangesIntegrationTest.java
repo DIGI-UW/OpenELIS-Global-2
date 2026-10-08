@@ -174,6 +174,46 @@ public class TestCatalogEditorRangesIntegrationTest extends BaseWebContextSensit
         return resp;
     }
 
+    @org.junit.Test
+    public void saveRanges_storesAndClearsTheReportingRangeTheEditorSends() {
+        RangeDto created = range(null, "M", 0d, 30d);
+        created.setLowReporting(2d);
+        created.setHighReporting(40d);
+        controller.saveRanges(testId(), body(created), authedRequest());
+
+        RangeDto saved = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(2d, saved.lowReporting, 1e-9);
+        assertEquals(40d, saved.highReporting, 1e-9);
+
+        RangeDto cleared = range(saved.id, "M", 0d, 30d);
+        cleared.setLowReporting(null);
+        cleared.setHighReporting(null);
+        controller.saveRanges(testId(), body(cleared), authedRequest());
+
+        RangeDto after = controller.getRanges(testId()).getBody().ranges.get(0);
+        assertEquals(null, after.lowReporting);
+        assertEquals(null, after.highReporting);
+    }
+
+    @org.junit.Test
+    public void saveRanges_refusesAReportingRangeWhoseLowIsAboveItsHigh() {
+        RangeDto inverted = range(null, "M", 0d, 30d);
+        inverted.setLowReporting(50d);
+        inverted.setHighReporting(10d);
+
+        assertEquals(422, controller.saveRanges(testId(), body(inverted), authedRequest()).getStatusCode().value());
+        assertTrue(controller.getRanges(testId()).getBody().ranges.isEmpty());
+    }
+
+    @org.junit.Test
+    public void aRangeRowKnowsWhetherTheRequestCarriedReportingBounds() throws Exception {
+        com.fasterxml.jackson.databind.ObjectMapper mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+
+        assertTrue(!mapper.readValue("{\"gender\":\"M\"}", RangeDto.class).reportingSent);
+        assertTrue(mapper.readValue("{\"lowReporting\":null}", RangeDto.class).reportingSent);
+        assertTrue(!mapper.writeValueAsString(new RangeDto()).contains("reportingSent"));
+    }
+
     private String testId() {
         return String.valueOf(TEST_ID);
     }

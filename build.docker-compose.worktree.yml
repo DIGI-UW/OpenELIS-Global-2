@@ -12,7 +12,7 @@
 # This overlay removes each of those global claims WITHOUT touching a single
 # thing CI actually exercises: same Dockerfiles, same build contexts, same
 # service topology, same env, same volumes. Only identity and binding change.
-# Layer it second and pass a per-worktree `-p <project>`; scripts/run-e2e-like-ci.sh
+# Layer it second and pass a per-worktree `-p <project>`; scripts/run-ci-checks.sh
 # does both.
 #
 # published: "0" asks the kernel for a free ephemeral port; read the real one
