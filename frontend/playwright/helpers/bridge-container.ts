@@ -53,3 +53,25 @@ export function deleteSiteProfileRevision(profileId: string, revision: number) {
 export function restartBridge() {
   docker(["restart", bridgeContainer()]);
 }
+
+/**
+ * Where the Bridge's admin API is reachable from this machine. A stack that
+ * publishes random ports gives a restarted Bridge new ones, so the container is
+ * asked each time; the environment's address is the fallback.
+ */
+export function bridgeAdminUrl(): string {
+  const fallback =
+    process.env.ANALYZER_BRIDGE_URL ||
+    process.env.BRIDGE_ADMIN_URL ||
+    "https://localhost:8442";
+  if (!process.env.COMPOSE_PROJECT_NAME?.trim()) {
+    return fallback;
+  }
+  try {
+    const mapped = docker(["port", bridgeContainer(), "8443/tcp"]);
+    const port = mapped.split("\n")[0].match(/:(\d+)$/)?.[1];
+    return port ? `https://localhost:${port}` : fallback;
+  } catch {
+    return fallback;
+  }
+}
