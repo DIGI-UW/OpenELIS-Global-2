@@ -75,12 +75,12 @@ updates:
       docker-images:
         patterns: ["*"]
 
+  # Daily, without a cooldown: a merged Bridge or mock change reaches OpenELIS as a pin bump
+  # the next day, and the pin is the only place their version is recorded.
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:
-      interval: monthly
-    cooldown:
-      default-days: 7
+      interval: daily
     groups:
       submodules:
         patterns: ["*"]
