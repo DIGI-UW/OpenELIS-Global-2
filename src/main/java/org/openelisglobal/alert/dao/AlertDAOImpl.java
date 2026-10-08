@@ -80,6 +80,26 @@ public class AlertDAOImpl extends BaseDAOImpl<Alert, Long> implements AlertDAO {
 
     @Override
     @Transactional(readOnly = true)
+    public List<Alert> getOutstandingAlerts(String entityType, AlertType alertType) {
+        if (entityType == null || alertType == null) {
+            return Collections.emptyList();
+        }
+        try {
+            String hql = "FROM Alert a WHERE a.alertEntityType = :entityType AND a.alertType = :alertType "
+                    + "AND a.status IN (:statuses) ORDER BY a.startTime DESC";
+            Query<Alert> query = entityManager.unwrap(Session.class).createQuery(hql, Alert.class);
+            query.setParameter("entityType", entityType);
+            query.setParameter("alertType", alertType);
+            query.setParameterList("statuses", List.of(AlertStatus.OPEN, AlertStatus.ACKNOWLEDGED));
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error retrieving outstanding alerts for {}/{}", entityType, alertType, e);
+            throw new LIMSRuntimeException("Error retrieving outstanding alerts for: " + entityType, e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Alert> getAlertsByAlertType(AlertType alertType) {
         try {
             String hql = "FROM Alert a WHERE a.alertType = :alertType ORDER BY a.startTime DESC";
