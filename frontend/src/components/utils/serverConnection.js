@@ -13,7 +13,7 @@ export const SERVER_RETRY_DELAYS_MS = [1000, 2000, 4000, 8000, 15000, 30000];
 
 export const SERVER_RETRY_JITTER = 0.1;
 
-export const SERVER_REQUEST_TIMEOUT_MS = 20000;
+export const SERVER_REQUEST_TIMEOUT_MS = 10000;
 
 /**
  * Milliseconds to wait after the given number of consecutive failures
