@@ -15,7 +15,6 @@ import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.inventory.projection.InventoryProjection;
 import org.openelisglobal.inventory.projection.InventoryProjectionService;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -146,28 +145,34 @@ public class InventoryItemTagsIntegrationTest extends BaseWebContextSensitiveTes
     }
 
     @Test
-    public void anItemCreatedWithoutATypeStillSatisfiesTheLegacyColumn() {
-        Long id = inventoryItemService.insert(newItem("Typeless item", "Cartridge"));
-
-        assertEquals(ItemType.REAGENT, inventoryItemService.get(id).getItemType());
-    }
-
-    @Test
     public void theMigrationCarriesAnExistingItemsTypeAcrossAsATag() throws Exception {
         assertEquals("the seed changeset must be wired into base.xml", Integer.valueOf(1),
                 jdbcTemplate.queryForObject("SELECT COUNT(*) FROM databasechangelog"
                         + " WHERE id = 'OGC-438-seed-inventory-item-tag-from-item-type'", Integer.class));
+        assertEquals("and the drop must be wired in after it", Integer.valueOf(1),
+                jdbcTemplate.queryForObject(
+                        "SELECT COUNT(*) FROM databasechangelog" + " WHERE id = 'OGC-438-drop-inventory-item-type'",
+                        Integer.class));
 
-        Long legacyId = insertLegacyRow("CARTRIDGE");
-        assertEquals("the row has to start untagged for this case to prove anything", Integer.valueOf(0),
-                tagCount(legacyId));
+        restoreLegacyColumn();
+        try {
+            Long legacyId = insertLegacyRow("CARTRIDGE");
+            assertEquals("the row has to start untagged for this case to prove anything", Integer.valueOf(0),
+                    tagCount(legacyId));
 
-        jdbcTemplate.execute(seedSqlFromChangeset());
+            jdbcTemplate.execute(seedSqlFromChangeset());
 
-        assertEquals(Set.of("Cartridge"), tagsOf(legacyId));
+            assertEquals(Set.of("Cartridge"), tagsOf(legacyId));
 
-        jdbcTemplate.execute(seedSqlFromChangeset());
-        assertEquals(Integer.valueOf(1), tagCount(legacyId));
+            jdbcTemplate.execute(seedSqlFromChangeset());
+            assertEquals(Integer.valueOf(1), tagCount(legacyId));
+        } finally {
+            jdbcTemplate.execute("ALTER TABLE clinlims.inventory_item DROP COLUMN IF EXISTS item_type");
+        }
+    }
+
+    private void restoreLegacyColumn() {
+        jdbcTemplate.execute("ALTER TABLE clinlims.inventory_item ADD COLUMN IF NOT EXISTS item_type VARCHAR(50)");
     }
 
     private Long insertLegacyRow(String itemType) {

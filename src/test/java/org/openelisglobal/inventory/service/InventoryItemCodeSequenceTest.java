@@ -7,7 +7,6 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
-import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -55,7 +54,6 @@ public class InventoryItemCodeSequenceTest extends BaseWebContextSensitiveTest {
         item.setCode(code);
         item.setFhirUuid(UUID.randomUUID());
         item.setUnits("mL");
-        item.setItemType(ItemType.REAGENT);
         item.setIsActive("Y");
         item.setSysUserId("1");
         return inventoryItemService.insert(item);
