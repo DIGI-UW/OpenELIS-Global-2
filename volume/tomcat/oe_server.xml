@@ -87,8 +87,11 @@
           <Connector port="8443" protocol="org.apache.coyote.http11.Http11NioProtocol"
                maxThreads="150" SSLEnabled="true">
                <UpgradeProtocol className="org.apache.coyote.http2.Http2Protocol" />
-               <SSLHostConfig truststoreFile="/etc/openelis-global/truststore"
-                    truststorePassword="tspass" truststoreType="PKCS12">
+               <!-- Client certificates are requested, never required. Any is accepted
+                    in the handshake; OpenELIS recognises the paired Analyzer Bridge
+                    by its certificate's fingerprint. -->
+               <SSLHostConfig certificateVerification="optional"
+                    trustManagerClassName="org.openelisglobal.tomcat.AnyClientCertificateTrustManager">
                     <Certificate certificateKeystoreFile="/etc/openelis-global/keystore"
                          certificateKeystorePassword="kspass"
                          certificateKeystoreType="PKCS12"
