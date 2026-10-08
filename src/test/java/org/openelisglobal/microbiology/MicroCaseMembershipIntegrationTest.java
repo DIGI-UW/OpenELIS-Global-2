@@ -8,8 +8,6 @@ import java.sql.Timestamp;
 import java.util.List;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.AppTestConfig;
-import org.openelisglobal.BaseTestConfig;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.microbiology.dao.*;
@@ -24,35 +22,15 @@ import org.openelisglobal.sampletyperequest.valueholder.SampleTypeRequest;
 import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.DependsOn;
-import org.springframework.context.annotation.Profile;
-import org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.ContextConfiguration;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Transactional ownership behavior on the shared application test context.
+ * Registered-schema upgrade and rollback are independently exercised by
+ * MicrobiologyV2CaseStructureLiquibaseRollbackTest without Hibernate DDL.
+ */
 @Transactional
-@ActiveProfiles("micro-v2-ownership-test")
-@ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
-        MicroCaseMembershipIntegrationTest.RegisteredSchemaConfig.class })
 public class MicroCaseMembershipIntegrationTest extends BaseWebContextSensitiveTest {
-    @Configuration
-    @Profile("micro-v2-ownership-test")
-    public static class RegisteredSchemaConfig extends BaseTestConfig {
-        @Override
-        @Bean
-        @DependsOn("liquibase")
-        @Profile("test")
-        public LocalContainerEntityManagerFactoryBean entityManagerFactory() {
-            LocalContainerEntityManagerFactoryBean factory = super.entityManagerFactory();
-            // Only the application's Liquibase changelog may create this test's schema.
-            factory.getJpaPropertyMap().put("hibernate.hbm2ddl.auto", "none");
-            return factory;
-        }
-    }
-
     @Autowired
     private MicrobiologyTestFixtures fixtures;
     @Autowired
