@@ -40,6 +40,12 @@ public interface InventoryItemService extends BaseObjectService<InventoryItem, L
      */
     InventoryItem getByFhirUuid(String fhirUuid);
 
+    /** The item carrying this UPC, or null. */
+    InventoryItem getByUpc(String upc);
+
+    /** The item with this name in any case, deactivated ones included, or null. */
+    InventoryItem getByExactName(String name);
+
     /**
      * Calculate total current stock quantity for an item across all available lots
      */

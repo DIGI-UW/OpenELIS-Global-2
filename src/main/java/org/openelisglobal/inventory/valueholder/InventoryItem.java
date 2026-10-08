@@ -70,9 +70,11 @@ public class InventoryItem extends BaseObject<Long> {
     private String category;
 
     @Column(name = "manufacturer", length = 255)
+    @Size(max = 255)
     private String manufacturer;
 
     @Column(name = "catalog_number", length = 100)
+    @Size(max = 100)
     private String catalogNumber;
 
     @Column(name = "upc", length = 64)
