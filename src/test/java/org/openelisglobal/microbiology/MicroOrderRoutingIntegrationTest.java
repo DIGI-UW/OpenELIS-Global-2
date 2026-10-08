@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import java.sql.Date;
 import java.sql.Timestamp;
+import java.util.List;
 import java.util.UUID;
 import org.junit.Before;
 import org.junit.Test;
@@ -64,6 +65,8 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     private org.openelisglobal.program.service.ProgramService programs;
     @Autowired
     private org.openelisglobal.program.service.ProgramSampleService programSamples;
+    @Autowired
+    private org.openelisglobal.sample.service.SampleEditService sampleEdits;
     private Sample order;
     private org.openelisglobal.test.valueholder.Test test;
     private TypeOfSample type;
@@ -511,6 +514,87 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         source.getTestSection().setIsActive("N");
         em.flush();
         assertNull(reflex(source, added));
+    }
+
+    @Test
+    public void reorderingACancelledMicroTestKeepsItsResultsAndCreatesANewAnalysis() {
+        assertReorderPreservesCancelledAnalysis(false);
+    }
+
+    @Test
+    public void reorderingKeepsCancelledCaseHistoryAfterTheCatalogSwitchIsTurnedOff() {
+        assertReorderPreservesCancelledAnalysis(true);
+    }
+
+    private void assertReorderPreservesCancelledAnalysis(boolean disableCatalogSwitch) {
+        Analysis original = sourceAnalysis();
+        Result originalResult = triggerResult(original);
+        var requested = request(test.getId());
+        requested.setSampleItem(original.getSampleItem());
+        requested.setStatus(SampleTypeRequest.Status.COLLECTED);
+        routing.routeOrder(order, actor);
+        var originalOwnership = requests.getActiveByRequestAndTest(requested.getId(), test.getId());
+        String originalOwnershipId = originalOwnership.getId();
+        String cancelled = org.openelisglobal.spring.util.SpringContext
+                .getBean(org.openelisglobal.common.services.IStatusService.class)
+                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
+        original.setStatusId(cancelled);
+        original.setSysUserId(actor);
+        analyses.update(original);
+        var link = analysisLinks.getActiveByAnalysisId(original.getId());
+        String linkId = link.getId();
+        membership.cancelRequest(originalOwnershipId, "Order corrected", actor);
+        var cancelledCase = cases.get(link.getCaseId()).orElseThrow();
+        cancelledCase.setStatus(org.openelisglobal.microbiology.valueholder.MicroCaseStatus.CANCELLED);
+        cases.update(cancelledCase);
+        if (disableCatalogSwitch)
+            test.setOpensMicrobiologyCase(false);
+        em.flush();
+
+        var form = new org.openelisglobal.sample.form.SampleEditForm();
+        form.setAccessionNumber(order.getAccessionNumber());
+        var orderFields = new org.openelisglobal.sample.bean.SampleOrderItem();
+        orderFields.setPriority(order.getPriority());
+        form.setSampleOrderItems(orderFields);
+        var add = new org.openelisglobal.sample.bean.SampleEditItem();
+        add.setSampleItemId(original.getSampleItem().getId());
+        add.setTestId(test.getId());
+        add.setAdd(true);
+        form.setPossibleTests(List.of(add));
+        sampleEdits.editSample(form, new org.springframework.mock.web.MockHttpServletRequest(), order, false, actor);
+        routing.routeOrder(order, actor);
+        em.flush();
+        em.clear();
+
+        assertNull(orders.get(order.getId()).getReceivedTimestamp());
+        var work = analyses.getAnalysesBySampleItem(samples.get(original.getSampleItem().getId()));
+        assertEquals(2, work.size());
+        assertEquals(cancelled, analyses.get(original.getId()).getStatusId());
+        assertEquals("1", em.find(Result.class, originalResult.getId()).getValue());
+        assertEquals(original.getId(), em.find(Result.class, originalResult.getId()).getAnalysis().getId());
+        var retained = analysisLinks.get(linkId).orElseThrow();
+        assertEquals("Order corrected", retained.getCancellationReason());
+        assertNotNull(retained.getCancelledAt());
+        assertEquals(org.openelisglobal.microbiology.valueholder.MicroCaseStatus.CANCELLED,
+                cases.get(cancelledCase.getId()).orElseThrow().getStatus());
+        var reordered = work.stream().filter(a -> !original.getId().equals(a.getId())).findFirst().orElseThrow();
+        assertNotEquals(cancelled, reordered.getStatusId());
+        var oldOwnership = requests.get(originalOwnershipId).orElseThrow();
+        assertEquals(original.getId(), oldOwnership.getAnalysisId());
+        assertNotNull(oldOwnership.getCancelledAt());
+        assertEquals("Order corrected", oldOwnership.getCancellationReason());
+        if (disableCatalogSwitch) {
+            assertNull(analysisLinks.getActiveByAnalysisId(reordered.getId()));
+            assertEquals(1, cases.getByOrder(order.getId()).size());
+        } else {
+            var newLink = analysisLinks.getActiveByAnalysisId(reordered.getId());
+            assertNotEquals(cancelledCase.getId(), newLink.getCaseId());
+            assertEquals(2, cases.getByOrder(order.getId()).size());
+            var reorderedOwnership = requests.getActiveByRequestAndTest(requested.getId(), test.getId());
+            assertNotEquals(originalOwnershipId, reorderedOwnership.getId());
+            assertEquals(reordered.getId(), reorderedOwnership.getAnalysisId());
+            assertEquals(newLink.getCaseId(), reorderedOwnership.getCaseId());
+        }
     }
 
     @Test

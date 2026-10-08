@@ -40,6 +40,14 @@ public class MicroCaseAnalysisDAOImpl extends BaseDAOImpl<MicroCaseAnalysis, Str
 
     @Override
     @Transactional(readOnly = true)
+    public boolean hasOwnership(String analysisId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("select count(c.id) from MicroCaseAnalysis c where c.analysisId = :analysisId", Long.class)
+                .setParameter("analysisId", analysisId).uniqueResult() > 0;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public MicroCaseAnalysis getActiveByAnalysisId(String analysisId) {
         return entityManager.unwrap(Session.class)
                 .createQuery("from MicroCaseAnalysis c where c.analysisId = :analysisId and c.cancelledAt is null",

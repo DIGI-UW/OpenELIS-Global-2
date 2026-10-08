@@ -129,12 +129,20 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         }
         if (request.getSampleItem() != null && ownership.getSampleItemId() == null) {
             Analysis analysis = ownership.getCaseRole() == MicroCaseRole.CASE ? null
-                    : analyses.getAnalysisBySampleItemAndTest(request.getSampleItem().getId(), test.getId());
+                    : activeAnalysis(request.getSampleItem(), test.getId());
             if (ownership.getCaseRole() != MicroCaseRole.CASE && analysis == null)
                 throw new IllegalStateException("Collected requested test has no analysis");
             membership.fulfillRequest(ownership.getId(), request.getSampleItem().getId(),
                     analysis == null ? null : analysis.getId(), actor);
         }
+    }
+
+    private Analysis activeAnalysis(SampleItem sample, String testId) {
+        String cancelled = statuses
+                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
+        return analyses.getAnalysesBySampleItem(sample).stream().filter(
+                a -> testId.equals(a.getTest().getId()) && (cancelled == null || !cancelled.equals(a.getStatusId())))
+                .findFirst().orElse(null);
     }
 
     @Override
