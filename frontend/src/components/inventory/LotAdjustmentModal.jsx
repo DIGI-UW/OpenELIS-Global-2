@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import {
   Modal,
   NumberInput,
@@ -9,18 +9,12 @@ import {
 } from "@carbon/react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { InventoryLotAPI } from "./InventoryService";
+import { useIsMounted } from "./useIsMounted";
 
 const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
   const intl = useIntl();
 
-  // onSave() unmounts this modal before the finally block runs.
-  const isMountedRef = useRef(true);
-  useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-    };
-  }, []);
+  const isMounted = useIsMounted();
 
   const adjustmentReasons = [
     { id: "INVENTORY_COUNT", text: "Physical Inventory Count" },
@@ -93,10 +87,9 @@ const LotAdjustmentModal = ({ open, onClose, onSave, lot }) => {
       onSave();
     } catch (err) {
       console.error("Error adjusting lot:", err);
-      if (isMountedRef.current)
-        setError(err.message || "Error adjusting lot quantity");
+      if (isMounted()) setError(err.message || "Error adjusting lot quantity");
     } finally {
-      if (isMountedRef.current) setSaving(false);
+      if (isMounted()) setSaving(false);
     }
   };
 
