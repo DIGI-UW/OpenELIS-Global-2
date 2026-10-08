@@ -1,4 +1,5 @@
 import { expect, type APIRequestContext } from "@playwright/test";
+import { bridgeAdminUrl } from "./bridge-container";
 
 const mockUrl =
   process.env.MOCK_SIMULATOR_URL ||
@@ -23,10 +24,7 @@ export async function sendGeneXpertFixture(
   instrumentCodes: Record<string, string> = {},
   patient?: { id: string; name: string },
 ): Promise<string> {
-  const bridgeUrl =
-    process.env.ANALYZER_BRIDGE_URL ||
-    process.env.BRIDGE_ADMIN_URL ||
-    "https://localhost:8442";
+  const bridgeUrl = bridgeAdminUrl();
   const bridgeUser =
     process.env.ANALYZER_BRIDGE_USERNAME || process.env.TEST_USER || "admin";
   const bridgePassword =
