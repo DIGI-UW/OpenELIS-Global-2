@@ -1,7 +1,9 @@
 `Publish images / Deploy testing` deploys each tested `develop` commit to the
 testing VM using that commit's own `docker-compose.yml` and
-`docker-compose.analyzers.yml`, with the five application images pinned to their
-published digests.
+`docker-compose.analyzers.yml`, with its images pinned to their published
+digests. The Bridge and mock images are the ones end-to-end testing built from
+the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` submodule
+commits, published beside the application images.
 
 ## Deploy now
 
@@ -98,8 +100,6 @@ python3 -m unittest discover -s .github/scripts -p 'test_*.py' -v
 
 The Python tests require PyYAML and use temporary localhost HTTP servers. Docker
 operations are mocked; the tests do not deploy to the testing VM.
-`test_analyzer_overlay.py` needs network access to list the Bridge and mock
-release tags.
 
 ### Reviewing a site that used the former harness catalog
 

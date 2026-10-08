@@ -30,8 +30,9 @@ SERVICES = {
     "fhir.openelis.org": "openelis-global-2-fhir",
     "frontend.openelis.org": "openelis-global-2-frontend",
     "proxy": "openelis-global-2-proxy",
+    "openelis-analyzer-bridge": "openelis-global-2-analyzer-bridge",
+    "astm-simulator": "openelis-global-2-analyzer-mock",
 }
-ANALYZER_SERVICES = ("openelis-analyzer-bridge", "astm-simulator")
 SEED_SCRIPT = "projects/analyzer-harness/seed-analyzers.sh"
 BUNDLE_FILES = (
     "docker-compose.yml",
@@ -60,7 +61,7 @@ def validate_manifest(manifest, namespace="itechuw"):
         raise ValueError("Testing requires a develop image manifest")
     images = manifest.get("images")
     if not isinstance(images, dict) or set(images) != set(SERVICES):
-        raise ValueError("Manifest must include exactly the five application images")
+        raise ValueError("Manifest must include exactly the published application images")
     for service, repository in SERVICES.items():
         reference = images[service]
         if not isinstance(reference, str) or not re.fullmatch(
@@ -296,8 +297,7 @@ def deploy(request, diagnostics, bundle):
         else:
             status_compose = compose_command(site_dir, release)
             for filename, args in [("compose-status.txt", ["ps", "--all"]),
-                                   ("service-logs.txt", ["logs", "--no-color", "--tail", "250",
-                                                         *SERVICES, *ANALYZER_SERVICES])]:
+                                   ("service-logs.txt", ["logs", "--no-color", "--tail", "250", *SERVICES])]:
                 with (diagnostics / filename).open("w", encoding="utf-8") as output:
                     subprocess.run(status_compose + args, cwd=site_dir, stdout=output,
                                    stderr=subprocess.STDOUT, check=False)
