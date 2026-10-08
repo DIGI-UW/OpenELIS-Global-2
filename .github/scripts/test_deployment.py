@@ -249,6 +249,27 @@ class DeploymentTest(unittest.TestCase):
         self.assertFalse(any(args[:1] == ["env"] for args in self.commands))
         self.assertIn("keep-existing-value", (self.root / ".env").read_text())
 
+    def test_a_site_without_a_pairing_code_gets_one_and_keeps_it(self):
+        self.ready_health()
+        self.deploy()
+        first = deployment.read_env_file(self.root / ".env")
+        self.ready_health()
+        self.deploy()
+        second = deployment.read_env_file(self.root / ".env")
+
+        self.assertRegex(first["ANALYZER_BRIDGE_PAIRING_CODE"], r"^[0-9a-f]{32}$")
+        self.assertEqual(first["ANALYZER_BRIDGE_PAIRING_CODE"], second["ANALYZER_BRIDGE_PAIRING_CODE"])
+        self.assertEqual("keep-existing-value", second["SERVER_SECRET"])
+
+    def test_a_configured_pairing_code_is_left_alone(self):
+        env_file = self.root / ".env"
+        env_file.write_text(env_file.read_text() + "ANALYZER_BRIDGE_PAIRING_CODE=SITE-CODE")
+        self.ready_health()
+        self.deploy()
+
+        self.assertEqual("SITE-CODE",
+                         deployment.read_env_file(self.root / ".env")["ANALYZER_BRIDGE_PAIRING_CODE"])
+
     def test_wrong_running_image_cannot_publish_ready(self):
         self.wrong_image = True
         with self.assertRaisesRegex(ValueError, "does not match"):

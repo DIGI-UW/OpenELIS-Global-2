@@ -244,8 +244,8 @@ test.describe("Every documented GeneXpert outcome", () => {
         specimenName: specimen,
       });
       await sendGeneXpertFixture(
-        page.request,
-        analyzer.bridgeConnectionId,
+        page,
+        analyzer.id,
         order.accession,
         { assay, outcome },
         senderId,

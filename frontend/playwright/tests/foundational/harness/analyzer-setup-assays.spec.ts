@@ -188,8 +188,8 @@ test.describe("Results the mapping does not cover", () => {
     // A panel result: Influenza A lands, Influenza B is held because its assay is off.
     const assayOff = await orderPanel();
     await sendGeneXpertFixture(
-      page.request,
-      analyzer.bridgeConnectionId,
+      page,
+      analyzer.id,
       assayOff.accession,
       panel,
       senderId,
@@ -235,8 +235,8 @@ test.describe("Results the mapping does not cover", () => {
     // The instrument sends RSV as RSVX, a code the profile does not declare.
     const undeclared = await orderPanel();
     await sendGeneXpertFixture(
-      page.request,
-      analyzer.bridgeConnectionId,
+      page,
+      analyzer.id,
       undeclared.accession,
       panel,
       senderId,

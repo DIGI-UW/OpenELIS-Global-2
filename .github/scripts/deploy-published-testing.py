@@ -11,6 +11,7 @@ import json
 import os
 import pathlib
 import re
+import secrets
 import shutil
 import ssl
 import subprocess
@@ -38,9 +39,9 @@ BUNDLE_FILES = (
     "docker-compose.yml",
     "docker-compose.analyzers.yml",
     "volume/properties/common.properties",
-    "volume/openelis-analyzer-bridge/configuration.yml",
     SEED_SCRIPT,
 )
+PAIRING_CODE = "ANALYZER_BRIDGE_PAIRING_CODE"
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
 SMOKE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)"
 SMOKE_DESTINATION = "tcp://openelis-analyzer-bridge:12001"
@@ -158,6 +159,16 @@ def read_env_file(path):
     return environment
 
 
+def ensure_pairing_code(site_dir):
+    """Give the site the code OpenELIS and the Analyzer Bridge pair with, once, kept across deploys."""
+    env_file = site_dir / ".env"
+    if read_env_file(env_file).get(PAIRING_CODE):
+        return
+    text = env_file.read_text(encoding="utf-8")
+    separator = "" if not text or text.endswith("\n") else "\n"
+    env_file.write_text(f"{text}{separator}{PAIRING_CODE}={secrets.token_hex(16)}\n", encoding="utf-8")
+
+
 def site_settings(site_dir, release):
     # Prefer Compose's own parse, which handles quoting and interpolation as it does for the stack.
     # Older Compose releases without `config --environment` fail on it, so fall back to reading the
@@ -240,6 +251,7 @@ def deploy(request, diagnostics, bundle):
         require_stack_owner(site_dir)
         state_dir.mkdir(exist_ok=True)
         release = unpack_release(bundle, site_dir, manifest["appSha"])
+        ensure_pairing_code(site_dir)
         settings = site_settings(site_dir, release)
         mock_url = request.get("mock_url", settings["MOCK_URL"])
         # Stage on the same filesystem so promotion is atomic.

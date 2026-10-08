@@ -1,5 +1,7 @@
-import { expect, type APIRequestContext } from "@playwright/test";
-import { bridgeAdminUrl } from "./bridge-container";
+import { expect, type APIRequestContext, type Page } from "@playwright/test";
+import { csrfToken } from "./api-session";
+
+const API = "/api/OpenELIS-Global/rest";
 
 const mockUrl =
   process.env.MOCK_SIMULATOR_URL ||
@@ -16,57 +18,38 @@ export type GeneXpertFixture = { assay: string; outcome: string };
  * fills the patient record Cepheid's examples leave empty.
  */
 export async function sendGeneXpertFixture(
-  request: APIRequestContext,
-  connectionId: string,
+  page: Page,
+  analyzerId: string,
   accession: string,
   fixture: GeneXpertFixture,
   senderId: string,
   instrumentCodes: Record<string, string> = {},
   patient?: { id: string; name: string },
 ): Promise<string> {
-  const bridgeUrl = bridgeAdminUrl();
-  const bridgeUser =
-    process.env.ANALYZER_BRIDGE_USERNAME || process.env.TEST_USER || "admin";
-  const bridgePassword =
-    process.env.ANALYZER_BRIDGE_PASSWORD ||
-    process.env.TEST_PASS ||
-    "adminADMIN!";
-  const connectionResponse = await request.get(
-    `${bridgeUrl}/api/connections/${encodeURIComponent(connectionId)}`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${bridgeUser}:${bridgePassword}`).toString("base64")}`,
-      },
-    },
-  );
+  // The paired Bridge answers only OpenELIS, so its connection is read and
+  // probed through OpenELIS.
+  const request = page.request;
+  const analyzerUrl = `${API}/analyzer/analyzers/${encodeURIComponent(analyzerId)}`;
+  const analyzerResponse = await request.get(analyzerUrl);
   expect(
-    connectionResponse.ok(),
-    `Bridge connection: ${connectionResponse.status()}`,
+    analyzerResponse.ok(),
+    `Analyzer ${analyzerId}: ${analyzerResponse.status()}`,
   ).toBeTruthy();
-  const connection = (await connectionResponse.json()) as {
-    fields: Array<{ key: string; currentValue?: string | number }>;
-    configRevision: number;
-    actualRuntimeState: string;
+  const { connection } = (await analyzerResponse.json()) as {
+    connection?: {
+      fields: Array<{ key: string; currentValue?: string | number }>;
+      actualRuntimeState: string;
+    };
   };
-  expect(connection.actualRuntimeState).toBe("ACTIVE");
+  expect(connection, "OpenELIS reads the Bridge connection").toBeDefined();
+  expect(connection?.actualRuntimeState).toBe("ACTIVE");
   expect(
-    connection.fields.find((field) => field.key === "senderId")?.currentValue,
+    connection?.fields.find((field) => field.key === "senderId")?.currentValue,
     "The UI-configured sender must match the instrument message",
   ).toBe(senderId);
-  const probeResponse = await request.post(
-    `${bridgeUrl}/api/connections/${encodeURIComponent(connectionId)}/probe`,
-    {
-      headers: {
-        Authorization: `Basic ${Buffer.from(`${bridgeUser}:${bridgePassword}`).toString("base64")}`,
-      },
-      data: {
-        schemaVersion: "1.0",
-        requestId: `native-${accession}`,
-        connectionId,
-        expectedConfigRevision: connection.configRevision,
-      },
-    },
-  );
+  const probeResponse = await request.post(`${analyzerUrl}/test-connection`, {
+    headers: { "X-CSRF-Token": await csrfToken(page) },
+  });
   expect(
     probeResponse.ok(),
     `Bridge listener probe: ${probeResponse.status()}`,
