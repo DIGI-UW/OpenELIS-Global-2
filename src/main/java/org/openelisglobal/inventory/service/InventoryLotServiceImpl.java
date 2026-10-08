@@ -277,6 +277,19 @@ public class InventoryLotServiceImpl extends AuditableBaseObjectServiceImpl<Inve
 
     @Override
     @Transactional
+    public InventoryLot editLot(InventoryLot lot, String sysUserId) {
+        Double stored = get(lot.getId()).getCurrentQuantity();
+        InventoryLot saved = update(lot);
+        Double edited = saved.getCurrentQuantity();
+        if (edited != null && !edited.equals(stored)) {
+            transactionService.recordTransaction(saved.getId(), TransactionType.ADJUSTMENT,
+                    edited - (stored == null ? 0d : stored), edited, null, null, "Edited on the lot form", sysUserId);
+        }
+        return saved;
+    }
+
+    @Override
+    @Transactional
     public InventoryLot adjustLotQuantity(Long lotId, Double newQuantity, String reason, String sysUserId) {
         InventoryLot lot = get(lotId);
         if (lot == null) {
