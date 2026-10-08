@@ -49,15 +49,16 @@ measure.
   R2, clinical and TB reports.** The following milestones finish conversion,
   remove the legacy engine, and verify all supported reporting paths.
 
-The current combined stack tip is
+The current combined implementation is
 [#4649](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4649),
-`codex/reporting-r1-remediation`, directly above #4552. The initial
-implementation commit is `43d9d43d035dd269f056302dfa767be1d0f8dd23`, followed by
-the multiple-referral correction in `5f61d646a1689a23184af9e6279a3eb0356fad8e`
-described below. R1 addresses all 24 baseline findings and moves the remaining
-label-reprint test from iText to PDFBox. Visual review also identified and fixed
-orphaned routine non-conformity order details/comments; ordinary orders now stay
-together, and long orders repeat their identifying details.
+`codex/reporting-r1-remediation`, targeting `develop`. The original 20 PRs,
+including #4552, are merged as of 2026-10-08. The remaining PR has no native
+GitHub stack association. The initial implementation commit is `9e2ccb44a2`,
+followed by the multiple-referral correction in `658f443ee3` described below. R1
+addresses all 24 baseline findings and moves the remaining label-reprint test
+from iText to PDFBox. Visual review also identified and fixed orphaned routine
+non-conformity order details/comments; ordinary orders now stay together, and
+long orders repeat their identifying details.
 
 Local reporting validation passed **98 tests in 29 suites**, with zero failures,
 errors or skips. This includes the existing report preparation/merging tests,
@@ -79,6 +80,17 @@ failure and now covers three referrals per ordinary test and 100 for a long
 test; representative pages were inspected. This follow-up also received its fix
 and test reply and was formally resolved. A fresh audit of all 21 PRs found
 **zero unresolved threads**, covering 25 resolved findings in total.
+
+On 2026-10-08, two further #4552 review findings were fixed in `85b73d3f1a`
+before that PR merged: continuation pages repeat site/study/serology identity in
+reserved header space, and location orders group by service, doctor and
+reception timestamp even when input rows are interleaved. Typed keys keep
+separator characters from merging distinct groups. All three new regressions
+failed before the fix; the indeterminate and patient-results suites then passed
+12 tests, and all eight generated A4/Letter pages were visually inspected. Both
+threads received the published fix and validation evidence and were formally
+resolved, bringing the reviewed findings addressed to 27. This follow-up is
+included in #4649; its current checks determine merge readiness.
 
 Current candidate-validation results and the tested commit are recorded in
 [#4649](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4649) and its checks.

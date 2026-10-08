@@ -1,7 +1,10 @@
 package org.openelisglobal.reports.action.implementation;
 
 import java.io.ByteArrayOutputStream;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.util.PdfExportSupport;
@@ -112,21 +115,20 @@ final class StudyIndeterminateResultsPdf {
     }
 
     /**
-     * Each service's orders, a group for each service, doctor and reception date in
-     * the order the items arrive.
+     * Each service's orders, grouped by service, doctor and reception timestamp,
+     * preserving the first-seen group order and the order within each group.
      */
     static byte[] byLocation(List<IndeterminateReportData> orders, String studyName) {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         Document document = new Document(PdfExportSupport.pageSize(), 30, 30, 30, 70);
         ReportHeaderPdf.openRepeating(document, out, studyName, ReportHeaderPdf.siteNameLines(), "SEROLOGIE",
                 "Sérologie VIH " + SEROLOGY_METHOD).setPageEvent(new GlossaryFooter());
-        int start = 0;
-        while (start < orders.size()) {
-            int end = start;
-            while (end < orders.size() && group(orders.get(end)).equals(group(orders.get(start)))) {
-                end++;
-            }
-            IndeterminateReportData first = orders.get(start);
+        Map<LocationGroup, List<IndeterminateReportData>> groups = new LinkedHashMap<>();
+        for (IndeterminateReportData order : orders) {
+            groups.computeIfAbsent(group(order), ignored -> new ArrayList<>()).add(order);
+        }
+        for (List<IndeterminateReportData> groupOrders : groups.values()) {
+            IndeterminateReportData first = groupOrders.get(0);
             PdfPTable table = new PdfPTable(new float[] { 112, 84, 106, 140, 110 });
             table.setWidthPercentage(100);
             table.setSpacingBefore(12);
@@ -138,14 +140,13 @@ final class StudyIndeterminateResultsPdf {
                     "" }) {
                 table.addCell(plain(heading, UNDERLINED_FONT));
             }
-            for (IndeterminateReportData order : orders.subList(start, end)) {
+            for (IndeterminateReportData order : groupOrders) {
                 for (String value : new String[] { order.getLabNo(), order.getSubjectNumber(),
                         order.getCollectiondate(), order.getFinalResult(), "" }) {
                     table.addCell(plain(Objects.toString(value, ""), TEXT_FONT));
                 }
             }
             document.add(table);
-            start = end;
         }
         Paragraph biologist = new Paragraph("Le Biologiste", TEXT_FONT);
         biologist.setIndentationLeft(320);
@@ -155,9 +156,12 @@ final class StudyIndeterminateResultsPdf {
         return out.toByteArray();
     }
 
-    private static String group(IndeterminateReportData order) {
-        return Objects.toString(order.getOrgname(), "") + "|" + Objects.toString(order.getDoctor(), "") + "|"
-                + Objects.toString(order.getReceivedDate(), "");
+    private record LocationGroup(String service, String doctor, String receivedAt) {
+    }
+
+    private static LocationGroup group(IndeterminateReportData order) {
+        return new LocationGroup(Objects.toString(order.getOrgname(), ""), Objects.toString(order.getDoctor(), ""),
+                Objects.toString(order.getReceivedDate(), ""));
     }
 
     private static void addGroupLine(PdfPTable table, String label, String value, boolean ruledAbove) {
