@@ -47,7 +47,10 @@ public class AnalyzerRoleBoundaryTest {
             ImportIssuesRestController.class, AnalyzerDeliveryIssuesRestController.class,
             AnalyzerDeliveryBundleRestController.class, AnalyzerFailedRunRestController.class);
 
-    /** The analyzer reads the QC and microbiology pages need; the rest of the controller is setup. */
+    /**
+     * The analyzer reads the QC and microbiology pages need; the rest of the
+     * controller is setup.
+     */
     private static final Set<String> ANALYZER_LIST_READS = Set.of("list", "get");
 
     @Test
@@ -133,8 +136,8 @@ public class AnalyzerRoleBoundaryTest {
     }
 
     private static List<String> instanceHandlers(boolean listReads) {
-        List<String> selected = handlers(AnalyzerInstanceRestController.class).stream()
-                .filter(handler -> ANALYZER_LIST_READS.contains(handler.substring(handler.indexOf('#') + 1)) == listReads)
+        List<String> selected = handlers(AnalyzerInstanceRestController.class).stream().filter(
+                handler -> ANALYZER_LIST_READS.contains(handler.substring(handler.indexOf('#') + 1)) == listReads)
                 .toList();
         assertFalse("AnalyzerInstanceRestController has no such handlers", selected.isEmpty());
         return selected;

@@ -151,10 +151,11 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String recognitionFingerprint = requireNestedExtensionText(recognition, "recognitionFingerprint",
                 "Control-recognition fingerprint is required");
 
-        // The raw value is what OE2 stores as the numeric result, and stored numeric
-        // results are read back as numbers, including into calculations.
-        if (observation.hasValueQuantity() && !(BoundedDecimal.isBounded(observation.getValueQuantity().getValue())
-                && BoundedDecimal.isBoundedDecimal(rawValue))) {
+        // The quantity becomes the stored number through toPlainString, which writes
+        // out every digit an exponent implies; stored numbers are also read back
+        // into calculations.
+        if (observation.hasValueQuantity() && observation.getValueQuantity().hasValue()
+                && !BoundedDecimal.isBounded(observation.getValueQuantity().getValue())) {
             throw new IllegalArgumentException("A numeric analyzer result must be a bounded decimal");
         }
         String units = observation.hasValueQuantity() ? observation.getValueQuantity().getUnit() : null;
