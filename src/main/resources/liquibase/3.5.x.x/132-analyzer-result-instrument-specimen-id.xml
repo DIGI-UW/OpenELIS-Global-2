@@ -5,7 +5,7 @@
         xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
 
-    <changeSet id="120-analyzer-result-instrument-specimen-id" author="oe">
+    <changeSet id="132-analyzer-result-instrument-specimen-id" author="oe">
         <comment>Keep the specimen ID an instrument reported, verbatim, beside the accession it resolved to, so a tube ID can be placed on its own tube.</comment>
         <addColumn schemaName="clinlims" tableName="analyzer_results">
             <column name="instrument_specimen_id" type="VARCHAR(255)"/>
