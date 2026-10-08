@@ -1,15 +1,16 @@
 # Analyzer Bridge and analyzer mock for the published-image stack.
 # Usage: docker compose -f docker-compose.yml -f docker-compose.analyzers.yml up -d
 #
-# Image tags must match the tools/openelis-analyzer-bridge and
-# tools/analyzer-mock-server submodule pins (checked in deployment-checks.yml).
+# The Bridge and mock images are built from the tools/openelis-analyzer-bridge
+# and tools/analyzer-mock-server submodule commits, tested in E2E and published
+# with the application images under the same tags.
 # The mock needs no Docker socket: it sends to the shared ASTM listener,
 # identifying the configured instrument through its message sender ID.
 
 services:
   openelis-analyzer-bridge:
     container_name: openelis-analyzer-bridge
-    image: itechuw/openelis-analyzer-bridge:3.3.0
+    image: itechuw/openelis-global-2-analyzer-bridge:develop
     platform: linux/amd64
     depends_on:
       certs:
@@ -48,7 +49,7 @@ services:
 
   astm-simulator:
     container_name: openelis-astm-simulator
-    image: itechuw/astm-mock-server:0.2.0
+    image: itechuw/openelis-global-2-analyzer-mock:develop
     platform: linux/amd64
     volumes:
       - analyzer-imports:/data/analyzer-imports

@@ -245,7 +245,7 @@ class DeploymentTest(unittest.TestCase):
         self.assertTrue((self.diagnostics / "compose-status.txt").exists())
         self.assertEqual(self.previous_override, (self.diagnostics / "previous-images.json").read_text())
         log_command = next(call.args[0] for call in diagnostics.call_args_list if "logs" in call.args[0])
-        self.assertTrue(set(deployment.SERVICES).union(deployment.ANALYZER_SERVICES).issubset(log_command))
+        self.assertTrue(set(deployment.SERVICES).issubset(log_command))
         self.assertFalse(any(args[:1] == ["env"] for args in self.commands))
         self.assertIn("keep-existing-value", (self.root / ".env").read_text())
 
@@ -271,7 +271,7 @@ class DeploymentTest(unittest.TestCase):
         target = json.loads(self.target.read_text())
         self.assertEqual(self.sha, target["appSha"])
         self.assertEqual(str(release), target["release"])
-        self.assertEqual(5, len(target["images"]))
+        self.assertEqual(set(deployment.SERVICES), set(target["images"]))
         self.assertEqual("DEV01900361250089391", target["verification"]["analyzerDelivery"]["accession"])
 
     def test_failed_delivery_proof_withdraws_ready_identity(self):
