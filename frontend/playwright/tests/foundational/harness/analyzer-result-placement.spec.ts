@@ -63,8 +63,8 @@ test.describe("Where an instrument's result is placed", () => {
     patient?: { id: string; name: string },
   ) =>
     sendGeneXpertFixture(
-      page.request,
-      analyzer.bridgeConnectionId,
+      page,
+      analyzer.id,
       specimenId,
       { assay: "hivvl", outcome },
       senderId,

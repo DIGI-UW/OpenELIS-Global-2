@@ -17,16 +17,16 @@ services:
         condition: service_completed_successfully
     volumes:
       - key_trust-store-volume:/etc/openelis-global:ro
-      - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
       - analyzer-imports:/data/analyzer-imports
-      # FILE state store and delivery outbox; the outbox holds results OpenELIS
-      # has not accepted yet, so it must survive container recreation.
+      # FILE state store, delivery outbox, and the Bridge's own key pair and
+      # pairing record; the outbox holds results OpenELIS has not accepted yet,
+      # so all of it must survive container recreation.
       - bridge-state:/data/openelis-analyzer-bridge
     environment:
-      - SPRING_PROFILES_ACTIVE=dev
       - TZ=${TZ:-UTC}
-      - BRIDGE_SECURITY_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
-      - BRIDGE_SECURITY_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
+      # OpenELIS pairs with this code on startup. Without one, the Bridge logs a
+      # generated code for a Global Admin to enter on the Analyzers page.
+      - BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
       - BRIDGE_FILE_ENABLED=true
       - BRIDGE_FILE_STATE_STORE_PATH=/data/openelis-analyzer-bridge/state.db
       - BRIDGE_OUTBOX_DB_PATH=/data/openelis-analyzer-bridge/outbox.db
@@ -35,10 +35,9 @@ services:
       # hides behind a passing health check.
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_HEALTH_URI=https://oe.openelis.org:8443/OpenELIS-Global/health
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_USERNAME=${TEST_USER:-${OE_ADMIN_USERNAME:-admin}}
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_PASSWORD=${TEST_PASS:-${OE_ADMIN_PASSWORD:-adminADMIN!}}
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
-      - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
+      # OpenELIS's HTTPS certificate is in the stack's trust store, so the
+      # Bridge also verifies OpenELIS after that certificate is regenerated.
+      - JDK_JAVA_OPTIONS=-Djavax.net.ssl.trustStore=/etc/openelis-global/truststore -Djavax.net.ssl.trustStorePassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Djavax.net.ssl.trustStoreType=PKCS12
       - ORG_ITECH_AHB_MLLP_ENABLED=true
       - ORG_ITECH_AHB_MLLP_PORT=2575
     networks:
@@ -80,8 +79,7 @@ services:
   oe.openelis.org:
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
-      - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
-      - ANALYZER_BRIDGE_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
+      - ANALYZER_BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-}
     volumes:
       # The deployer seeds this persistent directory once; Catalog Import can write to it.
       - ./configuration/backend:/var/lib/openelis-global/configuration/backend

@@ -46,8 +46,8 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
       specimenName: "Plasma",
     });
     await sendGeneXpertFixture(
-      page.request,
-      analyzer.bridgeConnectionId,
+      page,
+      analyzer.id,
       order.accession,
       { assay: "hivvl", outcome: "quantified" },
       senderId,
@@ -90,8 +90,8 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
       specimenName: specimen,
     });
     await sendGeneXpertFixture(
-      page.request,
-      analyzer.bridgeConnectionId,
+      page,
+      analyzer.id,
       order.accession,
       { assay: "cov-flu-rsv-plus", outcome: "sars-cov-2-positive" },
       senderId,
@@ -145,8 +145,8 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
       });
       orders.push(order);
       await sendGeneXpertFixture(
-        page.request,
-        instrument.analyzer.bridgeConnectionId,
+        page,
+        instrument.analyzer.id,
         order.accession,
         { assay: "hivvl", outcome: instrument.outcome },
         instrument.senderId,
@@ -281,8 +281,8 @@ test.describe("A catalog test deactivated after setup", () => {
     deactivated = tests.fluB;
 
     await sendGeneXpertFixture(
-      page.request,
-      analyzer.bridgeConnectionId,
+      page,
+      analyzer.id,
       order.accession,
       { assay: "cov-flu-plus", outcome: "flu-b-positive" },
       senderId,
@@ -418,8 +418,8 @@ test.describe("An instrument that sends its own test code", () => {
       specimenName: "Plasma",
     });
     await sendGeneXpertFixture(
-      page.request,
-      analyzer.bridgeConnectionId,
+      page,
+      analyzer.id,
       order.accession,
       { assay: "hivvl", outcome: "quantified" },
       senderId,
