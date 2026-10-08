@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
+import org.openelisglobal.common.util.BoundedDecimal;
 import org.openelisglobal.microbiology.dao.MicroAntibioticDAO;
 import org.openelisglobal.microbiology.dao.MicroAstOverrideEventDAO;
 import org.openelisglobal.microbiology.dao.MicroAstPanelAntibioticDAO;
@@ -345,6 +346,7 @@ public class MicroAstServiceImpl implements MicroAstService {
 
     private MicroAstReading recordReading(MicroAstRun run, String antibioticId, MicroAstMethod method,
             BigDecimal rawValue, String performedBy) {
+        requireBoundedRawValue(rawValue);
         String runId = run.getId();
         MicroCaseServiceImpl.requireText(runId, "runId");
         MicroCaseServiceImpl.requireText(antibioticId, "antibioticId");
@@ -507,6 +509,7 @@ public class MicroAstServiceImpl implements MicroAstService {
         if (batch.readings().isEmpty()) {
             throw new IllegalArgumentException("AST_ANALYZER_READINGS_REQUIRED");
         }
+        batch.readings().forEach(reading -> requireBoundedRawValue(reading.rawValue()));
         if (run.getAnalyzerInstrumentId() != null && batch.analyzerInstrumentId() != null
                 && !run.getAnalyzerInstrumentId().equals(batch.analyzerInstrumentId())) {
             throw new MicroAstConflictException("AST_ANALYZER_INSTRUMENT_MISMATCH");
@@ -773,6 +776,13 @@ public class MicroAstServiceImpl implements MicroAstService {
         reading.setCreatedAt(MicroCaseServiceImpl.now());
         reading.setCreatedBy(performedBy);
         readingDAO.insert(reading);
+    }
+
+    /** The reading is kept as plain text too, so its exponent must be small. */
+    private static void requireBoundedRawValue(BigDecimal rawValue) {
+        if (rawValue != null && !BoundedDecimal.isBounded(rawValue)) {
+            throw new IllegalArgumentException("AST_RAW_VALUE_INVALID");
+        }
     }
 
     private String validInterpretation(String value) {
