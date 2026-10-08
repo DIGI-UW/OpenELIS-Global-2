@@ -292,6 +292,8 @@
   <include relativeToChangelogFile="true" file="073-inventory-item-code-sequence.xml"/>
   <!-- OGC-657: Storage Management collapses to one sidenav row; its levels are tabs -->
   <include relativeToChangelogFile="true" file="073-storage-menu-collapse.xml"/>
+  <!-- OGC-438: per-item lead time for the board's order-by date -->
+  <include relativeToChangelogFile="true" file="103-inventory-item-lead-time.xml"/>
 
   <!-- OGC-949 / OGC-763: test_alert_rule foundation for the v2 Alerts tab -->
   <include relativeToChangelogFile="true" file="049-test-alert-rule.xml"/>
@@ -622,5 +624,8 @@
 
   <!-- Overdue STAT alerts: the turnaround target they are raised against. -->
   <include relativeToChangelogFile="true" file="119-stat-turnaround-config.xml"/>
+
+  <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
+  <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
 
 </databaseChangeLog>

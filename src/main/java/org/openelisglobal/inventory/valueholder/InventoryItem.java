@@ -80,6 +80,11 @@ public class InventoryItem extends BaseObject<Long> {
     @Min(0)
     private Integer lowStockThreshold;
 
+    /** Order-to-arrival days, set per lab, never shared; null when unset. */
+    @Column(name = "lead_time_days")
+    @Min(value = 0, message = "Lead time cannot be negative")
+    private Integer leadTimeDays;
+
     @Column(name = "expiration_alert_days")
     @Min(1)
     private Integer expirationAlertDays;

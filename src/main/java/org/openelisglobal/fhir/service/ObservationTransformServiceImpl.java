@@ -230,7 +230,28 @@ public class ObservationTransformServiceImpl implements ObservationTransformServ
         if (bean.getAnalysisId() == null || bean.getTestId() == null || bean.getSampleItemId() == null) {
             throw new UnprocessableEntityException("Missing required fields for result creation");
         }
+        requireNumberForNumericTest(bean);
         return bean;
+    }
+
+    /**
+     * The result type of a write follows the form of the FHIR value, so a
+     * valueString on a test with numeric results was validated as text and stored
+     * in the numeric result, after which the Observation could not be read any
+     * more. The test's own result type decides whether the value must be a number.
+     */
+    private void requireNumberForNumericTest(TestResultItem bean) {
+        Test test = testService.get(bean.getTestId());
+        if (test == null || bean.getResultValue() == null
+                || !TypeOfTestResultServiceImpl.ResultType.isNumeric(testService.getResultType(test))) {
+            return;
+        }
+        try {
+            new BigDecimal(bean.getResultValue().trim());
+        } catch (NumberFormatException e) {
+            throw new UnprocessableEntityException("Observation value '" + bean.getResultValue()
+                    + "' is not a number, and test " + test.getDescription() + " records numeric results");
+        }
     }
 
     @Override

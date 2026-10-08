@@ -3,7 +3,6 @@ package org.openelisglobal.labelpreset.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
-import com.itextpdf.text.pdf.PdfReader;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +17,7 @@ import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -136,21 +136,11 @@ public class OrderLabelReprintDecreaseQtyTest extends BaseWebContextSensitiveTes
     public void renderFromSnapshot_withQuantity_printsThatManyCopiesUpToThePresetMax() throws Exception {
         ByteArrayOutputStream two = orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(), sampleItemId,
                 "sample", 2);
-        PdfReader reader = new PdfReader(two.toByteArray());
-        try {
-            assertEquals("two copies instead of the saved three", 2, reader.getNumberOfPages());
-        } finally {
-            reader.close();
-        }
+        assertEquals("two copies instead of the saved three", 2, PdfText.pageCount(two.toByteArray()));
 
         ByteArrayOutputStream saved = orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(),
                 sampleItemId, "sample", null);
-        reader = new PdfReader(saved.toByteArray());
-        try {
-            assertEquals("no quantity keeps the saved three", 3, reader.getNumberOfPages());
-        } finally {
-            reader.close();
-        }
+        assertEquals("no quantity keeps the saved three", 3, PdfText.pageCount(saved.toByteArray()));
 
         LabelQuantityRefusedException above = assertThrows(LabelQuantityRefusedException.class,
                 () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(), sampleItemId, "sample", 6));

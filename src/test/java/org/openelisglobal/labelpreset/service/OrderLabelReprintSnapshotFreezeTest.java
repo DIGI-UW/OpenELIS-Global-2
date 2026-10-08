@@ -4,8 +4,6 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 
-import com.itextpdf.text.Rectangle;
-import com.itextpdf.text.pdf.PdfReader;
 import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Map;
@@ -22,6 +20,7 @@ import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
 import org.openelisglobal.labelpreset.valueholder.PresetSnapshotDto;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -176,17 +175,13 @@ public class OrderLabelReprintSnapshotFreezeTest extends BaseWebContextSensitive
         ByteArrayOutputStream pdf = orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId());
         assertTrue("reprint produced a non-empty PDF", pdf.size() > 0);
 
-        PdfReader pdfReader = new PdfReader(pdf.toByteArray());
-        try {
-            assertEquals("PDF has one label page", 1, pdfReader.getNumberOfPages());
-            Rectangle pageSize = pdfReader.getPageSize(1);
-            assertEquals("rendered page height reflects the SNAPSHOT's 25 (page height 175), not the live 50 (350)",
-                    EXPECTED_PAGE_HEIGHT, pageSize.getHeight(), 1.0f);
-            assertTrue("page height must NOT be the buggy live-preset value (350)",
-                    Math.abs(pageSize.getHeight() - BUGGY_PAGE_HEIGHT) > 1.0f);
-        } finally {
-            pdfReader.close();
-        }
+        byte[] bytes = pdf.toByteArray();
+        assertEquals("PDF has one label page", 1, PdfText.pageCount(bytes));
+        float pageHeight = PdfText.pageHeight(bytes, 1);
+        assertEquals("rendered page height reflects the SNAPSHOT's 25 (page height 175), not the live 50 (350)",
+                EXPECTED_PAGE_HEIGHT, pageHeight, 1.0f);
+        assertTrue("page height must NOT be the buggy live-preset value (350)",
+                Math.abs(pageHeight - BUGGY_PAGE_HEIGHT) > 1.0f);
     }
 
     private void cleanTestData() {

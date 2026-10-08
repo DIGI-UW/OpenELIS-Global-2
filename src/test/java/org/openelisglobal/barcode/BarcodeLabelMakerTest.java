@@ -6,8 +6,21 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.BinaryBitmap;
+import com.google.zxing.DecodeHintType;
+import com.google.zxing.MultiFormatReader;
+import com.google.zxing.Result;
+import com.google.zxing.client.j2se.BufferedImageLuminanceSource;
+import com.google.zxing.common.HybridBinarizer;
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import org.apache.pdfbox.Loader;
+import org.apache.pdfbox.pdmodel.PDDocument;
+import org.apache.pdfbox.rendering.ImageType;
+import org.apache.pdfbox.rendering.PDFRenderer;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
@@ -225,6 +238,40 @@ public class BarcodeLabelMakerTest {
         Label label = getQueuedLabels(labelMaker).get(0);
         List<LabelField> fields = collectFields(label.getAboveFields());
         assertTrue(fields.stream().anyMatch(field -> "NAT-77".equals(field.getValue())));
+    }
+
+    @Test
+    public void createLabelsAsStream_barcodeDecodesToTheLabelCode() throws Exception {
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+        labelMaker.generateLabels("ACC-1", "freezerOrder", "1", "false");
+        String code = getQueuedLabels(labelMaker).get(0).getCode();
+
+        Result decoded = decodeFirstPage(labelMaker.createLabelsAsStream().toByteArray());
+
+        assertEquals(BarcodeFormat.CODE_128, decoded.getBarcodeFormat());
+        assertEquals(code, decoded.getText());
+    }
+
+    @Test
+    public void createLabelsAsStream_qrCodeDecodesToTheLabelCode() throws Exception {
+        BarcodeLabelMaker labelMaker = new BarcodeLabelMaker();
+        labelMaker.setBarcodeType(BarcodeLabelMaker.BarcodeType.QR);
+        labelMaker.generateLabels("ACC-1", "freezerOrder", "1", "false");
+        String code = getQueuedLabels(labelMaker).get(0).getCode();
+
+        Result decoded = decodeFirstPage(labelMaker.createLabelsAsStream().toByteArray());
+
+        assertEquals(BarcodeFormat.QR_CODE, decoded.getBarcodeFormat());
+        assertEquals(code, decoded.getText());
+    }
+
+    private Result decodeFirstPage(byte[] pdf) throws Exception {
+        BufferedImage page;
+        try (PDDocument document = Loader.loadPDF(pdf)) {
+            page = new PDFRenderer(document).renderImageWithDPI(0, 300, ImageType.GRAY);
+        }
+        BinaryBitmap bitmap = new BinaryBitmap(new HybridBinarizer(new BufferedImageLuminanceSource(page)));
+        return new MultiFormatReader().decode(bitmap, Map.of(DecodeHintType.TRY_HARDER, Boolean.TRUE));
     }
 
     @SuppressWarnings("unchecked")

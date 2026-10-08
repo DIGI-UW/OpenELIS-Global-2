@@ -43,7 +43,7 @@ const fromStoredCalendarDate = (value) => {
   );
 };
 
-const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
+const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
 
@@ -103,6 +103,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    if (!lot && item) {
+      setFormData((prev) => ({ ...prev, inventoryItem: item }));
+    }
+  }, [lot, item]);
 
   useEffect(() => {
     if (lot) {

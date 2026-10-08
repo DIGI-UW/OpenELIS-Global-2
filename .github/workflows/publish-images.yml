@@ -34,7 +34,7 @@ jobs:
     steps:
       - name: Select the build to publish and deploy
         id: context
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         with:
           script: |
             let run = context.payload.workflow_run;
@@ -80,12 +80,12 @@ jobs:
       checks: read
     steps:
       - name: Checkout candidate checkpoint gate
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.setup.outputs.head_sha }}
           sparse-checkout: .github/scripts
       - name: Require all checkpoints for the exact candidate
-        uses: actions/github-script@v8
+        uses: actions/github-script@v9
         env:
           CANDIDATE_SHA: ${{ needs.setup.outputs.head_sha }}
           BUILD_RUN_ID: ${{ needs.setup.outputs.build_run_id }}
@@ -133,14 +133,14 @@ jobs:
       # Trivy failed with "cannot find ignorefile" on every publish since the
       # scan was added. Check out just that file, at the commit being published.
       - name: Checkout Trivy ignore list
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.setup.outputs.head_sha }}
           sparse-checkout: .trivyignore
           sparse-checkout-cone-mode: false
 
       - name: Download image map from triggering build workflow
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: e2e-image-map
           path: /tmp/e2e-image-map
@@ -291,7 +291,7 @@ jobs:
     outputs:
       manifest: ${{ steps.manifest.outputs.manifest }}
     steps:
-      - uses: actions/download-artifact@v6
+      - uses: actions/download-artifact@v7
         with:
           pattern: published-image-*
           merge-multiple: true
@@ -341,7 +341,7 @@ jobs:
       REMOTE_RUN: /tmp/openelis-deploy-${{ github.run_id }}-${{ github.run_attempt }}
     steps:
       - name: Checkout the application's deployment files
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ needs.setup.outputs.head_sha }}
           sparse-checkout: |
