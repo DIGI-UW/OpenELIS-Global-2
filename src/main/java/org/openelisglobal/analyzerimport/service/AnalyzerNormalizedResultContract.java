@@ -14,6 +14,7 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.PrimitiveType;
 import org.hl7.fhir.r4.model.Specimen;
+import org.openelisglobal.common.util.BoundedDecimal;
 
 /** Consumer projection of the versioned Bridge normalized-result contract. */
 public record AnalyzerNormalizedResultContract(String messageId, String bridgeConnectionId, String profileId,
@@ -150,6 +151,12 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String recognitionFingerprint = requireNestedExtensionText(recognition, "recognitionFingerprint",
                 "Control-recognition fingerprint is required");
 
+        // The raw value is what OE2 stores as the numeric result, and stored numeric
+        // results are read back as numbers, including into calculations.
+        if (observation.hasValueQuantity() && !(BoundedDecimal.isBounded(observation.getValueQuantity().getValue())
+                && BoundedDecimal.isBoundedDecimal(rawValue))) {
+            throw new IllegalArgumentException("A numeric analyzer result must be a bounded decimal");
+        }
         String units = observation.hasValueQuantity() ? observation.getValueQuantity().getUnit() : null;
         String comparator = observation.hasValueQuantity() && observation.getValueQuantity().hasComparator()
                 ? observation.getValueQuantity().getComparator().toCode()
