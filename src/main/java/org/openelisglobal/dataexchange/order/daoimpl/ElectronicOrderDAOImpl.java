@@ -16,6 +16,7 @@ package org.openelisglobal.dataexchange.order.daoimpl;
 import java.sql.Date;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Vector;
 import org.apache.commons.validator.GenericValidator;
 import org.hibernate.HibernateException;
@@ -130,6 +131,17 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
         return null;
     }
 
+    /** Lower cases each value so it can be compared against {@code lower(eo.externalId)}. */
+    private List<String> toLowerCase(List<String> values) {
+        List<String> lowerCased = new ArrayList<>();
+        if (values != null) {
+            for (String value : values) {
+                lowerCased.add(value == null ? null : value.toLowerCase(Locale.ROOT));
+            }
+        }
+        return lowerCased;
+    }
+
     @Override
     public List<ElectronicOrder> getAllElectronicOrdersMatchingAnyValue(List<String> identifierValues,
             String patientValue, SortOrder order) {
@@ -162,7 +174,10 @@ public class ElectronicOrderDAOImpl extends BaseDAOImpl<ElectronicOrder, String>
         try {
 
             Query<?> query = entityManager.unwrap(Session.class).createQuery(hql);
-            query.setParameterList("identifierValues", identifierValues);
+            // The HQL lowercases eo.externalId, so the supplied values have to be lowercased
+            // too. Without this an identifier typed or scanned in upper case never matches,
+            // while the same identifier in lower case does.
+            query.setParameterList("identifierValues", toLowerCase(identifierValues));
             query.setParameter("patientValue", patientValue);
             // query.setParameter("order", order.getValue());
             List<?> records = query.list();
