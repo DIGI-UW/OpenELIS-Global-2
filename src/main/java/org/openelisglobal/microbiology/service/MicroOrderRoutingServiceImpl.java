@@ -13,6 +13,7 @@ import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.dao.MicroCaseRequestDAO;
 import org.openelisglobal.microbiology.valueholder.*;
 import org.openelisglobal.panelitem.service.PanelItemService;
+import org.openelisglobal.program.service.ProgramSampleService;
 import org.openelisglobal.sample.valueholder.Sample;
 import org.openelisglobal.sampleitem.service.SampleItemService;
 import org.openelisglobal.sampleitem.valueholder.SampleItem;
@@ -36,6 +37,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     private final AnalysisService analyses;
     private final TestService tests;
     private final PanelItemService panels;
+    private final ProgramSampleService programSamples;
 
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.common.services.IStatusService statuses;
@@ -43,7 +45,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
     public MicroOrderRoutingServiceImpl(MicroCaseDAO cases, MicroCaseRequestDAO requests, MicroCaseAnalysisDAO links,
             MicroCaseMembershipService membership, MicroCaseAnalysisService caseAnalyses,
             SampleTypeRequestService sampleRequests, SampleItemService samples, AnalysisService analyses,
-            TestService tests, PanelItemService panels) {
+            TestService tests, PanelItemService panels, ProgramSampleService programSamples) {
         this.cases = cases;
         this.requests = requests;
         this.links = links;
@@ -54,6 +56,7 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         this.analyses = analyses;
         this.tests = tests;
         this.panels = panels;
+        this.programSamples = programSamples;
     }
 
     @Override
@@ -206,6 +209,10 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
         created.setSampleTypeId(typeId);
         created.setLabUnitId(test.getTestSection().getId());
         created.setCreatedBy(actor);
+        var orderProgram = programSamples.getProgrammeSampleBySample(Integer.valueOf(order.getId()), null);
+        if (orderProgram != null && orderProgram.getProgram().isShowOnMicroCase()) {
+            created.setProgramId(orderProgram.getProgram().getId());
+        }
         cases.insert(created);
         return created;
     }

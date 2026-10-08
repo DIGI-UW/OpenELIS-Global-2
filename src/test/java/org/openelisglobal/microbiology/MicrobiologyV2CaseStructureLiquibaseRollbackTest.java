@@ -102,6 +102,15 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                 assertTrue(columnExists(connection, "sample_item", "body_site"));
                 assertTrue(columnExists(connection, "dictionary", "container_population"));
                 assertTrue(columnExists(connection, "test", "opens_microbiology_case"));
+                assertTrue(columnExists(connection, "program", "show_on_micro_case"));
+                assertEquals("0", scalar(connection,
+                        "SELECT COUNT(*) FROM clinlims.program WHERE show_on_micro_case IS DISTINCT FROM false"));
+                Liquibase programVisibility = new Liquibase("liquibase/3.6.x.x/015-microbiology-program-visibility.xml",
+                        resources, database);
+                programVisibility.rollback(1, "test");
+                assertFalse(columnExists(connection, "program", "show_on_micro_case"));
+                app.update(contexts);
+                assertTrue(columnExists(connection, "program", "show_on_micro_case"));
                 assertNull(scalar(connection, "SELECT culture_set_number FROM clinlims.sample_item WHERE id=888802"));
                 assertNull(scalar(connection, "SELECT body_site FROM clinlims.sample_item WHERE id=888802"));
                 // Shared details and catalog flags are registered, reversible application

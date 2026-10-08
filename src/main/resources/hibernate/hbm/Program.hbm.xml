@@ -43,6 +43,9 @@
         <property name="isActive" column="is_active"
             type="java.lang.String" />
 
+        <property name="showOnMicroCase" column="show_on_micro_case"
+            type="boolean" not-null="true" />
+
         <!-- Programs V2: many-to-many via program_lab_unit; legacy testSection
             single FK stays populated during the transition. -->
         <set name="labUnits" table="program_lab_unit" lazy="false"

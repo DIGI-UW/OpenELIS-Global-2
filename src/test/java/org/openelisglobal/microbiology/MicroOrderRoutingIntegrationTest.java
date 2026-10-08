@@ -60,6 +60,10 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
     private AnalysisService analyses;
     @Autowired
     private MicroCaseAnalysisDAO analysisLinks;
+    @Autowired
+    private org.openelisglobal.program.service.ProgramService programs;
+    @Autowired
+    private org.openelisglobal.program.service.ProgramSampleService programSamples;
     private Sample order;
     private org.openelisglobal.test.valueholder.Test test;
     private TypeOfSample type;
@@ -95,6 +99,65 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         em.persist(r);
         em.flush();
         return r;
+    }
+
+    @Test
+    public void newCaseInheritsEligibleOrderProgramAndReusedCaseKeepsIt() {
+        var original = program(true);
+        var association = new org.openelisglobal.program.valueholder.ProgramSample();
+        association.setProgram(original);
+        association.setSample(order);
+        association.setSysUserId(actor);
+        programSamples.insert(association);
+        request(test.getId());
+        routing.routeOrder(order, actor);
+        var owner = cases.getByOrder(order.getId()).getFirst();
+        assertEquals(original.getId(), owner.getProgramId());
+        assertEquals(original.getId(),
+                programSamples.getProgrammeSampleBySample(Integer.valueOf(order.getId()), null).getProgram().getId());
+
+        var replacement = program(true);
+        association.setProgram(replacement);
+        programSamples.update(association);
+        var additional = em.find(org.openelisglobal.test.valueholder.Test.class, fixtures.createCatalogTest().getId());
+        additional.setTestSection(test.getTestSection());
+        additional.setOpensMicrobiologyCase(true);
+        additional.setMicrobiologyCaseRole("DIRECT");
+        request(additional.getId());
+        routing.routeOrder(order, actor);
+        em.flush();
+        em.clear();
+        var owners = cases.getByOrder(order.getId());
+        assertEquals(1, owners.size());
+        assertEquals(owner.getId(), owners.getFirst().getId());
+        assertEquals(original.getId(), owners.getFirst().getProgramId());
+        assertEquals(replacement.getId(),
+                programSamples.getProgrammeSampleBySample(Integer.valueOf(order.getId()), null).getProgram().getId());
+    }
+
+    @Test
+    public void programWithoutMicrobiologyVisibilityDoesNotDefaultOntoCase() {
+        var hidden = program(false);
+        var association = new org.openelisglobal.program.valueholder.ProgramSample();
+        association.setProgram(hidden);
+        association.setSample(order);
+        association.setSysUserId(actor);
+        programSamples.insert(association);
+        request(test.getId());
+        routing.routeOrder(order, actor);
+        assertNull(cases.getByOrder(order.getId()).getFirst().getProgramId());
+        assertEquals(hidden.getId(), association.getProgram().getId());
+    }
+
+    private org.openelisglobal.program.valueholder.Program program(boolean visible) {
+        var program = new org.openelisglobal.program.valueholder.Program();
+        program.setCode("V2_" + UUID.randomUUID().toString().replace("-", "").substring(0, 12));
+        program.setProgramName(program.getCode());
+        program.setManuallyChanged(true);
+        program.setShowOnMicroCase(visible);
+        program.setSysUserId(actor);
+        programs.insert(program);
+        return program;
     }
 
     @Test

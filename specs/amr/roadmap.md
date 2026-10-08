@@ -11,9 +11,13 @@ and fixes stay in their owning milestone; they do not create extra PRs. Final
 acceptance is a gate on the assembled stack, not a separate implementation PR.
 
 Publish each reviewable milestone promptly as a draft so GitHub CI runs while
-local validation continues. Use `gh stack` to track and publish the dependent
-branches and PRs. Draft status and unfinished validation do not delay publication;
-verified contribution checks and final stack acceptance determine completion.
+local validation continues. Batch related changes and push at meaningful
+implementation checkpoints; do not push or restack after every commit. Use
+`gh stack` to track and publish the dependent branches and PRs. After a push,
+focus on implementation and local validation. Check CI when local validation is
+done and roughly 30 minutes have elapsed, rather than polling while it runs.
+Draft status and unfinished validation do not delay publication; verified
+contribution checks and final stack acceptance determine completion.
 
 An item is done when its contribution is verified on its branch: the application
 boots with the registered application changelog on fresh and upgraded databases,
