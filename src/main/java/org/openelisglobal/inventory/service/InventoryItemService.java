@@ -1,5 +1,6 @@
 package org.openelisglobal.inventory.service;
 
+import java.time.LocalDate;
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.ItemType;
@@ -8,6 +9,10 @@ import org.openelisglobal.inventory.valueholder.InventoryItem;
 public interface InventoryItemService extends BaseObjectService<InventoryItem, Long> {
 
     List<ItemType> getAllItemTypes();
+
+    int markOrdered(List<Long> itemIds, String note, LocalDate expectedDate, String sysUserId);
+
+    int clearOrdered(List<Long> itemIds, String sysUserId);
 
     /**
      * Get all active inventory items

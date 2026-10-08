@@ -55,6 +55,9 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             row.setName(item.getName());
             row.setItemType(item.getItemType() == null ? null : item.getItemType().name());
             row.setUnits(item.getUnits());
+            row.setOrderedOn(item.getOrderedAt() == null ? null : item.getOrderedAt().toLocalDateTime().toLocalDate());
+            row.setOrderExpectedDate(item.getOrderExpectedDate());
+            row.setOrderNote(item.getOrderNote());
             board.add(row);
         }
 

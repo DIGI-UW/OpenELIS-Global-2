@@ -54,4 +54,12 @@ public class InventoryProjection {
     private Double trendPercent;
 
     private BoardStatus status;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate orderedOn;
+
+    @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd")
+    private LocalDate orderExpectedDate;
+
+    private String orderNote;
 }
