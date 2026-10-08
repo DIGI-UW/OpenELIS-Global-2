@@ -154,7 +154,7 @@ public class InventoryProjectionServiceIntegrationTest extends BaseWebContextSen
         try {
             Map<Long, InventoryProjection> rows = board();
 
-            assertEquals("items, stock, usage, and order cycles: one statement each", 4,
+            assertEquals("items, stock, usage, order cycles, and one batch of tags", 5,
                     statistics.getPrepareStatementCount());
             assertEquals(USABLE_QUANTITY, rows.get(REAGENT_ITEM_ID).getOnHand(), 0.0001);
             assertNull("a retired item gets no row", rows.get(RETIRED_ITEM_ID));

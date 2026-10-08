@@ -39,4 +39,10 @@ public interface InventoryItemDAO extends BaseDAO<InventoryItem, Long> {
     InventoryItem getByFhirUuid(String fhirUuid) throws LIMSRuntimeException;
 
     List<ItemType> getAllItemTypes();
+
+    /** Every distinct tag any item carries, alphabetically. */
+    List<String> getAllTags();
+
+    /** Stored spellings whose canonical key is in canonicalKeys. */
+    List<String> getTagsMatching(java.util.Collection<String> canonicalKeys);
 }

@@ -36,6 +36,16 @@ public class InventoryItemRestController extends BaseRestController {
     @Autowired
     private InventoryItemService inventoryItemService;
 
+    @GetMapping(value = "/tags", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<List<String>> getAllTags() {
+        try {
+            return ResponseEntity.ok(inventoryItemService.getAllTags());
+        } catch (Exception e) {
+            LogEvent.logError(e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping(value = "/types", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<List<ItemType>> getAllItemTypes() {
         try {
@@ -172,7 +182,7 @@ public class InventoryItemRestController extends BaseRestController {
 
             // Update only the fields that can be changed
             existingItem.setName(item.getName());
-            existingItem.setItemType(item.getItemType());
+            existingItem.setTags(item.getTags());
             existingItem.setCategory(item.getCategory());
             existingItem.setManufacturer(item.getManufacturer());
             existingItem.setUnits(item.getUnits());

@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.daoimpl;
 import jakarta.persistence.criteria.CriteriaBuilder;
 import jakarta.persistence.criteria.CriteriaQuery;
 import jakarta.persistence.criteria.Root;
+import java.util.Collection;
 import java.util.List;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
@@ -24,6 +25,39 @@ public class InventoryItemDAOImpl extends BaseDAOImpl<InventoryItem, Long> imple
     @Transactional(readOnly = true)
     public List<ItemType> getAllItemTypes() {
         return java.util.Arrays.asList(ItemType.values());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getAllTags() throws LIMSRuntimeException {
+        try {
+            @SuppressWarnings("unchecked")
+            List<String> results = entityManager
+                    .createNativeQuery("SELECT DISTINCT tag FROM clinlims.inventory_item_tag ORDER BY tag")
+                    .getResultList();
+            return results;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting inventory item tags", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<String> getTagsMatching(Collection<String> canonicalKeys) throws LIMSRuntimeException {
+        if (canonicalKeys == null || canonicalKeys.isEmpty()) {
+            return List.of();
+        }
+        try {
+            // Must build the key exactly as InventoryItemServiceImpl.tagKey() does.
+            @SuppressWarnings("unchecked")
+            List<String> results = entityManager
+                    .createNativeQuery("SELECT DISTINCT tag FROM clinlims.inventory_item_tag"
+                            + " WHERE regexp_replace(lower(trim(tag)), '\\s+', ' ', 'g') IN (:keys)")
+                    .setParameter("keys", canonicalKeys).getResultList();
+            return results;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting matching inventory item tags", e);
+        }
     }
 
     @Override

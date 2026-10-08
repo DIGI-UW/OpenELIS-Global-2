@@ -144,6 +144,8 @@ export const InventoryItemAPI = {
   // Get item by ID
   getById: (id) => get(`/items/${id}`),
 
+  getTags: () => get("/items/tags"),
+
   // Get all item types
   getItemTypes: () => get("/items/types"),
 
