@@ -38,7 +38,7 @@ public class AnalyzerRoleBoundaryTest {
 
     private static final List<Class<?>> CONFIGURATION = List.of(AnalyzerTypeRestController.class,
             AnalyzerActivationRestController.class, AnalyzerConnectionProbeRestController.class,
-            AnalyzerMappingRestController.class);
+            AnalyzerMappingRestController.class, AnalyzerBridgePairingRestController.class);
 
     private static final List<Class<?>> QUALITY_CONTROL = List.of(QCRestController.class, QCAlertRestController.class,
             QCChartDataRestController.class, QCViolationRestController.class);
