@@ -18,6 +18,7 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
+import org.openelisglobal.analyzer.valueholder.AnalyzerBridgePairing;
 import org.openelisglobal.analyzer.valueholder.AnalyzerEvent;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
@@ -56,6 +57,7 @@ public class HibernateMappingValidationTest {
         configuration.addAnnotatedClass(AnalyzerMapping.class);
         configuration.addAnnotatedClass(AnalyzerMappingTest.class);
         configuration.addAnnotatedClass(AnalyzerMappingResult.class);
+        configuration.addAnnotatedClass(AnalyzerBridgePairing.class);
         configuration.addAnnotatedClass(AnalyzerResults.class);
         configuration.addAnnotatedClass(org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt.class);
 
