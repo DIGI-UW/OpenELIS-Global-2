@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd"
+    logicalFilePath="inventory/inventory-item-track-lots.xml">
+
+    <!-- OGC-438: per-item lot tracking, reusing the never-read individual_tracking column -->
+    <changeSet author="OGC" id="OGC-438-rename-individual-tracking-to-track-lots">
+        <preConditions onFail="MARK_RAN">
+            <columnExists tableName="inventory_item" columnName="individual_tracking" schemaName="clinlims"/>
+            <not>
+                <columnExists tableName="inventory_item" columnName="track_lots" schemaName="clinlims"/>
+            </not>
+        </preConditions>
+
+        <renameColumn schemaName="clinlims" tableName="inventory_item"
+            oldColumnName="individual_tracking" newColumnName="track_lots" columnDataType="VARCHAR(1)"/>
+
+        <sql>
+            ALTER TABLE clinlims.inventory_item
+            RENAME CONSTRAINT chk_individual_tracking TO chk_track_lots;
+        </sql>
+
+        <rollback>
+            <sql>
+                ALTER TABLE clinlims.inventory_item
+                RENAME CONSTRAINT chk_track_lots TO chk_individual_tracking;
+            </sql>
+            <renameColumn schemaName="clinlims" tableName="inventory_item"
+                oldColumnName="track_lots" newColumnName="individual_tracking" columnDataType="VARCHAR(1)"/>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -171,7 +171,8 @@ export const InventoryItemAPI = {
 
 /** Items board API: one row per active item, sorted by urgency server side. */
 export const InventoryBoardAPI = {
-  get: () => get("/board"),
+  get: (includeInactive = false) =>
+    get(`/board${includeInactive ? "?includeInactive=true" : ""}`),
 };
 
 export const InventoryTagAPI = {

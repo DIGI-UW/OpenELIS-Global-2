@@ -37,10 +37,17 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
     @Override
     @Transactional(readOnly = true)
     public List<InventoryProjection> getBoard() {
+        return getBoard(false);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<InventoryProjection> getBoard(boolean includeInactive) {
         LocalDate today = LocalDate.now();
         LocalDate windowStart = today.minusDays(InventoryProjectionCalculator.WINDOW_DAYS - 1L);
 
-        List<InventoryItem> items = inventoryItemService.getAllActive();
+        List<InventoryItem> items = includeInactive ? inventoryItemService.getAll()
+                : inventoryItemService.getAllActive();
         Map<Long, Double> usableByItem = inventoryLotDAO.getAvailableQuantityByItem();
         Map<Long, List<InventoryUsage>> usageByItem = usageByItem(windowStart, today);
         Map<Long, List<Integer>> cycleDaysByItem = cycleDaysByItem(today);
@@ -63,6 +70,7 @@ public class InventoryProjectionServiceImpl implements InventoryProjectionServic
             row.setItemType(item.getItemType() == null ? null : item.getItemType().name());
             row.setTags(item.getTags() == null ? List.of() : new ArrayList<>(item.getTags()));
             row.setUnits(item.getUnits());
+            row.setActive(item.isActive());
             row.setOrderedOn(item.getOrderedAt() == null ? null : item.getOrderedAt().toLocalDateTime().toLocalDate());
             row.setOrderExpectedDate(item.getOrderExpectedDate());
             row.setOrderNote(item.getOrderNote());

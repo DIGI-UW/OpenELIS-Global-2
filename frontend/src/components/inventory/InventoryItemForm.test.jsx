@@ -234,6 +234,103 @@ describe("InventoryItemForm — item type is a tag now", () => {
     );
   });
 
+  it("says this defines a kind of item, not a delivery of one", async () => {
+    await renderForm();
+
+    expect(
+      screen.getByText(
+        /To add more of one that already exists, use Receive stock/i,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("sends the fields the editor gained when it became the only place to define an item", async () => {
+    await renderForm();
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: "GeneXpert cartridge" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "tests" },
+    });
+    fireEvent.change(screen.getByLabelText(/catalog number/i), {
+      target: { value: "GX-MTB-10" },
+    });
+    fireEvent.change(
+      screen.getByLabelText(/warn this many days before expiry/i),
+      {
+        target: { value: "60" },
+      },
+    );
+    fireEvent.click(screen.getByLabelText(/track lots and expiry/i));
+
+    fireEvent.click(screen.getByText("Save"));
+
+    const payload = InventoryItemAPI.create.mock.calls[0][0];
+    expect(payload.catalogNumber).toBe("GX-MTB-10");
+    expect(payload.expirationAlertDays).toBe(60);
+    expect(payload.trackLots).toBe("Y");
+  });
+
+  it("sends track-lots as the module's N when it is left off", async () => {
+    await renderForm();
+    fireEvent.change(screen.getByLabelText(/item name/i), {
+      target: { value: "Examination gloves" },
+    });
+    fireEvent.change(screen.getByLabelText(/units/i), {
+      target: { value: "boxes" },
+    });
+
+    fireEvent.click(screen.getByText("Save"));
+
+    expect(InventoryItemAPI.create.mock.calls[0][0].trackLots).toBe("N");
+  });
+
+  it("opens an existing item on the track-lots setting it was saved with", async () => {
+    await renderForm({
+      item: {
+        id: 7,
+        name: "GeneXpert cartridge",
+        units: "tests",
+        tags: [],
+        trackLots: "Y",
+        catalogNumber: "GX-MTB-10",
+      },
+    });
+
+    expect(screen.getByLabelText(/track lots and expiry/i)).toBeChecked();
+    expect(screen.getByLabelText(/catalog number/i)).toHaveValue("GX-MTB-10");
+  });
+
+  it("opens empty for a new item after editing an existing one", async () => {
+    const { rerender } = await renderForm({
+      item: {
+        id: 7,
+        name: "Existing item",
+        units: "tests",
+        tags: ["Cartridge"],
+        catalogNumber: "GX-1",
+      },
+    });
+    expect(screen.getByLabelText(/catalog number/i)).toHaveValue("GX-1");
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <NotificationContext.Provider value={notificationContext}>
+          <InventoryItemForm
+            open
+            onClose={vi.fn()}
+            onSave={vi.fn()}
+            item={null}
+          />
+        </NotificationContext.Provider>
+      </IntlProvider>,
+    );
+
+    expect(screen.getByLabelText(/item name/i)).toHaveValue("");
+    expect(screen.getByLabelText(/catalog number/i)).toHaveValue("");
+    expect(appliedTags()).toEqual([]);
+  });
+
   it("says why there is no auto-consume switch", async () => {
     await renderForm();
 
@@ -288,7 +385,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
   it("shows an editable Code field with an auto-generate hint when adding a new item", async () => {
     renderCodeForm();
 
-    const codeInput = await screen.findByLabelText(/code/i);
+    const codeInput = await screen.findByLabelText(/^code$/i);
     expect(codeInput).not.toBeDisabled();
     expect(codeInput).toHaveValue("");
   });
@@ -304,7 +401,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
     });
-    const codeInput = screen.getByLabelText(/code/i);
+    const codeInput = screen.getByLabelText(/^code$/i);
     fireEvent.change(codeInput, { target: { value: "my reagent 1" } });
     expect(codeInput).toHaveValue("my reagent 1");
     expect(
@@ -334,7 +431,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     fireEvent.change(await screen.findByLabelText(/^item name/i), {
       target: { value: "My Reagent" },
     });
-    const codeInput = screen.getByLabelText(/code/i);
+    const codeInput = screen.getByLabelText(/^code$/i);
     expect(codeInput).toHaveAttribute("maxlength", "64");
 
     fireEvent.change(codeInput, { target: { value: " my reagent, v1 " } });
@@ -358,7 +455,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
   it("keeps the auto-generate hint when the typed code is already in its saved form", async () => {
     renderCodeForm();
 
-    const codeInput = await screen.findByLabelText(/code/i);
+    const codeInput = await screen.findByLabelText(/^code$/i);
     fireEvent.change(codeInput, { target: { value: "MY-REAGENT" } });
 
     expect(codeInput).toHaveValue("MY-REAGENT");
@@ -399,7 +496,7 @@ describe("InventoryItemForm — Code field (OGC-658 Part C)", () => {
     };
     renderCodeForm({ item: existingItem });
 
-    const codeInput = await screen.findByLabelText(/code/i);
+    const codeInput = await screen.findByLabelText(/^code$/i);
     expect(codeInput).toBeDisabled();
     expect(codeInput).toHaveValue("EXISTING-CODE");
 

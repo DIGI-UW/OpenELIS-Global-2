@@ -200,6 +200,10 @@ public class InventoryItemRestController extends BaseRestController {
             existingItem.setCompatibleAnalyzers(item.getCompatibleAnalyzers());
             existingItem.setTestsPerKit(item.getTestsPerKit());
 
+            existingItem.setCatalogNumber(item.getCatalogNumber());
+            existingItem.setExpirationAlertDays(item.getExpirationAlertDays());
+            existingItem.setTrackLots(item.getTrackLots());
+
             UserSessionData usd = (UserSessionData) request.getSession().getAttribute(USER_SESSION_DATA);
             String sysUserId = String.valueOf(usd.getSystemUserId());
             existingItem.setSysUserId(sysUserId);

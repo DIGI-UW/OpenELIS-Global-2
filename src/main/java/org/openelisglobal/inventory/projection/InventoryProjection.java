@@ -25,6 +25,8 @@ public class InventoryProjection {
     private List<String> tags;
     private String units;
 
+    private boolean active = true;
+
     private Double onHand;
 
     private Integer lowStockThreshold;
