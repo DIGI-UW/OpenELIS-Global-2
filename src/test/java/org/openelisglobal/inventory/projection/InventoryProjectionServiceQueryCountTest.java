@@ -2,14 +2,13 @@ package org.openelisglobal.inventory.projection;
 
 import static org.junit.Assert.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 
 import java.sql.Timestamp;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -20,15 +19,15 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.inventory.dao.InventoryLotDAO;
+import org.openelisglobal.inventory.dao.InventoryUsageDAO;
+import org.openelisglobal.inventory.dao.InventoryUsageDAO.DailyUsage;
 import org.openelisglobal.inventory.projection.InventoryProjection.BoardStatus;
 import org.openelisglobal.inventory.service.InventoryItemService;
 import org.openelisglobal.inventory.service.InventoryOrderCycleService;
-import org.openelisglobal.inventory.service.InventoryUsageService;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.QCStatus;
 import org.openelisglobal.inventory.valueholder.InventoryItem;
 import org.openelisglobal.inventory.valueholder.InventoryLot;
-import org.openelisglobal.inventory.valueholder.InventoryUsage;
 
 @RunWith(MockitoJUnitRunner.class)
 public class InventoryProjectionServiceQueryCountTest {
@@ -46,7 +45,7 @@ public class InventoryProjectionServiceQueryCountTest {
     private InventoryLotDAO inventoryLotDAO;
 
     @Mock
-    private InventoryUsageService inventoryUsageService;
+    private InventoryUsageDAO inventoryUsageDAO;
 
     @InjectMocks
     private InventoryProjectionServiceImpl service;
@@ -72,56 +71,48 @@ public class InventoryProjectionServiceQueryCountTest {
         return lot;
     }
 
-    private InventoryUsage usage(InventoryItem item, InventoryLot lot, int daysAgo) {
-        InventoryUsage usage = new InventoryUsage();
-        usage.setInventoryItem(item);
-        usage.setLot(lot);
-        usage.setQuantityUsed(2.0);
-        usage.setUsageDate(new Timestamp(System.currentTimeMillis() - daysAgo * DAY_MILLIS));
-        return usage;
+    private DailyUsage used(InventoryItem item, int daysAgo) {
+        return new DailyUsage(item.getId(), LocalDate.now().minusDays(daysAgo), 2.0);
     }
 
     @Test
     public void theBoardCostsThreeReadsWhateverTheCatalogSize() {
         List<InventoryItem> items = new ArrayList<>();
         Map<Long, Double> onHand = new HashMap<>();
-        List<InventoryUsage> usages = new ArrayList<>();
+        List<DailyUsage> totals = new ArrayList<>();
         for (long id = 1; id <= ITEM_COUNT; id++) {
             InventoryItem item = item(id);
             InventoryLot lot = usableLot(item);
             items.add(item);
             onHand.put(id, lot.getCurrentQuantity());
             for (int daysAgo = 1; daysAgo <= 20; daysAgo++) {
-                usages.add(usage(item, lot, daysAgo));
+                totals.add(used(item, daysAgo));
             }
         }
         when(inventoryItemService.getAllActive()).thenReturn(items);
         when(inventoryLotDAO.getAvailableQuantityByItem()).thenReturn(onHand);
-        when(inventoryUsageService.getByDateRange(any(), any())).thenReturn(usages);
+        when(inventoryUsageDAO.getDailyTotals(any(), any())).thenReturn(totals);
 
         List<InventoryProjection> board = service.getBoard();
 
         assertEquals(ITEM_COUNT, board.size());
         verify(inventoryItemService, times(1)).getAllActive();
         verify(inventoryLotDAO, times(1)).getAvailableQuantityByItem();
-        verify(inventoryUsageService, times(1)).getByDateRange(any(), any());
-        verifyNoMoreInteractions(inventoryLotDAO);
-        verify(inventoryUsageService, never()).getByInventoryItemId(anyLong());
+        verify(inventoryUsageDAO, times(1)).getDailyTotals(any(), any());
+        verifyNoMoreInteractions(inventoryLotDAO, inventoryUsageDAO);
     }
 
     @Test
     public void usageIsAttributedToItsOwnItemAndNotSharedAcrossTheCatalog() {
         InventoryItem busy = item(1);
         InventoryItem quiet = item(2);
-        InventoryLot busyLot = usableLot(busy);
-
-        List<InventoryUsage> usages = new ArrayList<>();
+        List<DailyUsage> totals = new ArrayList<>();
         for (int daysAgo = 1; daysAgo <= 28; daysAgo++) {
-            usages.add(usage(busy, busyLot, daysAgo));
+            totals.add(used(busy, daysAgo));
         }
         when(inventoryItemService.getAllActive()).thenReturn(List.of(busy, quiet));
         when(inventoryLotDAO.getAvailableQuantityByItem()).thenReturn(Map.of(1L, 40.0, 2L, 40.0));
-        when(inventoryUsageService.getByDateRange(any(), any())).thenReturn(usages);
+        when(inventoryUsageDAO.getDailyTotals(any(), any())).thenReturn(totals);
 
         List<InventoryProjection> board = service.getBoard();
         InventoryProjection busyRow = board.stream().filter(row -> row.getItemId() == 1L).findFirst().orElseThrow();
