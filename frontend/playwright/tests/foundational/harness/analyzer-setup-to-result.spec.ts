@@ -32,7 +32,6 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
   let analyzer: Analyzer;
 
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(180_000);
     analyzer = await withAuthedPage(browser, (page) =>
       activateShippedGeneXpert(page, `Results GeneXpert ${run}`, senderId),
     );
@@ -41,7 +40,6 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
   test("an HIV-1 viral load reaches its order and is accepted as a clinical result", async ({
     page,
   }) => {
-    test.setTimeout(180_000);
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
     const order = await createClinicalOrder(page, {
       testIds: [testId],
@@ -80,7 +78,6 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
   test("a respiratory panel lands on each of its tests and components, each accepted as a clinical result", async ({
     page,
   }) => {
-    test.setTimeout(180_000);
     const specimen = "Nasopharyngeal Swab";
     const tests = {
       sars: await activeTestId(page, "SARS-CoV-2 PCR", specimen),
@@ -123,7 +120,6 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
   test("two GeneXperts on one listener each keep their own results", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
     const secondSender = `GX-RES-2-${run}`;
     const second = await activateShippedGeneXpert(
       page,
@@ -192,7 +188,6 @@ test.describe("A FluoroCycler from setup to a clinical result", () => {
   test("a results file in the watched folder reaches each order and is accepted", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
     const run = randomUUID().slice(0, 8);
     const directory = `/data/analyzer-imports/fluorocycler-xt/incoming/${run}`;
     const analyzer = await activateShippedAnalyzer(
@@ -258,7 +253,6 @@ test.describe("A catalog test deactivated after setup", () => {
   test("its result is held while the rest are accepted, then recovers once the test is active again", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
     const run = randomUUID().slice(0, 8);
     const senderId = `GX-OFF-${run}`;
     const specimen = "Nasopharyngeal Swab";
@@ -346,7 +340,6 @@ test.describe("A QuantStudio from setup to a clinical result", () => {
   test("a results workbook in the watched folder reaches each order and is accepted", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
     const run = randomUUID().slice(0, 8);
     const directory = `/data/analyzer-imports/quantstudio/incoming/${run}`;
     const analyzer = await activateShippedAnalyzer(
@@ -410,7 +403,6 @@ test.describe("An instrument that sends its own test code", () => {
   test("the code set in the Assays step is the code results arrive under, and they land on the right test", async ({
     page,
   }) => {
-    test.setTimeout(240_000);
     const run = randomUUID().slice(0, 8);
     const senderId = `GX-CODE-${run}`;
     // The lab's instrument is configured to send HIVU where the profile says HIVVL.

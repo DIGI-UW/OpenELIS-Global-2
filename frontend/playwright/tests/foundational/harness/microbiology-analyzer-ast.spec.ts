@@ -30,7 +30,6 @@ const frameBelowHeader = async (page: Page, testId: string) => {
 
 test.describe("Microbiology analyzer AST review", () => {
   test.beforeAll(async ({ browser }) => {
-    test.setTimeout(180_000);
     await withAuthedPage(browser, (page) =>
       activateShippedGeneXpert(page, SOURCE_ANALYZER, `GX-AST-${run}`),
     );

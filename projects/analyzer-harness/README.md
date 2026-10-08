@@ -22,10 +22,11 @@ commands, prerequisites and separation from published-image deployment.
 ## Workflow wait policy
 
 Analyzer browser tests wait for observable UI, API, and persisted-result states.
-Assertions use the existing whole-test deadline, configured through the harness
-Playwright projects, rather than separate step deadlines. Do not add sleeps or
-increase a test's deadline to repair failures. Diagnose the missing state using
-traces and service logs. Video-only pacing is presentation, never readiness.
+Neither a step nor a test has a time budget: the harness Playwright projects set
+one ten-minute limit that only ends a test that hangs, with its trace, and no
+spec sets its own. A slow service shows as a slow test, to be fixed in that
+service. Do not add sleeps; diagnose a missing state using traces and service
+logs. Video-only pacing is presentation, never readiness.
 
 ## Startup Catalog
 

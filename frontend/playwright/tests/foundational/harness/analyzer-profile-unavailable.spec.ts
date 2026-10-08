@@ -20,7 +20,6 @@ test.describe("An analyzer whose type the Bridge has lost", () => {
   test("the operator resets it and sets it up again on an available type, keeping its name and history", async ({
     page,
   }) => {
-    test.setTimeout(300_000);
     const run = randomUUID().slice(0, 8);
     const typeName = `Lost type ${run}`;
     const name = `Stranded analyzer ${run}`;

@@ -56,6 +56,8 @@ const HARNESS_MANUAL_ONLY_TESTS = [
   "**/manual-only/harness/analyzer-test-connection-manual-only.spec.ts",
 ];
 
+const HARNESS_HANG_GUARD = 10 * 60_000;
+
 export default defineConfig({
   testDir: "./playwright/tests",
 
@@ -210,9 +212,11 @@ export default defineConfig({
     },
 
     // Analyzer-stack verification (CI: reusable harness workflow only).
+    // Harness stories wait on real services, so their time is reported, not budgeted: the
+    // test timeout only ends a test that hangs, with its trace.
     {
       name: "harness-foundational",
-      // Condition-based waits share the existing whole-test deadline.
+      timeout: HARNESS_HANG_GUARD,
       expect: { timeout: 0 },
       testMatch: HARNESS_FOUNDATIONAL_TESTS,
       use: {
@@ -223,7 +227,7 @@ export default defineConfig({
     },
     {
       name: "harness-demo",
-      // Condition-based waits share the existing whole-test deadline.
+      timeout: HARNESS_HANG_GUARD,
       expect: { timeout: 0 },
       testMatch: HARNESS_DEMO_TESTS,
       use: {
@@ -234,7 +238,7 @@ export default defineConfig({
     },
     {
       name: "harness-demo-video",
-      // Condition-based waits share the existing whole-test deadline.
+      timeout: HARNESS_HANG_GUARD,
       expect: { timeout: 0 },
       testMatch: HARNESS_VIDEO_TESTS,
       use: {
