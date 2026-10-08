@@ -60,10 +60,24 @@ def on_default_branch_via_github(token):
     return check
 
 
+def trusted_gitmodules(base_ref):
+    """The .gitmodules of the base branch, which a pull request cannot change; this checkout's otherwise.
+
+    A pull request's own .gitmodules could point a checked path at another repository whose
+    default branch holds the pin, so repository identity comes from the branch it targets.
+    """
+    if not base_ref:
+        with open(".gitmodules", encoding="utf-8") as handle:
+            return handle.read()
+    subprocess.run(["git", "fetch", "-q", "--depth=1", "origin", base_ref], check=True, capture_output=True)
+    return subprocess.run(
+        ["git", "show", "FETCH_HEAD:.gitmodules"], check=True, capture_output=True, text=True
+    ).stdout
+
+
 def main():
     ls_tree = subprocess.run(["git", "ls-tree", "-r", "HEAD"], check=True, capture_output=True, text=True).stdout
-    with open(".gitmodules", encoding="utf-8") as handle:
-        checked = checked_pins(ls_tree, handle.read())
+    checked = checked_pins(ls_tree, trusted_gitmodules(os.environ.get("BASE_REF")))
     failures = unmerged(checked, on_default_branch_via_github(os.environ.get("GITHUB_TOKEN")))
     for path, sha, repository in checked:
         state = "NOT MERGED" if (path, sha, repository) in failures else "merged"

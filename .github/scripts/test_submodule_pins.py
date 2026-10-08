@@ -1,5 +1,8 @@
 import importlib.util
+import os
 from pathlib import Path
+import subprocess
+import tempfile
 import unittest
 
 spec = importlib.util.spec_from_file_location("submodule_pins", Path(__file__).with_name("submodule_pins.py"))
@@ -53,6 +56,34 @@ class SubmodulePinsTest(unittest.TestCase):
     def test_a_checked_submodule_missing_from_the_tree_is_an_error(self):
         with self.assertRaises(ValueError):
             pins.checked_pins(LS_TREE.replace("tools/analyzer-mock-server", "tools/renamed"), GITMODULES)
+
+    def test_repositories_come_from_the_base_branch_not_the_pull_request(self):
+        with tempfile.TemporaryDirectory() as repo:
+            def git(*args):
+                subprocess.run(["git", *args], cwd=repo, check=True, capture_output=True)
+
+            git("init", "-q", "-b", "develop")
+            git("config", "user.email", "ci@example.org")
+            git("config", "user.name", "ci")
+            Path(repo, ".gitmodules").write_text(GITMODULES)
+            git("add", ".gitmodules")
+            git("commit", "-q", "-m", "base")
+            git("remote", "add", "origin", repo)
+            git("checkout", "-q", "-b", "pull-request")
+            Path(repo, ".gitmodules").write_text(GITMODULES.replace("DIGI-UW/openelis-analyzer-bridge", "someone/else"))
+            git("commit", "-q", "-am", "redirect the Bridge")
+
+            here = os.getcwd()
+            os.chdir(repo)
+            try:
+                trusted = pins.trusted_gitmodules("develop")
+                untrusted = pins.trusted_gitmodules(None)
+            finally:
+                os.chdir(here)
+
+        self.assertIn("DIGI-UW/openelis-analyzer-bridge", trusted)
+        self.assertNotIn("someone/else", trusted)
+        self.assertIn("someone/else", untrusted)
 
 
 if __name__ == "__main__":
