@@ -368,6 +368,38 @@ export const getAnalyzerDeliveryIssues = (
   getFromOpenElisServer("/rest/analyzer/delivery-issues", callback, signal);
 };
 
+export interface BridgePairingStatus {
+  bridgeUrl: string;
+  paired: boolean;
+  bridgeCertificateSha256?: string | null;
+  clientCertificateSha256?: string | null;
+  pairedAt?: string | null;
+  pairsAutomatically: boolean;
+}
+
+export type BridgePairingResponse = BridgePairingStatus & {
+  errorKey?: string;
+  status?: number;
+};
+
+export const getBridgePairing = (
+  callback: DataCallback<BridgePairingStatus | undefined>,
+  signal: AbortSignal | null = null,
+) => {
+  getFromOpenElisServer("/rest/analyzer/bridge-pairing", callback, signal);
+};
+
+export const pairBridge = (
+  code: string,
+  callback: (response: BridgePairingResponse | undefined) => void,
+) => {
+  postToOpenElisServerJsonResponse<BridgePairingResponse>(
+    "/rest/analyzer/bridge-pairing",
+    JSON.stringify({ code }),
+    callback,
+  );
+};
+
 export const getAnalyzers = (
   filters: AnalyzerFilters = {},
   callback: DataCallback<AnalyzersResponse | undefined>,
