@@ -21,6 +21,7 @@ import {
 } from "./api/sampleTypeRequestApi";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { ConfigurationContext } from "../layout/Layout";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getEnforcement } from "./api/sampleAcceptanceApi";
 import {
   buildLoadedOrderData,
@@ -258,6 +259,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     useContext(ConfigurationContext) || {};
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
   const location = useLocation();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext) || {};
+  const signedIn = userSessionDetails
+    ? userSessionDetails.authenticated === true
+    : true;
 
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
@@ -303,6 +308,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   // Sample check step (FR-F1), so every step needs to know it.
   const [acceptanceModes, setAcceptanceModes] = useState({});
   useEffect(() => {
+    if (!signedIn) {
+      return undefined;
+    }
     let active = true;
     getEnforcement().then((modes) => {
       if (active) {
@@ -312,7 +320,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [signedIn]);
   const acceptanceMode = (
     acceptanceModes?.[workflowType] || "OPTIONAL"
   ).toUpperCase();
@@ -1491,10 +1499,17 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, [workflowType]);
 
   /**
-   * Initialize form defaults from API on mount.
-   * This ensures we get the correct date format from the server.
+   * Initialize form defaults from API once signed in.
+   * This ensures we get the correct date format from the server. The provider
+   * mounts outside SecureRoute, possibly while the session check still waits
+   * for an unreachable server (OGC-1442), so loading at mount could leave the
+   * form without its lists; rendered without a session provider it loads at
+   * mount as before.
    */
   useEffect(() => {
+    if (!signedIn) {
+      return;
+    }
     getFromOpenElisServer("/rest/SamplePatientEntry", (response) => {
       if (response && response.currentDate) {
         setOrderDataState((prev) => ({
@@ -1534,7 +1549,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         }));
       }
     });
-  }, []);
+  }, [signedIn]);
 
   // On mount (and on refresh), if the URL addresses an order — ?order=<labNumber>,
   // or ?labNumber= as the dashboards push it — and the path prefix matches this
