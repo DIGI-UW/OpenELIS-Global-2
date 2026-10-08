@@ -78,7 +78,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         orders.insert(order);
         type = fixtures.getOrCreateActiveSampleType();
         test = em.find(org.openelisglobal.test.valueholder.Test.class, fixtures.createCatalogTest().getId());
-        test.setTestSection(units.getAllActiveTestSections().getFirst());
+        test.setTestSection(fixtures.createLabUnit());
         test.setOpensMicrobiologyCase(true);
         test.setMicrobiologyCaseRole("DIRECT");
         em.flush();
