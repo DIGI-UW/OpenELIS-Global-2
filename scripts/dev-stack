@@ -284,8 +284,12 @@ def build_application(context: StackContext, environment: dict[str, str]) -> Non
         raise RuntimeError(f"Build did not produce {war}")
 
 
-def bootstrap_analyzer_harness(context: StackContext, environment: dict[str, str]) -> None:
+def bootstrap_analyzer_harness(
+    context: StackContext, environment: dict[str, str], *, skip_submodules: bool = False
+) -> None:
     arguments = [str(context.project_dir / "bootstrap.sh")]
+    if skip_submodules:
+        arguments.append("--skip-submodules")
     if is_local_domain(environment["LETSENCRYPT_DOMAIN"]):
         arguments.append("--local")
     run(
@@ -511,7 +515,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         environment = build_environment(context)
         doctor(context, environment)
         ensure_submodules(context, environment)
-        bootstrap_analyzer_harness(context, environment)
+        bootstrap_analyzer_harness(context, environment, skip_submodules=True)
         backend_was_running = service_is_running(
             context, environment, "oe.openelis.org"
         )

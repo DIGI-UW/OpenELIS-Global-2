@@ -5,6 +5,7 @@ import io
 import os
 import pathlib
 import re
+import shutil
 import subprocess
 import tempfile
 import unittest
@@ -151,6 +152,40 @@ class DevStackSubmoduleTest(unittest.TestCase):
             (self.fixture.submodule / "source.txt").read_text(), "pinned\n"
         )
         self.assertEqual(printed, "")
+
+    def test_harness_bootstrap_preserves_checked_out_commits_and_local_edits(self):
+        fixture = self.fixture
+        paths = ("tools/openelis-analyzer-bridge", "tools/analyzer-mock-server")
+        origin = fixture.repo_root.parent / "sub-origin"
+        for path in paths:
+            fixture.git(fixture.repo_root, "submodule", "add", "-q", str(origin), path)
+            fixture.git(fixture.repo_root / path, "checkout", "-q", fixture.pinned)
+            fixture.git(fixture.repo_root, "add", path)
+        fixture.git(fixture.repo_root, "commit", "-q", "-m", "pin analyzers")
+        bridge = fixture.repo_root / paths[0]
+        mock = fixture.repo_root / paths[1]
+        fixture.git(bridge, "checkout", "-q", fixture.local)
+        (mock / "source.txt").write_text("uncommitted mock edit\n")
+        project_dir = fixture.repo_root / "projects" / "analyzer-harness"
+        project_dir.mkdir(parents=True)
+        shutil.copy2(
+            REPO_ROOT / "projects" / "analyzer-harness" / "bootstrap.sh",
+            project_dir / "bootstrap.sh",
+        )
+        context = SimpleNamespace(repo_root=fixture.repo_root, project_dir=project_dir)
+        environment = {**fixture.environment, "LETSENCRYPT_DOMAIN": "localhost"}
+
+        with patch.object(self.dev_stack, "required_submodules", return_value=paths):
+            self.dev_stack.ensure_submodules(context, environment)
+        self.dev_stack.bootstrap_analyzer_harness(
+            context, environment, skip_submodules=True
+        )
+
+        self.assertEqual(fixture.git(bridge, "rev-parse", "HEAD"), fixture.local)
+        self.assertEqual((bridge / "source.txt").read_text(), "local work\n")
+        self.assertEqual(fixture.git(mock, "rev-parse", "HEAD"), fixture.pinned)
+        self.assertEqual((mock / "source.txt").read_text(), "uncommitted mock edit\n")
+        self.assertTrue((project_dir / "volume" / "menu" / "menu_config.json").is_file())
 
     def test_clean_submodule_at_the_recorded_pin_is_silent(self):
         printed = self.ensure_submodules()
