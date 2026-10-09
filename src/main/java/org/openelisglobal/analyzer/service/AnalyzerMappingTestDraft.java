@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import java.util.Objects;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 
@@ -59,6 +60,16 @@ public record AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState
             return componentId;
         }
         return callComponentId != null ? callComponentId : componentId;
+    }
+
+    /**
+     * Whether two decisions send the record to the same place: the same state,
+     * test, component and call component. Origin and assay settings do not count.
+     */
+    public boolean sameTarget(AnalyzerMappingTestDraft other) {
+        return other != null && mappingState == other.mappingState && Objects.equals(testId, other.testId)
+                && Objects.equals(componentId, other.componentId)
+                && Objects.equals(callComponentId, other.callComponentId);
     }
 
     /** Whether the instrument runs this assay; not stated counts as on. */

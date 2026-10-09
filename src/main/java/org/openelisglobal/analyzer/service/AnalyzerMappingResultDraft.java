@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import java.util.Objects;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 
@@ -29,6 +30,11 @@ public record AnalyzerMappingResultDraft(String sourceRowKey, String rawValue, A
     public AnalyzerMappingResultDraft(String sourceRowKey, String rawValue, AnalyzerMappingState mappingState,
             String testResultId) {
         this(sourceRowKey, rawValue, mappingState, testResultId, null, AnalyzerMappingOrigin.DEFAULT);
+    }
+
+    /** Whether two decisions give the answer the same state and result option. */
+    public boolean sameAnswer(AnalyzerMappingResultDraft other) {
+        return other != null && mappingState == other.mappingState && Objects.equals(testResultId, other.testResultId);
     }
 
     public AnalyzerMappingRowKey rowKey() {

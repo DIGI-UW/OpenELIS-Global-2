@@ -92,18 +92,12 @@ public final class AnalyzerMappingAdoption {
 
     /** Two decisions agree on the record's target and on every answer. */
     static boolean sameDecision(Decision a, Decision b) {
-        AnalyzerMappingTestDraft x = a.test();
-        AnalyzerMappingTestDraft y = b.test();
-        return x.mappingState() == y.mappingState() && Objects.equals(x.testId(), y.testId())
-                && Objects.equals(x.componentId(), y.componentId())
-                && Objects.equals(x.callComponentId(), y.callComponentId()) && answers(a).equals(answers(b));
-    }
-
-    private static Map<String, List<Object>> answers(Decision decision) {
-        Map<String, List<Object>> answers = new LinkedHashMap<>();
-        decision.results().forEach(result -> answers.put(result.rawValue(),
-                List.of(result.mappingState(), Objects.toString(result.testResultId(), ""))));
-        return answers;
+        if (!a.test().sameTarget(b.test()) || a.results().size() != b.results().size()) {
+            return false;
+        }
+        Map<String, AnalyzerMappingResultDraft> answers = new LinkedHashMap<>();
+        b.results().forEach(result -> answers.putIfAbsent(result.rawValue(), result));
+        return a.results().stream().allMatch(result -> result.sameAnswer(answers.get(result.rawValue())));
     }
 
     static Map<AnalyzerMappingRowKey, Decision> decisions(AnalyzerMappingDraft draft) {

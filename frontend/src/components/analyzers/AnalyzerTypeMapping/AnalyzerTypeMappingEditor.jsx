@@ -140,23 +140,12 @@ const planRowKey = (planRow) =>
     ? `${planRow.key.sourceRowKey} ${planRow.key.subIdentity}`
     : planRow.key.sourceRowKey;
 
-const sameTestDecision = (test, decision) =>
-  Boolean(decision) &&
-  test.mappingState === decision.test.mappingState &&
-  (test.testId || null) === (decision.test.testId || null);
-
-// The draft row already holds this decision, answers included.
-const holdsDecision = (test, decision) =>
-  sameTestDecision(test, decision) &&
-  test.results.every((result) => {
-    const decided = decision.results.find(
-      (candidate) => candidate.rawValue === result.rawValue,
-    );
-    return (
-      result.mappingState === (decided?.mappingState || "UNRESOLVED") &&
-      (result.resultOptionId || null) === (decided?.testResultId || null)
-    );
-  });
+// A record still bound to the test that is no longer active blocks adoption
+// until the operator picks another.
+const stillOnInactiveTest = (test, planRow) =>
+  planRow.blockReason === "INACTIVE_TEST" &&
+  test.mappingState === "BOUND" &&
+  (test.testId || null) === (planRow.current?.test.testId || null);
 
 /**
  * What the operator changed since the last save, row by row, so Save can show
@@ -614,12 +603,11 @@ const AnalyzerTypeMappingEditor = ({
   const adoptionBlocked = (adoption?.rows || []).some(
     (planRow) =>
       planRow.blockReason === "HELD_RESULTS" ||
-      (planRow.blockReason === "INACTIVE_TEST" &&
-        draftTests.some(
-          (test) =>
-            recordKey(test) === planRowKey(planRow) &&
-            sameTestDecision(test, planRow.current),
-        )),
+      draftTests.some(
+        (test) =>
+          recordKey(test) === planRowKey(planRow) &&
+          stillOnInactiveTest(test, planRow),
+      ),
   );
 
   const confirmable = useMemo(
@@ -921,10 +909,7 @@ const AnalyzerTypeMappingEditor = ({
 
   const renderAdoptionDetail = (test, planRow) => {
     const key = recordKey(test);
-    if (
-      planRow.blockReason === "INACTIVE_TEST" &&
-      sameTestDecision(test, planRow.current)
-    ) {
+    if (stillOnInactiveTest(test, planRow)) {
       return (
         <InlineNotification
           kind="error"
@@ -963,7 +948,6 @@ const AnalyzerTypeMappingEditor = ({
               <Button
                 kind="ghost"
                 size="sm"
-                disabled={holdsDecision(test, decision)}
                 onClick={() => takeDecision(key, decision)}
               >
                 <FormattedMessage id={`analyzerType.adoption.${action}`} />
