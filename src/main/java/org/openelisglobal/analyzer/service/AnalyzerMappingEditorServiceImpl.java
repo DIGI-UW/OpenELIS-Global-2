@@ -71,6 +71,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         validateLoadedFingerprint(current, update.baseMappingFingerprint());
         List<AnalyzerResults> observed = analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzer.getId());
         AnalyzerMappingDraft draft = withOrigins(current, validateUpdate(profile, current, observed, update));
+        draft.requireComponentTargets(profile);
         AnalyzerMappingSnapshot saved = mappingService.appendRevision(analyzer, draft, actor);
         return compose(analyzer, revision, profile, CurrentRows.of(saved), observed, saved);
     }
@@ -84,6 +85,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService
                 .getProfile(candidate.mapping().getProfileId(), candidate.mapping().getProfileRevision());
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+        AnalyzerMappingDraft.of(candidate).requireComponentTargets(profile);
         validateConfirmable(compose(analyzer, revision, profile, CurrentRows.of(candidate),
                 analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzer.getId()), candidate));
         return confirmationService.confirm(candidate, revision.controlRecognitionSummary().recognitionFingerprint(),

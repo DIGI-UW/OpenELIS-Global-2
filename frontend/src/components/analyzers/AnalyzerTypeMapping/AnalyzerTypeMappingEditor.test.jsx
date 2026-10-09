@@ -505,6 +505,70 @@ describe("AnalyzerTypeMappingEditor", () => {
       });
     });
 
+    it("holds the save of a record whose new test has no component with its code until one is chosen", async () => {
+      const qualitativeTest = {
+        id: "9803",
+        name: "HIV-1 qualitative",
+        code: "HIVQL",
+        loincCodes: ["20447-9"],
+      };
+      getAnalyzerMappingTests.mockImplementation((callback) =>
+        callback([viralLoadTest, otherViralLoadTest, qualitativeTest]),
+      );
+      getAnalyzerMappingComponents.mockImplementation((testId, callback) =>
+        callback(
+          testId === "9803"
+            ? [{ id: "ql-ratio", code: "RATIO", label: "Ratio" }]
+            : componentsByTestForRecords[testId] || [],
+        ),
+      );
+      renderEditor();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Cepheid GeneXpert MTB/RIF mappings",
+      });
+
+      const log = rowFor("HIVVL &LOG");
+      const picker = within(log).getByRole("combobox", {
+        name: "OpenELIS test for HIVVL &LOG",
+      });
+      await userEvent.clear(picker);
+      await userEvent.type(picker, "HIVQL");
+      await userEvent.click(
+        await screen.findByRole("option", {
+          name: "HIV-1 qualitative · HIVQL · 20447-9",
+        }),
+      );
+
+      expect(
+        await within(log).findByText(
+          "Choose the component this record lands on.",
+        ),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("button", { name: "Save mapping" }),
+      ).toBeDisabled();
+
+      await userEvent.click(
+        within(log).getByRole("combobox", {
+          name: "OpenELIS component for HIVVL &LOG",
+        }),
+      );
+      await userEvent.click(
+        await screen.findByRole("option", { name: "Ratio" }),
+      );
+
+      const payload = await saveAndReadPayload();
+      expect(payload.tests[1]).toEqual({
+        sourceRowKey: "HIVVL",
+        subIdentity: "&LOG",
+        mappingState: "BOUND",
+        testId: "9803",
+        componentId: "ql-ratio",
+        callComponentId: null,
+      });
+    });
+
     it("shows a translation under the value it translates", async () => {
       getAnalyzerMapping.mockImplementation((_id, callback) =>
         callback({

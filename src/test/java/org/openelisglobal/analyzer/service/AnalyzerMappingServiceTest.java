@@ -295,6 +295,41 @@ public class AnalyzerMappingServiceTest {
     }
 
     @Test
+    public void appendRevisionRejectsABoundPartWithNoComponent() {
+        AnalyzerRequestException error = assertThrows(AnalyzerRequestException.class,
+                () -> service.appendRevision(analyzer("7"),
+                        new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIV", AnalyzerMappingState.BOUND,
+                                "9701", null, null, AnalyzerMappingOrigin.OVERRIDE, "LOG", null)), List.of()),
+                        "17"));
+
+        assertEquals("analyzer.mapping.error.componentRequired", error.messageKey());
+        assertEquals(java.util.Map.of("record", new AnalyzerMappingRowKey("HIV", "LOG").label()), error.messageArgs());
+        verify(mappingDAO, never()).insert(any());
+    }
+
+    @Test
+    public void aBoundMainRecordNeedsTheCallComponentItsProfileDeclares() throws Exception {
+        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(objectMapper.readTree(
+                """
+                        {"profileMeta":{"id":"site.calls","displayName":"Calls"},"protocol":{"name":"ASTM"},
+                         "catalog":{"revision":1,"revisionFingerprint":"%s","source":"SITE","status":"ACTIVE"},
+                         "default_test_mappings":[{"test_code":"HIV","loinc":"20447-9","result_type":"quantitative","call_component":"CALL"}]}
+                        """
+                        .formatted(PROFILE_FINGERPRINT)));
+        AnalyzerMappingDraft noCall = new AnalyzerMappingDraft(
+                List.of(new AnalyzerMappingTestDraft("HIV", AnalyzerMappingState.BOUND, "9701")), List.of());
+        AnalyzerMappingDraft withCall = new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIV",
+                AnalyzerMappingState.BOUND, "9701", null, null, AnalyzerMappingOrigin.OVERRIDE, "", "c-call")),
+                List.of());
+
+        AnalyzerRequestException error = assertThrows(AnalyzerRequestException.class,
+                () -> noCall.requireComponentTargets(profile));
+        assertEquals("analyzer.mapping.error.componentRequired", error.messageKey());
+        withCall.requireComponentTargets(profile);
+        noCall.requireComponentTargets(null);
+    }
+
+    @Test
     public void appendRevisionRejectsAComponentOnARowThatIsNotBound() {
 
         assertThrows(IllegalArgumentException.class,

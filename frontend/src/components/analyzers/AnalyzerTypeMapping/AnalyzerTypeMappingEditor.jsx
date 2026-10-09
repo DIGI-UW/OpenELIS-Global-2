@@ -87,6 +87,14 @@ const componentWithCode = (components, code) => {
   return matches.length === 1 ? matches[0].id : null;
 };
 
+// A mapped record needs the component it lands on before it can be saved: a
+// part's own component, or the call component its profile declares.
+const missingTarget = (test) =>
+  test.mappingState === "BOUND" &&
+  (test.subIdentity
+    ? !test.componentId
+    : Boolean(test.callComponentCode) && !test.callComponentId);
+
 const unresolvedResults = (results) =>
   results.map((result) => ({
     ...result,
@@ -620,6 +628,7 @@ const AnalyzerTypeMappingEditor = ({
       draftTests.every(
         (test) =>
           (test.mappingState !== "BOUND" || Boolean(test.selectedTest)) &&
+          !missingTarget(test) &&
           test.results.every(
             (result) =>
               result.mappingState !== "BOUND" || Boolean(result.selectedOption),
@@ -1200,6 +1209,12 @@ const AnalyzerTypeMappingEditor = ({
                   ) || null
                 }
                 disabled={readOnly}
+                invalid={
+                  !readOnly && Boolean(test.subIdentity) && missingTarget(test)
+                }
+                invalidText={intl.formatMessage({
+                  id: "analyzerType.mappingEditor.componentPicker.required",
+                })}
                 onChange={({ selectedItem }) =>
                   selectComponent(key, "componentId", selectedItem)
                 }
@@ -1225,6 +1240,10 @@ const AnalyzerTypeMappingEditor = ({
                   ) || null
                 }
                 disabled={readOnly}
+                invalid={!readOnly && !test.subIdentity && missingTarget(test)}
+                invalidText={intl.formatMessage({
+                  id: "analyzerType.mappingEditor.componentPicker.required",
+                })}
                 onChange={({ selectedItem }) =>
                   selectComponent(key, "callComponentId", selectedItem)
                 }
@@ -1756,7 +1775,9 @@ const AnalyzerTypeMappingEditor = ({
               <div>
                 <Button
                   renderIcon={Save}
-                  disabled={saving || adoptionBlocked}
+                  disabled={
+                    saving || adoptionBlocked || draftTests.some(missingTarget)
+                  }
                   onClick={saveAdoption}
                 >
                   <FormattedMessage
@@ -1785,7 +1806,7 @@ const AnalyzerTypeMappingEditor = ({
                 <Button
                   kind="secondary"
                   renderIcon={Save}
-                  disabled={!dirty || saving}
+                  disabled={!dirty || saving || draftTests.some(missingTarget)}
                   onClick={() => setReviewingSave(true)}
                 >
                   <FormattedMessage id="analyzerType.mappingEditor.save" />
