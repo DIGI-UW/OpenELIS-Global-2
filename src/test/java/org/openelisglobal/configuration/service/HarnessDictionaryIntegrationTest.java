@@ -133,6 +133,7 @@ public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTes
             }
         }
         ReflectionTestUtils.setField(configuration, "configurationBaseDir", copy.toString());
-        configuration.reload(new ConfigurationReloadOptions(CATALOG_DOMAINS, true));
+        ConfigurationReloadResult loaded = configuration.reload(new ConfigurationReloadOptions(CATALOG_DOMAINS, true));
+        assertFalse("harness dictionary reload must have no file errors", loaded.hasErrors());
     }
 }
