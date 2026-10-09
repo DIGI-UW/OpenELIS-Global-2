@@ -14,6 +14,7 @@ import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.StatusService.OrderStatus;
+import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.dataexchange.fhir.FhirConfig;
 import org.openelisglobal.dataexchange.fhir.service.FhirPersistanceService;
 import org.openelisglobal.dataexchange.order.valueholder.ElectronicOrder;
@@ -90,21 +91,7 @@ public class TaskTransformServiceImpl implements TaskTransformService {
         } else {
             task.setIntent(TaskIntent.ORIGINALORDER);
         }
-        if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Entered))) {
-            task.setStatus(TaskStatus.READY);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Started))
-                || sample.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance))) {
-            task.setStatus(TaskStatus.INPROGRESS);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(AnalysisStatus.TechnicalRejected))) {
-            task.setStatus(TaskStatus.FAILED);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.NonConforming_depricated))
-                || sample.getStatusId().equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))) {
-            task.setStatus(TaskStatus.REJECTED);
-        } else if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Finished))) {
-            task.setStatus(TaskStatus.COMPLETED);
-        } else {
-            task.setStatus(TaskStatus.NULL);
-        }
+        task.setStatus(taskStatusFor(sample));
         task.setAuthoredOn(sample.getEnteredDate());
         task.setPriority(convertToTaskPriority(sample.getPriority()));
         task.addIdentifier(
@@ -114,9 +101,10 @@ public class TaskTransformServiceImpl implements TaskTransformService {
 
         for (Analysis analysis : analysises) {
             task.addBasedOn(common.createReferenceFor(ResourceType.ServiceRequest, analysis.getFhirUuidAsString()));
-            if (sample.getStatusId().equals(statusService.getStatusID(OrderStatus.Finished))) {
+            if (TaskStatus.COMPLETED.equals(task.getStatus())) {
                 task.addOutput() //
-                        .setType(new CodeableConcept().addCoding(new Coding().setCode("reference"))) //
+                        .setType(new CodeableConcept().addCoding(new Coding()
+                                .setSystem(fhirConfig.getOeFhirSystem() + "/task_output").setCode("DiagnosticReport"))) //
                         .setValue(common.createReferenceFor(ResourceType.DiagnosticReport,
                                 analysis.getFhirUuidAsString()));
             }
@@ -128,6 +116,42 @@ public class TaskTransformServiceImpl implements TaskTransformService {
         }
 
         return task;
+    }
+
+    /**
+     * R4 requires a Task status. A status with no counterpart is sent as
+     * in-progress and logged, so a new order status cannot publish a Task without
+     * one.
+     */
+    private TaskStatus taskStatusFor(Sample sample) {
+        String statusId = sample.getStatusId();
+        if (statusId != null) {
+            if (statusId.equals(statusService.getStatusID(OrderStatus.Entered))
+                    || statusId.equals(statusService.getStatusID(SampleStatus.Entered))) {
+                return TaskStatus.READY;
+            }
+            if (statusId.equals(statusService.getStatusID(OrderStatus.Started))
+                    || statusId.equals(statusService.getStatusID(AnalysisStatus.TechnicalAcceptance))) {
+                return TaskStatus.INPROGRESS;
+            }
+            if (statusId.equals(statusService.getStatusID(AnalysisStatus.TechnicalRejected))) {
+                return TaskStatus.FAILED;
+            }
+            if (statusId.equals(statusService.getStatusID(OrderStatus.NonConforming_depricated))
+                    || statusId.equals(statusService.getStatusID(AnalysisStatus.BiologistRejected))
+                    || statusId.equals(statusService.getStatusID(SampleStatus.SampleRejected))) {
+                return TaskStatus.REJECTED;
+            }
+            if (statusId.equals(statusService.getStatusID(SampleStatus.Canceled))) {
+                return TaskStatus.CANCELLED;
+            }
+            if (statusId.equals(statusService.getStatusID(OrderStatus.Finished))) {
+                return TaskStatus.COMPLETED;
+            }
+        }
+        LogEvent.logWarn(this.getClass().getSimpleName(), "taskStatusFor", "order " + sample.getAccessionNumber()
+                + " has status " + statusId + ", which has no Task status; sending in-progress");
+        return TaskStatus.INPROGRESS;
     }
 
     private TaskPriority convertToTaskPriority(OrderPriority orderPriority) {
