@@ -14,6 +14,7 @@ import org.apache.commons.validator.GenericValidator;
 import org.hl7.fhir.instance.model.api.IBaseBundle;
 import org.hl7.fhir.r4.model.*;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.provider.query.PatientNamePrefixMatch;
 import org.openelisglobal.common.provider.query.PatientSearchResults;
 import org.openelisglobal.common.provider.query.PatientSearchResultsForm;
 import org.openelisglobal.common.provider.query.workerObjects.PatientSearchLocalAndExternalWorker;
@@ -76,7 +77,8 @@ public class PatientSearchRestController extends BaseRestController {
             @RequestParam(required = false) String nationalID, @RequestParam(required = false) String guid,
             @RequestParam(required = false) String labNumber, @RequestParam(required = false) String dateOfBirth,
             @RequestParam(required = false) String gender,
-            @RequestParam(required = false) String suppressExternalSearch)
+            @RequestParam(required = false) String suppressExternalSearch,
+            @RequestParam(required = false) String nameMatch)
             throws InvocationTargetException, IllegalAccessException, NoSuchMethodException {
         PatientSearchResultsPaging paging = new PatientSearchResultsPaging();
         PatientSearchResultsForm form = new PatientSearchResultsForm();
@@ -115,6 +117,9 @@ public class PatientSearchRestController extends BaseRestController {
                             "final results have been added");
                     results = fhirResults;
                 }
+            }
+            if (PatientNamePrefixMatch.PREFIX.equals(nameMatch)) {
+                results = PatientNamePrefixMatch.keepPrefixMatches(results, lastName, firstName);
             }
             paging.setDatabaseResults(request, form, results);
         } else {
