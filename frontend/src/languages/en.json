@@ -550,6 +550,7 @@
   "analyzer.bridge.connection.invalidEvidence": "The Analyzer Bridge answered for a different analyzer or analyzer type.",
   "analyzer.bridge.connection.invalidRequest": "The request to the Analyzer Bridge was incomplete.",
   "analyzer.bridge.connection.notConfigured": "No Analyzer Bridge is configured for this server.",
+  "analyzer.bridge.connection.reconcileRequired": "OpenELIS kept the analyzer's previous mapping, but the Analyzer Bridge may still be on the new one. Apply the mapping again when the Bridge is reachable to bring them back in step.",
   "analyzer.bridge.connection.referenceNotStored": "The Analyzer Bridge connection could not be saved with this analyzer.",
   "analyzer.bridge.connection.unreachable": "The Analyzer Bridge could not be reached.",
   "analyzer.mapping.error.catalogNotCurrent": "A mapped test or answer is no longer active in the test catalog. Choose another before confirming.",

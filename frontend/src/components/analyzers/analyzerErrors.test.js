@@ -18,6 +18,7 @@ describe("analyzerErrorText", () => {
     "analyzer.bridge.connection.invalidEvidence",
     "analyzer.bridge.connection.invalidRequest",
     "analyzer.bridge.connection.notConfigured",
+    "analyzer.bridge.connection.reconcileRequired",
     "analyzer.bridge.connection.referenceNotStored",
   ])("shows %s in words, never the server's text", (key) => {
     const text = analyzerErrorText(

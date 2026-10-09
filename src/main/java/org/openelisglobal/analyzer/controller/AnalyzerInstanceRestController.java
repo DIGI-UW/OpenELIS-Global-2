@@ -134,13 +134,17 @@ public class AnalyzerInstanceRestController extends BaseRestController {
 
     /**
      * Apply switches OE2 and the Bridge together, so a Bridge failure there means
-     * nothing was applied.
+     * nothing was applied, unless the Bridge could not be put back.
      */
     @ExceptionHandler(BridgeAnalyzerConnectionException.class)
     public ResponseEntity<Map<String, Object>> handleBridgeFailure(BridgeAnalyzerConnectionException exception) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("error", "The Analyzer Bridge could not switch with this mapping, so nothing was applied."
-                + " Try again when it is reachable.");
+        body.put("error",
+                "analyzer.bridge.connection.reconcileRequired".equals(exception.messageKey())
+                        ? "OpenELIS kept the previous mapping, but the Analyzer Bridge may still be on the new one."
+                                + " Apply the mapping again when the Bridge is reachable."
+                        : "The Analyzer Bridge could not switch with this mapping, so nothing was applied."
+                                + " Try again when it is reachable.");
         body.put("messageKey", exception.messageKey());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
