@@ -154,18 +154,16 @@ const OrderReferOutSection = () => {
   };
 
   const rows = samples
-    .filter((s) => s.sampleItemId)
-    .map((sample, index) => {
-      const referral = sample.referralItems?.[0] || null;
-      return {
-        id: String(sample.sampleItemId || index),
-        sampleIndex: index,
-        sampleId: sample.sampleItemId || `${index + 1}`,
-        sampleType: sample.sampleTypeName || sample.name || "---",
-        tests: sample.tests || [],
-        referral,
-      };
-    });
+    .map((sample, index) => ({ sample, index }))
+    .filter(({ sample }) => sample.sampleItemId)
+    .map(({ sample, index }) => ({
+      id: String(sample.sampleItemId),
+      sampleIndex: index,
+      sampleId: `${labNumber || ""}-${index + 1}`,
+      sampleType: sample.sampleTypeName || sample.name || "---",
+      tests: sample.tests || [],
+      referral: sample.referralItems?.[0] || null,
+    }));
 
   const headers = [
     {
@@ -193,7 +191,7 @@ const OrderReferOutSection = () => {
       key: "referringLab",
       header: intl.formatMessage({
         id: "label.referOut.column.referringLab",
-        defaultMessage: "Referring Lab",
+        defaultMessage: "Reference lab",
       }),
     },
     {
@@ -371,7 +369,13 @@ const OrderReferOutSection = () => {
                           </Button>
                         )}
                         {referral && (
-                          <OverflowMenu size="sm" flipped ariaLabel="actions">
+                          <OverflowMenu
+                            size="sm"
+                            flipped
+                            aria-label={intl.formatMessage({
+                              id: "label.referOut.column.actions",
+                            })}
+                          >
                             <OverflowMenuItem
                               itemText={intl.formatMessage({
                                 id: "label.referOut.action.edit",

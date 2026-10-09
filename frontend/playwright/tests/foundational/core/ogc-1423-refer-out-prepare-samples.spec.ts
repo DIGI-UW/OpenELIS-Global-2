@@ -26,7 +26,7 @@ async function openPrepareSamples(page: Page, accessionNumber: string) {
 }
 
 async function pickReferenceLab(page: Page, scope = page.locator("main")) {
-  const lab = scope.getByRole("combobox", { name: "Referring Lab" });
+  const lab = scope.getByRole("combobox", { name: "Reference lab" });
   await lab.click();
   await page.getByRole("option", { name: REFERENCE_LAB }).click();
   await expect(lab).toHaveValue(REFERENCE_LAB);

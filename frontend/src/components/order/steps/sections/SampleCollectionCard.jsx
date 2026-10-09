@@ -53,6 +53,24 @@ import {
  * - Print labels button
  */
 
+const GPS_FIELDS = [
+  "gpsLatitude",
+  "gpsLongitude",
+  "gpsAccuracy",
+  "gpsCaptureMethod",
+];
+
+/**
+ * The GPS control reports its values whenever it renders them, including the
+ * ones it was handed on mount. Only a value that differs from the sample's is
+ * an edit; passing the rest on marked a just-opened step "Unsaved changes"
+ * (OGC-1443).
+ */
+const gpsChanged = (gps, sample) =>
+  GPS_FIELDS.some(
+    (field) => String(gps?.[field] ?? "") !== String(sample?.[field] ?? ""),
+  );
+
 const SampleCollectionCard = ({
   sample,
   sampleIndex,
@@ -61,6 +79,7 @@ const SampleCollectionCard = ({
   serverReceivedDate,
   serverReceivedTime,
   onUpdate,
+  onFillDefaults,
   onRemove,
   onPrintLabels,
   printDisabled = false,
@@ -186,7 +205,7 @@ const SampleCollectionCard = ({
       }
     });
     if (Object.keys(updates).length > 0) {
-      onUpdate(sampleIndex, updates);
+      (onFillDefaults || onUpdate)(sampleIndex, updates);
     }
   }, [
     sample.sampleItemId,
@@ -199,6 +218,7 @@ const SampleCollectionCard = ({
     serverReceivedTime,
     sampleIndex,
     onUpdate,
+    onFillDefaults,
     isReadOnly,
   ]);
 
@@ -240,7 +260,7 @@ const SampleCollectionCard = ({
         (holdingMinutes
           ? ` · ${intl.formatMessage(
               { id: "sample.handling.processWithin" },
-              { time: formatHoldingMinutes(holdingMinutes) },
+              { time: formatHoldingMinutes(holdingMinutes, intl) },
             )}`
           : "");
   const legacyValues = isClinical
@@ -536,7 +556,11 @@ const SampleCollectionCard = ({
               gpsAccuracy: sample.gpsAccuracy || null,
               gpsCaptureMethod: sample.gpsCaptureMethod || "",
             }}
-            onChange={(gps) => onUpdate(sampleIndex, gps)}
+            onChange={(gps) => {
+              if (gpsChanged(gps, sample)) {
+                onUpdate(sampleIndex, gps);
+              }
+            }}
             disabled={isReadOnly}
           />
         </Column>
@@ -659,9 +683,8 @@ const SampleCollectionCard = ({
           </h6>
           <p data-testid={`handling-required-${sampleIndex}`}>
             <strong>
-              <FormattedMessage id="sample.handling.required" />
-              {": "}
-            </strong>
+              <FormattedMessage id="sample.handling.requiredLabel" />
+            </strong>{" "}
             {requiredText}
           </p>
           <Grid>
@@ -735,9 +758,8 @@ const SampleCollectionCard = ({
           </Grid>
           <p data-testid={`handling-stored-at-${sampleIndex}`}>
             <strong>
-              <FormattedMessage id="sample.handling.storedAt" />
-              {": "}
-            </strong>
+              <FormattedMessage id="sample.handling.storedAtLabel" />
+            </strong>{" "}
             {storedAt ? (
               storedAt.temperatureSetting ? (
                 <FormattedMessage

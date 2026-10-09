@@ -1434,6 +1434,23 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, []);
 
   /**
+   * Fills a sample's default collection and receipt date and time, which the
+   * Prepare Samples step sets on its own for a sample not yet saved. The user
+   * has changed nothing, so the order stays clean: no "Unsaved changes" on a
+   * step that was just opened or saved (OGC-1443).
+   */
+  const fillSampleDefaults = useCallback((sampleIndex, details) => {
+    setSamplesState((prevSamples) => {
+      if (!prevSamples[sampleIndex]) {
+        return prevSamples;
+      }
+      const updated = [...prevSamples];
+      updated[sampleIndex] = { ...updated[sampleIndex], ...details };
+      return updated;
+    });
+  }, []);
+
+  /**
    * Reset the order context to initial state.
    * Used when starting a new order.
    */
@@ -1654,6 +1671,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     assignTestToSample,
     removeTestFromSample,
     updateSampleCollectionDetails,
+    fillSampleDefaults,
   };
 
   return (

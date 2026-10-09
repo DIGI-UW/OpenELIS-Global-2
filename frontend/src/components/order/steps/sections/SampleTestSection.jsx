@@ -215,7 +215,7 @@ const SampleTestSection = ({
         <FormattedMessage
           id="sample.holdingLimit"
           defaultMessage="Holding time: {limit}"
-          values={{ limit: formatHoldingMinutes(minutes) }}
+          values={{ limit: formatHoldingMinutes(minutes, intl) }}
         />
         {deadline && (
           <>
@@ -1382,7 +1382,7 @@ const SampleTestSection = ({
         <p className="helper-text">
           <FormattedMessage
             id="sample.optional.info"
-            defaultMessage="Sample and test selection is optional at this step. Tests and sample type can be specified later during collection."
+            defaultMessage="Tests can wait: Save and exit keeps the order without them. Save and next needs at least one test on every sample."
           />
         </p>
       )}

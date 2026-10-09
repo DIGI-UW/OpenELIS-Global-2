@@ -320,4 +320,50 @@ describe("SampleCollectionCard print labels while the order loads (OGC-1423)", (
       }),
     ).toBeEnabled();
   });
+
+  it("fills an unsaved sample's defaults through onFillDefaults, keeping onUpdate for the user's own edits (OGC-1443)", async () => {
+    const onUpdate = vi.fn();
+    const onFillDefaults = vi.fn();
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <ConfigurationContext.Provider
+          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
+        >
+          <SampleCollectionCard
+            sample={{
+              sampleTypeId: "5",
+              sampleTypeName: "Blood",
+              collectionDate: "",
+              collectionTime: "",
+              receivedDate: "",
+              receivedTime: "",
+              tests: [],
+              panels: [],
+            }}
+            sampleIndex={1}
+            sampleTypes={[]}
+            unitOfMeasures={[]}
+            serverReceivedDate="2026-08-13"
+            serverReceivedTime="10:00"
+            onUpdate={onUpdate}
+            onFillDefaults={onFillDefaults}
+            onRemove={vi.fn()}
+            onPrintLabels={vi.fn()}
+            isReadOnly={false}
+            canRemove={false}
+          />
+        </ConfigurationContext.Provider>
+      </IntlProvider>,
+    );
+
+    await waitFor(() =>
+      expect(onFillDefaults).toHaveBeenCalledWith(1, {
+        collectionDate: "2026-08-13",
+        collectionTime: "10:00",
+        receivedDate: "2026-08-13",
+        receivedTime: "10:00",
+      }),
+    );
+    expect(onUpdate).not.toHaveBeenCalled();
+  });
 });

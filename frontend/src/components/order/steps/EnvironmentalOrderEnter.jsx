@@ -206,9 +206,11 @@ const EnvironmentalOrderEnter = () => {
     try {
       await saveOrder(false, false, stamped);
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/environmental/label?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/environmental/label?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/environmental/label",
       );
     } catch (error) {

@@ -23,6 +23,7 @@ const SamplesCollectionSection = ({
   sampleTypes,
   unitOfMeasures,
   updateSampleCollectionDetails,
+  fillSampleDefaults,
   isReadOnly,
   admissionDate,
   onPrintLabels,
@@ -121,6 +122,7 @@ const SamplesCollectionSection = ({
                 serverReceivedDate={serverReceivedDate}
                 serverReceivedTime={serverReceivedTime}
                 onUpdate={handleSampleUpdate}
+                onFillDefaults={fillSampleDefaults}
                 onRemove={handleSampleRemove}
                 onPrintLabels={handlePrintLabels}
                 printDisabled={printDisabled}
@@ -224,7 +226,7 @@ const SamplesCollectionSection = ({
           >
             <FormattedMessage
               id="collect.addSample.button"
-              defaultMessage="+ Add Another Sample"
+              defaultMessage="Add Sample"
             />
           </Button>
         </div>
@@ -232,7 +234,7 @@ const SamplesCollectionSection = ({
         <p className="helper-text">
           <FormattedMessage
             id="collect.printMoreLabels.helper"
-            defaultMessage="Use 'Print More Sample Labels' if you draw more than expected or need labels for a different sample type."
+            defaultMessage="Drew more than expected, or need a different sample type? Use Add Sample, then print its labels from the sample card or the Labels section."
           />
         </p>
       </Stack>

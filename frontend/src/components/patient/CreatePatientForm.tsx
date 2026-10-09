@@ -68,6 +68,10 @@ interface CreatePatientFormProps {
   setOrderFormValues?: React.Dispatch<
     React.SetStateAction<Record<string, unknown>>
   >;
+  /** Writes the form into the order without marking it changed (see PatientFormObserver). */
+  hydrateOrderFormValues?: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
   showActionsButton?: boolean;
   showPatientSearch?: boolean;
   /** False when the host screen already renders the notification toasts. */
@@ -878,6 +882,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
               <PatientFormObserver
                 orderFormValues={props.orderFormValues}
                 setOrderFormValues={props.setOrderFormValues}
+                hydrateOrderFormValues={props.hydrateOrderFormValues}
                 formAction={formAction}
                 selectedPatient={props.selectedPatient}
               />

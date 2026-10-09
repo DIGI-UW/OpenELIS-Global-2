@@ -132,4 +132,18 @@ describe("test holding limits", () => {
     expect(formatHoldingMinutes(150)).toBe("2 h 30 min");
     expect(formatHoldingMinutes(null)).toBe("");
   });
+
+  it("words a holding time in the reader's language (OGC-1443)", () => {
+    const intl = {
+      formatMessage: ({ id }, values) =>
+        ({
+          "sample.handling.holding.minutes": `${values.minutes} minutes`,
+          "sample.handling.holding.hours": `${values.hours} heures`,
+          "sample.handling.holding.hoursMinutes": `${values.hours} h ${values.minutes}`,
+        })[id],
+    };
+    expect(formatHoldingMinutes(30, intl)).toBe("30 minutes");
+    expect(formatHoldingMinutes(120, intl)).toBe("2 heures");
+    expect(formatHoldingMinutes(150, intl)).toBe("2 h 30");
+  });
 });

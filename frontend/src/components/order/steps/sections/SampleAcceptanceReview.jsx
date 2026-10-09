@@ -93,6 +93,7 @@ const SampleAcceptanceReview = ({
   labNumber,
   samples,
   onBlockedChange,
+  onUnacceptedChange,
 }) => {
   const intl = useIntl();
 
@@ -148,6 +149,28 @@ const SampleAcceptanceReview = ({
     const anyBlocked = Object.values(statusById).some((s) => s.blocked);
     onBlockedChange?.(anyBlocked);
   }, [statusById, onBlockedChange]);
+
+  // Which units the server does not yet hold as accepted, named the way the
+  // rest of the order names tubes, so a release that needs a reason can say
+  // what is missing (OGC-1443). Answers count only once Accept sample saves
+  // them, so a unit answered on screen but not accepted is still listed.
+  const unaccepted = entries
+    .filter(
+      (entry) =>
+        !isEntryRejected(entry) &&
+        statusById[String(entry.representative.sampleItemId)]?.overallStatus !==
+          STATUS.ACCEPTED,
+    )
+    .map((entry) => {
+      const position = (samples || []).indexOf(entry.representative) + 1;
+      return `${labNumber || ""}-${position} ${
+        entry.representative.sampleTypeName || ""
+      }`.trim();
+    });
+  const unacceptedKey = unaccepted.join("|");
+  useEffect(() => {
+    onUnacceptedChange?.(unacceptedKey ? unacceptedKey.split("|") : []);
+  }, [unacceptedKey, onUnacceptedChange]);
 
   // The detail reports the server evaluation on load + after an Accept; refresh
   // that row's tag from it. STABLE reference (keyed off the evaluation's own

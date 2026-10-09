@@ -184,13 +184,28 @@ const ClinicalOrderEnter = () => {
       itemId: "order.continue.item.provider",
       targetId: "providerName",
     },
+    ...samples
+      .map((sample, index) => ({ sample, index }))
+      .filter(
+        ({ sample }) =>
+          sample.sampleTypeId &&
+          !sample.tests?.length &&
+          !sample.panels?.length,
+      )
+      .map(({ index }) => ({
+        met: false,
+        key: `order.continue.item.noTests-${index}`,
+        itemId: "order.continue.item.noTests",
+        values: { number: index + 1 },
+        targetId: `testSearch-${index}`,
+      })),
   ];
   const canSave = saveRequirements.every((requirement) => requirement.met);
   const toContinue = [...saveRequirements, ...completeRequirements]
     .filter((requirement) => !requirement.met)
     .map((requirement) => ({
-      id: requirement.itemId,
-      label: intl.formatMessage({ id: requirement.itemId }),
+      id: requirement.key || requirement.itemId,
+      label: intl.formatMessage({ id: requirement.itemId }, requirement.values),
       targetId: requirement.targetId,
     }));
 
@@ -234,9 +249,11 @@ const ClinicalOrderEnter = () => {
     try {
       await saveOrderEntry();
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/clinical/collect?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/clinical/collect?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/clinical/collect",
       );
     } catch (error) {

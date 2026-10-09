@@ -1,34 +1,23 @@
-import React from "react";
-import { FormattedMessage } from "react-intl";
+import type { IntlShape } from "react-intl";
 import type { TableHeaderData } from "./LabTableHeaders";
 
-export const patientSearchHeaderData: TableHeaderData[] = [
-  {
-    key: "lastName",
-    header: <FormattedMessage id="patient.last.name" />,
-  },
-  {
-    key: "firstName",
-    header: <FormattedMessage id="patient.first.name" />,
-  },
-  {
-    key: "gender",
-    header: <FormattedMessage id="patient.gender" />,
-  },
-  {
-    key: "dob",
-    header: <FormattedMessage id="patient.dob" />,
-  },
-  {
-    key: "subjectNumber",
-    header: <FormattedMessage id="patient.subject.number" />,
-  },
-  {
-    key: "nationalId",
-    header: <FormattedMessage id="patient.natioanalid" />,
-  },
-  {
-    key: "dataSourceName",
-    header: <FormattedMessage id="patient.dataSourceName" />,
-  },
+const PATIENT_SEARCH_HEADERS: [string, string][] = [
+  ["lastName", "patient.last.name"],
+  ["firstName", "patient.first.name"],
+  ["gender", "patient.gender"],
+  ["dob", "patient.dob"],
+  ["subjectNumber", "patient.subject.number"],
+  ["nationalId", "patient.natioanalid"],
+  ["dataSourceName", "patient.dataSourceName"],
 ];
+
+/**
+ * The patient search result columns with plain-text headers. Carbon builds each
+ * sortable header's label ("Click to sort rows by … header") from this value,
+ * so a React element here was announced as "[object Object]" (OGC-1443).
+ */
+export const patientSearchHeaderData = (intl: IntlShape): TableHeaderData[] =>
+  PATIENT_SEARCH_HEADERS.map(([key, id]) => ({
+    key,
+    header: intl.formatMessage({ id }),
+  }));
