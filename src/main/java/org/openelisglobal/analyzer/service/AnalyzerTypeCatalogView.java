@@ -21,9 +21,10 @@ public record AnalyzerTypeCatalogView(String schemaVersion, String catalogFinger
     }
 
     /**
-     * {@code newerProfileRevision}: the analyzer can adopt this revision.
-     * {@code newerMappingRevision}: it has a saved mapping revision that is not in
-     * force yet and waits for Confirm and Apply.
+     * {@code newerProfileRevision}: the analyzer can adopt this revision; false
+     * once a saved adoption targets it. {@code newerMappingRevision}: it has a
+     * saved mapping revision that is not in force yet and waits for Confirm and
+     * Apply.
      */
     public record AffectedAnalyzer(String id, String name, boolean active, int pinnedProfileRevision,
             int pinnedMappingRevision, boolean newerProfileRevision, boolean newerMappingRevision) {
