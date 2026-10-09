@@ -37,6 +37,7 @@ if errors:
     sys.exit('\n'.join(errors))
 print('i18n duplicate-key and source-of-truth checks passed')
 PY
+    python3 "$(git rev-parse --show-toplevel)/scripts/ci/check-i18n-plurals.py" src/languages/en.json
     ;;
   *) echo "Unknown frontend job: $1" >&2; exit 2 ;;
 esac
