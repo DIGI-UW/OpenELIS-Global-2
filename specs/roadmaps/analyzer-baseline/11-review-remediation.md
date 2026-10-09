@@ -84,6 +84,13 @@ Review of the top three PRs, 9 Oct (fixed on the top PR):
 - [x] R31 (4657 review) bridge-pairing.md says the first pairing trusts whichever certificate answers
 ```
 
+Follow-ups, deferred by the user on 9 Oct (after the stack merges):
+
+```
+- [ ] R32 (4657 review) Whoever owns QC roles decides whether the four QC controllers' reads are gated on `QaPermissions.VIEW_QC`, as `QCRestController` is, instead of ADMIN, so Lab Supervisors keep the QC dashboard
+- [ ] R33 (4657 Codex) The Linux installer's `oe_server.xml` requests client certificates through `AnyClientCertificateTrustManager`, so installer deployments accept the paired Bridge's deliveries; `bridge-pairing.md` then drops its installer caveat
+```
+
 Threads:
 
 ```
