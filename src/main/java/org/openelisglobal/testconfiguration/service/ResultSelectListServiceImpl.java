@@ -103,6 +103,15 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
     @Override
     @Transactional
     public boolean addResultSelectList(ResultSelectListForm form, String currentUserId) {
+        // Read before writing: a normal return commits, so nothing may be saved for an
+        // unreadable list.
+        JSONArray tests;
+        try {
+            tests = parseTests(form.getTestSelectListJson());
+        } catch (ParseException e) {
+            LogEvent.logError(e);
+            return false;
+        }
 
         Dictionary dictionary = new Dictionary();
         dictionary.setSortOrder(1);
@@ -125,64 +134,57 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
             answerTerminology.syncLegacyLoinc(dictionary.getId(), form.getLoincCode(), currentUserId);
         }
 
-        String s = form.getTestSelectListJson();
+        for (int j = 0; j < tests.size(); j++) {
+            JSONObject testObject = (JSONObject) tests.get(j);
 
-        JSONParser parser = new JSONParser();
-        try {
-            Object parsed = parser.parse(s);
-            JSONArray tests;
-            if (parsed instanceof JSONArray) {
-                tests = (JSONArray) parsed;
-            } else if (parsed instanceof JSONObject) {
-                JSONObject obj = (JSONObject) parsed;
-                String testsStr = (String) obj.get("tests");
-                tests = (JSONArray) parser.parse(testsStr);
-            } else {
-                throw new IllegalArgumentException("Invalid testSelectListJson format");
-            }
-            for (int j = 0; j < tests.size(); j++) {
-                JSONObject testObject = (JSONObject) tests.get(j);
+            String testId = (String) testObject.get("id");
+            Test test = testService.getTestById(testId);
+            JSONArray items = (JSONArray) testObject.get("items");
 
-                String testId = (String) testObject.get("id");
-                Test test = testService.getTestById(testId);
-                JSONArray items = (JSONArray) testObject.get("items");
+            for (int i = 0; i < items.size(); i++) {
+                JSONObject object = (JSONObject) items.get(i);
 
-                for (int i = 0; i < items.size(); i++) {
-                    JSONObject object = (JSONObject) items.get(i);
-
-                    if (object.containsKey("id")) {
-                        Map<String, Object> filter = new HashMap<>();
-                        filter.put("test.id", testId);
-                        filter.put("value", object.get("id"));
-                        Optional<TestResult> testResult = resultService.getMatch(filter); // get((String)
-                                                                                          // object.get("id"));
-                        long order = (Long) object.get("order");
-                        if (testResult.isPresent()) {
-                            testResult.get().setSortOrder(String.valueOf(10 * order));
-                            testResult.get().setSysUserId(currentUserId);
-                            resultService.save(testResult.get());
-                        }
-
-                    } else {
-                        TestResult testResult = new TestResult();
-                        testResult.setIsQuantifiable((Boolean) object.get("qualifiable"));
-                        testResult.setIsNormal((Boolean) object.get("normal"));
-                        testResult.setValue(dictionary.getId());
-                        long order = (Long) object.get("order");
-                        testResult.setSortOrder(String.valueOf(order * 10));
-                        testResult.setTest(test);
-                        testResult.setTestResultType("D");
-                        testResult.setResultGroup("");
-                        testResult.setSysUserId(currentUserId);
-                        resultService.save(testResult);
+                if (object.containsKey("id")) {
+                    Map<String, Object> filter = new HashMap<>();
+                    filter.put("test.id", testId);
+                    filter.put("value", object.get("id"));
+                    Optional<TestResult> testResult = resultService.getMatch(filter); // get((String)
+                                                                                      // object.get("id"));
+                    long order = (Long) object.get("order");
+                    if (testResult.isPresent()) {
+                        testResult.get().setSortOrder(String.valueOf(10 * order));
+                        testResult.get().setSysUserId(currentUserId);
+                        resultService.save(testResult.get());
                     }
+
+                } else {
+                    TestResult testResult = new TestResult();
+                    testResult.setIsQuantifiable((Boolean) object.get("qualifiable"));
+                    testResult.setIsNormal((Boolean) object.get("normal"));
+                    testResult.setValue(dictionary.getId());
+                    long order = (Long) object.get("order");
+                    testResult.setSortOrder(String.valueOf(order * 10));
+                    testResult.setTest(test);
+                    testResult.setTestResultType("D");
+                    testResult.setResultGroup("");
+                    testResult.setSysUserId(currentUserId);
+                    resultService.save(testResult);
                 }
             }
-            return true;
-        } catch (ParseException e) {
-            LogEvent.logError(e);
         }
-        return false;
+        return true;
+    }
+
+    private static JSONArray parseTests(String json) throws ParseException {
+        JSONParser parser = new JSONParser();
+        Object parsed = parser.parse(json);
+        if (parsed instanceof JSONArray) {
+            return (JSONArray) parsed;
+        }
+        if (parsed instanceof JSONObject) {
+            return (JSONArray) parser.parse((String) ((JSONObject) parsed).get("tests"));
+        }
+        throw new IllegalArgumentException("Invalid testSelectListJson format");
     }
 
     @Override
