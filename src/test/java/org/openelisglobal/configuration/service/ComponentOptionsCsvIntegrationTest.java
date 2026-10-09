@@ -82,6 +82,7 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
 
     @After
     public void tearDown() {
+        ImportRunContext.clearPending();
         cleanup();
     }
 
@@ -107,6 +108,25 @@ public class ComponentOptionsCsvIntegrationTest extends BaseWebContextSensitiveT
     @Test
     public void aRowNamingAComponentTheTestLacksAddsNothing() throws Exception {
         load(testResultHandler, RESULTS_HEADER + TEST + ",D,PASS," + CATEGORY + ",1,N,Y,N,,,IQS-X\n",
+                "test-results.csv");
+
+        assertEquals(Map.of("PRIMARY", List.of("N:")), optionsByComponent());
+    }
+
+    @Test
+    public void aComponentCodeMatchesWhateverItsCase() throws Exception {
+        load(testResultHandler, RESULTS_HEADER + TEST + ",D,Detected," + CATEGORY + ",1,N,Y,N,,,CALL\n",
+                "test-results.csv");
+
+        assertEquals(Map.of("PRIMARY", List.of("N:"), "call", List.of("D:Detected")), optionsByComponent());
+    }
+
+    @Test
+    public void aRowNamingADeactivatedComponentAddsNothing() throws Exception {
+        jdbc.update("UPDATE clinlims.test_result_component SET is_active = 'N' WHERE code = 'IQS-L' AND test_id ="
+                + " (SELECT id FROM clinlims.test WHERE description = ?)", TEST);
+
+        load(testResultHandler, RESULTS_HEADER + TEST + ",D,PASS," + CATEGORY + ",1,N,Y,Y,,,IQS-L\n",
                 "test-results.csv");
 
         assertEquals(Map.of("PRIMARY", List.of("N:")), optionsByComponent());

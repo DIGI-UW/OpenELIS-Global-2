@@ -33,10 +33,10 @@ the following columns:
   to "N")
 - **significantDigits**: Number of significant digits for numeric types
 - **flags**: Optional flags (e.g., "H" for high, "L" for low)
-- **componentCode**: The result component the option belongs to, by its code.
-  Blank means the test's primary result. The component must already exist; load
-  it in the `result-components` domain. A row naming a component the test lacks
-  is skipped.
+- **componentCode**: The result component the option belongs to, by its code in
+  any case. Blank means the test's primary result. The component must already
+  exist and be active; load it in the `result-components` domain. A row naming a
+  component the test lacks, or one that is deactivated, is skipped.
 
 ## Result Types
 
