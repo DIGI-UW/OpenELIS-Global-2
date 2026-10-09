@@ -25,6 +25,11 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements 
     }
 
     @Override
+    public MicroCase getForUpdate(String caseId) {
+        return entityManager.find(MicroCase.class, caseId, jakarta.persistence.LockModeType.PESSIMISTIC_WRITE);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<MicroCase> getBySampleItem(String sampleItemId) {
         Query<MicroCase> query = entityManager.unwrap(Session.class).createQuery(

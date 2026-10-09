@@ -21,7 +21,8 @@ public class MicroCaseAnalysisDAOImpl extends BaseDAOImpl<MicroCaseAnalysis, Str
     @Transactional(readOnly = true)
     public List<MicroCaseAnalysis> getByCaseId(String caseId) {
         Query<MicroCaseAnalysis> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroCaseAnalysis c where c.caseId = :caseId order by c.analysisId", MicroCaseAnalysis.class);
+                "from MicroCaseAnalysis c where c.caseId = :caseId and c.cancelledAt is null order by c.analysisId",
+                MicroCaseAnalysis.class);
         query.setParameter("caseId", caseId);
         return query.list();
     }
@@ -30,10 +31,19 @@ public class MicroCaseAnalysisDAOImpl extends BaseDAOImpl<MicroCaseAnalysis, Str
     @Transactional(readOnly = true)
     public MicroCaseAnalysis getByCaseAndAnalysis(String caseId, String analysisId) {
         Query<MicroCaseAnalysis> query = entityManager.unwrap(Session.class).createQuery(
-                "from MicroCaseAnalysis c where c.caseId = :caseId and c.analysisId = :analysisId",
+                "from MicroCaseAnalysis c where c.caseId = :caseId and c.analysisId = :analysisId and c.cancelledAt is null",
                 MicroCaseAnalysis.class);
         query.setParameter("caseId", caseId);
         query.setParameter("analysisId", analysisId);
         return query.uniqueResultOptional().orElse(null);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public MicroCaseAnalysis getActiveByAnalysisId(String analysisId) {
+        return entityManager.unwrap(Session.class)
+                .createQuery("from MicroCaseAnalysis c where c.analysisId = :analysisId and c.cancelledAt is null",
+                        MicroCaseAnalysis.class)
+                .setParameter("analysisId", analysisId).uniqueResultOptional().orElse(null);
     }
 }
