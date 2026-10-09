@@ -22,10 +22,10 @@ is listed in [roadmap.md](roadmap.md).
    analyzer type: the Analyzer Types page only previews a profile's defaults. In the setup wizard the operator
    enables the assays this instrument runs, as on the instrument's own host test
    code table, resolves every unresolved row among them, confirms, and activates.
-   Instrument codes, language and number format can be overridden per analyzer,
-   and a code the profile never declared is mapped the same way. OpenELIS pushes
-   the analyzer's instrument codes to its Bridge connection, so the Bridge reads
-   results under the codes the instrument actually sends.
+   Language and number format can be overridden per analyzer on its Bridge
+   connection, and a code the profile never declared is mapped like any other
+   row. Setting, per analyzer, the code an instrument sends for a declared assay
+   waits for codes settled at setup ([roadmap](roadmap.md) item 6).
 3. **Results arrive as FHIR bundles.** The Bridge parses the instrument's
    message and puts everything it understood into the bundle: each part of a
    result (number with comparator, qualitative call, log, analyte values,
@@ -59,7 +59,7 @@ is listed in [roadmap.md](roadmap.md).
 | System        | Owns                                                                                                                                                                                                    |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Bridge        | Analyzer profiles (immutable revisions), connections and secrets, protocols and transports, parsing, control-result recognition, the raw message audit copy, and the FHIR bundle it builds.             |
-| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's mapping to the local catalog and its instrument codes (pushed to the Bridge connection), placement and review of results, held results, quality control, activation, the bundle copy. |
+| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's mapping to the local catalog, placement and review of results, held results, quality control, activation, the bundle copy. |
 | Analyzer mock | Deterministic instrument behaviour and real ASTM, HL7 and FILE traffic, replayed from vendor-documented messages.                                                                                       |
 
 Production code never branches on a manufacturer, model, profile ID or

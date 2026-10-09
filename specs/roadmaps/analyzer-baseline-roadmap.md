@@ -130,12 +130,12 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     MTB/RIF is three results: MTB detection (Detected, Not detected, Trace
     detected), bacillary level, rifampicin resistance on LOINC 89372-7
     (Detected, Not detected, Indeterminate). 46244-0 is retired.
-13. Instrument codes are a per-analyzer override. The profile ships the
-    vendor's suggested codes; setup lets the operator change what this
-    instrument uses; the Bridge uses the override for result translation and
-    outbound orders. Setup lists the profile's assays the way the instrument's
-    host test code table does: the lab enables the ones this instrument runs
-    and sets each code, and only enabled assays are mapped. A result for an
+13. Setup lists the profile's assays the way the instrument's host test code
+    table does: the lab enables the ones this instrument runs, and only
+    enabled assays are mapped. The code an instrument sends for a declared
+    assay is not set in OE2 (9 Oct, the #4611 review: it is a setting of the
+    Bridge connection); settling it per analyzer at setup is
+    [analyzers roadmap](../analyzers/roadmap.md) item 6. A result for an
     assay that is not enabled is held, never dropped. A code the profile does not declare (a cartridge or test
     the default profile does not cover) reaches OE2 and is held as an unknown
     test; the operator maps it like any other override, from the held row or

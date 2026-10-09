@@ -10,26 +10,23 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
  * is its code and its sub-identity (empty for the main result); a record
  * carrying both a number and a call sends the call to {@code callComponentId}.
  * The main record also says whether this instrument runs the assay
- * ({@code enabled}, null when not stated, which counts as on) and the code it
- * sends for it ({@code instrumentCode}, null for the profile's own code), as on
- * the instrument's host test code table.
+ * ({@code enabled}, null when not stated, which counts as on), as on the
+ * instrument's host test code table.
  */
 public record AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId,
         String componentId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin, String subIdentity,
-        String callComponentId, Boolean enabled, String instrumentCode) {
+        String callComponentId, Boolean enabled) {
 
     public AnalyzerMappingTestDraft {
         origin = origin == null ? AnalyzerMappingOrigin.DEFAULT : origin;
         subIdentity = subIdentity == null ? "" : subIdentity;
-        instrumentCode = instrumentCode == null || instrumentCode.isBlank()
-                || instrumentCode.trim().equals(sourceRowKey) ? null : instrumentCode.trim();
     }
 
     public AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId,
             String componentId, AnalyzerUnresolvedReason unresolvedReason, AnalyzerMappingOrigin origin,
             String subIdentity, String callComponentId) {
         this(sourceRowKey, mappingState, testId, componentId, unresolvedReason, origin, subIdentity, callComponentId,
-                null, null);
+                null);
     }
 
     public AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState mappingState, String testId,
@@ -77,24 +74,18 @@ public record AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState
         return enabled == null || enabled;
     }
 
-    public AnalyzerMappingTestDraft withAssay(Boolean enabled, String instrumentCode) {
+    public AnalyzerMappingTestDraft withAssay(Boolean enabled) {
         return new AnalyzerMappingTestDraft(sourceRowKey, mappingState, testId, componentId, unresolvedReason, origin,
-                subIdentity, callComponentId, enabled, instrumentCode);
+                subIdentity, callComponentId, enabled);
     }
 
     /**
-     * This decision with the assay switch and code it does not state taken from the
-     * row it replaces ({@code previousState} null when there was none). A code is
-     * kept only when the decision states neither, since stating the switch alone
-     * returns to the profile's code. Mapping a row that was not mapped is the lab
-     * choosing to run it.
+     * This decision with the assay switch, when it does not state one, taken from
+     * the row it replaces ({@code previousState} null when there was none). Mapping
+     * a row that was not mapped is the lab choosing to run it.
      */
-    public AnalyzerMappingTestDraft keepingAssayOf(AnalyzerMappingState previousState, boolean previouslyEnabled,
-            String previousCode) {
+    public AnalyzerMappingTestDraft keepingAssayOf(AnalyzerMappingState previousState, boolean previouslyEnabled) {
         boolean newlyMapped = mappingState == AnalyzerMappingState.BOUND && previousState != AnalyzerMappingState.BOUND;
-        Boolean keptEnabled = enabled != null ? enabled : previousState == null || previouslyEnabled || newlyMapped;
-        String keptCode = enabled != null || instrumentCode != null ? instrumentCode
-                : previousState == null ? null : previousCode;
-        return withAssay(keptEnabled, keptCode);
+        return withAssay(enabled != null ? enabled : previousState == null || previouslyEnabled || newlyMapped);
     }
 }

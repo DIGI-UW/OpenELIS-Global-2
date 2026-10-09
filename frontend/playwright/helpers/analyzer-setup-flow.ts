@@ -32,17 +32,15 @@ export const QUANTSTUDIO: ShippedProfile = {
 /** How the instrument reaches the Bridge: a sender on the shared listener, or a watched directory. */
 export type Connection = { senderId: string } | { importDirectory: string };
 
-/** The assays turned off in the Assays step, and the codes the instrument sends for the rest. */
+/** The assays turned off in the Assays step. */
 export type AssayOptions = {
   assaysOff?: string[];
-  instrumentCodes?: Record<string, string>;
 };
 
 /**
  * Set an analyzer up on a shipped baseline profile through the setup screens:
- * the assays named in `assaysOff` turned off, the codes in `instrumentCodes`
- * entered as the ones the instrument sends, its shipped mapping confirmed, its
- * connection set, and the connection active.
+ * the assays named in `assaysOff` turned off, its shipped mapping confirmed,
+ * its connection set, and the connection active.
  */
 export async function activateShippedAnalyzer(
   page: Page,

@@ -109,31 +109,6 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 List.of(), null);
     }
 
-    @Override
-    public Map<String, String> appliedInstrumentCodes(String analyzerId) {
-        Analyzer analyzer = find(analyzerId);
-        if (analyzer.getMapping() == null) {
-            return Map.of();
-        }
-        AnalyzerMappingSnapshot applied = mappingService.findById(analyzer.getMapping().getId())
-                .orElseThrow(() -> new IllegalArgumentException("Applied mapping is missing: " + analyzerId));
-        Set<String> declared = BridgeAnalyzerProfile
-                .from(bridgeProfileCatalogService
-                        .getProfile(applied.mapping().getProfileId(), applied.mapping().getProfileRevision()).profile())
-                .testDefinitions().stream().map(BridgeAnalyzerProfile.TestDefinition::analyzerCode)
-                .collect(Collectors.toSet());
-        Map<String, String> codes = new java.util.TreeMap<>();
-        for (var row : applied.tests()) {
-            String profileCode = row.getId().getSourceRowKey();
-            String instrumentCode = row.getInstrumentCode() == null ? "" : row.getInstrumentCode().trim();
-            if (row.isEnabled() && row.getId().getSubIdentity().isEmpty() && declared.contains(profileCode)
-                    && !instrumentCode.isEmpty() && !instrumentCode.equals(profileCode)) {
-                codes.put(profileCode, instrumentCode);
-            }
-        }
-        return codes;
-    }
-
     private Analyzer find(String analyzerId) {
         return analyzerService.getWithMapping(analyzerId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + analyzerId));
@@ -246,11 +221,11 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 Collectors.toMap(row -> new ResultSourceKey(row.rowKey(), row.rawValue()), Function.identity()));
         List<AnalyzerMappingTestDraft> tests = draft.tests().stream().map(row -> {
             var old = before.get(row.rowKey());
-            AnalyzerMappingTestDraft kept = old == null ? row.keepingAssayOf(null, true, null)
-                    : row.keepingAssayOf(old.mappingState(), old.isEnabled(), old.instrumentCode());
+            AnalyzerMappingTestDraft kept = old == null ? row.keepingAssayOf(null, true)
+                    : row.keepingAssayOf(old.mappingState(), old.isEnabled());
             return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
                     row.unresolvedReason(), row.sameTarget(old) ? old.origin() : AnalyzerMappingOrigin.OVERRIDE,
-                    row.subIdentity(), row.callComponentId(), kept.enabled(), kept.instrumentCode());
+                    row.subIdentity(), row.callComponentId(), kept.enabled());
         }).toList();
         List<AnalyzerMappingResultDraft> results = draft.results().stream().map(row -> {
             var old = beforeResults.get(new ResultSourceKey(row.rowKey(), row.rawValue()));
@@ -335,8 +310,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
                 definition.normalizedCoding(), state, origin, testId, componentId, selected, suggested, testReason,
                 results, key.subIdentity(), callComponentId, record.componentCode(),
-                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled(),
-                current == null ? null : current.instrumentCode());
+                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled());
     }
 
     private static AnalyzerMappingRowKey recordOf(AnalyzerResults staged) {
@@ -413,7 +387,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     }
 
     private record CurrentTest(AnalyzerMappingState state, AnalyzerMappingOrigin origin, String testId,
-            String componentId, String callComponentId, boolean enabled, String instrumentCode) {
+            String componentId, String callComponentId, boolean enabled) {
     }
 
     private record CurrentResult(AnalyzerMappingState state, AnalyzerMappingOrigin origin, String testResultId) {
@@ -429,8 +403,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
             Map<AnalyzerMappingRowKey, CurrentTest> tests = snapshot.tests().stream()
                     .collect(Collectors.toMap(AnalyzerMappingRowKey::of,
                             row -> new CurrentTest(row.getMappingState(), row.getOrigin(), row.getTestId(),
-                                    row.getComponentId(), row.getCallComponentId(), row.isEnabled(),
-                                    row.getInstrumentCode())));
+                                    row.getComponentId(), row.getCallComponentId(), row.isEnabled())));
             Map<ResultSourceKey, CurrentResult> results = snapshot.results().stream()
                     .collect(Collectors.toMap(ResultSourceKey::of,
                             row -> new CurrentResult(row.getMappingState(), row.getOrigin(), row.getTestResultId())));
@@ -438,10 +411,9 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         }
 
         static CurrentRows of(AnalyzerMappingDraft draft) {
-            Map<AnalyzerMappingRowKey, CurrentTest> tests = draft.tests().stream()
-                    .collect(Collectors.toMap(AnalyzerMappingTestDraft::rowKey,
-                            row -> new CurrentTest(row.mappingState(), row.origin(), row.testId(), row.componentId(),
-                                    row.callComponentId(), row.isEnabled(), row.instrumentCode())));
+            Map<AnalyzerMappingRowKey, CurrentTest> tests = draft.tests().stream().collect(
+                    Collectors.toMap(AnalyzerMappingTestDraft::rowKey, row -> new CurrentTest(row.mappingState(),
+                            row.origin(), row.testId(), row.componentId(), row.callComponentId(), row.isEnabled())));
             Map<ResultSourceKey, CurrentResult> results = draft.results().stream()
                     .collect(Collectors.toMap(row -> new ResultSourceKey(row.rowKey(), row.rawValue()),
                             row -> new CurrentResult(row.mappingState(), row.origin(), row.testResultId())));
