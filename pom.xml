@@ -1068,7 +1068,6 @@
                         on one runner and fail on another. Alphabetical is deterministic and stable
                         as classes are added. -->
                     <runOrder>alphabetical</runOrder>
-                    <forkedProcessTimeoutInSeconds>120</forkedProcessTimeoutInSeconds>
                 </configuration>
             </plugin>
             <plugin>
