@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Supplier;
@@ -82,52 +83,29 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
             return compose(state);
         }
         ObjectNode codes = instrumentCodes(state);
-        if (before.profileRevision() == state.profileRevision()) {
-            return syncConnection(state, codes, actor);
-        }
-        // An adopted revision moves the pin, and OE2 and the Bridge switch together:
-        // any Bridge failure below rolls this transaction back, and a connection that
-        // already moved is pinned back first. An active connection keeps receiving on
-        // the old revision until it is re-activated on the new one.
+        boolean revisionChanged = before.profileRevision() != state.profileRevision();
+        // OE2 and the Bridge switch together: any Bridge failure below rolls this
+        // transaction back, and a connection that may have moved is put back first.
+        // An active connection keeps running its old configuration until it is
+        // re-activated on the new one.
         ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
-        ObjectNode moved = inForce(state, current, codes) ? current
-                : bridgeClient.updateConnection(state.bridgeConnectionId(),
-                        updateConnectionRequest(state, pin(state), withCodes(codes), current));
+        boolean moving = !inForce(state, current, codes);
         try {
-            requireExactConnection(state, moved);
-            if (state.status() == Analyzer.AnalyzerStatus.ACTIVE) {
+            ObjectNode connection = moving ? bridgeClient.updateConnection(state.bridgeConnectionId(),
+                    updateConnectionRequest(state, pin(state), withCodes(codes), current)) : current;
+            requireExactConnection(state, connection);
+            if (state.status() == Analyzer.AnalyzerStatus.ACTIVE && (moving || revisionChanged)) {
                 String blocker = reactivate(state, actor);
                 if (blocker != null) {
                     throw new BridgeAnalyzerConnectionException(blocker);
                 }
             }
-            return new AnalyzerInstanceView(state, moved, null);
+            return new AnalyzerInstanceView(state, connection, null);
         } catch (RuntimeException exception) {
-            if (moved != current) {
-                pinBack(state, current, moved, exception);
+            if (moving) {
+                putBack(state, current, exception);
             }
             throw exception;
-        }
-    }
-
-    /**
-     * Brings the connection to the applied pin and instrument codes. An active
-     * connection keeps its old codes until it is re-activated on the new ones.
-     */
-    private AnalyzerInstanceView syncConnection(AnalyzerInstanceState state, ObjectNode codes, String actor) {
-        try {
-            ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
-            if (inForce(state, current, codes)) {
-                requireExactConnection(state, current);
-                return new AnalyzerInstanceView(state, current, null);
-            }
-            ObjectNode synced = bridgeClient.updateConnection(state.bridgeConnectionId(),
-                    updateConnectionRequest(state, pin(state), withCodes(codes), current));
-            requireExactConnection(state, synced);
-            String blocker = state.status() == Analyzer.AnalyzerStatus.ACTIVE ? reactivate(state, actor) : null;
-            return new AnalyzerInstanceView(state, synced, blocker);
-        } catch (BridgeAnalyzerConnectionException exception) {
-            return new AnalyzerInstanceView(state, null, exception.messageKey());
         }
     }
 
@@ -141,13 +119,25 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
                 : reactivated.blockers().get(0).code();
     }
 
-    private void pinBack(AnalyzerInstanceState state, ObjectNode previous, ObjectNode moved,
-            RuntimeException original) {
+    /**
+     * Puts the connection back on {@code previous}'s pin and codes if it moved. The
+     * Bridge can make a change whose answer is then lost, so the connection is read
+     * again rather than trusted. When it cannot be put back, OE2 and the Bridge may
+     * disagree, and that is what the operator is told.
+     */
+    private void putBack(AnalyzerInstanceState state, ObjectNode previous, RuntimeException original) {
         try {
+            ObjectNode now = bridgeClient.getConnection(state.bridgeConnectionId());
+            if (now.path("profileRef").equals(previous.path("profileRef")) && codesOf(now).equals(codesOf(previous))) {
+                return;
+            }
             bridgeClient.updateConnection(state.bridgeConnectionId(),
-                    updateConnectionRequest(state, previous.path("profileRef"), withCodes(codesOf(previous)), moved));
-        } catch (RuntimeException pinBackFailure) {
-            original.addSuppressed(pinBackFailure);
+                    updateConnectionRequest(state, previous.path("profileRef"), withCodes(codesOf(previous)), now));
+        } catch (RuntimeException putBackFailure) {
+            BridgeAnalyzerConnectionException reconcile = new BridgeAnalyzerConnectionException(
+                    "analyzer.bridge.connection.reconcileRequired", Map.of(), original);
+            reconcile.addSuppressed(putBackFailure);
+            throw reconcile;
         }
     }
 

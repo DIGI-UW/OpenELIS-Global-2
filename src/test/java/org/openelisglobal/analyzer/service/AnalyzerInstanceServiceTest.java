@@ -3,6 +3,7 @@ package org.openelisglobal.analyzer.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.inOrder;
@@ -294,6 +295,90 @@ public class AnalyzerInstanceServiceTest {
                 any(ObjectNode.class));
         order.verify(activationService).reactivate("42", "17");
         assertNull(result.connectionErrorKey());
+    }
+
+    @Test
+    public void newCodesARunningAnalyzerCannotRestartOnAreTakenBackAndNothingIsApplied() {
+        AnalyzerInstanceState active = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
+                "fixture.synthetic-connection", 3, PROFILE_FINGERPRINT, "bridge-connection-42",
+                Analyzer.AnalyzerStatus.ACTIVE, 0L);
+        when(localStateService.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17")).thenReturn(active);
+        when(mappingEditorService.appliedInstrumentCodes("42")).thenReturn(java.util.Map.of("HIVVL", "HIVU"));
+        ObjectNode renamed = withCodes(bridgeConnection, "HIVVL", "HIVU");
+        when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection, renamed);
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class))).thenReturn(renamed, bridgeConnection);
+        when(activationService.reactivate("42", "17"))
+                .thenReturn(new AnalyzerActivationResult("42", Analyzer.AnalyzerStatus.ACTIVE, false, false,
+                        List.of(new AnalyzerActivationBlocker("analyzer.activation.blocker.connection"))));
+
+        BridgeAnalyzerConnectionException refused = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17"));
+
+        assertEquals("analyzer.activation.blocker.connection", refused.messageKey());
+        List<ObjectNode> sent = sentUpdates(2);
+        assertEquals(codes("HIVVL", "HIVU"), sent.get(0).path("values").path("codeOverrides"));
+        assertEquals("the connection goes back to the codes it ran on", JSON.createObjectNode(),
+                sent.get(1).path("values").path("codeOverrides"));
+    }
+
+    @Test
+    public void aRepinTheBridgeMadeBeforeItsAnswerWasLostIsPutBack() {
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted());
+        ObjectNode repinned = bridgeConnection.deepCopy();
+        repinned.with("profileRef").put("revision", 4).put("fingerprint", ADOPTED_FINGERPRINT);
+        when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection, repinned);
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class)))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"))
+                .thenReturn(bridgeConnection);
+
+        BridgeAnalyzerConnectionException failed = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"));
+
+        assertEquals("analyzer.bridge.connection.unreachable", failed.messageKey());
+        assertEquals("pinned back to revision 3", 3,
+                sentUpdates(2).get(1).path("profileRef").path("revision").asInt());
+    }
+
+    @Test
+    public void aRepinTheBridgeNeverMadeIsNotPutBack() {
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted());
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class)))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
+
+        assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"));
+
+        sentUpdates(1);
+    }
+
+    @Test
+    public void aConnectionThatCannotBePutBackIsReportedAsNeedingReconciliation() {
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted());
+        when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection)
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class)))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
+
+        BridgeAnalyzerConnectionException failed = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"));
+
+        assertEquals("analyzer.bridge.connection.reconcileRequired", failed.messageKey());
+    }
+
+    private AnalyzerInstanceState adopted() {
+        return new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"), "fixture.synthetic-connection", 4,
+                ADOPTED_FINGERPRINT, "bridge-connection-42", Analyzer.AnalyzerStatus.SETUP, 0L);
+    }
+
+    private List<ObjectNode> sentUpdates(int count) {
+        ArgumentCaptor<ObjectNode> updateRequest = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(bridgeClient, org.mockito.Mockito.times(count))
+                .updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"), updateRequest.capture());
+        return updateRequest.getAllValues();
     }
 
     private ObjectNode sentUpdate() {
