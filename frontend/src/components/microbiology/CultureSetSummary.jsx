@@ -24,8 +24,14 @@ const CultureSetSummary = ({
         {intl.formatMessage(
           { id: "microbiology.sets.count" },
           {
-            sets: [...sets.keys()].filter((key) => key !== null).length,
-            bottles: bottles.length,
+            sets: intl.formatMessage(
+              { id: "microbiology.sets.countSets" },
+              { count: [...sets.keys()].filter((key) => key !== null).length },
+            ),
+            bottles: intl.formatMessage(
+              { id: "microbiology.sets.countBottles" },
+              { count: bottles.length },
+            ),
           },
         )}
       </strong>
