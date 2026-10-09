@@ -213,7 +213,7 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         if (eOrders.size() <= 0) {
             serviceRequest.setIntent(ServiceRequestIntent.ORIGINALORDER);
         } else if (ElectronicOrderType.FHIR.equals(eOrders.get(eOrders.size() - 1).getType())) {
-            serviceRequest.addBasedOn(common.createReferenceFor(ResourceType.ServiceRequest, sample.getReferringId()));
+            serviceRequest.addBasedOn(basedOnFor(sample));
             serviceRequest.setIntent(ServiceRequestIntent.ORDER);
         } else if (ElectronicOrderType.HL7_V2.equals(eOrders.get(eOrders.size() - 1).getType())) {
             serviceRequest.setIntent(ServiceRequestIntent.ORDER);
@@ -273,6 +273,30 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         }
 
         return serviceRequest;
+    }
+
+    /**
+     * The EMR ServiceRequest the order came from. The sample keeps that request's
+     * order number (its first identifier) as its referring id, not the request's
+     * id, so the request is found through its local copy, which keeps the EMR id.
+     * When that copy cannot be read the reference is logical, by the order number.
+     */
+    private Reference basedOnFor(Sample sample) {
+        try {
+            Optional<ServiceRequest> emrRequest = fhirPersistanceService
+                    .getServiceRequestByReferingId(sample.getReferringId());
+            if (emrRequest.isPresent()) {
+                return common.createReferenceFor(ResourceType.ServiceRequest,
+                        emrRequest.get().getIdElement().getIdPart());
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "basedOnFor", "could not look up the EMR ServiceRequest "
+                    + sample.getReferringId() + " for sample " + sample.getId() + ": " + e.getMessage());
+        }
+        Reference reference = new Reference();
+        reference.setType(ResourceType.ServiceRequest.name());
+        reference.setIdentifier(new Identifier().setValue(sample.getReferringId()));
+        return reference;
     }
 
     /**
