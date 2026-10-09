@@ -535,9 +535,7 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
         routing.routeOrder(order, actor);
         var originalOwnership = requests.getActiveByRequestAndTest(requested.getId(), test.getId());
         String originalOwnershipId = originalOwnership.getId();
-        String cancelled = org.openelisglobal.spring.util.SpringContext
-                .getBean(org.openelisglobal.common.services.IStatusService.class)
-                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
+        String cancelled = fixtures.ensureAnalysisCanceledStatus();
         original.setStatusId(cancelled);
         original.setSysUserId(actor);
         analyses.update(original);
