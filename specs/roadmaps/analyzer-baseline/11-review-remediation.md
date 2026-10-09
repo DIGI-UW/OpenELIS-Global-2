@@ -54,7 +54,7 @@ PR B, results and import:
 - [x] R14 (4583#0, 4583#1) Save All skips rows with no matched patient; held mismatch rows show their note
 - [x] R15 (4593#2) Held component parts offer Review mapping and Dismiss failed run
 - [x] R16 (4625#0) An analyzer whose restore failed offers Activate again
-- [ ] R17 (4583#6) Placement runs once per page, not once per row before paging
+- [x] R17 (4583#6) Placement runs once per page, not once per row before paging
 ```
 
 PR C, deploy, harness and docs:
