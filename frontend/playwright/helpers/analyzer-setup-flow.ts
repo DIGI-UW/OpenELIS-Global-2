@@ -54,7 +54,7 @@ export async function activateShippedAnalyzer(
   await list.goto();
   await list.clickAdd();
   await setup.expectOpen();
-  await setup.selectProfile(profile.displayName);
+  await setup.selectProfile(profile.displayName, profile);
   await setup.fillName(name);
   await setup.selectLabUnit("Molecular Biology");
   await setup.continueToVerify(assays);

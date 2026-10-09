@@ -36,17 +36,25 @@ export class AnalyzerSetupPage {
     await expect(this.nameInput).toHaveValue(name);
   }
 
-  async selectProfile(profileName: string) {
+  /** With a pin, the option for exactly that revision; each revision is its own option. */
+  async selectProfile(
+    profileName: string,
+    pin?: { profileId: string; revision: number },
+  ) {
     await this.typePicker.click();
     await this.typePicker.fill(profileName);
+    const option =
+      escapeRegExp(profileName) + (pin ? `.*revision ${pin.revision}$` : "");
     await this.page
-      .getByRole("option", { name: new RegExp(escapeRegExp(profileName), "i") })
+      .getByRole("option", { name: new RegExp(option, "i") })
       .first()
       .click();
-    await expect(this.page).toHaveURL(
-      (url) =>
-        Boolean(url.searchParams.get("profile")) &&
-        Boolean(url.searchParams.get("revision")),
+    await expect(this.page).toHaveURL((url) =>
+      pin
+        ? url.searchParams.get("profile") === pin.profileId &&
+          url.searchParams.get("revision") === String(pin.revision)
+        : Boolean(url.searchParams.get("profile")) &&
+          Boolean(url.searchParams.get("revision")),
     );
     await expect(this.typePicker).toHaveValue(
       new RegExp(escapeRegExp(profileName), "i"),
