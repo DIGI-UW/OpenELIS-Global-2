@@ -2,6 +2,7 @@ package org.openelisglobal.dictionaryterminology.service;
 
 import java.util.List;
 import org.openelisglobal.common.service.BaseObjectService;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
 import org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping;
 
 public interface DictionaryTerminologyMappingService extends BaseObjectService<DictionaryTerminologyMapping, String> {
@@ -27,4 +28,12 @@ public interface DictionaryTerminologyMappingService extends BaseObjectService<D
      * active LOINC mapping. Mappings in other systems are never touched.
      */
     void syncLegacyLoinc(String dictionaryId, String loinc, String sysUserId);
+
+    /**
+     * Inserts an answer (no id) or updates it, and when its LOINC differs from
+     * {@code previousLoinc} brings the LOINC mapping in step, in one transaction:
+     * either both are saved or neither is. The update refuses a duplicate, and a
+     * frozen answer when {@code frozenCheckRequired}.
+     */
+    Dictionary saveAnswer(Dictionary dictionary, String previousLoinc, boolean frozenCheckRequired);
 }
