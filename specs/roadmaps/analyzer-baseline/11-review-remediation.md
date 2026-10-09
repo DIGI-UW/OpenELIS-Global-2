@@ -33,7 +33,7 @@ before step 10's final green (F10) and evidence recording (F11).
 PR A, mapping and adoption:
 
 ```
-- [ ] R1 (4611#1, high) Adopting a newer revision keeps each row's assay switch and instrument code: AnalyzerAdoptionServiceImpl.adopt fills a missing enabled or instrumentCode from the current row, as the editor does; red first with an adoption after an Assays-step override
+- [x] R1 (4611#1, high) Adopting a newer revision keeps each row's assay switch and instrument code: AnalyzerAdoptionServiceImpl.adopt fills a missing enabled or instrumentCode from the current row, as the editor does; red first with an adoption after an Assays-step override
 - [ ] R2 (4593#1, high) A row whose profile declares a component cannot be confirmed or saved without one: validateConfirmable and save refuse it; the editor keeps the row unresolved until a target is picked
 - [ ] R3 (4604#2) Adopt checks baseMappingFingerprint under the lock, as the editor does
 - [ ] R4 (4604#0, 4604#6) A failed Bridge update after the connection moved pins it back; a failed pin-back reports "reconcile required", not "nothing was applied"

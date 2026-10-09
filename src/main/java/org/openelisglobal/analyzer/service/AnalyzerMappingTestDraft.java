@@ -58,4 +58,20 @@ public record AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState
         return new AnalyzerMappingTestDraft(sourceRowKey, mappingState, testId, componentId, unresolvedReason, origin,
                 subIdentity, callComponentId, enabled, instrumentCode);
     }
+
+    /**
+     * This decision with the assay switch and code it does not state taken from the
+     * row it replaces ({@code previousState} null when there was none). A code is
+     * kept only when the decision states neither, since stating the switch alone
+     * returns to the profile's code. Mapping a row that was not mapped is the lab
+     * choosing to run it.
+     */
+    public AnalyzerMappingTestDraft keepingAssayOf(AnalyzerMappingState previousState, boolean previouslyEnabled,
+            String previousCode) {
+        boolean newlyMapped = mappingState == AnalyzerMappingState.BOUND && previousState != AnalyzerMappingState.BOUND;
+        Boolean keptEnabled = enabled != null ? enabled : previousState == null || previouslyEnabled || newlyMapped;
+        String keptCode = enabled != null || instrumentCode != null ? instrumentCode
+                : previousState == null ? null : previousCode;
+        return withAssay(keptEnabled, keptCode);
+    }
 }
