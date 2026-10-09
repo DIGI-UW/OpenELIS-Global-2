@@ -736,6 +736,7 @@ const AnalyserResults = (props) => {
             <ResultParts
               headId={row.id}
               parts={partsByHeadId.get(row.id) || []}
+              renderHeld={renderHeldResult}
             />
           </>
         );
