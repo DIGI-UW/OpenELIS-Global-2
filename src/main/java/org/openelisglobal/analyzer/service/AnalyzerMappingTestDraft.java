@@ -49,6 +49,18 @@ public record AnalyzerMappingTestDraft(String sourceRowKey, AnalyzerMappingState
         return new AnalyzerMappingRowKey(sourceRowKey, subIdentity);
     }
 
+    /**
+     * The component a record's answers belong to: a part's own component; for a
+     * main record, its call component when it has one, else its own component. Null
+     * means the test's primary result.
+     */
+    public static String answerComponentOf(String subIdentity, String componentId, String callComponentId) {
+        if (subIdentity != null && !subIdentity.isEmpty()) {
+            return componentId;
+        }
+        return callComponentId != null ? callComponentId : componentId;
+    }
+
     /** Whether the instrument runs this assay; not stated counts as on. */
     public boolean isEnabled() {
         return enabled == null || enabled;

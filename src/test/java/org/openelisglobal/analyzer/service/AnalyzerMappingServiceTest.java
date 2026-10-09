@@ -330,6 +330,29 @@ public class AnalyzerMappingServiceTest {
     }
 
     @Test
+    public void appendRevisionRejectsAnAnswerFromAnotherComponentOfTheMappedTest() {
+        org.openelisglobal.test.valueholder.Test mappedTest = activeTest("9701");
+        TestResult otherComponents = resultOption("811", mappedTest, true);
+        otherComponents.setComponentId("c-other");
+        when(testService.get("9701")).thenReturn(mappedTest);
+        when(componentService.getComponentsByTestId("9701")).thenReturn(List.of(component("c-log")));
+        when(testResultService.get("811")).thenReturn(otherComponents);
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.appendRevision(analyzer("7"),
+                        new AnalyzerMappingDraft(
+                                List.of(new AnalyzerMappingTestDraft("HIV", AnalyzerMappingState.BOUND, "9701", "c-log",
+                                        null, AnalyzerMappingOrigin.OVERRIDE, "LOG", null)),
+                                List.of(new AnalyzerMappingResultDraft("HIV", "POS", AnalyzerMappingState.BOUND, "811",
+                                        null, AnalyzerMappingOrigin.OVERRIDE, "LOG"))),
+                        "17"));
+
+        assertEquals("BOUND result row HIV LOG/POS must belong to the component its record lands on",
+                error.getMessage());
+        verify(mappingDAO, never()).insert(any());
+    }
+
+    @Test
     public void appendRevisionRejectsAComponentOnARowThatIsNotBound() {
 
         assertThrows(IllegalArgumentException.class,

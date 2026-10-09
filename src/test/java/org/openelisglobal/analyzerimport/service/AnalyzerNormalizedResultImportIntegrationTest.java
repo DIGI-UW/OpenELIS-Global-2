@@ -601,9 +601,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void theNumberIsNeverHeldAsAnUnknownAnswerWhenTheCallHasAnswers() throws Exception {
         bindViralLoadRecords();
-        jdbc.update("INSERT INTO clinlims.test_result"
-                + " (id, test_id, tst_rslt_type, value, is_active, sort_order, lastupdated)"
-                + " VALUES (?, ?, 'D', 'Not detected', true, 1, NOW())", NEGATIVE_OPTION_ID, TEST_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result"
+                        + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
+                        + " VALUES (?, ?, 'D', 'Not detected', true, 1, 'comp-call', NOW())",
+                NEGATIVE_OPTION_ID, TEST_ID);
         jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
                 + " (mapping_id, source_row_key, sub_identity, raw_value, mapping_state, test_result_id, last_updated)"
                 + " VALUES (?, 'HIVVL', '', 'NOT DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, NEGATIVE_OPTION_ID);
