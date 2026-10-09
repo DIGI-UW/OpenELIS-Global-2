@@ -117,6 +117,7 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
             throw new IllegalArgumentException(
                     profileLabel(current.getProfileId(), profileRevision) + " is not active");
         }
+        draft.requireComponentTargets(profile);
         return persistRevision(analyzer, current, current.getRevisionNumber() + 1, profile.profileId(),
                 profile.revision(), profile.revisionFingerprint(), draft, effectiveActor);
     }
@@ -224,6 +225,7 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
                         row.mappingState() + " test row " + sourceRowKey + " cannot have a component");
             }
         }
+        draft.requireComponentTargets(null);
 
         Set<ResultSourceKey> resultRows = new HashSet<>();
         for (AnalyzerMappingResultDraft row : draft.results()) {
