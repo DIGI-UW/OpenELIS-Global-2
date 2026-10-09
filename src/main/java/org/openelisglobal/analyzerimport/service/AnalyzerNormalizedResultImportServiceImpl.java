@@ -111,20 +111,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             analyzerResultsService.insertAnalyzerResults(staged, effectiveActor);
         }
 
-        int controlsProcessed = 0;
-        for (AnalyzerResults row : staged) {
-            if (!row.getIsControl() || row.isReadOnly() || row.getTestId() == null) {
-                continue;
-            }
-            QCResultProcessingService.Outcome outcome = processControl(row, analyzer);
-            if (outcome == QCResultProcessingService.Outcome.RECORDED) {
-                controlsProcessed++;
-            } else if (outcome == QCResultProcessingService.Outcome.NO_TARGET) {
-                hold(row, AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING);
-                row.setSysUserId(effectiveActor);
-                analyzerResultsService.update(row);
-            }
-        }
+        int controlsProcessed = processControls(staged, analyzer, effectiveActor);
         int held = (int) staged.stream().filter(AnalyzerResults::isReadOnly).count();
         AnalyzerDeliveryReceipt receipt = new AnalyzerDeliveryReceipt();
         receipt.setConnectionId(contract.bridgeConnectionId());
@@ -192,6 +179,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     row.setInstrumentPatientName(held.getInstrumentPatientName());
                 });
                 analyzerResultsService.insertAnalyzerResults(others, effectiveActor);
+                processControls(others, analyzer, effectiveActor);
                 recoveredCount += (int) others.stream().filter(row -> !row.isReadOnly()).count();
             }
             if (!recovered.isReadOnly() && recovered.getIsControl()
@@ -449,6 +437,28 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
      * answer the mapping resolved to a dictionary entry to be judged against its QC
      * target. Null when the control is neither and stays staged for review.
      */
+    /**
+     * Records each staged control row in operational QC, holding one whose answer
+     * has no QC target. Returns how many were recorded.
+     */
+    private int processControls(List<AnalyzerResults> staged, Analyzer analyzer, String actor) {
+        int recorded = 0;
+        for (AnalyzerResults row : staged) {
+            if (!row.getIsControl() || row.isReadOnly() || row.getTestId() == null) {
+                continue;
+            }
+            QCResultProcessingService.Outcome outcome = processControl(row, analyzer);
+            if (outcome == QCResultProcessingService.Outcome.RECORDED) {
+                recorded++;
+            } else if (outcome == QCResultProcessingService.Outcome.NO_TARGET) {
+                hold(row, AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING);
+                row.setSysUserId(actor);
+                analyzerResultsService.update(row);
+            }
+        }
+        return recorded;
+    }
+
     private QCResultProcessingService.Outcome processControl(AnalyzerResults row, Analyzer analyzer) {
         LocalDateTime timestamp = row.getCompleteDate().toInstant().atZone(ZoneId.systemDefault()).toLocalDateTime();
         if ("D".equals(row.getResultType())) {
