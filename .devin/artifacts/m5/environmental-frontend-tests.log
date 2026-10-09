@@ -1,0 +1,16 @@
+
+> openelis-global-react-app@0.1.0 test
+> vitest run --run src/components/order/api/sampleTypeRequestApi.test.js src/components/order/steps/sections/MicroOrderPreview.test.jsx src/components/order/steps/sections/SampleTestSection.test.jsx src/components/order/OrderContext.test.jsx
+
+(!) Your Vite config uses features that are unsupported by `configLoader: 'native'`, which is planned to become the default in a future major version of Vite:
+  - `__dirname` (vite.config.ts:41:35). Use `import.meta.dirname` instead
+Set `VITE_CONFIG_NATIVE_IGNORE_WARNING=true` to suppress this warning.
+
+ RUN  v4.1.11 /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/frontend
+
+
+ Test Files  3 passed (3)
+      Tests  31 passed (31)
+   Start at  12:17:36
+   Duration  6.44s (transform 2.81s, setup 2.16s, import 5.96s, tests 613ms, environment 1.65s)
+

@@ -1,0 +1,23 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.openelisglobal:openelisglobal >------------------
+[INFO] Building openelisglobal 3.3.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- spotless:2.43.0:apply (default-cli) @ openelisglobal ---
+[INFO] Index file corresponds to a different configuration of the plugin. Either the plugin version or its configuration has changed. Fallback to an empty index
+[INFO] Spotless.Format is keeping 2 files clean - 0 were changed to be clean, 2 were already clean, 0 were skipped because caching determined they were already clean
+[INFO] Writing clean file: /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/microbiology/MicrobiologyV2CaseStructureLiquibaseRollbackTest.java
+[INFO] Writing clean file: /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/common/services/SampleAddService.java
+[INFO] Writing clean file: /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/microbiology/service/MicroOrderPreviewServiceImpl.java
+[INFO] Writing clean file: /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingKey.java
+[INFO] Writing clean file: /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRule.java
+[INFO] Writing clean file: /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java
+[INFO] Spotless.Java is keeping 20 files clean - 6 were changed to be clean, 14 were already clean, 0 were skipped because caching determined they were already clean
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  8.729 s
+[INFO] Finished at: 2026-10-08T12:17:54-07:00
+[INFO] ------------------------------------------------------------------------

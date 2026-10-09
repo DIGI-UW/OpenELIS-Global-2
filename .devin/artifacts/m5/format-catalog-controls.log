@@ -1,0 +1,4 @@
+frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx 60ms
+frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx 24ms
+frontend/src/components/admin/menu/DictionaryManagement.jsx 20ms
+frontend/src/components/order/steps/sections/SampleTestSection.jsx 40ms (unchanged)

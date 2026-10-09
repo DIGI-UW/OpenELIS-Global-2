@@ -1,0 +1,19 @@
+Sample types: [ '', 'V2 browser water' ]
+Sites: [
+  'Use order site ',
+  'V2 browser site A (V2B_A_1791488551383)',
+  'V2 browser site B (V2B_B_1791488551769)'
+]
+node:internal/modules/run_main:123
+    triggerUncaughtException(
+    ^
+
+locator.click: Timeout 30000ms exceeded.
+Call log:
+[2m  - waiting for getByRole('button', { name: /^Tests & Panels/ }).first()[22m
+
+    at /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/.devin/browser-environmental-walkthrough.mjs:30:66 {
+  name: 'TimeoutError'
+}
+
+Node.js v22.23.2

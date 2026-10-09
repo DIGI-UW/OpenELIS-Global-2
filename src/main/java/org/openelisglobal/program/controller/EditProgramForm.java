@@ -24,6 +24,7 @@ public class EditProgramForm {
      */
     private String domain;
     private Boolean active;
+    private Boolean showOnMicroCase;
     private List<String> labUnitIds;
 
     public Program getProgram() {
@@ -72,6 +73,14 @@ public class EditProgramForm {
 
     public void setActive(Boolean active) {
         this.active = active;
+    }
+
+    public Boolean getShowOnMicroCase() {
+        return showOnMicroCase;
+    }
+
+    public void setShowOnMicroCase(Boolean showOnMicroCase) {
+        this.showOnMicroCase = showOnMicroCase;
     }
 
     public List<String> getLabUnitIds() {

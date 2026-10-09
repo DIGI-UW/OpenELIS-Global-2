@@ -72,6 +72,10 @@ public class MicroCase extends BaseObject<String> {
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String programId;
 
+    @Column(name = "site_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String siteId;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "status", length = 20)
     private MicroCaseStatus status = MicroCaseStatus.ACTIVE;
@@ -192,6 +196,14 @@ public class MicroCase extends BaseObject<String> {
 
     public void setLabUnitId(String labUnitId) {
         this.labUnitId = labUnitId;
+    }
+
+    public String getSiteId() {
+        return siteId;
+    }
+
+    public void setSiteId(String siteId) {
+        this.siteId = siteId;
     }
 
     public String getProgramId() {

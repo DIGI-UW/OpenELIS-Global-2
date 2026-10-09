@@ -524,3 +524,24 @@ const MicrobiologyService = {
 };
 
 export default MicrobiologyService;
+
+export const previewMicrobiologyOrder = (payload) =>
+  new Promise((resolve, reject) => {
+    postToOpenElisServerJsonResponse(
+      "/rest/microbiology/order-preview",
+      JSON.stringify(payload),
+      settleJsonResponse((response) => {
+        if (
+          !Array.isArray(response.cases) ||
+          !Array.isArray(response.ordinaryTests) ||
+          !Array.isArray(response.warnings) ||
+          !Array.isArray(response.reflexRules) ||
+          !Array.isArray(response.newUnitWarnings)
+        ) {
+          reject(new Error("Invalid order preview response"));
+          return;
+        }
+        resolve(response);
+      }, reject),
+    );
+  });

@@ -1,3 +1,4 @@
+import CultureBottleFields from "./CultureBottleFields";
 import { useContext, useEffect, useMemo, useRef, useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { ConfigurationContext } from "../../../layout/Layout";
@@ -365,6 +366,15 @@ const SampleCollectionCard = ({
 
       {/* Collection Details Grid */}
       <Grid className="collection-details-grid">
+        {((sample.tests || []).some((test) => test.collectedInSets) ||
+          sample.cultureSetNumber) && (
+          <CultureBottleFields
+            sample={sample}
+            sampleIndex={sampleIndex}
+            isReadOnly={isReadOnly}
+            onChange={handleFieldChange}
+          />
+        )}
         {/* Sample Type */}
         <Column lg={4} md={4} sm={4}>
           <Select

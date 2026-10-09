@@ -9,6 +9,10 @@ public interface MicroCaseDAO extends BaseDAO<MicroCase, String> {
 
     MicroCase getForUpdate(String caseId);
 
+    void lockOrder(String sampleId);
+
+    List<MicroCase> getByOrder(String sampleId);
+
     List<MicroCase> getBySampleItem(String sampleItemId);
 
     List<MicroCase> getOpenCases();

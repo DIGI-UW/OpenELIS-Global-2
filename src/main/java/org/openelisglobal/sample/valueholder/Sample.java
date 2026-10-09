@@ -234,7 +234,7 @@ public class Sample extends EnumValueItemImpl implements NoteObject {
 
     public void setReceivedDate(Date receivedDate) {
         receivedDateForDisplay = DateUtil.convertSqlDateToStringDate(receivedDate);
-        receivedTimestamp = DateUtil.convertSqlDateToTimestamp(receivedDate);
+        receivedTimestamp = receivedDate == null ? null : DateUtil.convertSqlDateToTimestamp(receivedDate);
     }
 
     public String getReceivedTimeForDisplay() {

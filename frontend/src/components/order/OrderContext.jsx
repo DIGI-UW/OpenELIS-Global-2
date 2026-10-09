@@ -149,6 +149,10 @@ const xmlAttribute = (value) =>
 export const sampleObject = {
   index: 0,
   sampleItemId: "",
+  sampleTypeRequestId: "",
+  cultureSetNumber: "",
+  container: "",
+  bodySite: "",
   sampleRejected: false,
   rejectionReason: "",
   sampleTypeId: "",
@@ -214,7 +218,11 @@ const flattenSampleManifestFields = (
       sampleTemperature: s.sampleTemperature || xml.sampleTemperature || "",
       specimenOrigin: s.specimenOrigin || xml.specimenOrigin || "",
       container: s.container || xml.container || "",
+      cultureSetNumber: s.cultureSetNumber ?? xml.cultureSetNumber ?? "",
+      bodySite: s.bodySite || xml.bodySite || "",
       locationDetails: s.locationDetails || xml.locationDetails || "",
+      collectionLocationId:
+        s.collectionLocationId || xml.collectionLocationId || "",
       gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
       gpsLongitude: s.gpsLongitude || xml.gpsLongitude || "",
       labPerformedSampling:
@@ -668,10 +676,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           // deconvolution. Same VectorSamplingSite id space as collectionLocationId.
           const collectionLocationId =
             sampleItem.collectionLocationId ||
+            envFields.samplingSiteId ||
             envFields.vecCollectionSiteId ||
             "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' sampleTypeRequestId='${xmlAttribute(sampleItem.sampleTypeRequestId || "")}' cultureSetNumber='${xmlAttribute(sampleItem.cultureSetNumber ?? "")}' bodySite='${xmlAttribute(sampleItem.bodySite || "")}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
         }
       });
 
@@ -907,6 +916,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         useReferral: useReferral,
         // Flag for decoupled workflow: samples not required when orderEntryOnly=true
         orderEntryOnly: orderEntryOnly,
+        cancelReason: orderData.cancelReason,
         // Clean up display lists that shouldn't be sent. The step the client
         // has completed travels with the save (FR-F5), as does the storage
         // decision staged on the order.

@@ -1,0 +1,7 @@
+Sample types: [ '', 'V2 browser water' ]
+Sites: [
+  'Use order site ',
+  'V2 browser site A (V2B_A_1791488551383)',
+  'V2 browser site B (V2B_B_1791488551769)'
+]
+PASS: environmental site selector keeps selected tests; same sites preview one case, different sites preview two cases

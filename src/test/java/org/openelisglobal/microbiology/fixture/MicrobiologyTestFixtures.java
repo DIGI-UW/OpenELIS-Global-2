@@ -435,8 +435,40 @@ public class MicrobiologyTestFixtures {
 
     public void ensureRequiredWorkflowStatuses() {
         ensureSampleEnteredStatus();
+        ensureOrderEnteredStatus();
         ensureAnalysisNotStartedStatus();
         ensureAnalysisFinalizedStatus();
+        ensureAnalysisCanceledStatus();
+    }
+
+    public String ensureOrderEnteredStatus() {
+        String statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Entered);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "ORDER".equals(status.getStatusType()))
+                .filter(status -> "Test Entered".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample entered = new StatusOfSample();
+            entered.setStatusOfSampleName("Test Entered");
+            entered.setDescription("No tests have been run for this order");
+            entered.setCode(nextAvailableStatusCode("ORDER"));
+            entered.setStatusType("ORDER");
+            entered.setNameKey("status.sample.notStarted");
+            entered.setIsActive(IActionConstants.YES);
+            entered.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(entered);
+        }
+        statusService.refreshCache();
+
+        statusId = statusService.getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Entered);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision OrderStatus.Entered for microbiology tests");
+        }
+        return statusId;
     }
 
     public String ensureAnalysisNotStartedStatus() {
@@ -481,6 +513,89 @@ public class MicrobiologyTestFixtures {
         statusId = statusService.getStatusID(AnalysisStatus.Finalized);
         if ("-1".equals(statusId)) {
             throw new IllegalStateException("Unable to provision AnalysisStatus.Finalized for microbiology tests");
+        }
+        return statusId;
+    }
+
+    public String ensureAnalysisCanceledStatus() {
+        String statusId = statusService.getStatusID(AnalysisStatus.Canceled);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample canceled = new StatusOfSample();
+        canceled.setStatusOfSampleName("Test Canceled");
+        canceled.setDescription("Test was requested but then canceled");
+        canceled.setCode(nextAvailableStatusCode("ANALYSIS"));
+        canceled.setStatusType("ANALYSIS");
+        canceled.setNameKey("status.test.canceled");
+        canceled.setIsActive(IActionConstants.YES);
+        statusOfSampleService.insert(canceled);
+        statusService.refreshCache();
+
+        statusId = statusService.getStatusID(AnalysisStatus.Canceled);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision AnalysisStatus.Canceled for microbiology tests");
+        }
+        return statusId;
+    }
+
+    public String ensureExternalOrderEnteredStatus() {
+        String statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Entered);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "EXTERNAL_ORDER".equals(status.getStatusType()))
+                .filter(status -> "Entered".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample entered = new StatusOfSample();
+            entered.setStatusOfSampleName("Entered");
+            entered.setDescription("External order entered");
+            entered.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
+            entered.setStatusType("EXTERNAL_ORDER");
+            entered.setIsActive(IActionConstants.YES);
+            entered.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(entered);
+        }
+        statusService.refreshCache();
+
+        statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Entered);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision ExternalOrderStatus.Entered");
+        }
+        return statusId;
+    }
+
+    public String ensureExternalOrderRealizedStatus() {
+        String statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Realized);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "EXTERNAL_ORDER".equals(status.getStatusType()))
+                .filter(status -> "Realized".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample realized = new StatusOfSample();
+            realized.setStatusOfSampleName("Realized");
+            realized.setDescription("External order realized");
+            realized.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
+            realized.setStatusType("EXTERNAL_ORDER");
+            realized.setIsActive(IActionConstants.YES);
+            realized.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(realized);
+        }
+        statusService.refreshCache();
+
+        statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Realized);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision ExternalOrderStatus.Realized");
         }
         return statusId;
     }

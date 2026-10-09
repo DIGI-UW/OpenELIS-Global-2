@@ -1,0 +1,3746 @@
+diff --git a/frontend/src/components/admin/menu/DictionaryManagement.jsx b/frontend/src/components/admin/menu/DictionaryManagement.jsx
+index 45aa564a38..8f410e6572 100644
+--- a/frontend/src/components/admin/menu/DictionaryManagement.jsx
++++ b/frontend/src/components/admin/menu/DictionaryManagement.jsx
+@@ -61,6 +61,7 @@ function DictionaryManagement() {
+   const [dictionaryNumber, setDictionaryNumber] = useState("");
+   const [dictionaryEntry, setDictionaryEntry] = useState("");
+   const [localAbbreviation, setLocalAbbreviation] = useState("");
++  const [containerPopulation, setContainerPopulation] = useState("");
+   const [isActive, setIsActive] = useState("");
+   const [loincCode, setLoincCode] = useState("");
+ 
+@@ -267,6 +268,7 @@ function DictionaryManagement() {
+     selectedDictionaryCategoryId: category?.id,
+     dictEntry: dictionaryEntry,
+     localAbbreviation: localAbbreviation,
++    containerPopulation: containerPopulation || null,
+     isActive: isActive.id,
+     loincCode: loincCode.trim() || null,
+     dirtyFormFields: "",
+@@ -328,6 +330,7 @@ function DictionaryManagement() {
+       selectedDictionaryCategoryId: category.id,
+       dictEntry: dictionaryEntry,
+       localAbbreviation: localAbbreviation,
++      containerPopulation: containerPopulation || null,
+       isActive: isActive.id,
+       loincCode: loincCode.trim() || null,
+       dirtyFormFields: dirtyFields,
+@@ -389,6 +392,7 @@ function DictionaryManagement() {
+       setDictionaryEntry(res.dictEntry);
+       setIsActive(yesOrNo.find((item) => item.id === res.isActive));
+       setLocalAbbreviation(res.localAbbreviation);
++      setContainerPopulation(res.containerPopulation || "");
+       setLoincCode(res.loincCode || "");
+     }
+   };
+@@ -571,6 +575,8 @@ function DictionaryManagement() {
+                     itemToString={(item) => (item ? item.description : "")}
+                     onChange={({ selectedItem }) => {
+                       setCategory(selectedItem);
++                      if (selectedItem?.categoryName !== "Sample Container")
++                        setContainerPopulation("");
+                     }}
+                     selectedItem={category}
+                     size="md"
+@@ -578,6 +584,28 @@ function DictionaryManagement() {
+                       marginBottom: "1rem",
+                     }}
+                   />
++                  {category?.categoryName === "Sample Container" && (
++                    <Dropdown
++                      id="container-population"
++                      titleText={intl.formatMessage({
++                        id: "dictionary.containerPopulation",
++                      })}
++                      label={intl.formatMessage({
++                        id: "dictionary.containerPopulation.unspecified",
++                      })}
++                      items={["", "ADULT", "PAEDIATRIC"]}
++                      selectedItem={containerPopulation}
++                      itemToString={(item) =>
++                        intl.formatMessage({
++                          id: `dictionary.containerPopulation.${item || "unspecified"}`,
++                        })
++                      }
++                      onChange={({ selectedItem }) => {
++                        setContainerPopulation(selectedItem || "");
++                        dirtyFieldsRef.current.add("containerPopulation");
++                      }}
++                    />
++                  )}
+                   <TextInput
+                     id="dictEntry"
+                     labelText={intl.formatMessage({
+diff --git a/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx b/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx
+index 709e54ce24..d7497d0c4b 100644
+--- a/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx
++++ b/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.jsx
+@@ -792,32 +792,34 @@ const BasicInfoSection = ({ testId }) => {
+           })
+         }
+       />
+-      <Select
+-        id="basic-info-microbiology-role"
+-        labelText={intl.formatMessage({
+-          id: "label.testCatalog.basicInfo.microbiologyCaseRole",
+-        })}
+-        value={form.microbiologyCaseRole || "DIRECT"}
+-        disabled={!form.opensMicrobiologyCase}
+-        onChange={(event) =>
+-          update({
+-            microbiologyCaseRole: event.target.value,
+-            ...(event.target.value !== "CULTURE"
+-              ? { collectedInSets: false }
+-              : {}),
+-          })
+-        }
+-      >
+-        {["CULTURE", "DIRECT", "CASE"].map((role) => (
+-          <SelectItem
+-            key={role}
+-            value={role}
+-            text={intl.formatMessage({
+-              id: `label.testCatalog.basicInfo.microbiologyCaseRole.${role}`,
+-            })}
+-          />
+-        ))}
+-      </Select>
++      {form.opensMicrobiologyCase && (
++        <Select
++          id="basic-info-microbiology-role"
++          labelText={intl.formatMessage({
++            id: "label.testCatalog.basicInfo.microbiologyCaseRole",
++          })}
++          value={form.microbiologyCaseRole || "DIRECT"}
++          disabled={!form.opensMicrobiologyCase}
++          onChange={(event) =>
++            update({
++              microbiologyCaseRole: event.target.value,
++              ...(event.target.value !== "CULTURE"
++                ? { collectedInSets: false }
++                : {}),
++            })
++          }
++        >
++          {["CULTURE", "DIRECT", "CASE"].map((role) => (
++            <SelectItem
++              key={role}
++              value={role}
++              text={intl.formatMessage({
++                id: `label.testCatalog.basicInfo.microbiologyCaseRole.${role}`,
++              })}
++            />
++          ))}
++        </Select>
++      )}
+       <Toggle
+         id="basic-info-collected-in-sets"
+         labelText={intl.formatMessage({
+diff --git a/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx b/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx
+index b6283a65f9..c1f254a08d 100644
+--- a/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx
++++ b/frontend/src/components/admin/testCatalog/sections/BasicInfoSection.test.jsx
+@@ -154,6 +154,9 @@ describe("BasicInfoSection domain-switch modal", () => {
+   it("persists case opening independently of the AMR flag", async () => {
+     renderSection();
+     await screen.findByLabelText("Clinical");
++    expect(
++      screen.queryByLabelText("Microbiology role"),
++    ).not.toBeInTheDocument();
+     fireEvent.click(
+       screen.getByRole("switch", { name: /Opens a Microbiology case/ }),
+     );
+diff --git a/frontend/src/components/microbiology/MicrobiologyService.js b/frontend/src/components/microbiology/MicrobiologyService.js
+index f9785e48aa..a907cd359d 100644
+--- a/frontend/src/components/microbiology/MicrobiologyService.js
++++ b/frontend/src/components/microbiology/MicrobiologyService.js
+@@ -524,3 +524,24 @@ const MicrobiologyService = {
+ };
+ 
+ export default MicrobiologyService;
++
++export const previewMicrobiologyOrder = (payload) =>
++  new Promise((resolve, reject) => {
++    postToOpenElisServerJsonResponse(
++      "/rest/microbiology/order-preview",
++      JSON.stringify(payload),
++      settleJsonResponse((response) => {
++        if (
++          !Array.isArray(response.cases) ||
++          !Array.isArray(response.ordinaryTests) ||
++          !Array.isArray(response.warnings) ||
++          !Array.isArray(response.reflexRules) ||
++          !Array.isArray(response.newUnitWarnings)
++        ) {
++          reject(new Error("Invalid order preview response"));
++          return;
++        }
++        resolve(response);
++      }, reject),
++    );
++  });
+diff --git a/frontend/src/components/order/OrderContext.jsx b/frontend/src/components/order/OrderContext.jsx
+index 876f9da267..9817344e29 100644
+--- a/frontend/src/components/order/OrderContext.jsx
++++ b/frontend/src/components/order/OrderContext.jsx
+@@ -148,6 +148,10 @@ const xmlAttribute = (value) =>
+ export const sampleObject = {
+   index: 0,
+   sampleItemId: "",
++  sampleTypeRequestId: "",
++  cultureSetNumber: "",
++  container: "",
++  bodySite: "",
+   sampleRejected: false,
+   rejectionReason: "",
+   sampleTypeId: "",
+@@ -213,6 +217,8 @@ const flattenSampleManifestFields = (
+       sampleTemperature: s.sampleTemperature || xml.sampleTemperature || "",
+       specimenOrigin: s.specimenOrigin || xml.specimenOrigin || "",
+       container: s.container || xml.container || "",
++      cultureSetNumber: s.cultureSetNumber ?? xml.cultureSetNumber ?? "",
++      bodySite: s.bodySite || xml.bodySite || "",
+       locationDetails: s.locationDetails || xml.locationDetails || "",
+       gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
+       gpsLongitude: s.gpsLongitude || xml.gpsLongitude || "",
+@@ -663,7 +669,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
+             envFields.vecCollectionSiteId ||
+             "";
+ 
+-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
++          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' sampleTypeRequestId='${xmlAttribute(sampleItem.sampleTypeRequestId || "")}' cultureSetNumber='${xmlAttribute(sampleItem.cultureSetNumber ?? "")}' bodySite='${xmlAttribute(sampleItem.bodySite || "")}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
+         }
+       });
+ 
+diff --git a/frontend/src/components/order/api/sampleTypeRequestApi.js b/frontend/src/components/order/api/sampleTypeRequestApi.js
+index a5a5dfab71..0066aa005a 100644
+--- a/frontend/src/components/order/api/sampleTypeRequestApi.js
++++ b/frontend/src/components/order/api/sampleTypeRequestApi.js
+@@ -65,7 +65,16 @@ export const toRequestedSampleTypes = (samples = []) =>
+   samples
+     .filter((sample) => sample && sample.sampleTypeId)
+     .map((sample) => ({
++      id: sample.sampleTypeRequestId || null,
++      sampleItemId: sample.sampleItemId || null,
+       typeOfSampleId: sample.sampleTypeId,
++      cultureSetNumber: sample.cultureSetNumber
++        ? Number(sample.cultureSetNumber)
++        : null,
++      container: sample.container || null,
++      bodySite: sample.bodySite || null,
++      collectionDate: sample.collectionDate || null,
++      collectionTime: sample.collectionTime || null,
+       requestedQuantity: parseFloat(sample.quantity) || null,
+       unitOfMeasureId: sample.quantityUnit || null,
+       requestedTests: sample.tests?.map((t) => t.id || t).join(",") || "",
+@@ -141,7 +150,7 @@ export const convertRequestsToSamples = (pendingRequests) => {
+     .map((request, index) => ({
+       index: index,
+       sampleTypeRequestId: request.id, // Track the original request
+-      sampleItemId: "", // Will be populated when collected
++      sampleItemId: request.sampleItemId || "",
+       sampleRejected: false,
+       rejectionReason: "",
+       sampleTypeId: request.typeOfSampleId,
+@@ -164,8 +173,11 @@ export const convertRequestsToSamples = (pendingRequests) => {
+           : String(request.requestedQuantity),
+       quantityUnit: request.unitOfMeasureId || "",
+       collectionConditions: "",
+-      collectionDate: "",
+-      collectionTime: "",
++      cultureSetNumber: request.cultureSetNumber ?? "",
++      container: request.container || "",
++      bodySite: request.bodySite || "",
++      collectionDate: request.collectionDate || "",
++      collectionTime: request.collectionTime || "",
+       collectorId: "",
+       labPerformedSampling: false,
+       receivedDate: "",
+diff --git a/frontend/src/components/order/api/sampleTypeRequestApi.test.js b/frontend/src/components/order/api/sampleTypeRequestApi.test.js
+index 42fac55c4f..aeb0a7cba6 100644
+--- a/frontend/src/components/order/api/sampleTypeRequestApi.test.js
++++ b/frontend/src/components/order/api/sampleTypeRequestApi.test.js
+@@ -84,6 +84,13 @@ describe("requested specimens sent with the order", () => {
+ 
+     expect(requested).toEqual([
+       {
++        id: null,
++        sampleItemId: null,
++        cultureSetNumber: null,
++        container: null,
++        bodySite: null,
++        collectionDate: null,
++        collectionTime: null,
+         typeOfSampleId: "5",
+         requestedQuantity: 2.5,
+         unitOfMeasureId: "9",
+@@ -91,6 +98,13 @@ describe("requested specimens sent with the order", () => {
+         requestedPanels: "7",
+       },
+       {
++        id: null,
++        sampleItemId: null,
++        cultureSetNumber: null,
++        container: null,
++        bodySite: null,
++        collectionDate: null,
++        collectionTime: null,
+         typeOfSampleId: "6",
+         requestedQuantity: null,
+         unitOfMeasureId: null,
+@@ -145,3 +159,26 @@ describe("mergeCollectedAndPendingSamples", () => {
+     expect(mergeCollectedAndPendingSamples([], [], fallback)).toBe(fallback);
+   });
+ });
++
++it("restores and resends specimen identity and recorded culture bottle details", () => {
++  const [sample] = convertRequestsToSamples([
++    {
++      id: "17",
++      typeOfSampleId: "5",
++      status: "REQUESTED",
++      cultureSetNumber: 2,
++      container: "B17",
++      bodySite: "Right arm",
++      collectionDate: "2026-10-07",
++      collectionTime: "14:25",
++    },
++  ]);
++  expect(toRequestedSampleTypes([sample])[0]).toMatchObject({
++    id: "17",
++    cultureSetNumber: 2,
++    container: "B17",
++    bodySite: "Right arm",
++    collectionDate: "2026-10-07",
++    collectionTime: "14:25",
++  });
++});
+diff --git a/frontend/src/components/order/steps/ClinicalOrderEnter.jsx b/frontend/src/components/order/steps/ClinicalOrderEnter.jsx
+index 436a0b9652..7bb7840eb4 100644
+--- a/frontend/src/components/order/steps/ClinicalOrderEnter.jsx
++++ b/frontend/src/components/order/steps/ClinicalOrderEnter.jsx
+@@ -20,6 +20,7 @@ import ProgramSection from "./sections/ProgramSection";
+ import ClinicalInfoSection from "./sections/ClinicalInfoSection";
+ import RequesterSection from "./sections/RequesterSection";
+ import SampleTestSection from "./sections/SampleTestSection";
++import MicroOrderPreview from "./sections/MicroOrderPreview";
+ import "../order-workflow.scss";
+ 
+ const WORKFLOW_TYPE = "clinical";
+@@ -337,6 +338,10 @@ const ClinicalOrderEnter = () => {
+           isReadOnly={isReadOnly && !isEditMode}
+           workflowType={WORKFLOW_TYPE}
+         />
++        <MicroOrderPreview
++          samples={samples}
++          savedOrder={isReadOnly || isEditMode}
++        />
+         {/* T: order attachments existed on the legacy screen with an
+             unchanged REST API; only the new lanes had no way in. */}
+         <OrderAttachmentsSection
+diff --git a/frontend/src/components/order/steps/sections/SampleCollectionCard.jsx b/frontend/src/components/order/steps/sections/SampleCollectionCard.jsx
+index 4bcb8dae49..8a7ada2ca6 100644
+--- a/frontend/src/components/order/steps/sections/SampleCollectionCard.jsx
++++ b/frontend/src/components/order/steps/sections/SampleCollectionCard.jsx
+@@ -1,3 +1,4 @@
++import CultureBottleFields from "./CultureBottleFields";
+ import { useContext, useEffect, useMemo, useRef, useState } from "react";
+ import { useIntl, FormattedMessage } from "react-intl";
+ import { ConfigurationContext } from "../../../layout/Layout";
+@@ -365,6 +366,15 @@ const SampleCollectionCard = ({
+ 
+       {/* Collection Details Grid */}
+       <Grid className="collection-details-grid">
++        {((sample.tests || []).some((test) => test.collectedInSets) ||
++          sample.cultureSetNumber) && (
++          <CultureBottleFields
++            sample={sample}
++            sampleIndex={sampleIndex}
++            isReadOnly={isReadOnly}
++            onChange={handleFieldChange}
++          />
++        )}
+         {/* Sample Type */}
+         <Column lg={4} md={4} sm={4}>
+           <Select
+diff --git a/frontend/src/components/order/steps/sections/SampleTestSection.jsx b/frontend/src/components/order/steps/sections/SampleTestSection.jsx
+index 1c6f9028fc..1a4b16fba9 100644
+--- a/frontend/src/components/order/steps/sections/SampleTestSection.jsx
++++ b/frontend/src/components/order/steps/sections/SampleTestSection.jsx
+@@ -1,3 +1,4 @@
++import CultureBottleFields from "./CultureBottleFields";
+ import React, { useState, useEffect, useRef } from "react";
+ import { useIntl, FormattedMessage } from "react-intl";
+ import {
+@@ -54,7 +55,7 @@ const SampleTestSection = ({
+       tests: [...(sample.tests || [])],
+     }));
+ 
+-  // Environmental manifest dictionary data
++  // Shared container catalog used by environmental samples and culture bottles.
+   const [containerTypes, setContainerTypes] = useState([]);
+ 
+   // Per-row expanded state for test/panel picker (environmental manifest)
+@@ -87,16 +88,15 @@ const SampleTestSection = ({
+     };
+   }, [workflowType]);
+ 
+-  // Fetch environmental manifest dictionaries once
++  // Fetch the shared container catalog once.
+   useEffect(() => {
+-    if (workflowType !== "environmental") return;
+     getFromOpenElisServer(
+       "/rest/vector/dictionary/sample-containers",
+       (data) => {
+         if (componentMounted.current) setContainerTypes(data || []);
+       },
+     );
+-  }, [workflowType]);
++  }, []);
+ 
+   const fetchedSampleTypesRef = useRef({});
+ 
+@@ -246,13 +246,42 @@ const SampleTestSection = ({
+     setSamples([...samples, newSample]);
+   };
+ 
++  const hasSetTest = (sample, index) =>
++    (sample.tests || []).some((selected) => {
++      const catalog = (testsPerSample[index] || []).find(
++        (test) => String(test.id) === String(selected.id || selected),
++      );
++      return (catalog || selected).collectedInSets === true;
++    });
++
++  const applySamples = (updated) => {
++    const next = updated.map((sample, index) => {
++      if (
++        hasSetTest(sample, index) &&
++        !hasSetTest(samples[index] || {}, index) &&
++        !sample.cultureSetNumber
++      ) {
++        const previous = updated.slice(0, index).filter(hasSetTest).pop();
++        return { ...sample, cultureSetNumber: previous?.cultureSetNumber || 1 };
++      }
++      return sample;
++    });
++    setSamples(next);
++  };
++
+   const handleDuplicateSample = (sourceIndex) => {
+     const source = samples[sourceIndex];
+     const newIndex = samples.length;
+     const duplicate = {
+       ...source,
+       index: newIndex,
++      sampleItemId: "",
++      sampleTypeRequestId: "",
++      clientKey: "",
+       sampleXML: null,
++      cultureSetNumber: hasSetTest(source, sourceIndex)
++        ? samples.filter(hasSetTest).pop()?.cultureSetNumber || 1
++        : "",
+     };
+     setSamples([...samples, duplicate]);
+ 
+@@ -393,7 +422,7 @@ const SampleTestSection = ({
+         (t) => !panelTestIds.includes(t.id) || otherPanelTestIds.has(t.id),
+       );
+     }
+-    setSamples(updated);
++    applySamples(updated);
+   };
+ 
+   const handleTestToggle = (sampleIndex, test, isSelected) => {
+@@ -402,7 +431,7 @@ const SampleTestSection = ({
+     updated[sampleIndex].tests = isSelected
+       ? [...currentTests, test]
+       : currentTests.filter((t) => t.id !== test.id);
+-    setSamples(updated);
++    applySamples(updated);
+   };
+ 
+   const handleRemovePanel = (sampleIndex, panelId) => {
+@@ -424,7 +453,7 @@ const SampleTestSection = ({
+     updated[sampleIndex].tests = currentTests.filter(
+       (t) => !panelTestIds.includes(t.id) || remainingPanelTestIds.has(t.id),
+     );
+-    setSamples(updated);
++    applySamples(updated);
+   };
+ 
+   const handleRemoveTest = (sampleIndex, testId) => {
+@@ -432,7 +461,7 @@ const SampleTestSection = ({
+     updated[sampleIndex].tests = updated[sampleIndex].tests.filter(
+       (t) => t.id !== testId,
+     );
+-    setSamples(updated);
++    applySamples(updated);
+   };
+ 
+   const handleVectorFieldChange = (sampleIndex, field, value) => {
+@@ -1353,6 +1382,17 @@ const SampleTestSection = ({
+                   </>
+                 )}
+               </h5>
++              {hasSetTest(sample, sampleIndex) && (
++                <Button
++                  kind="ghost"
++                  size="sm"
++                  renderIcon={Copy}
++                  disabled={isReadOnly}
++                  onClick={() => handleDuplicateSample(sampleIndex)}
++                >
++                  {intl.formatMessage({ id: "order.cultureBottle.duplicate" })}
++                </Button>
++              )}
+               <Link
+                 onClick={() => handleRemoveSample(sampleIndex)}
+                 disabled={isReadOnly}
+@@ -1406,6 +1446,19 @@ const SampleTestSection = ({
+                 </Select>
+               </Column>
+ 
++              {hasSetTest(sample, sampleIndex) && (
++                <CultureBottleFields
++                  sample={sample}
++                  sampleIndex={sampleIndex}
++                  isReadOnly={isReadOnly}
++                  containers={containerTypes}
++                  includeCollectionTime
++                  onChange={(field, value) =>
++                    handleEnvFieldChange(sampleIndex, field, value)
++                  }
++                />
++              )}
++
+               {workflowType === "vector" && (
+                 <>
+                   <Column lg={8} md={4} sm={4}>
+diff --git a/frontend/src/components/order/steps/sections/SampleTestSection.test.jsx b/frontend/src/components/order/steps/sections/SampleTestSection.test.jsx
+index e3188478a6..82c742f5bb 100644
+--- a/frontend/src/components/order/steps/sections/SampleTestSection.test.jsx
++++ b/frontend/src/components/order/steps/sections/SampleTestSection.test.jsx
+@@ -394,3 +394,51 @@ describe("SampleTestSection selected-tag close buttons", () => {
+     ).not.toBeInTheDocument();
+   });
+ });
++
++describe("culture set assignments", () => {
++  beforeEach(() => {
++    getFromOpenElisServer.mockReset();
++    getFromOpenElisServer.mockImplementation((url, cb) => {
++      if (url === "/rest/user-sample-types") cb([{ id: "5", value: "Blood" }]);
++      if (url.startsWith("/rest/sample-type-tests"))
++        cb({
++          tests: [{ id: "42", name: "Blood culture", collectedInSets: true }],
++          panels: [],
++        });
++      if (url.endsWith("sample-containers"))
++        cb([{ id: "9", dictEntry: "B17" }]);
++    });
++  });
++  it("defaults a newly selected set culture to set 1 without changing the previous state", async () => {
++    const setSamples = vi.fn();
++    const previous = [{ ...sample, tests: [], panels: [] }];
++    renderSection(setSamples, { currentSamples: previous });
++    fireEvent.click(await screen.findByLabelText("Blood culture"));
++    expect(setSamples.mock.calls.at(-1)[0][0].cultureSetNumber).toBe(1);
++    expect(previous[0].cultureSetNumber).toBeUndefined();
++    expect(previous[0].tests).toEqual([]);
++  });
++  it("duplicates a bottle into the last assigned set with fresh collection identities", async () => {
++    const setSamples = vi.fn();
++    renderSection(setSamples, {
++      currentSamples: [
++        {
++          ...sample,
++          tests: [{ id: "42", collectedInSets: true }],
++          cultureSetNumber: 3,
++          sampleItemId: "81",
++          sampleTypeRequestId: "17",
++          clientKey: "old-key",
++        },
++      ],
++    });
++    const duplicate = await screen.findByRole("button", { name: /duplicate/i });
++    fireEvent.click(duplicate);
++    expect(setSamples.mock.calls.at(-1)[0][1]).toMatchObject({
++      cultureSetNumber: 3,
++      sampleItemId: "",
++      sampleTypeRequestId: "",
++      clientKey: "",
++    });
++  });
++});
+diff --git a/frontend/src/languages/en.json b/frontend/src/languages/en.json
+index 8162b96350..2ed58b4796 100644
+--- a/frontend/src/languages/en.json
++++ b/frontend/src/languages/en.json
+@@ -12310,5 +12310,48 @@
+   "label.testCatalog.basicInfo.microbiologyCaseRole.CULTURE": "Culture",
+   "label.testCatalog.basicInfo.microbiologyCaseRole.DIRECT": "Direct",
+   "label.testCatalog.basicInfo.microbiologyCaseRole.CASE": "Case",
+-  "label.testCatalog.basicInfo.collectedInSets": "Collected in sets"
++  "label.testCatalog.basicInfo.collectedInSets": "Collected in sets",
++  "microbiology.sets.warning.SINGLE_BOTTLE": "Only one bottle in this set",
++  "microbiology.sets.warning.REPEATED_CONTAINER": "Repeated container type in this set",
++  "microbiology.sets.warning.DIFFERENT_SITES": "Different collection sites in this set",
++  "microbiology.sets.warning.COLLECTION_INTERVAL": "Collection times are more than {minutes} minutes apart",
++  "microbiology.sets.title": "Culture sets",
++  "microbiology.sets.count": "{sets, plural, one {# set} other {# sets}}, {bottles, plural, one {# bottle} other {# bottles}}",
++  "microbiology.sets.number": "Set {number}",
++  "microbiology.sets.unassigned": "Set not recorded",
++  "order.microPreview.title": "What this order will open",
++  "order.microPreview.loading": "Updating order preview…",
++  "order.microPreview.failed": "Order preview unavailable",
++  "order.microPreview.failedDetail": "The preview could not be updated. Check your connection and try again.",
++  "order.microPreview.opens": "Opens a case",
++  "order.microPreview.ordinary": "Stays in Results",
++  "order.microPreview.case": "{tests} case in {unit}: {samples}",
++  "order.microPreview.sample": "{type} sample {number}",
++  "order.microPreview.stays": "{test} stays in Results",
++  "order.microPreview.splitTag": "Separate cases",
++  "order.microPreview.split": "Sample {number} opens {count} cases: {units}.",
++  "order.microPreview.reflex": "{name}: if {conditions}, may add {tests}.",
++  "order.microPreview.component": "{test} — {component}",
++  "order.microPreview.specimen": "{test} ({type})",
++  "order.microPreview.and": " and ",
++  "order.microPreview.or": " or ",
++  "order.microPreview.condition.EQUALS": "{subject} result equals {value}",
++  "order.microPreview.condition.NOT_EQUALS": "{subject} result does not equal {value}",
++  "order.microPreview.condition.LESS_THAN": "{subject} result is less than {value}",
++  "order.microPreview.condition.LESS_THAN_OR_EQUAL": "{subject} result is at most {value}",
++  "order.microPreview.condition.GREATER_THAN": "{subject} result is greater than {value}",
++  "order.microPreview.condition.GREATER_THAN_OR_EQUAL": "{subject} result is at least {value}",
++  "order.microPreview.condition.BETWEEN": "{subject} result is between {value} and {value2}",
++  "order.microPreview.condition.INSIDE_NORMAL_RANGE": "{subject} result is within the normal range",
++  "order.microPreview.condition.OUTSIDE_NORMAL_RANGE": "{subject} result is outside the normal range",
++  "order.microPreview.newUnitTag": "New lab unit",
++  "order.microPreview.newUnit": "{test} opens a case in {unit}; this order has no other work in that lab unit.",
++  "dictionary.containerPopulation": "Bottle population (sample containers)",
++  "dictionary.containerPopulation.unspecified": "Not specified",
++  "dictionary.containerPopulation.ADULT": "Adult",
++  "dictionary.containerPopulation.PAEDIATRIC": "Paediatric",
++  "microbiology.sets.warning.MIXED_POPULATIONS": "This set contains paediatric and adult bottles.",
++  "order.cultureSetNumber": "Set number",
++  "order.cultureSetNumber.required": "Enter a positive whole set number.",
++  "order.cultureBottle.duplicate": "Duplicate bottle"
+ }
+diff --git a/specs/amr/spec.md b/specs/amr/spec.md
+index 3c2cdb6528..e8c033ac47 100644
+--- a/specs/amr/spec.md
++++ b/specs/amr/spec.md
+@@ -155,6 +155,12 @@ morning), and set number when it carries a collected-in-sets test (FR-02.4a,
+ FR-04.3). Corrections go through the order's steps and are recorded on the
+ case timeline (FR-04.2).
+ 
++The shared Sample Container dictionary carries an optional bottle population:
++Adult or Paediatric. An unclassified or historical container remains unknown;
++its display name never supplies a classification. Deactivating a container
++removes it from new selections without losing classification for a recorded
++sample. The mixed-population warning uses only this configured metadata.
++
+ An **isolate sample item** (sample type Isolate, parent = source sample item)
+ is created when an isolate needs a label, referral or tests beyond
+ identification and susceptibility. It belongs to the same case and is never
+@@ -573,7 +579,7 @@ microbiology-only duplicate substitutes for a shared capability.
+ | Report versions / print queue (OGC-1031 r4)                         | Shared version and release behavior (FR-17.6)                                              | present by name; shared ownership unconfirmed | 12 — shared reporting before case release                           |
+ | Redesigned patient report (OGC-1111)                                | Required microbiology report block (A-11)                                                  | not found                                     | 12 — shared report support                                          |
+ | Workplan print record                                               | Persisted bench sheet and Open sheet (FR-12.7)                                             | partial; confirm                              | 13 — shared Workplan support                                        |
+-| Order-entry per-sample body site/time/set and bottle classification | Culture sets and all nonblocking warnings (FR-02.4a)                                       | partial; classification not found             | 5 — shared order entry/catalog                                      |
++| Order-entry per-sample body site/time/set and bottle classification | Culture sets and all nonblocking warnings (FR-02.4a)                                       | partial; classification added                 | 5 — shared order entry/catalog                                      |
+ | Sampling sites; Laporan Hasil certificate                           | Environmental subject and report                                                           | present                                       | 5 — site routing; report in 12; full environmental acceptance in 15 |
+ 
+ ## 15. Clarified behavior and delivery
+diff --git a/src/main/java/org/openelisglobal/analysis/service/AnalysisServiceImpl.java b/src/main/java/org/openelisglobal/analysis/service/AnalysisServiceImpl.java
+index 8022ac3a3d..303c52eea5 100644
+--- a/src/main/java/org/openelisglobal/analysis/service/AnalysisServiceImpl.java
++++ b/src/main/java/org/openelisglobal/analysis/service/AnalysisServiceImpl.java
+@@ -60,6 +60,9 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
+     @Autowired
+     private NoteService noteService;
+ 
++    @Autowired
++    private org.springframework.context.ApplicationEventPublisher eventPublisher;
++
+     private static String TABLE_REFERENCE_ID;
+     private final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
+ 
+@@ -80,11 +83,17 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
+     }
+ 
+     @Override
++    @Transactional
+     public String insert(Analysis analysis) {
+         if (analysis.getFhirUuid() == null) {
+             analysis.setFhirUuid(UUID.randomUUID());
+         }
+-        return super.insert(analysis);
++        String id = super.insert(analysis);
++        if (eventPublisher != null) {
++            eventPublisher.publishEvent(new org.openelisglobal.analysis.valueholder.AnalysisCreatedEvent(analysis,
++                    analysis.getSysUserId()));
++        }
++        return id;
+     }
+ 
+     /**
+diff --git a/src/main/java/org/openelisglobal/common/rest/provider/SampleEntryTestsForTypeProviderRestController.java b/src/main/java/org/openelisglobal/common/rest/provider/SampleEntryTestsForTypeProviderRestController.java
+index e12e799a25..005d9fc8a7 100755
+--- a/src/main/java/org/openelisglobal/common/rest/provider/SampleEntryTestsForTypeProviderRestController.java
++++ b/src/main/java/org/openelisglobal/common/rest/provider/SampleEntryTestsForTypeProviderRestController.java
+@@ -247,7 +247,8 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
+             boolean userBenchChoice = userTestSectionId != null && test.getTestSection() != null
+                     && userTestSectionId.equals(test.getTestSection().getId());
+             testsMapList.add(new TestMap(test.getId(), localizedTestName(test), userBenchChoice, hasQc, resultType,
+-                    test.getTimeHolding(), methods));
++                    test.getTimeHolding(), methods, test.isOpensMicrobiologyCase(), test.getMicrobiologyCaseRole(),
++                    test.isCollectedInSets()));
+         }
+         return testsMapList;
+     }
+@@ -431,6 +432,9 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
+         String timeHolding;
+ 
+         List<OrderEntryMethod> methods;
++        boolean opensMicrobiologyCase;
++        String microbiologyCaseRole;
++        boolean collectedInSets;
+ 
+         public TestMap(String id, String name, boolean userBenchChoice) {
+             this(id, name, userBenchChoice, false, null, null, List.of());
+@@ -451,6 +455,15 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
+ 
+         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
+                 String timeHolding, List<OrderEntryMethod> methods) {
++            this(id, name, userBenchChoice, hasQcThreshold, resultType, timeHolding, methods, false, null, false);
++        }
++
++        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
++                String timeHolding, List<OrderEntryMethod> methods, boolean opensMicrobiologyCase,
++                String microbiologyCaseRole, boolean collectedInSets) {
++            this.opensMicrobiologyCase = opensMicrobiologyCase;
++            this.microbiologyCaseRole = microbiologyCaseRole;
++            this.collectedInSets = collectedInSets;
+             this.id = id;
+             this.name = name;
+             this.userBenchChoice = userBenchChoice;
+@@ -508,6 +521,18 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
+             this.timeHolding = timeHolding;
+         }
+ 
++        public boolean isOpensMicrobiologyCase() {
++            return opensMicrobiologyCase;
++        }
++
++        public String getMicrobiologyCaseRole() {
++            return microbiologyCaseRole;
++        }
++
++        public boolean isCollectedInSets() {
++            return collectedInSets;
++        }
++
+         public List<OrderEntryMethod> getMethods() {
+             return methods;
+         }
+diff --git a/src/main/java/org/openelisglobal/common/services/SampleAddService.java b/src/main/java/org/openelisglobal/common/services/SampleAddService.java
+index ae1a8c71be..dbd5d59dae 100644
+--- a/src/main/java/org/openelisglobal/common/services/SampleAddService.java
++++ b/src/main/java/org/openelisglobal/common/services/SampleAddService.java
+@@ -176,6 +176,9 @@ public class SampleAddService {
+                 item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
+                 item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
+                 item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
++                String setNumber = sampleItem.attributeValue("cultureSetNumber");
++                item.setCultureSetNumber(GenericValidator.isBlankOrNull(setNumber) ? null : Integer.valueOf(setNumber));
++                item.setBodySite(sampleItem.attributeValue("bodySite"));
+                 item.setContainer(sampleItem.attributeValue("container"));
+                 item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
+                 item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
+@@ -251,6 +254,15 @@ public class SampleAddService {
+                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
+                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
+                 stc.existingSampleItemId = existingSampleItemId;
++                String requestId = sampleItem.attributeValue("sampleTypeRequestId");
++                stc.sampleTypeRequestId = GenericValidator.isBlankOrNull(requestId) ? null : Integer.valueOf(requestId);
++                if (stc.sampleTypeRequestId != null && stc.sampleTypeRequestId < 1) {
++                    throw new IllegalArgumentException("Requested specimen identity must be positive");
++                }
++                for (String field : List.of("cultureSetNumber", "container", "bodySite", "date", "time")) {
++                    if (sampleItem.attributeValue(field) != null)
++                        stc.suppliedCollectionFields.add(field);
++                }
+                 stc.storageNotes = storageNotes;
+                 stc.panelIds = splitIds(panelIDs);
+ 
+@@ -423,6 +435,8 @@ public class SampleAddService {
+ 
+         // Existing sample item ID - for updates, identifies which sample_item to update
+         public String existingSampleItemId;
++        public Integer sampleTypeRequestId;
++        public java.util.Set<String> suppliedCollectionFields = new java.util.HashSet<>();
+ 
+         // Panels selected on this sample; a test is attributed only to one of these
+         public List<String> panelIds = new ArrayList<>();
+diff --git a/src/main/java/org/openelisglobal/dictionary/controller/rest/DictionaryRestController.java b/src/main/java/org/openelisglobal/dictionary/controller/rest/DictionaryRestController.java
+index 6974fd3e0c..d4d28f478f 100644
+--- a/src/main/java/org/openelisglobal/dictionary/controller/rest/DictionaryRestController.java
++++ b/src/main/java/org/openelisglobal/dictionary/controller/rest/DictionaryRestController.java
+@@ -47,7 +47,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
+ public class DictionaryRestController extends BaseController {
+ 
+     private static final String[] ALLOWED_FIELDS = new String[] { "dirtyFormFields", "id",
+-            "selectedDictionaryCategoryId", "isActive", "dictEntry", "localAbbreviation" };
++            "selectedDictionaryCategoryId", "isActive", "dictEntry", "localAbbreviation", "containerPopulation" };
+ 
+     @Autowired
+     private DictionaryFormValidator formValidator;
+diff --git a/src/main/java/org/openelisglobal/dictionary/form/DictionaryForm.java b/src/main/java/org/openelisglobal/dictionary/form/DictionaryForm.java
+index e79bfef1cc..c0f3c44e9e 100644
+--- a/src/main/java/org/openelisglobal/dictionary/form/DictionaryForm.java
++++ b/src/main/java/org/openelisglobal/dictionary/form/DictionaryForm.java
+@@ -42,6 +42,17 @@ public class DictionaryForm extends BaseForm {
+ 
+     private String loincCode;
+ 
++    @Pattern(regexp = "^(ADULT|PAEDIATRIC)?$")
++    private String containerPopulation;
++
++    public String getContainerPopulation() {
++        return containerPopulation;
++    }
++
++    public void setContainerPopulation(String value) {
++        containerPopulation = value;
++    }
++
+     public DictionaryForm() {
+         setFormName("dictionaryForm");
+     }
+diff --git a/src/main/java/org/openelisglobal/dictionary/valueholder/Dictionary.java b/src/main/java/org/openelisglobal/dictionary/valueholder/Dictionary.java
+index b4da3a1a42..f9588f7868 100644
+--- a/src/main/java/org/openelisglobal/dictionary/valueholder/Dictionary.java
++++ b/src/main/java/org/openelisglobal/dictionary/valueholder/Dictionary.java
+@@ -64,6 +64,17 @@ public class Dictionary extends BaseObject<String> {
+     @Column(name = "DICT_ENTRY", length = 4000)
+     private String dictEntry;
+ 
++    @Column(name = "container_population", length = 20)
++    private String containerPopulation;
++
++    public String getContainerPopulation() {
++        return containerPopulation;
++    }
++
++    public void setContainerPopulation(String value) {
++        containerPopulation = value;
++    }
++
+     @Transient
+     private String selectedDictionaryCategoryId;
+ 
+diff --git a/src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCaseDAOImpl.java b/src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCaseDAOImpl.java
+index c6c173d10b..e90defd9c0 100644
+--- a/src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCaseDAOImpl.java
++++ b/src/main/java/org/openelisglobal/microbiology/daoimpl/MicroCaseDAOImpl.java
+@@ -41,7 +41,8 @@ public class MicroCaseDAOImpl extends BaseDAOImpl<MicroCase, String> implements
+     @Transactional(readOnly = true)
+     public List<MicroCase> getByOrder(String sampleId) {
+         return entityManager.unwrap(Session.class)
+-                .createQuery("from MicroCase c where c.sampleId = :sampleId order by c.createdAt, c.id", MicroCase.class)
++                .createQuery("from MicroCase c where c.sampleId = :sampleId order by c.createdAt, c.id",
++                        MicroCase.class)
+                 .setParameter("sampleId", sampleId).list();
+     }
+ 
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroCaseMembershipServiceImpl.java b/src/main/java/org/openelisglobal/microbiology/service/MicroCaseMembershipServiceImpl.java
+index fe41d08ad8..b64ebef232 100644
+--- a/src/main/java/org/openelisglobal/microbiology/service/MicroCaseMembershipServiceImpl.java
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroCaseMembershipServiceImpl.java
+@@ -213,6 +213,10 @@ public class MicroCaseMembershipServiceImpl implements MicroCaseMembershipServic
+         member.setJoinedAt(now());
+         member.setJoinedBy(actor);
+         sampleDAO.insert(member);
++        if (microCase.getSampleItemId() == null) {
++            microCase.setSampleItemId(sample.getId());
++            caseDAO.update(microCase);
++        }
+         record(microCase.getId(), "SAMPLE_JOINED", actor, sample.getId());
+         return member;
+     }
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRule.java b/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRule.java
+index 9438eb2e1b..3e1aff95d8 100644
+--- a/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRule.java
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRule.java
+@@ -5,9 +5,12 @@ import java.util.List;
+ import java.util.Objects;
+ import java.util.Set;
+ 
+-/** The same membership-first decision is used by saving and unsaved previews. */
++/**
++ * The same membership-first decision is used by saving and unsaved previews.
++ */
+ public final class MicroCaseRoutingRule {
+-    private MicroCaseRoutingRule() {}
++    private MicroCaseRoutingRule() {
++    }
+ 
+     public static final class Candidate {
+         public final String caseId;
+@@ -23,6 +26,18 @@ public final class MicroCaseRoutingRule {
+         }
+     }
+ 
++    public static void requireCatalog(org.openelisglobal.test.valueholder.Test test) {
++        if (test == null || !test.isOpensMicrobiologyCase() || test.getTestSection() == null
++                || test.getTestSection().getId() == null || !test.isActive()
++                || !"Y".equals(test.getTestSection().getIsActive())) {
++            throw new IllegalArgumentException("An active micro test and lab unit are required");
++        }
++        var role = org.openelisglobal.microbiology.valueholder.MicroCaseRole.valueOf(test.getMicrobiologyCaseRole());
++        if (test.isCollectedInSets() && role != org.openelisglobal.microbiology.valueholder.MicroCaseRole.CULTURE) {
++            throw new IllegalArgumentException("Only culture tests are collected in sets");
++        }
++    }
++
+     public static Candidate choose(List<Candidate> oldestFirst, String labUnitId, String sampleTypeId,
+             String setsTestId, String sampleKey) {
+         for (Candidate candidate : oldestFirst) {
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java
+index 8b9391758a..6515588a81 100644
+--- a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingService.java
+@@ -6,7 +6,12 @@ import org.openelisglobal.sampleitem.valueholder.SampleItem;
+ import org.openelisglobal.test.valueholder.Test;
+ 
+ public interface MicroOrderRoutingService {
++    java.util.List<MicroOrderDraftGrouping.Group> previewNewOrder(
++            java.util.List<MicroOrderDraftGrouping.Selection> selections);
++
+     void routeOrder(Sample order, String actor);
++
+     void routeAnalysis(Analysis analysis, String actor);
++
+     void routeCaseTest(SampleItem sample, Test test, String actor);
+ }
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java
+index 9fda673878..fecb6ee4a9 100644
+--- a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderRoutingServiceImpl.java
+@@ -5,7 +5,6 @@ import java.util.Arrays;
+ import java.util.Comparator;
+ import java.util.LinkedHashSet;
+ import java.util.List;
+-import java.util.Objects;
+ import java.util.Set;
+ import org.openelisglobal.analysis.service.AnalysisService;
+ import org.openelisglobal.analysis.valueholder.Analysis;
+@@ -38,13 +37,29 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+     private final TestService tests;
+     private final PanelItemService panels;
+ 
++    @org.springframework.beans.factory.annotation.Autowired
++    private org.openelisglobal.common.services.IStatusService statuses;
++
+     public MicroOrderRoutingServiceImpl(MicroCaseDAO cases, MicroCaseRequestDAO requests, MicroCaseAnalysisDAO links,
+             MicroCaseMembershipService membership, MicroCaseAnalysisService caseAnalyses,
+             SampleTypeRequestService sampleRequests, SampleItemService samples, AnalysisService analyses,
+             TestService tests, PanelItemService panels) {
+-        this.cases = cases; this.requests = requests; this.links = links; this.membership = membership;
+-        this.caseAnalyses = caseAnalyses; this.sampleRequests = sampleRequests; this.samples = samples;
+-        this.analyses = analyses; this.tests = tests; this.panels = panels;
++        this.cases = cases;
++        this.requests = requests;
++        this.links = links;
++        this.membership = membership;
++        this.caseAnalyses = caseAnalyses;
++        this.sampleRequests = sampleRequests;
++        this.samples = samples;
++        this.analyses = analyses;
++        this.tests = tests;
++        this.panels = panels;
++    }
++
++    @Override
++    @Transactional(readOnly = true)
++    public List<MicroOrderDraftGrouping.Group> previewNewOrder(List<MicroOrderDraftGrouping.Selection> selections) {
++        return MicroOrderDraftGrouping.group(selections);
+     }
+ 
+     @Override
+@@ -54,67 +69,107 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+         // Establish set-culture ownership before other work on the same bottles.
+         List<RequestedTest> work = new ArrayList<>();
+         for (SampleTypeRequest request : sampleRequests.getRequestsBySampleId(order.getId())) {
+-            if (request.getStatus() == SampleTypeRequest.Status.CANCELLED) continue;
++            if (request.getStatus() == SampleTypeRequest.Status.CANCELLED)
++                continue;
+             Set<String> ids = ids(request.getRequestedTests());
+             for (String panelId : ids(request.getRequestedPanels())) {
+-                for (var item : panels.getPanelItemsForPanel(panelId)) ids.add(item.getTest().getId());
++                for (var item : panels.getPanelItemsForPanel(panelId))
++                    ids.add(item.getTest().getId());
+             }
+             for (String testId : ids) {
+                 Test test = tests.get(testId);
+-                if (test == null) throw new IllegalArgumentException("Unknown requested test");
+-                if (test.isOpensMicrobiologyCase()) work.add(new RequestedTest(request, test));
++                if (test == null)
++                    throw new IllegalArgumentException("Unknown requested test");
++                if (test.isOpensMicrobiologyCase())
++                    work.add(new RequestedTest(request, test));
+             }
+         }
+         work.sort(Comparator.comparing(w -> !w.test.isCollectedInSets()));
+-        for (RequestedTest selected : work) routeRequest(selected.request, selected.test, actor);
++        for (RequestedTest selected : work)
++            routeRequest(selected.request, selected.test, actor);
++        List<Analysis> collected = new ArrayList<>();
+         for (SampleItem sample : samples.getSampleItemsBySampleId(order.getId())) {
+-            if (sample.isRejected()) continue;
+-            List<Analysis> selected = new ArrayList<>(analyses.getAnalysesBySampleItem(sample));
+-            selected.sort(Comparator.comparing(a -> !a.getTest().isCollectedInSets()));
+-            for (Analysis analysis : selected) routeAnalysis(analysis, actor);
++            if (!sample.isRejected())
++                collected.addAll(analyses.getAnalysesBySampleItem(sample));
+         }
++        collected.sort(Comparator.comparing(a -> !a.getTest().isCollectedInSets()));
++        for (Analysis analysis : collected)
++            routeAnalysis(analysis, actor);
+     }
+ 
+     private void routeRequest(SampleTypeRequest request, Test test, String actor) {
+         MicroCaseRequest ownership = requests.getActiveByRequestAndTest(request.getId(), test.getId());
+         if (ownership == null) {
+-            requireCatalog(test);
+-            String key = request.getSampleItem() == null ? "request:" + request.getId() : "sample:" + request.getSampleItem().getId();
++            MicroCaseRoutingRule.requireCatalog(test);
++            if (test.isCollectedInSets() && request.getCultureSetNumber() == null) {
++                throw new IllegalArgumentException("A set number is required for a collected-in-sets test");
++            }
++            String key = request.getSampleItem() == null ? "request:" + request.getId()
++                    : "sample:" + request.getSampleItem().getId();
+             MicroCase owner = owner(request.getSample(), request.getTypeOfSample().getId(), key, test, actor);
+-            ownership = membership.ownRequest(owner.getId(), request.getId(), test.getId(), role(test), test.isCollectedInSets(), actor);
++            ownership = membership.ownRequest(owner.getId(), request.getId(), test.getId(), role(test),
++                    test.isCollectedInSets(), actor);
+         }
+         if (request.getSampleItem() != null && ownership.getSampleItemId() == null) {
+             Analysis analysis = ownership.getCaseRole() == MicroCaseRole.CASE ? null
+                     : analyses.getAnalysisBySampleItemAndTest(request.getSampleItem().getId(), test.getId());
+             if (ownership.getCaseRole() != MicroCaseRole.CASE && analysis == null)
+                 throw new IllegalStateException("Collected requested test has no analysis");
+-            membership.fulfillRequest(ownership.getId(), request.getSampleItem().getId(), analysis == null ? null : analysis.getId(), actor);
++            membership.fulfillRequest(ownership.getId(), request.getSampleItem().getId(),
++                    analysis == null ? null : analysis.getId(), actor);
+         }
+     }
+ 
+     @Override
+     public void routeAnalysis(Analysis analysis, String actor) {
+-        if (analysis == null || analysis.getTest() == null || analysis.getSampleItem() == null) return;
++        if (analysis == null || analysis.getTest() == null || analysis.getSampleItem() == null)
++            return;
++        String cancelled = statuses
++                .getStatusID(org.openelisglobal.common.services.StatusService.AnalysisStatus.Canceled);
++        if (cancelled != null && !cancelled.isBlank() && cancelled.equals(analysis.getStatusId()))
++            return;
+         Test test = tests.get(analysis.getTest().getId());
+-        if (test == null || !test.isOpensMicrobiologyCase()) return;
+-        if (links.getActiveByAnalysisId(analysis.getId()) != null) return;
+-        requireCatalog(test);
+-        if (role(test) == MicroCaseRole.CASE) throw new IllegalArgumentException("Case-role tests have no result analysis");
++        if (links.getActiveByAnalysisId(analysis.getId()) != null)
++            return;
++        if (test == null)
++            return;
++        if (!test.isOpensMicrobiologyCase()) {
++            if (analysis.getParentAnalysis() == null)
++                return;
++            var parent = links.getActiveByAnalysisId(analysis.getParentAnalysis().getId());
++            if (parent == null)
++                return;
++            MicroCase source = cases.getForUpdate(parent.getCaseId());
++            membership.addSample(source.getId(), analysis.getSampleItem().getId(), actor);
++            var link = caseAnalyses.linkAnalysis(source, analysis, null);
++            link.setCaseRole(MicroCaseRole.DIRECT);
++            link.setCollectedInSets(false);
++            link.setPlacement("INITIAL");
++            links.update(link);
++            return;
++        }
++        MicroCaseRoutingRule.requireCatalog(test);
++        if (role(test) == MicroCaseRole.CASE)
++            throw new IllegalArgumentException("Case-role tests have no result analysis");
+         SampleItem sample = analysis.getSampleItem();
+         requireOrder(sample.getSample(), actor);
+         cases.lockOrder(sample.getSample().getId());
+-        MicroCase owner = owner(sample.getSample(), sample.getTypeOfSampleId(), "sample:" + sample.getId(), test, actor);
++        MicroCase owner = owner(sample.getSample(), sample.getTypeOfSampleId(), "sample:" + sample.getId(), test,
++                actor);
+         membership.addSample(owner.getId(), sample.getId(), actor);
+         MicroCaseAnalysis link = caseAnalyses.linkAnalysis(owner, analysis, null);
+-        link.setCaseRole(role(test)); link.setCollectedInSets(test.isCollectedInSets()); link.setPlacement("INITIAL");
++        link.setCaseRole(role(test));
++        link.setCollectedInSets(test.isCollectedInSets());
++        link.setPlacement("INITIAL");
+         links.update(link);
+     }
+ 
+     @Override
+     public void routeCaseTest(SampleItem sample, Test test, String actor) {
+         requireOrder(sample.getSample(), actor);
+-        requireCatalog(test);
+-        if (role(test) != MicroCaseRole.CASE) throw new IllegalArgumentException("A case-role test is required");
++        MicroCaseRoutingRule.requireCatalog(test);
++        if (role(test) != MicroCaseRole.CASE)
++            throw new IllegalArgumentException("A case-role test is required");
+         cases.lockOrder(sample.getSample().getId());
+         SampleTypeRequest requested = sampleRequests.getRequestsBySampleId(sample.getSample().getId()).stream()
+                 .filter(r -> r.getSampleItem() != null && sample.getId().equals(r.getSampleItem().getId())
+@@ -122,13 +177,19 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+                 .findFirst().orElse(null);
+         if (requested == null) {
+             requested = new SampleTypeRequest();
+-            requested.setSample(sample.getSample()); requested.setTypeOfSample(sample.getTypeOfSample());
+-            requested.setSampleItem(sample); requested.setStatus(SampleTypeRequest.Status.COLLECTED);
+-            requested.setCreatedDate(new java.sql.Timestamp(System.currentTimeMillis())); requested.setSysUserId(actor);
+-            requested.setRequestedTests(test.getId()); sampleRequests.insert(requested);
++            requested.setSample(sample.getSample());
++            requested.setTypeOfSample(sample.getTypeOfSample());
++            requested.setSampleItem(sample);
++            requested.setStatus(SampleTypeRequest.Status.COLLECTED);
++            requested.setCreatedDate(new java.sql.Timestamp(System.currentTimeMillis()));
++            requested.setSysUserId(actor);
++            requested.setRequestedTests(test.getId());
++            sampleRequests.insert(requested);
+         } else {
+-            Set<String> selected = ids(requested.getRequestedTests()); selected.add(test.getId());
+-            requested.setRequestedTests(String.join(",", selected)); requested.setSysUserId(actor);
++            Set<String> selected = ids(requested.getRequestedTests());
++            selected.add(test.getId());
++            requested.setRequestedTests(String.join(",", selected));
++            requested.setSysUserId(actor);
+             sampleRequests.update(requested);
+         }
+         routeRequest(requested, test, actor);
+@@ -138,10 +199,13 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+         var candidates = candidates(order.getId());
+         var chosen = MicroCaseRoutingRule.choose(candidates, test.getTestSection().getId(), typeId,
+                 test.isCollectedInSets() ? test.getId() : null, sampleKey);
+-        if (chosen != null) return cases.get(chosen.caseId).orElseThrow();
++        if (chosen != null)
++            return cases.get(chosen.caseId).orElseThrow();
+         MicroCase created = new MicroCase();
+-        created.setSampleId(order.getId()); created.setSampleTypeId(typeId);
+-        created.setLabUnitId(test.getTestSection().getId()); created.setCreatedBy(actor);
++        created.setSampleId(order.getId());
++        created.setSampleTypeId(typeId);
++        created.setLabUnitId(test.getTestSection().getId());
++        created.setCreatedBy(actor);
+         cases.insert(created);
+         return created;
+     }
+@@ -149,15 +213,19 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+     public List<MicroCaseRoutingRule.Candidate> candidates(String orderId) {
+         List<MicroCaseRoutingRule.Candidate> result = new ArrayList<>();
+         for (MicroCase c : cases.getByOrder(orderId)) {
+-            if (c.getStatus() != MicroCaseStatus.ACTIVE) continue;
++            if (c.getStatus() != MicroCaseStatus.ACTIVE)
++                continue;
+             var candidate = new MicroCaseRoutingRule.Candidate(c.getId(), c.getLabUnitId(), c.getSampleTypeId());
+             for (var member : membership.getCaseSamples(c.getId())) {
+-                if (member.getSplitOutAt() == null) candidate.samples.add("sample:" + member.getSampleItemId());
++                if (member.getSplitOutAt() == null)
++                    candidate.samples.add("sample:" + member.getSampleItemId());
+             }
+             for (var request : membership.getCaseRequests(c.getId())) {
+-                if (request.getCancelledAt() != null) continue;
++                if (request.getCancelledAt() != null)
++                    continue;
+                 candidate.samples.add("request:" + request.getSampleTypeRequestId());
+-                if (request.isCollectedInSets()) candidate.setsTests.add(request.getTestId());
++                if (request.isCollectedInSets())
++                    candidate.setsTests.add(request.getTestId());
+             }
+             for (var link : links.getByCaseId(c.getId())) {
+                 if (link.getCancelledAt() == null && Boolean.TRUE.equals(link.getCollectedInSets())) {
+@@ -172,24 +240,21 @@ public class MicroOrderRoutingServiceImpl implements MicroOrderRoutingService {
+ 
+     private static Set<String> ids(String csv) {
+         Set<String> result = new LinkedHashSet<>();
+-        if (csv != null) Arrays.stream(csv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).forEach(result::add);
++        if (csv != null)
++            Arrays.stream(csv.split(",")).map(String::trim).filter(s -> !s.isEmpty()).forEach(result::add);
+         return result;
+     }
+ 
+-    private static MicroCaseRole role(Test test) { return MicroCaseRole.valueOf(test.getMicrobiologyCaseRole()); }
+-
+-    private static void requireCatalog(Test test) {
+-        if (!test.isOpensMicrobiologyCase() || test.getTestSection() == null || test.getTestSection().getId() == null
+-                || !test.isActive() || !"Y".equals(test.getTestSection().getIsActive()))
+-            throw new IllegalArgumentException("An active micro test and lab unit are required");
+-        if (test.isCollectedInSets() && role(test) != MicroCaseRole.CULTURE)
+-            throw new IllegalArgumentException("Only culture tests are collected in sets");
++    private static MicroCaseRole role(Test test) {
++        return MicroCaseRole.valueOf(test.getMicrobiologyCaseRole());
+     }
+ 
+     private static void requireOrder(Sample order, String actor) {
+-        if (order == null || order.getId() == null) throw new IllegalArgumentException("A persisted order is required");
++        if (order == null || order.getId() == null)
++            throw new IllegalArgumentException("A persisted order is required");
+         MicroCaseServiceImpl.requireText(actor, "actor");
+     }
+ 
+-    private record RequestedTest(SampleTypeRequest request, Test test) {}
++    private record RequestedTest(SampleTypeRequest request, Test test) {
++    }
+ }
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderSaveListener.java b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderSaveListener.java
+index c4d2bb32e4..9ff4bcb990 100644
+--- a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderSaveListener.java
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderSaveListener.java
+@@ -8,9 +8,21 @@ import org.springframework.stereotype.Component;
+ @Component
+ public class MicroOrderSaveListener {
+     private final MicroOrderRoutingService routing;
+-    public MicroOrderSaveListener(MicroOrderRoutingService routing) { this.routing = routing; }
++
++    public MicroOrderSaveListener(MicroOrderRoutingService routing) {
++        this.routing = routing;
++    }
++
+     @EventListener
+     public void routeSavedOrder(SamplePatientUpdateDataCreatedEvent event) {
+         routing.routeOrder(event.getUpdateData().getSample(), event.getUpdateData().getCurrentUserId());
+     }
++
++    // Collection resolves requested-specimen identity later in the same save.
++    // Waiting until before commit preserves that ownership across transfers,
++    // while a routing failure still rolls back the whole clinical transaction.
++    @org.springframework.transaction.event.TransactionalEventListener(phase = org.springframework.transaction.event.TransactionPhase.BEFORE_COMMIT)
++    public void routeCreatedAnalysis(org.openelisglobal.analysis.valueholder.AnalysisCreatedEvent event) {
++        routing.routeAnalysis(event.analysis(), event.actor());
++    }
+ }
+diff --git a/src/main/java/org/openelisglobal/sample/controller/rest/OrderSearchRestController.java b/src/main/java/org/openelisglobal/sample/controller/rest/OrderSearchRestController.java
+index 95207cbc19..2e65e5043a 100644
+--- a/src/main/java/org/openelisglobal/sample/controller/rest/OrderSearchRestController.java
++++ b/src/main/java/org/openelisglobal/sample/controller/rest/OrderSearchRestController.java
+@@ -848,6 +848,8 @@ public class OrderSearchRestController extends BaseRestController {
+                 sampleXML.put("specimenOrigin",
+                         sampleItem.getSpecimenOrigin() != null ? sampleItem.getSpecimenOrigin() : "");
+                 sampleXML.put("container", sampleItem.getContainer() != null ? sampleItem.getContainer() : "");
++                sampleXML.put("cultureSetNumber", sampleItem.getCultureSetNumber());
++                sampleXML.put("bodySite", sampleItem.getBodySite() != null ? sampleItem.getBodySite() : "");
+                 sampleXML.put("locationDetails",
+                         sampleItem.getLocationDetails() != null ? sampleItem.getLocationDetails() : "");
+                 sampleXML.put("gpsLatitude", sampleItem.getGpsLatitude() != null ? sampleItem.getGpsLatitude() : "");
+diff --git a/src/main/java/org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java b/src/main/java/org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java
+index 855c578d87..aa9290f5fc 100644
+--- a/src/main/java/org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java
++++ b/src/main/java/org/openelisglobal/sample/service/SamplePatientEntryServiceImpl.java
+@@ -547,6 +547,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+         Map<SampleItem, Integer> specimenLabelQuantities = new LinkedHashMap<>();
+         Integer orderLabelQuantity = null;
+         matchRetriedSampleItems(updateData);
++        prepareRequestedCollectionDetails(updateData);
+         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
+             SampleItem savedItem = null;
+             String sampleItemId = null;
+@@ -565,8 +566,18 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+                     savedItem.setQuantity(sampleTestCollection.item.getQuantity());
+                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
+                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
++                    String storedContainer = savedItem.getContainer();
+                     copyHandlingDetails(sampleTestCollection.item, savedItem);
++                    if (!sampleTestCollection.suppliedCollectionFields.contains("container")) {
++                        savedItem.setContainer(storedContainer);
++                    }
+                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
++                    if (sampleTestCollection.suppliedCollectionFields.contains("cultureSetNumber")) {
++                        savedItem.setCultureSetNumber(sampleTestCollection.item.getCultureSetNumber());
++                    }
++                    if (sampleTestCollection.suppliedCollectionFields.contains("bodySite")) {
++                        savedItem.setBodySite(sampleTestCollection.item.getBodySite());
++                    }
+                     savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
+                     // Keep existing typeOfSample if incoming is null (don't change sample type
+                     // during collection)
+@@ -602,6 +613,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+             // entity
+             // This prevents "transient instance" errors when creating Analysis objects
+             sampleTestCollection.item = savedItem;
++            if (!"V".equals(updateData.getSample().getDomain())) {
++                bindRequestedCollection(sampleTestCollection, updateData);
++            }
+ 
+             // Create QC profile if this sample item is a QC sample (OGC-554)
+             if (!GenericValidator.isBlankOrNull(sampleTestCollection.qcType)) {
+@@ -672,11 +686,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+                 Double itemQty = stc.item.getQuantity();
+                 int poolCount = itemQty == null ? 0 : itemQty.intValue();
+                 if (poolCount <= 1) {
++                    bindRequestedCollection(stc, updateData);
+                     continue;
+                 }
+                 List<SampleItem> siblings = vectorPoolFanOutService.fanOut(stc.item, stc.analysises, poolCount,
+                         sysUserId);
+                 if (siblings.isEmpty()) {
++                    bindRequestedCollection(stc, updateData);
+                     continue;
+                 }
+                 // Parent is hard-deleted by fanOut; siblings get the labels instead.
+@@ -684,6 +700,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+                 for (SampleItem sibling : siblings) {
+                     specimenLabelQuantities.put(sibling, 1);
+                 }
++                stc.item = siblings.getFirst();
++                bindRequestedCollection(stc, updateData);
+             }
+         }
+ 
+@@ -818,7 +836,25 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+ 
+             // Matching the specimen rather than the position keeps a cancellation
+             // pointing at the specimen that was actually taken off the order.
+-            SampleTypeRequest request = takePendingRequestFor(reusable, typeOfSample);
++            SampleTypeRequest request;
++            if (!GenericValidator.isBlankOrNull(requested.getId())) {
++                Integer requestId = Integer.valueOf(requested.getId());
++                request = reusable.stream().filter(row -> requestId.equals(row.getId())).findFirst().orElseThrow(
++                        () -> new IllegalArgumentException("Requested specimen does not belong to this order"));
++                if (!typeOfSample.getId().equals(request.getTypeOfSample().getId())) {
++                    throw new IllegalArgumentException("A requested specimen cannot change sample type");
++                }
++                reusable.remove(request);
++            } else if (!GenericValidator.isBlankOrNull(requested.getSampleItemId())) {
++                request = reusable.stream()
++                        .filter(row -> row.getSampleItem() != null
++                                && requested.getSampleItemId().equals(row.getSampleItem().getId()))
++                        .findFirst().orElse(null);
++                if (request != null)
++                    reusable.remove(request);
++            } else {
++                request = takePendingRequestFor(reusable, typeOfSample);
++            }
+             if (request != null && request.getStatus() == SampleTypeRequest.Status.COLLECTED) {
+                 sortOrder++;
+                 continue;
+@@ -832,6 +868,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+             request.setTypeOfSample(typeOfSample);
+             request.setSortOrder(sortOrder);
+             request.setRequestedQuantity(requested.getRequestedQuantity());
++            request.setCultureSetNumber(requested.getCultureSetNumber());
++            request.setContainer(requested.getContainer());
++            request.setBodySite(requested.getBodySite());
++            request.setCollectionDate(GenericValidator.isBlankOrNull(requested.getCollectionDate()) ? null
++                    : java.sql.Date.valueOf(java.time.LocalDate.parse(requested.getCollectionDate())));
++            request.setCollectionTime(GenericValidator.isBlankOrNull(requested.getCollectionTime()) ? null
++                    : java.time.LocalTime.parse(requested.getCollectionTime()).toString());
+             request.setRequestedTests(requested.getRequestedTests());
+             request.setRequestedPanels(requested.getRequestedPanels());
+             request.setStatus(SampleTypeRequest.Status.REQUESTED);
+@@ -897,6 +940,73 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService
+         }
+     }
+ 
++    /**
++     * Preserve a pending specimen's identity and recorded details before creating
++     * its sample.
++     */
++    private void prepareRequestedCollectionDetails(SamplePatientUpdateData updateData) {
++        List<SampleTypeRequest> requests = sampleTypeRequestService
++                .getRequestsBySampleId(updateData.getSample().getId());
++        Set<Integer> claimed = new HashSet<>();
++        for (SampleTestCollection collection : updateData.getSampleItemsTests()) {
++            if (collection.item == null)
++                continue;
++            SampleTypeRequest request = null;
++            if (collection.sampleTypeRequestId != null) {
++                request = requests.stream().filter(row -> collection.sampleTypeRequestId.equals(row.getId()))
++                        .findFirst().orElseThrow(
++                                () -> new IllegalArgumentException("Requested specimen does not belong to this order"));
++                if (!claimed.add(request.getId()))
++                    throw new IllegalArgumentException("Requested specimen is repeated");
++                if (request.getStatus() == SampleTypeRequest.Status.CANCELLED
++                        || !request.getTypeOfSample().getId().equals(collection.item.getTypeOfSampleId())
++                        || (request.getSampleItem() != null
++                                && !request.getSampleItem().getId().equals(collection.existingSampleItemId))) {
++                    throw new IllegalArgumentException("Requested specimen cannot be attached to this sample");
++                }
++            } else if (GenericValidator.isBlankOrNull(collection.existingSampleItemId)) {
++                List<SampleTypeRequest> matching = requests.stream()
++                        .filter(row -> row.getStatus() == SampleTypeRequest.Status.REQUESTED
++                                && !claimed.contains(row.getId())
++                                && row.getTypeOfSample().getId().equals(collection.item.getTypeOfSampleId()))
++                        .toList();
++                if (matching.size() == 1) {
++                    request = matching.getFirst();
++                    claimed.add(request.getId());
++                    collection.sampleTypeRequestId = request.getId();
++                }
++            }
++            if (request == null)
++                continue;
++            if (!collection.suppliedCollectionFields.contains("cultureSetNumber")) {
++                collection.item.setCultureSetNumber(request.getCultureSetNumber());
++            }
++            if (!collection.suppliedCollectionFields.contains("container"))
++                collection.item.setContainer(request.getContainer());
++            if (!collection.suppliedCollectionFields.contains("bodySite"))
++                collection.item.setBodySite(request.getBodySite());
++            // A timestamp is available only when both its date and time were recorded.
++            if (!collection.suppliedCollectionFields.contains("date")
++                    && !collection.suppliedCollectionFields.contains("time") && request.getCollectionDate() != null
++                    && request.getCollectionTime() != null) {
++                collection.item.setCollectionDate(Timestamp.valueOf(request.getCollectionDate().toLocalDate()
++                        .atTime(java.time.LocalTime.parse(request.getCollectionTime()))));
++            }
++        }
++    }
++
++    private void bindRequestedCollection(SampleTestCollection collection, SamplePatientUpdateData updateData) {
++        if (collection.sampleTypeRequestId == null || collection.item.isRejected())
++            return;
++        SampleTypeRequest request = sampleTypeRequestService.get(collection.sampleTypeRequestId);
++        if (request.getStatus() == SampleTypeRequest.Status.COLLECTED)
++            return;
++        request.setStatus(SampleTypeRequest.Status.COLLECTED);
++        request.setSampleItem(collection.item);
++        request.setSysUserId(updateData.getCurrentUserId());
++        sampleTypeRequestService.update(request);
++    }
++
+     /**
+      * Marks a requested specimen as collected once a sample of its type is saved on
+      * the order, and links it to that sample. The samples are read back from the
+diff --git a/src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java b/src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java
+index 3c8ac3b5bb..f0e5a7fb57 100644
+--- a/src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java
++++ b/src/main/java/org/openelisglobal/sampleitem/valueholder/SampleItem.java
+@@ -57,6 +57,8 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
+     private String sampleTemperature;
+     private String specimenOrigin;
+     private String container;
++    private Integer cultureSetNumber;
++    private String bodySite;
+     private String locationDetails;
+     private String gpsLatitude;
+     private String gpsLongitude;
+@@ -639,4 +641,23 @@ public class SampleItem extends BaseObject<String> implements NoteObject {
+         }
+         return level;
+     }
++
++    public Integer getCultureSetNumber() {
++        return cultureSetNumber;
++    }
++
++    public void setCultureSetNumber(Integer value) {
++        if (value != null && value < 1)
++            throw new IllegalArgumentException("Set number must be positive");
++        cultureSetNumber = value;
++    }
++
++    public String getBodySite() {
++        return bodySite;
++    }
++
++    public void setBodySite(String value) {
++        bodySite = value;
++    }
++
+ }
+diff --git a/src/main/java/org/openelisglobal/sampletyperequest/dto/SampleTypeRequestDTO.java b/src/main/java/org/openelisglobal/sampletyperequest/dto/SampleTypeRequestDTO.java
+index f60e89b301..fae32515ba 100644
+--- a/src/main/java/org/openelisglobal/sampletyperequest/dto/SampleTypeRequestDTO.java
++++ b/src/main/java/org/openelisglobal/sampletyperequest/dto/SampleTypeRequestDTO.java
+@@ -25,6 +25,11 @@ public class SampleTypeRequestDTO {
+     private String status;
+     private String sampleItemId;
+     private String createdDate;
++    private Integer cultureSetNumber;
++    private String container;
++    private String bodySite;
++    private String collectionDate;
++    private String collectionTime;
+ 
+     // Default constructor
+     public SampleTypeRequestDTO() {
+@@ -37,6 +42,11 @@ public class SampleTypeRequestDTO {
+         this.typeOfSampleId = entity.getTypeOfSample() != null ? entity.getTypeOfSample().getId() : null;
+         this.typeOfSampleName = entity.getTypeOfSample() != null ? entity.getTypeOfSample().getLocalizedName() : null;
+         this.sortOrder = entity.getSortOrder();
++        this.cultureSetNumber = entity.getCultureSetNumber();
++        this.container = entity.getContainer();
++        this.bodySite = entity.getBodySite();
++        this.collectionDate = entity.getCollectionDate() == null ? null : entity.getCollectionDate().toString();
++        this.collectionTime = entity.getCollectionTime();
+         this.requestedQuantity = entity.getRequestedQuantity();
+         this.unitOfMeasureId = entity.getUnitOfMeasure() != null ? entity.getUnitOfMeasure().getId() : null;
+         this.unitOfMeasureName = entity.getUnitOfMeasure() != null ? entity.getUnitOfMeasure().getUnitOfMeasureName()
+@@ -177,4 +187,45 @@ public class SampleTypeRequestDTO {
+     public void setCreatedDate(String createdDate) {
+         this.createdDate = createdDate;
+     }
++
++    public Integer getCultureSetNumber() {
++        return cultureSetNumber;
++    }
++
++    public void setCultureSetNumber(Integer cultureSetNumber) {
++        this.cultureSetNumber = cultureSetNumber;
++    }
++
++    public String getContainer() {
++        return container;
++    }
++
++    public void setContainer(String value) {
++        container = value;
++    }
++
++    public String getBodySite() {
++        return bodySite;
++    }
++
++    public void setBodySite(String value) {
++        bodySite = value;
++    }
++
++    public String getCollectionDate() {
++        return collectionDate;
++    }
++
++    public void setCollectionDate(String value) {
++        collectionDate = value;
++    }
++
++    public String getCollectionTime() {
++        return collectionTime;
++    }
++
++    public void setCollectionTime(String value) {
++        collectionTime = value;
++    }
++
+ }
+diff --git a/src/main/java/org/openelisglobal/sampletyperequest/valueholder/SampleTypeRequest.java b/src/main/java/org/openelisglobal/sampletyperequest/valueholder/SampleTypeRequest.java
+index 23bea3c688..aa05505503 100644
+--- a/src/main/java/org/openelisglobal/sampletyperequest/valueholder/SampleTypeRequest.java
++++ b/src/main/java/org/openelisglobal/sampletyperequest/valueholder/SampleTypeRequest.java
+@@ -66,6 +66,18 @@ public class SampleTypeRequest extends BaseObject<Integer> {
+     @Column(name = "requested_quantity")
+     private Double requestedQuantity;
+ 
++    @Column(name = "culture_set_number")
++    private Integer cultureSetNumber;
++
++    @Column(name = "container", length = 255)
++    private String container;
++    @Column(name = "body_site", length = 40)
++    private String bodySite;
++    @Column(name = "collection_date")
++    private java.sql.Date collectionDate;
++    @Column(name = "collection_time", length = 8)
++    private String collectionTime;
++
+     @ManyToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "unit_of_measure_id")
+     private UnitOfMeasure unitOfMeasure;
+@@ -195,4 +207,48 @@ public class SampleTypeRequest extends BaseObject<Integer> {
+     public boolean isPending() {
+         return status == Status.REQUESTED;
+     }
++
++    public Integer getCultureSetNumber() {
++        return cultureSetNumber;
++    }
++
++    public void setCultureSetNumber(Integer cultureSetNumber) {
++        if (cultureSetNumber != null && cultureSetNumber < 1) {
++            throw new IllegalArgumentException("Culture set number must be positive");
++        }
++        this.cultureSetNumber = cultureSetNumber;
++    }
++
++    public String getContainer() {
++        return container;
++    }
++
++    public void setContainer(String value) {
++        container = value;
++    }
++
++    public String getBodySite() {
++        return bodySite;
++    }
++
++    public void setBodySite(String value) {
++        bodySite = value;
++    }
++
++    public java.sql.Date getCollectionDate() {
++        return collectionDate;
++    }
++
++    public void setCollectionDate(java.sql.Date value) {
++        collectionDate = value;
++    }
++
++    public String getCollectionTime() {
++        return collectionTime;
++    }
++
++    public void setCollectionTime(String value) {
++        collectionTime = value;
++    }
++
+ }
+diff --git a/src/main/java/org/openelisglobal/test/dto/TestSelectionDTO.java b/src/main/java/org/openelisglobal/test/dto/TestSelectionDTO.java
+index b96af240e2..cb55ee5edd 100644
+--- a/src/main/java/org/openelisglobal/test/dto/TestSelectionDTO.java
++++ b/src/main/java/org/openelisglobal/test/dto/TestSelectionDTO.java
+@@ -10,12 +10,18 @@ public class TestSelectionDTO {
+     private final String id;
+     private final String name;
+     private final String description;
++    private final boolean opensMicrobiologyCase;
++    private final String microbiologyCaseRole;
++    private final boolean collectedInSets;
+     private final List<TestMethodDto> methods;
+ 
+     public TestSelectionDTO(Test test, List<TestMethodDto> methods) {
+         this.id = test.getId();
+         this.name = test.getLocalizedName();
+         this.description = test.getDescription();
++        this.opensMicrobiologyCase = test.isOpensMicrobiologyCase();
++        this.microbiologyCaseRole = test.getMicrobiologyCaseRole();
++        this.collectedInSets = test.isCollectedInSets();
+         this.methods = methods;
+     }
+ 
+@@ -31,6 +37,18 @@ public class TestSelectionDTO {
+         return description;
+     }
+ 
++    public boolean isOpensMicrobiologyCase() {
++        return opensMicrobiologyCase;
++    }
++
++    public String getMicrobiologyCaseRole() {
++        return microbiologyCaseRole;
++    }
++
++    public boolean isCollectedInSets() {
++        return collectedInSets;
++    }
++
+     public List<TestMethodDto> getMethods() {
+         return methods;
+     }
+diff --git a/src/main/java/org/openelisglobal/test/valueholder/Test.java b/src/main/java/org/openelisglobal/test/valueholder/Test.java
+index 000fd5d27b..520a198cfe 100644
+--- a/src/main/java/org/openelisglobal/test/valueholder/Test.java
++++ b/src/main/java/org/openelisglobal/test/valueholder/Test.java
+@@ -143,12 +143,29 @@ public class Test extends EnumValueItemImpl {
+         this.sortOrder = sortOrder;
+     }
+ 
+-    public boolean isOpensMicrobiologyCase() { return opensMicrobiologyCase; }
+-    public void setOpensMicrobiologyCase(boolean value) { opensMicrobiologyCase = value; }
+-    public String getMicrobiologyCaseRole() { return microbiologyCaseRole; }
+-    public void setMicrobiologyCaseRole(String value) { microbiologyCaseRole = value; }
+-    public boolean isCollectedInSets() { return collectedInSets; }
+-    public void setCollectedInSets(boolean value) { collectedInSets = value; }
++    public boolean isOpensMicrobiologyCase() {
++        return opensMicrobiologyCase;
++    }
++
++    public void setOpensMicrobiologyCase(boolean value) {
++        opensMicrobiologyCase = value;
++    }
++
++    public String getMicrobiologyCaseRole() {
++        return microbiologyCaseRole;
++    }
++
++    public void setMicrobiologyCaseRole(String value) {
++        microbiologyCaseRole = value;
++    }
++
++    public boolean isCollectedInSets() {
++        return collectedInSets;
++    }
++
++    public void setCollectedInSets(boolean value) {
++        collectedInSets = value;
++    }
+ 
+     public Double getTea() {
+         return tea;
+diff --git a/src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java b/src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java
+index 303e984128..30d35567ce 100644
+--- a/src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java
++++ b/src/main/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorRestController.java
+@@ -649,7 +649,8 @@ public class TestCatalogEditorRestController {
+             return ResponseEntity.unprocessableEntity().build();
+         }
+         String role = body.microbiologyCaseRole == null ? test.getMicrobiologyCaseRole() : body.microbiologyCaseRole;
+-        boolean opensCase = body.opensMicrobiologyCase == null ? test.isOpensMicrobiologyCase() : body.opensMicrobiologyCase;
++        boolean opensCase = body.opensMicrobiologyCase == null ? test.isOpensMicrobiologyCase()
++                : body.opensMicrobiologyCase;
+         boolean sets = body.collectedInSets == null ? test.isCollectedInSets() : body.collectedInSets;
+         if (!List.of("CULTURE", "DIRECT", "CASE").contains(role) || (sets && (!opensCase || !"CULTURE".equals(role)))) {
+             return ResponseEntity.unprocessableEntity().build();
+diff --git a/src/main/resources/hibernate/hbm/SampleItem.hbm.xml b/src/main/resources/hibernate/hbm/SampleItem.hbm.xml
+index 24e9f93b84..1c8c60e24f 100644
+--- a/src/main/resources/hibernate/hbm/SampleItem.hbm.xml
++++ b/src/main/resources/hibernate/hbm/SampleItem.hbm.xml
+@@ -66,6 +66,10 @@
+             type="java.lang.String" />
+         <property name="collectionConditions"
+             column="collection_conditions" type="java.lang.String" />
++        <property name="cultureSetNumber" column="culture_set_number"
++            type="integer" />
++        <property name="bodySite" column="body_site"
++            type="java.lang.String" length="40" />
+         <property name="collectionMethod" column="collection_method"
+             type="java.lang.String" />
+         <property name="sampleTemperature"
+diff --git a/src/main/resources/hibernate/hbm/Test.hbm.xml b/src/main/resources/hibernate/hbm/Test.hbm.xml
+index 21a1642d6e..7600b56d18 100644
+--- a/src/main/resources/hibernate/hbm/Test.hbm.xml
++++ b/src/main/resources/hibernate/hbm/Test.hbm.xml
+@@ -75,9 +75,12 @@
+         <property name="domain" type="java.lang.String">
+             <column name="DOMAIN" length="20" />
+         </property>
+-        <property name="opensMicrobiologyCase" type="boolean" column="opens_microbiology_case" not-null="true" />
+-        <property name="microbiologyCaseRole" type="java.lang.String" column="microbiology_case_role" not-null="true" />
+-        <property name="collectedInSets" type="boolean" column="collected_in_sets" not-null="true" />
++        <property name="opensMicrobiologyCase" type="boolean"
++            column="opens_microbiology_case" not-null="true" />
++        <property name="microbiologyCaseRole" type="java.lang.String"
++            column="microbiology_case_role" not-null="true" />
++        <property name="collectedInSets" type="boolean"
++            column="collected_in_sets" not-null="true" />
+         <property name="stickerRequiredFlag" type="java.lang.String">
+             <column name="STICKER_REQ_FLAG" length="1" />
+         </property>
+diff --git a/src/main/resources/liquibase/3.6.x.x/base.xml b/src/main/resources/liquibase/3.6.x.x/base.xml
+index b03df89a91..3188cda577 100644
+--- a/src/main/resources/liquibase/3.6.x.x/base.xml
++++ b/src/main/resources/liquibase/3.6.x.x/base.xml
+@@ -24,5 +24,6 @@
+ 
+   <include relativeToChangelogFile="true" file="012-microbiology-v2-case-structure.xml"/>
+   <include relativeToChangelogFile="true" file="013-microbiology-v2-routing.xml"/>
++  <include relativeToChangelogFile="true" file="014-sample-collection-set-details.xml"/>
+ 
+ </databaseChangeLog>
+diff --git a/src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java b/src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java
+index b4f87b4efe..95962a53b6 100644
+--- a/src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java
++++ b/src/test/java/org/openelisglobal/microbiology/MicroOrderRoutingIntegrationTest.java
+@@ -28,16 +28,26 @@ import org.springframework.transaction.annotation.Transactional;
+ 
+ @Transactional
+ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTest {
+-    @Autowired private MicrobiologyTestFixtures fixtures;
+-    @Autowired private SampleService orders;
+-    @Autowired private SampleItemService samples;
+-    @Autowired private TestService tests;
+-    @Autowired private TestSectionService units;
+-    @Autowired private MicroOrderRoutingService routing;
+-    @Autowired private MicroCaseDAO cases;
+-    @Autowired private MicroCaseRequestDAO requests;
+-    @Autowired private MicroCaseMembershipService membership;
+-    @PersistenceContext private EntityManager em;
++    @Autowired
++    private MicrobiologyTestFixtures fixtures;
++    @Autowired
++    private SampleService orders;
++    @Autowired
++    private SampleItemService samples;
++    @Autowired
++    private TestService tests;
++    @Autowired
++    private TestSectionService units;
++    @Autowired
++    private MicroOrderRoutingService routing;
++    @Autowired
++    private MicroCaseDAO cases;
++    @Autowired
++    private MicroCaseRequestDAO requests;
++    @Autowired
++    private MicroCaseMembershipService membership;
++    @PersistenceContext
++    private EntityManager em;
+     private Sample order;
+     private org.openelisglobal.test.valueholder.Test test;
+     private TypeOfSample type;
+@@ -64,9 +74,15 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
+ 
+     private SampleTypeRequest request(String ids) {
+         SampleTypeRequest r = new SampleTypeRequest();
+-        r.setSample(order); r.setTypeOfSample(type); r.setRequestedTests(ids);
++        r.setSample(order);
++        r.setTypeOfSample(type);
++        r.setRequestedTests(ids);
+         r.setCreatedDate(Timestamp.valueOf("2026-01-02 10:00:00"));
+-        em.persist(r); em.flush(); return r;
++        if (test.isCollectedInSets())
++            r.setCultureSetNumber(1);
++        em.persist(r);
++        em.flush();
++        return r;
+     }
+ 
+     @Test
+@@ -74,7 +90,8 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
+         SampleTypeRequest r = request(test.getId());
+         routing.routeOrder(order, actor);
+         routing.routeOrder(order, actor);
+-        em.flush(); em.clear();
++        em.flush();
++        em.clear();
+         assertEquals(1, cases.getByOrder(order.getId()).size());
+         var owner = requests.getActiveByRequestAndTest(r.getId(), test.getId());
+         assertNotNull(owner);
+@@ -90,14 +107,19 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
+         routing.routeOrder(order, actor);
+         String caseId = requests.getActiveByRequestAndTest(r.getId(), test.getId()).getCaseId();
+         SampleItem sample = new SampleItem();
+-        sample.setSample(order); sample.setTypeOfSample(type); sample.setSortOrder("1");
+-        sample.setStatusId(fixtures.ensureSampleEnteredStatus()); sample.setSysUserId(actor);
++        sample.setSample(order);
++        sample.setTypeOfSample(type);
++        sample.setSortOrder("1");
++        sample.setStatusId(fixtures.ensureSampleEnteredStatus());
++        sample.setSysUserId(actor);
+         samples.insert(sample);
+         var analysis = fixtures.createAnalysis(sample, test);
+-        r.setSampleItem(sample); r.setStatus(SampleTypeRequest.Status.COLLECTED);
++        r.setSampleItem(sample);
++        r.setStatus(SampleTypeRequest.Status.COLLECTED);
+         routing.routeOrder(order, actor);
+         routing.routeOrder(order, actor);
+-        em.flush(); em.clear();
++        em.flush();
++        em.clear();
+         assertEquals(1, cases.getByOrder(order.getId()).size());
+         var owner = requests.getActiveByRequestAndTest(r.getId(), test.getId());
+         assertEquals(caseId, owner.getCaseId());
+@@ -108,15 +130,19 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
+ 
+     @Test
+     public void anOrdinaryTestOpensNoCase() {
+-        test.setOpensMicrobiologyCase(false); em.flush();
+-        request(test.getId()); routing.routeOrder(order, actor);
++        test.setOpensMicrobiologyCase(false);
++        em.flush();
++        request(test.getId());
++        routing.routeOrder(order, actor);
+         assertTrue(cases.getByOrder(order.getId()).isEmpty());
+     }
+ 
+     @Test
+     public void aCaseRoleOpensAnEmptyCaseWithoutAnAnalysis() {
+-        test.setMicrobiologyCaseRole("CASE"); em.flush();
+-        SampleTypeRequest r = request(test.getId()); routing.routeOrder(order, actor);
++        test.setMicrobiologyCaseRole("CASE");
++        em.flush();
++        SampleTypeRequest r = request(test.getId());
++        routing.routeOrder(order, actor);
+         var owner = requests.getActiveByRequestAndTest(r.getId(), test.getId());
+         assertNotNull(owner);
+         assertNull(owner.getAnalysisId());
+@@ -125,7 +151,9 @@ public class MicroOrderRoutingIntegrationTest extends BaseWebContextSensitiveTes
+ 
+     @Test
+     public void setCulturesShareOneCaseAcrossRequestedSampleTypes() {
+-        test.setMicrobiologyCaseRole("CULTURE"); test.setCollectedInSets(true); em.flush();
++        test.setMicrobiologyCaseRole("CULTURE");
++        test.setCollectedInSets(true);
++        em.flush();
+         var first = request(test.getId());
+         var second = request(test.getId());
+         second.setTypeOfSample(fixtures.createTypeOfSample());
+diff --git a/src/test/java/org/openelisglobal/microbiology/MicrobiologyV2CaseStructureLiquibaseRollbackTest.java b/src/test/java/org/openelisglobal/microbiology/MicrobiologyV2CaseStructureLiquibaseRollbackTest.java
+index acf1626ff4..399548c82d 100644
+--- a/src/test/java/org/openelisglobal/microbiology/MicrobiologyV2CaseStructureLiquibaseRollbackTest.java
++++ b/src/test/java/org/openelisglobal/microbiology/MicrobiologyV2CaseStructureLiquibaseRollbackTest.java
+@@ -98,6 +98,26 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
+                         "SELECT case_role FROM clinlims.micro_case_analysis WHERE id='stored-link'"));
+                 verifyConstraints(connection);
+ 
++                assertTrue(columnExists(connection, "sample_type_request", "culture_set_number"));
++                assertTrue(columnExists(connection, "sample_item", "body_site"));
++                assertTrue(columnExists(connection, "dictionary", "container_population"));
++                assertTrue(columnExists(connection, "test", "opens_microbiology_case"));
++                assertNull(scalar(connection, "SELECT culture_set_number FROM clinlims.sample_item WHERE id=888802"));
++                assertNull(scalar(connection, "SELECT body_site FROM clinlims.sample_item WHERE id=888802"));
++                // Shared details and catalog flags are registered, reversible application
++                // changes.
++                new Liquibase("liquibase/3.6.x.x/014-sample-collection-set-details.xml", resources, database)
++                        .rollback(2, "test");
++                assertFalse(columnExists(connection, "sample_item", "culture_set_number"));
++                assertFalse(columnExists(connection, "dictionary", "container_population"));
++                new Liquibase("liquibase/3.6.x.x/013-microbiology-v2-routing.xml", resources, database).rollback(2,
++                        "test");
++                assertFalse(columnExists(connection, "test", "opens_microbiology_case"));
++                assertPreservedFields(originalResult,
++                        scalar(connection, "SELECT row_to_json(r)::text FROM clinlims.result r WHERE id=888803"));
++                app.update(contexts);
++                assertTrue(columnExists(connection, "sample_item", "culture_set_number"));
++
+                 Liquibase feature = new Liquibase("liquibase/3.6.x.x/012-microbiology-v2-case-structure.xml", resources,
+                         database);
+                 feature.rollback(3, "test");
+diff --git a/src/test/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRuleTest.java b/src/test/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRuleTest.java
+index 381de80d56..ab860838e4 100644
+--- a/src/test/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRuleTest.java
++++ b/src/test/java/org/openelisglobal/microbiology/service/MicroCaseRoutingRuleTest.java
+@@ -1,6 +1,7 @@
+ package org.openelisglobal.microbiology.service;
+ 
+ import static org.junit.Assert.*;
++
+ import java.util.List;
+ import org.junit.Test;
+ 
+@@ -17,7 +18,8 @@ public class MicroCaseRoutingRuleTest {
+     public void twoRelatedCandidatesChooseTheFirstOpenedCase() {
+         var first = new MicroCaseRoutingRule.Candidate("first", "unit", "blood");
+         var second = new MicroCaseRoutingRule.Candidate("second", "unit", "blood");
+-        first.samples.add("bottle"); second.samples.add("bottle");
++        first.samples.add("bottle");
++        second.samples.add("bottle");
+         assertSame(first, MicroCaseRoutingRule.choose(List.of(first, second), "unit", "blood", null, "bottle"));
+     }
+ 
+diff --git a/src/test/java/org/openelisglobal/sample/service/OrderSaveProvenanceAndRetryIntegrationTest.java b/src/test/java/org/openelisglobal/sample/service/OrderSaveProvenanceAndRetryIntegrationTest.java
+index 6901d3484c..a5c376d207 100644
+--- a/src/test/java/org/openelisglobal/sample/service/OrderSaveProvenanceAndRetryIntegrationTest.java
++++ b/src/test/java/org/openelisglobal/sample/service/OrderSaveProvenanceAndRetryIntegrationTest.java
+@@ -81,6 +81,15 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
+     @Autowired
+     private SampleRequesterService sampleRequesterService;
+ 
++    @jakarta.persistence.PersistenceContext
++    private jakarta.persistence.EntityManager entityManager;
++    @Autowired
++    private org.openelisglobal.test.service.TestSectionService testSections;
++    @Autowired
++    private org.openelisglobal.microbiology.dao.MicroCaseDAO microCases;
++    @Autowired
++    private org.openelisglobal.microbiology.dao.MicroCaseRequestDAO microRequests;
++
+     private String userId;
+     private Patient patient;
+     private TypeOfSample sampleType;
+@@ -127,6 +136,85 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
+                 sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId()).size());
+     }
+ 
++    @Test
++    public void explicitRequestIdentityCollectsTheChosenDuplicateAndCarriesItsRecordedDetails() {
++        Sample sample = newSample();
++        SampleTypeRequestDTO first = requested();
++        first.setCultureSetNumber(1);
++        first.setBodySite("Left arm");
++        SampleTypeRequestDTO second = requested();
++        second.setCultureSetNumber(2);
++        second.setBodySite("Right arm");
++        second.setContainer("Configured bottle");
++        second.setCollectionDate("2026-10-07");
++        second.setCollectionTime("14:25");
++        persist(sample, "<samples></samples>", List.of(first, second));
++        List<SampleTypeRequest> requests = sampleTypeRequestService.getRequestsBySampleId(sample.getId());
++        SampleTypeRequest chosen = requests.stream().filter(row -> Integer.valueOf(2).equals(row.getCultureSetNumber()))
++                .findFirst().orElseThrow();
++        String xml = sampleXml(null, "", UUID.randomUUID().toString()).replace("<sample ",
++                "<sample sampleTypeRequestId='" + chosen.getId() + "' ");
++        persist(sample, samplesXml(xml), null);
++        persist(sample, samplesXml(xml), null);
++        List<SampleItem> items = sampleItemService.getSampleItemsBySampleId(sample.getId());
++        assertEquals(1, items.size());
++        assertEquals(Integer.valueOf(2), items.getFirst().getCultureSetNumber());
++        assertEquals("Right arm", items.getFirst().getBodySite());
++        assertEquals("Configured bottle", items.getFirst().getContainer());
++        assertEquals(Timestamp.valueOf("2026-10-07 14:25:00"), items.getFirst().getCollectionDate());
++        assertEquals(items.getFirst().getId(), sampleTypeRequestService.get(chosen.getId()).getSampleItem().getId());
++        assertEquals(1, sampleTypeRequestService.getPendingRequestsBySampleId(sample.getId()).size());
++    }
++
++    @Test
++    public void collectingAPendingCaseTestKeepsOneCaseAndCreatesNoResultAnalysis() {
++        Sample sample = newSample();
++        org.openelisglobal.test.valueholder.Test test = entityManager
++                .find(org.openelisglobal.test.valueholder.Test.class, catalogTest().getId());
++        test.setTestSection(testSections.getAllActiveTestSections().getFirst());
++        test.setOpensMicrobiologyCase(true);
++        test.setMicrobiologyCaseRole("CASE");
++        entityManager.flush();
++        SampleTypeRequestDTO requested = requested();
++        requested.setRequestedTests(test.getId());
++        persist(sample, "<samples></samples>", List.of(requested));
++        SampleTypeRequest request = sampleTypeRequestService.getRequestsBySampleId(sample.getId()).getFirst();
++        String caseId = microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getCaseId();
++        String xml = sampleXml(test, "", UUID.randomUUID().toString()).replace("<sample ",
++                "<sample sampleTypeRequestId='" + request.getId() + "' ");
++        persist(sample, samplesXml(xml), null);
++        persist(sample, samplesXml(xml), null);
++        assertEquals(1, microCases.getByOrder(sample.getId()).size());
++        assertEquals(1, sampleTypeRequestService.getRequestsBySampleId(sample.getId()).size());
++        SampleItem collected = sampleItemService.getSampleItemsBySampleId(sample.getId()).getFirst();
++        assertTrue(analysisService.getAnalysesBySampleItem(collected).isEmpty());
++        assertEquals(caseId, microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getCaseId());
++        assertEquals(collected.getId(),
++                microRequests.getActiveByRequestAndTest(request.getId(), test.getId()).getSampleItemId());
++        assertNull(collected.getCollectionDate());
++        assertNull(collected.getReceivedDate());
++    }
++
++    @Test
++    public void reorderingSameTypeRequestsKeepsTheirIdentitiesAndUpdatesTheChosenBottle() {
++        Sample sample = newSample();
++        SampleTypeRequestDTO first = requested();
++        first.setCultureSetNumber(1);
++        SampleTypeRequestDTO second = requested();
++        second.setCultureSetNumber(2);
++        persist(sample, "<samples></samples>", List.of(first, second));
++        List<SampleTypeRequest> requests = sampleTypeRequestService.getRequestsBySampleId(sample.getId());
++        SampleTypeRequestDTO storedFirst = new SampleTypeRequestDTO(requests.get(0));
++        SampleTypeRequestDTO storedSecond = new SampleTypeRequestDTO(requests.get(1));
++        storedSecond.setBodySite("Right arm");
++        persist(sample, "<samples></samples>", List.of(storedSecond, storedFirst));
++        assertEquals(Integer.valueOf(2),
++                sampleTypeRequestService.get(Integer.valueOf(storedSecond.getId())).getCultureSetNumber());
++        assertEquals("Right arm", sampleTypeRequestService.get(Integer.valueOf(storedSecond.getId())).getBodySite());
++        assertNull(sampleTypeRequestService.get(Integer.valueOf(storedFirst.getId())).getBodySite());
++        assertEquals(2, sampleTypeRequestService.getRequestsBySampleId(sample.getId()).size());
++    }
++
+     @Test
+     public void aRetriedCollectSaveUpdatesTheSampleTheFirstAttemptCreated() {
+         Sample sample = newSample();
+</unstaged-diff>
+UNTRACKED TEXT DIFF:
+<untracked-diff>
+diff --git a/frontend/src/components/microbiology/CultureSetSummary.jsx b/frontend/src/components/microbiology/CultureSetSummary.jsx
+new file mode 100644
+index 0000000000..163d113e14
+--- /dev/null
++++ b/frontend/src/components/microbiology/CultureSetSummary.jsx
+@@ -0,0 +1,78 @@
++import React from "react";
++import { Tag } from "@carbon/react";
++import { useIntl } from "react-intl";
++
++const CultureSetSummary = ({
++  specimens = [],
++  requestedSpecimens = [],
++  warnings = [],
++}) => {
++  const intl = useIntl();
++  const bottles = [...specimens, ...requestedSpecimens].filter(
++    (specimen) => specimen.collectedInSets,
++  );
++  if (!bottles.length) return null;
++  const sets = new Map();
++  bottles.forEach((bottle) => {
++    const key = bottle.cultureSetNumber ?? null;
++    sets.set(key, [...(sets.get(key) || []), bottle]);
++  });
++  const unique = (values) => [...new Set(values.filter(Boolean))].join(", ");
++  return (
++    <section aria-label={intl.formatMessage({ id: "microbiology.sets.title" })}>
++      <strong>
++        {intl.formatMessage(
++          { id: "microbiology.sets.count" },
++          {
++            sets: [...sets.keys()].filter((key) => key !== null).length,
++            bottles: bottles.length,
++          },
++        )}
++      </strong>
++      <ul>
++        {[...sets.entries()]
++          .sort(([a], [b]) => (a ?? Infinity) - (b ?? Infinity))
++          .map(([number, members]) => (
++            <li key={number ?? "unassigned"}>
++              {warnings
++                .filter((warning) => warning.setNumber === number)
++                .map((warning) => (
++                  <Tag type="warm-gray" key={warning.code}>
++                    {intl.formatMessage(
++                      { id: `microbiology.sets.warning.${warning.code}` },
++                      { minutes: warning.intervalMinutes },
++                    )}
++                  </Tag>
++                ))}
++              {number == null
++                ? intl.formatMessage({ id: "microbiology.sets.unassigned" })
++                : intl.formatMessage(
++                    { id: "microbiology.sets.number" },
++                    { number },
++                  )}
++              {": "}
++              {[
++                unique(members.map((member) => member.bodySite)),
++                unique(
++                  members.map(
++                    (member) =>
++                      member.collectionDate &&
++                      intl.formatTime(member.collectionDate),
++                  ),
++                ),
++                unique(
++                  members.map(
++                    (member) => member.containerType || member.specimenType,
++                  ),
++                ),
++              ]
++                .filter(Boolean)
++                .join("; ")}
++            </li>
++          ))}
++      </ul>
++    </section>
++  );
++};
++
++export default CultureSetSummary;
+diff --git a/frontend/src/components/order/steps/sections/CultureBottleFields.jsx b/frontend/src/components/order/steps/sections/CultureBottleFields.jsx
+new file mode 100644
+index 0000000000..e68db29830
+--- /dev/null
++++ b/frontend/src/components/order/steps/sections/CultureBottleFields.jsx
+@@ -0,0 +1,148 @@
++import React, { useContext, useEffect, useState } from "react";
++import { useIntl } from "react-intl";
++import {
++  Column,
++  NumberInput,
++  Select,
++  SelectItem,
++  TextInput,
++  TimePicker,
++} from "@carbon/react";
++import CustomDatePicker from "../../../common/CustomDatePicker";
++import { ConfigurationContext } from "../../../layout/Layout";
++import { getFromOpenElisServer } from "../../../utils/Utils";
++import {
++  formatIsoDateForBackend,
++  formatPickerDateForIso,
++} from "../../dateUtils";
++
++/** Shared bottle details on order entry and collection; times are never defaulted. */
++export default function CultureBottleFields({
++  sample,
++  sampleIndex,
++  isReadOnly,
++  onChange,
++  containers,
++  includeCollectionTime = false,
++}) {
++  const intl = useIntl();
++  const { configurationProperties = {} } =
++    useContext(ConfigurationContext) || {};
++  const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
++  const [loadedContainers, setLoadedContainers] = useState([]);
++  useEffect(() => {
++    let current = true;
++    if (containers === undefined) {
++      getFromOpenElisServer(
++        "/rest/vector/dictionary/sample-containers",
++        (response) => {
++          if (current)
++            setLoadedContainers(Array.isArray(response) ? response : []);
++        },
++      );
++    }
++    return () => {
++      current = false;
++    };
++  }, [containers]);
++  const containerTypes = containers ?? loadedContainers;
++  return (
++    <>
++      <Column lg={4} md={4} sm={4}>
++        <NumberInput
++          id={`cultureSetNumber-${sampleIndex}`}
++          min={1}
++          step={1}
++          label={intl.formatMessage({
++            id: "order.cultureSetNumber",
++          })}
++          value={sample.cultureSetNumber || ""}
++          allowEmpty
++          disabled={isReadOnly}
++          invalid={
++            !Number.isInteger(Number(sample.cultureSetNumber)) ||
++            Number(sample.cultureSetNumber) < 1
++          }
++          invalidText={intl.formatMessage({
++            id: "order.cultureSetNumber.required",
++          })}
++          onChange={(_, { value }) => onChange("cultureSetNumber", value)}
++        />
++      </Column>
++      <Column lg={8} md={4} sm={4}>
++        <Select
++          id={`cultureContainer-${sampleIndex}`}
++          labelText={intl.formatMessage({
++            id: "microbiology.sets.container",
++          })}
++          value={sample.container || ""}
++          disabled={isReadOnly}
++          onChange={(e) => onChange("container", e.target.value)}
++        >
++          <SelectItem value="" text="" />
++          {sample.container &&
++            !containerTypes.some(
++              (entry) => entry.dictEntry === sample.container,
++            ) && (
++              <SelectItem value={sample.container} text={sample.container} />
++            )}
++          {containerTypes.map((entry) => (
++            <SelectItem
++              key={entry.id}
++              value={entry.dictEntry}
++              text={entry.dictEntry}
++            />
++          ))}
++        </Select>
++      </Column>
++      <Column lg={8} md={4} sm={4}>
++        <TextInput
++          id={`cultureBodySite-${sampleIndex}`}
++          maxLength={40}
++          disabled={isReadOnly}
++          labelText={intl.formatMessage({
++            id: "microbiology.sets.bodySite",
++          })}
++          value={sample.bodySite || ""}
++          onChange={(e) => onChange("bodySite", e.target.value)}
++        />
++      </Column>
++      {includeCollectionTime && (
++        <>
++          <Column lg={4} md={4} sm={4}>
++            <CustomDatePicker
++              id={`cultureDate-${sampleIndex}`}
++              labelText={intl.formatMessage({
++                id: "collect.sample.collectionDate",
++              })}
++              value={formatIsoDateForBackend(
++                sample.collectionDate || "",
++                dateLocale,
++              )}
++              updateStateValue
++              disallowFutureDate
++              disabled={isReadOnly}
++              onChange={(value) =>
++                onChange(
++                  "collectionDate",
++                  formatPickerDateForIso(value, dateLocale),
++                )
++              }
++            />
++          </Column>
++          <Column lg={4} md={4} sm={4}>
++            <TimePicker
++              id={`cultureTime-${sampleIndex}`}
++              labelText={intl.formatMessage({
++                id: "collect.sample.collectionTime",
++              })}
++              value={sample.collectionTime || ""}
++              disabled={isReadOnly}
++              onChange={(e) => onChange("collectionTime", e.target.value)}
++            />
++          </Column>
++        </>
++      )}
++    </>
++  );
++}
+diff --git a/frontend/src/components/order/steps/sections/MicroOrderPreview.jsx b/frontend/src/components/order/steps/sections/MicroOrderPreview.jsx
+new file mode 100644
+index 0000000000..0b2cbf3198
+--- /dev/null
++++ b/frontend/src/components/order/steps/sections/MicroOrderPreview.jsx
+@@ -0,0 +1,170 @@
++import CultureSetSummary from "../../../microbiology/CultureSetSummary";
++import React, { useEffect, useState } from "react";
++import { useIntl } from "react-intl";
++import {
++  Tile,
++  Tag,
++  InlineLoading,
++  InlineNotification,
++  Button,
++} from "@carbon/react";
++import { previewMicrobiologyOrder } from "../../../microbiology/MicrobiologyService";
++
++export default function MicroOrderPreview({ samples, savedOrder = false }) {
++  const intl = useIntl();
++  const [result, setResult] = useState(null);
++  const [failedPayload, setFailedPayload] = useState(null);
++  const [attempt, setAttempt] = useState(0);
++  const payload = JSON.stringify({
++    specimens: samples
++      .filter((sample) => sample.sampleTypeId)
++      .map((sample) => ({
++        sampleTypeId: sample.sampleTypeId,
++        ...(sample.container != null ? { container: sample.container } : {}),
++        ...(sample.bodySite != null ? { bodySite: sample.bodySite } : {}),
++        ...(sample.collectionDate
++          ? { collectionDate: sample.collectionDate }
++          : {}),
++        ...(sample.collectionTime
++          ? { collectionTime: sample.collectionTime }
++          : {}),
++        ...(Number.isInteger(Number(sample.cultureSetNumber)) &&
++        Number(sample.cultureSetNumber) > 0
++          ? { cultureSetNumber: Number(sample.cultureSetNumber) }
++          : {}),
++        testIds: (sample.tests || []).map((test) => test.id),
++      })),
++  });
++  const hasTests = samples.some((sample) => sample.tests?.length);
++  const existing = savedOrder || samples.some((sample) => sample.sampleItemId);
++  useEffect(() => {
++    let current = true;
++    setResult(null);
++    setFailedPayload(null);
++    if (!existing && hasTests) {
++      previewMicrobiologyOrder(JSON.parse(payload)).then(
++        (response) => {
++          if (current) setResult({ payload, response });
++        },
++        () => {
++          if (current) setFailedPayload(payload);
++        },
++      );
++    }
++    return () => {
++      current = false;
++    };
++  }, [payload, existing, hasTests, attempt]);
++
++  if (existing || !hasTests) return null;
++  // Hide the previous selection's answer immediately, even before its effect cleans up.
++  const preview = result?.payload === payload ? result.response : null;
++  if (preview && preview.cases.length === 0) return null;
++  const text = (key, values) =>
++    intl.formatMessage({ id: `order.microPreview.${key}` }, values);
++  const describeCondition = (condition) => {
++    let subject = condition.testName;
++    if (condition.componentLabel) {
++      subject = text("component", {
++        test: subject,
++        component: condition.componentLabel,
++      });
++    }
++    if (condition.sampleTypeName) {
++      subject = text("specimen", {
++        test: subject,
++        type: condition.sampleTypeName,
++      });
++    }
++    return text(`condition.${condition.relation}`, {
++      subject,
++      value: condition.value,
++      value2: condition.value2,
++    });
++  };
++  return (
++    <Tile role="region" aria-label={text("title")} aria-live="polite">
++      <h3>{text("title")}</h3>
++      {failedPayload === payload ? (
++        <>
++          <InlineNotification
++            kind="error"
++            title={text("failed")}
++            subtitle={text("failedDetail")}
++            hideCloseButton
++          />
++          <Button kind="ghost" onClick={() => setAttempt((value) => value + 1)}>
++            {intl.formatMessage({ id: "common.retry" })}
++          </Button>
++        </>
++      ) : !preview ? (
++        <InlineLoading description={text("loading")} />
++      ) : (
++        <div>
++          {preview.cases.map((entry, index) => (
++            <div key={`case-${index}`}>
++              <p>
++                <Tag type="blue">{text("opens")}</Tag>{" "}
++                {text("case", {
++                  tests: entry.testNames.join(", "),
++                  unit: entry.labUnitName,
++                  samples: entry.specimens
++                    .map((sample) =>
++                      text("sample", {
++                        type: sample.sampleTypeName,
++                        number: sample.index + 1,
++                      }),
++                    )
++                    .join(", "),
++                })}
++              </p>
++              <CultureSetSummary
++                specimens={entry.bottles}
++                warnings={entry.setWarnings}
++              />
++            </div>
++          ))}
++          {preview.ordinaryTests.map((entry) => (
++            <p key={`${entry.specimenIndex}-${entry.testId}`}>
++              <Tag type="gray">{text("ordinary")}</Tag>{" "}
++              {text("stays", { test: entry.testName })}
++            </p>
++          ))}
++          {preview.warnings.map((warning) => (
++            <p key={`split-${warning.specimenIndex}`}>
++              <Tag type="warm-gray">{text("splitTag")}</Tag>{" "}
++              {text("split", {
++                number: warning.specimenIndex + 1,
++                count: warning.labUnits.length,
++                units: warning.labUnits.join(", "),
++              })}
++            </p>
++          ))}
++          {preview.newUnitWarnings.map((warning) => (
++            <p key={`unit-${warning.labUnitId}`}>
++              <Tag type="warm-gray">{text("newUnitTag")}</Tag>{" "}
++              {text("newUnit", {
++                test: warning.testName,
++                unit: warning.labUnitName,
++              })}
++            </p>
++          ))}
++          {preview.reflexRules.map((rule, index) => (
++            <p key={`rule-${index}`}>
++              {text("reflex", {
++                name: rule.name,
++                conditions: rule.conditions
++                  .map(describeCondition)
++                  .map((condition) =>
++                    rule.conditions.length > 1 ? `(${condition})` : condition,
++                  )
++                  .join(text(rule.overall === "ALL" ? "and" : "or")),
++                tests: rule.addedTests.join(", "),
++              })}
++            </p>
++          ))}
++        </div>
++      )}
++    </Tile>
++  );
++}
+diff --git a/frontend/src/components/order/steps/sections/MicroOrderPreview.test.jsx b/frontend/src/components/order/steps/sections/MicroOrderPreview.test.jsx
+new file mode 100644
+index 0000000000..31b4dfb825
+--- /dev/null
++++ b/frontend/src/components/order/steps/sections/MicroOrderPreview.test.jsx
+@@ -0,0 +1,223 @@
++import React from "react";
++import { act, render, screen } from "@testing-library/react";
++import { waitFor } from "@testing-library/dom";
++import userEvent from "@testing-library/user-event";
++import { IntlProvider } from "react-intl";
++import { vi } from "vitest";
++import messages from "../../../../languages/en.json";
++import MicroOrderPreview from "./MicroOrderPreview";
++import { previewMicrobiologyOrder } from "../../../microbiology/MicrobiologyService";
++
++vi.mock("../../../microbiology/MicrobiologyService", () => ({
++  previewMicrobiologyOrder: vi.fn(),
++}));
++const samples = [
++  { sampleTypeId: "5", tests: [{ id: "culture" }, { id: "rpr" }] },
++];
++const response = {
++  cases: [
++    {
++      labUnitId: "1",
++      labUnitName: "Microbiology",
++      testNames: ["Culture"],
++      specimens: [{ index: 0, sampleTypeName: "Blood" }],
++    },
++  ],
++  newUnitWarnings: [
++    { labUnitId: "2", labUnitName: "TB unit", testName: "TB culture" },
++  ],
++  ordinaryTests: [{ specimenIndex: 0, testId: "rpr", testName: "RPR" }],
++  warnings: [{ specimenIndex: 0, labUnits: ["Microbiology", "TB unit"] }],
++  reflexRules: [
++    {
++      name: "Positive bottle",
++      overall: "ANY",
++      conditions: [
++        { testName: "Blood culture", relation: "EQUALS", value: "Positive" },
++      ],
++      addedTests: ["Gram stain"],
++    },
++  ],
++};
++const view = (value = samples, savedOrder = false) => (
++  <IntlProvider locale="en" messages={messages}>
++    <MicroOrderPreview samples={value} savedOrder={savedOrder} />
++  </IntlProvider>
++);
++beforeEach(() => vi.clearAllMocks());
++
++it("shows server-derived case, ordinary Results, split and named reflex lines", async () => {
++  previewMicrobiologyOrder.mockResolvedValueOnce(response);
++  render(view());
++  await screen.findByText("Culture case in Microbiology: Blood sample 1");
++  expect(screen.getByText("RPR stays in Results")).toBeTruthy();
++  expect(
++    screen.getByText("Sample 1 opens 2 cases: Microbiology, TB unit."),
++  ).toBeTruthy();
++  expect(
++    screen.getByText(
++      "Positive bottle: if Blood culture result equals Positive, may add Gram stain.",
++    ),
++  ).toBeTruthy();
++  expect(screen.getByText("Opens a case")).toBeTruthy();
++  expect(
++    screen.getByText(
++      "TB culture opens a case in TB unit; this order has no other work in that lab unit.",
++    ),
++  ).toBeTruthy();
++  expect(previewMicrobiologyOrder).toHaveBeenCalledWith({
++    specimens: [{ sampleTypeId: "5", testIds: ["culture", "rpr"] }],
++  });
++});
++
++it("clears an old answer immediately and ignores a late response after selection changes", async () => {
++  let oldResolve;
++  previewMicrobiologyOrder.mockImplementationOnce(
++    () =>
++      new Promise((resolve) => {
++        oldResolve = resolve;
++      }),
++  );
++  previewMicrobiologyOrder.mockResolvedValueOnce({
++    ...response,
++    cases: [{ ...response.cases[0], testNames: ["TB culture"] }],
++  });
++  const { rerender } = render(view());
++  rerender(view([{ sampleTypeId: "5", tests: [{ id: "tb" }] }]));
++  await screen.findByText("TB culture case in Microbiology: Blood sample 1");
++  await act(async () => oldResolve(response));
++  expect(
++    screen.queryByText("Culture case in Microbiology: Blood sample 1"),
++  ).toBeNull();
++});
++
++it("removes the panel when all tests are removed", async () => {
++  previewMicrobiologyOrder.mockResolvedValueOnce(response);
++  const { rerender } = render(view());
++  await screen.findByText("Opens a case");
++  rerender(view([{ sampleTypeId: "5", tests: [] }]));
++  expect(screen.queryByText("What this order will open")).toBeNull();
++  expect(previewMicrobiologyOrder).toHaveBeenCalledTimes(1);
++});
++
++it("replaces stale predictions with an error when a changed selection fails", async () => {
++  previewMicrobiologyOrder
++    .mockResolvedValueOnce(response)
++    .mockRejectedValueOnce(new Error("offline"));
++  const { rerender } = render(view());
++  await screen.findByText("Opens a case");
++  rerender(view([{ sampleTypeId: "5", tests: [{ id: "tb" }] }]));
++  await screen.findByText("Order preview unavailable");
++  expect(screen.queryByText("Opens a case")).toBeNull();
++});
++
++it("does not use new-order grouping for saved orders", () => {
++  render(view(samples, true));
++  expect(previewMicrobiologyOrder).not.toHaveBeenCalled();
++  expect(screen.queryByText("What this order will open")).toBeNull();
++});
++
++it("hides the micro panel when the server finds only ordinary tests", async () => {
++  previewMicrobiologyOrder.mockResolvedValueOnce({ ...response, cases: [] });
++  render(view());
++  await waitFor(() =>
++    expect(screen.queryByText("What this order will open")).toBeNull(),
++  );
++});
++
++it("retries a failed preview without changing the order", async () => {
++  previewMicrobiologyOrder
++    .mockRejectedValueOnce(new Error("offline"))
++    .mockResolvedValueOnce(response);
++  render(view());
++  await screen.findByText("Order preview unavailable");
++  await userEvent.click(screen.getByRole("button", { name: "Retry" }));
++  await screen.findByText("Opens a case");
++  expect(previewMicrobiologyOrder).toHaveBeenCalledTimes(2);
++  expect(previewMicrobiologyOrder.mock.calls[0]).toEqual(
++    previewMicrobiologyOrder.mock.calls[1],
++  );
++});
++
++it.each([
++  ["ALL", "and"],
++  ["ANY", "or"],
++])(
++  "preserves %s conditions with component and specimen scope",
++  async (overall, connector) => {
++    previewMicrobiologyOrder.mockResolvedValueOnce({
++      ...response,
++      reflexRules: [
++        {
++          name: "Repeat rule",
++          overall,
++          addedTests: ["Repeat culture"],
++          conditions: [
++            {
++              testName: "Culture",
++              componentLabel: "Colony count",
++              sampleTypeName: "Sputum",
++              relation: "BETWEEN",
++              value: "10",
++              value2: "20",
++            },
++            {
++              testName: "Culture",
++              relation: "OUTSIDE_NORMAL_RANGE",
++              value: "ignored",
++            },
++          ],
++        },
++      ],
++    });
++    render(view());
++    await screen.findByText(
++      `Repeat rule: if (Culture — Colony count (Sputum) result is between 10 and 20) ${connector} (Culture result is outside the normal range), may add Repeat culture.`,
++    );
++  },
++);
++
++it("refreshes set counts and warnings when only a bottle assignment changes", async () => {
++  const bottle = {
++    collectedInSets: true,
++    cultureSetNumber: 1,
++    specimenType: "Blood",
++  };
++  previewMicrobiologyOrder.mockResolvedValue({
++    ...response,
++    cases: [
++      {
++        ...response.cases[0],
++        bottles: [bottle],
++        setWarnings: [
++          { setNumber: 1, code: "SINGLE_BOTTLE", intervalMinutes: 30 },
++        ],
++      },
++    ],
++  });
++  const first = [{ ...samples[0], cultureSetNumber: 1 }];
++  const rendered = render(view(first));
++  await screen.findByText("1 set, 1 bottle");
++  expect(screen.getByText("Only one bottle in this set")).toBeInTheDocument();
++  expect(previewMicrobiologyOrder).toHaveBeenLastCalledWith({
++    specimens: [
++      {
++        sampleTypeId: "5",
++        testIds: ["culture", "rpr"],
++        cultureSetNumber: 1,
++      },
++    ],
++  });
++  rendered.rerender(view([{ ...samples[0], cultureSetNumber: 2 }]));
++  await waitFor(() =>
++    expect(previewMicrobiologyOrder).toHaveBeenLastCalledWith({
++      specimens: [
++        {
++          sampleTypeId: "5",
++          testIds: ["culture", "rpr"],
++          cultureSetNumber: 2,
++        },
++      ],
++    }),
++  );
++});
+diff --git a/src/main/java/org/openelisglobal/analysis/valueholder/AnalysisCreatedEvent.java b/src/main/java/org/openelisglobal/analysis/valueholder/AnalysisCreatedEvent.java
+new file mode 100644
+index 0000000000..c36d56c628
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/analysis/valueholder/AnalysisCreatedEvent.java
+@@ -0,0 +1,7 @@
++package org.openelisglobal.analysis.valueholder;
++
++/**
++ * Published inside the insertion transaction for clinical ownership consumers.
++ */
++public record AnalysisCreatedEvent(Analysis analysis, String actor) {
++}
+diff --git a/src/main/java/org/openelisglobal/dictionary/service/SampleContainerClassificationService.java b/src/main/java/org/openelisglobal/dictionary/service/SampleContainerClassificationService.java
+new file mode 100644
+index 0000000000..92c1b6b9af
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/dictionary/service/SampleContainerClassificationService.java
+@@ -0,0 +1,25 @@
++package org.openelisglobal.dictionary.service;
++
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++
++/**
++ * Reads explicitly configured population metadata on the shared container
++ * catalog.
++ */
++@Service
++@Transactional(readOnly = true)
++public class SampleContainerClassificationService {
++    private final DictionaryService dictionaries;
++
++    public SampleContainerClassificationService(DictionaryService dictionaries) {
++        this.dictionaries = dictionaries;
++    }
++
++    public String population(String container) {
++        if (container == null || container.isBlank())
++            return null;
++        var entry = dictionaries.getDictionaryEntryByNameAndCategoryName(container, "Sample Container");
++        return entry == null ? null : entry.getContainerPopulation();
++    }
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/controller/rest/MicroOrderPreviewRestController.java b/src/main/java/org/openelisglobal/microbiology/controller/rest/MicroOrderPreviewRestController.java
+new file mode 100644
+index 0000000000..371bc10531
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/controller/rest/MicroOrderPreviewRestController.java
+@@ -0,0 +1,28 @@
++package org.openelisglobal.microbiology.controller.rest;
++
++import jakarta.servlet.http.HttpServletRequest;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewForm;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewRequestForm;
++import org.openelisglobal.microbiology.service.MicroOrderPreviewService;
++import org.springframework.security.access.prepost.PreAuthorize;
++import org.springframework.web.bind.annotation.PostMapping;
++import org.springframework.web.bind.annotation.RequestBody;
++import org.springframework.web.bind.annotation.RequestMapping;
++import org.springframework.web.bind.annotation.RestController;
++
++@RestController
++@RequestMapping("/rest/microbiology/order-preview")
++@PreAuthorize("isAuthenticated()")
++public class MicroOrderPreviewRestController extends MicrobiologyRestControllerSupport {
++    private final MicroOrderPreviewService service;
++
++    public MicroOrderPreviewRestController(MicroOrderPreviewService service) {
++        this.service = service;
++    }
++
++    @PostMapping
++    public MicroOrderPreviewForm preview(@RequestBody MicroOrderPreviewRequestForm request,
++            HttpServletRequest httpRequest) {
++        return service.preview(request, authenticatedUserId(httpRequest));
++    }
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/form/MicroCaseSpecimenForm.java b/src/main/java/org/openelisglobal/microbiology/form/MicroCaseSpecimenForm.java
+new file mode 100644
+index 0000000000..f1f75862f6
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/form/MicroCaseSpecimenForm.java
+@@ -0,0 +1,17 @@
++package org.openelisglobal.microbiology.form;
++
++import java.sql.Timestamp;
++
++public class MicroCaseSpecimenForm {
++    public String id;
++    public String sampleItemId;
++    public String label;
++    public String sampleTypeId;
++    public String specimenType;
++    public String bodySite;
++    public Integer cultureSetNumber;
++    public String containerType;
++    public String containerPopulation;
++    public boolean collectedInSets;
++    public Timestamp collectionDate;
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/form/MicroCultureSetWarningForm.java b/src/main/java/org/openelisglobal/microbiology/form/MicroCultureSetWarningForm.java
+new file mode 100644
+index 0000000000..c0a263041b
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/form/MicroCultureSetWarningForm.java
+@@ -0,0 +1,4 @@
++package org.openelisglobal.microbiology.form;
++
++public record MicroCultureSetWarningForm(Integer setNumber, String code, int intervalMinutes) {
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/form/MicroOrderPreviewForm.java b/src/main/java/org/openelisglobal/microbiology/form/MicroOrderPreviewForm.java
+new file mode 100644
+index 0000000000..9e05ba1e00
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/form/MicroOrderPreviewForm.java
+@@ -0,0 +1,30 @@
++package org.openelisglobal.microbiology.form;
++
++import java.util.List;
++
++public record MicroOrderPreviewForm(List<CaseLine> cases, List<TestLine> ordinaryTests, List<SplitWarning> warnings,
++        List<ReflexLine> reflexRules, List<NewUnitWarning> newUnitWarnings) {
++    public record SpecimenLine(int index, String sampleTypeName) {
++    }
++
++    public record TestLine(int specimenIndex, String testId, String testName) {
++    }
++
++    public record CaseLine(String labUnitId, String labUnitName, List<SpecimenLine> specimens, List<String> testNames,
++            boolean collectedInSets, List<MicroCaseSpecimenForm> bottles,
++            List<MicroCultureSetWarningForm> setWarnings) {
++    }
++
++    public record SplitWarning(int specimenIndex, List<String> labUnits) {
++    }
++
++    public record NewUnitWarning(String labUnitId, String labUnitName, String testName) {
++    }
++
++    public record ReflexCondition(String testName, String sampleTypeName, String componentLabel, String relation,
++            String value, String value2) {
++    }
++
++    public record ReflexLine(String name, String overall, List<ReflexCondition> conditions, List<String> addedTests) {
++    }
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/form/MicroOrderPreviewRequestForm.java b/src/main/java/org/openelisglobal/microbiology/form/MicroOrderPreviewRequestForm.java
+new file mode 100644
+index 0000000000..b03b04269a
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/form/MicroOrderPreviewRequestForm.java
+@@ -0,0 +1,18 @@
++package org.openelisglobal.microbiology.form;
++
++import java.util.ArrayList;
++import java.util.List;
++
++public class MicroOrderPreviewRequestForm {
++    public List<Specimen> specimens = new ArrayList<>();
++
++    public static class Specimen {
++        public String sampleTypeId;
++        public Integer cultureSetNumber;
++        public String container;
++        public String bodySite;
++        public String collectionDate;
++        public String collectionTime;
++        public List<String> testIds = new ArrayList<>();
++    }
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingKey.java b/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingKey.java
+new file mode 100644
+index 0000000000..f0d5b79d32
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroCaseRoutingKey.java
+@@ -0,0 +1,23 @@
++package org.openelisglobal.microbiology.service;
++
++import org.openelisglobal.sampleitem.valueholder.SampleItem;
++import org.openelisglobal.test.valueholder.Test;
++
++/** Shared grouping decision for order preview and persistence. */
++public record MicroCaseRoutingKey(String sampleId, String sampleTypeId, String testSectionId,
++        String collectedInSetsTestId) {
++
++    public static MicroCaseRoutingKey forTest(SampleItem specimen, Test test) {
++        if (specimen == null || test == null || !test.isOpensMicrobiologyCase()) {
++            throw new IllegalArgumentException("A specimen and a micro test are required");
++        }
++        MicroCaseRoutingRule.requireCatalog(test);
++        MicroCaseServiceImpl.requireText(specimen.getTypeOfSampleId(), "sampleTypeId");
++        boolean sets = test.isCollectedInSets();
++        if (sets && !"CULTURE".equals(test.getMicrobiologyCaseRole())) {
++            throw new IllegalArgumentException("Only a culture test can be collected in sets");
++        }
++        return new MicroCaseRoutingKey(specimen.getSample() == null ? null : specimen.getSample().getId(),
++                sets ? null : specimen.getTypeOfSampleId(), test.getTestSection().getId(), sets ? test.getId() : null);
++    }
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroCultureSetWarningService.java b/src/main/java/org/openelisglobal/microbiology/service/MicroCultureSetWarningService.java
+new file mode 100644
+index 0000000000..69054decc2
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroCultureSetWarningService.java
+@@ -0,0 +1,65 @@
++package org.openelisglobal.microbiology.service;
++
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.List;
++import java.util.Locale;
++import java.util.Map;
++import java.util.Objects;
++import org.openelisglobal.microbiology.form.MicroCaseSpecimenForm;
++import org.openelisglobal.microbiology.form.MicroCultureSetWarningForm;
++import org.springframework.beans.factory.annotation.Value;
++import org.springframework.stereotype.Service;
++
++/**
++ * Evaluates recorded assignments without changing grouping or blocking saves.
++ */
++@Service
++public class MicroCultureSetWarningService {
++    private final int intervalMinutes;
++
++    public MicroCultureSetWarningService(@Value("${amr.cultureSetIntervalMinutes:30}") int intervalMinutes) {
++        if (intervalMinutes < 1) {
++            throw new IllegalArgumentException("Culture set interval must be positive");
++        }
++        this.intervalMinutes = intervalMinutes;
++    }
++
++    public List<MicroCultureSetWarningForm> evaluate(List<MicroCaseSpecimenForm> specimens) {
++        Map<Integer, List<MicroCaseSpecimenForm>> sets = new LinkedHashMap<>();
++        for (MicroCaseSpecimenForm specimen : specimens) {
++            if (specimen.collectedInSets && specimen.cultureSetNumber != null) {
++                sets.computeIfAbsent(specimen.cultureSetNumber, ignored -> new ArrayList<>()).add(specimen);
++            }
++        }
++        List<MicroCultureSetWarningForm> warnings = new ArrayList<>();
++        sets.forEach((number, bottles) -> {
++            if (bottles.size() == 1) {
++                warnings.add(new MicroCultureSetWarningForm(number, "SINGLE_BOTTLE", intervalMinutes));
++            }
++            List<String> containers = bottles.stream().map(bottle -> normalize(bottle.containerType))
++                    .filter(Objects::nonNull).toList();
++            if (containers.stream().distinct().count() < containers.size()) {
++                warnings.add(new MicroCultureSetWarningForm(number, "REPEATED_CONTAINER", intervalMinutes));
++            }
++            if (bottles.stream().anyMatch(b -> "ADULT".equals(b.containerPopulation))
++                    && bottles.stream().anyMatch(b -> "PAEDIATRIC".equals(b.containerPopulation))) {
++                warnings.add(new MicroCultureSetWarningForm(number, "MIXED_POPULATIONS", intervalMinutes));
++            }
++            if (bottles.stream().map(bottle -> normalize(bottle.bodySite)).filter(Objects::nonNull).distinct()
++                    .count() > 1) {
++                warnings.add(new MicroCultureSetWarningForm(number, "DIFFERENT_SITES", intervalMinutes));
++            }
++            var times = bottles.stream().map(bottle -> bottle.collectionDate).filter(Objects::nonNull)
++                    .mapToLong(time -> time.getTime()).summaryStatistics();
++            if (times.getCount() > 1 && times.getMax() - times.getMin() > intervalMinutes * 60_000L) {
++                warnings.add(new MicroCultureSetWarningForm(number, "COLLECTION_INTERVAL", intervalMinutes));
++            }
++        });
++        return List.copyOf(warnings);
++    }
++
++    private String normalize(String value) {
++        return value == null || value.isBlank() ? null : value.trim().toLowerCase(Locale.ROOT);
++    }
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderDraftGrouping.java b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderDraftGrouping.java
+new file mode 100644
+index 0000000000..266fcb3d74
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderDraftGrouping.java
+@@ -0,0 +1,65 @@
++package org.openelisglobal.microbiology.service;
++
++import java.util.ArrayList;
++import java.util.Comparator;
++import java.util.LinkedHashMap;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Map;
++import org.openelisglobal.sampleitem.valueholder.SampleItem;
++import org.openelisglobal.test.valueholder.Test;
++
++/**
++ * Evaluates the saving rule over unsaved samples without changing stored work.
++ */
++public final class MicroOrderDraftGrouping {
++    private MicroOrderDraftGrouping() {
++    }
++
++    public record Selection(SampleItem specimen, List<Test> tests) {
++    }
++
++    public record Group(MicroCaseRoutingKey key, String firstSampleTypeId, List<Integer> specimenIndexes,
++            List<String> testIds) {
++    }
++
++    private record Work(int index, SampleItem sample, Test test) {
++    }
++
++    public static List<Group> group(List<Selection> selections) {
++        List<Work> work = new ArrayList<>();
++        for (int i = 0; i < selections.size(); i++) {
++            Selection selection = selections.get(i);
++            if (selection.specimen() == null || selection.specimen().getId() != null
++                    || (selection.specimen().getSample() != null && selection.specimen().getSample().getId() != null))
++                throw new IllegalArgumentException("Preview requires unsaved specimens");
++            for (Test test : selection.tests()) {
++                if (test.isOpensMicrobiologyCase())
++                    work.add(new Work(i, selection.specimen(), test));
++            }
++        }
++        work.sort(Comparator.comparing(w -> !w.test.isCollectedInSets()));
++        List<MicroCaseRoutingRule.Candidate> candidates = new ArrayList<>();
++        Map<String, MicroCaseRoutingKey> keys = new LinkedHashMap<>();
++        Map<String, LinkedHashSet<String>> tests = new LinkedHashMap<>();
++        for (Work selected : work) {
++            MicroCaseRoutingKey key = MicroCaseRoutingKey.forTest(selected.sample, selected.test);
++            String sampleKey = Integer.toString(selected.index);
++            var chosen = MicroCaseRoutingRule.choose(candidates, key.testSectionId(),
++                    selected.sample.getTypeOfSampleId(), key.collectedInSetsTestId(), sampleKey);
++            if (chosen == null) {
++                chosen = new MicroCaseRoutingRule.Candidate(Integer.toString(candidates.size()), key.testSectionId(),
++                        selected.sample.getTypeOfSampleId());
++                candidates.add(chosen);
++                keys.put(chosen.caseId, key);
++                tests.put(chosen.caseId, new LinkedHashSet<>());
++            }
++            chosen.samples.add(sampleKey);
++            tests.get(chosen.caseId).add(selected.test.getId());
++            if (selected.test.isCollectedInSets())
++                chosen.setsTests.add(selected.test.getId());
++        }
++        return candidates.stream().map(c -> new Group(keys.get(c.caseId), c.sampleTypeId,
++                c.samples.stream().map(Integer::valueOf).toList(), List.copyOf(tests.get(c.caseId)))).toList();
++    }
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderPreviewService.java b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderPreviewService.java
+new file mode 100644
+index 0000000000..bc74bfe858
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderPreviewService.java
+@@ -0,0 +1,8 @@
++package org.openelisglobal.microbiology.service;
++
++import org.openelisglobal.microbiology.form.MicroOrderPreviewForm;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewRequestForm;
++
++public interface MicroOrderPreviewService {
++    MicroOrderPreviewForm preview(MicroOrderPreviewRequestForm request, String userId);
++}
+diff --git a/src/main/java/org/openelisglobal/microbiology/service/MicroOrderPreviewServiceImpl.java b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderPreviewServiceImpl.java
+new file mode 100644
+index 0000000000..b992f280eb
+--- /dev/null
++++ b/src/main/java/org/openelisglobal/microbiology/service/MicroOrderPreviewServiceImpl.java
+@@ -0,0 +1,221 @@
++package org.openelisglobal.microbiology.service;
++
++import java.util.ArrayList;
++import java.util.LinkedHashMap;
++import java.util.LinkedHashSet;
++import java.util.List;
++import java.util.Map;
++import java.util.Set;
++import java.util.stream.Collectors;
++import org.openelisglobal.common.constants.Constants;
++import org.openelisglobal.common.services.RuleResultScope;
++import org.openelisglobal.common.util.IdValuePair;
++import org.openelisglobal.dictionary.service.DictionaryService;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewForm;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewForm.*;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewRequestForm;
++import org.openelisglobal.role.service.RoleService;
++import org.openelisglobal.sampleitem.valueholder.SampleItem;
++import org.openelisglobal.systemuser.service.UserService;
++import org.openelisglobal.test.service.TestService;
++import org.openelisglobal.test.valueholder.Test;
++import org.openelisglobal.testreflex.action.bean.ReflexRuleCondition;
++import org.openelisglobal.testreflex.service.TestReflexService;
++import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
++import org.openelisglobal.typeofsample.service.TypeOfSampleService;
++import org.springframework.http.HttpStatus;
++import org.springframework.stereotype.Service;
++import org.springframework.transaction.annotation.Transactional;
++import org.springframework.web.server.ResponseStatusException;
++
++@Service
++@Transactional(readOnly = true)
++public class MicroOrderPreviewServiceImpl implements MicroOrderPreviewService {
++    private final org.openelisglobal.dictionary.service.SampleContainerClassificationService containers;
++    private final MicroCultureSetWarningService setWarningService;
++    private final MicroOrderRoutingService routingService;
++    private final TestService testService;
++    private final TypeOfSampleService sampleTypeService;
++    private final UserService userService;
++    private final RoleService roleService;
++    private final TestReflexService reflexService;
++    private final RuleResultScope ruleScope;
++    private final DictionaryService dictionaryService;
++    private final TestResultComponentService componentService;
++
++    public MicroOrderPreviewServiceImpl(MicroOrderRoutingService routingService, TestService testService,
++            TypeOfSampleService sampleTypeService, UserService userService, RoleService roleService,
++            TestReflexService reflexService, RuleResultScope ruleScope, DictionaryService dictionaryService,
++            TestResultComponentService componentService, MicroCultureSetWarningService setWarningService,
++            org.openelisglobal.dictionary.service.SampleContainerClassificationService containers) {
++        this.setWarningService = setWarningService;
++        this.containers = containers;
++        this.routingService = routingService;
++        this.testService = testService;
++        this.sampleTypeService = sampleTypeService;
++        this.userService = userService;
++        this.roleService = roleService;
++        this.reflexService = reflexService;
++        this.ruleScope = ruleScope;
++        this.dictionaryService = dictionaryService;
++        this.componentService = componentService;
++    }
++
++    @Override
++    public MicroOrderPreviewForm preview(MicroOrderPreviewRequestForm request, String userId) {
++        if (userId == null || userId.isBlank()) {
++            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
++        }
++        if (request == null || request.specimens == null) {
++            throw new IllegalArgumentException("specimens is required");
++        }
++        var reception = roleService.getRoleByName(Constants.ROLE_RECEPTION);
++        var units = reception == null ? List.<IdValuePair>of()
++                : userService.getUserTestSections(userId, reception.getId());
++        Set<String> permitted = units == null ? Set.of()
++                : units.stream().map(IdValuePair::getId).collect(Collectors.toSet());
++        Map<String, Test> catalog = new LinkedHashMap<>();
++        List<MicroOrderDraftGrouping.Selection> selections = new ArrayList<>();
++        List<TestLine> ordinary = new ArrayList<>();
++        List<String> sampleNames = new ArrayList<>();
++        for (int index = 0; index < request.specimens.size(); index++) {
++            var input = request.specimens.get(index);
++            if (input == null || input.sampleTypeId == null || input.testIds == null) {
++                throw new IllegalArgumentException("Each specimen requires sampleTypeId and testIds");
++            }
++            var type = sampleTypeService.get(input.sampleTypeId);
++            if (type == null) {
++                throw new IllegalArgumentException("Unknown sample type");
++            }
++            SampleItem specimen = new SampleItem();
++            specimen.setTypeOfSample(type);
++            sampleNames.add(type.getLocalizedName());
++            List<Test> selected = new ArrayList<>();
++            for (String testId : new LinkedHashSet<>(input.testIds)) {
++                if (testId == null || testId.isBlank()) {
++                    throw new IllegalArgumentException("Each test requires a catalog ID");
++                }
++                Test test = catalog.computeIfAbsent(testId, testService::get);
++                if (test == null) {
++                    throw new IllegalArgumentException("Unknown preview test");
++                }
++                if (test.getTestSection() == null || !permitted.contains(test.getTestSection().getId())) {
++                    throw new ResponseStatusException(HttpStatus.FORBIDDEN);
++                }
++                selected.add(test);
++                if (!test.isOpensMicrobiologyCase()) {
++                    ordinary.add(new TestLine(index, test.getId(), test.getLocalizedName()));
++                }
++            }
++            selections.add(new MicroOrderDraftGrouping.Selection(specimen, selected));
++        }
++        List<CaseLine> cases = routingService.previewNewOrder(selections).stream().map(group -> {
++            List<Test> tests = group.testIds().stream().map(catalog::get).toList();
++            List<org.openelisglobal.microbiology.form.MicroCaseSpecimenForm> bottles = group.specimenIndexes().stream()
++                    .filter(i -> selections.get(i).tests().stream()
++                            .anyMatch(test -> test.isCollectedInSets() && group.testIds().contains(test.getId())))
++                    .map(i -> {
++                        var bottle = new org.openelisglobal.microbiology.form.MicroCaseSpecimenForm();
++                        bottle.collectedInSets = true;
++                        bottle.cultureSetNumber = request.specimens.get(i).cultureSetNumber;
++                        if (bottle.cultureSetNumber != null && bottle.cultureSetNumber < 1) {
++                            throw new IllegalArgumentException("Set number must be positive");
++                        }
++                        var input = request.specimens.get(i);
++                        bottle.containerType = input.container;
++                        bottle.containerPopulation = containers.population(input.container);
++                        bottle.bodySite = input.bodySite;
++                        if (hasText(input.collectionDate) && hasText(input.collectionTime)) {
++                            var date = java.time.LocalDate.parse(input.collectionDate);
++                            var time = java.time.LocalTime.parse(input.collectionTime);
++                            bottle.collectionDate = java.sql.Timestamp.valueOf(date.atTime(time));
++                        }
++                        bottle.specimenType = sampleNames.get(i);
++                        return bottle;
++                    }).toList();
++            return new CaseLine(group.key().testSectionId(), tests.get(0).getTestSection().getTestSectionName(),
++                    group.specimenIndexes().stream().map(i -> new SpecimenLine(i, sampleNames.get(i))).toList(),
++                    tests.stream().map(Test::getLocalizedName).toList(),
++                    tests.stream().anyMatch(Test::isCollectedInSets), bottles, setWarningService.evaluate(bottles));
++        }).toList();
++        if (cases.isEmpty()) {
++            return new MicroOrderPreviewForm(cases, ordinary, List.of(), List.of(), List.of());
++        }
++        List<SplitWarning> warnings = new ArrayList<>();
++        for (int index = 0; index < selections.size(); index++) {
++            int specimenIndex = index;
++            var labs = cases.stream().filter(c -> c.specimens().stream().anyMatch(s -> s.index() == specimenIndex))
++                    .collect(Collectors.toMap(CaseLine::labUnitId, CaseLine::labUnitName, (first, ignored) -> first,
++                            LinkedHashMap::new));
++            if (labs.size() > 1) {
++                warnings.add(new SplitWarning(index, List.copyOf(labs.values())));
++            }
++        }
++        List<ReflexLine> rules = reflexService.getAllReflexRules().stream()
++                .filter(rule -> !Boolean.FALSE.equals(rule.getActive()) && rule.getConditions() != null
++                        && rule.getConditions().stream().anyMatch(c -> request.specimens.stream()
++                                .anyMatch(sample -> sample.testIds.contains(c.getTestId())
++                                        && (!hasText(c.getSampleId()) || c.getSampleId().equals(sample.sampleTypeId)))))
++                .filter(rule -> rule.getActions() != null)
++                .map(rule -> new ReflexLine(rule.getRuleName(),
++                        rule.getOverall() == null ? "ANY" : rule.getOverall().name(),
++                        rule.getConditions().stream().map(this::describeCondition)
++                                .sorted(java.util.Comparator.comparing(ReflexCondition::testName)
++                                        .thenComparing(ReflexCondition::componentLabel))
++                                .toList(),
++                        rule.getActions().stream().filter(action -> action.getReflexTestId() != null)
++                                .map(action -> testService.get(action.getReflexTestId()))
++                                .filter(java.util.Objects::nonNull).map(Test::getLocalizedName).distinct().sorted()
++                                .toList()))
++                .filter(rule -> !rule.addedTests().isEmpty()).toList();
++        Map<String, Long> workByUnit = selections.stream().flatMap(selection -> selection.tests().stream())
++                .collect(Collectors.groupingBy(test -> test.getTestSection().getId(), Collectors.counting()));
++        List<NewUnitWarning> newUnits = cases.stream()
++                .filter(line -> workByUnit.getOrDefault(line.labUnitId(), 0L) == 1L)
++                .map(line -> new NewUnitWarning(line.labUnitId(), line.labUnitName(), line.testNames().get(0)))
++                .toList();
++        return new MicroOrderPreviewForm(cases, ordinary, warnings, rules, newUnits);
++    }
++
++    private ReflexCondition describeCondition(ReflexRuleCondition condition) {
++        Test test = testService.get(condition.getTestId());
++        if (test == null || condition.getRelation() == null) {
++            throw new IllegalArgumentException("Reflex condition requires an existing test and relation");
++        }
++        String componentLabel = "";
++        if (hasText(condition.getComponentId())) {
++            var component = componentService.get(condition.getComponentId());
++            if (component == null || !test.getId().equals(component.getTestId())) {
++                throw new IllegalArgumentException("Reflex condition component must belong to its test");
++            }
++            componentLabel = component.getLabel();
++        }
++        String sampleTypeName = "";
++        if (hasText(condition.getSampleId())) {
++            var type = sampleTypeService.get(condition.getSampleId());
++            if (type == null) {
++                throw new IllegalArgumentException("Reflex condition sample type no longer exists");
++            }
++            sampleTypeName = type.getLocalizedName();
++        }
++        String value = condition.getValue();
++        String relation = condition.getRelation().name();
++        boolean range = "INSIDE_NORMAL_RANGE".equals(relation) || "OUTSIDE_NORMAL_RANGE".equals(relation);
++        String resultType = ruleScope.resultTypeForComponent(test.getId(), condition.getComponentId(),
++                testService.getResultType(test));
++        if (!range && "D".equals(resultType)) {
++            var dictionary = dictionaryService.getDictionaryById(value);
++            if (dictionary == null) {
++                throw new IllegalArgumentException("Reflex condition dictionary answer no longer exists");
++            }
++            value = dictionary.getLocalizedName();
++        }
++        return new ReflexCondition(test.getLocalizedName(), sampleTypeName, componentLabel, relation,
++                range ? "" : value, "BETWEEN".equals(relation) ? condition.getValue2() : "");
++    }
++
++    private static boolean hasText(String value) {
++        return value != null && !value.isBlank();
++    }
++
++}
+diff --git a/src/main/resources/liquibase/3.6.x.x/014-sample-collection-set-details.xml b/src/main/resources/liquibase/3.6.x.x/014-sample-collection-set-details.xml
+new file mode 100644
+index 0000000000..1f6994e775
+--- /dev/null
++++ b/src/main/resources/liquibase/3.6.x.x/014-sample-collection-set-details.xml
+@@ -0,0 +1,34 @@
++<?xml version="1.0" encoding="UTF-8"?>
++<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
++ xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
++ xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-4.8.xsd">
++ <changeSet id="014-shared-sample-set-details" author="openelisglobal">
++  <addColumn schemaName="clinlims" tableName="sample_type_request">
++   <column name="culture_set_number" type="integer"/>
++   <column name="container" type="varchar(255)"/>
++   <column name="body_site" type="varchar(40)"/>
++   <column name="collection_date" type="date"/>
++   <column name="collection_time" type="varchar(8)"/>
++  </addColumn>
++  <addColumn schemaName="clinlims" tableName="sample_item">
++   <column name="culture_set_number" type="integer"/>
++   <column name="body_site" type="varchar(40)"/>
++  </addColumn>
++  <sql>ALTER TABLE clinlims.sample_type_request ADD CONSTRAINT requested_culture_set_positive CHECK (culture_set_number &gt; 0);
++   ALTER TABLE clinlims.sample_item ADD CONSTRAINT culture_set_positive CHECK (culture_set_number &gt; 0);</sql>
++  <rollback>
++   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="culture_set_number"/>
++   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="container"/>
++   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="body_site"/>
++   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="collection_date"/>
++   <dropColumn schemaName="clinlims" tableName="sample_type_request" columnName="collection_time"/>
++   <dropColumn schemaName="clinlims" tableName="sample_item" columnName="culture_set_number"/>
++   <dropColumn schemaName="clinlims" tableName="sample_item" columnName="body_site"/>
++  </rollback>
++ </changeSet>
++ <changeSet id="014-container-population" author="openelisglobal">
++  <addColumn schemaName="clinlims" tableName="dictionary"><column name="container_population" type="varchar(20)"/></addColumn>
++  <sql>ALTER TABLE clinlims.dictionary ADD CONSTRAINT container_population_check CHECK (container_population IN ('ADULT', 'PAEDIATRIC'));</sql>
++  <rollback><dropColumn schemaName="clinlims" tableName="dictionary" columnName="container_population"/></rollback>
++ </changeSet>
++</databaseChangeLog>
+diff --git a/src/test/java/org/openelisglobal/dictionary/service/SampleContainerClassificationServiceTest.java b/src/test/java/org/openelisglobal/dictionary/service/SampleContainerClassificationServiceTest.java
+new file mode 100644
+index 0000000000..2625309645
+--- /dev/null
++++ b/src/test/java/org/openelisglobal/dictionary/service/SampleContainerClassificationServiceTest.java
+@@ -0,0 +1,27 @@
++package org.openelisglobal.dictionary.service;
++
++import static org.junit.Assert.*;
++import static org.mockito.Mockito.*;
++
++import org.junit.Test;
++import org.openelisglobal.dictionary.valueholder.Dictionary;
++
++public class SampleContainerClassificationServiceTest {
++    @Test
++    public void classificationComesFromSharedDictionaryMetadataRatherThanTheLabel() {
++        DictionaryService dictionaries = mock(DictionaryService.class);
++        Dictionary explicit = new Dictionary();
++        explicit.setDictEntry("B17");
++        explicit.setContainerPopulation("PAEDIATRIC");
++        Dictionary unclassified = new Dictionary();
++        unclassified.setDictEntry("Adult bottle");
++        explicit.setIsActive("N");
++        when(dictionaries.getDictionaryEntryByNameAndCategoryName("B17", "Sample Container")).thenReturn(explicit);
++        when(dictionaries.getDictionaryEntryByNameAndCategoryName("Adult bottle", "Sample Container")).thenReturn(unclassified);
++        var service = new SampleContainerClassificationService(dictionaries);
++        assertEquals("PAEDIATRIC", service.population("B17"));
++        assertNull(service.population("Adult bottle"));
++        assertNull(service.population("Paediatric unknown"));
++        assertNull(service.population(null));
++    }
++}
+diff --git a/src/test/java/org/openelisglobal/microbiology/controller/MicroOrderPreviewRestControllerTest.java b/src/test/java/org/openelisglobal/microbiology/controller/MicroOrderPreviewRestControllerTest.java
+new file mode 100644
+index 0000000000..be1efdbead
+--- /dev/null
++++ b/src/test/java/org/openelisglobal/microbiology/controller/MicroOrderPreviewRestControllerTest.java
+@@ -0,0 +1,67 @@
++package org.openelisglobal.microbiology.controller;
++
++import static org.mockito.ArgumentMatchers.*;
++import static org.mockito.Mockito.*;
++import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
++import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
++
++import java.util.List;
++import org.junit.Before;
++import org.junit.Test;
++import org.openelisglobal.common.action.IActionConstants;
++import org.openelisglobal.login.valueholder.UserSessionData;
++import org.openelisglobal.microbiology.controller.rest.MicroOrderPreviewRestController;
++import org.openelisglobal.microbiology.controller.rest.MicrobiologyRestExceptionHandler;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewForm;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewRequestForm;
++import org.openelisglobal.microbiology.service.MicroOrderPreviewService;
++import org.springframework.http.HttpStatus;
++import org.springframework.http.MediaType;
++import org.springframework.mock.web.MockHttpSession;
++import org.springframework.test.web.servlet.MockMvc;
++import org.springframework.test.web.servlet.setup.MockMvcBuilders;
++import org.springframework.web.server.ResponseStatusException;
++
++public class MicroOrderPreviewRestControllerTest {
++    private MockMvc mvc;
++    private MicroOrderPreviewService service;
++    private MockHttpSession session;
++
++    @Before
++    public void setUp() {
++        service = mock(MicroOrderPreviewService.class);
++        mvc = MockMvcBuilders.standaloneSetup(new MicroOrderPreviewRestController(service))
++                .setControllerAdvice(new MicrobiologyRestExceptionHandler()).build();
++        session = new MockHttpSession();
++        UserSessionData user = new UserSessionData();
++        user.setSytemUserId(42);
++        session.setAttribute(IActionConstants.USER_SESSION_DATA, user);
++    }
++
++    @Test
++    public void serializesThePreviewAndUsesOnlyTheSessionActor() throws Exception {
++        when(service.preview(any(), eq("42"))).thenReturn(new MicroOrderPreviewForm(
++                List.of(new MicroOrderPreviewForm.CaseLine("1", "Microbiology",
++                        List.of(new MicroOrderPreviewForm.SpecimenLine(0, "Blood")), List.of("Culture"), true, List.of(), List.of())),
++                List.of(), List.of(), List.of(), List.of()));
++        mvc.perform(post("/rest/microbiology/order-preview").session(session).contentType(MediaType.APPLICATION_JSON)
++                .content("{\"specimens\":[{\"sampleTypeId\":\"5\",\"testIds\":[\"culture\"]}]}"))
++                .andExpect(status().isOk()).andExpect(jsonPath("$.cases[0].labUnitName").value("Microbiology"))
++                .andExpect(jsonPath("$.cases[0].specimens[0].index").value(0))
++                .andExpect(jsonPath("$.ordinaryTests").isArray());
++        verify(service).preview(argThat(request -> request.specimens.get(0).testIds.equals(List.of("culture"))),
++                eq("42"));
++    }
++
++    @Test
++    public void deniedUnitAndInvalidSelectionAreNotSuccessfulPredictions() throws Exception {
++        when(service.preview(any(MicroOrderPreviewRequestForm.class), eq("42")))
++                .thenThrow(new ResponseStatusException(HttpStatus.FORBIDDEN))
++                .thenThrow(new IllegalArgumentException("Unknown preview test"));
++        mvc.perform(post("/rest/microbiology/order-preview").session(session).contentType(MediaType.APPLICATION_JSON)
++                .content("{\"specimens\":[]}")).andExpect(status().isForbidden());
++        mvc.perform(post("/rest/microbiology/order-preview").session(session).contentType(MediaType.APPLICATION_JSON)
++                .content("{\"specimens\":[]}")).andExpect(status().isBadRequest())
++                .andExpect(jsonPath("$.error").value("MICROBIOLOGY_VALIDATION_ERROR"));
++    }
++}
+diff --git a/src/test/java/org/openelisglobal/microbiology/service/MicroCultureSetWarningServiceTest.java b/src/test/java/org/openelisglobal/microbiology/service/MicroCultureSetWarningServiceTest.java
+new file mode 100644
+index 0000000000..7a58afbe7c
+--- /dev/null
++++ b/src/test/java/org/openelisglobal/microbiology/service/MicroCultureSetWarningServiceTest.java
+@@ -0,0 +1,76 @@
++package org.openelisglobal.microbiology.service;
++
++import static org.junit.Assert.*;
++
++import java.sql.Timestamp;
++import java.util.List;
++import org.junit.Test;
++import org.openelisglobal.microbiology.form.MicroCaseSpecimenForm;
++
++public class MicroCultureSetWarningServiceTest {
++    @Test
++    public void singleBottleWarningsNameTheirSetAndIgnoreOrdinaryOrUnassignedSamples() {
++        var ordinary = bottle(9, "Aerobic", "Left", "2026-10-07 07:00:00");
++        ordinary.collectedInSets = false;
++        var missing = bottle(null, null, null, null);
++        var warnings = new MicroCultureSetWarningService(30)
++                .evaluate(List.of(bottle(3, "Aerobic", "Left", "2026-10-07 07:00:00"), ordinary, missing));
++        assertEquals(1, warnings.size());
++        assertEquals(Integer.valueOf(3), warnings.get(0).setNumber());
++        assertEquals("SINGLE_BOTTLE", warnings.get(0).code());
++    }
++
++    @Test
++    public void duplicateContainersAndDifferentSitesWarnWithoutChangingAssignments() {
++        var first = bottle(2, " Aerobic ", "Left arm", "2026-10-07 07:00:00");
++        var second = bottle(2, "aerobic", "Right arm", "2026-10-07 07:10:00");
++        var warnings = new MicroCultureSetWarningService(30).evaluate(List.of(first, second));
++        assertEquals(List.of("REPEATED_CONTAINER", "DIFFERENT_SITES"), warnings.stream().map(w -> w.code()).toList());
++        assertEquals(Integer.valueOf(2), first.cultureSetNumber);
++        assertEquals(Integer.valueOf(2), second.cultureSetNumber);
++    }
++
++    @Test
++    public void collectionIntervalUsesConfiguredThresholdAndStrictBoundaryAcrossMidnight() {
++        var first = bottle(1, "Aerobic", "Left", "2026-10-07 23:50:00");
++        var second = bottle(1, "Anaerobic", "Left", "2026-10-08 00:20:00");
++        assertTrue(new MicroCultureSetWarningService(30).evaluate(List.of(first, second)).isEmpty());
++        second.collectionDate = Timestamp.valueOf("2026-10-08 00:20:01");
++        var warnings = new MicroCultureSetWarningService(30).evaluate(List.of(first, second));
++        assertEquals("COLLECTION_INTERVAL", warnings.get(0).code());
++        assertEquals(30, warnings.get(0).intervalMinutes());
++        assertTrue(new MicroCultureSetWarningService(45).evaluate(List.of(first, second)).isEmpty());
++    }
++
++    @Test
++    public void missingDetailsDoNotBecomeDuplicateOrSiteWarnings() {
++        assertTrue(new MicroCultureSetWarningService(30)
++                .evaluate(List.of(bottle(1, null, null, null), bottle(1, "", " ", null))).isEmpty());
++    }
++
++    @Test
++    public void populationWarningUsesOnlyExplicitClassification() {
++        var adult = bottle(1, "Paediatric sounding label", null, null);
++        var child = bottle(1, "Adult sounding label", null, null);
++        assertTrue(new MicroCultureSetWarningService(30).evaluate(List.of(adult, child)).isEmpty());
++        adult.containerPopulation = "ADULT";
++        child.containerPopulation = "PAEDIATRIC";
++        assertEquals(List.of("MIXED_POPULATIONS"), new MicroCultureSetWarningService(30).evaluate(List.of(adult, child))
++                .stream().map(w -> w.code()).toList());
++    }
++
++    @Test(expected = IllegalArgumentException.class)
++    public void rejectsNonPositiveConfiguration() {
++        new MicroCultureSetWarningService(0);
++    }
++
++    private MicroCaseSpecimenForm bottle(Integer set, String container, String site, String time) {
++        var specimen = new MicroCaseSpecimenForm();
++        specimen.collectedInSets = true;
++        specimen.cultureSetNumber = set;
++        specimen.containerType = container;
++        specimen.bodySite = site;
++        specimen.collectionDate = time == null ? null : Timestamp.valueOf(time);
++        return specimen;
++    }
++}
+diff --git a/src/test/java/org/openelisglobal/microbiology/service/MicroOrderPreviewServiceTest.java b/src/test/java/org/openelisglobal/microbiology/service/MicroOrderPreviewServiceTest.java
+new file mode 100644
+index 0000000000..7070a1aa0e
+--- /dev/null
++++ b/src/test/java/org/openelisglobal/microbiology/service/MicroOrderPreviewServiceTest.java
+@@ -0,0 +1,247 @@
++package org.openelisglobal.microbiology.service;
++
++import static org.junit.Assert.*;
++import static org.mockito.Mockito.*;
++
++import java.util.List;
++import java.util.Set;
++import org.junit.Before;
++import org.junit.Test;
++import org.openelisglobal.common.constants.Constants;
++import org.openelisglobal.common.services.RuleResultScope;
++import org.openelisglobal.common.util.IdValuePair;
++import org.openelisglobal.dictionary.service.DictionaryService;
++import org.openelisglobal.dictionary.valueholder.Dictionary;
++import org.openelisglobal.microbiology.form.MicroOrderPreviewRequestForm;
++import org.openelisglobal.role.service.RoleService;
++import org.openelisglobal.role.valueholder.Role;
++import org.openelisglobal.systemuser.service.UserService;
++import org.openelisglobal.test.service.TestService;
++import org.openelisglobal.test.valueholder.TestSection;
++import org.openelisglobal.testreflex.action.bean.ReflexRule;
++import org.openelisglobal.testreflex.action.bean.ReflexRuleAction;
++import org.openelisglobal.testreflex.action.bean.ReflexRuleCondition;
++import org.openelisglobal.testreflex.action.bean.ReflexRuleOptions;
++import org.openelisglobal.testreflex.service.TestReflexService;
++import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
++import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
++import org.openelisglobal.typeofsample.service.TypeOfSampleService;
++import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
++import org.springframework.http.HttpStatus;
++import org.springframework.web.server.ResponseStatusException;
++
++public class MicroOrderPreviewServiceTest {
++    private TestService tests;
++    private TypeOfSampleService types;
++    private TestReflexService reflex;
++    private MicroOrderPreviewService service;
++    private RuleResultScope scope;
++    private DictionaryService dictionary;
++    private TestResultComponentService components;
++
++    @Before
++    public void setUp() {
++        tests = mock(TestService.class);
++        types = mock(TypeOfSampleService.class);
++        reflex = mock(TestReflexService.class);
++        UserService users = mock(UserService.class);
++        RoleService roles = mock(RoleService.class);
++        Role reception = new Role();
++        reception.setId("10");
++        when(roles.getRoleByName(Constants.ROLE_RECEPTION)).thenReturn(reception);
++        when(users.getUserTestSections("user", "10"))
++                .thenReturn(List.of(new IdValuePair("1", "Microbiology"), new IdValuePair("2", "TB")));
++        TypeOfSample type = mock(TypeOfSample.class);
++        when(type.getId()).thenReturn("5");
++        when(type.getLocalizedName()).thenReturn("Sputum");
++        when(types.get("5")).thenReturn(type);
++        scope = mock(RuleResultScope.class);
++        dictionary = mock(DictionaryService.class);
++        components = mock(TestResultComponentService.class);
++        when(scope.resultTypeForComponent(anyString(), any(), any())).thenReturn("D");
++        Dictionary positive = mock(Dictionary.class);
++        when(positive.getLocalizedName()).thenReturn("Positive");
++        when(dictionary.getDictionaryById("901")).thenReturn(positive);
++        MicroOrderRoutingService routing = mock(MicroOrderRoutingService.class);
++        when(routing.previewNewOrder(anyList())).thenAnswer(call -> MicroOrderDraftGrouping.group(call.getArgument(0)));
++        service = new MicroOrderPreviewServiceImpl(routing, tests, types, users, roles, reflex, scope, dictionary,
++                components, new MicroCultureSetWarningService(30),
++                mock(org.openelisglobal.dictionary.service.SampleContainerClassificationService.class));
++    }
++
++    @Test
++    public void describesCaseSplitsOrdinaryResultsAndNamedActiveReflexWithoutWrites() {
++        catalog("culture", "Culture", "1", true);
++        catalog("tb", "TB culture", "2", true);
++        catalog("rpr", "RPR", "1", false);
++        catalog("gram", "Gram stain", "1", false);
++        ReflexRule rule = new ReflexRule();
++        rule.setRuleName("Positive culture follow-up");
++        rule.setOverall(ReflexRuleOptions.OverallOptions.ANY);
++        ReflexRuleCondition condition = new ReflexRuleCondition();
++        condition.setTestId("culture");
++        condition.setRelation(ReflexRuleOptions.NumericRelationOptions.EQUALS);
++        condition.setValue("901");
++        rule.setConditions(Set.of(condition));
++        ReflexRuleAction action = new ReflexRuleAction();
++        action.setReflexTestId("gram");
++        rule.setActions(Set.of(action));
++        when(reflex.getAllReflexRules()).thenReturn(List.of(rule));
++
++        var preview = service.preview(request("culture", "tb", "rpr"), "user");
++        assertEquals(2, preview.cases().size());
++        assertEquals(1, preview.newUnitWarnings().size());
++        assertEquals("2", preview.newUnitWarnings().get(0).labUnitId());
++        assertEquals("TB culture", preview.newUnitWarnings().get(0).testName());
++        assertEquals(List.of("Culture"), preview.cases().get(0).testNames());
++        assertEquals("RPR", preview.ordinaryTests().get(0).testName());
++        assertEquals(List.of("Microbiology", "TB"), preview.warnings().get(0).labUnits());
++        assertEquals("Positive culture follow-up", preview.reflexRules().get(0).name());
++        assertEquals(List.of("Gram stain"), preview.reflexRules().get(0).addedTests());
++        assertEquals("Positive", preview.reflexRules().get(0).conditions().get(0).value());
++        assertEquals("EQUALS", preview.reflexRules().get(0).conditions().get(0).relation());
++        assertEquals("ANY", preview.reflexRules().get(0).overall());
++        rule.setActive(false);
++        assertTrue(service.preview(request("culture"), "user").reflexRules().isEmpty());
++    }
++
++    @Test
++    public void numericComponentKeepsBothBoundsInsteadOfLookingUpDictionaryIds() {
++        catalog("culture", "Culture", "1", true);
++        catalog("repeat", "Repeat culture", "1", true);
++        TestResultComponent component = new TestResultComponent();
++        component.setId("component-2");
++        component.setTestId("culture");
++        component.setLabel("Colony count");
++        when(components.get("component-2")).thenReturn(component);
++        when(scope.resultTypeForComponent(eq("culture"), eq("component-2"), any())).thenReturn("N");
++        ReflexRuleCondition condition = new ReflexRuleCondition();
++        condition.setTestId("culture");
++        condition.setComponentId("component-2");
++        condition.setSampleId("5");
++        condition.setRelation(ReflexRuleOptions.NumericRelationOptions.BETWEEN);
++        condition.setValue("10");
++        condition.setValue2("20");
++        ReflexRuleAction action = new ReflexRuleAction();
++        action.setReflexTestId("repeat");
++        ReflexRule rule = new ReflexRule();
++        rule.setRuleName("Repeat borderline count");
++        rule.setOverall(ReflexRuleOptions.OverallOptions.ALL);
++        rule.setConditions(Set.of(condition));
++        rule.setActions(Set.of(action));
++        when(reflex.getAllReflexRules()).thenReturn(List.of(rule));
++
++        var line = service.preview(request("culture"), "user").reflexRules().get(0);
++        assertEquals("ALL", line.overall());
++        assertEquals("Colony count", line.conditions().get(0).componentLabel());
++        assertEquals("Sputum", line.conditions().get(0).sampleTypeName());
++        assertEquals("10", line.conditions().get(0).value());
++        assertEquals("20", line.conditions().get(0).value2());
++        verifyZeroInteractions(dictionary);
++
++        condition.setSampleId("other-type");
++        assertTrue(service.preview(request("culture"), "user").reflexRules().isEmpty());
++    }
++
++    @Test
++    public void refusesTestsOutsideReceptionUnits() {
++        catalog("denied", "Restricted culture", "3", true);
++        ResponseStatusException error = assertThrows(ResponseStatusException.class,
++                () -> service.preview(request("denied"), "user"));
++        assertEquals(HttpStatus.FORBIDDEN, error.getStatusCode());
++        verifyZeroInteractions(reflex);
++    }
++
++    @Test
++    public void newUnitWarningDoesNotBlockAndOtherWorkInTheUnitRemovesIt() {
++        catalog("culture", "Culture", "1", true);
++        catalog("rpr", "RPR", "1", false);
++        var first = service.preview(request("culture"), "user");
++        assertEquals(1, first.cases().size());
++        assertEquals(1, first.newUnitWarnings().size());
++        assertTrue(service.preview(request("culture", "rpr"), "user").newUnitWarnings().isEmpty());
++        var multipleSpecimens = request("culture");
++        multipleSpecimens.specimens.add(request("culture").specimens.get(0));
++        var repeated = service.preview(multipleSpecimens, "user");
++        assertEquals(1, repeated.cases().size());
++        assertTrue(repeated.newUnitWarnings().isEmpty());
++    }
++
++    @Test
++    public void requiresAnAuthenticatedActor() {
++        ResponseStatusException error = assertThrows(ResponseStatusException.class,
++                () -> service.preview(request(), ""));
++        assertEquals(HttpStatus.UNAUTHORIZED, error.getStatusCode());
++        verifyZeroInteractions(tests, types, reflex);
++    }
++
++    @Test
++    public void ordinaryOnlySelectionDoesNotPredictACase() {
++        catalog("rpr", "RPR", "1", false);
++        var preview = service.preview(request("rpr"), "user");
++        assertTrue(preview.cases().isEmpty());
++        assertEquals(1, preview.ordinaryTests().size());
++        verifyZeroInteractions(reflex);
++    }
++
++    @Test
++    public void previewUsesExplicitSetAssignmentsAndSameWarningRulesWithoutWrites() {
++        catalog("culture", "Blood culture", "1", true);
++        when(tests.get("culture").isCollectedInSets()).thenReturn(true);
++        when(tests.get("culture").getMicrobiologyCaseRole()).thenReturn("CULTURE");
++        var request = request("culture");
++        request.specimens.get(0).cultureSetNumber = 1;
++        var second = new MicroOrderPreviewRequestForm.Specimen();
++        second.sampleTypeId = "5";
++        second.testIds = List.of("culture");
++        second.cultureSetNumber = 2;
++        request.specimens = List.of(request.specimens.get(0), second);
++        var preview = service.preview(request, "user");
++        assertEquals(1, preview.cases().size());
++        assertEquals(2, preview.cases().get(0).bottles().size());
++        assertEquals(List.of(1, 2), preview.cases().get(0).setWarnings().stream().map(w -> w.setNumber()).toList());
++        second.cultureSetNumber = 1;
++        assertTrue(service.preview(request, "user").cases().get(0).setWarnings().isEmpty());
++        var first = request.specimens.get(0);
++        first.container = "Aerobic";
++        second.container = "Aerobic";
++        first.bodySite = "Left arm";
++        second.bodySite = "Right arm";
++        first.collectionDate = second.collectionDate = "2026-10-07";
++        first.collectionTime = "07:00";
++        second.collectionTime = "07:31";
++        assertEquals(List.of("REPEATED_CONTAINER", "DIFFERENT_SITES", "COLLECTION_INTERVAL"),
++                service.preview(request, "user").cases().get(0).setWarnings().stream().map(w -> w.code()).toList());
++    }
++
++    private MicroOrderPreviewRequestForm request(String... ids) {
++        var request = new MicroOrderPreviewRequestForm();
++        var specimen = new MicroOrderPreviewRequestForm.Specimen();
++        specimen.sampleTypeId = "5";
++        specimen.testIds = List.of(ids);
++        request.specimens.add(specimen);
++        return request;
++    }
++
++    @Test(expected = IllegalArgumentException.class)
++    public void inactiveMicroCatalogWorkCannotBePromisedByThePreview() {
++        catalog("culture", "Culture", "1", true);
++        when(tests.get("culture").isActive()).thenReturn(false);
++        service.preview(request("culture"), "user");
++    }
++
++    private void catalog(String id, String name, String unitId, boolean micro) {
++        var test = mock(org.openelisglobal.test.valueholder.Test.class);
++        when(test.getId()).thenReturn(id);
++        when(test.isActive()).thenReturn(true);
++        when(test.getMicrobiologyCaseRole()).thenReturn("DIRECT");
++        when(test.getLocalizedName()).thenReturn(name);
++        when(test.isOpensMicrobiologyCase()).thenReturn(micro);
++        TestSection unit = new TestSection();
++        unit.setId(unitId);
++        unit.setIsActive("Y");
++        unit.setTestSectionName("1".equals(unitId) ? "Microbiology" : "TB");
++        when(test.getTestSection()).thenReturn(unit);
++        when(tests.get(id)).thenReturn(test);
++    }
++}
+</untracked-diff>
+</workspace-diff>

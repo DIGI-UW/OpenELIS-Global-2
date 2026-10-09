@@ -155,6 +155,12 @@ morning), and set number when it carries a collected-in-sets test (FR-02.4a,
 FR-04.3). Corrections go through the order's steps and are recorded on the
 case timeline (FR-04.2).
 
+The shared Sample Container dictionary carries an optional bottle population:
+Adult or Paediatric. An unclassified or historical container remains unknown;
+its display name never supplies a classification. Deactivating a container
+removes it from new selections without losing classification for a recorded
+sample. The mixed-population warning uses only this configured metadata.
+
 An **isolate sample item** (sample type Isolate, parent = source sample item)
 is created when an isolate needs a label, referral or tests beyond
 identification and susceptibility. It belongs to the same case and is never
@@ -573,7 +579,7 @@ microbiology-only duplicate substitutes for a shared capability.
 | Report versions / print queue (OGC-1031 r4)                         | Shared version and release behavior (FR-17.6)                                              | present by name; shared ownership unconfirmed | 12 — shared reporting before case release                           |
 | Redesigned patient report (OGC-1111)                                | Required microbiology report block (A-11)                                                  | not found                                     | 12 — shared report support                                          |
 | Workplan print record                                               | Persisted bench sheet and Open sheet (FR-12.7)                                             | partial; confirm                              | 13 — shared Workplan support                                        |
-| Order-entry per-sample body site/time/set and bottle classification | Culture sets and all nonblocking warnings (FR-02.4a)                                       | partial; classification not found             | 5 — shared order entry/catalog                                      |
+| Order-entry per-sample body site/time/set and bottle classification | Culture sets and all nonblocking warnings (FR-02.4a)                                       | partial; classification added                 | 5 — shared order entry/catalog                                      |
 | Sampling sites; Laporan Hasil certificate                           | Environmental subject and report                                                           | present                                       | 5 — site routing; report in 12; full environmental acceptance in 15 |
 
 ## 15. Clarified behavior and delivery
