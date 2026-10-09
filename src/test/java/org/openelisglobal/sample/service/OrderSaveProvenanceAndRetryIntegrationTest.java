@@ -96,6 +96,9 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
     @Override
     public void setUp() throws Exception {
         super.setUp();
+        fixtures.ensureRequiredWorkflowStatuses();
+        fixtures.ensureExternalOrderEnteredStatus();
+        fixtures.ensureExternalOrderRealizedStatus();
         userId = fixtures.defaultUserId();
         patient = fixtures.createPatient("PROV");
         sampleType = fixtures.createTypeOfSample();

@@ -435,9 +435,40 @@ public class MicrobiologyTestFixtures {
 
     public void ensureRequiredWorkflowStatuses() {
         ensureSampleEnteredStatus();
+        ensureOrderEnteredStatus();
         ensureAnalysisNotStartedStatus();
         ensureAnalysisFinalizedStatus();
         ensureAnalysisCanceledStatus();
+    }
+
+    public String ensureOrderEnteredStatus() {
+        String statusId = statusService
+                .getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Entered);
+        if (!"-1".equals(statusId) && statusOfSampleService.getMatch("id", statusId).isPresent()) {
+            return statusId;
+        }
+
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "ORDER".equals(status.getStatusType()))
+                .filter(status -> "Test Entered".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample entered = new StatusOfSample();
+            entered.setStatusOfSampleName("Test Entered");
+            entered.setDescription("No tests have been run for this order");
+            entered.setCode(nextAvailableStatusCode("ORDER"));
+            entered.setStatusType("ORDER");
+            entered.setNameKey("status.sample.notStarted");
+            entered.setIsActive(IActionConstants.YES);
+            entered.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(entered);
+        }
+        statusService.refreshCache();
+
+        statusId = statusService.getStatusID(org.openelisglobal.common.services.StatusService.OrderStatus.Entered);
+        if ("-1".equals(statusId)) {
+            throw new IllegalStateException("Unable to provision OrderStatus.Entered for microbiology tests");
+        }
+        return statusId;
     }
 
     public String ensureAnalysisNotStartedStatus() {
@@ -516,13 +547,19 @@ public class MicrobiologyTestFixtures {
             return statusId;
         }
 
-        StatusOfSample entered = new StatusOfSample();
-        entered.setStatusOfSampleName("Entered");
-        entered.setDescription("External order entered");
-        entered.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
-        entered.setStatusType("EXTERNAL_ORDER");
-        entered.setIsActive(IActionConstants.YES);
-        statusOfSampleService.insert(entered);
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "EXTERNAL_ORDER".equals(status.getStatusType()))
+                .filter(status -> "Entered".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample entered = new StatusOfSample();
+            entered.setStatusOfSampleName("Entered");
+            entered.setDescription("External order entered");
+            entered.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
+            entered.setStatusType("EXTERNAL_ORDER");
+            entered.setIsActive(IActionConstants.YES);
+            entered.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(entered);
+        }
         statusService.refreshCache();
 
         statusId = statusService
@@ -540,13 +577,19 @@ public class MicrobiologyTestFixtures {
             return statusId;
         }
 
-        StatusOfSample realized = new StatusOfSample();
-        realized.setStatusOfSampleName("Realized");
-        realized.setDescription("External order realized");
-        realized.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
-        realized.setStatusType("EXTERNAL_ORDER");
-        realized.setIsActive(IActionConstants.YES);
-        statusOfSampleService.insert(realized);
+        StatusOfSample existing = statusOfSampleService.getAllStatusOfSamples().stream()
+                .filter(status -> "EXTERNAL_ORDER".equals(status.getStatusType()))
+                .filter(status -> "Realized".equals(status.getStatusOfSampleName())).findFirst().orElse(null);
+        if (existing == null) {
+            StatusOfSample realized = new StatusOfSample();
+            realized.setStatusOfSampleName("Realized");
+            realized.setDescription("External order realized");
+            realized.setCode(nextAvailableStatusCode("EXTERNAL_ORDER"));
+            realized.setStatusType("EXTERNAL_ORDER");
+            realized.setIsActive(IActionConstants.YES);
+            realized.setSysUserId(defaultUserId());
+            statusOfSampleService.insert(realized);
+        }
         statusService.refreshCache();
 
         statusId = statusService
