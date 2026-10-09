@@ -36,11 +36,17 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
 
     @Override
     @Transactional
-    public AnalyzerMappingSnapshot adopt(String analyzerId, int toRevision, AnalyzerMappingDraft decisions,
-            String actor) {
+    public AnalyzerMappingSnapshot adopt(String analyzerId, int toRevision, String baseMappingFingerprint,
+            AnalyzerMappingDraft decisions, String actor) {
         Analyzer analyzer = analyzerService.findByIdForUpdate(analyzerId)
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer not found: " + analyzerId));
         AdoptionPlan plan = prepareAdoption(analyzerId, toRevision);
+        String loaded = baseMappingFingerprint == null || baseMappingFingerprint.isBlank() ? null
+                : baseMappingFingerprint.trim();
+        if (!Objects.equals(loaded, plan.baseMappingFingerprint())) {
+            throw new AnalyzerRequestException("analyzer.mapping.error.changedSinceLoaded",
+                    "The analyzer's mapping changed after this adoption was loaded");
+        }
         Map<AnalyzerMappingRowKey, AnalyzerMappingAdoption.Decision> decided = AnalyzerMappingAdoption
                 .decisions(decisions);
         List<AnalyzerMappingAdoption.Row> kept = plan.rows().stream()
@@ -112,8 +118,9 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
                 .filter(held -> held.getRawTestCode() != null)
                 .map(held -> new AnalyzerMappingRowKey(held.getRawTestCode(), held.getRawSubIdentity()))
                 .collect(Collectors.toSet());
-        return new AdoptionPlan(analyzerId, profileId, fromRevision, toRevision, AnalyzerMappingAdoption.plan(from, to,
-                AnalyzerMappingDraft.of(current), mappingDefaults.resolve(to), inactiveTargets, heldRecords));
+        return new AdoptionPlan(analyzerId, profileId, fromRevision, toRevision,
+                current.mapping().getMappingFingerprint(), AnalyzerMappingAdoption.plan(from, to,
+                        AnalyzerMappingDraft.of(current), mappingDefaults.resolve(to), inactiveTargets, heldRecords));
     }
 
     /**

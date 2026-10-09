@@ -91,6 +91,7 @@ const review = (rows) => ({
   profileId: "shipped.chemistry",
   fromRevision: 1,
   toRevision: 2,
+  baseMappingFingerprint: `sha256:${"1".repeat(64)}`,
   rows,
   proposal: {
     analyzerId: "501",
@@ -255,6 +256,7 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
     const [analyzerId, revision, update] = adoptAnalyzerRevision.mock.calls[0];
     expect(analyzerId).toBe("501");
     expect(revision).toBe(2);
+    expect(update.baseMappingFingerprint).toBe(`sha256:${"1".repeat(64)}`);
     expect(
       update.tests.find((test) => test.sourceRowKey === "GLU"),
     ).toMatchObject({ mappingState: "BOUND", testId: glucose.id });

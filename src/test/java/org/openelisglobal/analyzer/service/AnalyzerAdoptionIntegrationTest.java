@@ -144,7 +144,8 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 Long.valueOf(analyzerId));
 
         AnalyzerAdoptionService.AdoptionPlan plan = adoptionService.prepareAdoption(analyzerId, 2);
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, plan.proposals(), "1");
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(), plan.proposals(),
+                "1");
         confirm(adopted);
         BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
         apply(adopted);
@@ -179,7 +180,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(AnalyzerMappingAdoption.BlockReason.HELD_RESULTS, blocked.blockReason());
 
         IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
-                () -> adoptionService.adopt(analyzerId, 2, plan.proposals(), "1"));
+                () -> adoptionService.adopt(analyzerId, 2, loadedFingerprint(), plan.proposals(), "1"));
         assertTrue(refusal.getMessage(), refusal.getMessage().contains("ADOPT-C still has held results"));
         assertEquals("nothing was saved on revision 2", 1,
                 mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow().mapping().getProfileRevision());
@@ -197,7 +198,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(AnalyzerMappingAdoption.BlockReason.INACTIVE_TEST, blocked.blockReason());
 
         IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
-                () -> adoptionService.adopt(analyzerId, 2, plan.proposals(), "1"));
+                () -> adoptionService.adopt(analyzerId, 2, loadedFingerprint(), plan.proposals(), "1"));
         assertTrue(refusal.getMessage(),
                 refusal.getMessage().contains("ADOPT-A is mapped to a test that is no longer active"));
         assertEquals(1, mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow().mapping().getProfileRevision());
@@ -210,7 +211,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         markActive();
         BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
 
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 adoptionService.prepareAdoption(analyzerId, 2).proposals(), "1");
         confirm(adopted);
         verifyZeroInteractions(bridge);
@@ -240,7 +241,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
         when(bridge.updateConnection(eq(CONNECTION_ID), any(ObjectNode.class)))
                 .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 adoptionService.prepareAdoption(analyzerId, 2).proposals(), "1");
         confirm(adopted);
 
@@ -258,7 +259,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
         when(bridge.applyRuntimeCommand(eq(CONNECTION_ID), anyInt(), eq("ACTIVATE"), anyString()))
                 .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 adoptionService.prepareAdoption(analyzerId, 2).proposals(), "1");
         confirm(adopted);
 
@@ -275,7 +276,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     public void aResultStampedWithTheOldRevisionMapsWhenTheNewOneReadsItAlikeAndIsHeldWhenNot() throws Exception {
         analyzerOnRevisionOne();
         String testId = catalogTests.get(0);
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", testId), "1");
         confirm(adopted);
         bridgeOn(1);
@@ -302,7 +303,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerResults heldA = staged("ADOPT-A");
         assertTrue("ADOPT-A has no test on revision 1", heldA.isReadOnly());
         assertTrue(staged("ADOPT-D").isReadOnly());
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, loadedFingerprint(),
                 bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)),
                         "ADOPT-D", catalogTests.get(1)),
                 "1");
@@ -516,6 +517,11 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     private void apply(AnalyzerMappingSnapshot adopted) {
         instances.applyMapping(analyzerId, adopted.mapping().getId(), adopted.mapping().getRevisionNumber(),
                 adopted.mapping().getMappingFingerprint(), "1");
+    }
+
+    /** The fingerprint an adoption screen loaded with the plan sends back. */
+    private String loadedFingerprint() {
+        return adoptionService.prepareAdoption(analyzerId, 2).baseMappingFingerprint();
     }
 
     private String inForceMappingId() {
