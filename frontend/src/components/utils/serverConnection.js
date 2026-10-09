@@ -115,11 +115,21 @@ export function createServerRetrier() {
   };
 }
 
-const fetchWithTimeout = async (url, options, timeoutMs) => {
+/**
+ * Fetches and reads a response under one deadline. fetch() resolves as soon as
+ * the headers arrive, so the timer has to stay armed while `read` consumes the
+ * body; a server that sends headers and then stalls is aborted like one that
+ * never answers.
+ */
+const fetchWithTimeout = async (url, options, timeoutMs, read) => {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
-    return await fetch(url, { ...options, signal: controller.signal });
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+    return await read(response);
   } finally {
     clearTimeout(timer);
   }
@@ -147,17 +157,20 @@ export async function readSessionResponse(response) {
   return details;
 }
 
-/** Fetches the session once; a request held open past the timeout fails. */
+/**
+ * Fetches the session once; a request or a session body held open past the
+ * timeout fails.
+ */
 export async function requestSession(
   url,
   timeoutMs = SERVER_REQUEST_TIMEOUT_MS,
 ) {
-  const response = await fetchWithTimeout(
+  return fetchWithTimeout(
     url,
     { credentials: "include" },
     timeoutMs,
+    readSessionResponse,
   );
-  return readSessionResponse(response);
 }
 
 /**
@@ -166,12 +179,12 @@ export async function requestSession(
  */
 export async function appShellReachable(timeoutMs = SERVER_REQUEST_TIMEOUT_MS) {
   try {
-    const response = await fetchWithTimeout(
+    return await fetchWithTimeout(
       window.location.origin + "/",
       { cache: "no-store", credentials: "same-origin" },
       timeoutMs,
+      (response) => response.ok,
     );
-    return response.ok;
   } catch {
     return false;
   }

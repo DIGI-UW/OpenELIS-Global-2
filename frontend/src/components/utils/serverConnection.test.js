@@ -121,6 +121,45 @@ describe("requestSession", () => {
   });
 });
 
+describe("requestSession on a response that stalls mid-body", () => {
+  afterEach(() => vi.restoreAllMocks());
+
+  test("gives up when the headers arrive but the session body never finishes", async () => {
+    vi.spyOn(globalThis, "fetch").mockImplementation(
+      (url, { signal }) =>
+        new Promise((resolve) => {
+          const body = new ReadableStream({
+            start(controller) {
+              controller.enqueue(new TextEncoder().encode('{"authenticated":'));
+              signal.addEventListener("abort", () =>
+                controller.error(new DOMException("aborted", "AbortError")),
+              );
+            },
+          });
+          resolve(
+            new Response(body, {
+              status: 200,
+              headers: { "Content-Type": "application/json" },
+            }),
+          );
+        }),
+    );
+
+    const stillPending = new Promise((resolve) =>
+      setTimeout(() => resolve("still pending"), 500),
+    );
+    const outcome = await Promise.race([
+      requestSession("/api/session", 25).then(
+        () => "answered",
+        (error) => `failed: ${error.name}`,
+      ),
+      stillPending,
+    ]);
+
+    expect(outcome).toBe("failed: AbortError");
+  });
+});
+
 describe("appShellReachable", () => {
   afterEach(() => vi.restoreAllMocks());
 
