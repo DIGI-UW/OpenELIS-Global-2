@@ -36,8 +36,8 @@ normalizedCoding, resultValueHints)`. After step 6 the profile carries an
   `frontend/playwright/tests/foundational/harness/stock-analyzer-defaults.spec.ts`
   asserts one answer per test via
   `frontend/playwright/helpers/analyzer-clinical-order.ts:93-102`; it
-  relies on label matching, so it fails from this step until step 7 rewrites
-  it (T7.1).
+  relies on label matching, so it fails from this step until step 7 replaces
+  it with `HarnessDictionaryIntegrationTest` (T7.1).
 - Profile draft editor: `frontend/src/components/analyzers/AnalyzerTypeManagement/ProfileTestDefinitions.jsx`
   writes `specimen_type_hint` (line 35) and `result_value_hints` (88-124);
   i18n keys `analyzerType.editor.specimenType`, `resultValueHint`,
