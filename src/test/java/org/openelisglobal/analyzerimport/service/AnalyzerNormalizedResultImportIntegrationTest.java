@@ -810,6 +810,48 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
     }
 
+    /**
+     * A control held whole recovers into its number and its call; the call is a
+     * control too and is checked against QC like the number, so with no QC target
+     * for its answer it is held for that reason.
+     */
+    @Test
+    public void everyRowAControlHeldWholeRecoversIntoIsCheckedAgainstQc() throws Exception {
+        Bundle bundle = prepareControl(true, false);
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
+                TEST_ID);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated)"
+                + " VALUES (?, 'Detected', 'Y', NOW())", DETECTED_ENTRY_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result"
+                        + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
+                        + " VALUES (?, ?, 'D', ?, true, 1, 'comp-call', NOW())",
+                RESULT_OPTION_ID, TEST_ID, String.valueOf(DETECTED_ENTRY_ID));
+        Observation control = bundle.getEntry().stream().map(entry -> entry.getResource())
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        control.setValue(new Quantity(7.1));
+        control.addInterpretation(
+                new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        importService.importBundle(bundle, "1");
+        assertEquals("held whole while its mapping is not confirmed", 1,
+                resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
+
+        jdbc.update("UPDATE clinlims.analyzer_mapping_test SET call_component_id = 'comp-call'"
+                + " WHERE mapping_id = ? AND source_row_key = 'WBC' AND sub_identity = ''", MAPPING_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
+                + " (mapping_id, source_row_key, raw_value, mapping_state, test_result_id, last_updated)"
+                + " VALUES (?, 'WBC', 'DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, RESULT_OPTION_ID);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1");
+
+        List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("the number and the call, once each", 2, recovered.size());
+        AnalyzerResults call = stagedOn(recovered, "comp-call");
+        assertTrue(call.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING, call.getImportIssueReason());
+    }
+
     @Test
     public void aRunWithNoValueIsHeldAsAFailedRunCarryingTheInstrumentsNote() throws Exception {
         bindTest("VENDOR-NEW-42");
