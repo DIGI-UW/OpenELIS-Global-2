@@ -101,9 +101,11 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
     private AnalyzerTypeCatalogView.AffectedAnalyzer affectedAnalyzer(Analyzer analyzer,
             BridgeAnalyzerProfile profile) {
         AnalyzerMapping inForce = analyzer.getMapping();
-        boolean newerProfileRevision = inForce.getProfileRevision() < profile.revision();
-        boolean newerMappingRevision = mappingDAO.findLatestByAnalyzerId(analyzer.getId())
-                .map(latest -> latest.getRevisionNumber() > inForce.getRevisionNumber()).orElse(false);
+        AnalyzerMapping latest = mappingDAO.findLatestByAnalyzerId(analyzer.getId()).orElse(inForce);
+        // A saved adoption already targets the latest mapping's revision; it waits for
+        // Verify, not another Adopt.
+        boolean newerProfileRevision = latest.getProfileRevision() < profile.revision();
+        boolean newerMappingRevision = latest.getRevisionNumber() > inForce.getRevisionNumber();
         return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
                 inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision, newerMappingRevision);
     }
