@@ -281,9 +281,7 @@ test.describe("Every documented GeneXpert outcome", () => {
           expect(row.placement?.state).toBe("RESOLVED");
         }
       }
-      for (const [code, records] of Object.entries(expected)) {
-        expect(actual[code], code).toMatchObject(records);
-      }
+      expect(actual).toEqual(expected);
     });
   }
 });
