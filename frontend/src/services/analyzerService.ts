@@ -68,6 +68,13 @@ export interface AnalyzerTypeCatalog {
     deactivated: number;
   };
   types: AnalyzerTypeSummary[];
+  /** Profile files the Bridge set aside, with why; always present, maybe empty. */
+  issues: AnalyzerCatalogIssue[];
+}
+
+export interface AnalyzerCatalogIssue {
+  source: string;
+  reason: string;
 }
 
 export interface AnalyzerLabUnit {
