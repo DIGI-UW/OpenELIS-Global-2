@@ -56,9 +56,7 @@ public class AnalyzerMappingDefaults {
                 continue;
             }
             String testId = resolution.draft().testId();
-            List<AnalyzerMappingCatalogService.ComponentOption> components = definition.components().isEmpty()
-                    ? List.of()
-                    : catalog.getActiveComponents(testId);
+            List<AnalyzerMappingCatalogService.ComponentOption> components = catalog.getActiveComponents(testId);
 
             String callTarget = definition.callComponent() == null ? null
                     : componentId(components, definition.callComponent());
@@ -164,15 +162,17 @@ public class AnalyzerMappingDefaults {
     }
 
     /**
-     * The answers of the test's primary result: those on no component or on the
-     * primary one. An analyte record's answers may share the same codes.
+     * The answers of the test's primary result: those on no component or on its
+     * active primary one. An analyte record's answers may share the same codes, and
+     * an answer left on a deactivated component belongs to no result.
      */
     private static List<AnalyzerMappingCatalogService.ResultOption> primaryOptions(
             List<AnalyzerMappingCatalogService.ResultOption> options,
             List<AnalyzerMappingCatalogService.ComponentOption> components) {
-        java.util.Set<String> others = components.stream().filter(component -> !component.primary())
+        java.util.Set<String> primary = components.stream()
+                .filter(AnalyzerMappingCatalogService.ComponentOption::primary)
                 .map(AnalyzerMappingCatalogService.ComponentOption::id).collect(java.util.stream.Collectors.toSet());
-        return options.stream().filter(option -> option.componentId() == null || !others.contains(option.componentId()))
+        return options.stream().filter(option -> option.componentId() == null || primary.contains(option.componentId()))
                 .toList();
     }
 
