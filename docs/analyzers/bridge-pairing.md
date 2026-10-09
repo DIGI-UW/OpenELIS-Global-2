@@ -26,7 +26,9 @@ OpenELIS pairs in one of two ways:
 - **With a configured code.** When `ANALYZER_BRIDGE_PAIRING_CODE` (property
   `analyzer.bridge.pairing-code`) is set to the Bridge's code, OpenELIS pairs on
   startup, and on its first call to the Bridge if it is still unpaired. Giving
-  both containers the same value pairs them with no manual step.
+  both containers the same value pairs them with no manual step. A configured
+  code the Bridge refuses, because it is wrong or already used, is not tried
+  again, so the Bridge keeps its attempts for the code entered on the page.
 - **On the Analyzers page.** A Global Admin enters the code there. The page
   shows whether OpenELIS is paired, the Bridge address, the start of the
   Bridge's certificate fingerprint and when it paired, and why a code was
@@ -36,6 +38,12 @@ While pairing, OpenELIS sends the code and the fingerprint of the HTTPS
 certificate it serves, presents its own certificate, and pins the certificate
 the Bridge presented once the Bridge confirms it. Results the Bridge receives
 before pairing wait in its outbox and are delivered once it is paired.
+
+The first pairing trusts whichever certificate answers at the Bridge address:
+the code is not yet bound to either side's certificate, so something that can
+intercept the link at that moment could pair in the Bridge's place. Pair where
+nothing can sit between them, such as the Compose stack's own network. Binding
+the code to both certificates needs a change to the Bridge's pairing protocol.
 
 ## Identities
 
@@ -56,6 +64,8 @@ trusted after its certificate is regenerated.
 A paired Bridge refuses its current code. To pair again, for example after
 reinstalling either side, configure a new code on the Bridge, restart it, and
 enter that code on the Analyzers page or set it as OpenELIS's configured code.
+OpenELIS reads the pairing from its database wherever it checks it, so the new
+pairing applies to result delivery at once, without a restart.
 
 ## Tomcat
 

@@ -15,6 +15,7 @@ import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.SSLParameters;
@@ -31,6 +32,7 @@ final class FakeBridge implements AutoCloseable {
 
     final BridgeTls.Identity identity;
     final List<String> receivedServerFingerprints = Collections.synchronizedList(new ArrayList<>());
+    final AtomicInteger pairingAttempts = new AtomicInteger();
     private final HttpsServer server;
     private final String code;
     private volatile String pairedClient;
@@ -68,6 +70,7 @@ final class FakeBridge implements AutoCloseable {
     }
 
     private void pairing(HttpExchange exchange) throws IOException {
+        pairingAttempts.incrementAndGet();
         JsonNode body = JSON.readTree(exchange.getRequestBody());
         if (pairedClient != null) {
             respond(exchange, 409, "{\"error\":\"pairing_closed\"}");
