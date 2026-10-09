@@ -3,12 +3,14 @@ package org.openelisglobal.configuration.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PreDestroy;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -82,9 +84,31 @@ public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTes
 
         List<String> unbound = new ArrayList<>();
         for (String profileFile : BASELINE_PROFILES) {
-            BridgeAnalyzerProfile profile = BridgeAnalyzerProfile
-                    .from(new ObjectMapper().readTree(PROFILES.resolve(profileFile).toFile()));
-            AnalyzerMappingDraft draft = defaults.resolve(profile);
+            JsonNode declared = new ObjectMapper().readTree(PROFILES.resolve(profileFile).toFile());
+            AnalyzerMappingDraft draft = defaults.resolve(BridgeAnalyzerProfile.from(declared));
+
+            List<String> records = new ArrayList<>();
+            Set<String> values = new HashSet<>();
+            for (JsonNode test : declared.path("default_test_mappings")) {
+                String code = test.path("test_code").asText();
+                records.add(identity(code, null));
+                test.path("values").forEach(value -> values.add(identity(code, null) + " = " + value.asText()));
+                for (JsonNode component : test.path("components")) {
+                    if (component.hasNonNull("sub_identity")) {
+                        String record = identity(code, component.path("sub_identity").asText());
+                        records.add(record);
+                        component.path("values").forEach(value -> values.add(record + " = " + value.asText()));
+                    }
+                }
+            }
+            assertEquals(profileFile + " records", records,
+                    draft.tests().stream().map(row -> identity(row.sourceRowKey(), row.subIdentity())).toList());
+            Set<String> resolvedValues = new HashSet<>();
+            draft.results().forEach(row -> resolvedValues
+                    .add(identity(row.sourceRowKey(), row.subIdentity()) + " = " + row.rawValue()));
+            values.removeAll(resolvedValues);
+            assertEquals(profileFile + " values with no result row", Set.of(), values);
+
             draft.tests().stream().filter(row -> row.mappingState() != AnalyzerMappingState.BOUND)
                     .forEach(row -> unbound.add(profileFile + " " + row.sourceRowKey() + " " + row.subIdentity() + ": "
                             + row.unresolvedReason()));
@@ -118,6 +142,10 @@ public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTes
                 String.class, (Object) analyzerLoincs.toArray(String[]::new));
         assertEquals(List.of(), shared);
         assertFalse(tests.getActiveTestsByLoinc(new String[] { "94547-7", "94500-6" }).isEmpty());
+    }
+
+    private static String identity(String code, String subIdentity) {
+        return subIdentity == null || subIdentity.isEmpty() ? code : code + " " + subIdentity;
     }
 
     private void loadHarnessDictionary() throws IOException {
