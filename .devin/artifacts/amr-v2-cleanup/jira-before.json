@@ -1,0 +1,2346 @@
+[
+  {
+    "id": "27262",
+    "key": "OGC-782",
+    "fields": {
+      "summary": "M-00 Microbiology Module Parent (spec, glossary, RBAC, phase plan)",
+      "description": "## Overview\n\nParent / spine + **umbrella** for the Microbiology / AMR Module. Read this spec first. Anchors the _17-epic M-_ bundle\\* (M-00 through M-15 plus M-NFR) with the cross-cutting glossary, RBAC matrix, data-model overview, phase plan, and the v1.1 → v2 diff map. There is no Initiative level above this epic; every module epic _Relates_ to it. **Owner: Piotr Mankowski.**\n\n## The 17 epics\n\n* **Foundations:** OGC-786 M-01 Reference data · OGC-784 M-12 Reagent linkage · OGC-788 M-08 Macro library · OGC-783 M-NFR · OGC-782 M-00 (this)\n* **Catalog:** OGC-787 M-02 Breakpoints (CLSI/EUCAST **+ WHO-TB**)\n* **Case hub:** OGC-790 M-04 Case Workbench · **OGC-901 M-14 Mycobacteriology/TB** (profile of M-04)\n* **Operational:** OGC-789 M-03 Order-entry hook · OGC-791 M-05 AST entry · OGC-785 M-11 Critical notify\n* **Review/Worklist:** OGC-792 M-07 Worklists · OGC-793 M-06 Expert rules\n* **Surveillance/Reporting:** OGC-794 M-09 WHONET · **OGC-900 M-13 Antibiogram** · **OGC-918 M-15 GLASS via consolidated FHIR (last)** · OGC-795 M-10 Hub subscription\n\nDependency graph: `amr-micro-dependency-graph.svg` (17 epics; build order + key deps).\n\n## Cross-cutting decisions (landed across the bundle)\n\n* **Workflow routing:** the ordered test carries a `workflow_type` (BACTERIOLOGY vs MYCOBACTERIOLOGY_TB) set on the Test Catalog (**OGC-925**); the M-03 resolver instantiates the matching Case profile, breakpoint family, Method, and WHONET flavor. UNASSIGNED fallback + tech **Change workflow** (**OGC-926**).\n* **Case keying:** `micro_case` keyed to **SampleItem × workflow_type** (not 1:1 with Sample) — one specimen can hold a bacterial _and_ a TB Case sharing the SampleItem (build stories OGC-820/843 re-keyed).\n* **Reuse, don't rebuild:** M-09 extends the **existing** OpenELIS WHONET export; M-11 reuses the **existing** notifications/alerts dashboard + `TestNotificationService`; TB DST reuses `micro_ast_run`; Timeline reuses History/Note.\n* **Inline, not modal** (Principle 3) for M-06 / M-11 bench surfaces.\n\n## Scope\n\n**MVP-1A** — doc only; lock M-00 before sprint 1. Contents: glossary, data-model overview, RBAC matrix across all modules, phase plan (MVP-1A → 1A+ → 1B → Phase 2), out-of-scope, v1.1 → v2 diff map, cross-cutting constraints (single-tenancy, sidenav submenus, Carbon for React, reuse-existing-elements, i18n `module.surface.element`).\n\n## Now in scope (were previously out)\n\n**Mycobacteriology/TB (M-14)**, **Antibiogram (M-13)**, and **GLASS reporting (M-15, via consolidated FHIR)** are now planned modules (satisfy procurement requirement #8). Cross-lab _aggregation_ stays outside OE (single-tenancy); each lab pushes its own data.\n\n## Source documents\n\n* `m-00-micro-module-parent.md`; narrative `amr-micro-narrative.md` (**v2.1**), published to Confluence: \\[Microbiology Module — Workflow Walk-through (for developers)|https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256\\]\n\n## Sizing\n\n\\~4 story points (doc-only epic: lock M-00, publish glossary, RBAC sign-off). Full bundle ≈ 17 epics / \\~578 story points (see `amr-micro-backlog.md`).\n\n## Supersedes\n\nOGC-293 — closed as superseded. This umbrella replaces the original AMR monolith with the 17-epic M-\\* bundle.",
+      "status": {
+        "name": "Acceptance",
+        "statusCategory": {
+          "name": "In Progress"
+        }
+      },
+      "assignee": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "png-S1",
+        "png-deliverable",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27263",
+    "key": "OGC-783",
+    "fields": {
+      "summary": "M-NFR Microbiology Module — Non-Functional Requirements",
+      "description": "## Overview\n\nCross-cutting non-functional requirements that every M-\\* module must honor. Spec-only plus minimal test infrastructure (a11y CI hooks, performance instrumentation, RBAC integration tests).\n\n## Scope\n\n**MVP-1A** — spec + minimal infra; lock alongside M-00.\n\nTen NFRs, all non-negotiable for Phase 1 release:\n\n* NFR-01 Offline / intermittent connectivity (graceful degradation; local queue + replay)\n* NFR-02 Scale ceiling (200+ row worklists < 2s; 100+ concurrent open Cases)\n* NFR-03 Audit granularity (every state-changing action immutable; polymorphic audit_event table if no existing pattern)\n* NFR-04 Accessibility (WCAG 2.1 AA; axe-core CI on every M-\\* route)\n* NFR-05 Performance budget (per-surface targets; macro expansion < 50ms)\n* NFR-06 Data retention (criticals ≥ 5 years; audit indefinite)\n* NFR-07 Internationalization (`module.surface.element` keys; \\~200 new strings)\n* NFR-08 Security & access control (server-side permission checks; existing OE session auth)\n* NFR-09 Browser support (latest 2 versions of Chrome, Firefox, Edge, Safari)\n* NFR-10 Database & replication (schema forward-compatible; no long-running transactions)\n\n## Source documents\n\n* `m-nfr-non-functional-requirements-frs-v1.md`\n* Originally drafted in `amr-pre-frs-planning-v1.md` §3\n\n## Sizing\n\n\\~34 story points across 10 sub-stories (1 per NFR; some are spec-only, some require infra like a11y CI hooks and performance instrumentation).\n\n## Verification dependencies\n\n* Confirm existing OE audit infrastructure (per NFR-03)\n* Confirm existing OE browser support matrix (per NFR-09)\n* Confirm OE replication setup at representative deployment (per NFR-10)\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "cross-cutting",
+        "microbiology",
+        "mvp-1a",
+        "non-functional",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27264",
+    "key": "OGC-784",
+    "fields": {
+      "summary": "M-12 Reagent Lot at Result Entry (micro) — ReagentLotPicker + wiring",
+      "description": "## Overview\n\nLong-deferred OE foundation: declare which reagent lots are required (or optional) for a given test, so every patient result is traceable to the specific reagent lot that produced it. ISO 15189 §7.3 compliance.\n\nMicrobiology is the forcing function — AST cards, discs, and culture media are all reagents with lot numbers. Several parked specs benefit: Reagent Forecasting, Reagent QC, Catalog Subscription, future chemistry reagent tracking improvements.\n\n## Scope\n\n**Parallel pre-track** — starts before MVP-1A proper; runs as its own track so it doesn't compete for Micro team capacity. Lands by MVP-1A ship date.\n\n* `test_reagent_link` schema (REQUIRED / OPTIONAL / SUBSTITUTE)\n* Test Catalog editor — Reagents tab content (Test Catalog v2.5 already has the tab as a placeholder)\n* Link New modal\n* `ReagentLotPicker` component (reused by M-04 Inoculation modal and M-05 AST Setup modal)\n* Lot validation service (UNLOCKED + not expired + QC pass)\n* Reagent → Tests reverse view (for inventory planning)\n* Seed data: Phase 1A test linkages\n\n## Source documents\n\n* `m-12-test-reagent-linkage-frs-v1.md`\n* Linked memory: `project_reagent_test_catalog_link`\n\n## Sizing\n\n\\~27 story points across 8 sub-stories.\n\n## Consumers\n\n* M-04 Case Workbench Core — Inoculation modal embeds ReagentLotPicker for media lots\n* M-05 AST Entry & Interpretation — AST Setup modal embeds ReagentLotPicker for card / disc lots\n* Future: Reagent Forecasting, Reagent QC, Catalog Subscription\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "co-ship",
+        "cross-cutting",
+        "iso-15189",
+        "microbiology",
+        "mvp-1a",
+        "parallel-pre-track",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27265",
+    "key": "OGC-785",
+    "fields": {
+      "summary": "M-11 Critical-Result Acknowledgment (polymorphic notification rework)",
+      "description": "## Overview\n\nRebuild the critical-result notification mechanism as a polymorphic table that can attach to any clinical entity (Result, Case, Isolate, Sample). The existing `critical_result_notification` table is keyed on Result, which doesn't fit Micro's Sample-level (Gram-stain) or Case-level (per-isolate phenotype) criticals.\n\nMicrobiology is the trigger to finally do this long-deferred OE rework. Per Casey: existing table isn't really used in production today (aspirational), so migration burden is minimal.\n\n## Scope\n\n**Phase 1A+** — polymorphic rebuild. MVP-1A uses the existing aspirational table tactically; the proper rebuild lands in 1A+.\n\n* New `critical_notification` polymorphic schema (target_type: RESULT / CASE / ISOLATE / SAMPLE)\n* Deprecate `critical_result_notification` (rename + freeze writes; compatibility shim for old API)\n* Log Critical Notification modal (invoked from M-04 Case Detail, Result Detail, Sample Detail, AST Edit)\n* Acknowledge Critical Notification modal\n* Alerts Dashboard — Criticals page (the existing aspirational dashboard finally wired)\n* Phase 1B: `critical_threshold_config` (auto-suggest engine for chemistry / heme criticals)\n\n## Source documents\n\n* `m-11-critical-result-acknowledgment-frs-v1.md`\n* Linked memory: `project_critical_result_ack_global_todo`\n\n## Sizing\n\n\\~36 story points across 12 sub-stories.\n\n## Consumers\n\n* M-04 Case Workbench Core — Log Critical button on Case Detail; target=CASE or target=ISOLATE\n* Existing Results module — chemistry / heme panic values write via M-11\n* Phase 1B: M-06 Expert Rules can auto-suggest criticals on confirmed resistance phenotypes\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "alerts-dashboard",
+        "co-ship",
+        "cross-cutting",
+        "microbiology",
+        "phase-1a-plus",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27266",
+    "key": "OGC-786",
+    "fields": {
+      "summary": "M-01 AMR Reference Data (Organism, Antibiotic, AST Panel, Culture Protocol masters)",
+      "description": "## Overview\n\nFour reference-data vocabularies that drive the Micro workflow, all under `Admin → Microbiology Reference Data` (sidenav submenus, not in-page tabs):\n\n* **Organism Master** — every organism the lab can identify, with WHONET codes for surveillance, organism groups for rule application, intrinsic resistances, default AST panel.\n* **Antibiotic Master** — every antibiotic the lab can test, with WHONET codes and class taxonomy.\n* **AST Panels** — which antibiotics get tested against which organism × specimen combinations, with tier ordering for cascade reporting.\n* **Culture Protocols** — recipe per specimen type: media, incubation time, temperature, atmosphere.\n\nPer crosswalk Q6: Organism Master is a greenfield master, but it's referenced by micro Tests via the existing Test Catalog coded-result-vocabulary mechanism (no new write pipeline; reuses existing infrastructure).\n\n## Scope\n\n**MVP-1A** — all four masters needed for workflow.\n\nThree additional vocabulary augmentations of existing OE entities (per crosswalk Q7):\n\n* Specimen Type — add `whonet_code` field to existing Sample Type vocabulary\n* Patient Origin — new small reference table (INP / OUT / ICU / EME / LTC / UNK)\n* Department — add `whonet_code` field to existing dept vocabulary\n\n## Source documents\n\n* `m-01-amr-reference-data-frs-v1.md`\n* Test Catalog v2.5 integration: `default_culture_protocol_id` FK on each micro Test; `valid_organisms` multi-select reference\n\n## Sizing\n\n\\~57 story points across 18 sub-stories.\n\n## Consumers\n\n* M-02 Breakpoint Catalog — FK targets\n* M-04 Case Workbench — Organism on Isolates, Culture Protocol from Test default\n* M-05 AST Entry — AST Panel + Antibiotic Master\n* M-09 WHONET Export — reads WHONET codes from all masters\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "reference-data",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27267",
+    "key": "OGC-787",
+    "fields": {
+      "summary": "M-02 Breakpoint Catalog (CLSI + EUCAST, versioned, snapshot-at-write)",
+      "description": "## Overview\n\nVersioned reference catalog of breakpoint tables — CLSI M100 (annually updated) and EUCAST clinical breakpoints (versioned). Drives AST interpretation (MIC or zone → S/I/R) in M-05 and is version-aware: AST Runs snapshot the breakpoint version at result time so subsequent publisher updates don't retroactively change historical interpretations.\n\n## Scope\n\n**MVP-1A** — basic version + manual CSV import + at least one CLSI + one EUCAST loaded.\n\n* `breakpoint_standard` table with status (Active / Loaded / Archived)\n* `breakpoint` table with organism/group/antibiotic/method/specimen-filter precedence\n* Standards list view + drilldown to per-breakpoint rows with search and filter\n* `BreakpointLookupService` with precedence: specimen-specific organism > organism > group > none\n* Standard activation workflow (lab manager flips active per publisher with effective date + audit)\n* CSV import path with per-row validation\n* Locally customized row protection (flag + exclude from Hub overrides)\n\n## Source documents\n\n* `m-02-breakpoint-catalog-frs-v1.md`\n* Crosswalk Q4 versioning rules\n\n## Sizing\n\n\\~37 story points across 11 sub-stories.\n\n## Consumers\n\n* M-05 AST Entry — primary consumer via `BreakpointLookupService`\n* M-04 Case Workbench — AST Run header records `breakpoint_standard_id` + `breakpoint_version`\n* M-09 WHONET Export — writes breakpoint standard code into each exported AST result\n* M-10 Hub Subscription (Phase 1B) — provides automated standard imports\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "reference-data",
+        "supersedes-ogc-293",
+        "versioned"
+      ]
+    }
+  },
+  {
+    "id": "27268",
+    "key": "OGC-788",
+    "fields": {
+      "summary": "M-08 Macro Library (cross-cutting typing shortcuts; .code → expanded text)",
+      "description": "## Outcome\n\nLaboratory staff can insert approved, reusable phrases into narrative fields quickly and consistently. An authorized administrator maintains the shared phrase library. The inserted phrase remains ordinary editable text in the laboratory record.\n\nMicrobiology is the first consumer, but the user capability is cross-cutting and may later be used in other laboratory disciplines.\n\n## M1 - Managed phrase workflow\n\n### Laboratory user\n\n* Typing a dot-prefixed shortcut or choosing a matching suggestion shows only active phrases applicable to the current field.\n* Keyboard and pointer selection replace only the shortcut and preserve surrounding text.\n* The expanded phrase remains editable and is what the existing workflow saves.\n* Unknown, incomplete, inactive, or out-of-context shortcuts remain unchanged.\n* Suggestions are understandable to screen-reader users, keyboard complete, and usable at desktop and mobile widths.\n* Initial supported fields are culture activity notes, microbiology clinical history, and antibiotic exposure.\n\n### Laboratory administrator\n\n* Authorized users can create, find, update, activate, and deactivate shared phrases.\n* Phrase codes are unique, dot-prefixed, and paired with non-empty phrase text and at least one supported field context.\n* Search, filter, sort, pagination, and active editing state can be restored from a bookmarked URL.\n* Changes are attributable to the authenticated administrator and are available to a subsequently loaded supported form.\n* Deactivation prevents new use without altering text already saved in laboratory records.\n* Non-administrators can use eligible phrases but cannot change the library.\n\n## M2 - Reviewed package and broader administration\n\n* OpenELIS-provided phrases must have an exact source, version, content set, and named clinical approval before release.\n* Adopting or restoring a reviewed package must preserve local phrases and report collisions instead of silently overwriting them.\n* Administrators can export the effective library and use explicit bulk actions.\n* Additional narrative fields can adopt the same user interaction after their workflow intent is approved.\n\n## Acceptance guardrails\n\n* Draft mockups and tickets describe workflow intent, not binding routes, tables, services, caches, component names, permission constants, or other technical design.\n* No clinical phrase is shipped solely because it appears in a draft mock.\n* Implementation details, repository state, migrations, API decisions, fixtures, and test strategy belong in the linked engineering spec and pull requests.\n\n## References\n\n* Product and engineering spec: https://github.com/DIGI-UW/OpenELIS-Global-2/tree/spec/788-ogc-788-macro-library/specs/788-ogc-788-macro-library\n* Spec PR: https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3986\n* M1 implementation PR: https://github.com/DIGI-UW/OpenELIS-Global-2/pull/3990\n* M-08 workflow intent: https://digi-uw.github.io/openelis-work/#/microbiology/m-08-macro-library\n* Microbiology workflow walkthrough: https://uwdigi.atlassian.net/wiki/spaces/oeg/pages/1315209256\n\n",
+      "status": {
+        "name": "In Progress",
+        "statusCategory": {
+          "name": "In Progress"
+        }
+      },
+      "assignee": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "cross-cutting",
+        "macros",
+        "microbiology",
+        "phase-1a-plus",
+        "png-S4",
+        "png-deliverable",
+        "supersedes-ogc-293",
+        "ux-amplifier"
+      ]
+    }
+  },
+  {
+    "id": "27269",
+    "key": "OGC-789",
+    "fields": {
+      "summary": "M-03 Order Entry — Microbiology Program Hook (Step 1 amendment)",
+      "description": "## Overview\n\nSmall amendment to the existing OE Order Entry wizard: when the user selects \"Microbiology\" as the program in Step 1, six micro-specific fields appear within that same step's surface area. No new wizard step. This amendment lives in OE because it modifies the OE workflow; Micro is the consumer.\n\n## Scope\n\n**MVP-1A** — needed to create Cases.\n\nSix conditional fields shown when Program = MICROBIOLOGY:\n\n* Culture Protocol (ComboBox, defaulted from selected test's `default_culture_protocol_id`)\n* Patient Origin (Inpatient / Outpatient / ICU / Emergency / Long-term Care)\n* Number of Sets (default 1; helper text contextual to specimen type)\n* Clinical History (MacroTextarea, `clinical` category — Phase 1A+ macro support)\n* Antibiotic Exposure checkbox\n* Critical Value Notify checkbox (default true for blood / CSF; false for non-sterile)\n\n**Priority is NOT in Step 1** — lives on Step 3 (Add Order) like all other programs. Per critique correction.\n\nSample post-save hook triggers `MicroCaseService.createCaseForSample(sample_id)` from M-04.\n\n## Source documents\n\n* `m-03-order-entry-micro-hook-frs-v1.md`\n* Mockup: `m-03-order-entry-step1-preview-v1.html`\n\n## Sizing\n\n\\~19 story points across 8 sub-stories.\n\n## Verification dependencies\n\n* Confirm exact location to persist micro-specific Order fields: on `sample` table vs. `micro_order_data` sibling table (per crosswalk Q1 sibling pattern)\n* Confirm OE Sample-save hook mechanism\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "order-entry",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27270",
+    "key": "OGC-790",
+    "fields": {
+      "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)",
+      "description": "## Overview\n\nThe heart of the Micro Module. The Case entity, its state machine, the Case Detail page, Timeline tracking, Isolate management, preliminary and final report release, amendment workflow, and the new analyzer event channel that drives state transitions.\n\nLargest module in the bundle (XL). Recommend internal milestones M-04a (Case + Timeline core), M-04b (Isolates + Prelim release), M-04c (Reports + Amendment) for parallelizable delivery.\n\n## Scope\n\n**MVP-1A + Phase 1A+ split** — per per-story cycle tagging in `amr-micro-jira-stories-v1.md`:\n\nMVP-1A scope:\n\n* `micro_case` schema + state machine enum (full enum including terminal stages: REJECTED, CANCELLED_PRE/POST_INOCULATION, LOST_SPECIMEN, etc.)\n* MicroCaseService createCaseForSample post-save hook\n* Case Detail page layout shell (SideNav + main scroll + footer action bar)\n* Case Info section\n* Inoculation modal + service (includes ReagentLotPicker from M-12)\n* Timeline section + display + Add Event modal\n* Isolate schema (single-version, no reidentification versioning)\n* Isolates section + display + Add/Edit modal (plain TextArea — macros come in 1A+)\n* AST Results section (consumes M-05 data)\n* Reports section, Release Preliminary modal (gated on Gram stain, not on final ID), Release Final modal\n* Jasper templates: micro_preliminary_report.jrxml, micro_final_report.jrxml (single-version)\n* State machine transitions with audit\n* Cancellation cascade from Order Entry\n* Late slow grower revival workflow\n* Critical Notification modal (uses existing aspirational table; CASE/ISOLATE targets via M-11 in 1A+)\n\nPhase 1A+ scope:\n\n* Amendment workflow + multi-version reports\n* Reidentification versioning (Isolate v2+ with previous_version FK)\n* Analyzer event channel — schema + handlers (POSITIVE_SIGNAL, NEGATIVE_AT_DAY_N, AST_RESULT_AVAILABLE, ID_RESULT_AVAILABLE)\n* Stuck analyzer events admin page\n\n## Source documents\n\n* `m-04-case-workbench-core-frs-v1.md`\n* Mockups: `m-04-case-detail-preview-v1.html`, `m-04-isolate-modal-preview-v1.html`\n\n## Sizing\n\n\\~145 story points across 35+ sub-stories. Per-story cycle tagging in the Jira stories doc.\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "mvp-1a",
+        "phase-1a-plus",
+        "png-S2",
+        "supersedes-ogc-293",
+        "xl"
+      ]
+    }
+  },
+  {
+    "id": "27271",
+    "key": "OGC-791",
+    "fields": {
+      "summary": "M-05 AST Entry & Interpretation (manual + analyzer-ingested, with override mechanism)",
+      "description": "## Overview\n\nThe AST setup and result-entry modals invoked from Case Detail (M-04), the `BreakpointLookupService` that converts raw MIC / zone values to S/I/R, the manual override mechanism with audit, and analyzer-ingested AST results. Expert Rules (which can also drive overrides) live in M-06 and are out of Phase 1A scope.\n\nThree coexisting modes:\n\n1. **Manual entry** — tech reads disk diffusion zones or broth dilution MICs and types them in\n2. **Analyzer-ingested** — VITEK 2 / Phoenix push AST results via the analyzer event channel (M-04 §10)\n3. **Hybrid** — automated AST result lands; tech reviews, possibly overrides one or more values manually\n\n## Scope\n\n**MVP-1A** — manual entry only. **Phase 1A+** — analyzer ingestion.\n\nMVP-1A scope:\n\n* `micro_ast_run` schema + service\n* AST Setup modal (per crosswalk Q2 data model — header + per-antibiotic rows in existing `result` via multi-reading mechanism)\n* AST Setup validation + version snapshotting (panel_version, breakpoint_version)\n* Multi-reading extension on result (verify or build per crosswalk Q2)\n* BreakpointLookupService call in AST Edit\n* AST Edit modal with 16-antibiotic table, inline overrides\n* Override mechanism — `micro_ast_override` table + write path (preserve original)\n* Override UI (inline rows per `feedback_result_entry_panel_inline_rows`)\n* Apply Defaults action (re-interpret all rows)\n* Clear All action\n* QC failure handling (manual)\n* AST Audit overlay\n\nPhase 1A+ scope:\n\n* Import from Analyzer action\n* Analyzer-pushed QC fail\n* Analyzer profile for VITEK 2 (depends on M-04 analyzer event channel)\n\n## Source documents\n\n* `m-05-ast-entry-and-interpretation-frs-v1.md`\n* Mockup: `m-05-ast-edit-modal-preview-v1.html`\n\n## Sizing\n\n\\~54 story points across 15 sub-stories.\n\n## Verification dependencies\n\n* `result` schema multi-reading mechanism (per crosswalk Q2)\n* Override audit pattern (in-row reading version vs separate audit table)\n* Analyzer profile pattern for card ID regex (per crosswalk Q3)\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "ast",
+        "microbiology",
+        "mvp-1a",
+        "phase-1a-plus",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27272",
+    "key": "OGC-792",
+    "fields": {
+      "summary": "M-07 Microbiology Worklists (Pending Cultures, AST Worklist, Dashboard, Case Search)",
+      "description": "## Overview\n\nThree list-view surfaces in the Micro Module: Pending Cultures Worklist, AST Worklist, and Microbiology Dashboard. All three are read-mostly views over data owned by M-04. Per memory `feedback_openelis_sidenav_submenus`, these are sidenav submenu items under Microbiology — not in-page tabs.\n\n## Scope\n\n**MVP-1A + Phase 1A+ split** — Pending Cultures only in MVP; AST Worklist + Dashboard in 1A+.\n\nMVP-1A scope (Pending Cultures only):\n\n* Pending Cultures route + shell\n* Summary cards (Total Pending, Incubating, Positive, Growth Detected, Ready to Finalize)\n* DataTable + columns (Lab No / Patient, Specimen, Protocol, Stage badge with \"Day N of M\" detail, Bottles/Media, Last Read, Due Action, Priority, Tech)\n* Stage detail computation\n* Row highlighting (red for POSITIVE, green for ready, STAT priority border)\n* Filters: search, stage, specimen, tech, my-cases\n* Auto-refresh polling (30s default per NFR-02)\n* Case Search (simple search)\n\nPhase 1A+ scope:\n\n* AST Worklist route + shell, summary cards, DataTable, filters, quick actions (Import from Analyzer, Print List, Export WHONET stub, QC Dashboard)\n* Microbiology Dashboard (manager view: summary cards, Recent Activity, Today's Resistance Hits)\n* Print List PDF generation\n\n## Source documents\n\n* `m-07-worklists-frs-v1.md`\n* Mockups: `m-07-pending-cultures-preview-v1.html`, `m-07-ast-worklist-preview-v1.html`\n\n## Sizing\n\n\\~62 story points across 22 sub-stories. Per-story cycle tagging in the Jira stories doc.\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "phase-1a-plus",
+        "supersedes-ogc-293",
+        "worklists"
+      ]
+    }
+  },
+  {
+    "id": "27273",
+    "key": "OGC-793",
+    "fields": {
+      "summary": "M-06 Expert Rules Engine (MRSA, D-test, ESBL, cascade, intrinsic verification)",
+      "description": "## Overview\n\nConfigurable rules engine that runs against AST Run state changes and produces flags and overrides. Phase 1B feature; Phase 1A ships with manual expert review (tech and supervisor apply rules manually via overrides in M-05).\n\nFive rule types:\n\n* **Resistance phenotype inference** — e.g., S. aureus oxacillin-R → MRSA → all beta-lactams forced to R (patient-safety; auto-apply)\n* **D-test required** — S. aureus erythromycin-R + clindamycin-S → flag for D-test\n* **ESBL screen / confirmation** — Enterobacterales with 3GC resistance → flag → tech runs phenotypic confirmation → over-ride\n* **Cascade reporting** — urine E. coli first-line all-R → unlock second-tier panel for reporting\n* **Intrinsic resistance verification** — flag AST results contradicting an organism's known intrinsic resistance\n\n## Scope\n\n**Phase 1B** — full engine + 5 built-in rules. MVP-1A and 1A+ use manual overrides via M-05.\n\n* `expert_rule_definition` + `expert_rule_definition_version` + `expert_rule_flag` schema\n* JSON-driven rule evaluator\n* 5 built-in rules with sensible defaults\n* Expert Review section in M-04 Case Detail\n* Expert Review Decision modal with decision options + macro-enabled justification\n* Phenotype flags on Isolate (`micro_isolate_phenotype` table; surfaced in WHONET export columns)\n* Re-evaluation rules per crosswalk Q4 Rule 2 (snapshot rule version; no auto re-run on reidentification)\n* Rule admin page (list + version history)\n* Custom rule editor (basic JSON paste-in; full UI Phase 2)\n\n## Source documents\n\n* `m-06-expert-rules-engine-frs-v1.md`\n\n## Sizing\n\n\\~70 story points across 17 sub-stories.\n\n## Consumers\n\n* M-09 WHONET Export — populates phenotype flag columns from M-06 outputs\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "expert-rules",
+        "microbiology",
+        "phase-1b",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27274",
+    "key": "OGC-794",
+    "fields": {
+      "summary": "M-09 WHONET Export (surveillance export to national reference lab)",
+      "description": "## Overview\n\nGenerate WHONET-format CSV/TXT files from finalized Cases for submission to the country's national reference lab (which aggregates from multiple labs and produces the country's GLASS submission). Plus the admin surface for code mapping (organism, antibiotic, specimen, origin, patient type, phenotype) to WHONET codes.\n\n**GLASS direct submission is out of scope** — OpenELIS is single-tenant per deployment (`project_no_multitenancy`); aggregation across labs happens centrally outside OE.\n\n## Scope\n\n**Phase 1B** — surveillance is not in MVP.\n\n* `whonet_export_run` audit schema\n* WHONET Mapping admin — 8 sidenav sub-pages (Organisms, Antibiotics, Specimens, Origins, Patient Types, Departments, Breakpoint Standards, Phenotypes)\n* Export Generator UI — date range, filters (specimen / organism / origin / significance), dedup parameters (6 configurable, default WHO GLASS-aligned), output format (WHONET CSV / TXT)\n* Dedup algorithm — first-isolate per patient per organism per 7 days (configurable window, basis, scope, significance handling)\n* Validation pass (errors block; warnings advisory; inline \"Map now\" for unmapped codes)\n* WHONET file generation with full column set (demographic, specimen, organism, AST results per multi-method suffix, phenotype flags from M-06, comment/metadata)\n* Lab profile (.wri or current format) packaging for first-time bootstrap to national reference lab\n* File naming template: `{COUNTRY}_{LAB}_{YYYY-MM-DD}_to_{YYYY-MM-DD}.csv`\n* Preview UI (sample rows + summary)\n* Export history page with re-download\n* AST Worklist quick action (\"Export to WHONET\")\n* Single Case export from Case Detail\n* Phenotype flag column writer (reads from M-06 phenotype tags)\n* Scheduled export (Phase 2): cron + SFTP / email delivery\n\n## Source documents\n\n* `m-09-whonet-export-frs-v1.md`\n* Substantial design review: `whonet-export-design-review-v1.md` (column set, dedup parameters, validation, file format, audit)\n* Mockup: `m-09-whonet-export-preview-v1.html`\n\n## Sizing\n\n\\~64 story points across 17 sub-stories.\n\n## Verification dependencies\n\n* Current WHONET column set + method suffix conventions\n* CLSI M39 / WHO M-AMR-9 first-isolate algorithm specifics\n* WHONET lab profile file format (current version)\n* Per-deployment national reference lab intake protocols\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-1b",
+        "supersedes-ogc-293",
+        "surveillance",
+        "whonet"
+      ]
+    }
+  },
+  {
+    "id": "27275",
+    "key": "OGC-795",
+    "fields": {
+      "summary": "M-10 Hub Subscription — RETIRED (folded into Catalog Subscription)",
+      "description": "## Overview\n\nUnifies what was previously split between AMR Configuration §9 (Hub for organism/antibiotic/AST Panel updates) and WHONET Integration §2.3 (Import Hub for WHONET codes). One admin page, one mechanism, four data domains.\n\nThe Hub is a central repository (managed externally by an OE community / consortium) that supplies updates to reference data: breakpoint tables, organism master entries, antibiotic master entries, and WHONET code mappings. OE pulls; never pushes.\n\n## Scope\n\n**Phase 1B** — depends on M-01, M-02, M-09 having something to update.\n\n* `hub_subscription_config` (singleton) + `hub_import_run` + `hub_import_record` audit schemas\n* Hub Subscription config page (URL, encrypted API key, subscribed domains, auto-check frequency)\n* Test Connection action\n* Auto-check scheduler (Daily / Weekly / Monthly)\n* Available Updates page (per-domain summary)\n* Preview Changes side panel (diff: Added / Updated / Locally Customized)\n* Import action per domain (Merge / Replace seeded / Replace all)\n* Locally customized row protection (skip rows with `locally_customized = true`)\n* Import History page\n\n## Source documents\n\n* `m-10-hub-subscription-frs-v1.md`\n\n## Sizing\n\n\\~32 story points across 12 sub-stories.\n\n## Consumers\n\n* M-01 AMR Reference Data — organism / antibiotic / AST Panel updates\n* M-02 Breakpoint Catalog — breakpoint standard updates (new versions land as Loaded, not Active; lab manager activates explicitly per M-02 §8)\n* M-09 WHONET Export — WHONET code mapping updates\n\n## Verification dependencies\n\n* Hub URL endpoint format and API contract (managed externally — verify with Hub maintainer team)\n* Encrypted API key storage path in OE\n\n## Supersedes\n\nOGC-293 (in part) — closed as superseded. This is one of 14 epics in the M-\\* bundle.",
+      "status": {
+        "name": "Done",
+        "statusCategory": {
+          "name": "Done"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "hub-subscription",
+        "microbiology",
+        "phase-1b",
+        "reference-data",
+        "retired",
+        "supersedes-ogc-293"
+      ]
+    }
+  },
+  {
+    "id": "27612",
+    "key": "OGC-820",
+    "fields": {
+      "summary": "M-04: Case foundation — micro_case schema (SampleItem×workflow) + stage machine + createCaseForSample + workbench shell + Case Info + Timeline + Change-workflow/UNASSIGNED (v1)",
+      "description": "**Epic:** OGC-790 · **Route:** /microbiology/case/:caseId · **Points:** 8 · **Cycle:** MVP-1A\n\nCreate the `micro_case` table, the full stage enum (RECEIVED, INCUBATING, POSITIVE_SIGNAL, GROWTH_DETECTED, ORGANISM_ID, AST_IN_PROGRESS, READY_REVIEW, PRELIM_REPORTED, FINAL_REPORTED, AMENDED + terminal stages REJECTED, CANCELLED_PRE/POST_INOCULATION, CANCELLED_POST_POSITIVE, LOST_SPECIMEN(\\_POSITIVE), NO_GROWTH_FINAL), and the `micro_case_stage_transition` audit table. Envers @Audited on micro_case.\n\n**Keying (updated — see M-04 §2A / §9):** the Case is keyed to `sample_item_id` + `workflow_type` (one workflow's workup of one physical specimen), **not** 1:1 to the Sample. `UNIQUE (sample_item_id, workflow_type)`. This lets one physical specimen (one `SampleItem`) hold both a Bacteriology and a TB Case that share the `sample_item_id` — no double accessioning. `workflow_type` enum: BACTERIOLOGY / MYCOBACTERIOLOGY_TB; **NULL = needs classification** (manual-fallback case, resolved via the Change-workflow action, OGC-926). Note: `workflow_type` is _not_ a stage value — it's a column; `UNASSIGNED` = `workflow_type IS NULL`.\n\n**Acceptance criteria**\n\n* micro_case persists all fields in FRS §3 (incl. `sample_item_id`, `workflow_type`).\n* **UNIQUE (sample_item_id, workflow_type)** enforced; two micro_cases may share a `sample_item_id` when their `workflow_type` differs (bacterial + TB on one specimen).\n* `workflow_type` is nullable (NULL = needs classification); no UNASSIGNED stage-enum value is added.\n* Every stage transition writes an immutable micro_case_stage_transition row (from/to/trigger/actor); writes atomic with their triggering action.\n* Envers @Audited on micro_case.\n\nRef: m-04-case-workbench-core.md §2–3, §2A, §9; m-00 data model (micro_case).",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "mvp-1a",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-790",
+        "fields": {
+          "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27617",
+    "key": "OGC-825",
+    "fields": {
+      "summary": "M-04: Case work-up — inoculation actions + isolate schema/section + two-pass organism ID + next-step guidance (v2)",
+      "description": "**Epic:** OGC-790 · **Points:** 8 · **Cycle:** MVP-1A\n\nBuild the Inoculation section as the **system of record** for media, with its own toolbar: **+ Start inoculation** and **+ Add subculture** (subculture requires a parent media). Add `micro_case_inoculation.source_inoculation_id` (nullable self-FK) to distinguish primary media from subcultures; show a Source column. Each save writes the inoculation row + an auto Timeline event. Reagent lots via the M-12 ReagentLotPicker (blocks on expired/locked lots).\n\n**Acceptance criteria**\n\n* \n\n    * Start inoculation and + Add subculture both present on the section (not the Timeline).\n    \n* Subculture records its parent (source_inoculation_id) and shows \"subculture ← <parent>\".\n* Saving writes the row + an AUTO Timeline entry; no manual inoculation entry exists in the Timeline.\n* Reagent lot selection validates against qc_lot (M-12).\n\nRef: amr-micro-frs-edits.md A2; m-04 §12.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "mvp-1a",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-790",
+        "fields": {
+          "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27621",
+    "key": "OGC-829",
+    "fields": {
+      "summary": "M-04: Results & release — AST section + preliminary release + final release + critical trigger (v3)",
+      "description": "**Epic:** OGC-790 · **Points:** 5 · **Cycle:** MVP-1A\n\nRender the AST Results section per isolate (consumes M-05 data): inline result rows, overridden rows shaded and **expandable to show original→override with a revert link**, matched-breakpoint level shown, \"no breakpoint\" rows guided. Read/summary here; entry + interpretation live in M-05.\n\n**Acceptance criteria**\n\n* Per-isolate AST run tables render with S/I/R + source.\n* Overridden rows expand inline to show original value + reason; revert action present (M-05).\n* Matched breakpoint precedence shown; AST x/y complete count in header.\n\nRef: m-04 §6; amr-micro-frs-edits.md B1–B3, C9.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "mvp-1a",
+        "v3"
+      ],
+      "parent": {
+        "key": "OGC-790",
+        "fields": {
+          "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27625",
+    "key": "OGC-833",
+    "fields": {
+      "summary": "M-04: Lifecycle edge cases — cancellation cascade + slow-grower revival + no-growth/lost + permission enforcement (v4)",
+      "description": "**Epic:** OGC-790 · **Points:** 3 · **Cycle:** MVP-1A\n\nListen for Order cancellation and transition the Case to the correct terminal stage based on its current progress (CANCELLED_PRE_INOCULATION / CANCELLED_POST_INOCULATION / CANCELLED_POST_POSITIVE), capturing the OE cancellation reason.\n\n**Acceptance criteria**\n\n* Cancellation maps to the right terminal stage by current stage.\n* Reason text captured; stage transition audited.\n\nRef: m-04 §3.4.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "mvp-1a",
+        "v4"
+      ],
+      "parent": {
+        "key": "OGC-790",
+        "fields": {
+          "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27629",
+    "key": "OGC-837",
+    "fields": {
+      "summary": "M-04: Corrections — amendment + reidentification (v5)",
+      "description": "**Epic:** OGC-790 · **Points:** 8 · **Cycle:** Phase 1A+\n\nAmend a FINAL_REPORTED case: reason-coded amendment temporarily unlocks editing, then Release Amended Final increments final_version, generates a new PDF marked AMENDED, supersedes (but preserves) the prior version, settles back to FINAL_REPORTED.\n\n**Acceptance criteria**\n\n* Amendment preserves originals; version increments; reason captured.\n* Old versions remain accessible and marked superseded.\n\nRef: m-04 §7.4.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "phase-1a-plus",
+        "v5"
+      ],
+      "parent": {
+        "key": "OGC-790",
+        "fields": {
+          "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27631",
+    "key": "OGC-839",
+    "fields": {
+      "summary": "M-04: Analyzer event channel + stuck-events admin (v6)",
+      "description": "**Epic:** OGC-790 · **Points:** 8 · **Cycle:** Phase 1A+\n\nNew analyzer_event channel (schema + dispatch) and Micro Case handlers for POSITIVE_SIGNAL, NEGATIVE_AT_DAY_N, AST_RESULT_AVAILABLE, ID_RESULT_AVAILABLE — driving stage transitions and filling isolate ID / AST results. Failed lookups land as FAILED for reconciliation.\n\n**Acceptance criteria**\n\n* Each event type routed to the correct Case/Isolate/AST run by source id.\n* POSITIVE_SIGNAL transitions INCUBATING→POSITIVE_SIGNAL; ID_RESULT fills organism.\n* Unmatched events stored FAILED.\n\nRef: m-04 §10.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "phase-1a-plus",
+        "v5"
+      ],
+      "parent": {
+        "key": "OGC-790",
+        "fields": {
+          "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27633",
+    "key": "OGC-841",
+    "fields": {
+      "summary": "Reconcile Microbiology Case trigger with Test Catalog (Culture-workflow attribute, Method reuse, reflex linkage)",
+      "description": "**Cross-cutting reconciliation** raised in the AMR/Microbiology UX + data-model review. Touches Test Catalog (OGC-748) and the micro epics (OGC-782/786/789/790/793).\n\n**Decisions to ratify and propagate into the specs:**\n\n1. **Case trigger.** Today a Case is created only when an OE clerk picks Program = Microbiology. The Test Catalog has a `domain` (CLINICAL/ENVIRONMENTAL/VECTOR — too coarse) and an **AMR Test Flag** (WHONET surveillance — different concern), but **no \"drives the culture workflow\" designation**. Add a first-class **\"Culture workflow\"** test attribute that auto-routes the order into the Case workflow (separate from the AMR flag; a test may be one, both, or neither).\n2. **Culture protocol → Method (reuse).** Drop the proposed `culture_protocol` master; model it as the existing **Method** entity (+ `incubation_hours / temp / atmosphere / subculture_at_hours`), with the test's default protocol = its default Method (`test_method.is_default`). Media via `method_reagent` (M-12), SOP via `method_document`, incubator via `method_instrument`.\n3. **Reflex linkage (reuse).** Drive positive→identify→AST→confirmation via the existing **reflex/test-rules** engine (Rule → OrderAction); analyzer outputs (time-to-positivity, morphology) as Test Catalog analyzer parameters. The Case Workbench owns workup state; reflexes own what-to-order-next. M-06 confirmations fire through the reflex action API.\n4. Add `valid_organisms` to the Test Catalog (referenced by M-01/M-03 but undefined there).\n\n**Acceptance:** specs M-00/M-01/M-03/M-04/M-06 + Test Catalog updated to reflect 1–4; no new `culture_protocol` master ships.\n\nRef: amr-micro-ux-review.md §1.5; amr-micro-frs-edits.md A-TC, A-MIX, A-REUSE.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10005",
+        "name": "Task"
+      },
+      "labels": [
+        "PNG",
+        "data-model",
+        "domain",
+        "microbiology",
+        "reconciliation",
+        "test-catalog"
+      ]
+    }
+  },
+  {
+    "id": "27634",
+    "key": "OGC-842",
+    "fields": {
+      "summary": "M-03: Micro fields tile + workflow_type resolver + persist/case wiring + defaults/validation/discard (v1)",
+      "description": "**Epic:** OGC-789 · **Points:** 5 · **Cycle:** MVP-1A\n\nWhen Program = Microbiology, expand an inline tile in Step 1 capturing Culture Protocol (required), Patient Origin, Number of Sets, Clinical History (macro `clinical`), Antibiotic Exposure, Critical-Value Notify. Info banner: \"This will create a Microbiology Case.\"\n\n**AC:** tile shows only for Microbiology; fields render per FRS §2.3; keyboard-reachable.  \nRef: m-03 §2.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "order-entry",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-789",
+        "fields": {
+          "summary": "M-03 Order Entry — Microbiology Program Hook (Step 1 amendment)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27637",
+    "key": "OGC-845",
+    "fields": {
+      "summary": "M-05: AST run schema + setup + BreakpointLookup interpretation (v1)",
+      "description": "**Epic:** OGC-791 · **Points:** 8 · **Cycle:** MVP-1A\n\nmicro_ast_run + pre-populated result rows; AST Setup modal (panel from M-01, method, breakpoint-standard snapshot from M-02, reagent card/disc lot via M-12). Writes the run + Timeline AST_SETUP; transitions Case to AST_IN_PROGRESS.\n\n**AC:** run records breakpoint_standard_id+version (snapshot); reagent lot validated; status PENDING_SETUP.  \nRef: m-05 §4; m-04 §6.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "ast",
+        "microbiology",
+        "mvp-1a",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-791",
+        "fields": {
+          "summary": "M-05 AST Entry & Interpretation (manual + analyzer-ingested, with override mechanism)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27639",
+    "key": "OGC-847",
+    "fields": {
+      "summary": "M-05: AST edit/override/revert + QC-fail handling (v2)",
+      "description": "**Epic:** OGC-791 · **Points:** 5 · **Cycle:** Phase 1A+\n\nManual MIC/zone entry; inline override row with justification (macro `ast`); **revert-to-original action** on the override row; **inline reading-history expansion** (original→override) without leaving for the audit overlay. Original readings immutable.\n\n**AC:** override writes micro_ast_override; revert + inline history present; audit preserved.  \nRef: m-05 §4.3, §5; amr-micro-frs-edits.md B1, B2.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "ast",
+        "microbiology",
+        "phase-1a-plus",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-791",
+        "fields": {
+          "summary": "M-05 AST Entry & Interpretation (manual + analyzer-ingested, with override mechanism)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27640",
+    "key": "OGC-848",
+    "fields": {
+      "summary": "M-05: AST analyzer ingest (v3)",
+      "description": "**Epic:** OGC-791 · **Points:** 5 · **Cycle:** Phase 1A+\n\nConsume AST_RESULT_AVAILABLE (via M-04 event channel) to pre-fill rows (source=ANALYZER); per-row override still allowed. Toolbar: Import from Analyzer, Apply Defaults (re-run lookup against current standard), Clear All (confirm).\n\n**AC:** analyzer rows fill correctly; the three toolbar actions behave per FRS §4.6–4.8.  \nRef: m-05 §4.6–4.8.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "ast",
+        "microbiology",
+        "phase-1a-plus",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-791",
+        "fields": {
+          "summary": "M-05 AST Entry & Interpretation (manual + analyzer-ingested, with override mechanism)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27642",
+    "key": "OGC-850",
+    "fields": {
+      "summary": "M-07: Pending Cultures + AST worklist + empty/refresh/1B-gating (v1)",
+      "description": "**Epic:** OGC-792 · **Points:** 8 · **Cycle:** MVP-1A\n\nPending Cultures worklist: summary cards (clickable filters), search/filter (lab#, patient, stage, specimen, tech, My Cases), table with positive-highlight + STAT border, computed **Due-action** column (defined stage→text mapping), row→Case Detail, overflow actions (Open/Mark Positive/Mark No Growth/Mark Lost). Auto-refresh 30s.\n\n**AC:** filters + cards work; due-action deterministic; row nav + overflow actions per FRS §2.  \nRef: m-07 §2; amr-micro-frs-edits.md D1, D2.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "v1",
+        "worklists"
+      ],
+      "parent": {
+        "key": "OGC-792",
+        "fields": {
+          "summary": "M-07 Microbiology Worklists (Pending Cultures, AST Worklist, Dashboard, Case Search)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27644",
+    "key": "OGC-852",
+    "fields": {
+      "summary": "M-07: Micro dashboard (v2)",
+      "description": "**Epic:** OGC-792 · **Points:** 5 · **Cycle:** Phase 1A+\n\nManager dashboard: summary cards (in progress, awaiting review, positives today, complete this week), recent activity (last 25 events), today's resistance hits (ESBL/MRSA/CRE/VRE/MDR — manual overrides in 1A, Expert Rules in 1B).\n\n**AC:** cards + recent activity render; resistance hits source documented per phase.  \nRef: m-07 §4.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-1a-plus",
+        "v2",
+        "worklists"
+      ],
+      "parent": {
+        "key": "OGC-792",
+        "fields": {
+          "summary": "M-07 Microbiology Worklists (Pending Cultures, AST Worklist, Dashboard, Case Search)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27646",
+    "key": "OGC-854",
+    "fields": {
+      "summary": "M-01: Organism Master admin (v1)",
+      "description": "**Epic:** OGC-786 · **Points:** 8 · **Cycle:** MVP-1A\n\nOrganism Master CRUD: WHONET code, organism group, intrinsic resistances, default AST panel, initial significance. List view with search/filter + Default-panel column; soft-deactivate with impact warning.\n\n**AC:** CRUD + soft delete; default panel visible in list; helper text ties fields to downstream use.  \nRef: m-01 §2; amr-micro-frs-edits.md R01.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "reference-data",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-786",
+        "fields": {
+          "summary": "M-01 AMR Reference Data (Organism, Antibiotic, AST Panel, Culture Protocol masters)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27647",
+    "key": "OGC-855",
+    "fields": {
+      "summary": "M-01: Antibiotic Master admin (v2)",
+      "description": "**Epic:** OGC-786 · **Points:** 5 · **Cycle:** MVP-1A\n\nAntibiotic Master CRUD: class taxonomy, WHONET code, route (with helper explaining clinical relevance). List + search/filter; soft-deactivate with impact warning.\n\n**AC:** CRUD; WHONET code + class + route captured; helper text present.  \nRef: m-01 §3.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "reference-data",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-786",
+        "fields": {
+          "summary": "M-01 AMR Reference Data (Organism, Antibiotic, AST Panel, Culture Protocol masters)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27648",
+    "key": "OGC-856",
+    "fields": {
+      "summary": "M-01: AST Panels + versioning (v3)",
+      "description": "**Epic:** OGC-786 · **Points:** 5 · **Cycle:** Phase 1A+\n\nAST Panel editor: inline antibiotic table with tier (1/2/3) and report default (ALWAYS/CASCADE/SUPPRESS_UNLESS_R); panel version increments on change with a confirmation toast; info icon explaining tiers/cascade.\n\n**AC:** panel build + tier/cascade; version increments visibly; historical runs unaffected.  \nRef: m-01 §4; amr-micro-frs-edits.md R02, R03.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-1a-plus",
+        "reference-data",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-786",
+        "fields": {
+          "summary": "M-01 AMR Reference Data (Organism, Antibiotic, AST Panel, Culture Protocol masters)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27649",
+    "key": "OGC-857",
+    "fields": {
+      "summary": "M-01: Culture-protocol-via-Method + vocabulary augmentations + legibility (v4)",
+      "description": "**Epic:** OGC-786 · **Points:** 5 · **Cycle:** Phase 1A+\n\nPer the reconciliation (OGC-841), model culture protocol on the existing **Method** entity: add incubation_hours/temp/atmosphere/subculture_at_hours; default protocol = test's default Method (test_method.is_default); media via method_reagent; SOP via method_document. **No new culture_protocol master.**\n\n**AC:** Method extension persists culture params; order-time default resolves from default Method.  \nRef: amr-micro-frs-edits.md A-REUSE-1; OGC-841.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "data-model",
+        "microbiology",
+        "phase-1a-plus",
+        "reference-data",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-786",
+        "fields": {
+          "summary": "M-01 AMR Reference Data (Organism, Antibiotic, AST Panel, Culture Protocol masters)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27652",
+    "key": "OGC-860",
+    "fields": {
+      "summary": "M-02: Breakpoint entity + LookupService + catalog view (v1)",
+      "description": "**Epic:** OGC-787 · **Points:** 8 · **Cycle:** MVP-1A\n\nbreakpoint_standard (publisher/version/status) + breakpoint rows (FK organism_master or organism_group, antibiotic_master, method, S/I/R thresholds). Per-publisher at-most-one-active; AST runs snapshot the version.\n\n**AC:** schema + constraints; FK to M-01; snapshot contract documented.  \nRef: m-02 §2.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "breakpoints",
+        "microbiology",
+        "mvp-1a",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-787",
+        "fields": {
+          "summary": "M-02 Breakpoint Catalog (CLSI + EUCAST, versioned, snapshot-at-write)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27655",
+    "key": "OGC-863",
+    "fields": {
+      "summary": "M-02: Breakpoint activation + local customization + CSV import (v2)",
+      "description": "**Epic:** OGC-787 · **Points:** 5 · **Cycle:** Phase 1A+\n\nImport breakpoints from CSV/hub; validate; report per-row errors in a dismissible modal (row #, reason, e.g. \"organism not found — skipped\"); preserve locally-customized rows on update.\n\n**AC:** valid rows import; failures reported per row; customized rows not overwritten.  \nRef: m-02 §7; amr-micro-frs-edits.md (M-02).",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "breakpoints",
+        "microbiology",
+        "phase-1a-plus",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-787",
+        "fields": {
+          "summary": "M-02 Breakpoint Catalog (CLSI + EUCAST, versioned, snapshot-at-write)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27658",
+    "key": "OGC-866",
+    "fields": {
+      "summary": "M-12: ReagentLotPicker + wiring into M-04/M-05 (consume OGC-759 link, write InventoryUsage) (v1)",
+      "description": "**Epic:** OGC-784 · **Points:** 5 · **Cycle:** MVP-1A\n\nReagentLotPicker used by M-04 inoculation + M-05 AST setup: shows UNLOCKED, unexpired lots sorted FIFO (with tooltip), QC status, blocks save on missing REQUIRED/expired/locked with **specific errors** (\"Lot … expired 2026-07-01 — pick another\").\n\n**AC:** FIFO sort + QC status; specific blocking errors; consumed by M-04/M-05.  \nRef: m-12 §4; amr-micro-frs-edits.md R07.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "reagent-linkage",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-784",
+        "fields": {
+          "summary": "M-12 Reagent Lot at Result Entry (micro) — ReagentLotPicker + wiring"
+        }
+      }
+    }
+  },
+  {
+    "id": "27661",
+    "key": "OGC-869",
+    "fields": {
+      "summary": "M-08: Macro schema + admin editor + primitives (v1)",
+      "description": "**Epic:** OGC-788 · **Points:** 5 · **Cycle:** MVP-1A\n\nmacro table + admin list (search/filter by category/status) + CRUD (code `.name`, category, expansion ≤500 chars, description). 8 categories seeded.\n\n**AC:** CRUD + list; reserved codes (.help/.list) rejected with clear message; seeded source shown.  \nRef: m-08 §3–4.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "macros",
+        "microbiology",
+        "mvp-1a",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-788",
+        "fields": {
+          "summary": "M-08 Macro Library (cross-cutting typing shortcuts; .code → expanded text)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27663",
+    "key": "OGC-871",
+    "fields": {
+      "summary": "M-08: Macro categories/bulk + cache/export (v2)",
+      "description": "**Epic:** OGC-788 · **Points:** 3 · **Cycle:** Phase 1A+\n\nCategory helper text + a **category chip on the macro dropdown** (so users see the active category); seeded-vs-user distinction with tooltip; bulk edit with pre-delete confirmation listing codes.\n\n**AC:** chip + helper present; bulk delete confirms with list.  \nRef: m-08 §3, §8; amr-micro-frs-edits.md R06.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "macros",
+        "microbiology",
+        "phase-1a-plus",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-788",
+        "fields": {
+          "summary": "M-08 Macro Library (cross-cutting typing shortcuts; .code → expanded text)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27665",
+    "key": "OGC-873",
+    "fields": {
+      "summary": "M-06: Expert rule engine + schema + core rule set (v1)",
+      "description": "**Epic:** OGC-793 · **Points:** 8 · **Cycle:** Phase 1B\n\nexpert_rule_definition (+ versioning) and the engine that fires on AST Run → COMPLETE, evaluating against M-01 organism groups / antibiotic classes and producing phenotype flags. Decisions logged (NFR-03).\n\n**AC:** engine fires on completion; rule version recorded; flags persisted + audited.  \nRef: m-06 §2, §4.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "expert-rules",
+        "microbiology",
+        "phase-1b",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-793",
+        "fields": {
+          "summary": "M-06 Expert Rules Engine (MRSA, D-test, ESBL, cascade, intrinsic verification)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27667",
+    "key": "OGC-875",
+    "fields": {
+      "summary": "M-06: Expert review inline panel + confirmation loop via reflex + reidentification signal (v2)",
+      "description": "**Epic:** OGC-793 · **Points:** 5 · **Cycle:** Phase 1B\n\nExpert Review section in Case Detail — **always present** with an explicit \"No flags\" empty state; flag cards with Review & Decide → Decision modal (radio options + macro justification); post-save shows created sub-task + success toast.\n\n**AC:** section always visible; decision saves + surfaces task; per amr-micro-frs-edits.md C1, C4.  \nRef: m-06 §5.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "expert-rules",
+        "microbiology",
+        "phase-1b",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-793",
+        "fields": {
+          "summary": "M-06 Expert Rules Engine (MRSA, D-test, ESBL, cascade, intrinsic verification)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27670",
+    "key": "OGC-878",
+    "fields": {
+      "summary": "M-09: WHONET generator + dedup + file gen/validation (v1)",
+      "description": "**Epic:** OGC-794 · **Points:** 8 · **Cycle:** MVP-1A\n\nExport Generator: date range, filters (specimen/organism/origin/significance/screening), first-isolate dedup parameters with **one-line helper text each** (window, basis, scope, repeat handling, susceptibility-profile sensitivity).\n\n**AC:** filters + dedup options render with helper text; preview counts before/after dedup.  \nRef: m-09 §3; amr-micro-frs-edits.md E1.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "v1",
+        "whonet"
+      ],
+      "parent": {
+        "key": "OGC-794",
+        "fields": {
+          "summary": "M-09 WHONET Export (surveillance export to national reference lab)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27672",
+    "key": "OGC-880",
+    "fields": {
+      "summary": "M-09: WHONET mapping admin + map-now + history/profile (v2)",
+      "description": "**Epic:** OGC-794 · **Points:** 5 · **Cycle:** Phase 1A+\n\nMapping admin for the 8 vocabularies (org/antibiotic/specimen/origin/patient-type/dept/breakpoint/phenotype); unmapped rows highlighted; **\"Map now\" from an export warning deep-links pre-filtered to that item**.\n\n**AC:** mapping CRUD; unmapped highlight; Map-now carries context.  \nRef: m-09 §3.1; amr-micro-frs-edits.md E2.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-1a-plus",
+        "v2",
+        "whonet"
+      ],
+      "parent": {
+        "key": "OGC-794",
+        "fields": {
+          "summary": "M-09 WHONET Export (surveillance export to national reference lab)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27674",
+    "key": "OGC-882",
+    "fields": {
+      "summary": "[RETIRED → Catalog Subscription] M-10: Hub config + connection test + available/diff view",
+      "description": "**Epic:** OGC-795 · **Points:** 5 · **Cycle:** Phase 1B\n\nSubscription admin: Hub URL + API key, Test Connection, auto-check frequency (daily/weekly/monthly), Check Now.\n\n**AC:** config persists; test connection works; scheduled + manual checks fetch availability.  \nRef: m-10 §3.",
+      "status": {
+        "name": "Done",
+        "statusCategory": {
+          "name": "Done"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "hub",
+        "microbiology",
+        "phase-1b",
+        "superseded",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-795",
+        "fields": {
+          "summary": "M-10 Hub Subscription — RETIRED (folded into Catalog Subscription)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27676",
+    "key": "OGC-884",
+    "fields": {
+      "summary": "[RETIRED → Catalog Subscription] M-10: Hub import + audit + activation + discovery signal",
+      "description": "**Epic:** OGC-795 · **Points:** 5 · **Cycle:** Phase 1B\n\nSelective import writing hub_import_run + per-record hub_import_record; success summary (\"3 added, 2 updated, 1 skipped\"); new breakpoints imported as Loaded with an **\"Activate in Breakpoint Catalog →\" hand-off** to M-02.\n\n**AC:** import audited; summary shown; activation link to M-02 present.  \nRef: m-10 §3.2; amr-micro-frs-edits.md F3, F4.",
+      "status": {
+        "name": "Done",
+        "statusCategory": {
+          "name": "Done"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "hub",
+        "microbiology",
+        "phase-1b",
+        "superseded",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-795",
+        "fields": {
+          "summary": "M-10 Hub Subscription — RETIRED (folded into Catalog Subscription)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27678",
+    "key": "OGC-886",
+    "fields": {
+      "summary": "M-11: Ack record schema + log/ack inline panel + state machine (v1)",
+      "description": "**Epic:** OGC-785 · **Points:** 5 · **Cycle:** MVP-1A\n\nReplace the narrow result-only critical table with a polymorphic critical_notification (target_type RESULT/CASE/ISOLATE/SAMPLE + target_id); migrate existing rows; ≥5yr retention.\n\n**AC:** schema + migration; existing data preserved; immutable audit.  \nRef: m-11 §2.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "critical-notify",
+        "microbiology",
+        "mvp-1a",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-785",
+        "fields": {
+          "summary": "M-11 Critical-Result Acknowledgment (polymorphic notification rework)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27681",
+    "key": "OGC-889",
+    "fields": {
+      "summary": "M-11: Surface criticals in existing alerts dashboard (filter view) (v2)",
+      "description": "**Epic:** OGC-785 · **Points:** 5 · **Cycle:** Phase 1A+\n\nAlerts Dashboard at /alerts/criticals: Open/Acknowledged/Closed cards, filters (status/domain/period/target), table with row actions (Ack/View/Close/Add follow-up). Follow-up = linked entry (pre-filled short form).\n\n**AC:** dashboard + filters + row actions; follow-up links to parent.  \nRef: m-11 §5; amr-micro-frs-edits.md G4.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "critical-notify",
+        "microbiology",
+        "phase-1a-plus",
+        "v2"
+      ],
+      "parent": {
+        "key": "OGC-785",
+        "fields": {
+          "summary": "M-11 Critical-Result Acknowledgment (polymorphic notification rework)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27682",
+    "key": "OGC-890",
+    "fields": {
+      "summary": "M-NFR: Applicability map + offline behavior + perf/a11y verification",
+      "description": "**Epic:** OGC-783 · **Points:** 3 · **Cycle:** MVP-1A\n\nProduce a per-module map of which NFR governs which surface, and require each module's ACs to cite the NFR(s) they satisfy.\n\n**AC:** applicability map exists; module ACs reference NFRs.  \nRef: m-nfr; amr-micro-frs-edits.md I1.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "nfr",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-783",
+        "fields": {
+          "summary": "M-NFR Microbiology Module — Non-Functional Requirements"
+        }
+      }
+    }
+  },
+  {
+    "id": "27685",
+    "key": "OGC-893",
+    "fields": {
+      "summary": "M-00: Lock spec + publish to Confluence + RBAC sign-off (doc)",
+      "description": "**Epic:** OGC-782 · **Points:** 2 · **Cycle:** MVP-1A\n\nFinalize and lock the M-00 parent spec (glossary, data-model overview, RBAC matrix, phase plan, out-of-scope) before sprint 1; fold in the OGC-841 reconciliation decisions.\n\n**AC:** M-00 locked; reflects Culture-workflow attribute + Method/reflex reuse.  \nRef: m-00; OGC-841.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mvp-1a",
+        "spec",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-782",
+        "fields": {
+          "summary": "M-00 Microbiology Module Parent (spec, glossary, RBAC, phase plan)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27788",
+    "key": "OGC-900",
+    "fields": {
+      "summary": "M-13 Antibiogram (cumulative susceptibility reporting, CLSI M39)",
+      "description": "## Overview\n\nCumulative antibiogram reporting for the Microbiology Module — a periodic report giving the **percentage of isolates of an organism that are susceptible (%S) to each antibiotic** over a time window, used to guide empiric therapy. Built per **CLSI M39** methodology from finalized AST data.\n\nThis is a **reporting** module: it owns no clinical workflow and introduces no new result-capture entities. It reads finalized `micro_ast_run` results (M-05) and reuses the **first-isolate-per-patient deduplication** already designed for WHONET export (M-09) so the antibiogram is not skewed by repeat isolates from the same patient.\n\n## Scope\n\n**Phase 2** — surveillance/reporting, after the case + AST + WHONET foundation.\n\n* New reporting route `/reports/antibiogram` (sidenav under Reports).\n* Selection controls: organism (or organism group), date range, specimen filter, patient-origin filter (inpatient/outpatient/ICU), minimum-isolate threshold (CLSI M39 recommends ≥30 isolates; suppress or footnote below threshold).\n* First-isolate dedup (reuse M-09 algorithm: first isolate per patient per organism per configurable window).\n* Cumulative %S matrix: organisms (rows) × antibiotics (columns), each cell = %S + n; color coding by %S band; intrinsic-resistance and not-tested cells blanked, not zeroed.\n* Footnotes: total isolates, dedup basis, breakpoint standard/version used, suppression notes for under-threshold cells.\n* Export: PDF (formatted report) + CSV (raw matrix). No new data store — derived on demand from AST results.\n* TB note: a TB-specific cumulative resistance summary (MTB-complex %R by drug) is produced through M-14 + WHONET-TB, not this bacterial antibiogram surface.\n\n## Source documents\n\n* `m-13-antibiogram.md` (consolidated FRS, v2.0)\n* Mockup: `m-13-antibiogram-prototype.html`\n\n## Reuse / consumers\n\n* **Reads** M-05 finalized AST results + M-02 breakpoint standard snapshot (for the footnote).\n* **Reuses** M-09's first-isolate dedup concept (CLSI M39 / WHO M-AMR-9 first-isolate rule).\n* Feeds the Management Dashboard antibiogram heatmap (OGC-897) as a shared query source.\n\n## Sizing\n\n\\~21 story points (reporting module; no new workflow entities). Sub-stories: route + selection UI; dedup reuse wiring; %S matrix builder + color bands; threshold suppression + footnotes; PDF export; CSV export.\n\n## Status\n\nOne of the M-\\* bundle epics. /specify + mockup complete; awaiting sprint decomposition into child Stories.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "antibiogram",
+        "microbiology",
+        "phase-2",
+        "reporting"
+      ]
+    }
+  },
+  {
+    "id": "27789",
+    "key": "OGC-901",
+    "fields": {
+      "summary": "M-14 Mycobacteriology / TB (AFB smear, culture, species ID, phenotypic DST + molecular)",
+      "description": "## Overview\n\nThe Mycobacteriology / TB workflow. **M-14 is a TB _profile_ of the M-04 Case Workbench, not a second workbench** — it reuses the same Case / Isolate / AST-Run shapes, the same shared Worklist (M-07), the same Timeline (History/Note), and the same release/report machinery, instantiated with a TB lifecycle and TB-specific sections. The \"which workflow\" decision is made by the ordered test's `workflow_type = MYCOBACTERIOLOGY_TB` (M-03 §2.1a / M-00), so a tech never chooses bacterial-vs-TB by hand.\n\nTB differs from bacteriology in four ways the profile captures:\n\n* **AFB smear** — Ziehl-Neelsen / auramine microscopy with WHO/IUATLD grading (neg, scanty, 1+, 2+, 3+).\n* **Long culture** — MGIT liquid / Löwenstein-Jensen solid, weeks-long incubation; extended Timeline.\n* **Species ID** — _M. tuberculosis_ complex vs NTM.\n* **DST against WHO critical concentrations** — phenotypic DST reports **R/S at a single critical concentration** (not the S/I/R clinical-MIC ladder), plus **molecular** resistance (GeneXpert MTB/RIF Ultra, line probe assays) reported as genotypic flags. Derives MDR / pre-XDR / XDR categories.\n\n## Scope\n\n**Phase 2** — after the bacterial case + AST + breakpoint + WHONET foundation is shipped.\n\n* `workflow_type = MYCOBACTERIOLOGY_TB` wiring on the M-03 trigger resolver → TB Case profile.\n* New entities: `tb_smear` (AFB grade + method) and `tb_molecular_result` (assay, target, genotypic resistance flags). Phenotypic DST **reuses** `micro_ast_run` with `interpretation_method = CRITICAL_CONCENTRATION` against WHO-TB breakpoints (M-02 extension), not a new run table.\n* TB Case sections: Smear, Culture (MGIT/LJ with day-N tracking), Species ID, Phenotypic DST, Molecular results, staged interim reports (smear → culture → ID → DST as each lands).\n* MDR / pre-XDR / XDR derivation from combined phenotypic + molecular results.\n* Critical-result handling for RIF-resistant / MDR detection (reuse M-11).\n* Feeds WHONET-TB export (M-09 §4.5 extension) and the consolidated-FHIR/GLASS path (separate, last).\n\n## Source documents\n\n* `m-14-mycobacteriology-tb.md` (consolidated FRS, v2.0)\n* Mockup: `m-14-tb-case-prototype.html` (the M-04 shell, TB profile)\n\n## Dependencies / reuse\n\n* **Profile of** M-04 Case Workbench (OGC-790) — reuses Case/Isolate/AST-Run/Timeline/reports.\n* **Needs** M-02 WHO-TB critical-concentration breakpoint extension (OGC-787).\n* **Feeds** M-09 WHONET-TB export extension (OGC-794).\n* Routing decided by M-03 `workflow_type` (OGC-789).\n\n## Sizing\n\n\\~89 story points (XL profile work + 2 new entities + molecular capture + staged reports + DST). Sub-stories slice into: workflow_type routing; tb_smear; culture/day-N TB timeline; species ID; critical-concentration DST on micro_ast_run; tb_molecular_result + GeneXpert/LPA capture; MDR/XDR derivation; staged interim reports; critical handling.\n\n## Status\n\nOne of the M-\\* bundle epics; promoted into scope to satisfy procurement requirement #8 (Microbiology _and_ Mycobacteriology case workbench). /specify + mockup complete; awaiting sprint decomposition into child Stories.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "mycobacteriology",
+        "phase-2",
+        "tb"
+      ]
+    }
+  },
+  {
+    "id": "27790",
+    "key": "OGC-902",
+    "fields": {
+      "summary": "M-13: Antibiogram route + selection + first-isolate dedup + cumulative %S matrix + suppression/footnotes (v1)",
+      "description": "Add the `/reports/antibiogram` route (sidenav under Reports) with the selection panel: organism / organism-group, date range, specimen filter, patient-origin filter, and minimum-isolate threshold (default 30 per CLSI M39). Carbon DataTable shell for the result matrix. No data store — report is derived on demand.\n\n**AC:** route renders with selection controls; submitting builds a query; empty/insufficient-data states handled.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "antibiogram",
+        "microbiology",
+        "phase-2"
+      ],
+      "parent": {
+        "key": "OGC-900",
+        "fields": {
+          "summary": "M-13 Antibiogram (cumulative susceptibility reporting, CLSI M39)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27794",
+    "key": "OGC-906",
+    "fields": {
+      "summary": "M-13: Antibiogram PDF + CSV export (v2)",
+      "description": "Export the antibiogram as a formatted PDF (report layout with footnotes) and a raw CSV matrix. Reuse the existing report/export infrastructure.\n\n**AC:** PDF matches on-screen report incl. footnotes; CSV contains %S and n per cell; both honor the active filters.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "antibiogram",
+        "microbiology",
+        "phase-2"
+      ],
+      "parent": {
+        "key": "OGC-900",
+        "fields": {
+          "summary": "M-13 Antibiogram (cumulative susceptibility reporting, CLSI M39)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27795",
+    "key": "OGC-907",
+    "fields": {
+      "summary": "M-14: TB case profile (workflow_type routing) + smear/AFB section (v1)",
+      "description": "Wire `workflow_type = MYCOBACTERIOLOGY_TB` on the M-03 trigger resolver (`resolveMicroCaseTrigger`) so a TB-designated ordered test instantiates the TB Case profile: TB sections, WHO-TB breakpoint family, TB culture Method (MGIT/LJ), TB reflex variant, WHONET-TB flavor. No clerk choice.\n\n**AC:** ordering a TB test creates a TB-profile Case; a bacterial test still creates the M-04 profile; both-ordered specimen = two Cases.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-2",
+        "tb"
+      ],
+      "parent": {
+        "key": "OGC-901",
+        "fields": {
+          "summary": "M-14 Mycobacteriology / TB (AFB smear, culture, species ID, phenotypic DST + molecular)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27797",
+    "key": "OGC-909",
+    "fields": {
+      "summary": "M-14: TB culture day-N (MGIT/LJ) + species ID (MTB-complex/NTM) (v2)",
+      "description": "TB culture section over the long incubation (MGIT liquid / Löwenstein-Jensen solid). Extended Timeline with day-N tracking, positive/negative signals, and contamination handling. Reuses the M-04 Case lifecycle with a TB stage machine.\n\n**AC:** culture stage tracks day-N to the configured endpoint; positive/negative/contaminated outcomes recorded and timelined.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-2",
+        "tb"
+      ],
+      "parent": {
+        "key": "OGC-901",
+        "fields": {
+          "summary": "M-14 Mycobacteriology / TB (AFB smear, culture, species ID, phenotypic DST + molecular)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27799",
+    "key": "OGC-911",
+    "fields": {
+      "summary": "M-14: DST on micro_ast_run — critical-concentration interpretation (v3)",
+      "description": "Reuse `micro_ast_run` with `interpretation_method = CRITICAL_CONCENTRATION` for phenotypic DST: R/S at a single WHO critical concentration per drug per method (MGIT / LJ / agar proportion), against the M-02 WHO-TB breakpoint extension. No new run table.\n\n**AC:** DST entered/interpreted as R/S at critical concentration; run snapshots the WHO-TB standard/version; appears in the TB report.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "ast",
+        "microbiology",
+        "phase-2",
+        "tb"
+      ],
+      "parent": {
+        "key": "OGC-901",
+        "fields": {
+          "summary": "M-14 Mycobacteriology / TB (AFB smear, culture, species ID, phenotypic DST + molecular)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27800",
+    "key": "OGC-912",
+    "fields": {
+      "summary": "M-14: Molecular results (GeneXpert/LPA) + MDR/pre-XDR/XDR derivation (v4)",
+      "description": "New `tb_molecular_result` entity to capture genotypic resistance from GeneXpert MTB/RIF Ultra and line probe assays (assay, target gene, detected/not-detected, resistance flags). Reported as flags, distinct from phenotypic DST.\n\n**AC:** molecular results captured per assay; RIF-resistance flag drives critical handling; values exported in WHONET-TB.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-2",
+        "tb"
+      ],
+      "parent": {
+        "key": "OGC-901",
+        "fields": {
+          "summary": "M-14 Mycobacteriology / TB (AFB smear, culture, species ID, phenotypic DST + molecular)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27802",
+    "key": "OGC-914",
+    "fields": {
+      "summary": "M-14: Staged interim TB reports + RIF-R/MDR critical via M-11 (v5)",
+      "description": "Staged interim report releases as each result lands (smear, then culture, then species ID, then DST), reusing the M-04 preliminary/final release machinery with TB report templates.\n\n**AC:** each stage is independently releasable as an interim report; final report supersedes with full DST + category; amendments versioned.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-2",
+        "tb"
+      ],
+      "parent": {
+        "key": "OGC-901",
+        "fields": {
+          "summary": "M-14 Mycobacteriology / TB (AFB smear, culture, species ID, phenotypic DST + molecular)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27804",
+    "key": "OGC-916",
+    "fields": {
+      "summary": "M-02: WHO-TB critical-concentration breakpoints (v3)",
+      "description": "Extend the breakpoint catalog with a **WHO-TB critical-concentration** family used by M-14 DST. Unlike CLSI/EUCAST clinical breakpoints (S/I/R against an MIC ladder), TB DST reports **R/S at a single critical concentration** per drug per method (MGIT / Löwenstein-Jensen / agar proportion). Versioned and snapshot-at-write like the other standards.\n\n**AC:** WHO-TB standard loads with per-drug/per-method critical concentrations; `BreakpointLookupService` returns R/S for `interpretation_method = CRITICAL_CONCENTRATION`; version snapshotted on the AST run; CLSI/EUCAST behavior unchanged.\n\nSupports M-14 (OGC-901). One of the procurement-#8 WHO/TB breakpoint extensions.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "breakpoints",
+        "microbiology",
+        "phase-2",
+        "tb"
+      ],
+      "parent": {
+        "key": "OGC-787",
+        "fields": {
+          "summary": "M-02 Breakpoint Catalog (CLSI + EUCAST, versioned, snapshot-at-write)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27805",
+    "key": "OGC-917",
+    "fields": {
+      "summary": "M-09: WHONET-TB export flavor (v3)",
+      "description": "Add the **WHONET-TB** export flavor for finalized TB Cases (M-14): TB drug set, phenotypic DST (R/S at critical concentration with method suffix), molecular resistance flags (GeneXpert MTB/RIF, LPA), and MTB-complex/NTM species. Reuses the M-09 export generator, dedup, validation, and audit; selected by the case's `workflow_type`.\n\n**AC:** TB cases export in WHONET-TB columns incl. DST + molecular flags + species; bacterial export unchanged; dedup/validation/audit reused.\n\nSupports M-14 (OGC-901) and feeds the later consolidated-FHIR/GLASS aggregation. One of the procurement-#8 TB-surveillance extensions.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "microbiology",
+        "phase-2",
+        "surveillance",
+        "tb",
+        "whonet"
+      ],
+      "parent": {
+        "key": "OGC-794",
+        "fields": {
+          "summary": "M-09 WHONET Export (surveillance export to national reference lab)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27806",
+    "key": "OGC-918",
+    "fields": {
+      "summary": "M-15 GLASS Surveillance via Consolidated FHIR (AMR + TB global reporting)",
+      "description": "## Overview\n\nGet each lab's finalized AMR + TB results to **WHO GLASS** without breaking OpenELIS single-tenancy. OE's job is only to **transform and push its own finalized results** as FHIR (`DiagnosticReport` + per-drug `Observation`s, WHO AMR reporting profiles) to a **consolidated FHIR server**; that central server — the only place that sees all labs — does cross-lab first-isolate dedup and **generates the GLASS submission** (and a WHONET extract for an NCC that prefers files). Multi-tenant aggregation stays **outside OE**, consistent with `project_no_multitenancy`.\n\nThis is **complementary to**, not a replacement for, the M-09 WHONET file path: labs/NCCs that submit by WHONET file keep doing so; the FHIR path is the continuous, standards-based alternative that feeds the same central aggregator.\n\n## Reuse-first (verified against OpenELIS-Global develop @ d7435687)\n\n* `FhirTransformService` already builds `DiagnosticReport` + `Observation` (`transformResultToDiagnosticReport(Analysis)`) — extend it with the AMR-profile transform.\n* `FhirPersistanceService.createFhirResourcesInFhirStore(map)` + `FhirConfig` — reuse for the push/endpoint.\n* `EQAFhirSubmissionService.submitResultsViaFhir(...)` (1 DiagnosticReport + N Observations, scoped by organization) — the established pattern to follow for `MicroSurveillanceFhirSubmissionService`.\n* `fhir_uuid UUID` column convention (AGENTS.md) — add to `micro_case` / `micro_isolate` / `micro_ast_run`.\n* **M-09** first-isolate dedup, validation, run-history, scheduling; **M-02** breakpoint snapshots; **M-01** coded masters — all reused. No new transport, result store, or vocabulary.\n\n## Scope\n\n**Phase 2+ — the LAST module in the bundle.** Build only after M-04/M-05 (bacterial), M-14 (TB), M-09 (WHONET), and M-02 (breakpoints incl. WHO-TB) have shipped, since M-15 transforms and pushes exactly their finalized output.\n\n* AMR FHIR transform (extend `FhirTransformService`): DiagnosticReport + organism Observation + per-antibiotic AST Observations with interpretation, raw MIC/zone, method, and M-02 breakpoint snapshot.\n* `MicroSurveillanceFhirSubmissionService` (EQA pattern) + `surveillance_submission_run` audit (mirrors `whonet_export_run`) + `fhir_uuid` on three micro entities.\n* Trigger modes: on-finalize / scheduled / manual.\n* Validation reuse (M-09): block on unmapped codes with inline \"Map now\".\n* GLASS minimum (de-identified) dataset only.\n* TB via `workflow_type = MYCOBACTERIOLOGY_TB`: R/S-at-critical-concentration, molecular flags, MDR/pre-XDR/XDR category.\n* Config + run/history surfaces (`/admin/surveillance/fhir`, `/reports/surveillance-submission`).\n* Central aggregation + GLASS generation documented as **out of OE scope**.\n\n## Source documents\n\n* `m-15-glass-fhir-surveillance.md` (consolidated FRS, v1.0)\n\n## Dependencies\n\n* **Blocked by** M-09 WHONET (OGC-794), M-14 TB (OGC-901), M-02 breakpoints (OGC-787); reuses M-04/M-05 (OGC-790/791).\n* **Relates** the M-00 spine (OGC-782) and the Management Dashboard's aggregated-FHIR boundary (OGC-897).\n\n## Sizing\n\n\\~55 story points. Sub-stories: AMR FHIR transform; submission service + audit + fhir_uuid; trigger modes; validation reuse; TB profile in the push; config + run/history surfaces; central-aggregation interface doc.\n\n## Status\n\nFinal epic of the M-\\* bundle; satisfies the GLASS-reporting portion of procurement requirement #8. /specify complete; awaiting sprint decomposition.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "labels": [
+        "PNG",
+        "fhir",
+        "glass",
+        "microbiology",
+        "phase-2",
+        "surveillance",
+        "tb"
+      ]
+    }
+  },
+  {
+    "id": "27807",
+    "key": "OGC-919",
+    "fields": {
+      "summary": "M-15: AMR FHIR transform — extend FhirTransformService (v1)",
+      "description": "Extend `FhirTransformService` to emit, for a surveillance-eligible isolate, a Bundle conforming to the WHO AMR reporting profiles: a microbiology `DiagnosticReport`, an organism-ID `Observation` (SNOMED/WHONET from M-01), and one AST `Observation` per antibiotic carrying interpretation (S/I/R), raw MIC (µg/mL) or zone (mm), method, and the M-02 breakpoint standard+version as components. Add `fhir_uuid` to micro_case/micro_isolate/micro_ast_run.\n\n**AC:** an eligible bacterial case yields a profile-conformant Bundle with breakpoint provenance; reuses the existing DiagnosticReport/Observation builders.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "fhir",
+        "glass",
+        "microbiology",
+        "phase-2",
+        "surveillance"
+      ],
+      "parent": {
+        "key": "OGC-918",
+        "fields": {
+          "summary": "M-15 GLASS Surveillance via Consolidated FHIR (AMR + TB global reporting)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27808",
+    "key": "OGC-920",
+    "fields": {
+      "summary": "M-15: Submission service + trigger modes + config + run history/audit + fhir_uuid (v2)",
+      "description": "Add `MicroSurveillanceFhirSubmissionService` following the `EQAFhirSubmissionService` pattern: select eligible isolates, transform, assemble the Bundle, and push via `FhirPersistanceService.createFhirResourcesInFhirStore(...)` to the `FhirConfig` consolidated endpoint. Write a `surveillance_submission_run` audit row (mirrors `whonet_export_run`). Idempotent on `fhir_uuid`.\n\n**AC:** submit returns success/resourceCount/runId; run row written; re-run updates rather than duplicates.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "fhir",
+        "glass",
+        "microbiology",
+        "phase-2",
+        "surveillance"
+      ],
+      "parent": {
+        "key": "OGC-918",
+        "fields": {
+          "summary": "M-15 GLASS Surveillance via Consolidated FHIR (AMR + TB global reporting)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27810",
+    "key": "OGC-922",
+    "fields": {
+      "summary": "M-15: GLASS minimum-dataset validation + TB in the push (v3)",
+      "description": "Run the M-09 validation before push (block on unmapped organism/antibiotic/specimen/origin codes with inline \"Map now\"; warnings advisory). Push only the GLASS minimum dataset (age/age-group, sex, specimen, origin, organism, AST) — de-identification in the transform; no name/full identifiers leave OE.\n\n**AC:** unmapped codes block with Map-now link; pushed Bundle contains only the minimum de-identified fields.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "fhir",
+        "glass",
+        "microbiology",
+        "phase-2",
+        "surveillance"
+      ],
+      "parent": {
+        "key": "OGC-918",
+        "fields": {
+          "summary": "M-15 GLASS Surveillance via Consolidated FHIR (AMR + TB global reporting)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27812",
+    "key": "OGC-924",
+    "fields": {
+      "summary": "M-15: Central-aggregation interface doc (doc)",
+      "description": "Document the contract between the OE push and the consolidated FHIR server (out-of-OE aggregation): the AMR profile shape OE emits, how the center performs cross-lab first-isolate dedup, maps to the GLASS-AMR aggregated dataset (priority specimen–pathogen–antibiotic combinations, WHO age groups, sample- vs isolate-based), and produces the GLASS submission or a WHONET national extract. No OE build — interface/spec only.\n\n**AC:** a published contract that a consolidated-FHIR/aggregation implementer can build to; confirms no other lab's data ever lands in an OE instance.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "documentation",
+        "glass",
+        "microbiology",
+        "phase-2",
+        "surveillance"
+      ],
+      "parent": {
+        "key": "OGC-918",
+        "fields": {
+          "summary": "M-15 GLASS Surveillance via Consolidated FHIR (AMR + TB global reporting)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27845",
+    "key": "OGC-925",
+    "fields": {
+      "summary": "Basic Info — Microbiology workflow attribute (culture_workflow_type)",
+      "description": "## Summary\n\nAdd the **Microbiology workflow** field to the Test Catalog v2.5 Basic Info editor — the concrete home for the Culture-workflow designation the Microbiology module's order-entry trigger resolver depends on (M-03 §2.1a). One nullable enum on `test`; orthogonal to Domain and the AMR flag.\n\n**Parent epic:** OGC-746 (Test Catalog v2.5 v1). **Sibling to:** OGC-748 (Basic Info). **FRS:** `test-catalog-micro-workflow-attribute.md` (foldable into v2.5 §2.1).\n\n## Field\n\nA single Carbon `Select` \"Microbiology workflow\": **None** (blank — not a culture test) / **Bacteriology** (`BACTERIOLOGY` → M-04 bacterial case) / **Mycobacteriology–TB** (`MYCOBACTERIOLOGY_TB` → M-14 TB case). **Mycology** reserved/disabled until M-16. Single enum, not checkbox+select (presence = \"is a culture test\").\n\n## Acceptance criteria\n\n* \\[ \\] Basic Info shows the \"Microbiology workflow\" select (None / Bacteriology / Mycobacteriology–TB; Mycology disabled with tooltip).\n* \\[ \\] Selecting a value persists `test.culture_workflow_type`; blank = null; field `@Audited`.\n* \\[ \\] Independent of Domain (a TB culture stays CLINICAL) and the AMR flag (any combination valid); only non-blocking hints shown (default-Method hint; TB-Method/WHO-TB hint; \"enable AMR?\" dismissible hint).\n* \\[ \\] Culture protocol is NOT set here — it's the test's default Method on the Methods tab (no `default_culture_protocol_id`).\n* \\[ \\] Changing the value warns that existing open cases are unaffected and reclassification is a Case-Workbench action (no retro-reclassify).\n* \\[ \\] Liquibase migration adds nullable `test.culture_workflow_type`; backfill NULL for all existing tests.\n* \\[ \\] Permission reuses `admin.testCatalog.manage`; strings under `admin.testCatalog.basicInfo.microWorkflow.*`.\n\n## Dependencies\n\n* OGC-747 (Story 1 — schema migrations baseline) and OGC-748 (Basic Info section) must be in.\n* **Blocks** the primary (non-fallback) path of M-03 Order-Entry hook (OGC-789); until it lands, M-03 uses the manual-Program fallback.\n* Relates the Microbiology spine M-00 (OGC-782).\n\n## Size\n\nS–M (one enum column + one select + hints + migration).",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "admin",
+        "carbon",
+        "microbiology",
+        "test-catalog",
+        "v1"
+      ],
+      "parent": {
+        "key": "OGC-746",
+        "fields": {
+          "summary": "Test Catalog Management v2.5 — v1 (Unified Editor + Foundation)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27846",
+    "key": "OGC-926",
+    "fields": {
+      "summary": "M-04 Change workflow — reclassify bacterial ↔ TB / resolve UNASSIGNED",
+      "description": "## Summary\n\nThe tech-facing escape hatch when a case's `workflow_type` is missing or wrong. Normally `workflow_type` is set automatically from the ordered test (M-03 §2.1a), but an untyped/mis-typed culture test, or a combined order, can leave a case `UNASSIGNED` or in the wrong profile. The bench tech needs a single, audited way to move it to the correct workflow.\n\n**Parent epic:** OGC-790 (M-04 Case Workbench). **FRS:** M-04 §4.9.\n\n## Behavior\n\n* New classification state `UNASSIGNED`: case created without a valid `workflow_type` (untyped test or manual Program fallback edge) shows an amber \"Needs workflow\" chip in the header + Worklist flag; profile-dependent bench work (AST setup, breakpoint family, report templates) is held until classified.\n* **Change workflow** control in the case header → inline panel (Principle 3, no modal): Workflow type select (Bacteriology / Mycobacteriology–TB) + required reason + culture-protocol Method picker (pre-filled with the chosen workflow's default Method).\n* Confirming re-instantiates the case **profile** (M-04 ↔ M-14 sections), **breakpoint family** (CLSI/EUCAST ↔ WHO-TB, M-02), **organism vocabulary** (M-01), reflex variant, and **WHONET flavor** (M-09); writes a classification transition + Timeline note (reuse History/Note: who/when/from→to/reason); clears the chip.\n\n## Guards\n\n* Free while early (no isolates worked / no interpretive results).\n* Once an isolate is identified or AST/DST results exist → warn that reclassifying detaches profile-specific results (bacterial AST vs TB DST differ); explicit confirm required; incompatible results retained + flagged, never silently deleted.\n* Blocked after final report release (use amendment path).\n* Permission reuses `micro.case.edit` (no new key).\n\n## Acceptance criteria\n\n* \\[ \\] A case with no valid `workflow_type` is `UNASSIGNED` with header chip + Worklist flag; profile-dependent actions held.\n* \\[ \\] Change workflow expands inline; sets/changes `workflow_type`; pre-fills the default Method; requires a reason.\n* \\[ \\] Reclassification swaps profile/breakpoint family/organism vocab/reflex/WHONET flavor and writes an audited Timeline note.\n* \\[ \\] Early cases reclassify freely; cases with results warn + require confirm + retain incompatible results; released cases are blocked.\n\n## Dependencies\n\n* Relates M-03 trigger resolver (OGC-789) and the Test Catalog workflow attribute story.\n* Relates M-14 TB profile (OGC-901) — this is how a case enters/leaves the TB profile.\n\n## Size\n\nM.",
+      "status": {
+        "name": "Done",
+        "statusCategory": {
+          "name": "Done"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "PNG",
+        "case-workbench",
+        "microbiology",
+        "phase-1a-plus",
+        "superseded"
+      ],
+      "parent": {
+        "key": "OGC-790",
+        "fields": {
+          "summary": "M-04 Microbiology Case Workbench Core (Case + Isolate + Timeline + Reports)"
+        }
+      }
+    }
+  },
+  {
+    "id": "27888",
+    "key": "OGC-936",
+    "fields": {
+      "summary": "Migration: Domain + AMR + WHONET reference data",
+      "description": "## Summary\n\nAdd Domain + AMR foundation schema to `test`: `domain` column with CHECK constraint (CLINICAL/ENVIRONMENTAL/VECTOR) backfilled to CLINICAL, `is_amr_test` boolean, new `test_amr_config` table, new `whonet_antibiotic_codes` reference table seeded with the standard list.\n\n**Parent epic:** OGC-747\n**FRS:** `test-catalog-requirements-v2.5.md` §0.6 items 1–2\n\n## Acceptance criteria\n\n* \\[ \\] `ALTER TABLE test ADD COLUMN domain VARCHAR(20) NOT NULL CHECK (domain IN ('CLINICAL','ENVIRONMENTAL','VECTOR'))`\n* \\[ \\] All existing rows backfilled with `domain = 'CLINICAL'`\n* \\[ \\] `ALTER TABLE test ADD COLUMN is_amr_test BOOLEAN NOT NULL DEFAULT FALSE`\n* \\[ \\] `test_amr_config` created with FK to `test`, columns for WHONET code / class / method / breakpoint / disk_potency\n* \\[ \\] `whonet_antibiotic_codes` reference table created and seeded with standard list (AMP / CIP / GEN / VAN / etc.)\n* \\[ \\] Idempotent migration (re-runnable without errors)\n* \\[ \\] Index on `test.domain` for the list-view filter\n* \\[ \\] Migration tested on a staging copy of a Madagascar-sized catalog before merge\n\n## Estimated size\n\nS-M (\\~2-3 days)",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "admin",
+        "backend",
+        "indonesia",
+        "madagascar",
+        "openelis-global",
+        "test-catalog",
+        "test-catalog-v1"
+      ],
+      "parent": {
+        "key": "OGC-747",
+        "fields": {
+          "summary": "Test Catalog Editor — Schema Migrations + Backend Foundation"
+        }
+      }
+    }
+  },
+  {
+    "id": "27904",
+    "key": "OGC-952",
+    "fields": {
+      "summary": "Basic Info — AMR flag + conditional WHONET fields + retention behavior",
+      "description": "## Summary\n\nAMR test flag checkbox that, when enabled, reveals the WHONET configuration sub-form. AMR disable retention behavior: historical exports unchanged; new results respect the flag; WHONET config persists.\n\n**Parent epic:** OGC-748\n**FRS:** §2.1, v2.4 §AMR Test Flag, H-04\n\n## Acceptance criteria\n\n* \\[ \\] Carbon `<Checkbox>` \"Antimicrobial Resistance (AMR) Test\" with helper text \"Enable for WHONET export and antimicrobial resistance surveillance\"\n* \\[ \\] When checked, conditional sub-section reveals:\n\n    * WHONET Antibiotic Code: typeahead Carbon `<ComboBox>` populated from `whonet_antibiotic_codes` reference table\n    * Antibiotic Class: Carbon `<Select>` (Penicillins / Fluoroquinolones / Cephalosporins / etc.)\n    * Test Method: Carbon `<Select>` (Disk Diffusion / MIC / E-test)\n    * Breakpoint Standard: Carbon `<Select>` (CLSI 2024 / EUCAST 2024 / Custom)\n    * Disk Potency: Carbon `<NumberInput>` with µg suffix\n    \n* \\[ \\] Info banner when AMR is enabled: \"This test will be included in WHONET exports\"\n* \\[ \\] Persists to `test.is_amr_test` and `test_amr_config`\n* \\[ \\] **AMR retention (H-04):** when admin disables AMR on a test that already has results:\n\n    * Historical results retain their result-time export status (already-exported stays exported)\n    * Results queued for export still go out\n    * New results created while AMR is OFF are not eligible for export\n    * WHONET config persists on the test record so re-enabling restores the full config in one click\n    \n* \\[ \\] All visible strings i18n-wrapped\n\n## Estimated size\n\nM (\\~2 days)",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "issuetype": {
+        "id": "10009",
+        "name": "Story"
+      },
+      "labels": [
+        "admin",
+        "amr",
+        "carbon",
+        "indonesia",
+        "madagascar",
+        "openelis-global",
+        "test-catalog",
+        "test-catalog-v1",
+        "whonet"
+      ],
+      "parent": {
+        "key": "OGC-748",
+        "fields": {
+          "summary": "Test Catalog Editor — Basic Info section"
+        }
+      }
+    }
+  },
+  {
+    "id": "30815",
+    "key": "OGC-1384",
+    "fields": {
+      "summary": "[WILL NOT FIX: superseded by OGC-1383] Microbiology: \"Final release ready\" but Release final report stays disabled (patient-report mapping missing)",
+      "description": "**Found by:** Casey, on https://amr.openelis-global.org, case 26PHML00003L (`b7c94607-2ec0-49a2-a3cd-f9f3c11c277f`, Urines, Bacteriology, stage PRELIM_RELEASED). Verified with the case's own REST responses.\n\n## What happens\n\nThe workflow is complete and the Reports section shows **\"Final release ready ✓\"** with no blockers, but **Release final report** is disabled. Nothing on the page says why, except a small grey tag under the preview: \"Patient-report mapping required for final release\".\n\n## What the server returns for this case\n\n* `GET /rest/microbiology/cases/{id}/readiness` → `finalReleaseReady: true`, `blockers: []`\n* `GET /rest/microbiology/cases/{id}/release/preview` → `reportableContent: true`, `mappingConfigured: false`, `projectedResultIds: []`\n\n## Cause\n\n* `ReportReadinessPanel.jsx` enables the button only when `readiness.finalReleaseReady && projection.reportableContent && projection.mappingConfigured`. The readiness service (`MicroCaseReadinessServiceImpl`) never checks the mapping, so it can report \"ready\" while the button stays off.\n* `mappingConfigured` (`MicroReportProjectionServiceImpl.hasReportConfiguration`) needs every `micro_case_analysis` link to have a `reportable_test_analyte_id`, and the test must have an active REMARK test result.\n* The link copies `reportable_test_analyte_id` from the culture setup **when the case is created** (`MicroCaseAnalysisServiceImpl.linkAnalysis`). This case used culture setup \"Bacteriology\" (method 53, Plate Culturing), which has no reportable analyte. The two UAT setups (methods 52 and 54) have one, which is why UAT cases release.\n* Fixing the setup later does not repair existing cases: `linkAnalysis` returns the existing link unchanged.\n\n## Expected\n\n1. Readiness reports the mapping (and reportable content) as blockers, with plain wording and the test or setup to fix. \"Final release ready\" is never shown while release is impossible.\n2. Existing cases pick up a corrected culture setup mapping (re-resolve at preview/release, or backfill), so a stuck case can be released without database work.\n3. Case 26PHML00003L can be final-released once the setup is fixed.\n\n## Related\n\nCulture setup admin has no way to set the reportable analyte: see the linked ticket.",
+      "status": {
+        "name": "Done",
+        "statusCategory": {
+          "name": "Done"
+        }
+      },
+      "assignee": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "issuetype": {
+        "id": "10008",
+        "name": "Bug"
+      },
+      "labels": [
+        "microbiology",
+        "qa-found",
+        "reporting",
+        "wont-fix"
+      ]
+    }
+  },
+  {
+    "id": "30816",
+    "key": "OGC-1385",
+    "fields": {
+      "summary": "[WILL NOT FIX: superseded by OGC-1383] Microbiology admin: culture setup form has no reportable analyte field",
+      "description": "**Found while diagnosing OGC-1384** on https://amr.openelis-global.org.\n\n## What happens\n\n`GET /rest/microbiology/admin/reference/culture-setups` on the AMR server:\n\n* \"Bacteriology\" (method 53, Plate Culturing): **no** `reportableTestAnalyteId`\n* \"UAT bacteriology culture\" (52) and \"UAT alternate bacteriology culture\" (54): have one (e.g. 294). These came from the UAT scenario seeding, not the admin screen.\n\nEvery case made under a setup without a reportable analyte has `mappingConfigured: false` and can never be final-released (OGC-1384).\n\n## Cause\n\n* The culture setup form definition (`frontend/src/components/admin/microbiologyReference/definitions.js`) offers method, name, workflow, media, incubation, subculture, max days, atmosphere and active, but **not the reportable test analyte**. The API accepts `reportableTestAnalyteId` (`MicroCultureSetupAdminForm`), and only the configuration loader and the UAT scenario set it.\n* **Likely, not yet confirmed:** `saveCultureSetup` sets `reportableTestAnalyteId` from the request with `trimToNull`, so saving an existing setup from the admin form (which does not send the field) may clear it. Editing the UAT setups in the UI could break their release too.\n\n## Expected\n\n1. The culture setup form lets an admin choose the reportable test and analyte. Pick from reportable analytes of the test, and check that the test has an active REMARK result type, or explain why it can't be used.\n2. Saving the form never clears a field the form does not show.\n3. The setup list shows which setups are not ready to release reports.\n\n",
+      "status": {
+        "name": "Done",
+        "statusCategory": {
+          "name": "Done"
+        }
+      },
+      "assignee": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "issuetype": {
+        "id": "10008",
+        "name": "Bug"
+      },
+      "labels": [
+        "admin",
+        "microbiology",
+        "qa-found",
+        "wont-fix"
+      ]
+    }
+  },
+  {
+    "id": "30842",
+    "key": "OGC-1411",
+    "fields": {
+      "summary": "Microbiology AST worklist: the default month uses the browser's time zone, but the server filters by its own",
+      "description": "## What happens\n\nThe AST worklist defaults to the current month. The browser works out that month in its own time zone and sends plain dates; the server compares each row's collection date in the JVM's time zone. When the two zones differ, results collected near a month boundary fall outside the default view.\n\n* `frontend/src/components/microbiology/MicrobiologyRoutes.js:84-98`: `getWhonetDateRange(\"THIS_MONTH\", now)` (`WhonetRoutes.js:35-46`) builds `from`/`to` from `now.getFullYear()`/`now.getMonth()`, which are browser-local.\n* `src/main/java/org/openelisglobal/microbiology/service/MicroWorklistServiceImpl.java:343-349`: `row.collectionDate.toLocalDateTime().toLocalDate()` is compared with those dates in the server's zone.\n\nExample: a lab whose server runs on East Africa Time and a user whose browser is on UTC. At 21:30 UTC on 30 September, the browser asks for 1 to 30 September; a sample collected that minute is dated 1 October on the server and is filtered out.\n\n## Effect on CI\n\n`frontend/playwright/tests/foundational/harness/microbiology-analyzer-ast.spec.ts:47` (`expect(row).toBeVisible()`) fails in the last three UTC hours of each month. The CI browser runs in UTC and the harness webapp runs `TZ: Africa/Nairobi` (`projects/analyzer-harness/docker-compose.base.yml:53`). Every failing run on `develop` commit `3f42f5615d` started between 21:22 and 22:42 UTC on 2026-09-30. #4495 failed the same assertion that evening and passed on rerun.\n\n## Fix\n\n* Product: derive the default window from the server's date (or send the browser's zone with the request) so both sides agree on \"this month\".\n* Test: open the worklist on a range that contains the seeded collection date instead of relying on the default window.\n\n",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": null,
+      "reporter": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "priority": {
+        "name": "Medium"
+      },
+      "issuetype": {
+        "id": "10008",
+        "name": "Bug"
+      },
+      "created": "2026-09-30T20:40:32.508-0700",
+      "updated": "2026-09-30T20:41:22.582-0700",
+      "labels": [],
+      "customFields": {
+        "Request participants": {
+          "id": "customfield_10137",
+          "value": []
+        },
+        "Rank": {
+          "id": "customfield_10019",
+          "value": "0|i00gbo:"
+        },
+        "Organizations": {
+          "id": "customfield_10002",
+          "value": []
+        }
+      }
+    }
+  },
+  {
+    "id": "30817",
+    "key": "OGC-1386",
+    "fields": {
+      "summary": "Microbiology Report readiness card: WHONET box says \"Final release ready\"; patient report shows \"Ciprofloxacin d0d3be0a2 R\"",
+      "description": "**Found on** https://amr.openelis-global.org, case 26PHML00003L, Reports section (same case as OGC-1384).\n\n## 1. WHONET readiness shows the wrong label\n\nThe WHONET box heading says \"WHONET export ready\", but its check line says **\"✓ Final release ready\"**. `ReportReadinessPanel.renderReadinessItems` always uses `microbiology.readiness.ready` for the ready row, for both boxes. Expected: the WHONET row uses a WHONET message (e.g. `microbiology.whonet.ready`), with the key added to `en.json`.\n\n## 2. Patient report text contains what looks like an ID\n\nThe patient report preview reads: `ISO-1: Klebsiella pneumoniae; Ciprofloxacin d0d3be0a2 R` (same content in `release/preview`). \"d0d3be0a2\" looks like a code or ID fragment in the antibiotic name. Please check:\n\n* whether the antibiotic record on that server is simply named that way (test data), or\n* whether the report builder adds a code or ID to the antibiotic name.\n\nIf it's the builder, the patient report should show the antibiotic's display name only.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "reporter": {
+        "accountId": "557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851",
+        "displayName": "Casey B. Iiams-Hauser"
+      },
+      "priority": {
+        "name": "Medium"
+      },
+      "issuetype": {
+        "id": "10008",
+        "name": "Bug"
+      },
+      "created": "2026-09-28T18:14:09.631-0700",
+      "updated": "2026-09-28T18:14:09.717-0700",
+      "labels": [
+        "i18n",
+        "microbiology",
+        "qa-found"
+      ],
+      "customFields": {
+        "Request participants": {
+          "id": "customfield_10137",
+          "value": []
+        },
+        "Rank": {
+          "id": "customfield_10019",
+          "value": "0|i00g63:"
+        },
+        "Organizations": {
+          "id": "customfield_10002",
+          "value": []
+        }
+      }
+    }
+  },
+  {
+    "id": "30814",
+    "key": "OGC-1383",
+    "fields": {
+      "summary": "Microbiology v2: bench-driven cases without declared workflows (tests added at each stage, computable incubation, incoming results)",
+      "description": "### What the lab user is trying to do\n\nA microbiology technician decides at the bench what a specimen needs: a Gram stain, an AFB smear, a GeneXpert, a culture, a DST panel. Today OpenELIS makes each culture test declare a workflow (Bacteriology or TB) and a culture setup in advance. When that is missing or wrong the case lands Unassigned and has to be reclassified. Direct microscopy has no home, incubation is free text so nothing tells the bench a plate is due, and a small site cannot refer the rest of the work and get results back on the same case. This feedback comes from the CPHL Port Moresby workflow breakdown.\n\n### What we're building\n\n* **No declared workflow.** Program = Microbiology opens one case per specimen per lab unit. The lab unit is chosen at order entry and can be changed later. What makes a case TB or bacteriology is the tests and panels on it.\n* **Case details move to the Case view** (clinical history, prior antibiotics, TB history), with required fields clearly marked.\n* **New case sections:** Initial testing (microscopy, wet prep, Gram, GeneXpert, with an option for a previous report), a referral point, Growth work-up (internal-only exams, subcultures), Additional testing (for example WGS).\n* **Add any test or panel** from the catalog at each stage; reflex rules still add tests on their own.\n* **Computable incubation:** a number plus a unit per inoculation, check reminders, a dated read log, and a Needs attention worklist filter.\n* **Incoming results:** analyzer or referral results with no matching row wait for a tech to place them.\n* **Report choice per result**, plus a reversible In lab only flag.\n\n### How it fits the lab workflow\n\nReception picks the Program and lab unit. Everything else happens on `/microbiology/case/:caseId`, and the Worklist (`/microbiology/worklist?status=attention`) shows what is due.\n\n### What it touches in OpenELIS\n\nMuch of this is **rework of code on develop**: `workflow_type`, culture setups, the routing resolver and the Change workflow panel are retired. It also touches the order entry Microbiology section, the Case view, the Worklist, analyzer result placement, referral returns and report selection. Every reversal of the V1 specs is boxed \"Contradicts V1\" in the document.\n\n### Links\n\n* [Gallery entry](https://digi-uw.github.io/openelis-work/#/microbiology/microbiology-v2-amendments)\n* [Standalone HTML preview](https://digi-uw.github.io/openelis-work/designs/microbiology/amr-micro-v2-preview.html)\n* [v2 amendments document (impact summary, A-01 to A-15, acceptance criteria)](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/amr-micro-v2-amendments.md)\n* Environmental follow-on: OGC-1382 ([gallery](https://digi-uw.github.io/openelis-work/#/microbiology/m-18-environmental-microbiology))\n* No slicing guide yet; the developer slices, starting from the impact summary.\n\n### Out of scope\n\n* Micro QC (media and stain lots, ATCC controls) and isolate storage, flagged as gaps\n* Breakpoint content changes\n\n**Documentation:** a Feature Doc child is expected when this reaches In Review.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "reporter": {
+        "accountId": "557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851",
+        "displayName": "Casey B. Iiams-Hauser"
+      },
+      "priority": {
+        "name": "Medium"
+      },
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "created": "2026-09-28T16:25:40.000-0700",
+      "updated": "2026-09-28T18:22:29.880-0700",
+      "labels": [
+        "PNG",
+        "global",
+        "microbiology"
+      ],
+      "customFields": {
+        "Request participants": {
+          "id": "customfield_10137",
+          "value": []
+        },
+        "Issue color": {
+          "id": "customfield_10017",
+          "value": "grey"
+        },
+        "Rank": {
+          "id": "customfield_10019",
+          "value": "0|i00g5f:"
+        },
+        "Epic Status": {
+          "id": "customfield_10012",
+          "value": {
+            "value": "To Do",
+            "id": "10016"
+          }
+        },
+        "Epic Color": {
+          "id": "customfield_10013",
+          "value": "ghx-label-12"
+        },
+        "Contract": {
+          "id": "customfield_10644",
+          "value": {
+            "value": "CPHL PNG",
+            "id": "10143"
+          }
+        },
+        "Development": {
+          "id": "customfield_10000",
+          "value": "{pullrequest={dataType=pullrequest, state=MERGED, stateCount=2}, json={\"cachedValue\":{\"errors\":[],\"summary\":{\"pullrequest\":{\"overall\":{\"count\":2,\"lastUpdated\":\"2026-10-02T05:47:26.000-0700\",\"stateCount\":2,\"state\":\"MERGED\",\"dataType\":\"pullrequest\",\"open\":false},\"byInstanceType\":{\"oAuth-com.github.integration.production\":{\"count\":2,\"name\":\"GitHub\"}}}}},\"isStale\":true}}"
+        },
+        "Organizations": {
+          "id": "customfield_10002",
+          "value": []
+        }
+      }
+    }
+  },
+  {
+    "id": "30813",
+    "key": "OGC-1382",
+    "fields": {
+      "summary": "Environmental Microbiology: cultures for swabs, water and food with a site instead of a patient (M-18)",
+      "description": "### What the lab user is trying to do\n\nA microbiology lab receives environmental samples as well as patient samples: ward surface swabs from infection prevention, cooling-tower water, food from a complaint. Today the only way to culture them is to invent a fake patient (\"Ward 3 Environment\"), which then shows up in patient searches, the antibiogram, WHONET and GLASS. Culture tests also sit on the ordinary Results screen as \"Not started\" for days, inviting entry outside the Microbiology Case.\n\n### What we're building\n\n* A separate **Environmental Microbiology** lab unit. Lab units keep one domain, and staff who work both benches get both units.\n* Environmental Microbiology Cases that use the same Case as patient cultures, with a **sampling site and sampling point** as the subject. Purpose (routine monitoring, post-cleaning check, outbreak investigation, complaint) and replicates are recorded on the Case.\n* Culture tests worked only in the Case, never on Results or Validation. This also fixes clinical cultures.\n* Environmental isolates kept out of the antibiogram and GLASS, and sent to WHONET only by an explicit choice, coded as environmental. Outbreak-investigation swabs are not counted by cluster detection.\n\n### How it fits the lab workflow\n\nReception picks Program = Microbiology on an environmental order and a lab unit for each culture sample (`/order/environmental/enter`). The bench works the Case at `/microbiology/case/:caseId` on the Microbiology v2 layout, and sees patient and site rows together on `/microbiology/worklist`.\n\n### What it touches in OpenELIS\n\nResults and Validation worklists, environmental order entry, the Microbiology Case and Worklist, the culture purpose code list, WHONET export, and the cluster detection environmental stream. No schema change of its own; the Case routing and lab unit keying come from Microbiology v2.\n\n### Links\n\n* [Gallery prototype](https://digi-uw.github.io/openelis-work/#/microbiology/m-18-environmental-microbiology)\n* [Standalone HTML preview](https://digi-uw.github.io/openelis-work/designs/microbiology/m-18-environmental-microbiology.html)\n* [FRS v0.5](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-18-environmental-microbiology.md)\n* [JSX mockup source](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-18-environmental-microbiology.jsx)\n* [Slicing guide (6 slices, suggested)](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-18-environmental-microbiology-breakdown.md)\n* [Analysis report](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/m-18-environmental-microbiology-analyze.md)\n* Depends on: [Microbiology v2 amendments (gallery)](https://digi-uw.github.io/openelis-work/#/microbiology/microbiology-v2-amendments), [v2 document](https://github.com/DIGI-UW/openelis-work/blob/main/designs/microbiology/amr-micro-v2-amendments.md)\n\n### Out of scope\n\n* Vector cultures and food-specific enumeration methods\n* Linking environmental samples to a cluster investigation (with M-16)\n* Choosing a ward directly as the site, until Locations & Organizations lands\n\n**Documentation:** a Feature Doc child is expected when this reaches In Review; the manual entry is written at Acceptance from verified behaviour.",
+      "status": {
+        "name": "Backlog",
+        "statusCategory": {
+          "name": "To Do"
+        }
+      },
+      "assignee": {
+        "accountId": "5e765a025e755d0cd425c863",
+        "displayName": "Piotr Mankowski"
+      },
+      "reporter": {
+        "accountId": "557058:99fa116c-0d0d-4dd2-aa5c-a335a4160851",
+        "displayName": "Casey B. Iiams-Hauser"
+      },
+      "priority": {
+        "name": "Medium"
+      },
+      "issuetype": {
+        "id": "10000",
+        "name": "Epic"
+      },
+      "created": "2026-09-28T16:22:04.132-0700",
+      "updated": "2026-09-28T16:25:48.277-0700",
+      "labels": [
+        "PNG",
+        "environmental",
+        "global",
+        "microbiology"
+      ],
+      "customFields": {
+        "Request participants": {
+          "id": "customfield_10137",
+          "value": []
+        },
+        "Issue color": {
+          "id": "customfield_10017",
+          "value": "green"
+        },
+        "Rank": {
+          "id": "customfield_10019",
+          "value": "0|i00g57:"
+        },
+        "Epic Status": {
+          "id": "customfield_10012",
+          "value": {
+            "value": "To Do",
+            "id": "10016"
+          }
+        },
+        "Epic Color": {
+          "id": "customfield_10013",
+          "value": "ghx-label-6"
+        },
+        "Contract": {
+          "id": "customfield_10644",
+          "value": {
+            "value": "CPHL PNG",
+            "id": "10143"
+          }
+        },
+        "Development": {
+          "id": "customfield_10000",
+          "value": "{pullrequest={dataType=pullrequest, state=MERGED, stateCount=1}, json={\"cachedValue\":{\"errors\":[],\"summary\":{\"pullrequest\":{\"overall\":{\"count\":1,\"lastUpdated\":\"2026-09-30T16:53:15.000-0700\",\"stateCount\":1,\"state\":\"MERGED\",\"dataType\":\"pullrequest\",\"open\":false},\"byInstanceType\":{\"oAuth-com.github.integration.production\":{\"count\":1,\"name\":\"GitHub\"}}}}},\"isStale\":true}}"
+        },
+        "Organizations": {
+          "id": "customfield_10002",
+          "value": []
+        }
+      }
+    }
+  }
+]

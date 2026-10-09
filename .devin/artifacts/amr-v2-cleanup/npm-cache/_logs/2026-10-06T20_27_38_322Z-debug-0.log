@@ -1,0 +1,21 @@
+0 verbose cli /Users/pmanko/.local/share/fnm/node-versions/v22.23.2/installation/bin/node /Users/pmanko/.local/state/fnm_multishells/78421_1791317028091/bin/npm
+1 info using npm@10.9.8
+2 info using node@v22.23.2
+3 silly config load:file:/Users/pmanko/.local/share/fnm/node-versions/v22.23.2/installation/lib/node_modules/npm/npmrc
+4 silly config load:file:/Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.npmrc
+5 silly config load:file:/Users/pmanko/.npmrc
+6 silly config load:file:/Users/pmanko/.local/share/fnm/node-versions/v22.23.2/installation/etc/npmrc
+7 verbose title npm exec prettier --check specs/amr/spec.md specs/amr/plan.md specs/amr/tasks.md
+8 verbose argv "exec" "--yes" "--package" "prettier@3.4.2" "--cache" "/Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.devin/artifacts/amr-v2-cleanup/npm-cache" "--" "prettier" "--check" "specs/amr/spec.md" "specs/amr/plan.md" "specs/amr/tasks.md"
+9 verbose logfile logs-max:10 dir:/Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.devin/artifacts/amr-v2-cleanup/npm-cache/_logs/2026-10-06T20_27_38_322Z-
+10 verbose logfile /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.devin/artifacts/amr-v2-cleanup/npm-cache/_logs/2026-10-06T20_27_38_322Z-debug-0.log
+11 silly logfile done cleaning log files
+12 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+13 http fetch GET 200 https://registry.npmjs.org/prettier 67ms (cache revalidated)
+14 silly packumentCache heap:4345298944 maxSize:1086324736 maxEntrySize:543162368
+15 verbose cwd /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon
+16 verbose os Darwin 27.0.0
+17 verbose node v22.23.2
+18 verbose npm  v10.9.8
+19 verbose exit 0
+20 info ok

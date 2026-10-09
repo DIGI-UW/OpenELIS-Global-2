@@ -1,0 +1,422 @@
+{
+  "date": "2026-10-06",
+  "engineeringBaseline": "3b0f132d553f48f4f0e0cd47d24f2eb0c567d772",
+  "designBaseline": "61d7971ff5ae2814cb0e5f3ebd84371f8a0a3659",
+  "engineeringPR": "https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4605",
+  "designPR": "https://github.com/DIGI-UW/openelis-work/pull/354",
+  "jira": {
+    "issuesReadBack": 89,
+    "retired": [
+      "OGC-782",
+      "OGC-785",
+      "OGC-789",
+      "OGC-790",
+      "OGC-791",
+      "OGC-792",
+      "OGC-841",
+      "OGC-901",
+      "OGC-925",
+      "OGC-820",
+      "OGC-825",
+      "OGC-829",
+      "OGC-833",
+      "OGC-837",
+      "OGC-839",
+      "OGC-842",
+      "OGC-845",
+      "OGC-847",
+      "OGC-848",
+      "OGC-850",
+      "OGC-852",
+      "OGC-857",
+      "OGC-875",
+      "OGC-886",
+      "OGC-889",
+      "OGC-893",
+      "OGC-907",
+      "OGC-909",
+      "OGC-911",
+      "OGC-912",
+      "OGC-914"
+    ],
+    "retained": [
+      "OGC-783",
+      "OGC-784",
+      "OGC-786",
+      "OGC-787",
+      "OGC-788",
+      "OGC-793",
+      "OGC-794",
+      "OGC-900",
+      "OGC-918",
+      "OGC-854",
+      "OGC-855",
+      "OGC-856",
+      "OGC-860",
+      "OGC-863",
+      "OGC-866",
+      "OGC-869",
+      "OGC-871",
+      "OGC-873",
+      "OGC-878",
+      "OGC-880",
+      "OGC-890",
+      "OGC-902",
+      "OGC-906",
+      "OGC-916",
+      "OGC-917",
+      "OGC-919",
+      "OGC-920",
+      "OGC-922",
+      "OGC-924"
+    ],
+    "tasks": [
+      {
+        "id": "V16",
+        "key": "OGC-1441",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V15",
+        "key": "OGC-1440",
+        "parent": "OGC-1382"
+      },
+      {
+        "id": "V14",
+        "key": "OGC-1439",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V07",
+        "key": "OGC-1438",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V13",
+        "key": "OGC-1437",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V12",
+        "key": "OGC-1436",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V08",
+        "key": "OGC-1435",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V11",
+        "key": "OGC-1434",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V10",
+        "key": "OGC-1433",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V09",
+        "key": "OGC-1432",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V06",
+        "key": "OGC-1431",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V05",
+        "key": "OGC-1430",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V04",
+        "key": "OGC-1429",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V03",
+        "key": "OGC-1428",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V02",
+        "key": "OGC-1427",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V01",
+        "key": "OGC-1426",
+        "parent": "OGC-1383"
+      },
+      {
+        "id": "V00",
+        "key": "OGC-1425",
+        "parent": "OGC-1383"
+      }
+    ],
+    "nativeLinks": [
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1425",
+        "outwardIssue": "OGC-1426"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1426",
+        "outwardIssue": "OGC-1427"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1427",
+        "outwardIssue": "OGC-1428"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1428",
+        "outwardIssue": "OGC-1429"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1429",
+        "outwardIssue": "OGC-1430"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1430",
+        "outwardIssue": "OGC-1431"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1431",
+        "outwardIssue": "OGC-1432"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1432",
+        "outwardIssue": "OGC-1433"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1433",
+        "outwardIssue": "OGC-1434"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1434",
+        "outwardIssue": "OGC-1435"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1435",
+        "outwardIssue": "OGC-1436"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1436",
+        "outwardIssue": "OGC-1437"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1437",
+        "outwardIssue": "OGC-1438"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1438",
+        "outwardIssue": "OGC-1439"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1439",
+        "outwardIssue": "OGC-1440"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-1440",
+        "outwardIssue": "OGC-1441"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-783",
+        "outwardIssue": "OGC-1441"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-784",
+        "outwardIssue": "OGC-1429"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-784",
+        "outwardIssue": "OGC-1430"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-784",
+        "outwardIssue": "OGC-1433"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-786",
+        "outwardIssue": "OGC-1432"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-786",
+        "outwardIssue": "OGC-1433"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-787",
+        "outwardIssue": "OGC-1433"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-787",
+        "outwardIssue": "OGC-1434"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-788",
+        "outwardIssue": "OGC-1428"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-788",
+        "outwardIssue": "OGC-1429"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-793",
+        "outwardIssue": "OGC-1433"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-793",
+        "outwardIssue": "OGC-1434"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-793",
+        "outwardIssue": "OGC-1436"
+      },
+      {
+        "linkType": "Blocks",
+        "inwardIssue": "OGC-794",
+        "outwardIssue": "OGC-1440"
+      },
+      {
+        "linkType": "Relates",
+        "inwardIssue": "OGC-900",
+        "outwardIssue": "OGC-1383"
+      },
+      {
+        "linkType": "Relates",
+        "inwardIssue": "OGC-918",
+        "outwardIssue": "OGC-1383"
+      },
+      {
+        "linkType": "Relates",
+        "inwardIssue": "OGC-1386",
+        "outwardIssue": "OGC-1436"
+      },
+      {
+        "linkType": "Relates",
+        "inwardIssue": "OGC-1386",
+        "outwardIssue": "OGC-1440"
+      },
+      {
+        "linkType": "Relates",
+        "inwardIssue": "OGC-1411",
+        "outwardIssue": "OGC-1438"
+      }
+    ],
+    "verificationErrors": []
+  },
+  "confluence": {
+    "archived": [
+      {
+        "id": "1315209256",
+        "type": "page",
+        "title": "Microbiology Module — Workflow Walk-through (for developers)",
+        "status": "archived",
+        "spaceId": "52559895",
+        "snapshotToken": "v:6"
+      },
+      {
+        "id": "1370554369",
+        "type": "page",
+        "title": "Microbiology / AMR — Epic Dependency Graph & Backlog Map",
+        "status": "archived",
+        "spaceId": "52559895",
+        "snapshotToken": "v:1"
+      },
+      {
+        "id": "1428488194",
+        "type": "page",
+        "title": "Microbiology Walk-through — Phase Diagrams (v2.1)",
+        "status": "archived",
+        "spaceId": "52559895",
+        "snapshotToken": "v:1"
+      }
+    ],
+    "versions": [
+      {
+        "number": 6,
+        "createdAt": "2026-06-08T22:54:40.280Z",
+        "message": "v2.1 (2026-06-08): Case keying = SampleItem × workflow_type; WHONET (M-09) extends existing export; M-11 reuses existing notifications dashboard + TestNotificationService; Expert Review / critical log are inline panels not modals (Principle 3). Full-body refresh from canonical narrative."
+      },
+      {
+        "number": 5,
+        "createdAt": "2026-05-18T19:21:36.594Z",
+        "message": ""
+      },
+      {
+        "number": 4,
+        "createdAt": "2026-05-18T19:02:38.026Z",
+        "message": "Add 12 huge bold IMAGE INSERT callouts at each narrative beat for the Gemini-generated illustrations"
+      },
+      {
+        "number": 3,
+        "createdAt": "2026-05-18T18:58:58.930Z",
+        "message": ""
+      },
+      {
+        "number": 2,
+        "createdAt": "2026-05-18T18:51:56.276Z",
+        "message": "Full content: all six phases + cross-cutting macros + composition diagram + phasing + open questions"
+      },
+      {
+        "number": 1,
+        "createdAt": "2026-05-18T18:48:05.751Z",
+        "message": ""
+      }
+    ],
+    "preservedChildren": [
+      "1389002753",
+      "1534394382"
+    ]
+  },
+  "validation": {
+    "designTests": 276,
+    "designBuild": "passed",
+    "sourceLinksChecked": 828,
+    "newLinkErrors": 0,
+    "preexistingUnrelatedMissingTargets": 17,
+    "retiredSourceAndOutputReferences": 0,
+    "acceptanceCriteria": 112,
+    "primaryOwners": 112,
+    "renderedReview": [
+      "clinical mock",
+      "environmental mock",
+      "reception",
+      "test catalog",
+      "inventory",
+      "patient report"
+    ],
+    "applicationTestsRun": false
+  }
+}

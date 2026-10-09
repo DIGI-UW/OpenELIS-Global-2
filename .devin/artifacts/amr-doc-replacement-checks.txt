@@ -1,0 +1,155 @@
+AMR doc replacement verification — specs/amr/{spec,plan,tasks}.md
+Worktree: OpenELIS-Global-2-polished-shannon (polished-shannon)
+================================================================
+
+$ git diff --check            # tracked changes (m8/m10 spec.md edits)
+EXIT=0  (no output — clean)
+
+$ git diff --check --no-index /dev/null specs/amr/{spec,plan,tasks}.md
+EXIT=1 for each (diff exists vs /dev/null; --no-index semantics).
+No check findings printed — no trailing whitespace / space-before-tab /
+conflict markers in any of the three files.
+
+$ grep -n 'devin|artifact' .gitignore; git check-ignore -v .devin/artifacts
+NOTE: no .devin entry in .gitignore or .git/info/exclude; no core.excludesFile.
+git check-ignore -v .devin .devin/artifacts .devin/artifacts/x.txt -> no output.
+.devin/ is NOT ignored on this branch — this file shows as untracked.
+
+PRETTIER — BLOCKED (environment)
+- This worktree has no frontend/node_modules (ls -> absent).
+- Lead-designated install /Users/pmanko/.codex/worktrees/4681/... is outside
+  sandbox read scope; request_scope denied (background mode auto-denies).
+- Denied commands (exact): `ls <codex node_modules>`, `mkdir -p .devin/artifacts`
+  (tool-layer denial), `command -v node npx npm prettier`, `node --version`,
+  `python3 --version`. Node/npm/prettier are not executable in this session.
+- No prettier run performed; files were written verbatim and pass git
+  whitespace checks above. V00's prettier --check remains unrun here.
+
+LOCAL LINK / ANCHECK VALIDATION (mechanical, GitHub slugs)
+
+plan.md headings -> anchors (all 23 resolve):
+  ## Repository seams            #repository-seams            ok
+  ## Source and cutover gate     #source-and-cutover-gate     ok
+  ## Execution rules             #execution-rules             ok
+  ## Exact verification gates    #exact-verification-gates    ok
+  ### V00..V15 — <name>          v00--.. v15--.. (see below)   ok
+  ## Final integration gate      #final-integration-gate      ok
+
+tasks.md Contents anchors -> tasks.md headings (18/18 ok):
+  #iteration-rules #00--source-and-cutover-gate #01--migration-rehearsal
+  #02--case-routing-and-access #03--case-information #04--case-results-and-notes
+  #05--culture-media #06--independent-culture-readings #07--bench-work-and-labels
+  #08--incoming-results #09--isolates-and-referral #10--ast-reporting
+  #11--dst-rules #12--releases-and-reports #13--critical-callbacks
+  #14--patient-history #15--environmental-and-export-populations
+  #16--complete-cutover-acceptance
+
+tasks.md -> plan.md anchors (17/17 ok):
+  plan.md#v00--documentation-and-sources v01--migration v02--routing
+  v03--context v04--results-and-notes v05--media v06--cultures v07--bench
+  v08--incoming v09--isolate-and-referral v10--ast v11--dst v12--reports
+  v13--callbacks v14--history v15--populations final-integration-gate
+  (em-dash in headings -> removed, space pairs -> `--`; matches GitHub slugger)
+
+spec.md: no local anchor links (external https only).
+
+Reference-style links (tasks.md):
+  defined: mock catalog routing context culture initial ast referral incoming
+           isolates reports bench notes dst preserved release callbacks
+           populations labels history acceptance environment patient-report (23)
+  used:    identical set of 23 — every definition used, no undefined use.
+plan.md/spec.md: no reference-style links.
+
+SCRIPT / TEST PATHS IN plan.md — EXISTENCE
+
+Scripts (all exist):
+  scripts/dev-stack                        ok
+  scripts/run-java21                       ok
+  scripts/run-ci-checks.sh                 ok
+  .ai/skills/playwright/scripts/validate-playwright-project.py   ok
+  frontend/package.json scripts: format, check-format, pw:guard,
+           pw:test, test:unit — all present ok
+
+Playwright specs (under frontend/playwright/tests/foundational/core/):
+  existing:  microbiology-order-entry, microbiology-case-workbench,
+             microbiology-reagent-lots, microbiology-no-growth-release,
+             microbiology-repeat-ast, microbiology-amendment,
+             microbiology-worklist-critical, microbiology-whonet-export
+  planned-new (absent, as plan.md itself declares): amr-case-results,
+             amr-bench-work, amr-incoming-results, amr-isolate-referral,
+             amr-dst-validation, amr-patient-history
+
+Frontend unit tests (src/components/microbiology/__tests__/):
+  existing: OrderDetailPanel.test.jsx MicrobiologyCaseView.test.jsx
+            CaseInoculationPanel.test.jsx ReagentLotPicker.test.jsx
+            MicrobiologyWorklist.test.jsx AstEntryPanel.test.jsx
+
+JUnit selections:
+  existing: MicrobiologyOrderSaveIntegrationTest MicroOrderRoutingIdempotencyTest
+            MicrobiologyBenchRestControllerSecurityTest MicrobiologyOrmValidationTest
+            MicroCaseOrderDetailServiceTest MicroReagentLotTransactionIntegrationTest
+            MicroCaseInoculationServiceTest MicroCultureAnalyzerEventServiceTest
+            MicroCaseReadinessServiceTest MicroWorklistServiceTest
+            MicroAstAnalyzerEventServiceTest MicroIsolateServiceTest
+            MicroAstIntegrationTest MicroAstServiceTest MicroAstInterpretationServiceTest
+            MicroBreakpointServiceTest MicroAmendmentIntegrationTest
+            MicroReportReleaseServiceTest MicroCriticalCommunicationAlertIntegrationTest
+            MicroWhonetPersistenceIntegrationTest MicroWhonetDatasetServiceTest (all 21)
+  planned-new (absent): AmrCutoverMigrationTest AmrCaseContextIntegrationTest
+            AmrCaseResultsIntegrationTest AmrCultureReadingIntegrationTest
+            AmrBenchWorkIntegrationTest AmrIncomingResultsIntegrationTest
+            AmrIsolateReferralIntegrationTest AmrDstIntegrationTest
+            AmrReportIntegrationTest AmrCallbackIntegrationTest
+            AmrHistoryIntegrationTest AmrEnvironmentalIntegrationTest (all 12)
+
+OLD-DIR REFERENCES REMAINING (782-ogc-782-microbiology-mvp-spec): 8, all inside
+specs/amr legacy files slated for deletion review:
+  specs/amr/research.md:5,13,15  (3)
+  specs/amr/quickstart.md:14,15,16,17,44  (5)
+Zero in spec.md/plan.md/tasks.md; zero outside specs/amr.
+
+Lead verification: Prettier 3.8.3 format/check passed; all local anchors/reference definitions resolve; all existing Micro* test selections exist; planned Amr* tests remain unimplemented; all three untracked documents pass git whitespace checks; no OGC ticket identity in maintained documents. No application tests run. Source and deletion gate remains blocked.
+
+================================================================
+FOLLOW-UP VERIFICATION (post lead risk-reconciliation/Jira edits)
+================================================================
+
+PRETTIER — UNBLOCKED
+$ ls -la /Users/pmanko/.codex/worktrees/4681/OpenELIS-Global-2/frontend/node_modules/prettier/bin/prettier.cjs
+  -rwxr-xr-x 2568 bytes — readable/executable this session.
+$ prettier.cjs --version -> 3.8.3
+$ prettier.cjs --check specs/amr/plan.md specs/amr/tasks.md
+  [warn] specs/amr/plan.md  (tasks.md clean)
+$ prettier.cjs --write specs/amr/plan.md -> reformatted
+$ diff -u .devin/artifacts/plan.md.pre-prettier specs/amr/plan.md
+  FORMATTING-ONLY: whitespace padding of the Risk reconciliation table
+  (column alignment + `| --- |` separator widths). Zero content changes.
+  Pre-format snapshot saved as .devin/artifacts/plan.md.pre-prettier
+$ prettier.cjs --check specs/amr/{spec,plan,tasks}.md
+  All matched files use Prettier code style!  (exit 0)
+
+$ git diff --check -> clean (exit 0)
+$ git diff --check --no-index /dev/null specs/amr/{spec,plan,tasks}.md
+  no whitespace findings in any file.
+
+ANCHORS AFTER LEAD EDITS — all resolve
+plan.md headings now include new `## Risk reconciliation` (line 55).
+plan.md Contents (6/6): #repository-seams #source-and-cutover-gate
+  #risk-reconciliation #execution-rules #exact-verification-gates
+  #final-integration-gate — all match headings.
+tasks.md Contents (18/18): unchanged NN--title anchors all match headings.
+tasks.md -> plan.md (18/18): plan.md#risk-reconciliation (new, resolves),
+  plan.md#v00--documentation-and-sources .. #v15--populations,
+  plan.md#final-integration-gate — all match plan.md headings.
+spec.md: no local anchors (external links only).
+tasks.md reference-style links: 23 defined = 23 used, identical sets.
+
+BLOCKER-STRING ABSENCE (maintained docs, all three grepped)
+patterns: 'unread risk artifact', 'Obtain Jira/risk inputs',
+  'blocked on source access', 'source access/decisions', 'source-access'
+-> zero matches (grep exit 1).
+Replacement wording present: plan.md:44 "The supplied draft-3 risk review
+has been read and reconciled"; tasks.md:44 status now "blocked on
+product/source alignment and deletion confirmation" (not source access);
+tasks.md:49 "[x] Read live AMR/environmental tickets and the supplied
+draft-3 risk review".

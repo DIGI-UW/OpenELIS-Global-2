@@ -1,0 +1,9 @@
+Microbiology guidance currently teaches competing case, protocol and reporting models. This change makes draft 10.4 the self-contained functional baseline, with separate cases after transfers, deferred joining, blocked offline writes, and patient reporting independent of surveillance eligibility. Retire the mapped 51 sources and their publication copies; retain 26 aligned microbiology artifacts and update shared reception, catalog, inventory and report sections.
+
+Regenerate gallery registration, permalinks, thumbnail targets, catalogs, machine-readable documentation and sitemap. Future antibiogram, GLASS and cluster delivery stays outside V2 scope. Engineering decisions and the 112-criterion roadmap live in the paired [engineering review #4605](https://github.com/DIGI-UW/OpenELIS-Global-2/pull/4605) and [verified roadmap](https://github.com/DIGI-UW/OpenELIS-Global-2/blob/8c8d31aba30def3f6232475238fa19754523b9a8/specs/amr/tasks.md).
+
+Validation: `npm test` passed all 276 tests; `npm run build` and whitespace checks passed. Checked 828 source links/anchors with zero current errors (17 unrelated missing targets pre-existed); retired filename/permalink/Confluence-link scans found zero hits in source or generated publication output. Chrome rendered review covered both V2 mocks and shared reception, catalog, inventory and report specifications.
+
+Jira readback verified 31 superseded closures, 29 retained shared/future alignments, 17 roadmap tasks and 35 new native dependency links. Retained owners/statuses and OGC-1383 blocks OGC-1382 were preserved. Confluence walkthrough 1315209256 and its obsolete graph/phase-diagram copies are archived, with six walkthrough versions retained. Other child pages were preserved as siblings. V00 is complete; V01–V16 remain planned.
+
+Documentation and gallery changes only. This draft is unmerged; no application testing, deployment, gallery publication or clinical acceptance is claimed.

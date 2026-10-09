@@ -1,0 +1,20 @@
+
+> test
+> cd mockup-viewer && npm test
+
+
+> openelis-mockup-viewer@1.0.0 test
+> vitest run
+
+1:10:20 PM [vite] warning: `esbuild` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `oxc` instead.
+1:10:20 PM [vite] warning: `optimizeDeps.esbuildOptions` option was specified by "vite:react-babel" plugin. This option is deprecated, please use `optimizeDeps.rolldownOptions` instead.
+Both esbuild and oxc options were set. oxc options will be used and esbuild options will be ignored. The following esbuild options were set: `{ jsx: 'automatic', jsxImportSource: undefined }`
+
+ RUN  v4.1.2 /Users/pmanko/code/openelis-work/.worktrees/amr-v2-doc-cleanup/mockup-viewer
+
+
+ Test Files  3 passed (3)
+      Tests  276 passed (276)
+   Start at  13:10:20
+   Duration  21.57s (transform 1.65s, setup 103ms, import 351ms, tests 30.61s, environment 882ms)
+
