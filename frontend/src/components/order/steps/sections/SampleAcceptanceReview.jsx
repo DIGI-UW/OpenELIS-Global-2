@@ -105,6 +105,7 @@ const SampleAcceptanceReview = ({
 
   const [statusById, setStatusById] = useState({});
   const [loading, setLoading] = useState(false);
+  const [statusesLoaded, setStatusesLoaded] = useState(false);
   const [selectedKey, setSelectedKey] = useState(null);
   // Optimistic per-entry reject flags: a rejected pool/specimen drops out of
   // /order/{id}/items, so the table tag can't come from statusById — track it here.
@@ -123,6 +124,7 @@ const SampleAcceptanceReview = ({
           map[String(it.sampleItemId)] = it;
         });
         setStatusById(map);
+        setStatusesLoaded(true);
       })
       .finally(() => setLoading(false));
   }, [orderId]);
@@ -150,23 +152,28 @@ const SampleAcceptanceReview = ({
     onBlockedChange?.(anyBlocked);
   }, [statusById, onBlockedChange]);
 
+  // Each unit is named as its labels and Refer Out name it: the order's lab
+  // number and the tube's position in the order.
+  const unitName = (entry) =>
+    labNumber
+      ? `${labNumber}-${(samples || []).indexOf(entry.representative) + 1}`
+      : "—";
+
   // Which units the server does not yet hold as accepted, named the way the
   // rest of the order names tubes, so a release that needs a reason can say
   // what is missing (OGC-1443). Answers count only once Accept sample saves
   // them, so a unit answered on screen but not accepted is still listed.
-  const unaccepted = entries
+  // Until the server has reported, nothing is known to be unaccepted.
+  const unaccepted = (statusesLoaded ? entries : [])
     .filter(
       (entry) =>
         !isEntryRejected(entry) &&
         statusById[String(entry.representative.sampleItemId)]?.overallStatus !==
           STATUS.ACCEPTED,
     )
-    .map((entry) => {
-      const position = (samples || []).indexOf(entry.representative) + 1;
-      return `${labNumber || ""}-${position} ${
-        entry.representative.sampleTypeName || ""
-      }`.trim();
-    });
+    .map((entry) =>
+      `${unitName(entry)} ${entry.representative.sampleTypeName || ""}`.trim(),
+    );
   const unacceptedKey = unaccepted.join("|");
   useEffect(() => {
     onUnacceptedChange?.(unacceptedKey ? unacceptedKey.split("|") : []);
@@ -335,7 +342,7 @@ const SampleAcceptanceReview = ({
                 onClick={() => setSelectedKey(entry.key)}
                 className="sac-review-row"
               >
-                <TableCell>{labNumber || "—"}</TableCell>
+                <TableCell>{unitName(entry)}</TableCell>
                 <TableCell>{typeLabel}</TableCell>
                 <TableCell>
                   {mins !== null ? formatTransit(mins) : "—"}

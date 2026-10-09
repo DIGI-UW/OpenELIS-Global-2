@@ -61,4 +61,43 @@ describe("SampleAcceptanceReview — samples not accepted yet (OGC-1443)", () =>
       ]),
     );
   });
+
+  it("labels each row with the lab number and position the release reason uses", async () => {
+    evaluationsMock.mockResolvedValue([]);
+
+    const { findByText } = render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleAcceptanceReview
+          orderId="79"
+          labNumber="DEV01260000000001422"
+          samples={[urine("701"), urine("702")]}
+          onBlockedChange={vi.fn()}
+        />
+      </IntlProvider>,
+    );
+
+    expect(await findByText("DEV01260000000001422-1")).toBeTruthy();
+    expect(await findByText("DEV01260000000001422-2")).toBeTruthy();
+  });
+
+  it("names nothing until the server has reported, so no sample shows as not accepted while loading", () => {
+    evaluationsMock.mockReturnValue(new Promise(() => {}));
+    const onUnacceptedChange = vi.fn();
+
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <SampleAcceptanceReview
+          orderId="78"
+          labNumber="DEV01260000000001421"
+          samples={[urine("601"), urine("602")]}
+          onBlockedChange={vi.fn()}
+          onUnacceptedChange={onUnacceptedChange}
+        />
+      </IntlProvider>,
+    );
+
+    expect(onUnacceptedChange).not.toHaveBeenCalledWith(
+      expect.arrayContaining(["DEV01260000000001421-1 Urine"]),
+    );
+  });
 });
