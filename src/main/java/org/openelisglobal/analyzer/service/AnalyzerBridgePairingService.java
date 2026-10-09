@@ -1,5 +1,6 @@
 package org.openelisglobal.analyzer.service;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import java.security.cert.X509Certificate;
 import java.time.Instant;
 import java.util.Optional;
@@ -12,8 +13,11 @@ import javax.net.ssl.SSLContext;
  */
 public interface AnalyzerBridgePairingService {
 
+    /**
+     * {@code pairedAt} is sent as ISO-8601 text, which the page reads as a date.
+     */
     record Status(String bridgeUrl, boolean paired, String bridgeCertificateSha256, String clientCertificateSha256,
-            Instant pairedAt, boolean pairsAutomatically) {
+            @JsonFormat(shape = JsonFormat.Shape.STRING) Instant pairedAt, boolean pairsAutomatically) {
     }
 
     /** The TLS context for calls to the paired Bridge, and whom it trusts. */
