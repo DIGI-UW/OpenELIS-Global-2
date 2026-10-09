@@ -73,6 +73,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     private static final String REJECT_VALUE = "XXXX";
     private static final String RESULT_SUBJECT = "Analyzer Result Note";
+    private static final Set<String> DICTIONARY_OPTION_TYPES = Set.of("D", "M", "Q", "C");
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
@@ -1252,15 +1253,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<TestResult> candidates = filterTestResultsByComponent(all, resultItem.getComponentId());
         boolean hasDictCandidates = candidates.stream().anyMatch(c -> "D".equals(c.getTestResultType()));
         if (hasDictCandidates) {
-            TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
-                    resultItem.getResult());
-            // Only trust the test-scoped dictionary match when it belongs to the target
-            // component; otherwise fall through to the component-filtered candidates.
-            String resolvedTestResultId = testResult == null ? null : testResult.getId();
-            boolean belongsToComponent = candidates.stream()
-                    .anyMatch(candidate -> candidate.getId().equals(resolvedTestResultId));
-            if (testResult != null && !belongsToComponent) {
-                testResult = null;
+            // Another component of the test can offer the same answer, so the answer is
+            // matched among this record's own options, never test-wide.
+            TestResult testResult = null;
+            if (StringUtil.isInteger(resultItem.getResult())) {
+                String answer = resultItem.getResult().trim();
+                testResult = candidates.stream()
+                        .filter(candidate -> DICTIONARY_OPTION_TYPES.contains(candidate.getTestResultType())
+                                && answer.equals(candidate.getValue()))
+                        .findFirst().orElse(null);
             }
             if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
                 String desired = resultItem.getResult().trim();

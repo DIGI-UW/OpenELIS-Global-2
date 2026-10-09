@@ -423,6 +423,36 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void aMainCallKeepsItsAnswerWhenAnotherComponentOffersTheSameOne() {
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES"
+                + " (97401, 'Positive 1145', 'Y', NOW()), (97402, 'Invalid 1145', 'Y', NOW())");
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('c-call-1145', ?, 'CALL', 'Call', false, 'Y', NOW()), ('c-main-1145', ?,"
+                + " 'PRIMARY', 'Call', true, 'Y', NOW())", MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                + " component_id, lastupdated) VALUES (97321, ?, 'D', '97401', true, 1, 'c-call-1145', NOW()),"
+                + " (97322, ?, 'D', '97402', true, 3, 'c-main-1145', NOW()), (97323, ?, 'D', '97401', true, 1,"
+                + " 'c-main-1145', NOW())", MULTI_TYPE_TEST, MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("UPDATE clinlims.analyzer_results SET result = '97401', test_result_type = 'D'"
+                + " WHERE id = ?::numeric", stagedRowId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setResult("97401");
+        item.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(item), "1");
+
+        java.util.Map<String, Object> saved = jdbc
+                .queryForMap(
+                        "SELECT r.test_result_id::text AS option, r.value FROM clinlims.result r"
+                                + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        ACCESSION);
+        assertEquals("the call stays Positive", "97401", saved.get("value"));
+        assertEquals("on the primary component's Positive", "97323", saved.get("option"));
+    }
+
+    @org.junit.Test
     public void aRerunThatReplacesAResultTakesTheComponentsCurrentDigits() {
         aNumberOnAComponentIsSavedWithTheComponentsDigits();
         jdbc.update("UPDATE clinlims.test_result_component SET significant_digits = 3 WHERE id = 'c-log-1145'");
