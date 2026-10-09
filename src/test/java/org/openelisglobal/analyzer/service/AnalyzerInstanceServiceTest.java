@@ -289,6 +289,24 @@ public class AnalyzerInstanceServiceTest {
     }
 
     @Test
+    public void aConnectionAnotherRequestRepinnedIsLeftAsItIsAndReportedAsNeedingReconciliation() {
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted());
+        ObjectNode elsewhere = bridgeConnection.deepCopy();
+        elsewhere.with("profileRef").put("revision", 5).put("fingerprint", "sha256:" + "9".repeat(64));
+        elsewhere.put("configRevision", 2);
+        when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection, elsewhere);
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class)))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.conflict"));
+
+        BridgeAnalyzerConnectionException failed = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"));
+
+        assertEquals("analyzer.bridge.connection.reconcileRequired", failed.messageKey());
+        sentUpdates(1);
+    }
+
+    @Test
     public void aConnectionThatCannotBePutBackIsReportedAsNeedingReconciliation() {
         when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted());
         when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection)

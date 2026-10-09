@@ -117,25 +117,42 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     }
 
     /**
-     * Puts the connection back on {@code previous}'s pin if it moved. The Bridge
-     * can make a change whose answer is then lost, so the connection is read again
-     * rather than trusted. When it cannot be put back, OE2 and the Bridge may
-     * disagree, and that is what the operator is told.
+     * Puts the connection back on {@code previous}'s pin if this request moved it.
+     * The Bridge can make a change whose answer is then lost, so the connection is
+     * read again rather than trusted. A pin that is neither this request's nor the
+     * previous one was set by someone else and is left alone. When the connection
+     * is not back on its previous pin, OE2 and the Bridge may disagree, and that is
+     * what the operator is told.
      */
     private void putBack(AnalyzerInstanceState state, ObjectNode previous, RuntimeException original) {
+        ObjectNode now;
         try {
-            ObjectNode now = bridgeClient.getConnection(state.bridgeConnectionId());
-            if (now.path("profileRef").equals(previous.path("profileRef"))) {
-                return;
-            }
+            now = bridgeClient.getConnection(state.bridgeConnectionId());
+        } catch (RuntimeException rereadFailure) {
+            throw reconcileRequired(original, rereadFailure);
+        }
+        if (now.path("profileRef").equals(previous.path("profileRef"))) {
+            return;
+        }
+        if (!pinnedTo(state, now)) {
+            throw reconcileRequired(original, null);
+        }
+        try {
             bridgeClient.updateConnection(state.bridgeConnectionId(),
                     updateConnectionRequest(state, previous.path("profileRef"), objectMapper.createObjectNode(), now));
         } catch (RuntimeException putBackFailure) {
-            BridgeAnalyzerConnectionException reconcile = new BridgeAnalyzerConnectionException(
-                    "analyzer.bridge.connection.reconcileRequired", Map.of(), original);
-            reconcile.addSuppressed(putBackFailure);
-            throw reconcile;
+            throw reconcileRequired(original, putBackFailure);
         }
+    }
+
+    private static BridgeAnalyzerConnectionException reconcileRequired(RuntimeException original,
+            RuntimeException failure) {
+        BridgeAnalyzerConnectionException reconcile = new BridgeAnalyzerConnectionException(
+                "analyzer.bridge.connection.reconcileRequired", Map.of(), original);
+        if (failure != null) {
+            reconcile.addSuppressed(failure);
+        }
+        return reconcile;
     }
 
     private ObjectNode connectionValues(AnalyzerInstanceRequest request) {
