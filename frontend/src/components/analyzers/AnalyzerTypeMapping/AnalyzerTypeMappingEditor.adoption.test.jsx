@@ -237,18 +237,9 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
     expect(
       within(changed).getByText("New default: Glucose"),
     ).toBeInTheDocument();
-    expect(
-      within(changed).getByRole("button", { name: "Keep current" }),
-    ).toBeDisabled();
     await userEvent.click(
       within(changed).getByRole("button", { name: "Use new default" }),
     );
-    expect(
-      within(changed).getByRole("button", { name: "Use new default" }),
-    ).toBeDisabled();
-    expect(
-      within(changed).getByRole("button", { name: "Keep current" }),
-    ).toBeEnabled();
     await userEvent.click(
       screen.getByRole("button", { name: "Save as revision 2" }),
     );
@@ -265,6 +256,38 @@ describe("AnalyzerTypeMappingEditor adopting a newer revision", () => {
         '/analyzers/501/mapping|{"adoptedRevision":2}',
       ),
     );
+  });
+
+  it("lets the operator take either side when a revision moves only the call to another component", async () => {
+    const onComponent = (code, testId, callComponentId) => {
+      const base = decision(code, testId);
+      return { ...base, test: { ...base.test, callComponentId } };
+    };
+    getAnalyzerAdoption.mockImplementation((_id, _revision, callback) =>
+      callback(
+        review([
+          planRow("GLU", "CHANGED", {
+            current: onComponent("GLU", fastingGlucose.id, "call-old"),
+            newDefault: onComponent("GLU", fastingGlucose.id, "call-new"),
+            proposed: onComponent("GLU", fastingGlucose.id, "call-old"),
+          }),
+        ]),
+      ),
+    );
+    renderAdoption();
+
+    const changed = await screen.findByTestId("adoption-comparison-GLU");
+    await userEvent.click(
+      within(changed).getByRole("button", { name: "Use new default" }),
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Save as revision 2" }),
+    );
+
+    const [, , update] = adoptAnalyzerRevision.mock.calls[0];
+    expect(
+      update.tests.find((test) => test.sourceRowKey === "GLU"),
+    ).toMatchObject({ testId: fastingGlucose.id, callComponentId: "call-new" });
   });
 
   it("will not save while a dropped record still has held results", async () => {

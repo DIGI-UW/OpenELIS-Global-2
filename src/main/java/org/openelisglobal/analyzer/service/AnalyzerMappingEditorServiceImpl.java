@@ -239,29 +239,24 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
      * says; a row left as it was keeps its origin.
      */
     private static AnalyzerMappingDraft withOrigins(AnalyzerMappingSnapshot previous, AnalyzerMappingDraft draft) {
-        Map<AnalyzerMappingRowKey, org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest> before = previous
-                .tests().stream().collect(Collectors.toMap(AnalyzerMappingRowKey::of, Function.identity()));
-        Map<ResultSourceKey, org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult> beforeResults = previous
-                .results().stream().collect(Collectors.toMap(ResultSourceKey::of, Function.identity()));
+        AnalyzerMappingDraft prior = AnalyzerMappingDraft.of(previous);
+        Map<AnalyzerMappingRowKey, AnalyzerMappingTestDraft> before = prior.tests().stream()
+                .collect(Collectors.toMap(AnalyzerMappingTestDraft::rowKey, Function.identity()));
+        Map<ResultSourceKey, AnalyzerMappingResultDraft> beforeResults = prior.results().stream().collect(
+                Collectors.toMap(row -> new ResultSourceKey(row.rowKey(), row.rawValue()), Function.identity()));
         List<AnalyzerMappingTestDraft> tests = draft.tests().stream().map(row -> {
             var old = before.get(row.rowKey());
-            boolean same = old != null && old.getMappingState() == row.mappingState()
-                    && Objects.equals(old.getTestId(), row.testId())
-                    && Objects.equals(old.getComponentId(), row.componentId())
-                    && Objects.equals(old.getCallComponentId(), row.callComponentId());
             AnalyzerMappingTestDraft kept = old == null ? row.keepingAssayOf(null, true, null)
-                    : row.keepingAssayOf(old.getMappingState(), old.isEnabled(), old.getInstrumentCode());
+                    : row.keepingAssayOf(old.mappingState(), old.isEnabled(), old.instrumentCode());
             return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
-                    row.unresolvedReason(), same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE, row.subIdentity(),
-                    row.callComponentId(), kept.enabled(), kept.instrumentCode());
+                    row.unresolvedReason(), row.sameTarget(old) ? old.origin() : AnalyzerMappingOrigin.OVERRIDE,
+                    row.subIdentity(), row.callComponentId(), kept.enabled(), kept.instrumentCode());
         }).toList();
         List<AnalyzerMappingResultDraft> results = draft.results().stream().map(row -> {
             var old = beforeResults.get(new ResultSourceKey(row.rowKey(), row.rawValue()));
-            boolean same = old != null && old.getMappingState() == row.mappingState()
-                    && Objects.equals(old.getTestResultId(), row.testResultId());
             return new AnalyzerMappingResultDraft(row.sourceRowKey(), row.rawValue(), row.mappingState(),
-                    row.testResultId(), row.unresolvedReason(), same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE,
-                    row.subIdentity());
+                    row.testResultId(), row.unresolvedReason(),
+                    row.sameAnswer(old) ? old.origin() : AnalyzerMappingOrigin.OVERRIDE, row.subIdentity());
         }).toList();
         return new AnalyzerMappingDraft(tests, results);
     }
