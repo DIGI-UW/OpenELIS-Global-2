@@ -4,6 +4,8 @@ on:
   pull_request:
     paths:
       - "frontend/src/languages/**"
+      - "scripts/ci/check-i18n-plurals.py"
+      - ".github/workflows/i18n-check.yml"
 
 jobs:
   check-duplicate-keys:

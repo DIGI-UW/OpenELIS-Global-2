@@ -22,13 +22,17 @@ const CultureSetSummary = ({
     <section aria-label={intl.formatMessage({ id: "microbiology.sets.title" })}>
       <strong>
         {intl.formatMessage(
-          { id: "microbiology.sets.count.sets" },
-          { sets: [...sets.keys()].filter((key) => key !== null).length },
-        )}
-        {", "}
-        {intl.formatMessage(
-          { id: "microbiology.sets.count.bottles" },
-          { bottles: bottles.length },
+          { id: "microbiology.sets.count.summary" },
+          {
+            sets: intl.formatMessage(
+              { id: "microbiology.sets.count.sets" },
+              { sets: [...sets.keys()].filter((key) => key !== null).length },
+            ),
+            bottles: intl.formatMessage(
+              { id: "microbiology.sets.count.bottles" },
+              { bottles: bottles.length },
+            ),
+          },
         )}
       </strong>
       <ul>

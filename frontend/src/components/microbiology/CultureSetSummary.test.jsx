@@ -5,9 +5,9 @@ import { IntlProvider } from "react-intl";
 import messages from "../../languages/en.json";
 import CultureSetSummary from "./CultureSetSummary";
 
-const renderSummary = (props) =>
+const renderSummary = (props, localeMessages = messages) =>
   render(
-    <IntlProvider locale="en" messages={messages}>
+    <IntlProvider locale="en" messages={localeMessages}>
       <CultureSetSummary {...props} />
     </IntlProvider>,
   );
@@ -29,5 +29,18 @@ describe("CultureSetSummary", () => {
       specimens: [{ id: 1, collectedInSets: true, cultureSetNumber: 1 }],
     });
     expect(screen.getByText("1 set, 1 bottle")).toBeInTheDocument();
+  });
+
+  it("lets the locale's summary message set the order and punctuation", () => {
+    renderSummary(
+      {
+        specimens: [
+          { id: 1, collectedInSets: true, cultureSetNumber: 1 },
+          { id: 2, collectedInSets: true, cultureSetNumber: 2 },
+        ],
+      },
+      { ...messages, "microbiology.sets.count.summary": "{bottles} in {sets}" },
+    );
+    expect(screen.getByText("2 bottles in 2 sets")).toBeInTheDocument();
   });
 });

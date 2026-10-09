@@ -12387,6 +12387,7 @@
   "microbiology.sets.title": "Culture sets",
   "microbiology.sets.count.sets": "{sets, plural, one {# set} other {# sets}}",
   "microbiology.sets.count.bottles": "{bottles, plural, one {# bottle} other {# bottles}}",
+  "microbiology.sets.count.summary": "{sets}, {bottles}",
   "microbiology.sets.number": "Set {number}",
   "microbiology.sets.unassigned": "Set not recorded",
   "order.microPreview.title": "What this order will open",
