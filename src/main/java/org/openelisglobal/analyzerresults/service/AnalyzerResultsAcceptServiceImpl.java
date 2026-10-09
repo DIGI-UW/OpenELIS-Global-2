@@ -564,9 +564,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     /**
      * Applies the reviewer's decisions. Accept, retest and ignore are decided per
-     * test: a test's components follow its decision, and the other tests on the
-     * same specimen keep their own. Every row of a grouping takes its specimen's
-     * accession.
+     * test on each tube: a test's components follow its decision, and the other
+     * tests, and the same test on another tube of the order, keep their own. Every
+     * row of a grouping takes its specimen's accession.
      */
     List<AnalyzerResultItem> extractActionableResult(List<AnalyzerResultItem> resultItemList) {
         List<AnalyzerResultItem> actionableResultList = new ArrayList<>();
@@ -595,10 +595,16 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         return actionableResultList;
     }
 
-    private record DecisionKey(int grouping, String testId) {
+    /**
+     * One test on one tube. A row staged without a tube id counts as its
+     * accession's tube, as staging and placement count it.
+     */
+    private record DecisionKey(int grouping, String testId, String tube) {
 
         static DecisionKey of(AnalyzerResultItem item) {
-            return new DecisionKey(item.getSampleGroupingNumber(), item.getTestId());
+            String tube = GenericValidator.isBlankOrNull(item.getInstrumentSpecimenId()) ? item.getAccessionNumber()
+                    : item.getInstrumentSpecimenId();
+            return new DecisionKey(item.getSampleGroupingNumber(), item.getTestId(), tube);
         }
     }
 
@@ -1178,14 +1184,19 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         return result;
     }
 
+    /**
+     * The current configuration's precision. A blank one clears what a replaced
+     * result carried, so it is reported as a new result under the same
+     * configuration would be.
+     */
     private static void applySignificantDigits(Result result, AnalyzerResultItem resultItem, String caller) {
-        if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
-                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
-            } else {
-                LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), caller,
-                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
-            }
+        if (GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
+            result.clearSignificantDigits();
+        } else if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
+            result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+        } else {
+            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), caller,
+                    "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
         }
     }
 

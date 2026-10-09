@@ -3,8 +3,11 @@ import { Tag } from "@carbon/react";
 import { FormattedMessage } from "react-intl";
 import InstrumentReported from "./InstrumentReported";
 
+// One test on one tube; a row staged without a tube id counts as its accession's tube.
 export const decisionKey = (row) =>
-  row.testId ? `${row.sampleGroupingNumber}:${row.testId}` : `row:${row.id}`;
+  row.testId
+    ? `${row.sampleGroupingNumber}:${row.testId}:${row.instrumentSpecimenId || row.accessionNumber}`
+    : `row:${row.id}`;
 
 // Held for a decision the reviewer can make on the page, not for a mapping fix.
 const reviewableHolds = ["awaiting_specimen", "awaiting_placement"];
