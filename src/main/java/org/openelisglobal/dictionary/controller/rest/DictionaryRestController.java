@@ -15,8 +15,6 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.form.BaseForm;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.DisplayListService;
-import org.openelisglobal.common.util.ConfigurationProperties;
-import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.common.validator.BaseErrors;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.dictionary.form.DictionaryForm;
@@ -199,17 +197,7 @@ public class DictionaryRestController extends BaseController {
         Dictionary dictionary = setupDictionary(form);
 
         try {
-            String id = form.getId();
-            if (StringUtils.isNotBlank(id) && !"0".equals(id)) {
-                // UPDATE
-                // bugzilla 2062
-                boolean isDictionaryFrozenCheckRequired = checkForDictionaryFrozenCheck(form);
-                dictionaryService.update(dictionary);
-            } else {
-                // INSERT
-                dictionary.setId(dictionaryService.insert(dictionary));
-            }
-            syncLoincIfChanged(dictionary, previousLoinc);
+            answerTerminology.saveAnswer(dictionary, previousLoinc, false);
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
@@ -272,53 +260,6 @@ public class DictionaryRestController extends BaseController {
         return dictionary;
     }
 
-    private boolean checkForDictionaryFrozenCheck(DictionaryForm form) {
-        boolean isDictionaryFrozenCheckRequired = false;
-        // there is an exception to rule of checking whether dictionary record
-        // is frozen (can no longer be updated):
-        // currenly if only isActive has changed and
-        // the current value is 'Y'
-        // OR
-        // bugzilla 1847: also the local abbreviation can be deleted/updated/inserted at
-        // anytime
-        String dirtyFormFields = form.getDirtyFormFields();
-        String isActiveValue = form.getIsActive();
-
-        String[] dirtyFields = dirtyFormFields
-                .split(ConfigurationProperties.getInstance().getPropertyValue("default.idSeparator"), -1);
-        List<String> listOfDirtyFields = new ArrayList<>();
-
-        for (int i = 0; i < dirtyFields.length; i++) {
-            String dirtyField = dirtyFields[i];
-            if (!StringUtil.isNullorNill(dirtyField)) {
-                listOfDirtyFields.add(dirtyField);
-            }
-        }
-
-        List<String> listOfDirtyFieldsNoFrozenCheckRequired = new ArrayList<>();
-        listOfDirtyFieldsNoFrozenCheckRequired.add("isActive");
-        listOfDirtyFieldsNoFrozenCheckRequired.add("localAbbreviation");
-
-        // bugzilla 1847 : added to exception for frozen check required
-        // isActive changed to Y (no frozen check required)
-        // localAbbreviation has changed (no frozen check required)
-        if (!listOfDirtyFields.isEmpty()) {
-            for (int i = 0; i < listOfDirtyFields.size(); i++) {
-                String dirtyField = listOfDirtyFields.get(i);
-                if (!listOfDirtyFieldsNoFrozenCheckRequired.contains(dirtyField)) {
-                    isDictionaryFrozenCheckRequired = true;
-                } else {
-                    // in case of isActive: need to make sure it changed to YES to be able
-                    // to skip isFrozenCheck
-                    if (dirtyField.equals("isActive") && !isActiveValue.equals(YES)) {
-                        isDictionaryFrozenCheckRequired = true;
-                    }
-                }
-            }
-        }
-        return isDictionaryFrozenCheckRequired;
-    }
-
     @RequestMapping(value = "/CancelDictionary", method = RequestMethod.GET)
     public ResponseEntity<?> cancelDictionary(HttpServletRequest request, SessionStatus status) {
         status.setComplete();
@@ -364,11 +305,4 @@ public class DictionaryRestController extends BaseController {
         return StringUtils.isBlank(id) || "0".equals(id);
     }
 
-    /** A LOINC code changed here reaches the answer's terminology mappings. */
-    private void syncLoincIfChanged(Dictionary dictionary, String previousLoinc) {
-        String loinc = StringUtils.trimToNull(dictionary.getLoincCode());
-        if (!java.util.Objects.equals(StringUtils.trimToNull(previousLoinc), loinc)) {
-            answerTerminology.syncLegacyLoinc(dictionary.getId(), loinc, dictionary.getSysUserId());
-        }
-    }
 }

@@ -28,6 +28,7 @@ import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ResultSelectListServiceImpl implements ResultSelectListService {
@@ -100,6 +101,7 @@ public class ResultSelectListServiceImpl implements ResultSelectListService {
     }
 
     @Override
+    @Transactional
     public boolean addResultSelectList(ResultSelectListForm form, String currentUserId) {
 
         Dictionary dictionary = new Dictionary();
