@@ -709,7 +709,11 @@ const AnalyzerTypeMappingEditor = ({
     adoptAnalyzerRevision(
       analyzerId,
       revision,
-      { tests: updatePayload.tests, results: updatePayload.results },
+      {
+        baseMappingFingerprint: adoption?.baseMappingFingerprint || null,
+        tests: updatePayload.tests,
+        results: updatePayload.results,
+      },
       (response) => {
         setSaving(false);
         if (hasApiError(response) || !response?.mappingId) {

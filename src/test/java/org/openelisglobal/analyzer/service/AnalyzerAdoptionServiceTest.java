@@ -41,6 +41,8 @@ public class AnalyzerAdoptionServiceTest {
             catalog, results, analyzers);
     private final Analyzer analyzer = new Analyzer();
 
+    private static final String BASE = "sha256:" + "b".repeat(64);
+
     private AnalyzerMapping mapping;
 
     @Before
@@ -49,6 +51,7 @@ public class AnalyzerAdoptionServiceTest {
         mapping.setId("71");
         mapping.setProfileId("site.adoption");
         mapping.setProfileRevision(1);
+        mapping.setMappingFingerprint(BASE);
         when(profiles.getProfile("site.adoption", 1)).thenReturn(revision(1, "RAW-A", "RAW-B"));
         when(profiles.getProfile("site.adoption", 2)).thenReturn(revision(2, "RAW-A"));
         when(catalog.searchActiveTests(null))
@@ -106,7 +109,8 @@ public class AnalyzerAdoptionServiceTest {
         current(row("RAW-A", "t1", AnalyzerMappingOrigin.OVERRIDE), row("RAW-B", "t1", AnalyzerMappingOrigin.DEFAULT));
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
-        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+        service.adopt("42", 2, BASE, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")),
+                "17");
 
         AnalyzerMappingDraft saved = savedDraft();
         assertEquals("the retired RAW-B is not carried", 1, saved.tests().size());
@@ -119,8 +123,8 @@ public class AnalyzerAdoptionServiceTest {
         current(row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT));
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
-        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.EXCLUDED, null)),
-                "17");
+        service.adopt("42", 2, BASE,
+                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.EXCLUDED, null)), "17");
 
         assertEquals(AnalyzerMappingOrigin.OVERRIDE, savedDraft().tests().get(0).origin());
     }
@@ -132,14 +136,14 @@ public class AnalyzerAdoptionServiceTest {
         when(results.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held("RAW-B", 1)));
 
         AnalyzerRequestException held = assertThrows("RAW-B still has held results", AnalyzerRequestException.class,
-                () -> service.adopt("42", 2,
+                () -> service.adopt("42", 2, BASE,
                         reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17"));
         assertEquals("analyzer.adoption.error.heldResults", held.messageKey());
         assertEquals(java.util.Map.of("record", "RAW-B", "revision", 1), held.messageArgs());
 
         when(results.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of());
         assertThrows("every adopted record needs a decision", IllegalArgumentException.class,
-                () -> service.adopt("42", 2, reviewed(), "17"));
+                () -> service.adopt("42", 2, BASE, reviewed(), "17"));
         verify(mappingService, never()).adoptRevision(any(), anyInt(), any(), any());
     }
 
@@ -148,10 +152,11 @@ public class AnalyzerAdoptionServiceTest {
         current(row("RAW-A", "t9", AnalyzerMappingOrigin.OVERRIDE));
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
-        assertThrows(IllegalArgumentException.class, () -> service.adopt("42", 2,
+        assertThrows(IllegalArgumentException.class, () -> service.adopt("42", 2, BASE,
                 reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t9")), "17"));
 
-        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+        service.adopt("42", 2, BASE, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")),
+                "17");
         assertEquals("t1", savedDraft().tests().get(0).testId());
     }
 
@@ -163,7 +168,8 @@ public class AnalyzerAdoptionServiceTest {
         current(off);
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
-        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+        service.adopt("42", 2, BASE, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")),
+                "17");
 
         AnalyzerMappingTestDraft saved = savedDraft().tests().get(0);
         assertEquals(Boolean.FALSE, saved.enabled());
@@ -178,7 +184,7 @@ public class AnalyzerAdoptionServiceTest {
         current(off);
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
-        service.adopt("42", 2,
+        service.adopt("42", 2, BASE,
                 reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1").withAssay(true, null)),
                 "17");
 
@@ -195,9 +201,24 @@ public class AnalyzerAdoptionServiceTest {
         current(unresolved);
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
-        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+        service.adopt("42", 2, BASE, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")),
+                "17");
 
         assertEquals(Boolean.TRUE, savedDraft().tests().get(0).enabled());
+    }
+
+    @Test
+    public void adoptionIsRefusedWhenTheMappingChangedAfterThePlanWasLoaded() {
+        current(row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT));
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+        assertEquals(BASE, service.prepareAdoption("42", 2).baseMappingFingerprint());
+
+        for (String loaded : new String[] { "sha256:" + "c".repeat(64), null }) {
+            AnalyzerRequestException stale = assertThrows(AnalyzerRequestException.class, () -> service.adopt("42", 2,
+                    loaded, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17"));
+            assertEquals("analyzer.mapping.error.changedSinceLoaded", stale.messageKey());
+        }
+        verify(mappingService, never()).adoptRevision(any(), anyInt(), any(), any());
     }
 
     private static AnalyzerMappingDraft reviewed(AnalyzerMappingTestDraft... tests) {
