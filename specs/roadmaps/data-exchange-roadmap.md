@@ -8,8 +8,9 @@ link, and a record of what was sent.
 Evidence: [data-exchange-audit.md](../../docs/planning/data-exchange-audit.md)
 (inventories A and B, findings F1 to F10) and
 [fhir-facade-review.md](../../docs/planning/fhir-facade-review.md). The
-[analyzer baseline roadmap](analyzer-baseline-roadmap.md)'s Rules and Repo
-working agreements apply here too.
+analyzer baseline roadmap's Rules and Repo working agreements apply here too
+(`specs/roadmaps/analyzer-baseline-roadmap.md`, which lands on develop with
+stack #4588).
 
 Scope, set 8 Oct: "operational ingress, and FHIR-based outgress for now",
 without the Generic Sample Order CSV import. Setup imports and the non-FHIR
