@@ -112,10 +112,21 @@ clients, decide each create, update and delete per interaction, audit); HAPI
   writes go (S4); the FHIR-to-OpenELIS translation stays in the per-resource
   services and the proper inbound doors use it.
 
+- Rule 4, the egress rule, after the rewrite: "keep for now will review
+  with team".
+- Sequencing, 8 Oct: "pause until review with team"; and on starting the
+  Bridge's S6 code, "I want to close out the current analyzer stack" first.
+  So nothing below starts until the team has reviewed this roadmap and stack
+  #4588 is closed out. The S6 design is agreed in principle: the Bridge
+  probes `{uri}/health`, treats the target as verified only on HTTP 200 with
+  OpenELIS's `{"status":"UP"}` body, holds results and reports DOWN naming
+  the probed URL until then, and takes the normal retry path for later
+  outages.
+
 ## Open decisions
 
-- Rule 4's wording is this rewrite's; the owner set the inbound rules and
-  the facade's read-only decision and has not confirmed the egress sentence.
+- Rule 4's wording is this rewrite's; the owner keeps it for now and the
+  team reviews it.
 - S11, the export door (F9): whether `fhir.subscriber.allowHTTP` is removed
   or only defaults to `false`, and which role fires an export by hand. Both
   are small; they are asked when S11 starts.
@@ -131,7 +142,7 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done. Owner in brackets.
 - [x] S4a The facade's callers, from the distro repositories and Slack [research; see "What the investigations found"]: who writes to /OpenELIS-Global/fhir/*, who reads it and with which account, and where it is reachable from outside
 - [ ] S4 The facade and the store's read doors [this session, after S4a]: every create, update and delete on all nine providers removed; FHIR_READ with per-account resource-type scopes (results, patients, reference) turned into allow rules by an AuthorizationInterceptor with default deny; an AuditEvent written to the co-resident store for every facade call, with its test; _count cap; /rest/fhir behind the same role except the Questionnaire read the Generic Sample Order screens need, which stays open to a session user (F1, F10)
 - [ ] S5 No shared key in the Bridge [this session, after S1]: certgen writes the cert-only truststore to a second volume; the Bridge mounts only that; the keystore volume stays with OpenELIS and the store; dev and prod the same; certgen stays (F2)
-- [~] S6 Bridge 3.3.1, one base URL [this session, Bridge, on fix/one-openelis-base-url]: forward-http-server.uri is the OpenELIS base, /analyzer/fhir and /health derive from it; health-uri is no longer read; the Bridge probes {uri}/health and requires OpenELIS's answer, starts either way, holds every result and reports forwarding health DOWN naming the probed URL until the check passes; no check for the legacy string; closes Bridge #44 (F6)
+- [~] S6 Bridge 3.3.1, one base URL [this session, Bridge; first cut parked on the Bridge branch fix/one-openelis-base-url, to be reworked to the agreed check after stack #4588 closes]: forward-http-server.uri is the OpenELIS base, /analyzer/fhir and /health derive from it; health-uri is no longer read; the Bridge probes {uri}/health and requires OpenELIS's answer, starts either way, holds every result and reports forwarding health DOWN naming the probed URL until the check passes; no check for the legacy string; closes Bridge #44 (F6)
 - [x] S10a The translators, audited [see "What the investigations found"]
 - [ ] S10 One translation each way [this session, after S4, one resource per PR with a round-trip test]: the per-resource services under fhir/service are the layer for both directions; the orchestrator keeps event sequencing and persistence; referral Accept maps Observation to Result through ObservationTransformService instead of its own reads, and the Task pull builds orders through the ServiceRequest, Patient and Specimen services instead of FhirApiWorkFlowServiceImpl's own code; EQA's exchange code follows when its epic allows; the Bridge bundle parser stays as the ingress validator; writes happen only behind gated entry points (F1)
 - [ ] S7 Micro V2 landing [micro V2, OGC-1383]: an accepted AST row lands on the AST run; the AST panel's "Accept results" reads analyzer_results (F5)
