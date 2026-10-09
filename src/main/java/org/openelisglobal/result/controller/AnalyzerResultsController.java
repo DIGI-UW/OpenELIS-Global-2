@@ -330,9 +330,11 @@ public class AnalyzerResultsController extends BaseController {
         // The rows of one test on one specimen (its number, call and parts) share a
         // placement, so each is worked out once per page build.
         Map<List<String>, AnalyzerResultPlacement> placements = new HashMap<>();
+        // The rows of one delivery share its receipt, looked up once per page build.
+        Map<List<String>, java.util.Optional<String>> receipts = new HashMap<>();
 
         for (AnalyzerResults analyzerResult : analyzerResultsList) {
-            AnalyzerResultItem resultItem = analyzerResultsToAnalyzerResultItem(analyzerResult, placements);
+            AnalyzerResultItem resultItem = analyzerResultsToAnalyzerResultItem(analyzerResult, placements, receipts);
             Integer groupIndex = accessionToAccessionGroupMap.get(resultItem.getAccessionNumber());
             List<AnalyzerResultItem> group;
             if (groupIndex == null) {
@@ -359,7 +361,8 @@ public class AnalyzerResultsController extends BaseController {
     }
 
     protected AnalyzerResultItem analyzerResultsToAnalyzerResultItem(AnalyzerResults result,
-            Map<List<String>, AnalyzerResultPlacement> placements) {
+            Map<List<String>, AnalyzerResultPlacement> placements,
+            Map<List<String>, java.util.Optional<String>> receipts) {
 
         AnalyzerResultItem resultItem = new AnalyzerResultItem();
         boolean held = !GenericValidator.isBlankOrNull(result.getImportIssueReason());
@@ -367,7 +370,7 @@ public class AnalyzerResultsController extends BaseController {
                 || AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(result.getImportIssueReason());
         resultItem.setAccessionNumber(result.getAccessionNumber());
         resultItem.setInstrumentSpecimenId(result.getInstrumentSpecimenId());
-        resultItem.setDeliveryReceiptId(deliveryReceiptIdOf(result));
+        resultItem.setDeliveryReceiptId(deliveryReceiptIdOf(result, receipts));
         resultItem.setAnalyzerId(result.getAnalyzerId());
         resultItem.setIsControl(result.getIsControl());
         resultItem.setTestName(result.getTestName());
@@ -458,13 +461,13 @@ public class AnalyzerResultsController extends BaseController {
                 || status == AnalyzerResultPlacement.PatientStatus.MATCH;
     }
 
-    private String deliveryReceiptIdOf(AnalyzerResults result) {
+    private String deliveryReceiptIdOf(AnalyzerResults result, Map<List<String>, java.util.Optional<String>> receipts) {
         if (GenericValidator.isBlankOrNull(result.getSourceConnectionId())
                 || GenericValidator.isBlankOrNull(result.getSourceMessageId())) {
             return null;
         }
-        return deliveryBundleService.findReceiptId(result.getSourceConnectionId(), result.getSourceMessageId())
-                .orElse(null);
+        return receipts.computeIfAbsent(List.of(result.getSourceConnectionId(), result.getSourceMessageId()),
+                key -> deliveryBundleService.findReceiptId(key.get(0), key.get(1))).orElse(null);
     }
 
     /**
