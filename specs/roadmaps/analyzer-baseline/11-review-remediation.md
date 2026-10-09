@@ -72,6 +72,18 @@ PR D, pairing proof:
 - [ ] R21 (4657#1) The pairing code never crosses the wire: OE2 sends an HMAC of the code over the observed Bridge certificate and both of its own; the Bridge checks it and answers with its own HMAC, which OE2 checks. Bridge 3.3.1 first, then OE2
 ```
 
+Review of the top three PRs, 9 Oct (fixed on the top PR):
+
+```
+- [x] R25 (4663 review, high) A test is decided by its head row: the page carries the head's choice to every row of the test, so a part's loaded tick cannot save an unticked test
+- [x] R26 (4663 review, high) A main result binds to the option on no component or the primary component, and takes its precision, whatever order the options load in
+- [x] R27 (4657 review, high) Both web contexts read the Bridge pin from the database, so pairing again applies to delivery and to calls to the Bridge without a restart
+- [x] R28 (4657 review) A configured code the Bridge refuses is not tried again
+- [x] R29 (4657 review) The pairing status sends pairedAt as ISO-8601 text
+- [x] R30 (4661 review) A test proves an answer and its LOINC mapping roll back together
+- [x] R31 (4657 review) bridge-pairing.md says the first pairing trusts whichever certificate answers
+```
+
 Threads:
 
 ```
