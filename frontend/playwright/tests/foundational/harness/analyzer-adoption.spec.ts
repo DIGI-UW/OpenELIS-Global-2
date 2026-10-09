@@ -40,7 +40,7 @@ test.describe("Adopting a newer profile revision", () => {
     await list.goto();
     await list.clickAdd();
     await setup.expectOpen();
-    await setup.selectProfile(displayName);
+    await setup.selectProfile(displayName, { profileId, revision: 1 });
     await setup.fillName(displayName);
     await setup.selectFirstLabUnit();
     await setup.continueToVerify();

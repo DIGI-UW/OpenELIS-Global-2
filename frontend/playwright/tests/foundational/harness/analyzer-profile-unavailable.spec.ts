@@ -76,7 +76,7 @@ test.describe("An analyzer whose type the Bridge has lost", () => {
       (url) => url.searchParams.get("setup") === "instrument",
     );
     await expect(setup.nameInput).toHaveValue(name);
-    await setup.selectProfile(GENEXPERT.displayName);
+    await setup.selectProfile(GENEXPERT.displayName, GENEXPERT);
     await setup.continueToVerify();
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
