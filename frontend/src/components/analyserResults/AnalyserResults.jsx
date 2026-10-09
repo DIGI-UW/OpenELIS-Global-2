@@ -173,11 +173,18 @@ const AnalyserResults = (props) => {
       REVIEWABLE_HOLDS.includes(result.importIssueReason),
   );
   // One tick saves a whole grouping, so "accept all" ticks only the groupings
-  // whose every result has exactly one analysis waiting for it.
+  // whose every result has exactly one analysis waiting for it and a patient
+  // that matches the order or was not reported.
   const groupIsMatched = (grouping) =>
     actionablePatientResults
       .filter((result) => result.sampleGroupingNumber === grouping)
-      .every((result) => result.placement?.state === "RESOLVED");
+      .every(
+        (result) =>
+          result.placement?.state === "RESOLVED" &&
+          ["NOT_REPORTED", "MATCH"].includes(
+            result.placement?.patient?.status ?? "NOT_REPORTED",
+          ),
+      );
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
@@ -701,7 +708,7 @@ const AnalyserResults = (props) => {
         );
 
       case "notes":
-        if (held) {
+        if (held && !awaitingReview) {
           return null;
         }
         return (

@@ -134,6 +134,53 @@ describe("AnalyserResults", () => {
     );
   });
 
+  it("leaves a grouping unticked when saving all if its patient cannot be checked against the order", () => {
+    const first = matched("2101", 1, {
+      placement: {
+        ...matched("2101", 1).placement,
+        patient: { status: "MATCH", instrumentId: "PAT-1" },
+      },
+    });
+    const unverified = matched("2102", 2, {
+      placement: {
+        ...matched("2102", 2).placement,
+        patient: { status: "NO_ORDER_PATIENT", instrumentId: "PAT-77" },
+      },
+    });
+    renderResults([first, unverified], [first, unverified]);
+
+    fireEvent.click(screen.getByLabelText("Save All Results"));
+
+    expect(document.getElementById("resultList2101.isAccepted").checked).toBe(
+      true,
+    );
+    expect(document.getElementById("resultList2102.isAccepted").checked).toBe(
+      false,
+    );
+  });
+
+  it("lets the reviewer write the note a mismatch held for placement needs", () => {
+    const held = matched("3101", 1, {
+      importIssueReason: "awaiting_placement",
+      placement: {
+        ...matched("3101", 1).placement,
+        patient: { status: "MISMATCH", instrumentId: "PAT-9", orderName: "B" },
+      },
+    });
+    renderResults([held]);
+
+    fireEvent.change(document.getElementById("resultList3101.note"), {
+      target: { value: "Relabelled tube, checked with the ward" },
+    });
+    fireEvent.click(document.getElementById("resultList3101.isAccepted"));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+    const submitted = JSON.parse(postResults.mock.calls[0][1]);
+    expect(submitted.resultList[0].note).toBe(
+      "Relabelled tube, checked with the ward",
+    );
+  });
+
   it("keeps a result held for placement actionable and posts the chosen analysis", () => {
     const held = matched("3001", 1, {
       importIssueReason: "awaiting_placement",
