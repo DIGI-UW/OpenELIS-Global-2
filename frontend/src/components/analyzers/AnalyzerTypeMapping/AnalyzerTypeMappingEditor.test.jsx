@@ -468,6 +468,70 @@ describe("AnalyzerTypeMappingEditor", () => {
       ]);
     });
 
+    it("offers a main record with no call target only the answers it can save: none on another component", async () => {
+      getAnalyzerMapping.mockImplementation((_id, callback) =>
+        callback({
+          ...viralLoadMapping,
+          tests: [
+            recordRow("", {
+              results: [
+                {
+                  rawValue: "NOT DETECTED",
+                  mappingState: "UNRESOLVED",
+                  resultOptionId: null,
+                  selectedOption: null,
+                },
+              ],
+            }),
+          ],
+        }),
+      );
+      getAnalyzerMappingComponents.mockImplementation((testId, callback) =>
+        callback([
+          { id: "comp-main", code: "PRIMARY", label: "Result", primary: true },
+          ...componentsByTestForRecords[testId],
+        ]),
+      );
+      getAnalyzerMappingResultOptions.mockImplementation((testId, callback) =>
+        callback([
+          { id: "plain", value: "P", label: "On no component" },
+          {
+            id: "main",
+            value: "M",
+            label: "On the main component",
+            componentId: "comp-main",
+          },
+          {
+            id: "other",
+            value: "X",
+            label: "Belongs to another component",
+            componentId: "comp-ept",
+          },
+        ]),
+      );
+      renderEditor();
+      await screen.findByRole("heading", {
+        level: 1,
+        name: "Cepheid GeneXpert MTB/RIF mappings",
+      });
+
+      await userEvent.click(
+        within(rowFor("HIVVL")).getByRole("combobox", {
+          name: "OpenELIS result for NOT DETECTED",
+        }),
+      );
+
+      expect(
+        await screen.findByRole("option", { name: "On the main component" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.getByRole("option", { name: "On no component" }),
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByRole("option", { name: "Belongs to another component" }),
+      ).not.toBeInTheDocument();
+    });
+
     it("places a record on the new test's component with the same code when its test changes", async () => {
       renderEditor();
       await screen.findByRole("heading", {
