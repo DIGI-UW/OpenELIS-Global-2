@@ -108,7 +108,7 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
 - [x] F9 Deployment images come from the submodules: `publish-images.yml` publishes the Bridge and mock images that E2E built from the submodule commits and tested, beside the application images and with the same tags, and puts their digests in the deployment manifest; the hand-typed tags in `docker-compose.analyzers.yml` and the release check in `test_analyzer_overlay.py` are deleted; the testing deployment runs the manifest's digests (8 Oct, the user: "we need the PR-based e2e to be based on the submodule pins, not on any other pinning")
 - [ ] F10 Green (after [step 11](11-review-remediation.md)): the full harness suite on the local stack, then every CI check on the top PR
 - [ ] F11 Evidence: the `harness-demo-video` project records three workflows and nothing else. "Setup to clinical result": GeneXpert (HIV-1 viral load; respiratory panel), FluoroCycler, QuantStudio, and the changed instrument code. "Placement and recovery": the placement stories and the held-result recoveries (assay off, undeclared code, deactivated catalog test). "Lifecycle and degraded states": adoption of a newer revision, the stranded-analyzer reset, delivery issues, deactivate and reactivate. Packaged with the evidence-bundle skill (MP4, manifest with the app SHA and checksums, contact sheet checked), drafted as a comment on the top PR, media not committed
-- [ ] F12 After the stack lands: step 9 (spec sync) as its own PR on develop
+- [ ] F12 Step 9 (spec sync) in the stack's top PR, before the stack merges
 ```
 
 Not in this step: OE2 sending orders to analyzers; the 301-2002 parser tests
