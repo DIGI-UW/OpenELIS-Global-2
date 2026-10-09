@@ -40,5 +40,31 @@
             baseTableSchemaName="clinlims" baseTableName="analyzer_mapping_test"
             baseColumnNames="call_component_id" referencedTableSchemaName="clinlims"
             referencedTableName="test_result_component" referencedColumnNames="id"/>
+        <rollback>
+            <sql splitStatements="false"><![CDATA[
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM clinlims.analyzer_mapping_test
+                               WHERE sub_identity <> '' OR call_component_id IS NOT NULL)
+                       OR EXISTS (SELECT 1 FROM clinlims.analyzer_mapping_result WHERE sub_identity <> '') THEN
+                        RAISE EXCEPTION 'Analyzer mappings hold part records or call targets, which the earlier keys and columns cannot hold. Restore the pre-upgrade backup to undo this change.';
+                    END IF;
+                    ALTER TABLE clinlims.analyzer_mapping_test DROP CONSTRAINT fk_analyzer_mapping_test_call_component;
+                    ALTER TABLE clinlims.analyzer_mapping_result DROP CONSTRAINT fk_analyzer_mapping_result_test;
+                    ALTER TABLE clinlims.analyzer_mapping_result DROP CONSTRAINT pk_analyzer_mapping_result;
+                    ALTER TABLE clinlims.analyzer_mapping_test DROP CONSTRAINT pk_analyzer_mapping_test;
+                    ALTER TABLE clinlims.analyzer_mapping_result DROP COLUMN sub_identity;
+                    ALTER TABLE clinlims.analyzer_mapping_test DROP COLUMN sub_identity, DROP COLUMN call_component_id;
+                    ALTER TABLE clinlims.analyzer_mapping_test
+                        ADD CONSTRAINT pk_analyzer_mapping_test PRIMARY KEY (mapping_id, source_row_key);
+                    ALTER TABLE clinlims.analyzer_mapping_result
+                        ADD CONSTRAINT pk_analyzer_mapping_result PRIMARY KEY (mapping_id, source_row_key, raw_value);
+                    ALTER TABLE clinlims.analyzer_mapping_result
+                        ADD CONSTRAINT fk_analyzer_mapping_result_test FOREIGN KEY (mapping_id, source_row_key)
+                        REFERENCES clinlims.analyzer_mapping_test (mapping_id, source_row_key);
+                END
+                $$;
+            ]]></sql>
+        </rollback>
     </changeSet>
 </databaseChangeLog>
