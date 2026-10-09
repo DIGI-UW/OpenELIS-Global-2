@@ -394,6 +394,35 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void aMainResultLandsOnThePrimaryComponentWhateverOrderTheOptionsAreIn() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " significant_digits, lastupdated) VALUES ('c-log-1145', ?, 'LOG', 'Log viral load', false, 'Y', 2,"
+                + " NOW()), ('c-main-1145', ?, 'PRIMARY', 'Viral load', true, 'Y', 0, NOW())", MULTI_TYPE_TEST,
+                MULTI_TYPE_TEST);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                        + " significant_digits, component_id, lastupdated) VALUES (97312, ?, 'N', '', true, 1, 2,"
+                        + " 'c-log-1145', NOW()), (97311, ?, 'N', '', true, 2, 0, 'c-main-1145', NOW())",
+                MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("UPDATE clinlims.analyzer_results SET result = '1009.64', test_result_type = 'N'"
+                + " WHERE id = ?::numeric", stagedRowId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setResult("1009.64");
+        item.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(item), "1");
+
+        java.util.Map<String, Object> saved = jdbc.queryForMap(
+                "SELECT r.test_result_id::text AS option, r.significant_digits::text AS digits FROM clinlims.result r"
+                        + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                        + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                        + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                ACCESSION);
+        assertEquals("the viral load is the primary component's, not the log's", "97311", saved.get("option"));
+        assertEquals("it keeps the primary component's precision", "0", saved.get("digits"));
+    }
+
+    @org.junit.Test
     public void aRerunThatReplacesAResultTakesTheComponentsCurrentDigits() {
         aNumberOnAComponentIsSavedWithTheComponentsDigits();
         jdbc.update("UPDATE clinlims.test_result_component SET significant_digits = 3 WHERE id = 'c-log-1145'");
