@@ -490,8 +490,12 @@ public class TestResultComponentServiceImpl extends AuditableBaseObjectServiceIm
             insert(primary);
         } else {
             primary.setUomId(uomId);
-            primary.setResultType(resultType);
-            primary.setSignificantDigits(significantDigits);
+            // With no result rows of its own (an import that only added answers to
+            // another component), the primary keeps the type and digits it was given.
+            if (!testResults.isEmpty()) {
+                primary.setResultType(resultType);
+                primary.setSignificantDigits(significantDigits);
+            }
             primary.setSysUserId(sysUserId);
             update(primary);
         }

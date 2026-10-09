@@ -818,6 +818,23 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     }
 
     @org.junit.Test
+    public void syncPrimaryComponentFromLegacy_keepsThePrimarysTypeAndDigitsWhenOnlyAnotherComponentHasOptions() {
+        // The result-components import sets the primary's type and digits; a
+        // test-results row then adds an answer to another component only.
+        componentService.insert(component("PRIMARY", 0, "N", 3, true));
+        String callId = componentService.insert(component("CALL", 1, "D", null, false));
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, component_id, is_active,"
+                + " lastupdated) VALUES (?, ?, 'D', 'Detected', ?, true, NOW())", 952040L, TEST_ID, callId);
+
+        componentService.syncPrimaryComponentFromLegacy(String.valueOf(TEST_ID), "1");
+
+        ResultComponentDto loaded = controller.getSampleResults(String.valueOf(TEST_ID)).getBody().components.stream()
+                .filter(component -> "PRIMARY".equals(component.code)).findFirst().orElseThrow();
+        assertEquals("N", loaded.resultType);
+        assertEquals(Integer.valueOf(3), loaded.significantDigits);
+    }
+
+    @org.junit.Test
     public void syncPrimaryComponentFromLegacy_createsPrimary_syncsResultType_andRepointsOptionsAndRanges() {
         // The test has NO component yet (mimics a test created on the legacy Add
         // page). Legacy wrote uom_id on the test, a dictionary option (test_result)
@@ -1109,6 +1126,21 @@ public class TestCatalogEditorSampleResultsIntegrationTest extends BaseWebContex
     private java.util.List<String> normalLimitValues() {
         return jdbc.queryForList("SELECT CAST(normal_dictionary_id AS varchar) FROM clinlims.result_limits"
                 + " WHERE test_id = ? AND normal_dictionary_id IS NOT NULL ORDER BY id", String.class, TEST_ID);
+    }
+
+    private static org.openelisglobal.testresultcomponent.valueholder.TestResultComponent component(String code,
+            int order, String resultType, Integer significantDigits, boolean primary) {
+        var component = new org.openelisglobal.testresultcomponent.valueholder.TestResultComponent();
+        component.setTestId(String.valueOf(TEST_ID));
+        component.setCode(code);
+        component.setLabel(code);
+        component.setDisplayOrder(order);
+        component.setResultType(resultType);
+        component.setSignificantDigits(significantDigits);
+        component.setIsActive("Y");
+        component.setIsPrimary(primary);
+        component.setSysUserId("1");
+        return component;
     }
 
     private static OptionDto opt(String id, String value, Integer sortOrder) {

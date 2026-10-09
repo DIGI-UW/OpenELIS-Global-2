@@ -39,7 +39,7 @@ PR A, mapping and adoption:
 - [x] R4 (4604#0, 4604#6) A failed Bridge update after the connection moved pins it back; a failed pin-back reports "reconcile required", not "nothing was applied"
 - [x] R5 (4615#0) A Bridge refusal during mapping sync rolls the mapping back and reports it, so the analyzer is not left inactive with a committed mapping
 - [x] R6 (4628#1, 4628#2) Defaults load active components always, and options on deactivated components do not count as primary
-- [ ] R7 (4616#1) A component-only import leaves the primary's result type and significant digits alone
+- [x] R7 (4616#1) A component-only import leaves the primary's result type and significant digits alone
 - [ ] R8 (4599#4) The OCL mapper reloads an existing answer by name, so its codes are kept
 - [ ] R9 (4603#0, 4603#1, 4603#3) Dictionary save and LOINC sync are one transaction in a service; the select-list save is transactional
 ```
