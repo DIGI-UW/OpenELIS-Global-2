@@ -56,8 +56,12 @@ const partValue = (part) =>
   part.dictionaryResultList?.find((option) => option.id == part.result)
     ?.displayValue ?? part.result;
 
-/** A test's parts beneath its main result, read-only. */
-const ResultParts = ({ headId, parts }) => {
+/**
+ * A test's parts beneath its main result, read-only. A part held for a fix made
+ * elsewhere shows through {@code renderHeld}, with the same actions as a held
+ * row of its own.
+ */
+const ResultParts = ({ headId, parts, renderHeld }) => {
   if (parts.length === 0) {
     return null;
   }
@@ -68,13 +72,21 @@ const ResultParts = ({ headId, parts }) => {
           <span className="resultParts__label">
             {part.componentLabel || part.testName}
           </span>{" "}
-          <strong>{partValue(part)}</strong>
-          {part.importIssueReason && (
+          {renderHeld &&
+          part.importIssueReason &&
+          !reviewableHolds.includes(part.importIssueReason) ? (
+            renderHeld(part)
+          ) : (
             <>
-              {" "}
-              <Tag type="warm-gray" size="sm">
-                <FormattedMessage id="analyzer.results.held.tag" />
-              </Tag>
+              <strong>{partValue(part)}</strong>
+              {part.importIssueReason && (
+                <>
+                  {" "}
+                  <Tag type="warm-gray" size="sm">
+                    <FormattedMessage id="analyzer.results.held.tag" />
+                  </Tag>
+                </>
+              )}
             </>
           )}
           <InstrumentReported row={part} />

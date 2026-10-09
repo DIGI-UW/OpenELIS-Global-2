@@ -52,7 +52,7 @@ PR B, results and import:
 - [x] R12 (4592#1) A recovered control's extra rows go through control processing
 - [ ] R13 (4631#0) An existing result gets significant digits applied on accept
 - [x] R14 (4583#0, 4583#1) Save All skips rows with no matched patient; held mismatch rows show their note
-- [ ] R15 (4593#2) Held component parts offer Review mapping and Dismiss failed run
+- [x] R15 (4593#2) Held component parts offer Review mapping and Dismiss failed run
 - [ ] R16 (4625#0) An analyzer whose restore failed offers Activate again
 - [ ] R17 (4583#6) Placement runs once per page, not once per row before paging
 ```

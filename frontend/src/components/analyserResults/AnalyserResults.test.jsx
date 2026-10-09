@@ -598,6 +598,44 @@ describe("AnalyserResults", () => {
       expect(within(parts).getByText("Call")).toBeInTheDocument();
       expect(within(parts).getByText("Held")).toBeInTheDocument();
     });
+
+    it("lets the reviewer open the mapping a held part waits for", async () => {
+      renderResults([
+        viralLoad,
+        part("7004", "Call", "NOT DETECTED", {
+          importIssueReason: "unknown_analyzer_result_value",
+          rawTestCode: "HIVVL",
+          rawResultValue: "NOT DETECTED",
+          sourceProfileId: "genexpert-astm",
+          sourceProfileRevision: 3,
+          readOnly: true,
+        }),
+      ]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      expect(
+        within(parts).getByRole("link", { name: "Review analyzer mapping" }),
+      ).toBeInTheDocument();
+    });
+
+    it("lets the reviewer dismiss a part held as a failed run", async () => {
+      postResults.mockImplementation(() => {});
+      renderResults([
+        viralLoad,
+        part("7005", "Log viral load", "ERROR", {
+          importIssueReason: "run_failed",
+          readOnly: true,
+        }),
+      ]);
+
+      const parts = await screen.findByTestId("result-parts-7001");
+      fireEvent.click(
+        within(parts).getByRole("button", { name: "Dismiss as failed run" }),
+      );
+      expect(postResults.mock.calls[0][0]).toBe(
+        "/rest/analyzer/results/7005/failed-run",
+      );
+    });
   });
 
   it("submits the result selected for acceptance", async () => {
