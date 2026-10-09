@@ -191,7 +191,10 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String value = original != null && original.getValue() instanceof PrimitiveType<?> primitive
                 ? primitive.getValueAsString()
                 : null;
-        return value == null ? "" : value.trim();
+        if (value == null || value.isBlank()) {
+            throw new IllegalArgumentException("Analyzer sub-identity requires a nonblank original sub-identifier");
+        }
+        return value.trim();
     }
 
     /**
