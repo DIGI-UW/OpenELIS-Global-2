@@ -1,7 +1,6 @@
 package org.openelisglobal.dataexchange.fhir.service;
 
 import ca.uhn.fhir.context.FhirContext;
-import ca.uhn.fhir.rest.api.MethodOutcome;
 import ca.uhn.fhir.rest.client.api.IGenericClient;
 import ca.uhn.fhir.rest.gclient.IQuery;
 import java.util.ArrayList;
@@ -467,11 +466,6 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
         OriginalReferralObjects localObjects = saveRemoteTaskAsLocalTask(sourceFhirClient, remoteTask, bundle,
                 remoteStorePath);
 
-        Task taskBasedOnRemoteTask = getLocalTaskBasedOnTask(remoteTask, remoteStorePath);
-        if (taskBasedOnRemoteTask == null) {
-            taskBasedOnRemoteTask = saveTaskBasedOnRemoteTask(sourceFhirClient, remoteTask, bundle, remoteStorePath);
-        }
-
         List<ServiceRequest> serviceRequestList = localObjects.serviceRequests;
         Patient patient = localObjects.patient;
 
@@ -512,41 +506,7 @@ public class FhirApiWorkFlowServiceImpl implements FhirApiWorkflowService {
             }
             IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirStorePath);
             localFhirClient.update().resource(localObjects.task).execute();
-            // taskBasedOnRemoteTask.setStatus(taskStatus);
-            // localFhirClient.update().resource(taskBasedOnRemoteTask).execute();
         }
-    }
-
-    private Task getLocalTaskBasedOnTask(Task remoteTask, String remoteStorePath) {
-        IGenericClient localFhirClient = fhirUtil.getFhirClient(localFhirStorePath);
-        Bundle localBundle = localFhirClient.search().forResource(Task.class)
-                .where(Task.BASED_ON
-                        .hasAnyOfIds(ResourceType.Task.toString() + "/" + remoteTask.getIdElement().getIdPart()))
-                .returnBundle(Bundle.class).execute();
-        return (Task) localBundle.getEntryFirstRep().getResource();
-    }
-
-    private Task saveTaskBasedOnRemoteTask(IGenericClient fhirClient, Task remoteTask, Bundle bundle,
-            String remoteStorePath) {
-        Task taskBasedOnRemoteTask = new Task();
-        taskBasedOnRemoteTask.setId(UUID.randomUUID().toString());
-        Reference reference = new Reference();
-        String referenceString = remoteStorePath;
-        if (!referenceString.endsWith("/")) {
-            referenceString = referenceString + "/";
-        }
-        referenceString = referenceString + ResourceType.Task.toString() + "/" + remoteTask.getIdElement().getIdPart();
-        if (referenceString.endsWith("null")) {
-            LogEvent.logWarn(this.getClass().getName(), "saveTaskBasedOnRemoteTask",
-                    "remote task has a null identifier: " + remoteTask.getId());
-        }
-        reference.setReference(referenceString);
-        taskBasedOnRemoteTask.addBasedOn(reference);
-
-        MethodOutcome outcome = fhirUtil.getFhirClient(localFhirStorePath).update().resource(taskBasedOnRemoteTask)
-                .execute();
-
-        return (Task) outcome.getResource();
     }
 
     private OriginalReferralObjects saveRemoteTaskAsLocalTask(IGenericClient sourceFhirClient, Task remoteTask,
