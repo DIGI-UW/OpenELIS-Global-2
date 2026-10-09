@@ -19,7 +19,6 @@ test.describe("M-07 microbiology worklist grains", () => {
   }) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
     const query = new URLSearchParams({
-      workflow: "BACTERIOLOGY",
       q: seeded.caseId,
       sort: "newest",
     });
@@ -47,13 +46,11 @@ test.describe("M-07 microbiology worklist grains", () => {
     const row = page.getByTestId(`microbiology-worklist-row-${seeded.caseId}`);
     await expect(row).toBeVisible({ timeout: LONG_TIMEOUT });
     await expect(row).toContainText(seeded.accessionNumber);
-    await expect(row).toContainText("Linked · 2 workflows");
     await row.focus();
     await page.keyboard.press("Enter");
     await page.waitForURL((url) => {
       return (
         url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
-        url.searchParams.get("workflow") === "BACTERIOLOGY" &&
         url.searchParams.get("q") === seeded.caseId &&
         url.searchParams.get("sort") === "newest"
       );

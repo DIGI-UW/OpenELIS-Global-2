@@ -1,8 +1,6 @@
 package org.openelisglobal.microbiology.form;
 
 import java.sql.Timestamp;
-import java.util.ArrayList;
-import java.util.List;
 
 public class MicroWorklistRowForm {
 
@@ -16,12 +14,9 @@ public class MicroWorklistRowForm {
     public Timestamp collectionDate;
     public String specimenTypeId;
     public String patientOrigin;
-    public String workflowType;
     public String stage;
     public String priority;
     public String dueAction;
-    public Integer incubationDay;
-    public Integer maxIncubationDays;
     public String urgency;
     public boolean needsAstReview;
     public boolean hasOpenCriticalCommunication;
@@ -37,7 +32,6 @@ public class MicroWorklistRowForm {
     public Timestamp astStartedAt;
     public boolean analyzerResultsAvailable;
     public String analyzerExpertFlags;
-    public List<String> siblingWorkflows = new ArrayList<>();
     public Timestamp createdAt;
     public Timestamp lastActivityAt;
     public String lastActivityBy;

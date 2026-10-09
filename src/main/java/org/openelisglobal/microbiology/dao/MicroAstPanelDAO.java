@@ -7,11 +7,11 @@ import org.openelisglobal.microbiology.valueholder.MicroAstPanel;
 public interface MicroAstPanelDAO extends BaseDAO<MicroAstPanel, String> {
     List<MicroAstPanel> getByIds(List<String> panelIds);
 
-    List<MicroAstPanel> getActivePanelsByWorkflowType(String workflowType);
+    List<MicroAstPanel> getActivePanelsByOrganismGroup(String organismGroup);
 
     MicroAstPanel findCurrentByLogicalKey(String logicalKey);
 
-    List<MicroAstPanel> search(String q, String status, String workflow, String sort, int offset, int limit);
+    List<MicroAstPanel> search(String q, String status, String organismGroup, String sort, int offset, int limit);
 
-    long countSearch(String q, String status, String workflow);
+    long countSearch(String q, String status, String organismGroup);
 }

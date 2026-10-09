@@ -15,10 +15,6 @@ export const MICROBIOLOGY_REFERENCE_SECTIONS = [
     label: "microbiology.admin.astPanels.title",
   },
   {
-    key: "culture-setups",
-    label: "microbiology.admin.cultureSetups.title",
-  },
-  {
     key: "breakpoints",
     label: "microbiology.admin.breakpoints.title",
   },

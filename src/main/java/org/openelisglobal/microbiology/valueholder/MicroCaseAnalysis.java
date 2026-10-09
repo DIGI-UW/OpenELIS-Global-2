@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.sql.Timestamp;
 import java.util.UUID;
 import org.hibernate.annotations.Type;
 import org.openelisglobal.common.valueholder.BaseObject;
@@ -37,6 +38,25 @@ public class MicroCaseAnalysis extends BaseObject<String> {
     @Column(name = "projected_result_id", precision = 10, scale = 0)
     @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
     private String projectedResultId;
+
+    @Column(name = "case_role")
+    @jakarta.persistence.Enumerated(jakarta.persistence.EnumType.STRING)
+    private MicroCaseRole caseRole;
+
+    @Column(name = "collected_in_sets")
+    private Boolean collectedInSets;
+
+    @Column(name = "placement")
+    private String placement;
+
+    @Column(name = "cancelled_at")
+    private Timestamp cancelledAt;
+
+    @Column(name = "cancelled_by")
+    private String cancelledBy;
+
+    @Column(name = "cancellation_reason")
+    private String cancellationReason;
 
     @Override
     public String getId() {
@@ -78,5 +98,53 @@ public class MicroCaseAnalysis extends BaseObject<String> {
 
     public void setProjectedResultId(String projectedResultId) {
         this.projectedResultId = projectedResultId;
+    }
+
+    public MicroCaseRole getCaseRole() {
+        return caseRole;
+    }
+
+    public void setCaseRole(MicroCaseRole caseRole) {
+        this.caseRole = caseRole;
+    }
+
+    public Boolean getCollectedInSets() {
+        return collectedInSets;
+    }
+
+    public void setCollectedInSets(Boolean collectedInSets) {
+        this.collectedInSets = collectedInSets;
+    }
+
+    public String getPlacement() {
+        return placement;
+    }
+
+    public void setPlacement(String placement) {
+        this.placement = placement;
+    }
+
+    public Timestamp getCancelledAt() {
+        return cancelledAt;
+    }
+
+    public void setCancelledAt(Timestamp cancelledAt) {
+        this.cancelledAt = cancelledAt;
+    }
+
+    public String getCancelledBy() {
+        return cancelledBy;
+    }
+
+    public void setCancelledBy(String cancelledBy) {
+        this.cancelledBy = cancelledBy;
+    }
+
+    public String getCancellationReason() {
+        return cancellationReason;
+    }
+
+    public void setCancellationReason(String cancellationReason) {
+        this.cancellationReason = cancellationReason;
     }
 }

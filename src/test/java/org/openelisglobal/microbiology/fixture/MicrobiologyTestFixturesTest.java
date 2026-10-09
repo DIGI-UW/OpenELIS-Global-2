@@ -32,6 +32,7 @@ import org.openelisglobal.statusofsample.service.StatusOfSampleService;
 import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -69,6 +70,9 @@ public class MicrobiologyTestFixturesTest {
     @Mock
     private PatientService patientService;
 
+    @Mock
+    private TestSectionService testSectionService;
+
     private MicrobiologyTestFixtures fixtures;
 
     @Before
@@ -76,7 +80,7 @@ public class MicrobiologyTestFixturesTest {
         when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
         fixtures = new MicrobiologyTestFixtures(methodService, sampleService, sampleItemService, analysisService,
                 testService, typeOfSampleService, localizationService, testMethodService, statusService,
-                statusOfSampleService, systemUserService, configurationService, personService, patientService);
+                statusOfSampleService, systemUserService, configurationService, personService, patientService, testSectionService);
     }
 
     @Test

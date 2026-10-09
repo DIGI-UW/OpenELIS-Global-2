@@ -59,13 +59,6 @@ export const normalizeDateForState = (dateValue, dateLocale) => {
   return formatPickerDateForIso(dateValue, dateLocale);
 };
 
-export const isCollectionDateBeforeAdmissionDate = (
-  collectionDate,
-  admissionDate,
-) =>
-  Boolean(collectionDate && admissionDate) &&
-  collectionDate.slice(0, 10) < admissionDate.slice(0, 10);
-
 export const daysBetweenIsoDates = (startDate, endDate) => {
   if (!startDate || !endDate) {
     return null;

@@ -13,7 +13,6 @@ public class MicroCaseDetailForm {
     public String accessionNumber;
     public String specimenType;
     public String requestingLocation;
-    public String workflowType;
     public String stage;
     public String priority;
     public String cultureMethodId;
@@ -25,7 +24,6 @@ public class MicroCaseDetailForm {
     public String lastActivityBy;
     public Timestamp lastActivityAt;
     public int nonconformanceCount;
-    public boolean workflowChangeRequiresConfirmation;
     public MicroCaseOrderDetailForm orderDetail;
     public List<MicroCaseActivityForm> activities = new ArrayList<>();
     public List<MicroIsolateForm> isolates = new ArrayList<>();

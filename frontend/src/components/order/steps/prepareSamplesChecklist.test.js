@@ -25,7 +25,6 @@ const itemsFor = (samples, options = {}) =>
   prepareSamplesToContinue({
     samples,
     labNumber: "DEV0126",
-    admissionDate: "",
     consentSatisfied: true,
     intl,
     ...options,
@@ -59,15 +58,10 @@ describe("prepareSamplesToContinue (OGC-1419)", () => {
     ]);
   });
 
-  it("skips rejected samples and flags a collection before admission", () => {
+  it("skips rejected samples", () => {
     expect(
       itemsFor([serum({ collectionTime: "", sampleRejected: true })]),
     ).toEqual([]);
-    expect(
-      itemsFor([serum({ collectionDate: "2026-10-01" })], {
-        admissionDate: "2026-10-02",
-      }).map((item) => item.id),
-    ).toEqual(["collectionConflict-0"]);
   });
 });
 
