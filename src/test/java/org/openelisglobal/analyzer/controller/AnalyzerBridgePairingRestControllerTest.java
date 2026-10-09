@@ -50,7 +50,8 @@ public class AnalyzerBridgePairingRestControllerTest extends SecuritySliceMockMv
     public void globalAdminSeesThePairing() throws Exception {
         mockMvc.perform(get(PAIRING).with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))).andExpect(status().isOk())
                 .andExpect(jsonPath("$.paired").value(true))
-                .andExpect(jsonPath("$.bridgeCertificateSha256").value("ab".repeat(32)));
+                .andExpect(jsonPath("$.bridgeCertificateSha256").value("ab".repeat(32)))
+                .andExpect(jsonPath("$.pairedAt").value("2026-10-08T12:00:00Z"));
     }
 
     @Test
