@@ -155,6 +155,51 @@ public class AnalyzerAdoptionServiceTest {
         assertEquals("t1", savedDraft().tests().get(0).testId());
     }
 
+    @Test
+    public void adoptionKeepsAnAssayTheLabTurnedOffAndTheCodeTheInstrumentSends() {
+        AnalyzerMappingTest off = row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT);
+        off.setEnabled(false);
+        off.setInstrumentCode("LAB-A");
+        current(off);
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+
+        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+
+        AnalyzerMappingTestDraft saved = savedDraft().tests().get(0);
+        assertEquals(Boolean.FALSE, saved.enabled());
+        assertEquals("LAB-A", saved.instrumentCode());
+    }
+
+    @Test
+    public void aDecisionThatStatesTheAssaySwitchReplacesWhatTheRowHad() {
+        AnalyzerMappingTest off = row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT);
+        off.setEnabled(false);
+        off.setInstrumentCode("LAB-A");
+        current(off);
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+
+        service.adopt("42", 2,
+                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1").withAssay(true, null)),
+                "17");
+
+        AnalyzerMappingTestDraft saved = savedDraft().tests().get(0);
+        assertEquals(Boolean.TRUE, saved.enabled());
+        assertEquals("stating the switch without a code returns to the profile's code", null, saved.instrumentCode());
+    }
+
+    @Test
+    public void mappingARecordThatWasNotMappedTurnsItsAssayOn() {
+        AnalyzerMappingTest unresolved = row("RAW-A", null, AnalyzerMappingOrigin.DEFAULT);
+        unresolved.setMappingState(AnalyzerMappingState.UNRESOLVED);
+        unresolved.setEnabled(false);
+        current(unresolved);
+        newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
+
+        service.adopt("42", 2, reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17");
+
+        assertEquals(Boolean.TRUE, savedDraft().tests().get(0).enabled());
+    }
+
     private static AnalyzerMappingDraft reviewed(AnalyzerMappingTestDraft... tests) {
         return new AnalyzerMappingDraft(List.of(tests), List.of());
     }

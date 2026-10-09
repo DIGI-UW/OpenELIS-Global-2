@@ -73,7 +73,11 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
                         Map.of("record", row.key().label()), row.key().label()
                                 + " is mapped to a test that is no longer active; choose another test before adopting");
             }
-            tests.add(withOrigin(decision.test(), originFor(decision.test(), row.proposed())));
+            AnalyzerMappingTestDraft current = row.current() == null ? null : row.current().test();
+            AnalyzerMappingTestDraft test = current == null ? decision.test().keepingAssayOf(null, true, null)
+                    : decision.test().keepingAssayOf(current.mappingState(), current.isEnabled(),
+                            current.instrumentCode());
+            tests.add(withOrigin(test, originFor(test, row.proposed())));
             for (AnalyzerMappingResultDraft result : decision.results()) {
                 results.add(withOrigin(result, originFor(result, row.proposed())));
             }
