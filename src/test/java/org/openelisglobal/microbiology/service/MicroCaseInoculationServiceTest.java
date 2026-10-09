@@ -26,7 +26,6 @@ import org.openelisglobal.microbiology.valueholder.MicroCaseFinalReleaseState;
 import org.openelisglobal.microbiology.valueholder.MicroCaseInoculation;
 import org.openelisglobal.microbiology.valueholder.MicroCaseStage;
 import org.openelisglobal.microbiology.valueholder.MicroInventoryUsageContext;
-import org.openelisglobal.microbiology.valueholder.MicroWorkflowType;
 
 @RunWith(MockitoJUnitRunner.class)
 public class MicroCaseInoculationServiceTest {
@@ -49,7 +48,6 @@ public class MicroCaseInoculationServiceTest {
                 new ObjectMapper());
         microCase = new MicroCase();
         microCase.setId("case-1");
-        microCase.setWorkflowType(MicroWorkflowType.BACTERIOLOGY.name());
         microCase.setCultureMethodId("method-1");
         microCase.setStage(MicroCaseStage.RECEIVED.name());
         when(caseDAO.get("case-1")).thenReturn(Optional.of(microCase));
@@ -106,13 +104,6 @@ public class MicroCaseInoculationServiceTest {
         when(inoculationDAO.get("inoculation-2")).thenReturn(Optional.of(parent));
 
         service.record("case-1", "inoculation-2", "PLATE-002", "MacConkey agar", null, null, List.of(), "42");
-    }
-
-    @Test(expected = IllegalArgumentException.class)
-    public void rejectsInoculationBeforeWorkflowClassification() {
-        microCase.setWorkflowType(MicroWorkflowType.UNASSIGNED.name());
-
-        service.record("case-1", null, "BOTTLE-001", "Blood agar", null, null, List.of(), "42");
     }
 
     @Test(expected = MicroCaseLockedException.class)

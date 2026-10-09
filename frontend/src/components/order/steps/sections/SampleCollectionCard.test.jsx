@@ -15,47 +15,7 @@ vi.mock("../../../addOrder/GpsCoordinatesCapture", () => ({
 
 import SampleCollectionCard from "./SampleCollectionCard";
 
-describe("SampleCollectionCard admission-date validation", () => {
-  it("shows an inline error when collection predates admission", () => {
-    render(
-      <IntlProvider locale="en" messages={messages}>
-        <ConfigurationContext.Provider
-          value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "en-US" } }}
-        >
-          <SampleCollectionCard
-            sample={{
-              sampleItemId: "1",
-              sampleTypeId: "5",
-              sampleTypeName: "Blood",
-              collectionDate: "2026-08-02",
-              tests: [],
-              panels: [],
-            }}
-            sampleIndex={0}
-            sampleTypes={[]}
-            unitOfMeasures={[]}
-            serverReceivedDate="2026-08-13"
-            serverReceivedTime="10:00"
-            admissionDate="2026-08-03"
-            onUpdate={vi.fn()}
-            onRemove={vi.fn()}
-            onPrintLabels={vi.fn()}
-            isReadOnly={false}
-            canRemove={false}
-          />
-        </ConfigurationContext.Provider>
-      </IntlProvider>,
-    );
-
-    expect(screen.getByLabelText(/Collection Date/)).toHaveAttribute(
-      "aria-invalid",
-      "true",
-    );
-    expect(
-      screen.getByText("Collection date cannot be before date of admission."),
-    ).toBeInTheDocument();
-  });
-
+describe("SampleCollectionCard", () => {
   it("does not restore the default after the user clears a collection date", async () => {
     const ControlledCard = () => {
       const [sample, setSample] = React.useState({

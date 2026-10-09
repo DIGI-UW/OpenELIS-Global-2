@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1383 (AMR V2 roadmap step 3): retire the V1 microbiology workflow
+         model. Retired columns stay in the database unread until the clinical
+         migration has consumed them (spec D2), so only the NOT NULL
+         constraints that would block inserts of kept data are dropped.
+         Stored workflow values are preserved. -->
+
+    <changeSet id="3.6.0.0-micro-case-workflow-type-nullable" author="OGC-1383">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="micro_case"/>
+            <columnExists schemaName="clinlims" tableName="micro_case" columnName="workflow_type"/>
+        </preConditions>
+        <dropNotNullConstraint schemaName="clinlims" tableName="micro_case" columnName="workflow_type"
+            columnDataType="VARCHAR(40)"/>
+    </changeSet>
+
+    <changeSet id="3.6.0.0-micro-ast-panel-workflow-type-nullable" author="OGC-1383">
+        <preConditions onFail="MARK_RAN">
+            <tableExists schemaName="clinlims" tableName="micro_ast_panel"/>
+            <columnExists schemaName="clinlims" tableName="micro_ast_panel" columnName="workflow_type"/>
+        </preConditions>
+        <dropNotNullConstraint schemaName="clinlims" tableName="micro_ast_panel" columnName="workflow_type"
+            columnDataType="VARCHAR(40)"/>
+    </changeSet>
+
+</databaseChangeLog>

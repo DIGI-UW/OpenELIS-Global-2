@@ -101,10 +101,6 @@ public class MicrobiologyArchitectureTest {
             }
         }
 
-        assertNoForbiddenFixtureAccess(repositoryRoot.resolve(
-                "src/test/java/org/openelisglobal/testcatalog/controller/rest/TestCatalogEditorMicrobiologyTest.java"),
-                List.of("JdbcTemplate", "javax.sql.DataSource", "java.sql.Connection", "createNativeQuery",
-                        "INSERT INTO", "DELETE FROM", "nextval("));
         assertNoForbiddenFixtureAccess(
                 repositoryRoot.resolve(
                         "src/main/java/org/openelisglobal/microbiology/service/MicrobiologyUatScenarioService.java"),

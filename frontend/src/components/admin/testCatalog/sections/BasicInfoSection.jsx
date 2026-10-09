@@ -73,12 +73,6 @@ const sampleTypeMatchesDomain = (type, domain) => {
   return normalized === null || normalized === domain;
 };
 
-const CULTURE_WORKFLOW_TYPES = [
-  "BACTERIOLOGY",
-  "MYCOBACTERIOLOGY_TB",
-  "MYCOLOGY",
-];
-
 const QC_THRESHOLD_FIELDS = [
   { field: "qcBlankThreshold", labelKey: "test.qc.blankThreshold" },
   { field: "qcRpdThreshold", labelKey: "test.qc.rpdThreshold" },
@@ -783,32 +777,6 @@ const BasicInfoSection = ({ testId }) => {
         toggled={!!form.antimicrobialResistance}
         onToggle={(checked) => update({ antimicrobialResistance: checked })}
       />
-      <Select
-        id="basic-info-culture-workflow-type"
-        labelText={intl.formatMessage({
-          id: "label.testCatalog.basicInfo.cultureWorkflowType",
-        })}
-        value={form.cultureWorkflowType || ""}
-        onChange={(event) =>
-          update({ cultureWorkflowType: event.target.value || "" })
-        }
-      >
-        <SelectItem
-          value=""
-          text={intl.formatMessage({
-            id: "label.testCatalog.basicInfo.cultureWorkflowType.none",
-          })}
-        />
-        {CULTURE_WORKFLOW_TYPES.map((workflowType) => (
-          <SelectItem
-            key={workflowType}
-            value={workflowType}
-            text={intl.formatMessage({
-              id: `label.testCatalog.basicInfo.cultureWorkflowType.${workflowType}`,
-            })}
-          />
-        ))}
-      </Select>
       <TextInput
         id="basic-info-time-holding"
         labelText={intl.formatMessage({ id: "test.timeHolding" })}

@@ -24,7 +24,6 @@ const SamplesCollectionSection = ({
   unitOfMeasures,
   updateSampleCollectionDetails,
   isReadOnly,
-  admissionDate,
   onPrintLabels,
   printDisabled = false,
   workflowType = "clinical",
@@ -126,7 +125,6 @@ const SamplesCollectionSection = ({
                 printDisabled={printDisabled}
                 isReadOnly={isReadOnly}
                 canRemove={!isReadOnly}
-                admissionDate={admissionDate}
                 workflowType={workflowType}
                 labNumber={labNumber}
                 onSameForAll={

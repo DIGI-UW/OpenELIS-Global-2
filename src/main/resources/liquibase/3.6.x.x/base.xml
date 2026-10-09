@@ -19,5 +19,7 @@
   <include relativeToChangelogFile="true" file="009-seed-system-preset-fields-from-legacy-keys.xml"/>
   <!-- OGC-1424: receipt and arrival condition per sample, tested elsewhere, possible-match overrides, showFaxFields -->
   <include relativeToChangelogFile="true" file="010-order-entry-cleanup.xml"/>
+  <!-- OGC-1383: retired V1 microbiology workflow columns become nullable (columns kept unread, spec D2) -->
+  <include relativeToChangelogFile="true" file="011-microbiology-v1-retired-columns-nullable.xml"/>
 
 </databaseChangeLog>

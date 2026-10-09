@@ -1,4 +1,3 @@
-import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
 import { isPlausibleTemperature } from "./sections/handlingRules";
 
 /**
@@ -12,7 +11,6 @@ import { isPlausibleTemperature } from "./sections/handlingRules";
 export function prepareSamplesToContinue({
   samples = [],
   labNumber,
-  admissionDate,
   consentSatisfied,
   intl,
 }) {
@@ -31,21 +29,6 @@ export function prepareSamplesToContinue({
     .filter(({ sample }) => sample.sampleTypeId && !sample.sampleRejected)
     .forEach((entry) => {
       const { sample, index } = entry;
-      if (
-        isCollectionDateBeforeAdmissionDate(
-          sample.collectionDate,
-          admissionDate,
-        )
-      ) {
-        items.push({
-          id: `collectionConflict-${index}`,
-          label: intl.formatMessage(
-            { id: "order.continue.item.collectionConflict" },
-            { sample: sampleName(entry) },
-          ),
-          targetId: `collectionDate-${index}`,
-        });
-      }
       if (!isPlausibleTemperature(sample.arrivalTemperature)) {
         items.push({
           id: `arrivalTemperature-${index}`,

@@ -29,7 +29,6 @@ import SamplesCollectionSection from "./sections/SamplesCollectionSection";
 import PrepareLabelsSection from "./sections/PrepareLabelsSection";
 import ConsentAccordionSection from "./sections/ConsentAccordionSection";
 import "../order-workflow.scss";
-import { isCollectionDateBeforeAdmissionDate } from "../dateUtils";
 import { prepareSamplesToContinue } from "./prepareSamplesChecklist";
 
 /**
@@ -180,28 +179,20 @@ const OrderCollect = () => {
   }, [orderId]);
 
   // Two levels of required (FR-A7, FR-D7). Save and exit needs the save
-  // level: a sample with a sample type and no collection date before the
-  // admission date. Save and next needs the complete level as well (see
+  // level: a sample with a sample type. Save and next needs the complete
+  // level as well (see
   // prepareSamplesToContinue). Informed consent stays advisory by default (FRS
   // FR-5-001/FR-5-002); a site whose regulator requires it turns
   // consentRequiredForCollection on. Environmental and vector samples have no
   // human subject, so consent never applies to them.
-  const admissionDate = orderData?.microbiologyOrderDetail?.admissionDate || "";
-  const hasCollectionDateConflict = samples.some((sample) =>
-    isCollectionDateBeforeAdmissionDate(sample.collectionDate, admissionDate),
-  );
   // Published under the Property enum's name, the way REQUESTER_REQUIRED is.
   const consentRequired =
     configurationProperties.CONSENT_REQUIRED_FOR_COLLECTION === "true";
   const consentSatisfied = !consentRequired || consentData.consentGiven;
-  const canSave =
-    samples?.length > 0 &&
-    samples.some((s) => s.sampleTypeId) &&
-    !hasCollectionDateConflict;
+  const canSave = samples?.length > 0 && samples.some((s) => s.sampleTypeId);
   const toContinue = prepareSamplesToContinue({
     samples,
     labNumber,
-    admissionDate,
     consentSatisfied,
     intl,
   });
@@ -401,7 +392,6 @@ const OrderCollect = () => {
           unitOfMeasures={unitOfMeasures}
           updateSampleCollectionDetails={updateSampleCollectionDetails}
           isReadOnly={isReadOnly && !isEditMode}
-          admissionDate={admissionDate}
           printDisabled={isLoading}
           workflowType={workflowType}
           labNumber={orderData?.sampleOrderItems?.labNo || labNumber || ""}
