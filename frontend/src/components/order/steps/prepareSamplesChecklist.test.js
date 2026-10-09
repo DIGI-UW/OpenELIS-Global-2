@@ -17,6 +17,7 @@ const serum = (fields = {}) => ({
   collectionTime: "09:30",
   collectorId: "",
   labPerformedSampling: false,
+  tests: [{ id: "7", name: "Glucose" }],
   ...fields,
 });
 
@@ -82,6 +83,29 @@ describe("prepareSamplesToContinue measured temperature (OGC-1424)", () => {
         serum({ arrivalTemperature: "" }),
         serum({ arrivalTemperature: "4,5" }),
       ]),
+    ).toEqual([]);
+  });
+});
+
+describe("prepareSamplesToContinue — a sample with no tests (OGC-1443)", () => {
+  it("names the sample that has no tests, since the server refuses to save it", () => {
+    expect(itemsFor([serum(), serum({ tests: [] })])).toEqual([
+      {
+        id: "noTests-1",
+        label:
+          'order.continue.item.noTestsOnSample:{"sample":"DEV0126-2 Serum"}',
+        targetId: "sampleType-1",
+      },
+    ]);
+  });
+
+  it("accepts a sample carrying a panel instead of single tests", () => {
+    expect(itemsFor([serum({ tests: [], panels: [{ id: "3" }] })])).toEqual([]);
+  });
+
+  it("leaves out a rejected sample", () => {
+    expect(
+      itemsFor([serum(), serum({ tests: [], sampleRejected: true })]),
     ).toEqual([]);
   });
 });

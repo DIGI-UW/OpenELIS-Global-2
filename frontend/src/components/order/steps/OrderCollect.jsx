@@ -65,6 +65,7 @@ const OrderCollect = () => {
     assignTestToSample,
     removeTestFromSample,
     updateSampleCollectionDetails,
+    fillSampleDefaults,
     setOrderData,
     labNumber,
     storageSkipped,
@@ -391,6 +392,7 @@ const OrderCollect = () => {
           sampleTypes={sampleTypes}
           unitOfMeasures={unitOfMeasures}
           updateSampleCollectionDetails={updateSampleCollectionDetails}
+          fillSampleDefaults={fillSampleDefaults}
           isReadOnly={isReadOnly && !isEditMode}
           printDisabled={isLoading}
           workflowType={workflowType}

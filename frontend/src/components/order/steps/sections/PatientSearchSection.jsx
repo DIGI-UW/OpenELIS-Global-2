@@ -56,7 +56,7 @@ const PatientSearchSection = ({
   // The patient form compares its fields against this record to tell an
   // untouched patient from an edited one, so it must not follow the form's
   // own writes; it is taken again only for another patient or after a save.
-  const { saveStatus } = useContext(OrderContext);
+  const { saveStatus, hydrateOrderData } = useContext(OrderContext);
   const heldPatientPK = orderData?.patientProperties?.patientPK || "";
   const [held, setHeld] = useState({
     patientPK: "",
@@ -155,7 +155,7 @@ const PatientSearchSection = ({
       <p className="helper-text">
         <FormattedMessage
           id="patient.search.section.helper"
-          defaultMessage="Search by any combination of fields — partial matches accepted. 'External Search' queries the Client Registry and requires at minimum a name and date of birth."
+          defaultMessage="Search by any combination of fields. Names match exactly or by their first letters. 'External Search' queries the Client Registry and requires at minimum a name and date of birth."
         />
       </p>
 
@@ -242,6 +242,7 @@ const PatientSearchSection = ({
             getSelectedPatient={handleSelectPatient}
             renderNotifications={false}
             followUrlLabNumber={false}
+            nameMatch="prefix"
           />
         </div>
       )}
@@ -254,6 +255,7 @@ const PatientSearchSection = ({
             selectedPatient={selectedPatient || NEW_PATIENT}
             orderFormValues={orderData}
             setOrderFormValues={setOrderData}
+            hydrateOrderFormValues={hydrateOrderData}
             error={() => null}
             setPhoneValidation={setPhoneValidation}
           />

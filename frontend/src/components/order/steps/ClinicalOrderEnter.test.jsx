@@ -1,5 +1,6 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
+import { waitFor } from "@testing-library/dom";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import { vi } from "vitest";
@@ -43,8 +44,9 @@ const { orderContextValue, programSectionProps, configurationValue } =
   }));
 
 const currentLocation = { pathname: "/order/clinical/enter", search: "" };
+const { historyPush } = vi.hoisted(() => ({ historyPush: vi.fn() }));
 vi.mock("react-router-dom", () => ({
-  useHistory: () => ({ push: vi.fn(), replace: vi.fn() }),
+  useHistory: () => ({ push: historyPush, replace: vi.fn() }),
   useLocation: () => currentLocation,
 }));
 
@@ -238,6 +240,52 @@ describe("ClinicalOrderEnter required-field configuration", () => {
     expect(
       screen.getByRole("button", { name: "Save and next" }),
     ).toBeDisabled();
+  });
+
+  it("opens Prepare Samples on the saved order's lab number, so a reload or a language switch keeps the order (OGC-1443)", async () => {
+    configurationValue.configurationProperties = {};
+    historyPush.mockClear();
+    const contextLab = orderContextValue.labNumber;
+    orderContextValue.labNumber = null;
+    orderContextValue.orderData.sampleOrderItems.labNo = "DEV01260000000001420";
+    orderContextValue.saveOrderEntry.mockResolvedValue(undefined);
+    try {
+      renderEnter();
+      fireEvent.click(screen.getByRole("button", { name: "Save and next" }));
+
+      await waitFor(() =>
+        expect(historyPush).toHaveBeenCalledWith(
+          "/order/clinical/collect?order=DEV01260000000001420",
+        ),
+      );
+    } finally {
+      orderContextValue.labNumber = contextLab;
+      delete orderContextValue.orderData.sampleOrderItems.labNo;
+    }
+  });
+
+  it("holds Save and next, not the save, while a sample has no tests, naming the sample (OGC-1443)", () => {
+    configurationValue.configurationProperties = {};
+    const before = orderContextValue.samples;
+    orderContextValue.samples = [
+      before[0],
+      { sampleTypeId: "urine", tests: [], panels: [] },
+    ];
+    try {
+      renderEnter();
+
+      expect(
+        screen.getByRole("button", { name: "Save and exit" }),
+      ).toBeEnabled();
+      expect(
+        screen.getByRole("button", { name: "Save and next" }),
+      ).toBeDisabled();
+      expect(screen.getByTestId("to-continue")).toHaveTextContent(
+        "Sample 2: choose at least one test",
+      );
+    } finally {
+      orderContextValue.samples = before;
+    }
   });
 
   it("leaves both saves open when the deployment requires neither", () => {
