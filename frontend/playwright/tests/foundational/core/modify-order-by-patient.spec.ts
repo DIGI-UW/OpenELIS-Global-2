@@ -120,7 +120,7 @@ test.describe("Modify Order by patient", () => {
       .getByRole("textbox", { name: "Last Name" })
       .fill(male.lastName);
     await page
-      .getByRole("group", { name: "Sex", exact: true })
+      .getByRole("group", { name: /^Sex( required)?$/ })
       .getByText("Male", { exact: true })
       .click();
     await expect(

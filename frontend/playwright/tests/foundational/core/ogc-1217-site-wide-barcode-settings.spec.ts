@@ -157,14 +157,17 @@ async function fillOrderStepWithLabNumber(page: Page, labNumber: string) {
   );
   await page.getByRole("button", { name: "Next", exact: true }).click();
   await siteListLoaded;
-  const labNo = page.getByRole("textbox", { name: "Lab Number *" });
+  const labNo = page.getByRole("textbox", { name: "Lab Number", exact: true });
   const validated = page.waitForResponse((r) =>
     r.url().includes("SampleEntryAccessionNumberValidation"),
   );
   await labNo.fill(labNumber);
   await validated;
   await expect(labNo).toHaveValue(labNumber);
-  const site = page.getByRole("textbox", { name: "Search Site Name *" });
+  const site = page.getByRole("textbox", {
+    name: "Search Site Name",
+    exact: true,
+  });
   await site.click();
   await site.pressSequentially("a");
   const suggestion = page.locator("ul.suggestions li").first();

@@ -23,6 +23,13 @@ import SampleTestSection from "./sections/SampleTestSection";
 import MicroOrderPreview from "./sections/MicroOrderPreview";
 import "../order-workflow.scss";
 
+/** Patient fields the patient form marks inline when the server refuses them. */
+const PATIENT_INLINE_FIELDS = [
+  "patientProperties.nationalId",
+  "patientProperties.gender",
+  "patientProperties.birthDateForDisplay",
+];
+
 const WORKFLOW_TYPE = "clinical";
 const WORKFLOW_PREFIX = "/order/clinical";
 
@@ -53,6 +60,12 @@ const ClinicalOrderEnter = () => {
     configurationProperties.SampleEntryReferralSiteNameRequired === "true";
   const providerRequired =
     configurationProperties.REQUESTER_REQUIRED === "true";
+  const nationalIdRequired =
+    configurationProperties.PATIENT_NATIONAL_ID_REQUIRED !== "false";
+  const patientSexRequired =
+    configurationProperties.PATIENT_SEX_REQUIRED !== "false";
+  const patientAgeRequired =
+    configurationProperties.PATIENT_AGE_REQUIRED !== "false";
 
   const isNewOrder = useNewOrderReset(WORKFLOW_PREFIX);
 
@@ -147,6 +160,34 @@ const ClinicalOrderEnter = () => {
     orderData?.sampleOrderItems?.noPatientOverride,
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
+  // The server refuses a patient missing a field the deployment requires
+  // (PatientManagementInfo, @OptionalNotBlank), so the same settings that mark
+  // those fields on the patient form hold the save and name the field.
+  const patientValue = (field) =>
+    String(orderData?.patientProperties?.[field] ?? "").trim() !== "";
+  const patientFieldRequirements =
+    hasPatient && !noPatientOverride
+      ? [
+          {
+            met: !nationalIdRequired || patientValue("nationalId"),
+            labelId: "order.save.requirement.nationalId",
+            itemId: "order.continue.item.nationalId",
+            targetId: "nationalId",
+          },
+          {
+            met: !patientSexRequired || patientValue("gender"),
+            labelId: "order.save.requirement.patientSex",
+            itemId: "order.continue.item.patientSex",
+            targetId: "create_patient_gender",
+          },
+          {
+            met: !patientAgeRequired || patientValue("birthDateForDisplay"),
+            labelId: "order.save.requirement.birthDate",
+            itemId: "order.continue.item.birthDate",
+            targetId: "date-picker-default-id",
+          },
+        ]
+      : [];
   const hasProvider = Boolean(
     orderData?.sampleOrderItems?.providerPersonId ||
     orderData?.sampleOrderItems?.providerId,
@@ -171,6 +212,7 @@ const ClinicalOrderEnter = () => {
       itemId: "order.continue.item.patient",
       targetId: "order-patient-search-lastName",
     },
+    ...patientFieldRequirements,
     {
       met: hasSampleTypes,
       labelId: "order.save.requirement.sampleType",
@@ -277,7 +319,9 @@ const ClinicalOrderEnter = () => {
       toContinue={toContinue}
     >
       {notificationVisible && <AlertDialog />}
-      <SaveFailureNotice inlineFields={["sampleOrderItems.labNo"]} />
+      <SaveFailureNotice
+        inlineFields={["sampleOrderItems.labNo", ...PATIENT_INLINE_FIELDS]}
+      />
 
       <Stack gap={7}>
         {/* 1. Order: the lab number, with the EQA and no-patient decisions
@@ -320,6 +364,7 @@ const ClinicalOrderEnter = () => {
           setPhoneValidation={setPhoneValidation}
           isReadOnly={isReadOnly && !isEditMode}
           required={patientRequired && !noPatientOverride}
+          fieldErrors={fieldErrors}
         />
 
         {/* 3. Requester, before the request details, as on the paper form */}

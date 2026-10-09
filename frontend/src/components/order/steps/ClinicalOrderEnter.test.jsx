@@ -11,7 +11,12 @@ const { orderContextValue, programSectionProps, configurationValue } =
     configurationValue: { configurationProperties: {} },
     orderContextValue: {
       orderData: {
-        patientProperties: { lastName: "Ada" },
+        patientProperties: {
+          lastName: "Ada",
+          nationalId: "NID-1240",
+          gender: "F",
+          birthDateForDisplay: "01/02/1990",
+        },
         sampleOrderItems: {
           environmentalFields: { workflowType: "clinical" },
         },
@@ -209,7 +214,12 @@ describe("ClinicalOrderEnter required-field configuration", () => {
     orderContextValue.error = null;
     orderContextValue.fieldErrors = {};
     orderContextValue.orderData = {
-      patientProperties: { lastName: "Ada" },
+      patientProperties: {
+        lastName: "Ada",
+        nationalId: "NID-1240",
+        gender: "F",
+        birthDateForDisplay: "01/02/1990",
+      },
       sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
     };
   });
@@ -305,6 +315,75 @@ describe("ClinicalOrderEnter required-field configuration", () => {
 
     expect(requesterSectionProps).toHaveBeenCalledWith(
       expect.objectContaining({ siteRequired: true, providerRequired: true }),
+    );
+  });
+
+  // OGC-1240: the server refuses a patient missing a field the deployment
+  // requires, so the gate names it before the save instead of a silent 400.
+  it("holds both saves until the patient has the National ID the deployment requires, naming it", () => {
+    orderContextValue.orderData = {
+      patientProperties: {
+        lastName: "Ada",
+        gender: "F",
+        birthDateForDisplay: "01/02/1990",
+      },
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+    renderEnter();
+
+    expect(
+      screen.getByRole("button", { name: "Save and exit" }),
+    ).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Save and next" }),
+    ).toBeDisabled();
+    expect(screen.getByTestId("to-continue")).toHaveTextContent(
+      "Enter the patient's National ID",
+    );
+  });
+
+  it("does not ask for a National ID when the deployment turns it off", () => {
+    configurationValue.configurationProperties = {
+      PATIENT_NATIONAL_ID_REQUIRED: "false",
+    };
+    orderContextValue.orderData = {
+      patientProperties: {
+        lastName: "Ada",
+        gender: "F",
+        birthDateForDisplay: "01/02/1990",
+      },
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+    renderEnter();
+
+    expect(screen.getByRole("button", { name: "Save and exit" })).toBeEnabled();
+    expect(screen.getByTestId("to-continue")).toBeEmptyDOMElement();
+  });
+
+  it("names the patient's sex and date of birth when the deployment requires them", () => {
+    orderContextValue.orderData = {
+      patientProperties: { lastName: "Ada", nationalId: "NID-1240" },
+      sampleOrderItems: { environmentalFields: { workflowType: "clinical" } },
+    };
+    renderEnter();
+
+    const toContinue = screen.getByTestId("to-continue");
+    expect(toContinue).toHaveTextContent("Choose the patient's sex");
+    expect(toContinue).toHaveTextContent("Enter the patient's date of birth");
+  });
+
+  it("asks nothing of a patient on an order declared to have none", () => {
+    orderContextValue.orderData = {
+      patientProperties: { lastName: "Ada" },
+      sampleOrderItems: {
+        noPatientOverride: true,
+        environmentalFields: { workflowType: "clinical" },
+      },
+    };
+    renderEnter();
+
+    expect(screen.getByTestId("to-continue")).not.toHaveTextContent(
+      "National ID",
     );
   });
 

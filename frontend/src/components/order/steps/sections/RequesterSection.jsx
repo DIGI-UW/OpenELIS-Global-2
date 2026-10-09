@@ -31,6 +31,7 @@ import {
 import { labNow } from "../../../utils/labClock";
 import usePossibleMatchCheck from "../../possibleMatches/usePossibleMatchCheck";
 import { RECORD_KIND } from "../../api/orderEntryCleanupApi";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 
 /**
  * RequesterSection - Site/Requesting-Organization, Requestor contact, and
@@ -1089,11 +1090,10 @@ const RequesterSection = ({
               labelText={
                 <span>
                   <FormattedMessage id="site.name" defaultMessage="Site Name" />
-                  {siteRequired && (
-                    <span className="required-indicator"> *</span>
-                  )}
+                  <RequiredMarker required={siteRequired} />
                 </span>
               }
+              {...requiredProps(siteRequired)}
               placeholder={intl.formatMessage({
                 id: "site.name.placeholder",
                 defaultMessage: "Enter site name",
@@ -1877,11 +1877,10 @@ const RequesterSection = ({
                       id="provider.name"
                       defaultMessage="Provider Name"
                     />
-                    {providerRequired && (
-                      <span className="required-indicator"> *</span>
-                    )}
+                    <RequiredMarker required={providerRequired} />
                   </span>
                 }
+                {...requiredProps(providerRequired)}
                 placeholder={intl.formatMessage({
                   id: "provider.name.placeholder",
                   defaultMessage: "Enter provider name",
