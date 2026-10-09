@@ -44,7 +44,18 @@
             baseColumnNames="dictionary_id"
             referencedTableSchemaName="clinlims" referencedTableName="dictionary" referencedColumnNames="id"/>
         <rollback>
-            <dropTable schemaName="clinlims" tableName="dictionary_terminology_mapping"/>
+            <!-- Runs after the backfill's rollback, so any row left was added after
+                 the upgrade and has no place in the earlier schema. -->
+            <sql splitStatements="false"><![CDATA[
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM clinlims.dictionary_terminology_mapping) THEN
+                        RAISE EXCEPTION 'Answers hold terminology codes, which the earlier schema cannot hold. Restore the pre-upgrade backup to undo this change.';
+                    END IF;
+                    DROP TABLE clinlims.dictionary_terminology_mapping;
+                END
+                $$;
+            ]]></sql>
         </rollback>
     </changeSet>
 
@@ -59,7 +70,15 @@
                                 WHERE m.dictionary_id = d.id AND m.source = 'LOINC' AND m.code = trim(d.loinc_code))
         </sql>
         <rollback>
-            <sql>DELETE FROM clinlims.dictionary_terminology_mapping WHERE source = 'LOINC'</sql>
+            <!-- Only the rows this changeset creates: a LOINC / SAME_AS mapping whose
+                 code still matches its answer's legacy column. -->
+            <sql>
+                DELETE FROM clinlims.dictionary_terminology_mapping m
+                 WHERE m.source = 'LOINC'
+                   AND m.relationship = 'SAME_AS'
+                   AND EXISTS (SELECT 1 FROM clinlims.dictionary d
+                                WHERE d.id = m.dictionary_id AND trim(d.loinc_code) = m.code)
+            </sql>
         </rollback>
     </changeSet>
 </databaseChangeLog>
