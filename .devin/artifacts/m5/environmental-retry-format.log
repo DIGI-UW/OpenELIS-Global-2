@@ -1,0 +1,16 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.openelisglobal:openelisglobal >------------------
+[INFO] Building openelisglobal 3.3.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- spotless:2.43.0:apply (default-cli) @ openelisglobal ---
+[INFO] Spotless.Format is keeping 2 files clean - 0 were changed to be clean, 0 were already clean, 2 were skipped because caching determined they were already clean
+[INFO] Spotless.Java is keeping 21 files clean - 0 were changed to be clean, 3 were already clean, 18 were skipped because caching determined they were already clean
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  5.678 s
+[INFO] Finished at: 2026-10-08T12:22:07-07:00
+[INFO] ------------------------------------------------------------------------

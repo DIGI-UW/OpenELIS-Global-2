@@ -83,7 +83,7 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                 assertTrue(columnExists(connection, "micro_case_request", "sample_type_request_id"));
                 assertTrue(columnExists(connection, "micro_case_split", "source_case_id"));
                 assertEquals(originalCase, scalar(connection,
-                        "SELECT (to_jsonb(c) - ARRAY['sample_id','sample_type_id','lab_unit_id','program_id','status'])::text FROM clinlims.micro_case c WHERE id='stored-case'"));
+                        "SELECT (to_jsonb(c) - ARRAY['sample_id','sample_type_id','lab_unit_id','program_id','status','site_id'])::text FROM clinlims.micro_case c WHERE id='stored-case'"));
                 assertEquals("BACTERIOLOGY",
                         scalar(connection, "SELECT workflow_type FROM clinlims.micro_case WHERE id='stored-case'"));
                 assertEquals("888802", scalar(connection,
@@ -98,11 +98,49 @@ public class MicrobiologyV2CaseStructureLiquibaseRollbackTest {
                         "SELECT case_role FROM clinlims.micro_case_analysis WHERE id='stored-link'"));
                 verifyConstraints(connection);
 
+                assertTrue(columnExists(connection, "sample_type_request", "culture_set_number"));
+                assertTrue(columnExists(connection, "sample_item", "body_site"));
+                assertTrue(columnExists(connection, "dictionary", "container_population"));
+                assertTrue(columnExists(connection, "test", "opens_microbiology_case"));
+                assertTrue(columnExists(connection, "micro_case", "site_id"));
+                assertNull(scalar(connection, "SELECT site_id FROM clinlims.micro_case WHERE id='stored-case'"));
+                Liquibase siteRouting = new Liquibase(
+                        "liquibase/3.6.x.x/016-microbiology-environmental-site-routing.xml", resources, database);
+                siteRouting.rollback(1, "test");
+                assertFalse(columnExists(connection, "micro_case", "site_id"));
+                assertFalse(columnExists(connection, "sample_type_request", "collection_location_id"));
+                app.update(contexts);
+                assertTrue(columnExists(connection, "sample_type_request", "collection_location_id"));
+                assertTrue(columnExists(connection, "program", "show_on_micro_case"));
+                assertEquals("0", scalar(connection,
+                        "SELECT COUNT(*) FROM clinlims.program WHERE show_on_micro_case IS DISTINCT FROM false"));
+                Liquibase programVisibility = new Liquibase("liquibase/3.6.x.x/015-microbiology-program-visibility.xml",
+                        resources, database);
+                programVisibility.rollback(1, "test");
+                assertFalse(columnExists(connection, "program", "show_on_micro_case"));
+                app.update(contexts);
+                assertTrue(columnExists(connection, "program", "show_on_micro_case"));
+                assertNull(scalar(connection, "SELECT culture_set_number FROM clinlims.sample_item WHERE id=888802"));
+                assertNull(scalar(connection, "SELECT body_site FROM clinlims.sample_item WHERE id=888802"));
+                // Shared details and catalog flags are registered, reversible application
+                // changes.
+                new Liquibase("liquibase/3.6.x.x/014-sample-collection-set-details.xml", resources, database)
+                        .rollback(2, "test");
+                assertFalse(columnExists(connection, "sample_item", "culture_set_number"));
+                assertFalse(columnExists(connection, "dictionary", "container_population"));
+                new Liquibase("liquibase/3.6.x.x/013-microbiology-v2-routing.xml", resources, database).rollback(2,
+                        "test");
+                assertFalse(columnExists(connection, "test", "opens_microbiology_case"));
+                assertPreservedFields(originalResult,
+                        scalar(connection, "SELECT row_to_json(r)::text FROM clinlims.result r WHERE id=888803"));
+                app.update(contexts);
+                assertTrue(columnExists(connection, "sample_item", "culture_set_number"));
+
                 Liquibase feature = new Liquibase("liquibase/3.6.x.x/012-microbiology-v2-case-structure.xml", resources,
                         database);
                 feature.rollback(3, "test");
                 assertFalse(columnExists(connection, "micro_case", "lab_unit_id"));
-                assertEquals(originalCase, scalar(connection,
+                assertPreservedFields(originalCase, scalar(connection,
                         "SELECT to_jsonb(c)::text FROM clinlims.micro_case c WHERE id='stored-case'"));
                 app.update(contexts);
                 assertTrue(columnExists(connection, "micro_case", "lab_unit_id"));

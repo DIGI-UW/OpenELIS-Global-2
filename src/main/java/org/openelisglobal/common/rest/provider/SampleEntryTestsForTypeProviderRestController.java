@@ -247,7 +247,8 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
             boolean userBenchChoice = userTestSectionId != null && test.getTestSection() != null
                     && userTestSectionId.equals(test.getTestSection().getId());
             testsMapList.add(new TestMap(test.getId(), localizedTestName(test), userBenchChoice, hasQc, resultType,
-                    test.getTimeHolding(), methods));
+                    test.getTimeHolding(), methods, test.isOpensMicrobiologyCase(), test.getMicrobiologyCaseRole(),
+                    test.isCollectedInSets()));
         }
         return testsMapList;
     }
@@ -431,6 +432,9 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
         String timeHolding;
 
         List<OrderEntryMethod> methods;
+        boolean opensMicrobiologyCase;
+        String microbiologyCaseRole;
+        boolean collectedInSets;
 
         public TestMap(String id, String name, boolean userBenchChoice) {
             this(id, name, userBenchChoice, false, null, null, List.of());
@@ -451,6 +455,15 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
                 String timeHolding, List<OrderEntryMethod> methods) {
+            this(id, name, userBenchChoice, hasQcThreshold, resultType, timeHolding, methods, false, null, false);
+        }
+
+        public TestMap(String id, String name, boolean userBenchChoice, boolean hasQcThreshold, String resultType,
+                String timeHolding, List<OrderEntryMethod> methods, boolean opensMicrobiologyCase,
+                String microbiologyCaseRole, boolean collectedInSets) {
+            this.opensMicrobiologyCase = opensMicrobiologyCase;
+            this.microbiologyCaseRole = microbiologyCaseRole;
+            this.collectedInSets = collectedInSets;
             this.id = id;
             this.name = name;
             this.userBenchChoice = userBenchChoice;
@@ -506,6 +519,18 @@ public class SampleEntryTestsForTypeProviderRestController extends BaseRestContr
 
         public void setTimeHolding(String timeHolding) {
             this.timeHolding = timeHolding;
+        }
+
+        public boolean isOpensMicrobiologyCase() {
+            return opensMicrobiologyCase;
+        }
+
+        public String getMicrobiologyCaseRole() {
+            return microbiologyCaseRole;
+        }
+
+        public boolean isCollectedInSets() {
+            return collectedInSets;
         }
 
         public List<OrderEntryMethod> getMethods() {

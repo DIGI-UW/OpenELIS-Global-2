@@ -126,6 +126,7 @@ public class SamplePatientEntryForm extends BaseForm {
      * {@link JsonIgnoreProperties} even when the frontend omits it.
      */
     private OrderLabelPersistRequest labelPersistRequest;
+    private String cancelReason;
 
     @Valid
 
@@ -387,5 +388,13 @@ public class SamplePatientEntryForm extends BaseForm {
 
     public void setRangeNotAppliedTests(List<String> rangeNotAppliedTests) {
         this.rangeNotAppliedTests = rangeNotAppliedTests == null ? new ArrayList<>() : rangeNotAppliedTests;
+    }
+
+    public String getCancelReason() {
+        return cancelReason;
+    }
+
+    public void setCancelReason(String cancelReason) {
+        this.cancelReason = cancelReason;
     }
 }

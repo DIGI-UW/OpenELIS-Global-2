@@ -1,204 +1,70 @@
-# Microbiology (AMR) V2 — roadmap
+# Microbiology (AMR) V2 — Implementation Roadmap
 
-Ordered work to reach the [final state](spec.md). Check an item when it is done.
-Evidence belongs in the pull request, not here.
+This roadmap defines the step-by-step implementation plan to deliver AMR V2 through vertical slices (MVP + Iterations), replacing the previous horizontal design.
 
-Delivery is one dependent PR stack for the whole V2 replacement, rooted at
-baseline PR #4646. Steps 1–3 belong to that baseline. Each implementation
-milestone below is one PR above its predecessor, carrying its schema, backend,
-frontend, tests and documentation together. Individual tasks, dependency work
-and fixes stay in their owning milestone; they do not create extra PRs. Final
-acceptance is a gate on the assembled stack, not a separate implementation PR.
+Each milestone below represents a fully reviewable, self-contained PR (or small PR stack) that delivers a complete feature slice from database to UI.
 
-Publish each reviewable milestone promptly as a draft so GitHub CI runs while
-local validation continues. Use `gh stack` to track and publish the dependent
-branches and PRs. Draft status and unfinished validation do not delay publication;
-verified contribution checks and final stack acceptance determine completion.
+## Current Sitrep (The "3-PR Stack")
 
-An item is done when its contribution is verified on its branch: the application
-boots with the registered application changelog on fresh and upgraded databases,
-the change's own tests pass, and every user-facing item has a recorded browser
-run compared with the pinned design mock. This does not make an intermediate PR
-independently mergeable. The complete stack must pass clinical migration and
-final acceptance at its final revision before it merges in dependency order.
-Schema changes ship with the step that needs them
-([D8](spec.md#2-engineering-decisions)); there is no test-only schema.
+The foundational PR stack (Milestone 1) is now complete, providing the baseline infrastructure for V2:
+1. **Retire V1 (PR #4646)**: Ripped out the V1 microbiology workflows, legacy routing, and retired schema.
+2. **Case Structure & Migration (PR #2)**: Restructured the database schema to support independent cases, updated case membership constraints, and ensured legacy case compatibility.
+3. **Routing & Case Creation (PR #3 - M5)**: Implemented order routing, case creation, set warnings, and proper handling of order edits/cancellations (including requiring a reason when dropping tests with results or dropping the last micro test).
 
-Acceptance criteria (AC-V2-nn) are listed once under their primary milestone.
-Criteria spanning milestones are exercised as complete journeys at final
-acceptance; their primary assignment is not evidence that all parts already work.
+*Note: The archived work from previous horizontal attempts remains highly useful as a reference for UI components and business logic, but will be integrated slice-by-slice.*
 
-## 1. Spec and roadmap
+## Milestone 1: The Core Foundation (Completed)
+**Goal:** Rip out V1, establish the V2 schema, and enable basic case routing.
+- [x] Remove V1 workflow types, culture setups, and old routing.
+- [x] Restructure case, sample, and program relationships.
+- [x] Implement V2 routing on order save (including electronic/reflex orders).
+- [x] Handle order edits (add/cancel tests, require reasons for dropping micro tests).
 
-- [x] [spec.md](spec.md) reviewed and accepted
-- [x] V1 specifications under `specs/782-*` removed
-- [ ] Jira OGC-1383 / OGC-1382 children point at these steps
+---
 
-## 2. Dependencies and open decisions
+## Milestone 2: MVP Case View & Access (Next Up)
+**Goal:** Allow users to view the cases created by Milestone 1 and manage basic case access.
+- [ ] Build the Case View shell (header, related cases, sample list).
+- [ ] Implement Case-Lab-Unit access controls (read/write permissions based on lab unit).
+- [ ] Build the Case search and worklist listing.
+- [ ] Support basic case transfers between lab units.
 
-- [ ] Each dependency in [§14](spec.md#14-shared-openelis-dependencies) verified against current code and assigned to its owning milestone; evidence and any existing delivery PR recorded in that milestone's PR
-- [ ] Required shared behavior delivered before its consumer, in the owning milestone unless already delivered; no silent scope reductions or microbiology-only duplicates
-- [x] Approved behavior clarifications reflected in the engineering spec and pinned functional specs/mocks ([§15](spec.md#15-clarified-behavior-and-delivery))
+## Milestone 3: MVP Initial Testing & Results
+**Goal:** Enable lab technicians to enter basic results for case tests.
+- [ ] Implement the shared chooser for Initial/Additional testing.
+- [ ] Build the single result table and inline editor for multi-component results.
+- [ ] Implement basic result validation (Block self-validation).
+- [ ] Add support for "Tested elsewhere" and basic case notes.
 
-## 3. Retire the V1 front
+## Milestone 4: MVP Culture Rows & Media Tracking
+**Goal:** Support the growth and tracking of cultures.
+- [ ] Add culture row inoculation (media links, tracked media settings).
+- [ ] Implement reading tracking (check due, incubation complete, extensions).
+- [ ] Build the culture tree (tests on a culture, subcultures, Gram stain shortcut).
 
-[§10 Retire](spec.md#10-v1-disposition-retire-restructure-evolve)
+## Milestone 5: MVP Isolates & Referral
+**Goal:** Support picking isolates and referring them out.
+- [ ] Implement isolate picking from culture rows and recording identification history.
+- [ ] Support isolate sample items and received isolates.
+- [ ] Implement the referral workflow for remaining work/isolates.
 
-- [x] Workflow type, culture setups and protocols removed, backend and frontend
-- [x] Reception Microbiology section, micro draft pipeline and Program guards removed
-- [x] V1 order routing removed
-- [x] Retired columns made nullable; no other schema change
-- [x] Order entry, Results, Validation and existing cases work
+## Milestone 6: AST/DST & Reporting
+**Goal:** Enable antibiotic susceptibility testing and final reporting.
+- [ ] Implement AST runs, panel selection, and readings/overrides.
+- [ ] Add TB classification logic and NTM off-ramp.
+- [ ] Implement partial/final release of cases and server-side final locks.
+- [ ] Integrate with the Patient Report micro block.
 
-## 4. Case structure
+## Milestone 7: Integration & Automation (Incoming Results & Labeling)
+**Goal:** Connect the MVP features with instruments and physical lab workflows.
+- [ ] Build the incoming results queue for instrument integrations.
+- [ ] Ensure results map correctly to existing culture rows/tests.
+- [ ] Implement Worklist/Bench sheet printing and culture filters.
+- [ ] Add per-container label scope and scanning support.
 
-[§4.1](spec.md#41-case), [§10 Restructure](spec.md#10-v1-disposition-retire-restructure-evolve)
-
-- [x] Case lab unit, Program, member samples and case analysis roles, restructured in place
-- [x] Requested-test ownership before collection; explicit attachment to the eventual sample, cancellation history and retry rules
-- [x] Membership constraints permit retained separate cases after transfer; split relationships are preserved independently of shared samples
-- [x] Existing cases load and display after upgrade
-- [x] Existing-data requirements for later access and routing documented and rehearsed against the registered schema; missing clinical mappings are never fabricated
-
-## 5. Routing and case creation
-
-[§5](spec.md#5-routing-and-case-membership)
-
-- [ ] Catalog switch, case role, collected in sets
-- [ ] Routing on order save, electronic orders, reflex, case tests
-- [ ] An order without a received sample opens its case against requested work; later sample recording attaches to the same case without duplicate cases, samples or ownership
-- [ ] What this order will open preview
-- [ ] Set numbers and set warnings
-- [ ] Shared per-sample fields and configured container classification support all specified set warnings
-- [ ] Edit order: add, cancel, last-test confirmation and reason
-- AC: 01, 02, 03, 05, 54, 58, 88, 91, 103, 104
-
-## 6. Case, case information and access
-
-[§4.1](spec.md#41-case), [§6](spec.md#6-case-work-rules), [§9](spec.md#9-access)
-
-- [ ] Case view shell, header, related cases, samples list, timeline
-- [ ] Related-case switcher covers shared samples and split relationships, including within one lab unit and after transfer; labels identify case, samples and current lab unit
-- [ ] Cases awaiting samples are visible to the responsible lab unit without implying collection or receipt
-- [ ] Case information, order-level details, Program and questionnaire
-- [ ] Case-lab-unit access on every read and write; read-only direct links
-- [ ] Case search and worklist listing by lab unit
-- [ ] Transfer
-- [ ] Split a no-result sample
-- AC: 04, 06, 07, 49, 60, 63, 90, 92, 99, 111
-
-## 7. Case tests and results
-
-[§4.3](spec.md#43-case-tests)
-
-- [ ] Initial testing and Additional testing with the shared chooser
-- [ ] Shared chooser supports the specified compatible/"used as" sample types
-- [ ] One result table and inline editor, multi-component results
-- [ ] Tested elsewhere, reagent lots, In lab only
-- [ ] Notes on case and results
-- [ ] Per-result validation, Block self-validation
-- [ ] Shared result runs, reagent/control policy and quality-control holds apply to typed case results; the shared self-validation rule applies on both case and Validation screens
-- AC: 08, 09, 24, 30, 31, 32, 33, 38, 39, 40, 51, 59, 61, 67, 68, 100, 105, 108
-
-## 8. Culture rows and media
-
-[§4.4](spec.md#44-culture-rows)
-
-- [ ] Inoculation from media links, medium and lot without stock change, tracked-media setting
-- [ ] Shared Inventory lot-tracking property and medium type tags delivered before culture entry uses them
-- [ ] Readings, check due, incubation complete, extensions, positive time
-- [ ] Instrument negatives, late growth
-- [ ] Culture tree: tests on a culture, Gram stain shortcut, subcultures
-- [ ] Seeded positive-bottle reflex rule
-- [ ] Used on cultures in Inventory
-- AC: 10, 13, 23, 55, 64, 65, 66, 69, 70, 71, 72, 77, 82, 83, 84, 89, 93, 95, 97, 101, 102, 109, 110
-
-## 9. Isolates and referral
-
-[§4.5](spec.md#45-isolates-and-referral)
-
-- [ ] Isolates picked from rows, identification history, significance
-- [ ] Isolate sample items
-- [ ] Received isolates
-- [ ] Refer remaining work, a test or an isolate
-- AC: 15, 26, 57, 62, 75, 106
-
-## 10. AST/DST and TB classification
-
-[§4.6](spec.md#46-astdst)
-
-- [ ] Runs, default panel, added panels, standards and reasons
-- [ ] Readings, attempts, overrides, QC, expert flags
-- [ ] Use for reporting per agent
-- [ ] TB classification, discordance gate, NTM off-ramp
-- AC: 21, 27, 43, 47, 56, 98
-
-## 11. Incoming results
-
-[§4.7](spec.md#47-incoming-results)
-
-- [ ] Results for existing rows go to the row
-- [ ] Incoming queue, one-click placement, moves, duplicate sends
-- [ ] Reflex no-duplicate rule
-- AC: 16, 17, 18, 25, 34, 35, 36, 37
-
-## 12. Releases, report and calls
-
-[§4.8](spec.md#48-notes-report-choices-releases-calls), [§7](spec.md#7-output)
-
-- [ ] Work stage and culture outcome
-- [ ] Report choices
-- [ ] Partial and final release, amendments, server-side final lock
-- [ ] Shared report version/print-queue behavior and required patient-report support verified and extended before case releases use them
-- [ ] Patient report micro block and environmental certificate
-- [ ] Critical calls through the shared callback log
-- AC: 14, 19, 20, 28, 29, 44, 45, 46, 48, 52, 53, 96
-
-## 13. Worklist, bench and labels
-
-[§8](spec.md#8-worklist-and-bench), [§7 Labels](spec.md#7-output)
-
-- [ ] Needs attention reasons and sorting
-- [ ] Cultures filters, No growth, Inoculate many, Extend 24 h, Undo
-- [ ] Bench sheet as Workplan print, Open sheet
-- [ ] Shared Workplan print records and per-container label support delivered with these consumers
-- [ ] Per-container label scope and presets, label scanning
-- AC: 11, 12, 73, 76, 78, 79, 80, 81, 85, 86, 87, 94, 112
-
-## 14. Patient history
-
-- [ ] Patient history, repeat isolate, TB follow-up ([§6](spec.md#6-case-work-rules))
-- AC: 74
-
-## 15. Environmental cases and surveillance
-
-[§12](spec.md#12-surveillance-populations), [§13](spec.md#13-environmental-cases)
-
-- [ ] Site-subject cases, environmental fields and purposes
-- [ ] Purpose changes affect only the selected case; replicates are shared across the order's cases, with helper text and timeline entries on the correct scope
-- [ ] Purpose and track populations in the WHONET export, replacing its retired workflow-type scope
-- [ ] M-18 acceptance criteria
-- AC: 50, 107
-
-## 16. Clinical migration
-
-[§11](spec.md#11-existing-data)
-
-- [ ] Lab unit and Program assignment with review lists and timeline notes
-- [ ] All fields needed by V2 routing, access, membership and reporting populated before the migrated application serves case work; ambiguous mappings stop the migration without partial clinical changes
-- [ ] Verified on a copy of a V1 database
-- [ ] Retired columns and tables dropped
-- AC: 42
-
-## 17. Final acceptance
-
-- [ ] Complete journeys for all 112 core criteria verified on the assembled final revision, including criteria whose behavior spans several milestones
-- [ ] Environmental acceptance criteria verified against the corrected pinned design
-- [ ] Fresh installation and full V1-to-V2 upgrade verified with the real application changelog and clinical migration
-- [ ] Existing case identities, results, issued reports, amendments, provenance and attributable history remain usable after upgrade
-- [ ] Localization, desktop/mobile and keyboard review
-- [ ] Offline reads and blocked writes, audit, access, ordinary laboratory workflow continuity and pinned performance requirements verified with representative data
-- [ ] Preservation capabilities (A-16) and retained worklist list (A-12) present
-- [ ] Browser evidence compared with the pinned design mocks for the integrated user journeys
-- [ ] All three GitHub checkpoints pass on the final revision; the whole stack is ready to merge in dependency order
-- AC: 22, 41
+## Milestone 8: Environmental Cases & Final Migration
+**Goal:** Handle non-human environmental samples and finalize the clinical data migration.
+- [ ] Implement site-subject cases and environmental fields.
+- [ ] Support WHONET export for surveillance populations.
+- [ ] Finalize the clinical migration (assigning legacy data to new lab units/programs).
+- [ ] Perform final acceptance testing across all journeys.

@@ -1,0 +1,18 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.openelisglobal:openelisglobal >------------------
+[INFO] Building openelisglobal 3.3.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- spotless:2.43.0:apply (default-cli) @ openelisglobal ---
+[INFO] Spotless.Format is keeping 3 files clean - 0 were changed to be clean, 0 were already clean, 3 were skipped because caching determined they were already clean
+[INFO] Spotless.Format is keeping 6 files clean - 0 were changed to be clean, 0 were already clean, 6 were skipped because caching determined they were already clean
+[INFO] Writing clean file: /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/dictionary/service/SampleContainerClassificationServiceTest.java
+[INFO] Spotless.Java is keeping 41 files clean - 1 were changed to be clean, 3 were already clean, 37 were skipped because caching determined they were already clean
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  3.262 s
+[INFO] Finished at: 2026-10-07T19:02:37-07:00
+[INFO] ------------------------------------------------------------------------

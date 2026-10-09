@@ -1,0 +1,404 @@
+openjdk version "21.0.5" 2024-10-15 LTS
+OpenJDK Runtime Environment Temurin-21.0.5+11 (build 21.0.5+11-LTS)
+OpenJDK 64-Bit Server VM Temurin-21.0.5+11 (build 21.0.5+11-LTS, mixed mode, sharing)
+Bootstrap: REPO_ROOT=/Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing HARNESS_DIR=/Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/projects/analyzer-harness
+Initializing analyzer Bridge and mock submodules...
+  [0;32m✓ Submodules initialized[0m
+  copied local self-signed volume/nginx/nginx.conf
+  copied repository menu/menu_config.json
+  [0;32m✓ WAR found[0m
+[0;32mBootstrap done.[0m
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-mock:dev Building 
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-bridge:dev Building 
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-backend:dev Building 
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-frontend:dev Building 
+#1 [internal] load local bake definitions
+#1 reading from stdin 3.01kB done
+#1 DONE 0.0s
+
+#2 [frontend_openelis_org internal] load build definition from Dockerfile
+#2 transferring dockerfile: 2.35kB done
+#2 DONE 0.0s
+
+#3 [oe_openelis_org internal] load build definition from Dockerfile.dev
+#3 transferring dockerfile: 4.66kB done
+#3 DONE 0.1s
+
+#4 [openelis-analyzer-bridge internal] load build definition from Dockerfile
+#4 transferring dockerfile: 2.00kB done
+#4 DONE 0.1s
+
+#5 [astm-simulator internal] load build definition from Dockerfile
+#5 transferring dockerfile: 932B done
+#5 DONE 0.1s
+
+#6 [openelis-analyzer-bridge internal] load metadata for docker.io/library/maven:3.9.7-eclipse-temurin-21-jammy
+#6 ...
+
+#7 [openelis-analyzer-bridge internal] load metadata for docker.io/library/eclipse-temurin:21-jre-alpine
+#7 DONE 0.0s
+
+#8 [astm-simulator internal] load metadata for docker.io/library/python:3.11-slim
+#8 DONE 4.7s
+
+#9 [oe_openelis_org internal] load metadata for docker.io/library/tomcat:10-jre21
+#9 ...
+
+#6 [openelis-analyzer-bridge internal] load metadata for docker.io/library/maven:3.9.7-eclipse-temurin-21-jammy
+#6 DONE 4.7s
+
+#10 [astm-simulator internal] load .dockerignore
+#10 transferring context: 2B done
+#10 DONE 0.0s
+
+#11 [frontend_openelis_org internal] load metadata for docker.io/library/node:20.20-alpine
+#11 DONE 4.8s
+
+#12 [openelis-analyzer-bridge internal] load .dockerignore
+#12 transferring context: 2B done
+#12 DONE 0.0s
+
+#13 [openelis-analyzer-bridge internal] load build context
+#13 DONE 0.0s
+
+#14 [frontend_openelis_org internal] load .dockerignore
+#14 transferring context: 1.24kB done
+#14 DONE 0.0s
+
+#15 [astm-simulator internal] load build context
+#15 transferring context: 548.21kB 0.0s done
+#15 DONE 0.1s
+
+#16 [astm-simulator 1/9] FROM docker.io/library/python:3.11-slim@sha256:0dd364ba7e10242f07755449e3a3d0e35f9efd987952737b90def6709ab0c5ce
+#16 resolve docker.io/library/python:3.11-slim@sha256:0dd364ba7e10242f07755449e3a3d0e35f9efd987952737b90def6709ab0c5ce 0.1s done
+#16 DONE 0.1s
+
+#17 [openelis-analyzer-bridge stage-1  1/10] FROM docker.io/library/eclipse-temurin:21-jre-alpine@sha256:51ab5e3302e7141ce665ca3ea85e8b5cd648eafbc3c0c90dd79d6537684e4555
+#17 resolve docker.io/library/eclipse-temurin:21-jre-alpine@sha256:51ab5e3302e7141ce665ca3ea85e8b5cd648eafbc3c0c90dd79d6537684e4555 0.1s done
+#17 DONE 0.1s
+
+#18 [frontend_openelis_org internal] load build context
+#18 ...
+
+#19 [openelis-analyzer-bridge build  1/10] FROM docker.io/library/maven:3.9.7-eclipse-temurin-21-jammy@sha256:21d72164c9092002be2e986ae25f0e53133315bf881bd96fe5486030c2421968
+#19 resolve docker.io/library/maven:3.9.7-eclipse-temurin-21-jammy@sha256:21d72164c9092002be2e986ae25f0e53133315bf881bd96fe5486030c2421968 0.1s done
+#19 DONE 0.2s
+
+#20 [frontend_openelis_org base 1/6] FROM docker.io/library/node:20.20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293
+#20 resolve docker.io/library/node:20.20-alpine@sha256:fb4cd12c85ee03686f6af5362a0b0d56d50c58a04632e6c0fb8363f609372293 0.1s done
+#20 DONE 0.1s
+
+#21 [astm-simulator 6/9] COPY protocols/ ./protocols/
+#21 CACHED
+
+#22 [astm-simulator 4/9] RUN pip install --no-cache-dir -r requirements.txt
+#22 CACHED
+
+#23 [astm-simulator 7/9] COPY templates/ ./templates/
+#23 CACHED
+
+#24 [astm-simulator 2/9] WORKDIR /app
+#24 CACHED
+
+#25 [astm-simulator 8/9] COPY fixtures/ ./fixtures/
+#25 CACHED
+
+#26 [astm-simulator 3/9] COPY requirements.txt ./
+#26 CACHED
+
+#27 [astm-simulator 5/9] COPY *.py *.json ./
+#27 CACHED
+
+#28 [astm-simulator 9/9] COPY config/ ./config/
+#28 CACHED
+
+#18 [frontend_openelis_org internal] load build context
+#18 ...
+
+#13 [openelis-analyzer-bridge internal] load build context
+#13 transferring context: 2.20MB 0.1s done
+#13 DONE 0.1s
+
+#29 [openelis-analyzer-bridge build  2/10] ADD ./astm-http-lib/pom.xml /build/astm-http-lib/pom.xml
+#29 CACHED
+
+#30 [openelis-analyzer-bridge stage-1  6/10] RUN mkdir -p /data/openelis-analyzer-bridge && chown -R astm:astm /data
+#30 CACHED
+
+#31 [openelis-analyzer-bridge stage-1  3/10] RUN addgroup -S astm --gid 9257 && adduser -S astm -s /bin/bash -u 9257 -G astm
+#31 CACHED
+
+#32 [openelis-analyzer-bridge stage-1  5/10] RUN chown astm:astm /app
+#32 CACHED
+
+#33 [openelis-analyzer-bridge build  4/10] RUN --mount=type=cache,target=/root/.m2,sharing=locked   mvn dependency:go-offline
+#33 CACHED
+
+#34 [openelis-analyzer-bridge build  6/10] WORKDIR /build
+#34 CACHED
+
+#35 [openelis-analyzer-bridge build 10/10] RUN --mount=type=cache,target=/root/.m2,sharing=locked   cd /build/astm-http-lib && mvn clean install -DskipTests &&   cd /build && mvn clean package -DskipTests
+#35 CACHED
+
+#36 [openelis-analyzer-bridge build  5/10] ADD ./astm-http-lib/src /build/astm-http-lib/src
+#36 CACHED
+
+#37 [openelis-analyzer-bridge stage-1  2/10] RUN apk add --no-cache curl gcompat
+#37 CACHED
+
+#38 [openelis-analyzer-bridge stage-1  8/10] ADD healthcheck.sh /app/healthcheck.sh
+#38 CACHED
+
+#39 [openelis-analyzer-bridge stage-1  7/10] COPY --from=build /build/target/*.jar /app/openelis-analyzer-bridge.jar
+#39 CACHED
+
+#40 [openelis-analyzer-bridge build  3/10] WORKDIR /build/astm-http-lib
+#40 CACHED
+
+#41 [openelis-analyzer-bridge stage-1  4/10] RUN mkdir /app
+#41 CACHED
+
+#42 [openelis-analyzer-bridge build  8/10] ADD ./contracts /build/contracts
+#42 CACHED
+
+#43 [openelis-analyzer-bridge build  9/10] ADD ./src /build/src
+#43 CACHED
+
+#44 [openelis-analyzer-bridge build  7/10] ADD ./pom.xml /build/pom.xml
+#44 CACHED
+
+#45 [openelis-analyzer-bridge stage-1  9/10] ADD docker-entrypoint.sh /app/docker-entrypoint.sh
+#45 CACHED
+
+#46 [openelis-analyzer-bridge stage-1 10/10] RUN chown astm:astm /app/docker-entrypoint.sh;   chmod 770 /app/docker-entrypoint.sh;    chown astm:astm /app/openelis-analyzer-bridge.jar;   chmod 770 /app/openelis-analyzer-bridge.jar;   chown astm:astm /app/healthcheck.sh;   chmod 770 /app/healthcheck.sh;
+#46 CACHED
+
+#18 [frontend_openelis_org internal] load build context
+#18 ...
+
+#47 [astm-simulator] exporting to image
+#47 exporting layers 0.0s done
+#47 exporting manifest sha256:743fb90bc099f4201ba471192010e59d67aa595603e7478da2d796548efd1bd5 done
+#47 exporting config sha256:8e9ccc1f651ae8b959f3af915a1daf4a4d68a96b8dd944dfb1233ff92d86b35d done
+#47 exporting attestation manifest sha256:ba7b9dcce4f662ef25874588c4d69d7b5b7ff4963819fbc572505fae8fc7f4e5 0.1s done
+#47 exporting manifest list sha256:808d15f737b87ff8f1fea4e5c45b4eaadf80b287ab4238fbd020a78fc008c3f5 0.0s done
+#47 naming to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-mock:dev done
+#47 unpacking to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-mock:dev 0.0s done
+#47 DONE 0.4s
+
+#18 [frontend_openelis_org internal] load build context
+#18 transferring context: 37.69MB 1.0s done
+#18 DONE 1.1s
+
+#9 [oe_openelis_org internal] load metadata for docker.io/library/tomcat:10-jre21
+#9 DONE 5.9s
+
+#48 [oe_openelis_org internal] load .dockerignore
+#48 DONE 0.0s
+
+#49 [openelis-analyzer-bridge] exporting to image
+#49 exporting layers 0.0s done
+#49 exporting manifest sha256:551a8975d4f9fbca8e547d61c361b88cafdeb8659b914dd9433e980a19fb5a7d 0.1s done
+#49 exporting config sha256:9151ac82a7eceab421822d6f4a47432199e0ab125db8f180bdb0618787343834 0.1s done
+#49 exporting attestation manifest sha256:0d0f5c00993be1391ac7d5f3328d2bf0f589de409b455a92b3d2cc54101b737d 0.2s done
+#49 exporting manifest list sha256:62486f013b901908bfb7fe1346a3c4b8542649a1ab8218971cbead4a98937d39
+#49 ...
+
+#50 [frontend_openelis_org base 4/6] COPY package.json package-lock.json ./
+#50 CACHED
+
+#51 [frontend_openelis_org base 3/6] WORKDIR /app
+#51 CACHED
+
+#52 [frontend_openelis_org base 2/6] RUN apk update && apk upgrade && apk add --no-cache bash
+#52 CACHED
+
+#53 [frontend_openelis_org base 5/6] RUN CYPRESS_INSTALL_BINARY=0 npm ci --legacy-peer-deps
+#53 CACHED
+
+#48 [oe_openelis_org internal] load .dockerignore
+#48 transferring context: 255B done
+#48 DONE 0.0s
+
+#54 [oe_openelis_org internal] load build context
+#54 DONE 0.0s
+
+#49 [openelis-analyzer-bridge] exporting to image
+#49 exporting manifest list sha256:62486f013b901908bfb7fe1346a3c4b8542649a1ab8218971cbead4a98937d39 0.0s done
+#49 naming to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-bridge:dev 0.0s done
+#49 unpacking to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-bridge:dev 0.1s done
+#49 ...
+
+#55 [oe_openelis_org dev-runtime  1/13] FROM docker.io/library/tomcat:10-jre21@sha256:2fba621a43ee3e76d0ab29dbc882e63ad35f5fe176ac96dbc5bd52d6e328f202
+#55 resolve docker.io/library/tomcat:10-jre21@sha256:2fba621a43ee3e76d0ab29dbc882e63ad35f5fe176ac96dbc5bd52d6e328f202 0.1s done
+#55 DONE 0.1s
+
+#54 [oe_openelis_org internal] load build context
+#54 transferring context: 470B done
+#54 DONE 0.1s
+
+#56 [astm-simulator] resolving provenance for metadata file
+#56 DONE 0.0s
+
+#57 [frontend_openelis_org base 6/6] COPY . ./
+#57 ...
+
+#49 [openelis-analyzer-bridge] exporting to image
+#49 DONE 1.2s
+
+#57 [frontend_openelis_org base 6/6] COPY . ./
+#57 ...
+
+#58 [oe_openelis_org dev-runtime  2/13] ADD install/createDefaultPassword.sh ./
+#58 CACHED
+
+#59 [oe_openelis_org dev-runtime  3/13] RUN rm -rf /usr/local/tomcat/webapps/*     /usr/local/tomcat/conf/Catalina/localhost/manager.xml
+#59 CACHED
+
+#60 [oe_openelis_org dev-runtime  6/13] ADD install/tomcat-resources/logging.properties /usr/local/tomcat/conf/logging.properties
+#60 CACHED
+
+#61 [oe_openelis_org dev-runtime 11/13] RUN chown tomcat_admin:tomcat /healthcheck.sh;     chmod 770 /healthcheck.sh;
+#61 CACHED
+
+#62 [oe_openelis_org dev-runtime  4/13] ADD install/tomcat-resources/ROOT.war /usr/local/tomcat/webapps/ROOT.war
+#62 CACHED
+
+#63 [oe_openelis_org dev-runtime  8/13] ADD install/tomcat-resources/ServerInfo.properties /usr/local/tomcat/lib/org/apache/catalina/util/ServerInfo.properties
+#63 CACHED
+
+#64 [oe_openelis_org dev-runtime 10/13] ADD install/openelis_healthcheck.sh /healthcheck.sh
+#64 CACHED
+
+#65 [oe_openelis_org dev-runtime  5/13] ADD install/tomcat-resources/catalina.properties /usr/local/tomcat/conf/catalina.properties
+#65 CACHED
+
+#66 [oe_openelis_org dev-runtime  7/13] RUN mkdir -p /usr/local/tomcat/lib/org/apache/catalina/util
+#66 CACHED
+
+#67 [oe_openelis_org dev-runtime  9/13] RUN groupadd tomcat;     groupadd tomcat-ssl-cert -g 8443;     useradd -M -s /bin/bash -u 8443 tomcat_admin;     usermod -a -G tomcat,tomcat-ssl-cert tomcat_admin;     chown -R tomcat_admin:tomcat /usr/local/tomcat;     chmod g-w,o-rwx /usr/local/tomcat;     chmod g-w,o-rwx /usr/local/tomcat/conf;     chmod o-rwx /usr/local/tomcat/logs;     chmod o-rwx /usr/local/tomcat/temp;     chmod g-w,o-rwx /usr/local/tomcat/bin;     chmod g-w,o-rwx /usr/local/tomcat/webapps;     chmod 770 /usr/local/tomcat/conf/catalina.policy;     chmod g-w,o-rwx /usr/local/tomcat/conf/catalina.properties;     chmod g-w,o-rwx /usr/local/tomcat/conf/context.xml;     chmod g-w,o-rwx /usr/local/tomcat/conf/logging.properties;     chmod g-w,o-rwx /usr/local/tomcat/conf/server.xml;     chmod g-w,o-rwx /usr/local/tomcat/conf/tomcat-users.xml;     chmod g-w,o-rwx /usr/local/tomcat/conf/web.xml
+#67 CACHED
+
+#68 [oe_openelis_org dev-runtime 12/13] ADD install/docker-entrypoint.sh /docker-entrypoint.sh
+#68 CACHED
+
+#69 [oe_openelis_org dev-runtime 13/13] RUN chown tomcat_admin:tomcat /docker-entrypoint.sh;     chmod 770 /docker-entrypoint.sh;
+#69 CACHED
+
+#57 [frontend_openelis_org base 6/6] COPY . ./
+#57 ...
+
+#70 [openelis-analyzer-bridge] resolving provenance for metadata file
+#70 DONE 0.0s
+
+#71 [oe_openelis_org] exporting to image
+#71 exporting layers 0.1s done
+#71 exporting manifest sha256:b38aa7be5ae8121e14bf8cee628f7a921a6d8d90ee15419abbf3288b2cf5e828 0.1s done
+#71 exporting config sha256:0e40338a96dade52fbd3f91db00d165bc1b06ea5509951c867447e77d03dfb66 0.1s done
+#71 exporting attestation manifest sha256:4a3ea0ebe771b32680577d8437b4bac6050b3d0557b9baa85a513a9ccb36991f 0.1s done
+#71 exporting manifest list sha256:6986198be07fc4276a0e3069290ea3b076d7935a2237e12b1de13bb0ba7ef855 0.1s done
+#71 naming to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-backend:dev done
+#71 unpacking to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-backend:dev 0.1s done
+#71 DONE 1.0s
+
+#57 [frontend_openelis_org base 6/6] COPY . ./
+#57 DONE 3.1s
+
+#72 [oe_openelis_org] resolving provenance for metadata file
+#72 DONE 0.0s
+
+#73 [frontend_openelis_org] exporting to image
+#73 exporting layers 2.5s done
+#73 exporting manifest sha256:b02ab1dd942723c67a702fd68fbcac8dbb760b3a29e64768e447511066b87cc7
+#73 exporting manifest sha256:b02ab1dd942723c67a702fd68fbcac8dbb760b3a29e64768e447511066b87cc7 0.0s done
+#73 exporting config sha256:0255b8dcf6c287b54a4f1f6a028144efc3630763ccb8aedcfb26d1295f0074a2 0.0s done
+#73 exporting attestation manifest sha256:23916c94ea615fc80b4e16cc1dc3052040d97249a8e88fad0b194f3f991a50e8 0.0s done
+#73 exporting manifest list sha256:69eec2c2dea3b0c1b550699dc00c95a52849cda0d1421764988a077039e65649
+#73 exporting manifest list sha256:69eec2c2dea3b0c1b550699dc00c95a52849cda0d1421764988a077039e65649 0.0s done
+#73 naming to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-frontend:dev done
+#73 unpacking to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-frontend:dev
+#73 unpacking to docker.io/library/oe2-amr-v2-routing-0ba5f9f5-dev-frontend:dev 0.4s done
+#73 DONE 3.0s
+
+#74 [frontend_openelis_org] resolving provenance for metadata file
+#74 DONE 0.0s
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-frontend:dev Built 
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-backend:dev Built 
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-mock:dev Built 
+ Image oe2-amr-v2-routing-0ba5f9f5-dev-analyzer-bridge:dev Built 
+ Image itechuw/certgen:main Pulling 
+ Image itechuw/certgen:main Pulled 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-astm-simulator-1 Recreate 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-frontend.openelis.org-1 Recreate 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-db.openelis.org-1 Running 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-openelis-analyzer-bridge-1 Recreate 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-fhir.openelis.org-1 Running 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Recreate 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-frontend.openelis.org-1 Recreated 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Recreated 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-proxy-1 Running 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-openelis-analyzer-bridge-1 Recreated 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-astm-simulator-1 Recreated 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-astm-simulator-1 Starting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-frontend.openelis.org-1 Starting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Starting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-harness-catalog-init-1 Starting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-astm-simulator-1 Started 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-frontend.openelis.org-1 Started 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Started 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-harness-catalog-init-1 Started 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Exited 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Exited 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-openelis-analyzer-bridge-1 Starting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-harness-catalog-init-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-db.openelis.org-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-fhir.openelis.org-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-openelis-analyzer-bridge-1 Started 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-fhir.openelis.org-1 Healthy 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Exited 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-harness-catalog-init-1 Exited 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-db.openelis.org-1 Healthy 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Starting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Started 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Waiting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-certs-1 Exited 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Healthy 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Recreate 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Recreated 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Starting 
+ Container oe2-amr-v2-routing-0ba5f9f5-dev-oe.openelis.org-1 Started 
+nginx: the configuration file /etc/nginx/nginx.conf syntax is ok
+nginx: configuration file /etc/nginx/nginx.conf test is successful
+2026/10/08 18:15:28 [notice] 28#28: signal process started
+Waiting for OpenELIS login readiness at https://localhost:33880 (timeout 240s)...
+OpenELIS login is ready.
+Resolving priority profiles from https://localhost:33880/api/OpenELIS-Global/rest/analyzer-types...
+  genexpert-astm@7
+  fluorocycler-xt@4
+  quantstudio@3
+Resolving an active lab unit from https://localhost:33880/api/OpenELIS-Global/rest/test-catalog/lab-units...
+  lab unit 136
+Creating GeneXpert mock transport...
+  genexpert -> 10.149.140.10:9600
+Creating profile-pinned analyzer instances...
+  Preserved existing connection: Cepheid GeneXpert (ASTM Mode)
+  Preserved existing connection: QuantStudio 5
+  Preserved existing connection: QuantStudio 7
+  Preserved existing connection: FluoroCycler XT
+Done. Missing harness connections created; existing configuration and review data preserved.
+oe2-amr-v2-routing-0ba5f9f5-dev: prerequisites are ready
+BASE_URL=https://localhost:33880
+OE_BACKEND_URL=https://localhost:33905
+FHIR_URL=https://localhost:33874
+DB_PORT=33866
+COMPOSE_PROJECT_NAME=oe2-amr-v2-routing-0ba5f9f5-dev
+MOCK_SIMULATOR_URL=http://localhost:33895
+ANALYZER_BRIDGE_URL=https://localhost:33898
+ANALYZER_NETWORK_NAMESPACE=oe2-amr-v2-routing-0ba5f9f5-dev
+ANALYZER_SUBNET_PREFIX=10.149
+ANALYZER_GENEXPERT_IP=10.149.20.10
+ANALYZER_BRIDGE_DESTINATION=tcp://10.149.20.2:12001

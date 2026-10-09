@@ -213,6 +213,10 @@ public class MicroCaseMembershipServiceImpl implements MicroCaseMembershipServic
         member.setJoinedAt(now());
         member.setJoinedBy(actor);
         sampleDAO.insert(member);
+        if (microCase.getSampleItemId() == null) {
+            microCase.setSampleItemId(sample.getId());
+            caseDAO.update(microCase);
+        }
         record(microCase.getId(), "SAMPLE_JOINED", actor, sample.getId());
         return member;
     }

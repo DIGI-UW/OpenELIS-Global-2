@@ -1,0 +1,102 @@
+[INFO] Scanning for projects...
+[INFO] 
+[INFO] -----------------< org.openelisglobal:openelisglobal >------------------
+[INFO] Building openelisglobal 3.3.0-SNAPSHOT
+[INFO]   from pom.xml
+[INFO] --------------------------------[ war ]---------------------------------
+[INFO] 
+[INFO] --- jacoco:0.8.12:prepare-agent (prepare-agent) @ openelisglobal ---
+[INFO] argLine set to -javaagent:/Users/pmanko/.m2/repository/org/jacoco/org.jacoco.agent/0.8.12/org.jacoco.agent-0.8.12-runtime.jar=destfile=/Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/target/jacoco.exec,excludes=**/*.jar:naughty-dependency/**/*.class:**/config/**/*Config.class:**/liquibase/**:**/generated/**
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ openelisglobal ---
+[INFO] Copying 1 resource from src/main/filtered-resources to target/classes
+[INFO] Copying 1036 resources from src/main/resources to target/classes
+[INFO] The encoding used to copy filtered properties files has not been set. This means that the same encoding will be used to copy filtered properties files as when copying other filtered resources. This might not be what you want! Run your build with --debug to see which files might be affected. Read more at https://maven.apache.org/plugins/maven-resources-plugin/examples/filtering-properties-files.html
+[INFO] 
+[INFO] --- compiler:3.13.0:compile (default-compile) @ openelisglobal ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 3777 source files with javac [debug parameters release 21] to target/classes
+[INFO] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/common/util/StringUtil.java:[687,20] Double(java.lang.String) in java.lang.Double has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointImportServiceImpl.java:[129,67] non-varargs call of varargs method with inexact argument type for last parameter;
+  cast to java.lang.Object for a varargs call
+  cast to java.lang.Object[] for a non-varargs call and to suppress this warning
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/microbiology/service/MicroBreakpointImportServiceImpl.java:[154,63] non-varargs call of varargs method with inexact argument type for last parameter;
+  cast to java.lang.Object for a varargs call
+  cast to java.lang.Object[] for a non-varargs call and to suppress this warning
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/panel/valueholder/PanelSortOrderComparator.java:[33,67] Integer(int) in java.lang.Integer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/panel/valueholder/PanelSortOrderComparator.java:[33,21] Integer(int) in java.lang.Integer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[150,40] frameOptions() in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[150,68] contentSecurityPolicy(java.lang.String) in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[186,44] frameOptions() in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[186,72] contentSecurityPolicy(java.lang.String) in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[209,44] frameOptions() in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[209,72] contentSecurityPolicy(java.lang.String) in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[264,21] assertingPartyDetails(java.util.function.Consumer<org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.AssertingPartyDetails.Builder>) in org.springframework.security.saml2.provider.service.registration.RelyingPartyRegistration.Builder has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[394,44] frameOptions() in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[394,72] contentSecurityPolicy(java.lang.String) in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[435,85] csrf() in org.springframework.security.config.annotation.web.builders.HttpSecurity has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[484,44] frameOptions() in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/security/SecurityConfig.java:[484,72] contentSecurityPolicy(java.lang.String) in org.springframework.security.config.annotation.web.configurers.HeadersConfigurer has been deprecated and marked for removal
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/sitebranding/service/SiteBrandingService.java:[41,13] deprecated item is not annotated with @Deprecated
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/common/daoimpl/BaseDAOImpl.java: Some input files use or override a deprecated API.
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/common/daoimpl/BaseDAOImpl.java: Recompile with -Xlint:deprecation for details.
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/person/valueholder/Person.java: Some input files use unchecked or unsafe operations.
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/main/java/org/openelisglobal/person/valueholder/Person.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ openelisglobal ---
+[INFO] Copying 333 resources from src/test/resources to target/test-classes
+[INFO] 
+[INFO] --- compiler:3.13.0:testCompile (default-testCompile) @ openelisglobal ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 995 source files with javac [debug parameters release 21] to target/test-classes
+[INFO] Annotation processing is enabled because one or more processors were found
+  on the class path. A future release of javac may disable annotation processing
+  unless at least one processor is specified by name (-processor), or a search
+  path is specified (--processor-path, --processor-module-path), or annotation
+  processing is enabled explicitly (-proc:only, -proc:full).
+  Use -Xlint:-options to suppress this message.
+  Use -proc:none to disable annotation processing.
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[13,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[13,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[13,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[13,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[13,16] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[29,19] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[31,9] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/common/services/historyservices/PatientHistoryServiceTest.java:[31,21] sun.misc.Unsafe is internal proprietary API and may be removed in a future release
+[WARNING] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/referral/SubcontractAutoTransitionTest.java:[338,59] non-varargs call of varargs method with inexact argument type for last parameter;
+  cast to java.lang.Object for a varargs call
+  cast to java.lang.Object[] for a non-varargs call and to suppress this warning
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/FixtureTransactionIntegrationTest.java: Some input files use or override a deprecated API.
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/FixtureTransactionIntegrationTest.java: Recompile with -Xlint:deprecation for details.
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/analyzer/service/AnalyzerEventPersistenceServiceTest.java: Some input files use unchecked or unsafe operations.
+[INFO] /Users/pmanko/.windsurf/worktrees/OpenELIS-Global-2/OpenELIS-Global-2-polished-shannon/.worktrees/amr-v2-routing/src/test/java/org/openelisglobal/analyzer/service/AnalyzerEventPersistenceServiceTest.java: Recompile with -Xlint:unchecked for details.
+[INFO] 
+[INFO] --- surefire:3.2.5:test (default-test) @ openelisglobal ---
+[INFO] Using auto detected provider org.apache.maven.surefire.junit4.JUnit4Provider
+[INFO] 
+[INFO] -------------------------------------------------------
+[INFO]  T E S T S
+[INFO] -------------------------------------------------------
+[INFO] Running org.openelisglobal.dictionary.service.SampleContainerClassificationServiceTest
+[INFO] Tests run: 1, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.305 s -- in org.openelisglobal.dictionary.service.SampleContainerClassificationServiceTest
+[INFO] Running org.openelisglobal.microbiology.service.MicroCultureSetWarningServiceTest
+[INFO] Tests run: 6, Failures: 0, Errors: 0, Skipped: 0, Time elapsed: 0.002 s -- in org.openelisglobal.microbiology.service.MicroCultureSetWarningServiceTest
+[INFO] 
+[INFO] Results:
+[INFO] 
+[INFO] Tests run: 7, Failures: 0, Errors: 0, Skipped: 0
+[INFO] 
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD SUCCESS
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  20.142 s
+[INFO] Finished at: 2026-10-07T19:01:30-07:00
+[INFO] ------------------------------------------------------------------------

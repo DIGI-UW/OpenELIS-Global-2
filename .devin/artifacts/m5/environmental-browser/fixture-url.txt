@@ -1,0 +1,1 @@
+https://localhost:33880/admin/TestCatalogEditor/383/basic-info
