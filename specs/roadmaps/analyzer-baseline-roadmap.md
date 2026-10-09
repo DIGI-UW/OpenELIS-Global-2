@@ -301,8 +301,9 @@ uses; they are restated so a step can be run without re-reading those files.
   [step 10](analyzer-baseline/10-finish-line.md). From 8 Oct the review
   findings are fixed in new PRs above the security PR (#4657), not in the
   PRs they were filed on ([step 11](analyzer-baseline/11-review-remediation.md)).
-- Last: step 9 as its own PR on `develop`, after everything above has
-  landed.
+- Step 9 (spec sync) lands in the stack's top PR, before the stack merges:
+  the spec is the target the code is built toward, so it is never left to
+  follow the code.
 - The top OE2 PR carries the submodule pins (`tools/openelis-analyzer-bridge`
   and `tools/analyzer-mock-server`), which move to the Bridge and mock PR
   heads as soon as they exist. The submodule commit is the only record of

@@ -10,8 +10,7 @@ it can be read without this roadmap.
 - The spec is a short overview written before the code
   (`specs/analyzers/spec.md`, step 0). Its first paragraph names this roadmap
   as the authoritative plan while the setup is being built.
-- This step runs after the whole stack and the Bridge and mock releases have
-  landed, as its own PR on `develop`.
+- This step runs inside the stack, in its top PR, before the stack merges.
 - Rules 1 to 19 are the decisions; the spec states them in plain words. Where a
   rule and the landed code disagree, the code is wrong and gets a fix PR; the
   spec is not bent to the code.
@@ -21,7 +20,7 @@ it can be read without this roadmap.
 ```
 - [ ] T9.1 For each rule 1 to 19: read the landed code it governs; confirm the spec's sentence for it is true; add or correct a sentence where the spec is silent or wrong
 - [ ] T9.2 Check every link in the spec (openelis-work paths, Bridge docs, docs/analyzers, the harness); fix or remove dead ones
-- [ ] T9.3 Remove the "while that setup is being built" paragraph; the spec stands on its own
+- [x] T9.3 Remove the "while that setup is being built" paragraph; the spec stands on its own
 - [ ] T9.4 Read docs/analyzers/*.md against the code; fix or delete anything stale
 - [ ] T9.5 Format cold; commit; PR on develop
 ```
