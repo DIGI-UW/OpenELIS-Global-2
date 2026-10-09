@@ -121,8 +121,7 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         assertTrue(sampleItemService.getSampleItemsBySampleId(saved.getId()).isEmpty());
         assertNull(sampleService.get(saved.getId()).getReceivedTimestamp());
         assertEquals(electronic.getId(), sampleService.get(saved.getId()).getClinicalOrderId());
-        assertEquals(
-                statuses.getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Realized),
+        assertEquals(fixtures.ensureExternalOrderRealizedStatus(),
                 electronicOrders.get(electronic.getId()).getStatusId());
         requested.setId(storedRequest.getId().toString());
         acceptElectronicOrder(electronic, accession, saved.getId(), requested);
@@ -181,8 +180,7 @@ public class OrderSaveProvenanceAndRetryIntegrationTest extends BaseWebContextSe
         electronic.setExternalId("V2-" + UUID.randomUUID());
         electronic.setOrderTimestamp(Timestamp.from(Instant.now()));
         electronic.setPatient(patient);
-        electronic.setStatusId(
-                statuses.getStatusID(org.openelisglobal.common.services.StatusService.ExternalOrderStatus.Entered));
+        electronic.setStatusId(fixtures.ensureExternalOrderEnteredStatus());
         electronic.setData("{}");
         electronic.setType(org.openelisglobal.dataexchange.order.valueholder.ElectronicOrderType.FHIR);
         electronic.setSysUserId(userId);
