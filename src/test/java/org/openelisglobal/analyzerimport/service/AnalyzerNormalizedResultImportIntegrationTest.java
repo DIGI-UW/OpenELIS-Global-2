@@ -645,6 +645,43 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals("Detected", stagedOn(staged, "comp-call").getResult());
     }
 
+    /**
+     * A mapping saved before a call target was required: the number has a place but
+     * the call has none, so the record is held whole rather than losing its call,
+     * and it recovers once the call has a target.
+     */
+    @Test
+    public void aNumberAndACallWithNoCallTargetAreHeldWholeUntilTheCallHasATarget() throws Exception {
+        bindViralLoadRecords();
+        jdbc.update("UPDATE clinlims.analyzer_mapping_test SET call_component_id = NULL"
+                + " WHERE mapping_id = ? AND source_row_key = 'HIVVL' AND sub_identity = ''", MAPPING_ID);
+        Observation main = number(record(null, "DETECTED^"), "40", Quantity.QuantityComparator.LESS_THAN);
+        main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        Bundle bundle = viralLoadBundle(main);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("one row stands for the record", 1, held.size());
+        assertTrue(held.get(0).isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, held.get(0).getImportIssueReason());
+        assertNull("held whole, on no test", held.get(0).getTestId());
+
+        var bound = bindings.appendRevision(analyzer(),
+                new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
+                        String.valueOf(TEST_ID), null, null, null, "", "comp-call")), List.of()),
+                "1");
+        confirm(bound, bundle);
+        localState.applyMapping(String.valueOf(ANALYZER_ID), bound.mapping().getId(),
+                bound.mapping().getRevisionNumber(), bound.mapping().getMappingFingerprint(), "1");
+
+        List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("the number and the call, once each", 2, recovered.size());
+        assertEquals("<40", stagedOn(recovered, null).getResult());
+        assertEquals("DETECTED", stagedOn(recovered, "comp-call").getResult());
+    }
+
     @Test
     public void aBelowRangeRecordHeldWholeRecoversIntoItsNumberAndItsCallWithoutDuplicates() throws Exception {
         bindTest("HIVVL", TEST_ID);

@@ -280,6 +280,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             return List.of(row);
         }
 
+        // A number and a call need a place each; with no call target the record is held
+        // whole, and recovers into both once the call has one.
+        if (result.number() != null && result.call() != null && testMapping.getCallComponentId() == null) {
+            return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
+        }
         List<AnalyzerResults> rows = new ArrayList<>();
         if (result.number() != null) {
             AnalyzerResults number = staged(contract, result, analyzer, result.reportedNumber());
@@ -303,15 +308,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             call.setTestId(testMapping.getTestId());
             call.setComponentId(target);
             call.setResultType("A");
-            if (result.number() != null && !hasCallTarget) {
-                hold(call, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
-            } else {
-                AnalyzerMappingResult answer = mapping.results().get(new ResultKey(record, result.call()));
-                if (answer != null && !bindAnswer(call, answer, record, result.call(), mapping)) {
-                    call = null;
-                } else if (answer == null && mapping.recordsWithAnswers().contains(record)) {
-                    hold(call, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
-                }
+            AnalyzerMappingResult answer = mapping.results().get(new ResultKey(record, result.call()));
+            if (answer != null && !bindAnswer(call, answer, record, result.call(), mapping)) {
+                call = null;
+            } else if (answer == null && mapping.recordsWithAnswers().contains(record)) {
+                hold(call, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
             }
             if (call != null) {
                 rows.add(call);
