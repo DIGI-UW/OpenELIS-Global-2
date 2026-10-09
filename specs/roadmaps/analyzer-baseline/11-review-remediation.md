@@ -50,7 +50,7 @@ PR B, results and import:
 - [x] R10 (4583#3) Two tubes of one order and test are kept apart: the duplicate and held-match identity includes the instrument specimen id (null matches legacy rows)
 - [x] R11 (4592#6) A held call with no call component is staged on no test, not on the number's component
 - [x] R12 (4592#1) A recovered control's extra rows go through control processing
-- [ ] R13 (4631#0) An existing result gets significant digits applied on accept
+- [x] R13 (4631#0) An existing result gets significant digits applied on accept
 - [x] R14 (4583#0, 4583#1) Save All skips rows with no matched patient; held mismatch rows show their note
 - [x] R15 (4593#2) Held component parts offer Review mapping and Dismiss failed run
 - [x] R16 (4625#0) An analyzer whose restore failed offers Activate again
