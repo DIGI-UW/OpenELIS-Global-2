@@ -100,6 +100,11 @@ public class BridgeProfileCatalogServiceImpl implements BridgeProfileCatalogServ
         for (BridgeProfileCatalog.ProfileRevision revision : catalog.profiles()) {
             validateRevision(revision);
         }
+        for (BridgeProfileCatalog.CatalogIssue issue : catalog.issues()) {
+            if (isBlank(issue.source()) || isBlank(issue.reason())) {
+                throw new BridgeProfileCatalogException("Bridge profile catalog contains an invalid issue");
+            }
+        }
     }
 
     private static void validateRevision(BridgeProfileCatalog.ProfileRevision revision) {
