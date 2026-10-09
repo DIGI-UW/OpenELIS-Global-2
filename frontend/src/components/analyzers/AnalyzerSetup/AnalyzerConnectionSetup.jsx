@@ -204,8 +204,17 @@ const AnalyzerConnectionSetup = ({
   const [resetRefusal, setResetRefusal] = useState(null);
 
   const submitting = action !== null;
+  // A connection the Bridge could not restart is not running, so an analyzer
+  // still marked active is offered activation again, not only a save.
+  const restoreFailed = Boolean(
+    candidate?.connection?.readiness?.blockers?.some(
+      (blocker) =>
+        blocker.messageKey === "analyzer.connection.readiness.restoreFailed",
+    ),
+  );
   const alreadyActive =
-    candidate?.status === "ACTIVE" || readiness?.activated === true;
+    !restoreFailed &&
+    (candidate?.status === "ACTIVE" || readiness?.activated === true);
 
   useEffect(() => {
     const controller = new AbortController();

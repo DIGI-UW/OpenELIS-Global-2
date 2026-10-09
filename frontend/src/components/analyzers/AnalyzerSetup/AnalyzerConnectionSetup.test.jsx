@@ -881,6 +881,44 @@ describe("AnalyzerConnectionSetup", () => {
     expect(payload.connectionValues).not.toHaveProperty("apiToken");
   });
 
+  it("offers activation again to an active analyzer whose connection the Bridge could not restart", async () => {
+    getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
+      callback({
+        analyzerId: "42",
+        status: "ACTIVE",
+        ready: true,
+        activated: true,
+        blockers: [],
+      }),
+    );
+    renderConnection({
+      shown: {
+        ...candidate,
+        status: "ACTIVE",
+        connection: {
+          ...connection,
+          actualRuntimeState: "ERROR",
+          readiness: {
+            ready: false,
+            blockers: [
+              {
+                key: "runtime-restore-failed",
+                messageKey: "analyzer.connection.readiness.restoreFailed",
+                fieldKeys: [],
+              },
+            ],
+          },
+        },
+      },
+    });
+
+    await userEvent.click(
+      await screen.findByRole("button", { name: "Finish and activate" }),
+    );
+
+    await waitFor(() => expect(activateAnalyzer).toHaveBeenCalledTimes(1));
+  });
+
   it("saves an active analyzer without offering or repeating activation", async () => {
     const onClose = vi.fn();
     getAnalyzerActivationReadiness.mockImplementation((_id, callback) =>
