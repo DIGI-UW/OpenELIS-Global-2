@@ -570,6 +570,25 @@ describe("AnalyserResults", () => {
       ).not.toBeNull();
     });
 
+    it("unticking a test's Save leaves its parts unsaved with it", async () => {
+      renderResults([
+        { ...viralLoad, isAccepted: true },
+        part("7002", "Log viral load", "3.00", { isAccepted: true }),
+      ]);
+      await screen.findByTestId("result-parts-7001");
+
+      fireEvent.click(document.getElementById("resultList7001.isAccepted"));
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+
+      const submitted = JSON.parse(postResults.mock.calls[0][1]);
+      expect(
+        submitted.resultList.map((row) => [row.id, row.isAccepted]),
+      ).toEqual([
+        ["7001", false],
+        ["7002", false],
+      ]);
+    });
+
     it("shows a test's parts beneath its main result, under its decision", async () => {
       renderResults([viralLoad, part("7002", "Log viral load", "3.00")]);
 

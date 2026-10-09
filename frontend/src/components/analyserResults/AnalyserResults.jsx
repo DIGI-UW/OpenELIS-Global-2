@@ -39,7 +39,7 @@ import ResultAlertModal, {
 } from "../resultPage/ResultAlertModal";
 import PlacementNotice from "./PlacementNotice";
 import InstrumentReported from "./InstrumentReported";
-import ResultParts, { groupTestParts } from "./ResultParts";
+import ResultParts, { decisionKey, groupTestParts } from "./ResultParts";
 import DeliveryBundleModal from "./DeliveryBundleModal";
 import RedirectControl from "./RedirectControl";
 
@@ -350,13 +350,18 @@ const AnalyserResults = (props) => {
     var form = props.results;
     jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
+  // A test is decided on its head row; its parts and duplicates carry the same
+  // decision, so a tick they loaded with cannot outvote it on save.
   const handleCheckBox = (e, rowId, fieldName) => {
-    const row = (props.results.resultList || []).find(
-      (result) => String(result.id) === String(rowId),
-    );
+    const rows = props.results.resultList || [];
+    const row = rows.find((result) => String(result.id) === String(rowId));
     if (row) {
-      row[fieldName] = e.target.checked;
-      rememberEdit(rowId, fieldName, e.target.checked);
+      rows
+        .filter((other) => decisionKey(other) === decisionKey(row))
+        .forEach((other) => {
+          other[fieldName] = e.target.checked;
+          rememberEdit(other.id, fieldName, e.target.checked);
+        });
     }
   };
 
