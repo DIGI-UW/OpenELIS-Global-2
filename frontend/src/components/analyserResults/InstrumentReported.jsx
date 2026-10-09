@@ -7,7 +7,7 @@ import { FormattedMessage } from "react-intl";
  */
 const InstrumentReported = ({ row }) => {
   const { instrumentFlags, assayName, assayVersion, instrumentOperator } = row;
-  if (!instrumentFlags && !assayName && !instrumentOperator) {
+  if (!instrumentFlags && !assayName && !assayVersion && !instrumentOperator) {
     return null;
   }
   return (
