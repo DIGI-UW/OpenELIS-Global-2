@@ -327,9 +327,12 @@ public class AnalyzerResultsController extends BaseController {
     private List<List<AnalyzerResultItem>> groupAnalyzerResults(List<AnalyzerResults> analyzerResultsList) {
         Map<String, Integer> accessionToAccessionGroupMap = new HashMap<>();
         List<List<AnalyzerResultItem>> accessionGroupedResultsList = new ArrayList<>();
+        // The rows of one test on one specimen (its number, call and parts) share a
+        // placement, so each is worked out once per page build.
+        Map<List<String>, AnalyzerResultPlacement> placements = new HashMap<>();
 
         for (AnalyzerResults analyzerResult : analyzerResultsList) {
-            AnalyzerResultItem resultItem = analyzerResultsToAnalyzerResultItem(analyzerResult);
+            AnalyzerResultItem resultItem = analyzerResultsToAnalyzerResultItem(analyzerResult, placements);
             Integer groupIndex = accessionToAccessionGroupMap.get(resultItem.getAccessionNumber());
             List<AnalyzerResultItem> group;
             if (groupIndex == null) {
@@ -355,7 +358,8 @@ public class AnalyzerResultsController extends BaseController {
         return analyzerResultsService.getResultsbyAnalyzer(getAnalyzerIdFromRequest());
     }
 
-    protected AnalyzerResultItem analyzerResultsToAnalyzerResultItem(AnalyzerResults result) {
+    protected AnalyzerResultItem analyzerResultsToAnalyzerResultItem(AnalyzerResults result,
+            Map<List<String>, AnalyzerResultPlacement> placements) {
 
         AnalyzerResultItem resultItem = new AnalyzerResultItem();
         boolean held = !GenericValidator.isBlankOrNull(result.getImportIssueReason());
@@ -405,23 +409,26 @@ public class AnalyzerResultsController extends BaseController {
             resultItem.setUserChoicePending(!GenericValidator.isBlankOrNull(resultItem.getSelectionOneText()));
         }
         addSampleTypeOptionsIfAmbiguous(resultItem, result);
-        placeForReview(resultItem, result);
+        placeForReview(resultItem, result, placements);
         return resultItem;
     }
 
     /** Shows where a patient result would land and why. */
-    private void placeForReview(AnalyzerResultItem resultItem, AnalyzerResults result) {
+    private void placeForReview(AnalyzerResultItem resultItem, AnalyzerResults result,
+            Map<List<String>, AnalyzerResultPlacement> placements) {
         if (resultItem.getIsControl() || GenericValidator.isBlankOrNull(result.getTestId())
                 || (!GenericValidator.isBlankOrNull(result.getImportIssueReason())
                         && !AnalyzerResults.IMPORT_ISSUE_AWAITING_PLACEMENT.equals(result.getImportIssueReason())
                         && !AnalyzerResults.IMPORT_ISSUE_AWAITING_SPECIMEN.equals(result.getImportIssueReason()))) {
             return;
         }
-        AnalyzerResultPlacement placement = placementService.place(
-                GenericValidator.isBlankOrNull(result.getInstrumentSpecimenId()) ? result.getAccessionNumber()
-                        : result.getInstrumentSpecimenId(),
-                result.getTestId(), result.getInstrumentPatientId(), result.getInstrumentPatientName());
-        resultItem.setPlacement(placement);
+        String specimenId = GenericValidator.isBlankOrNull(result.getInstrumentSpecimenId())
+                ? result.getAccessionNumber()
+                : result.getInstrumentSpecimenId();
+        List<String> key = java.util.Arrays.asList(specimenId, result.getTestId(), result.getInstrumentPatientId(),
+                result.getInstrumentPatientName());
+        resultItem.setPlacement(placements.computeIfAbsent(key, ignored -> placementService.place(specimenId,
+                result.getTestId(), result.getInstrumentPatientId(), result.getInstrumentPatientName())));
     }
 
     /**
