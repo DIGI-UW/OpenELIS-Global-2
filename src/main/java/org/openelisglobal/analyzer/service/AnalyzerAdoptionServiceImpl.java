@@ -79,6 +79,7 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
                         Map.of("record", row.key().label()), row.key().label()
                                 + " is mapped to a test that is no longer active; choose another test before adopting");
             }
+            requireEveryAnswer(row, decision);
             AnalyzerMappingTestDraft current = row.current() == null ? null : row.current().test();
             AnalyzerMappingTestDraft test = current == null ? decision.test().keepingAssayOf(null, true, null)
                     : decision.test().keepingAssayOf(current.mappingState(), current.isEnabled(),
@@ -121,6 +122,27 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
         return new AdoptionPlan(analyzerId, profileId, fromRevision, toRevision,
                 current.mapping().getMappingFingerprint(), AnalyzerMappingAdoption.plan(from, to,
                         AnalyzerMappingDraft.of(current), mappingDefaults.resolve(to), inactiveTargets, heldRecords));
+    }
+
+    /**
+     * A decision answers every value its record has: each value and translation the
+     * new revision declares, or for a record no revision declares, each answer it
+     * already carries.
+     */
+    private static void requireEveryAnswer(AnalyzerMappingAdoption.Row row, AnalyzerMappingAdoption.Decision decision) {
+        AnalyzerMappingAdoption.Decision expected = row.newDefault() != null ? row.newDefault() : row.current();
+        if (expected == null) {
+            return;
+        }
+        Set<String> answered = decision.results().stream().map(AnalyzerMappingResultDraft::rawValue)
+                .collect(Collectors.toSet());
+        String missing = expected.results().stream().map(AnalyzerMappingResultDraft::rawValue)
+                .filter(value -> !answered.contains(value)).distinct().collect(Collectors.joining(", "));
+        if (!missing.isEmpty()) {
+            throw new AnalyzerRequestException("analyzer.adoption.error.missingAnswers",
+                    Map.of("record", row.key().label(), "answers", missing),
+                    row.key().label() + " needs a decision for each of its answers; missing " + missing);
+        }
     }
 
     /**

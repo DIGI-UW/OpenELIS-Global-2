@@ -543,6 +543,7 @@
   "analysis.details": "Analysis Details",
   "analyzer.adoption.error.heldResults": "{record} still has held results from revision {revision}. Resolve them before adopting.",
   "analyzer.adoption.error.inactiveTest": "{record} is mapped to a test that is no longer active. Choose another test before adopting.",
+  "analyzer.adoption.error.missingAnswers": "{record} needs a decision for each of its answers. Missing: {answers}.",
   "analyzer.adoption.error.missingDecisions": "Every record the newer revision keeps needs a decision. Missing: {records}.",
   "analyzer.adoption.error.notNewer": "Adoption moves an analyzer to a revision newer than revision {revision}.",
   "analyzer.adoption.error.revisionInactive": "Revision {revision} of this analyzer type is not active.",
