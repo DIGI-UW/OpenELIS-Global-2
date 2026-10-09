@@ -220,6 +220,7 @@ const PatientSearchSection = ({
                 replaced the in-page save (OGC-1266). */}
             {!isReadOnly && (
               <Button
+                id="patient-edit-details"
                 kind="ghost"
                 size="sm"
                 onClick={() => setActiveTab("new")}

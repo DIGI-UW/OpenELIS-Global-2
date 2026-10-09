@@ -160,11 +160,13 @@ const ClinicalOrderEnter = () => {
     orderData?.sampleOrderItems?.noPatientOverride,
   );
   const hasSampleTypes = samples.some((s) => s.sampleTypeId);
-  // The server refuses a patient missing a field the deployment requires
-  // (PatientManagementInfo, @OptionalNotBlank), so the same settings that mark
-  // those fields on the patient form hold the save and name the field.
   const patientValue = (field) =>
     String(orderData?.patientProperties?.[field] ?? "").trim() !== "";
+  const patientFieldTarget = (fieldId) => [
+    fieldId,
+    "patient-edit-toggle",
+    "patient-edit-details",
+  ];
   const patientFieldRequirements =
     hasPatient && !noPatientOverride
       ? [
@@ -172,19 +174,19 @@ const ClinicalOrderEnter = () => {
             met: !nationalIdRequired || patientValue("nationalId"),
             labelId: "order.save.requirement.nationalId",
             itemId: "order.continue.item.nationalId",
-            targetId: "nationalId",
+            targetId: patientFieldTarget("nationalId"),
           },
           {
             met: !patientSexRequired || patientValue("gender"),
             labelId: "order.save.requirement.patientSex",
             itemId: "order.continue.item.patientSex",
-            targetId: "create_patient_gender",
+            targetId: patientFieldTarget("create_patient_gender"),
           },
           {
             met: !patientAgeRequired || patientValue("birthDateForDisplay"),
-            labelId: "order.save.requirement.birthDate",
+            labelId: "order.save.requirement.patientBirthDate",
             itemId: "order.continue.item.birthDate",
-            targetId: "date-picker-default-id",
+            targetId: patientFieldTarget("date-picker-default-id"),
           },
         ]
       : [];
