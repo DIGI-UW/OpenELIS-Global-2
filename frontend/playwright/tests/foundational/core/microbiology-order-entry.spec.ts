@@ -64,9 +64,12 @@ async function saveEntryAndOpenCollect(page: Page) {
   const saveAndNext = page.getByRole("button", { name: "Save and next" });
   await expect(saveAndNext).toBeEnabled({ timeout: LONG_TIMEOUT });
   await saveAndNext.click();
-  await expect(page).toHaveURL(/\/order\/clinical\/collect$/i, {
-    timeout: LONG_TIMEOUT,
-  });
+  await expect(page).toHaveURL(
+    (url) =>
+      url.pathname === "/order/clinical/collect" &&
+      Boolean(url.searchParams.get("order")),
+    { timeout: LONG_TIMEOUT },
+  );
   await expect(
     page.getByRole("heading", { name: "Prepare Samples", exact: true }),
   ).toBeVisible();

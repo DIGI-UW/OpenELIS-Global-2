@@ -1,5 +1,6 @@
 import { Page } from "@playwright/test";
 import { test, expect } from "../../../helpers/test-base";
+import { csrfToken } from "../../../helpers/api-session";
 import {
   LONG_TIMEOUT,
   NAV_TIMEOUT,
@@ -28,6 +29,30 @@ async function acceptanceMode(page: Page): Promise<string> {
   expect(response.status()).toBe(200);
   const modes = (await response.json()) as Record<string, string>;
   return (modes.clinical || "OPTIONAL").toUpperCase();
+}
+
+const CHECKLIST_ITEMS = `${API}/rest/sample-acceptance-checklist/admin/items`;
+
+async function addClinicalChecklistItem(page: Page) {
+  const label = `QA1443 label legible ${Date.now()}`;
+  const response = await page.request.post(CHECKLIST_ITEMS, {
+    headers: { "X-CSRF-Token": await csrfToken(page) },
+    data: { domain: "CLINICAL", label },
+  });
+  expect(response.status()).toBe(200);
+  const item = (await response.json()) as { id: string };
+  return { id: String(item.id), label };
+}
+
+async function retireChecklistItem(
+  page: Page,
+  item: { id: string; label: string },
+) {
+  const response = await page.request.put(`${CHECKLIST_ITEMS}/${item.id}`, {
+    headers: { "X-CSRF-Token": await csrfToken(page) },
+    data: { label: item.label, active: false },
+  });
+  expect(response.status()).toBe(200);
 }
 
 async function openNewOrder(page: Page) {
@@ -195,35 +220,40 @@ test.describe("OGC-1443 order entry follow-ups", () => {
       mode !== "OPTIONAL",
       "a release reason is asked only under Optional acceptance",
     );
-    const labNumber = await openNewOrder(page);
-    await enterNewPatient(page, `Release${letters(Date.now())}`);
-    await chooseSerum(page, 0, true);
-    await saveWith(page, "Save and next");
-    await expect(page.locator("#collectionTime-0")).not.toHaveValue("", {
-      timeout: NAV_TIMEOUT,
-    });
-    await saveWith(page, "Save and next");
-    await expect(page).toHaveURL(/\/order\/clinical\/qa\?order=/, {
-      timeout: LONG_TIMEOUT,
-    });
+    const item = await addClinicalChecklistItem(page);
+    try {
+      const labNumber = await openNewOrder(page);
+      await enterNewPatient(page, `Release${letters(Date.now())}`);
+      await chooseSerum(page, 0, true);
+      await saveWith(page, "Save and next");
+      await expect(page.locator("#collectionTime-0")).not.toHaveValue("", {
+        timeout: NAV_TIMEOUT,
+      });
+      await saveWith(page, "Save and next");
+      await expect(page).toHaveURL(/\/order\/clinical\/qa\?order=/, {
+        timeout: LONG_TIMEOUT,
+      });
 
-    const passes = page.locator("main label").filter({ hasText: /^Pass$/ });
-    await expect(passes.first()).toBeVisible({ timeout: NAV_TIMEOUT });
-    for (const pass of await passes.all()) {
-      await pass.click();
+      const passes = page.locator("main label").filter({ hasText: /^Pass$/ });
+      await expect(passes.first()).toBeVisible({ timeout: NAV_TIMEOUT });
+      for (const pass of await passes.all()) {
+        await pass.click();
+      }
+      await page
+        .getByRole("button", { name: "Release for testing", exact: true })
+        .click();
+
+      await expect(
+        page.getByLabel("Reason for releasing before every sample is accepted"),
+      ).toBeVisible({ timeout: UI_TIMEOUT });
+      await expect(
+        page.getByText(
+          `Not accepted yet: ${labNumber}-1 Serum. Answers count once you press Accept sample.`,
+        ),
+      ).toBeVisible();
+      await expect(page.getByText(/unanswered/i)).toHaveCount(0);
+    } finally {
+      await retireChecklistItem(page, item);
     }
-    await page
-      .getByRole("button", { name: "Release for testing", exact: true })
-      .click();
-
-    await expect(
-      page.getByLabel("Reason for releasing before every sample is accepted"),
-    ).toBeVisible({ timeout: UI_TIMEOUT });
-    await expect(
-      page.getByText(
-        `Not accepted yet: ${labNumber}-1 Serum. Answers count once you press Accept sample.`,
-      ),
-    ).toBeVisible();
-    await expect(page.getByText(/unanswered/i)).toHaveCount(0);
   });
 });
