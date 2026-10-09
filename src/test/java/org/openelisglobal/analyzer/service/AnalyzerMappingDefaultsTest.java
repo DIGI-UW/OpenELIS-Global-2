@@ -283,6 +283,33 @@ public class AnalyzerMappingDefaultsTest {
         assertEquals("opt-HIV-1-INVALID", answer(draft, "HIV-1", "INVALID").testResultId());
     }
 
+    @Test
+    public void aProfileThatDeclaresNoPartsStillBindsOnlyThePrimaryAnswerOfATestWithComponents() throws Exception {
+        when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED), "c-primary"),
+                new AnalyzerMappingCatalogService.ResultOption("31", "991", "Detected", loinc(DETECTED), "c-target")));
+        when(catalog.getActiveComponents("1"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("c-primary", "PRIMARY", "Result", true),
+                        new AnalyzerMappingCatalogService.ComponentOption("c-target", "TARGET", "Target", false)));
+
+        var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
+
+        assertEquals("21", draft.results().get(0).testResultId());
+    }
+
+    @Test
+    public void anAnswerLeftOnADeactivatedComponentIsNotAPrimaryAnswer() throws Exception {
+        when(catalog.getActiveResultOptions("1")).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.ResultOption("21", "991", "Detected", loinc(DETECTED), "c-primary"),
+                new AnalyzerMappingCatalogService.ResultOption("41", "991", "Detected", loinc(DETECTED), "c-gone")));
+        when(catalog.getActiveComponents("1")).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.ComponentOption("c-primary", "PRIMARY", "Result", true)));
+
+        var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
+
+        assertEquals("21", draft.results().get(0).testResultId());
+    }
+
     // Cepheid 303-0251 §3: a French-language instrument sends NON DÉTECTÉ for NOT
     // DETECTED.
     @Test
