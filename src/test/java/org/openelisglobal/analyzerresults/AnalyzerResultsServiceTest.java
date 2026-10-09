@@ -107,6 +107,41 @@ public class AnalyzerResultsServiceTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
+    public void twoTubesOfOneOrderAreTwoResultsAndARerunOfOneTubeIsThatTubesDuplicate() {
+        analyzerResultsService.deleteAll(analyzerResultsService.getAll());
+
+        analyzerResultsService.insertAnalyzerResults(List.of(tube("QAN23L-1", "278"), tube("QAN23L-2", "301")),
+                TEST_SYS_USER_ID);
+        entityManager.flush();
+        entityManager.clear();
+        List<AnalyzerResults> staged = analyzerResultsService.getAll();
+        assertEquals("each tube's result is staged", 2, staged.size());
+        assertTrue("neither tube's result is read-only", staged.stream().noneMatch(AnalyzerResults::isReadOnly));
+        String firstTube = staged.stream().filter(row -> "278".equals(row.getResult())).findFirst().orElseThrow()
+                .getId();
+
+        analyzerResultsService.insertAnalyzerResults(List.of(tube("QAN23L-1", "290")), TEST_SYS_USER_ID);
+        entityManager.flush();
+        entityManager.clear();
+        AnalyzerResults rerun = analyzerResultsService.getAll().stream().filter(row -> "290".equals(row.getResult()))
+                .findFirst().orElseThrow();
+        assertTrue(rerun.isReadOnly());
+        assertEquals("a rerun of the first tube links to the first tube's result", firstTube,
+                rerun.getDuplicateAnalyzerResultId());
+    }
+
+    private static AnalyzerResults tube(String tubeId, String value) {
+        AnalyzerResults result = new AnalyzerResults();
+        result.setAnalyzerId("2001");
+        result.setTestName("Body mass");
+        result.setAccessionNumber("QAN23L");
+        result.setInstrumentSpecimenId(tubeId);
+        result.setResult(value);
+        result.setIsControl(false);
+        return result;
+    }
+
+    @Test
     public void persistAnalyzerResults_ShouldDeleteAListOfAnalyzerResultsAndInsertANewSampleGroupingList() {
         AnalyzerResults analyzerResult = analyzerResultsService.get("1003");
         List<AnalyzerResults> deletableAnalyzerResults = new ArrayList<>();
