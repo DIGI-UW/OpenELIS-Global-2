@@ -1,8 +1,9 @@
 # The native FHIR facade: a read-only, scoped endpoint over OpenELIS data
 
-Companion to [result-ingress-audit.md](result-ingress-audit.md). Reviewed 8 Oct
-2026 at `feat/analyzer-baseline-7-specs` (`0211601`). Every claim was read in
-source; nothing was exercised at runtime.
+Companion to [data-exchange-audit.md](data-exchange-audit.md) (audit rows A3, B6
+and B7; findings F1 and F10). Reviewed 8 Oct 2026 at
+`feat/analyzer-baseline-7-specs` (`0211601`). Every claim was read in source;
+nothing was exercised at runtime.
 
 ## Purpose, as set
 
@@ -54,9 +55,19 @@ No transaction, batch or `$operation` endpoint is registered.
 
 No caller in this repository: not the frontend, not the Bridge, not the mock,
 not the harness, not a spec. Partners and the consolidated server read the
-co-resident store, not the facade. The distros and OpenMRS integrators are the
-only places a consumer could exist; that is an open question below. The facade's
-origin could not be dated from this clone's history.
+co-resident store, not the facade. From the distro repositories and Slack
+(roadmap, "What the investigations found"): no deployment configures a facade
+client; eSIL (Madagascar) reads ServiceRequest and Practitioner through it with
+a Basic-auth account, having been pointed at it on 3 Mar and 3 Apr 2026; no
+write through it is evidenced anywhere; Bridge #44's reporter hit it by mistake.
+That is the whole known readership.
+
+The facade's history, from GitHub: #2723 (19 Feb 2026) registered the servlet;
+#2922 (26 Feb) added the Observation provider for "real-time interoperability
+with systems like OpenMRS"; #3555 (7 Sep) added the DiagnosticReport provider
+"enabling OpenELIS to process and persist incoming FHIR lab results". It was
+built as a two-way door. The owner's decision (no writes) reverses that intent,
+and the S4 PR says so to the authors.
 
 ## What good looks like
 
@@ -108,18 +119,25 @@ lab decides to publish, and its clients are known by name.
    filter on patient and specimen references.
 4. **Audit every call.** A server interceptor on
    `SERVER_INCOMING_REQUEST_POST_PROCESSED` and `SERVER_OUTGOING_RESPONSE`
-   writes client, resource type, interaction, query and outcome to the
-   application log, and later to `AuditEvent` resources in the co-resident store
-   if the data-exchange work wants them.
+   writes one `AuditEvent` resource to the co-resident store per call, with
+   client, resource type, interaction, query and outcome, and the same line to
+   the application log. The owner's decision is "AuditEvent resources now", so
+   the resource is part of S4, not a follow-up.
 5. **Bounds.** Cap `_count` (#84) and page size in the bundle providers; keep
    `StrictSearchParameterInterceptor`.
 6. **Identity.** Integration accounts authenticate with Basic over TLS until the
    own-identity pattern from the ingress audit (per-service key, pinned by
    OpenELIS) covers facade clients too; the role and interceptor do not change
    when the credential does.
-7. **Fold `/rest/fhir`.** `FhirQueryRestController` is a second read door to the
-   co-resident store for any authenticated user (#64). Put it behind the same
-   `FHIR_READ` role, or route those UI reads through the facade.
+7. **Narrow `/rest/fhir`.** `FhirQueryRestController` is a second read door to
+   the co-resident store for any authenticated user (#64). The UI depends on one
+   read through it: the Generic Sample Order screens fetch
+   `/rest/fhir/Questionnaire/{id}` (`GenericSampleOrder.jsx:170`,
+   `GenericSampleOrderEdit.jsx:169`), and the facade has no Questionnaire
+   provider to move that to. So: the Questionnaire read stays open to any
+   session user; every other resource type on `/rest/fhir` requires `FHIR_READ`,
+   matched in Spring Security on the path. Moving questionnaires behind a facade
+   provider is a follow-up, not a condition of S4.
 
 ## Tests that prove it
 
@@ -129,23 +147,30 @@ lab decides to publish, and its clients are known by name.
   account, admin included; `DELETE /fhir/DiagnosticReport/{id}` likewise.
 - A `results`-scoped client gets 403 on `GET /fhir/Patient`, 200 on
   `GET /fhir/Observation?patient=…`.
-- Each call writes one audit line naming the client and the interaction.
+- Each call writes one `AuditEvent` to the store naming the client, the resource
+  type, the interaction and the outcome; the test reads it back.
+- A session user without `FHIR_READ` gets 200 on
+  `GET /rest/fhir/Questionnaire/{id}` and 403 on `GET /rest/fhir/Patient`.
 - Inversion: removing the interceptor registration makes the scope test fail.
 
-## Questions for the distros before the write removal lands
+## What the distros answered
 
-1. Does any deployment write to `/OpenELIS-Global/fhir/*` (OpenMRS, a dashboard,
-   a script)? If so, which resources, and should it move to `/analyzer/fhir`
-   (results) or the Task flow (orders)?
-2. Which readers exist, which resource types do they read, and under which
-   account? Those become the first `FHIR_READ` accounts and scopes.
-3. Is the facade reachable from outside the lab network anywhere today?
+Investigated non-interactively from the deployment repositories and Slack
+(roadmap, S4a), as the owner asked:
+
+1. No deployment writes to `/OpenELIS-Global/fhir/*`. Nothing has to move.
+2. One reader: eSIL (Madagascar), ServiceRequest and Practitioner, with a
+   Basic-auth account. That account becomes the first `FHIR_READ` holder, scope
+   `results` plus `reference`.
+3. Every distro's nginx forwards `/api/` to OpenELIS on 443, so the facade is
+   reachable from outside the lab network in every deployment, behind OpenELIS
+   authentication alone.
 
 ## Plan
 
 Step S4 of the
-[result ingress roadmap](../../specs/roadmaps/result-ingress-roadmap.md): one PR
+[data exchange roadmap](../../specs/roadmaps/data-exchange-roadmap.md): one PR
 on develop after #4657 lands, with write removal, `FHIR_READ`, the authorization
-and audit interceptors, the `_count` cap, the `/rest/fhir` role, and the tests
-above. Scope-by-lab-unit and `AuditEvent` resources are follow-ups once a client
-asks for them.
+interceptor, the `AuditEvent` interceptor, the `_count` cap, the narrowed
+`/rest/fhir`, and the tests above. Scope by lab unit and a Questionnaire
+provider are follow-ups once a client asks for them.

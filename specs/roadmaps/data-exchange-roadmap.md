@@ -1,17 +1,22 @@
-# Result ingress roadmap
+# Data exchange roadmap
 
-One door in. Results, orders and FHIR data enter OpenELIS on one path per
-kind of data, every result is staged before a person accepts it, and nothing
-writes an unstaged result into OpenELIS or its co-resident FHIR store.
+Named doors in, named doors out. Data enters OpenELIS on one path per kind
+of data and every result is staged before a person accepts it; data leaves
+as FHIR only through a door with a known peer, OpenELIS's own identity on the
+link, and a record of what was sent.
 
-Evidence: [result-ingress-audit.md](../../docs/planning/result-ingress-audit.md)
-(the inventory and findings F1 to F8) and
+Evidence: [data-exchange-audit.md](../../docs/planning/data-exchange-audit.md)
+(inventories A and B, findings F1 to F10) and
 [fhir-facade-review.md](../../docs/planning/fhir-facade-review.md). The
 [analyzer baseline roadmap](analyzer-baseline-roadmap.md)'s Rules and Repo
 working agreements apply here too.
 
+Scope, set 8 Oct: "operational ingress, and FHIR-based outgress for now",
+without the Generic Sample Order CSV import. Setup imports and the non-FHIR
+senders are named out of scope in the audit, with the reason.
+
 This work is its own remediation, separate from the analyzer stack #4588:
-each step is a PR on the main branch, after the stack and #4657 have landed
+each step is a PR against `develop`, after the stack and #4657 have landed
 where a step depends on them. The one exception is S1, which is the stack's
 #4657.
 
@@ -24,8 +29,9 @@ where a step depends on them. The one exception is S1, which is the stack's
 3. One identity per service, no shared private keys; trust is an explicit pin
    of the peer's certificate (the Bridge pairing model). The co-resident
    store is the accepted exception (decision 8 Oct).
-4. Data in and data out are different doors: `/analyzer/fhir` and the Task
-   pull bring data in; the `/fhir/*` facade only reads.
+4. Data leaves only through a named door: a known peer, OpenELIS's own
+   identity on the link, status-marked resources, and a record of what was
+   sent. The `/fhir/*` facade only reads.
 
 Standards these rules answer to: CLSI AUTO10-A and AUTO15 (instrument
 results are reviewed before release); HL7 FHIR R4 Security (authenticate
@@ -36,6 +42,10 @@ clients, decide each create, update and delete per interaction, audit); HAPI
 
 8 Oct 2026:
 
+- Scope: "we are not auditing just results ingress, but FHIR-based and/or
+  data coming in to OE2 any way, and also outgress too"; then "I would rather
+  focus on operational ingress, and FHIR-based outgress for now", and "drop
+  the CSV order import".
 - Co-resident store: "should stay as-is: it's role is basically a synced
   internal fhir representation, even if the boundary is a bit fuzzy today".
   The store holds every Observation "but have different states based on if
@@ -56,7 +66,6 @@ clients, decide each create, update and delete per interaction, audit); HAPI
   PR 24 of stack #4588, pinned to Bridge 3.3.0.
 - The small SecurityConfig and overlay items: "I do them after #4657 merges".
 - Liquibase: the specimen-id changeset is renumbered 120 to 132.
-- Remote peers: inventory the deployments first, then decide.
 - The facade review is written now, as a document; no code before it is read.
 - F1, the facade's writes: "this touches on our messy approach to fhir right
   now. We should have one translation interface that goes OE2 datamodel <>
@@ -67,10 +76,13 @@ clients, decide each create, update and delete per interaction, audit); HAPI
   the Task pull and `/analyzer/fhir` alike (S10).
 - F2, the Bridge's trust: "Truststore-only volume".
 - F4, the reviewer role: "Keep the role, fix the name and docs".
-- F6, Bridge 3.3.1: "Now, old value refused". A forwarding URI ending in
-  `/analyzer`, or any `health-uri`, fails startup with a message naming the
-  one base URL to set.
-
+- F6, Bridge 3.3.1: "Now, old value refused"; then, asked whether that
+  meant refusing to start: "idk why it's specific to one legacy line - the
+  bridge should check it targeting the right endpoint, and start but show
+  'Down' otherwise". So: no check for the legacy string; the Bridge probes
+  `{uri}/health` and requires OpenELIS's answer, starts either way, holds
+  every result and reports forwarding health DOWN naming the probed URL
+  until the check passes, then delivers.
 - S10, the translators: "I want an audit, along with when and why they were
   implemented. this duplication is a big issues. GSoC this summer was working
   on the fhir facade, so i want an updated view of what's up".
@@ -79,12 +91,10 @@ clients, decide each create, update and delete per interaction, audit); HAPI
 - F7, the secondary paths: "i need reasons for why it's designed this way
   today (from docs, commit history or w/e) and some research on what the
   right appraoch most likely is" before deciding.
-
-- S8 sources: "Distro repositories" and "Slack".
-- The facade review's three questions for the distros: "i want you to do a
-  non-interactive investigation"; they are answered from the distro
-  repositories and Slack, not by asking the team.
-
+- S8 sources: "Distro repositories" and "Slack". The facade review's
+  questions for the distros: "i want you to do a non-interactive
+  investigation"; answered from the distro repositories and Slack, not by
+  asking the team.
 - S8, the remote-peer pattern, after the inventory: "OpenELIS's own identity,
   pinned by the peer". OpenELIS presents its own client certificate to a
   shared store; a consolidated puller presents its own to the lab's store,
@@ -92,12 +102,10 @@ clients, decide each create, update and delete per interaction, audit); HAPI
   certificate where the operator puts it. Dev: nothing changes. Prod: one
   documented step per peer link. Basic remains the bootstrap for a peer that
   cannot pin.
-
 - F7, after S9a: "Keep reception; IDs with data exchange". Referral Accept
   stays the OGC-803 reception model and is not a finding; DiagnosticReport
   delete leaves with S4; the Task import moves to local ids with the remote
   id as an identifier in the data-exchange hardening.
-
 - S10, after S10a: "Gate the entry points, reuse the translators". The
   orchestrator keeps event sequencing and persistence; the facade's HTTP
   writes go (S4); the FHIR-to-OpenELIS translation stays in the per-resource
@@ -105,7 +113,11 @@ clients, decide each create, update and delete per interaction, audit); HAPI
 
 ## Open decisions
 
-None. The next decisions come from the work itself.
+- Rule 4's wording is this rewrite's; the owner set the inbound rules and
+  the facade's read-only decision and has not confirmed the egress sentence.
+- S11, the export door (F9): whether `fhir.subscriber.allowHTTP` is removed
+  or only defaults to `false`, and which role fires an export by hand. Both
+  are small; they are asked when S11 starts.
 
 ## Steps
 
@@ -115,20 +127,22 @@ Status: `[ ]` open, `[~]` in progress, `[x]` done. Owner in brackets.
 - [~] S1 Pairing and the Bridge's own door [security thread, #4657 on stack #4588]: /analyzer/fhir on its own chain for the paired certificate only; the Bridge has no user account (closes F4 in effect); overlay without passwords, insecure TLS or the dev profile; HL7 order servlets removed; analyzer setup to Global Admin; bounded decimals; Bridge 3.3.0
 - [ ] S2 The micro endpoint goes [this session, after S1]: delete /rest/analyzer/events/*, its chain, controllers, services, the analyzer_event table, the seed helper's posts and the analyzer half of the harness AST story (F5)
 - [ ] S3 Dead and stale surface, and the reviewer role's name [this session, with S2]: /pluginServlet/** out of OPEN_PAGES; the stale Bridge-endpoints comment; ANALYSER_IMPORT shown as "Analyzer Results Reviewer" and documented as a human role no machine holds (F4, F8)
-- [ ] S4 The facade [this session, after S4a]:
-- [x] S4a The facade's callers, from the distro repositories and Slack [this session, research; see "What the investigations found"]: who writes to /OpenELIS-Global/fhir/*, who reads it and with which account, and where it is reachable from outside; answered by investigation, not by asking every create, update and delete on all nine providers removed; FHIR_READ with per-account resource-type scopes (results, patients, reference) turned into allow rules by an AuthorizationInterceptor with default deny; an AuditEvent written to the co-resident store for every facade call; _count cap; /rest/fhir behind the same role (F1)
+- [x] S4a The facade's callers, from the distro repositories and Slack [research; see "What the investigations found"]: who writes to /OpenELIS-Global/fhir/*, who reads it and with which account, and where it is reachable from outside
+- [ ] S4 The facade and the store's read doors [this session, after S4a]: every create, update and delete on all nine providers removed; FHIR_READ with per-account resource-type scopes (results, patients, reference) turned into allow rules by an AuthorizationInterceptor with default deny; an AuditEvent written to the co-resident store for every facade call, with its test; _count cap; /rest/fhir behind the same role except the Questionnaire read the Generic Sample Order screens need, which stays open to a session user (F1, F10)
 - [ ] S5 No shared key in the Bridge [this session, after S1]: certgen writes the cert-only truststore to a second volume; the Bridge mounts only that; the keystore volume stays with OpenELIS and the store; dev and prod the same; certgen stays (F2)
-- [ ] S6 Bridge 3.3.1, one base URL [this session, Bridge]: forward-http-server.uri is the OpenELIS base, /analyzer/fhir and /health derive from it; a URI ending in /analyzer or any health-uri refuses startup naming the one setting; closes Bridge #44 (F6)
+- [~] S6 Bridge 3.3.1, one base URL [this session, Bridge, on fix/one-openelis-base-url]: forward-http-server.uri is the OpenELIS base, /analyzer/fhir and /health derive from it; health-uri is no longer read; the Bridge probes {uri}/health and requires OpenELIS's answer, starts either way, holds every result and reports forwarding health DOWN naming the probed URL until the check passes; no check for the legacy string; closes Bridge #44 (F6)
 - [x] S10a The translators, audited [see "What the investigations found"]
 - [ ] S10 One translation each way [this session, after S4, one resource per PR with a round-trip test]: the per-resource services under fhir/service are the layer for both directions; the orchestrator keeps event sequencing and persistence; referral Accept maps Observation to Result through ObservationTransformService instead of its own reads, and the Task pull builds orders through the ServiceRequest, Patient and Specimen services instead of FhirApiWorkFlowServiceImpl's own code; EQA's exchange code follows when its epic allows; the Bridge bundle parser stays as the ingress validator; writes happen only behind gated entry points (F1)
 - [ ] S7 Micro V2 landing [micro V2, OGC-1383]: an accepted AST row lands on the AST run; the AST panel's "Accept results" reads analyzer_results (F5)
-- [~] S8 Remote peers [inventory done, see "What the investigations found"; pattern decision open]: deployments with remote.source.uri or crserver.uri, how each authenticates OpenELIS, what own-identity needs on the peer; then the pattern, with dev and prod setup written down (F2)
-- [x] S9a Why the secondary paths are built as they are [see "What the investigations found"]: for referral Accept finalizing the analysis directly, DiagnosticReport delete cancelling in any state, and the remote Task import writing peer-chosen IDs (#48): the commits, specs and tickets that introduced each, the reason recorded, and what the right approach most likely is, with sources; a short note per path, then the F7 decision
-- [ ] S9 Secondary [after S9a]: the F7 fixes as decided
+- [~] S8 Remote peers [inventory done; pattern decided: OpenELIS's own identity, pinned by the peer]: the lab-to-shared-store push and the consolidated-server pull each carry one identity; certgen writes the peer's trusted certificate; dev unchanged, prod one documented step per link; Basic stays the bootstrap for a peer that cannot pin (F2, F9)
+- [x] S9a Why the secondary paths are built as they are [see "What the investigations found"]
+- [ ] S9 Secondary [after S9a]: the Task import keeps local ids with the remote id as an identifier, in the data-exchange hardening (F7)
+- [ ] S11 The export door [this session, after S8]: the subscriber endpoint is TLS only (allowHTTP off by default, or removed); the data export carries the S8 identity instead of stored headers; POST /dataexport/fhir and the DataExportStatus trigger require a named role; one AuditEvent per export attempt (F9)
 ```
 
 Not changed, by decision: the co-resident store's shared-key mTLS; the
-status-marked push of Observations at result entry.
+status-marked push of Observations at result entry; referral Accept as the
+reception step.
 
 ## What the investigations found
 
@@ -169,7 +183,10 @@ and Slack:
 
 So the remote-peer decision (S8) is about two links: a lab pushing to a
 shared store, and a consolidated server pulling from a lab's store. Neither
-uses the Task pull.
+uses the Task pull. The subscription and data export path (audit B2) is a
+third link to the same server and was not in the first inventory; whether
+any distro sets `fhir.subscriber` is still to be read from the repositories
+when S11 starts.
 
 S10a, the translators, from GitHub's history (the local clone is shallow at
 8 Oct's develop, so `git log` here answers nothing older):
@@ -179,10 +196,11 @@ S10a, the translators, from GitHub's history (the local clone is shallow at
   to per-resource services under `fhir/service` (Patient, Observation,
   ServiceRequest, Specimen, DiagnosticReport, Practitioner, Organization,
   Task, Common); the store push calls them 49 times. The facade's providers
-  use the same services. The audit's "translated twice" was wrong; what sits
-  outside the layer is 22 transform methods still local to the orchestrator,
-  the EQA exchange code (#4140, Aug 2026), the referral FHIR code (2021
-  onward), and the facade's inbound write paths. The Bridge bundle parser
+  use the same services. The first version of the audit said the facade
+  translated twice; that was wrong. What sits outside the layer is 22
+  transform methods still local to the orchestrator, the EQA exchange code
+  (#4140, Aug 2026), the referral FHIR code (2021 onward), and the facade's
+  inbound write paths. The Bridge bundle parser
   (`AnalyzerNormalizedResultContract`, Sep 2026) validates a contract; it
   is not a model translator.
 - **The facade's history and intent.** #2723 (Isabirye1515, 19 Feb 2026,
@@ -190,12 +208,12 @@ S10a, the translators, from GitHub's history (the local clone is shallow at
   (nigar-08, 26 Feb 2026) added the Observation provider "enabling real-time
   interoperability with systems like OpenMRS without external sync scripts".
   #3595 (Sep) was "a prerequisite for implementing a FHIR facade search";
-  #4… (Mutesasira Moses, 8 Sep) made every search answer from the database.
-  #3555 (Isabirye1515, 7 Sep) added the DiagnosticReport provider "enabling
-  OpenELIS to process and persist incoming FHIR lab results using the
-  existing result workflow": the facade was built as a two-way door, results
-  in as well as out. #4648 (mozzy11, merged 8 Oct 2026) reworked the facade's
-  update path so an unchanged resource sent back saves nothing. The
+  a follow-up (Mutesasira Moses, 8 Sep) made every search answer from the
+  database. #3555 (Isabirye1515, 7 Sep) added the DiagnosticReport provider
+  "enabling OpenELIS to process and persist incoming FHIR lab results using
+  the existing result workflow": the facade was built as a two-way door,
+  results in as well as out. #4648 (mozzy11, merged 8 Oct 2026) reworked the
+  facade's update path so an unchanged resource sent back saves nothing. The
   Feb-to-Sep authors are the summer's GSoC work; the maintainer's #4648 is
   this week. The owner's decision (no writes through the facade) reverses
   the two-way intent, and S4 has to say so to the authors.
@@ -207,8 +225,8 @@ S9a, why the secondary paths are built as they are:
   "Reception (NOT revalidation) … Set Analysis status to validated
   (released) … The reference lab already validated; no local revalidation
   step." The result is staged until a person accepts it (rule 2 holds); the
-  skipped step is deliberate. Right approach: keep it, and name it as the
-  reception model in the audit, not a finding.
+  skipped step is deliberate. Decision: keep it, named as the reception
+  model in the audit, not a finding.
 - **DiagnosticReport delete cancels any analysis.** From #3555 (7 Sep 2026),
   part of the facade's two-way design. Goes with S4's write removal; nothing
   separate.
@@ -219,10 +237,9 @@ S9a, why the secondary paths are built as they are:
   storing server's and "might or might not" survive a copy, and that
   identity across systems belongs in `identifier`
   (https://hl7.org/FHIR/r4/resource.html). The code already builds a
-  remote-resource identifier (`createIdentifierToRemoteResource`). Right
-  approach: local ids, the remote id kept as that identifier; no deployment
-  uses the Task pull today (S8), so this waits for the data-exchange
-  hardening.
+  remote-resource identifier (`createIdentifierToRemoteResource`). Decision:
+  local ids, the remote id kept as that identifier; no deployment uses the
+  Task pull today (S8), so this waits for the data-exchange hardening (S9).
 
 ## Done when
 
@@ -230,7 +247,11 @@ S9a, why the secondary paths are built as they are:
    staged; `/rest/analyzer/events/*` and the facade's writes are gone.
 2. The Bridge holds no OpenELIS private key; its only credential is its own
    certificate, pinned at pairing.
-3. The facade is read-only, scoped by role, audited, and documented as the
-   one "out" door for integrations.
-4. One OpenELIS base URL configures Bridge delivery and health.
-5. The remote-peer pattern is decided and written down for dev and prod.
+3. The facade is read-only, scoped by role, audited with an AuditEvent per
+   call, and documented as the one "out" door for integrations; `/rest/fhir`
+   serves the UI's Questionnaire read and nothing else without the role.
+4. One OpenELIS base URL configures Bridge delivery and health, and the
+   Bridge holds results until it has verified that URL is OpenELIS.
+5. Every link to a consolidated server or partner (push, pull, subscription,
+   export) carries OpenELIS's own identity over TLS, and the pattern is
+   written down for dev and prod.
