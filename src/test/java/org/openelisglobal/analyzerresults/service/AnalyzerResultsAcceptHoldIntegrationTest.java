@@ -394,6 +394,41 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void aRerunThatReplacesAResultTakesTheComponentsCurrentDigits() {
+        aNumberOnAComponentIsSavedWithTheComponentsDigits();
+        jdbc.update("UPDATE clinlims.test_result_component SET significant_digits = 3 WHERE id = 'c-log-1145'");
+        jdbc.update("UPDATE clinlims.test_result SET significant_digits = 3 WHERE id = 97312");
+        entityManager.flush();
+        entityManager.clear();
+        entityManager.flush();
+        entityManager.clear();
+        String rerunId = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, component_id, test_result_type, last_updated) VALUES (?::numeric, ?, ?,"
+                        + " 'HoldIT 1145', '3.10', false, ?, 'c-log-1145', 'N', NOW())",
+                rerunId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST);
+        AnalyzerResultItem rerun = acceptedItem();
+        rerun.setId(rerunId);
+        rerun.setResult("3.10");
+        rerun.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(rerun), "1");
+
+        List<java.util.Map<String, Object>> results = jdbc
+                .queryForList(
+                        "SELECT r.value, r.significant_digits FROM clinlims.result r"
+                                + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        ACCESSION);
+        assertEquals("the rerun replaces the result", 1, results.size());
+        assertEquals("3.10", String.valueOf(results.get(0).get("value")));
+        assertEquals("the replaced result takes the component's three decimals", "3",
+                String.valueOf(results.get(0).get("significant_digits")));
+    }
+
+    @org.junit.Test
     public void releasingAHeldResultKeepsItsStagedCompletionDate() {
         jdbc.update("UPDATE clinlims.analyzer_results SET complete_date = '2026-09-01 10:00:00' WHERE id = ?::numeric",
                 stagedRowId);

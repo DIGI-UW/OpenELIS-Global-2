@@ -1140,6 +1140,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 } else {
                     result.setValue(resultValue);
                 }
+                applySignificantDigits(result, resultItem, "getResult");
                 result.setSysUserId(sysUserId);
 
                 setAnalyte(result);
@@ -1169,19 +1170,23 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             result.setValue(rawValue);
             result.setResultType(resultItem.getTestResultType());
         }
-        if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
-                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
-            } else {
-                LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "createNewResult",
-                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
-            }
-        }
+        applySignificantDigits(result, resultItem, "createNewResult");
 
         addMinMaxNormal(result, resultItem, patient);
         result.setSysUserId(sysUserId);
 
         return result;
+    }
+
+    private static void applySignificantDigits(Result result, AnalyzerResultItem resultItem, String caller) {
+        if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
+            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
+                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+            } else {
+                LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), caller,
+                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
+            }
+        }
     }
 
     private void populateAnalysis(AnalyzerResultItem resultItem, Analysis analysis, Test test) {
