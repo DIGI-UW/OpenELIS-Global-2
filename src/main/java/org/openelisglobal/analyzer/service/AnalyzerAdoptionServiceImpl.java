@@ -83,9 +83,8 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
             }
             requireEveryAnswer(row, decision);
             AnalyzerMappingTestDraft current = row.current() == null ? null : row.current().test();
-            AnalyzerMappingTestDraft test = current == null ? decision.test().keepingAssayOf(null, true, null)
-                    : decision.test().keepingAssayOf(current.mappingState(), current.isEnabled(),
-                            current.instrumentCode());
+            AnalyzerMappingTestDraft test = current == null ? decision.test().keepingAssayOf(null, true)
+                    : decision.test().keepingAssayOf(current.mappingState(), current.isEnabled());
             tests.add(withOrigin(test, originFor(test, row.proposed())));
             for (AnalyzerMappingResultDraft result : decision.results()) {
                 results.add(withOrigin(result, originFor(result, row.proposed())));
@@ -171,8 +170,7 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
 
     private static AnalyzerMappingTestDraft withOrigin(AnalyzerMappingTestDraft row, AnalyzerMappingOrigin origin) {
         return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
-                row.unresolvedReason(), origin, row.subIdentity(), row.callComponentId(), row.enabled(),
-                row.instrumentCode());
+                row.unresolvedReason(), origin, row.subIdentity(), row.callComponentId(), row.enabled());
     }
 
     private static AnalyzerMappingResultDraft withOrigin(AnalyzerMappingResultDraft row, AnalyzerMappingOrigin origin) {

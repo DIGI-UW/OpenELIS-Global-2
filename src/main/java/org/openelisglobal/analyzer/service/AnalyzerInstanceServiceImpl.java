@@ -20,25 +20,21 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     private final AnalyzerInstanceLocalStateService localStateService;
     private final BridgeAnalyzerConnectionClient bridgeClient;
     private final AnalyzerActivationService activationService;
-    private final AnalyzerMappingEditorService mappingEditorService;
     private final Supplier<String> requestIdSupplier;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
     public AnalyzerInstanceServiceImpl(AnalyzerInstanceLocalStateService localStateService,
-            BridgeAnalyzerConnectionClient bridgeClient, AnalyzerActivationService activationService,
-            AnalyzerMappingEditorService mappingEditorService) {
-        this(localStateService, bridgeClient, activationService, mappingEditorService,
-                () -> UUID.randomUUID().toString());
+            BridgeAnalyzerConnectionClient bridgeClient, AnalyzerActivationService activationService) {
+        this(localStateService, bridgeClient, activationService, () -> UUID.randomUUID().toString());
     }
 
     AnalyzerInstanceServiceImpl(AnalyzerInstanceLocalStateService localStateService,
             BridgeAnalyzerConnectionClient bridgeClient, AnalyzerActivationService activationService,
-            AnalyzerMappingEditorService mappingEditorService, Supplier<String> requestIdSupplier) {
+            Supplier<String> requestIdSupplier) {
         this.localStateService = localStateService;
         this.bridgeClient = bridgeClient;
         this.activationService = activationService;
-        this.mappingEditorService = mappingEditorService;
         this.requestIdSupplier = requestIdSupplier;
     }
 
@@ -82,17 +78,18 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         if (state.bridgeConnectionId() == null) {
             return compose(state);
         }
-        ObjectNode codes = instrumentCodes(state);
         boolean revisionChanged = before.profileRevision() != state.profileRevision();
         // OE2 and the Bridge switch together: any Bridge failure below rolls this
         // transaction back, and a connection that may have moved is put back first.
         // An active connection keeps running its old configuration until it is
         // re-activated on the new one.
         ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
-        boolean moving = !inForce(state, current, codes);
+        boolean moving = !pinnedTo(state, current);
         try {
-            ObjectNode connection = moving ? bridgeClient.updateConnection(state.bridgeConnectionId(),
-                    updateConnectionRequest(state, pin(state), withCodes(codes), current)) : current;
+            ObjectNode connection = moving
+                    ? bridgeClient.updateConnection(state.bridgeConnectionId(),
+                            updateConnectionRequest(state, pin(state), objectMapper.createObjectNode(), current))
+                    : current;
             requireExactConnection(state, connection);
             if (state.status() == Analyzer.AnalyzerStatus.ACTIVE && (moving || revisionChanged)) {
                 String blocker = reactivate(state, actor);
@@ -120,19 +117,19 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
     }
 
     /**
-     * Puts the connection back on {@code previous}'s pin and codes if it moved. The
-     * Bridge can make a change whose answer is then lost, so the connection is read
-     * again rather than trusted. When it cannot be put back, OE2 and the Bridge may
+     * Puts the connection back on {@code previous}'s pin if it moved. The Bridge
+     * can make a change whose answer is then lost, so the connection is read again
+     * rather than trusted. When it cannot be put back, OE2 and the Bridge may
      * disagree, and that is what the operator is told.
      */
     private void putBack(AnalyzerInstanceState state, ObjectNode previous, RuntimeException original) {
         try {
             ObjectNode now = bridgeClient.getConnection(state.bridgeConnectionId());
-            if (now.path("profileRef").equals(previous.path("profileRef")) && codesOf(now).equals(codesOf(previous))) {
+            if (now.path("profileRef").equals(previous.path("profileRef"))) {
                 return;
             }
             bridgeClient.updateConnection(state.bridgeConnectionId(),
-                    updateConnectionRequest(state, previous.path("profileRef"), withCodes(codesOf(previous)), now));
+                    updateConnectionRequest(state, previous.path("profileRef"), objectMapper.createObjectNode(), now));
         } catch (RuntimeException putBackFailure) {
             BridgeAnalyzerConnectionException reconcile = new BridgeAnalyzerConnectionException(
                     "analyzer.bridge.connection.reconcileRequired", Map.of(), original);
@@ -141,40 +138,9 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         }
     }
 
-    private boolean inForce(AnalyzerInstanceState state, ObjectNode connection, ObjectNode codes) {
-        return pinnedTo(state, connection) && codesOf(connection).equals(codes);
-    }
-
-    /**
-     * The applied mapping's instrument codes, which the Bridge holds as
-     * codeOverrides.
-     */
-    private ObjectNode instrumentCodes(AnalyzerInstanceState state) {
-        ObjectNode codes = objectMapper.createObjectNode();
-        mappingEditorService.appliedInstrumentCodes(state.analyzerId()).forEach(codes::put);
-        return codes;
-    }
-
-    private ObjectNode codesOf(ObjectNode connection) {
-        JsonNode codes = connection.path("codeOverrides");
-        return codes.isObject() ? (ObjectNode) codes : objectMapper.createObjectNode();
-    }
-
-    private ObjectNode withCodes(ObjectNode codes) {
-        ObjectNode values = objectMapper.createObjectNode();
-        values.set("codeOverrides", codes.deepCopy());
-        return values;
-    }
-
-    /**
-     * The values the lab entered, with the instrument codes OE2 owns in place of
-     * any supplied.
-     */
-    private ObjectNode connectionValues(AnalyzerInstanceState state, AnalyzerInstanceRequest request) {
-        ObjectNode values = request.getConnectionValues() == null ? objectMapper.createObjectNode()
+    private ObjectNode connectionValues(AnalyzerInstanceRequest request) {
+        return request.getConnectionValues() == null ? objectMapper.createObjectNode()
                 : request.getConnectionValues().deepCopy();
-        values.set("codeOverrides", instrumentCodes(state));
-        return values;
     }
 
     private ObjectNode pin(AnalyzerInstanceState state) {
@@ -214,7 +180,7 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
             ObjectNode current = bridgeClient.getConnection(state.bridgeConnectionId());
             requireExactConnection(state, current);
             ObjectNode updated = bridgeClient.updateConnection(state.bridgeConnectionId(),
-                    updateConnectionRequest(state, pin(state), connectionValues(state, request), current));
+                    updateConnectionRequest(state, pin(state), connectionValues(request), current));
             requireExactConnection(state, updated);
             return new AnalyzerInstanceView(state, updated, null);
         } catch (BridgeAnalyzerConnectionException exception) {
@@ -253,7 +219,7 @@ public class AnalyzerInstanceServiceImpl implements AnalyzerInstanceService {
         bridgeRequest.put("displayName", state.name());
         bridgeRequest.putObject("profileRef").put("profileId", state.profileId())
                 .put("revision", state.profileRevision()).put("fingerprint", state.profileFingerprint());
-        bridgeRequest.set("values", connectionValues(state, request));
+        bridgeRequest.set("values", connectionValues(request));
         return bridgeRequest;
     }
 

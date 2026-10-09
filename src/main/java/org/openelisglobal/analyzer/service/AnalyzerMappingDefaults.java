@@ -42,7 +42,7 @@ public class AnalyzerMappingDefaults {
                 AnalyzerUnresolvedReason reason = resolution.draft().unresolvedReason();
                 // No local test carries the assay's code: most likely a cartridge this lab
                 // does not run, so it starts off; the operator turns it on if it does.
-                tests.add(reason == AnalyzerUnresolvedReason.NO_MATCH ? resolution.draft().withAssay(false, null)
+                tests.add(reason == AnalyzerUnresolvedReason.NO_MATCH ? resolution.draft().withAssay(false)
                         : resolution.draft());
                 definition.resultValues().forEach(raw -> results
                         .addAll(translated(unresolvedAnswer(definition, raw, reason), definition.translations())));

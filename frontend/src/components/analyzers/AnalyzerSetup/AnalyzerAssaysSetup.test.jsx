@@ -28,7 +28,6 @@ const assay = (code, overrides) => ({
   selectedTest: null,
   unresolvedReason: null,
   enabled: true,
-  instrumentCode: null,
   results: [],
   ...overrides,
 });
@@ -98,7 +97,7 @@ describe("AnalyzerAssaysSetup", () => {
     ).not.toBeChecked();
   });
 
-  it("saves the assays turned on and the codes this instrument sends, then continues", async () => {
+  it("saves the assays turned on, then continues", async () => {
     saveAnalyzerMapping.mockImplementation((_id, _update, callback) =>
       callback({ ...mapping, tests: mapping.tests }),
     );
@@ -110,10 +109,6 @@ describe("AnalyzerAssaysSetup", () => {
         { name: /FLU/ },
       ),
     );
-    const code = within(row("MTB-RIF")).getByRole("textbox", {
-      name: "Code the instrument sends for MTB-RIF",
-    });
-    await userEvent.type(code, "MTBU");
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Verify" }),
     );
@@ -126,10 +121,13 @@ describe("AnalyzerAssaysSetup", () => {
         (test) => test.sourceRowKey === key && test.subIdentity === "",
       );
     expect(main("FLU")).toMatchObject({ enabled: true });
-    expect(main("MTB-RIF")).toMatchObject({
+    expect(main("MTB-RIF")).toEqual({
+      sourceRowKey: "MTB-RIF",
+      subIdentity: "",
       enabled: true,
-      instrumentCode: "MTBU",
       mappingState: "BOUND",
+      componentId: null,
+      callComponentId: null,
       testId: "9701",
     });
     expect(update.tests).toHaveLength(4);

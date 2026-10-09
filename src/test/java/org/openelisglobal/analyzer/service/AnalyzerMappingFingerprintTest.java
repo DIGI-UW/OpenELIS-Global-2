@@ -70,16 +70,14 @@ public class AnalyzerMappingFingerprintTest {
     }
 
     @Test
-    public void turningAnAssayOffOrChangingItsInstrumentCodeChangesTheFingerprint() {
+    public void turningAnAssayOffChangesTheFingerprint() {
         AnalyzerMappingTestDraft main = test("MTB-RIF", AnalyzerMappingState.BOUND, "9701");
         String on = AnalyzerMappingFingerprint.calculate(new AnalyzerMappingDraft(List.of(main), List.of()));
 
         assertNotEquals(on, AnalyzerMappingFingerprint
-                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(false, null)), List.of())));
-        assertNotEquals(on, AnalyzerMappingFingerprint
-                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(true, "MTB")), List.of())));
-        assertEquals("an assay on under its profile code is the default", on, AnalyzerMappingFingerprint
-                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(true, null)), List.of())));
+                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(false)), List.of())));
+        assertEquals("an assay that is on is the default", on, AnalyzerMappingFingerprint
+                .calculate(new AnalyzerMappingDraft(List.of(main.withAssay(true)), List.of())));
     }
 
     private static AnalyzerMappingTestDraft test(String sourceRowKey, AnalyzerMappingState state, String testId) {

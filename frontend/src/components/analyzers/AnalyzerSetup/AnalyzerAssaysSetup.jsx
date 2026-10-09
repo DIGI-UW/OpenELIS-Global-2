@@ -1,11 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
-import {
-  Button,
-  Checkbox,
-  InlineNotification,
-  Loading,
-  TextInput,
-} from "@carbon/react";
+import { Button, Checkbox, InlineNotification, Loading } from "@carbon/react";
 import { ArrowRight } from "@carbon/icons-react";
 import { useIntl } from "react-intl";
 import {
@@ -33,9 +27,9 @@ const matchMessage = (assay) => {
 };
 
 /**
- * The instrument's host test code table: which of the profile's assays this
- * instrument runs, and the code it sends for each. An assay that is off is not
- * mapped in Verify; its results are held if they ever arrive.
+ * Which of the profile's assays this instrument runs, as on its host test code
+ * table. An assay that is off is not mapped in Verify; its results are held if
+ * they ever arrive.
  */
 const AnalyzerAssaysSetup = ({ analyzerId, onContinue }) => {
   const intl = useIntl();
@@ -58,10 +52,7 @@ const AnalyzerAssaysSetup = ({ analyzerId, onContinue }) => {
             .filter((test) => !test.subIdentity)
             .map((test) => [
               test.sourceRowKey,
-              {
-                enabled: test.enabled !== false,
-                instrumentCode: test.instrumentCode || "",
-              },
+              { enabled: test.enabled !== false },
             ]),
         ),
       );
@@ -75,9 +66,7 @@ const AnalyzerAssaysSetup = ({ analyzerId, onContinue }) => {
 
   const changed = assays.some(
     (assay) =>
-      choices[assay.sourceRowKey]?.enabled !== (assay.enabled !== false) ||
-      (choices[assay.sourceRowKey]?.instrumentCode || "") !==
-        (assay.instrumentCode || ""),
+      choices[assay.sourceRowKey]?.enabled !== (assay.enabled !== false),
   );
 
   const choose = (code, change) =>
@@ -108,11 +97,7 @@ const AnalyzerAssaysSetup = ({ analyzerId, onContinue }) => {
             test.mappingState === "BOUND" ? test.callComponentId || null : null,
           ...(test.subIdentity
             ? {}
-            : {
-                enabled: choices[test.sourceRowKey].enabled,
-                instrumentCode:
-                  choices[test.sourceRowKey].instrumentCode.trim() || null,
-              }),
+            : { enabled: choices[test.sourceRowKey].enabled }),
         })),
         results: mapping.tests.flatMap((test) =>
           (test.results || []).map((result) => ({
@@ -204,20 +189,6 @@ const AnalyzerAssaysSetup = ({ analyzerId, onContinue }) => {
                       { name: assay.selectedTest?.name },
                     )}
                   </span>
-                  <TextInput
-                    id={`analyzer-assay-code-${code}`}
-                    size="sm"
-                    labelText={intl.formatMessage(
-                      { id: "analyzer.setup.assays.code" },
-                      { code: assay.rawCode },
-                    )}
-                    placeholder={assay.rawCode}
-                    value={choice.instrumentCode || ""}
-                    disabled={!choice.enabled}
-                    onChange={(event) =>
-                      choose(code, { instrumentCode: event.target.value })
-                    }
-                  />
                 </li>
               );
             })}

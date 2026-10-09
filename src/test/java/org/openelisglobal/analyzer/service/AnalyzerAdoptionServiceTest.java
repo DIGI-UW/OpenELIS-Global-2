@@ -182,10 +182,9 @@ public class AnalyzerAdoptionServiceTest {
     }
 
     @Test
-    public void adoptionKeepsAnAssayTheLabTurnedOffAndTheCodeTheInstrumentSends() {
+    public void adoptionKeepsAnAssayTheLabTurnedOff() {
         AnalyzerMappingTest off = row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT);
         off.setEnabled(false);
-        off.setInstrumentCode("LAB-A");
         current(off);
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
@@ -194,24 +193,21 @@ public class AnalyzerAdoptionServiceTest {
 
         AnalyzerMappingTestDraft saved = savedDraft().tests().get(0);
         assertEquals(Boolean.FALSE, saved.enabled());
-        assertEquals("LAB-A", saved.instrumentCode());
     }
 
     @Test
     public void aDecisionThatStatesTheAssaySwitchReplacesWhatTheRowHad() {
         AnalyzerMappingTest off = row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT);
         off.setEnabled(false);
-        off.setInstrumentCode("LAB-A");
         current(off);
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
         service.adopt("42", 2, BASE,
-                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1").withAssay(true, null)),
+                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1").withAssay(true)),
                 "17");
 
         AnalyzerMappingTestDraft saved = savedDraft().tests().get(0);
         assertEquals(Boolean.TRUE, saved.enabled());
-        assertEquals("stating the switch without a code returns to the profile's code", null, saved.instrumentCode());
     }
 
     @Test

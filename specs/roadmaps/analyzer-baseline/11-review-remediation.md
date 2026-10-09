@@ -55,13 +55,14 @@ PR B, results and import:
 - [x] R15 (4593#2) Held component parts offer Review mapping and Dismiss failed run
 - [x] R16 (4625#0) An analyzer whose restore failed offers Activate again
 - [x] R17 (4583#6) Placement runs once per page, not once per row before paging
+- [x] R24 (4611 review, 9 Oct) OE2 stops holding the code an instrument sends: `instrument_code` leaves the mapping (changeset 133), the Assays step and Apply's push to the Bridge; settling codes at setup is analyzers roadmap item 6
 ```
 
 PR C, deploy, harness and docs:
 
 ```
 - [ ] R18 (4632#1, 4644#5, high) The testing deployment's delivery check reaches an active GeneXpert: the seed ignores rows on assays that are off; the smoke analyzer activates on the bundled catalog; a kept connection whose profile is gone is recreated. Rehearsed against a local stack built like the deployment
-- [ ] R19 (4579#0, 4579#1, 4584#0, 4593#0, 4611#0) AGENTS.md says each analyzer owns its mapping and editor, the types page previews defaults read-only, OE owns instrument-code overrides and pushes them as codeOverrides, and changeset 124 is the one-time baseline migration
+- [ ] R19 (4579#0, 4579#1, 4584#0, 4593#0, 4611#0) AGENTS.md says each analyzer owns its mapping and editor, the types page previews defaults read-only, and changeset 124 is the one-time baseline migration
 - [ ] R20 Low findings in files PRs A to C already touch are fixed there; the rest are filed as issues with the thread linked
 ```
 
