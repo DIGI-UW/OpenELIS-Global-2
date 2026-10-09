@@ -24,6 +24,7 @@ import {
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
 import { labNow } from "../utils/labClock";
+import { RequiredMarker } from "../common/RequiredMarker";
 
 // Calendar dates are stored as midnight UTC so the day holds in every time zone.
 const toStoredCalendarDate = (date) =>
@@ -474,7 +475,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
             >
               <FormLabel>
                 <FormattedMessage id="lot.selectLocation" />
-                <span style={{ color: "#da1e28" }}> *</span>
+                <RequiredMarker announce />
               </FormLabel>
               <Button
                 kind="ghost"

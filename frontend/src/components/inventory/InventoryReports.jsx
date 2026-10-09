@@ -17,6 +17,7 @@ import {
 import { DocumentPdf, DocumentBlank, TableSplit } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { ReportsAPI } from "./InventoryService";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 // Local calendar fields, not toISOString(): the UTC shift can move the picked day.
 export const toIsoDate = (date) => {
@@ -233,9 +234,7 @@ const InventoryReports = () => {
                   <div>
                     <FormLabel>
                       <FormattedMessage id="reports.dateRange" />
-                      {isDateRangeRequired && (
-                        <span style={{ color: "#da1e28" }}> *</span>
-                      )}
+                      <RequiredMarker required={isDateRangeRequired} />
                     </FormLabel>
                     <DatePicker
                       datePickerType="range"
@@ -247,6 +246,7 @@ const InventoryReports = () => {
                     >
                       <DatePickerInput
                         id="startDate"
+                        {...requiredProps(isDateRangeRequired)}
                         placeholder="mm/dd/yyyy"
                         labelText={intl.formatMessage({
                           id: "reports.startDate",
@@ -255,6 +255,7 @@ const InventoryReports = () => {
                       />
                       <DatePickerInput
                         id="endDate"
+                        {...requiredProps(isDateRangeRequired)}
                         placeholder="mm/dd/yyyy"
                         labelText={intl.formatMessage({
                           id: "reports.endDate",

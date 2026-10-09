@@ -36,6 +36,7 @@ import {
 import NceFileAttachment from "./NceFileAttachment";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import "./ReportNonConformingEvent.css";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 const initialReportFormValues = {
   type: undefined,
@@ -599,11 +600,15 @@ export const ReportNonConformingEvent = () => {
                 <DatePickerInput
                   id="date-of-event"
                   placeholder="mm/dd/yyyy"
+                  {...requiredProps()}
                   labelText={
-                    intl.formatMessage({
-                      id: "nce.field.dateOfEvent",
-                      defaultMessage: "Date of Event",
-                    }) + " *"
+                    <>
+                      {intl.formatMessage({
+                        id: "nce.field.dateOfEvent",
+                        defaultMessage: "Date of Event",
+                      })}
+                      <RequiredMarker />
+                    </>
                   }
                   invalid={!!errors.dateOfEvent}
                   invalidText={errors.dateOfEvent}
@@ -613,11 +618,15 @@ export const ReportNonConformingEvent = () => {
             <Column lg={4} md={4} sm={4}>
               <Select
                 id="reporting-unit"
+                {...requiredProps()}
                 labelText={
-                  intl.formatMessage({
-                    id: "nce.field.reportingUnit",
-                    defaultMessage: "Reporting Unit",
-                  }) + " *"
+                  <>
+                    {intl.formatMessage({
+                      id: "nce.field.reportingUnit",
+                      defaultMessage: "Reporting Unit",
+                    })}
+                    <RequiredMarker />
+                  </>
                 }
                 value={nceForm.reportingUnit}
                 onChange={(e) => {
@@ -659,11 +668,15 @@ export const ReportNonConformingEvent = () => {
             <Column lg={8} md={4} sm={4}>
               <Select
                 id="nce-category"
+                {...requiredProps()}
                 labelText={
-                  intl.formatMessage({
-                    id: "nce.field.category",
-                    defaultMessage: "Category",
-                  }) + " *"
+                  <>
+                    {intl.formatMessage({
+                      id: "nce.field.category",
+                      defaultMessage: "Category",
+                    })}
+                    <RequiredMarker />
+                  </>
                 }
                 value={nceForm.categoryId}
                 onChange={(e) => {
@@ -843,11 +856,15 @@ export const ReportNonConformingEvent = () => {
             <Column lg={16} md={8} sm={4}>
               <TextArea
                 id="nce-description"
+                {...requiredProps()}
                 labelText={
-                  intl.formatMessage({
-                    id: "nce.field.description",
-                    defaultMessage: "Description",
-                  }) + " *"
+                  <>
+                    {intl.formatMessage({
+                      id: "nce.field.description",
+                      defaultMessage: "Description",
+                    })}
+                    <RequiredMarker />
+                  </>
                 }
                 placeholder={intl.formatMessage({
                   id: "nce.field.description.placeholder",

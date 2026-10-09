@@ -17,6 +17,7 @@ import {
   putToOpenElisServer,
 } from "../../utils/Utils";
 import AddressSearch from "../../patient/AddressSearch";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 const SITES_URL = "/rest/admin/vector/sampling-sites";
 const SITE_TYPES_URL = "/rest/vector/dictionary/sampling-site-types";
@@ -170,6 +171,7 @@ function SiteForm({
         }}
       >
         <TextInput
+          {...requiredProps()}
           id={`site-code-${prefix}`}
           labelText={
             <>
@@ -177,7 +179,7 @@ function SiteForm({
                 id="vector.admin.samplingSite.code"
                 defaultMessage="Code"
               />
-              <span style={{ color: "#da1e28" }}> *</span>
+              <RequiredMarker />
             </>
           }
           value={form.code}
@@ -185,6 +187,7 @@ function SiteForm({
           placeholder="e.g. WS-001"
         />
         <TextInput
+          {...requiredProps()}
           id={`site-name-${prefix}`}
           labelText={
             <>
@@ -192,7 +195,7 @@ function SiteForm({
                 id="vector.admin.samplingSite.name"
                 defaultMessage="Site Name"
               />
-              <span style={{ color: "#da1e28" }}> *</span>
+              <RequiredMarker />
             </>
           }
           value={form.name}

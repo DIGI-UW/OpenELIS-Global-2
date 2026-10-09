@@ -28,6 +28,7 @@ import {
   holdingDeadline,
   shortestHoldingMinutes,
 } from "../../dateUtils";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 
 const SampleTestSection = ({
   samples,
@@ -1482,9 +1483,10 @@ const SampleTestSection = ({
                         id: "sample.type",
                         defaultMessage: "Sample Type",
                       })}
-                      <span className="required-indicator"> *</span>
+                      <RequiredMarker />
                     </span>
                   }
+                  {...requiredProps()}
                   value={sample.sampleTypeId || ""}
                   onChange={(e) =>
                     handleSampleTypeChange(sampleIndex, e.target.value)
