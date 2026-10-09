@@ -283,7 +283,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     .map(TestResultComponent::getSignificantDigits).map(String::valueOf).orElse(null);
         }
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(staged.getTestId());
-        return testResults == null || testResults.isEmpty() ? null : testResults.get(0).getSignificantDigits();
+        if (testResults == null || testResults.isEmpty()) {
+            return null;
+        }
+        return filterTestResultsByComponent(testResults, null).get(0).getSignificantDigits();
     }
 
     /**
@@ -1281,19 +1284,26 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     /**
-     * Keep only the test_result rows belonging to the resolved component (null =
-     * PRIMARY / legacy component_id-null rows). Falls back to the full list when no
-     * row matches, so a test whose test_result rows predate components still works.
+     * Keep only the test_result rows belonging to the resolved component. A main
+     * result (null) takes the rows on no component or on the test's primary
+     * component, never another component's: the rows come back in no set order.
+     * Falls back to the full list when no row matches, so a test whose test_result
+     * rows predate components still works.
      */
     private List<TestResult> filterTestResultsByComponent(List<TestResult> candidates, String componentId) {
         List<TestResult> filtered = new ArrayList<>();
         for (TestResult candidate : candidates) {
             String candidateComponentId = candidate.getComponentId();
-            if (componentId == null ? candidateComponentId == null : componentId.equals(candidateComponentId)) {
+            if (componentId == null ? onMainRecord(candidateComponentId) : componentId.equals(candidateComponentId)) {
                 filtered.add(candidate);
             }
         }
         return filtered.isEmpty() ? candidates : filtered;
+    }
+
+    private boolean onMainRecord(String componentId) {
+        return componentId == null || testResultComponentService.getMatch("id", componentId)
+                .map(TestResultComponent::getIsPrimary).orElse(false);
     }
 
     private void addMinMaxNormal(Result result, AnalyzerResultItem resultItem, Patient patient) {
