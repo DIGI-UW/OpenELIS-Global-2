@@ -13,5 +13,20 @@
             </column>
             <column name="instrument_code" type="VARCHAR(64)"/>
         </addColumn>
+        <rollback>
+            <!-- The earlier schema runs every assay under the profile's code, so an
+                 assay turned off or a code set since cannot be kept. -->
+            <sql splitStatements="false"><![CDATA[
+                DO $$
+                BEGIN
+                    IF EXISTS (SELECT 1 FROM clinlims.analyzer_mapping_test
+                               WHERE NOT enabled OR instrument_code IS NOT NULL) THEN
+                        RAISE EXCEPTION 'Analyzer mappings have assays turned off or instrument codes set, which the earlier schema cannot hold. Restore the pre-upgrade backup to undo this change.';
+                    END IF;
+                    ALTER TABLE clinlims.analyzer_mapping_test DROP COLUMN instrument_code, DROP COLUMN enabled;
+                END
+                $$;
+            ]]></sql>
+        </rollback>
     </changeSet>
 </databaseChangeLog>
