@@ -42,12 +42,20 @@ public class MicrobiologyR1InoculationLiquibaseRollbackTest {
 
                 Liquibase inoculationChangelog = new Liquibase("liquibase/microbiology-r1-inoculation-rollback.xml",
                         resources, database);
+                // Later culture histories reference this table; unwind their migration first.
+                Liquibase cultureChangelog = new Liquibase("liquibase/3.5.x.x/121-amr-v2-culture-workspace.xml",
+                        resources, database);
+                cultureChangelog.rollback(cultureChangelog.getDatabaseChangeLog().getChangeSets().size(), "test");
                 inoculationChangelog.rollback(1, "test");
                 assertFalse(tableExists(connection, "micro_case_inoculation"));
 
                 inoculationChangelog.update(new Contexts("test"));
                 assertTrue(tableExists(connection, "micro_case_inoculation"));
                 assertTrue(columnExists(connection, "micro_case_inoculation", "source_inoculation_id"));
+                cultureChangelog.update(new Contexts("test"));
+                assertTrue(tableExists(connection, "micro_culture_reading"));
+                assertTrue(columnExists(connection, "micro_case_inoculation", "duration"));
+                assertTrue(columnExists(connection, "micro_case_analysis", "culture_id"));
             }
         }
     }
