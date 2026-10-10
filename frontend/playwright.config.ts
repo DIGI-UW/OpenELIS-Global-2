@@ -53,6 +53,7 @@ const HARNESS_VIDEO_TESTS = [
   "**/foundational/harness/analyzer-adoption.spec.ts",
   "**/foundational/harness/analyzer-profile-unavailable.spec.ts",
   "**/foundational/harness/ogc-1054-delivery-issues.spec.ts",
+  "**/foundational/harness/analyzer-lifecycle.spec.ts",
 ];
 // The recorded viewport is the video frame, so nothing is scaled or padded.
 const HARNESS_VIDEO_FRAME = { width: 1280, height: 800 };

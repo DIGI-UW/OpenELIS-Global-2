@@ -86,10 +86,10 @@ export function createDemoPresentation(
         repaintsOnLoad = true;
         page.on("domcontentloaded", () => {
           // A load that starts while this paints destroys the context; the next load repaints.
-          showCaption(page, caption).catch(() => undefined);
+          showCaption(page, caption, testInfo).catch(() => undefined);
         });
       }
-      await showCaption(page, text);
+      await showCaption(page, text, testInfo);
       // Long enough to read before the screen moves on.
       if (text)
         await videoPause(
@@ -103,7 +103,7 @@ export function createDemoPresentation(
     verified: async (title, subtitle) => {
       if (!isVideo) return;
       caption = null;
-      await showCaption(page, null);
+      await showCaption(page, null, testInfo);
       await showTitleCard(page, title, subtitle, 4500, testInfo, {
         eyebrow: "Verified",
         accent: "#24a148",

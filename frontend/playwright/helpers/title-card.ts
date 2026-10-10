@@ -1,5 +1,5 @@
 import { Locator, Page, TestInfo } from "@playwright/test";
-import { isVideoProject } from "./video-pause";
+import { isVideoProject, videoPause } from "./video-pause";
 
 export type TitleCardOptions = {
   eyebrow?: string;
@@ -14,7 +14,8 @@ export type TitleCardOptions = {
  * Since Playwright records the viewport, these appear as title/transition
  * screens in the video with no post-processing needed.
  *
- * No-op when not recording video (i.e., outside *-demo-video projects).
+ * No-op when not recording video (i.e., outside *-demo-video projects, or
+ * without the test's TestInfo), as is every helper here.
  * Uses Carbon Design System dark theme colors and IBM Plex Sans.
  * Presentation only: do not use title cards to gate readiness or assertions.
  */
@@ -26,7 +27,7 @@ export async function showTitleCard(
   testInfo?: TestInfo,
   options: TitleCardOptions = {},
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await page.evaluate(
     ({ title, subtitle, eyebrow, accent, align }) => {
@@ -96,7 +97,7 @@ export async function showTitleCard(
       align: options.align ?? "left",
     },
   );
-  await page.waitForTimeout(durationMs);
+  await videoPause(page, durationMs, testInfo);
   if (options.hold) return;
   await page.evaluate(() =>
     document.getElementById("e2e-title-card")?.remove(),
@@ -113,7 +114,7 @@ export async function showCaption(
   text: string | null,
   testInfo?: TestInfo,
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await page.evaluate((captionText) => {
     let el = document.getElementById("e2e-caption");
@@ -158,14 +159,14 @@ export async function showHighlight(
   durationMs: number,
   testInfo?: TestInfo,
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await locator.scrollIntoViewIfNeeded();
   await locator.evaluate((el: HTMLElement) => {
     el.style.outline = "3px solid #f1c21b";
     el.style.outlineOffset = "2px";
   });
-  await locator.page().waitForTimeout(durationMs);
+  await videoPause(locator.page(), durationMs, testInfo);
   // The element may have left the page meanwhile.
   await locator
     .evaluate((el: HTMLElement) => {
@@ -188,7 +189,7 @@ export async function showStepCard(
   durationMs = 2000,
   testInfo?: TestInfo,
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await page.evaluate(
     ({ stepNumber, description }) => {
@@ -213,7 +214,7 @@ export async function showStepCard(
     },
     { stepNumber, description },
   );
-  await page.waitForTimeout(durationMs);
+  await videoPause(page, durationMs, testInfo);
   await page.evaluate(() => document.getElementById("e2e-step-card")?.remove());
 }
 
@@ -227,7 +228,7 @@ export async function showSceneLabel(
   label: string,
   testInfo?: TestInfo,
 ) {
-  if (testInfo && !isVideoProject(testInfo)) return;
+  if (!testInfo || !isVideoProject(testInfo)) return;
 
   await page.evaluate((sceneLabel) => {
     document.getElementById("e2e-scene-label")?.remove();
