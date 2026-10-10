@@ -13,100 +13,80 @@
  */
 package org.openelisglobal.analysisqaevent.valueholder;
 
+import jakarta.persistence.AttributeOverride;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.Table;
+import jakarta.persistence.Transient;
 import java.sql.Date;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.DynamicUpdate;
+import org.hibernate.annotations.GenericGenerator;
+import org.hibernate.annotations.Type;
 import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.ConfigurationProperties.Property;
 import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.common.valueholder.BaseObject;
-import org.openelisglobal.common.valueholder.ValueHolder;
-import org.openelisglobal.common.valueholder.ValueHolderInterface;
 import org.openelisglobal.qaevent.valueholder.QaEvent;
 
+@Getter
+@Setter
+@DynamicUpdate
+@Entity
+@Table(name = "ANALYSIS_QAEVENT")
+@AttributeOverride(name = "lastupdated", column = @Column(name = "LASTUPDATED"))
 public class AnalysisQaEvent extends BaseObject<String> {
 
+    @Id
+    @GeneratedValue(generator = "analysis_qaevent_seq_gen")
+    @GenericGenerator(name = "analysis_qaevent_seq_gen", strategy = "org.openelisglobal.hibernate.resources.StringSequenceGenerator", parameters = {
+            @org.hibernate.annotations.Parameter(name = "sequence_name", value = "analysis_qaevent_seq") })
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "ID", precision = 10, scale = 0, nullable = false)
     private String id;
 
-    private String qaEventId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "QA_EVENT_ID")
+    private QaEvent qaEvent;
 
-    private ValueHolderInterface qaEvent;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "ANALYSIS_ID")
+    private Analysis analysis;
 
-    private String analysisId;
-
-    private ValueHolderInterface analysis;
-
+    @Column(name = "COMPLETED_DATE", length = 7)
     private Date completedDate;
 
+    @Transient
     private String completedDateForDisplay;
 
+    @Transient
     private String analysisQaEventDisplayValue;
 
     public AnalysisQaEvent() {
         super();
-        this.analysis = new ValueHolder();
-        this.qaEvent = new ValueHolder();
     }
 
-    public void setId(String id) {
-        this.id = id;
-    }
-
-    public String getId() {
-        return id;
-    }
-
-    // ANALYSIS
-    public Analysis getAnalysis() {
-        return (Analysis) this.analysis.getValue();
-    }
-
-    public void setAnalysis(ValueHolderInterface analysis) {
-        this.analysis = analysis;
-    }
-
-    public void setAnalysis(Analysis analysis) {
-        this.analysis.setValue(analysis);
-    }
-
-    protected ValueHolderInterface getAnalysisHolder() {
+    protected Analysis getAnalysisHolder() {
         return this.analysis;
     }
 
-    protected void setAnalysisHolder(ValueHolderInterface analysis) {
+    protected void setAnalysisHolder(Analysis analysis) {
         this.analysis = analysis;
     }
 
-    // QA_EVENT
-    public QaEvent getQaEvent() {
-        return (QaEvent) this.qaEvent.getValue();
-    }
-
-    public void setQaEvent(ValueHolderInterface qaEvent) {
-        this.qaEvent = qaEvent;
-    }
-
-    public void setQaEvent(QaEvent qaEvent) {
-        this.qaEvent.setValue(qaEvent);
-    }
-
-    protected ValueHolderInterface getQaEventHolder() {
+    protected QaEvent getQaEventHolder() {
         return this.qaEvent;
     }
 
-    protected void setQaEventHolder(ValueHolderInterface qaEvent) {
+    protected void setQaEventHolder(QaEvent qaEvent) {
         this.qaEvent = qaEvent;
-    }
-
-    public String getAnalysisId() {
-        return analysisId;
-    }
-
-    public void setAnalysisId(String analysisId) {
-        this.analysisId = analysisId;
-    }
-
-    public Date getCompletedDate() {
-        return completedDate;
     }
 
     public void setCompletedDate(Date completedDate) {
@@ -114,23 +94,11 @@ public class AnalysisQaEvent extends BaseObject<String> {
         this.completedDateForDisplay = DateUtil.convertSqlDateToStringDate(completedDate);
     }
 
-    public String getCompletedDateForDisplay() {
-        return completedDateForDisplay;
-    }
-
     public void setCompletedDateForDisplay(String completedDateForDisplay) {
         this.completedDateForDisplay = completedDateForDisplay;
         // also update the java.sql.Date
         String locale = ConfigurationProperties.getInstance().getPropertyValue(Property.DEFAULT_LANG_LOCALE);
         this.completedDate = DateUtil.convertStringDateToSqlDate(completedDateForDisplay, locale);
-    }
-
-    public String getQaEventId() {
-        return qaEventId;
-    }
-
-    public void setQaEventId(String qaEventId) {
-        this.qaEventId = qaEventId;
     }
 
     public String getAnalysisQaEventDisplayValue() {
