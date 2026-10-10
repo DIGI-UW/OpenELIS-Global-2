@@ -36,7 +36,7 @@ test.describe("Microbiology case workbench", () => {
     page,
   }) => {
     const seeded = await seedMicrobiologyCase(page);
-    const worklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
+    const worklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
       seeded.accessionNumber,
     )}&sort=newest`;
     await page.goto(worklistUrl, { waitUntil: "domcontentloaded" });
@@ -48,7 +48,7 @@ test.describe("Microbiology case workbench", () => {
 
     await expect(page).toHaveURL(
       new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?q=${seeded.accessionNumber}&sort=newest&section=setup$`,
+        `/Microbiology/cases/${seeded.caseId}\\?grain=cultures&q=${seeded.accessionNumber}&sort=newest&section=setup$`,
       ),
     );
     await expect(
@@ -111,7 +111,10 @@ test.describe("Microbiology case workbench", () => {
     await expect(
       timeline.getByText("Subculture Recorded", { exact: true }),
     ).toBeVisible();
-    await expect(timeline.getByText("Auto", { exact: true })).toHaveCount(3);
+    await expect(
+      timeline.getByText("Sample attached", { exact: true }),
+    ).toBeVisible();
+    await expect(timeline.getByText("Auto", { exact: true })).toHaveCount(4);
     await page.getByRole("button", { name: "Add note" }).click();
     await page
       .getByLabel("Note or observation")
@@ -158,9 +161,12 @@ test.describe("Microbiology case workbench", () => {
         "Case fixture must provide an organism for identification",
       );
     }
-    await page.goto(`/Microbiology/cases/${seeded.caseId}?sort=newest`, {
-      waitUntil: "commit",
-    });
+    await page.goto(
+      `/Microbiology/cases/${seeded.caseId}?view=workbench&sort=newest`,
+      {
+        waitUntil: "commit",
+      },
+    );
 
     await expect(
       page.getByRole("heading", { name: "Microbiology case" }),
@@ -345,7 +351,7 @@ test.describe("Microbiology case workbench", () => {
     page,
   }) => {
     const flagged = await seedMicrobiologyCase(page);
-    await page.goto(`/Microbiology/cases/${flagged.caseId}`, {
+    await page.goto(`/Microbiology/cases/${flagged.caseId}?view=workbench`, {
       waitUntil: "commit",
     });
     const caseHeader = page.locator("header");
@@ -397,7 +403,7 @@ test.describe("Microbiology case workbench", () => {
     await expect(page.getByText("Nonconformance Reported")).toBeVisible();
 
     const lost = await seedMicrobiologyCase(page);
-    await page.goto(`/Microbiology/cases/${lost.caseId}`, {
+    await page.goto(`/Microbiology/cases/${lost.caseId}?view=workbench`, {
       waitUntil: "commit",
     });
     await expect(
