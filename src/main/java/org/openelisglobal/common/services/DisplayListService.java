@@ -717,6 +717,10 @@ public class DisplayListService implements LocaleChangeListener {
             typeToListMap.put(ListType.RESULT_TYPE_CODES, createResultTypeCodesList());
             break;
         }
+        case ANALYZER_LIST: {
+            typeToListMap.put(ListType.ANALYZER_LIST, createAnalyzerList());
+            break;
+        }
         }
     }
 

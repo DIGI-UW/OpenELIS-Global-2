@@ -89,6 +89,7 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
     });
     await expect(clinicalRow.first()).toContainText("HIV-1 Viral Load");
     await expect(clinicalRow.first()).toContainText("1010");
+    await expect(clinicalRow.first()).toContainText(analyzer.name);
     await demo.highlight(clinicalRow.first());
     await demo.verified(
       `HIV-1 viral load 1010 is saved on ${order.accession}`,
