@@ -1185,6 +1185,25 @@ function FreezerMonitoringDashboard({ intl }) {
                                                       })}
                                                     </Button>
                                                   )}
+                                                  <Button
+                                                    kind="danger--ghost"
+                                                    size="sm"
+                                                    disabled={
+                                                      actionInFlight ===
+                                                      alert.id
+                                                    }
+                                                    onClick={(e) => {
+                                                      e.stopPropagation();
+                                                      handleResolveAlert(
+                                                        alert.id,
+                                                      );
+                                                    }}
+                                                  >
+                                                    {intl.formatMessage({
+                                                      id: "coldStorage.dashboard.clear",
+                                                      defaultMessage: "Clear",
+                                                    })}
+                                                  </Button>
                                                 </div>
                                               </TableCell>
                                             </TableRow>
