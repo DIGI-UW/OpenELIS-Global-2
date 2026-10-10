@@ -237,6 +237,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(analyzerRow).toBeVisible();
 
     await demo.caption("The dashboard also fits a phone screen.");
+    const desktop = page.viewportSize()!;
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(analyzerRow).toBeVisible();
@@ -251,6 +252,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     );
     await demo.pause(2000);
     await capture(page, testInfo, "m3-mobile-dashboard");
+    await page.setViewportSize(desktop);
     await demo.verified(
       `${analyzerName} is active on ${profileName}`,
       "Its mappings were confirmed in Verify, then it was connected and activated.",
