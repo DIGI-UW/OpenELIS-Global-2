@@ -66,6 +66,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private QCResultProcessingService qcResultProcessingService;
     @Mock
     private AnalyzerResultPlacementService placementService;
+    @Mock
+    private org.openelisglobal.analyzer.service.BridgeProfileCatalogService profileCatalogService;
 
     @Mock
     private org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO receiptDAO;
@@ -79,7 +81,7 @@ public class AnalyzerNormalizedResultImportServiceTest {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, mappingService, analyzerResultsService,
                 testResultService, qcResultProcessingService, FHIR, receiptDAO, confirmationService,
-                mappingCatalogService, placementService);
+                mappingCatalogService, placementService, profileCatalogService);
         when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
         when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(true);

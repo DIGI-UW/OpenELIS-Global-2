@@ -8,9 +8,13 @@ import java.util.Locale;
 import java.util.Map;
 import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.form.AnalyzerMappingSelectionRequest;
+import org.openelisglobal.analyzer.service.AnalyzerAdoptionService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceService;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceState;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
+import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
+import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -32,10 +36,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class AnalyzerInstanceRestController extends BaseRestController {
 
     private final AnalyzerInstanceService analyzerInstanceService;
+    private final AnalyzerAdoptionService adoptionService;
 
     @Autowired
-    public AnalyzerInstanceRestController(AnalyzerInstanceService analyzerInstanceService) {
+    public AnalyzerInstanceRestController(AnalyzerInstanceService analyzerInstanceService,
+            AnalyzerAdoptionService adoptionService) {
         this.analyzerInstanceService = analyzerInstanceService;
+        this.adoptionService = adoptionService;
     }
 
     @PostMapping
@@ -76,10 +83,48 @@ public class AnalyzerInstanceRestController extends BaseRestController {
                 input.getRevision(), input.getMappingFingerprint(), getSysUserId(request))));
     }
 
+    /**
+     * What adopting a newer revision of the analyzer's profile does to each record.
+     */
+    @GetMapping("/{id}/adoption")
+    public ResponseEntity<AnalyzerAdoptionService.AdoptionPlan> prepareAdoption(@PathVariable String id,
+            @RequestParam int revision) {
+        return ResponseEntity.ok(adoptionService.prepareAdoption(id, revision));
+    }
+
+    /**
+     * Saves the reviewed decisions as the analyzer's next mapping revision on the
+     * newer profile revision; the existing Confirm and Apply put it in force.
+     */
+    @PostMapping("/{id}/adoption")
+    public ResponseEntity<Map<String, Object>> adopt(@PathVariable String id, @RequestParam int revision,
+            @RequestBody AnalyzerMappingUpdate decisions, HttpServletRequest request) {
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(id, revision, decisions.toDraft(),
+                getSysUserId(request));
+        Map<String, Object> response = new LinkedHashMap<>();
+        response.put("mappingId", adopted.mapping().getId());
+        response.put("mappingRevision", adopted.mapping().getRevisionNumber());
+        response.put("mappingFingerprint", adopted.mapping().getMappingFingerprint());
+        return ResponseEntity.ok(response);
+    }
+
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(IllegalArgumentException exception) {
         String message = exception.getMessage() == null ? "Invalid analyzer request" : exception.getMessage();
         return ResponseEntity.badRequest().body(Map.of("error", message));
+    }
+
+    /**
+     * Apply switches OE2 and the Bridge together, so a Bridge failure there means
+     * nothing was applied.
+     */
+    @ExceptionHandler(BridgeAnalyzerConnectionException.class)
+    public ResponseEntity<Map<String, Object>> handleBridgeFailure(BridgeAnalyzerConnectionException exception) {
+        Map<String, Object> body = new LinkedHashMap<>();
+        body.put("error", "The Analyzer Bridge could not switch with this mapping, so nothing was applied."
+                + " Try again when it is reachable.");
+        body.put("messageKey", exception.messageKey());
+        return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }
 
     private static Map<String, Object> toMap(AnalyzerInstanceView view) {

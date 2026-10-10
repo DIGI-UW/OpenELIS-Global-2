@@ -101,10 +101,16 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     public static final String IMPORT_ISSUE_RUN_FAILED = "run_failed";
     /** A control that reports an answer, for a test and level with no QC target. */
     public static final String IMPORT_ISSUE_QC_TARGET_MISSING = "qc_target_missing";
+    /**
+     * Sent under another revision of the analyzer's profile than the one in force,
+     * for a record the two revisions read differently.
+     */
+    public static final String IMPORT_ISSUE_OTHER_REVISION = "arrived_under_other_revision";
     /** Held results that applying the analyzer's mapping retries. */
     public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
             IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
-            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING);
+            IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING,
+            IMPORT_ISSUE_OTHER_REVISION);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;

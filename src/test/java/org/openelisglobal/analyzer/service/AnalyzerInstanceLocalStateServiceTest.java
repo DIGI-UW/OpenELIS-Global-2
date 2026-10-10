@@ -263,14 +263,30 @@ public class AnalyzerInstanceLocalStateServiceTest {
     }
 
     @Test
-    public void cannotReplaceTheProfileOfAConfiguredAnalyzer() {
+    public void aConfiguredAnalyzerMovesToANewerRevisionOnlyByAdoption() {
+        Analyzer analyzer = analyzer("42");
+        bind(analyzer);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        request.setProfileRevision(4);
+
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> service.update("42", request, "17"));
+
+        assertTrue(refused.getMessage(), refused.getMessage().contains("Adopt revision 4"));
+        verify(analyzerService, never()).update(any(Analyzer.class));
+    }
+
+    @Test
+    public void aConfiguredAnalyzerKeepsItsProfile() {
         Analyzer analyzer = analyzer("42");
         bind(analyzer);
         when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
         request.setProfileId("another-profile");
 
-        assertThrows(IllegalArgumentException.class, () -> service.update("42", request, "17"));
+        IllegalArgumentException refused = assertThrows(IllegalArgumentException.class,
+                () -> service.update("42", request, "17"));
 
+        assertTrue(refused.getMessage(), refused.getMessage().contains("keeps its profile"));
         verify(analyzerService, never()).update(any(Analyzer.class));
     }
 

@@ -99,6 +99,29 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
     }
 
     @Override
+    @Transactional
+    public AnalyzerMappingSnapshot adoptRevision(Analyzer analyzer, int profileRevision, AnalyzerMappingDraft draft,
+            String actor) {
+        String effectiveActor = requireText(actor, "actor");
+        if (analyzer == null || analyzer.getId() == null) {
+            throw new IllegalArgumentException("A saved analyzer is required");
+        }
+        validateDraft(draft);
+        AnalyzerMapping current = mappingDAO.findLatestByAnalyzerId(analyzer.getId())
+                .orElseThrow(() -> new IllegalStateException("Analyzer has no mapping: " + analyzer.getId()));
+        if (profileRevision <= current.getProfileRevision()) {
+            throw new IllegalArgumentException("Adoption moves to a newer revision of " + current.getProfileId());
+        }
+        BridgeAnalyzerProfile profile = findProfile(current.getProfileId(), profileRevision);
+        if (!"ACTIVE".equals(profile.status())) {
+            throw new IllegalArgumentException(
+                    profileLabel(current.getProfileId(), profileRevision) + " is not active");
+        }
+        return persistRevision(analyzer, current, current.getRevisionNumber() + 1, profile.profileId(),
+                profile.revision(), profile.revisionFingerprint(), draft, effectiveActor);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public Optional<AnalyzerMappingSnapshot> findLatestByAnalyzerId(String analyzerId) {
         return mappingDAO.findLatestByAnalyzerId(requireText(analyzerId, "analyzer ID")).map(this::load);
@@ -292,7 +315,7 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
     }
 
     private static String label(String sourceRowKey, String subIdentity) {
-        return subIdentity == null || subIdentity.isEmpty() ? sourceRowKey : sourceRowKey + " " + subIdentity;
+        return new AnalyzerMappingRowKey(sourceRowKey, subIdentity).label();
     }
 
     private static boolean hasText(String value) {

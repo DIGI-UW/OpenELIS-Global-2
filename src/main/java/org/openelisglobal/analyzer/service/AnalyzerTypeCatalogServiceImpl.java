@@ -101,8 +101,10 @@ public class AnalyzerTypeCatalogServiceImpl implements AnalyzerTypeCatalogServic
             BridgeAnalyzerProfile profile) {
         AnalyzerMapping inForce = analyzer.getMapping();
         boolean newerProfileRevision = inForce.getProfileRevision() < profile.revision();
+        boolean newerMappingRevision = mappingDAO.findLatestByAnalyzerId(analyzer.getId())
+                .map(latest -> latest.getRevisionNumber() > inForce.getRevisionNumber()).orElse(false);
         return new AnalyzerTypeCatalogView.AffectedAnalyzer(analyzer.getId(), analyzer.getName(), analyzer.isActive(),
-                inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision);
+                inForce.getProfileRevision(), inForce.getRevisionNumber(), newerProfileRevision, newerMappingRevision);
     }
 
     private static AnalyzerTypeCatalogView.MappingSummary mappingSummary(int total, long bound) {
