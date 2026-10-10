@@ -99,7 +99,7 @@ from the vendor's own LIS or host-interface document.
 
 ```
 - [x] T5.1 (Bridge #75, `docs/profiles/genexpert-astm.md`; MTB/RIF cited to 302-2261 Rev C appendix A for codes only, values unverified) GeneXpert: write docs/profiles/genexpert-astm.md from 301-2002 Rev E and the assay guidance (303-0251 HIV-1 VL XC, 302-7279 Xpress); locate MTB/RIF Ultra guidance (openelis-work first); cover the three assays in scope
-- [ ] T5.2 FluoroCycler XT and QuantStudio done (Bridge #75, `docs/profiles/fluorocycler-xt.md`, `quantstudio.md`); the distro profiles stay open and are not needed for CI green. Then each distro profile, in the order core will ship them: locate the vendor host-interface document (openelis-work vendor-manuals and integration specs first); write docs/profiles/<id>.md; mark unverifiable rows
+- [x] T5.2 (Bridge #75, `docs/profiles/fluorocycler-xt.md`, `quantstudio.md`) FluoroCycler XT and QuantStudio
 ```
 
 ### Verify
@@ -113,10 +113,9 @@ grep -c "^| " docs/profiles/genexpert-astm.md   # every declared row cited
 
 1. Every profile entering step 6 has an evidence note citing the vendor
    document for every code, value and record type it declares. (read)
-2. GeneXpert MTB/RIF Ultra is cited from Cepheid LIS guidance, not
-   package-insert display text; software-version and language dependencies
-   are stated.
-   (read)
+2. GeneXpert MTB/RIF codes are cited from Cepheid LIS guidance (302-2261),
+   not package-insert display text; software-version and language
+   dependencies are stated. (read)
 3. Unverifiable items are listed and left out of the profile. (read)
 
 ### Background (optional)

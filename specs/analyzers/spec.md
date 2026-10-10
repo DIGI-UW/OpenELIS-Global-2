@@ -24,8 +24,8 @@ is listed in [roadmap.md](roadmap.md).
    code table, resolves every unresolved row among them, confirms, and activates.
    Language and number format can be overridden per analyzer on its Bridge
    connection, and a code the profile never declared is mapped like any other
-   row. Setting, per analyzer, the code an instrument sends for a declared assay
-   waits for codes settled at setup ([roadmap](roadmap.md) item 6).
+   row. The code an instrument sends for a declared assay is a setting of its
+   Bridge connection; OpenELIS does not hold it.
 3. **Results arrive as FHIR bundles.** The Bridge parses the instrument's
    message and puts everything it understood into the bundle: each part of a
    result (number with comparator, qualitative call, log, analyte values,
