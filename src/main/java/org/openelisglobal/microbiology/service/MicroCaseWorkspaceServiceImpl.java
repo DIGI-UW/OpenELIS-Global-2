@@ -72,13 +72,14 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
 
     @Override
     public MicroCaseShellForm get(String id, String userId) {
+        if (userId == null || userId.isBlank())
+            throw new AccessDeniedException("Authenticated system user required");
         Object[] v = searchDAO.getSummary(id);
         if (v == null)
             throw new ResponseStatusException(HttpStatus.NOT_FOUND);
         MicroCase c = (MicroCase) v[0];
-        if (!access.canReadLabUnit(userId, c.getLabUnitId()))
-            throw new AccessDeniedException("Case lab unit access required");
         MicroCaseShellForm f = summary(v, new MicroCaseShellForm());
+        f.readOnlyAccess = !access.canReadLabUnit(userId, c.getLabUnitId());
         boolean mutable = true;
         try {
             MicroCaseMutationGuard.requireMutable(c);
@@ -112,7 +113,7 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
         }
         for (String relatedId : membership.getRelatedCaseIds(id)) {
             Object[] related = searchDAO.getSummary(relatedId);
-            if (related != null && access.canReadLabUnit(userId, ((MicroCase) related[0]).getLabUnitId()))
+            if (related != null)
                 f.relatedCases.add(summary(related, new MicroCaseSummaryForm()));
         }
         if (f.canWrite) {

@@ -88,8 +88,7 @@ public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
         PreAuthorize rule = method.getAnnotation(PreAuthorize.class);
         String role = rule != null && SUPERVISOR_ACCESS.equals(rule.value()) ? Constants.ROLE_VALIDATION
                 : Constants.ROLE_RESULTS;
-        boolean allowed = read ? access.canReadLabUnit(actor, c.getLabUnitId())
-                : access.hasLabUnitRole(actor, c.getLabUnitId(), role);
+        boolean allowed = read || access.hasLabUnitRole(actor, c.getLabUnitId(), role);
         if (!allowed)
             throw new AccessDeniedException("Case lab unit access required");
     }

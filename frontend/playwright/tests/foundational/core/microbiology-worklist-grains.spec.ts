@@ -51,8 +51,7 @@ test.describe("M-07 microbiology worklist grains", () => {
     await page.keyboard.press("Enter");
     await page.waitForURL((url) => {
       return (
-        url.pathname ===
-          `/Microbiology/cases/${seeded.caseId}?view=workbench` &&
+        url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
         url.searchParams.get("q") === seeded.caseId &&
         url.searchParams.get("sort") === "newest"
       );
@@ -105,8 +104,7 @@ test.describe("M-07 microbiology worklist grains", () => {
     await page.keyboard.press("Enter");
     await page.waitForURL((url) => {
       return (
-        url.pathname ===
-          `/Microbiology/cases/${seeded.caseId}?view=workbench` &&
+        url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
         url.searchParams.get("grain") === "ast" &&
         url.searchParams.get("status") === "in-progress" &&
         url.searchParams.get("section") === "ast" &&
@@ -172,8 +170,7 @@ test.describe("M-07 microbiology worklist grains", () => {
 
     await page.waitForURL((url) => {
       return (
-        url.pathname ===
-          `/Microbiology/cases/${seeded.caseId}?view=workbench` &&
+        url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
         url.searchParams.get("grain") === "ast" &&
         url.searchParams.get("status") === "reviewed" &&
         url.searchParams.get("section") === "ast" &&

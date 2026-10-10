@@ -417,10 +417,8 @@ results. Joining and regrouping are deferred.
 | Microbiology medium items, lots, Used on cultures                                                                    | Existing Inventory rights       |
 
 Every worklist read and every write checks the case lab unit. A user without
-rights does not see the case on the worklist; direct fetch is also rejected.
-Milestone 2 uses this stricter read boundary for both search and direct links
-([case access contract](milestone-2.md)); it supersedes the earlier direct-link
-read-only exception in AC-V2-60. The server rejects unauthorized changes. Writes are
+rights does not see the case on the worklist; a direct link opens it read-only
+and the server rejects any change (Access, AC-V2-49, AC-V2-60). Writes are
 blocked offline. No micro-specific permission key is introduced.
 
 ## 10. V1 disposition: retire, restructure, evolve

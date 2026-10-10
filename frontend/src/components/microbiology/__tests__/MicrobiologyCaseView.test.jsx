@@ -6,6 +6,7 @@ import { IntlProvider } from "react-intl";
 import { MemoryRouter, Route } from "react-router-dom";
 import { vi } from "vitest";
 import MicrobiologyCaseView from "../MicrobiologyCaseView";
+import CaseWorkspaceService from "../CaseWorkspaceService";
 import messages from "../../../languages/en.json";
 
 const caseDetail = {
@@ -104,6 +105,43 @@ const getAccordionButton = (name) => {
 };
 
 describe("MicrobiologyCaseView", () => {
+  test("an out-of-unit workbench link displays the read-only shell", async () => {
+    const directRead = vi
+      .spyOn(CaseWorkspaceService, "getCase")
+      .mockResolvedValue({
+        ...caseDetail,
+        status: "ACTIVE",
+        labUnit: "Other lab",
+        samples: [],
+        pendingSamples: [],
+        relatedCases: [],
+        canWrite: false,
+        canValidate: false,
+        readOnlyAccess: true,
+        transferLabUnits: [],
+      });
+    try {
+      renderCase(
+        {
+          ...astServiceStubs,
+          getCaseDetail: vi
+            .fn()
+            .mockResolvedValue({ ...caseDetail, readOnlyAccess: true }),
+        },
+        "/Microbiology/cases/case-1?view=workbench",
+      );
+      await screen.findByText("Case details are read-only in this view.");
+      expect(
+        screen.queryByRole("button", { name: "Start inoculation" }),
+      ).toBeNull();
+      expect(
+        screen.queryByRole("button", { name: "Transfer case" }),
+      ).toBeNull();
+      expect(directRead).toHaveBeenCalledWith("case-1");
+    } finally {
+      directRead.mockRestore();
+    }
+  });
   it("opens primary inoculation from the received next step with canonical URL state", async () => {
     const user = userEvent.setup();
     const service = {

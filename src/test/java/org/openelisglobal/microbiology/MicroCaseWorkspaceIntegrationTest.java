@@ -135,7 +135,7 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
-    public void httpQueriesBindFiltersAndRejectOutOfUnitDirectLinks() throws Exception {
+    public void httpQueriesScopeResultsAndAllowReadOnlyDirectLinks() throws Exception {
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .get("/rest/microbiology/cases/search")
                 .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor())
@@ -149,7 +149,13 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .get("/rest/microbiology/cases/" + hidden.getId() + "/shell")
                 .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor()))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.readOnlyAccess").value(true))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.canWrite")
+                        .value(false))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath("$.canValidate")
+                        .value(false));
         mockMvc.perform(
                 org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                         .get("/rest/microbiology/cases/search")
@@ -175,7 +181,7 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
-    public void childResourceReadsCannotBypassCaseAuthorization() throws Exception {
+    public void childResourcesAllowDirectReadsButRejectOutOfUnitWrites() throws Exception {
         MicroIsolate isolate = new MicroIsolate();
         isolate.setCaseId(hidden.getId());
         isolate.setIsolateLabel("M2-hidden");
@@ -184,6 +190,12 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
                 .get("/rest/microbiology/isolates/" + isolate.getId() + "/identification-history")
                 .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+        mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
+                .put("/rest/microbiology/isolates/" + isolate.getId() + "/identification")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor())
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
+                .content("{\"preliminaryOrganismText\":\"denied\"}"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
     }
 
@@ -238,8 +250,13 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     }
 
     @Test
-    public void directAccessAndExplicitUnitFiltersCannotExposeOtherUnits() {
-        assertThrows(AccessDeniedException.class, () -> workspace.get(hidden.getId(), viewer));
+    public void directReadIsAllowedWhileExplicitUnitSearchRemainsScoped() {
+        var direct = workspace.get(hidden.getId(), viewer);
+        assertTrue(direct.readOnlyAccess);
+        assertFalse(direct.canWrite);
+        assertFalse(direct.canValidate);
+        assertEquals(0, direct.transferLabUnits.size());
+        assertThrows(AccessDeniedException.class, () -> workspace.get(hidden.getId(), null));
         var q = query();
         q.labUnitId = other.getId();
         assertThrows(AccessDeniedException.class, () -> workspace.search(q, viewer));
@@ -293,7 +310,7 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
 
     @Test
     public void sharedSamplesAppearWithRelatedCasesAcrossTransfers() {
-        grant(source.getId(), other.getId(), destination.getId());
+        grant(source.getId(), destination.getId());
         var sample = fixtures.createSampleWithSampleItem("M2-MEMBER");
         sample.setTypeOfSample(fixtures.getOrCreateActiveSampleType());
         sampleItems.update(sample);

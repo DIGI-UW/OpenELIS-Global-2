@@ -79,6 +79,7 @@ test.describe("microbiology worklist and critical communication", () => {
   }) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
     const query = new URLSearchParams({
+      grain: "cultures",
       q: seeded.caseId,
       sort: "newest",
       pageSize: "10",
@@ -165,7 +166,9 @@ test.describe("microbiology worklist and critical communication", () => {
       sort: "newest",
     });
     await page.getByLabel("Sort", { exact: true }).selectOption("newest");
-    await expect(page).toHaveURL(/\/Microbiology\/worklist\?sort=newest$/);
+    await expect(page).toHaveURL(
+      /\/Microbiology\/worklist\?grain=cultures&sort=newest$/,
+    );
     await sortResponse;
 
     await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
