@@ -159,7 +159,7 @@ describe("DisposeSampleModal", () => {
 
   /**
    * OGC-144: Test that onDisposalSuccess callback prop is accepted
-   * Note: The actual callback invocation happens in parent (StorageDashboard.jsx)
+   * Note: The actual callback invocation happens in parent (SampleItemsPage.jsx)
    * after successful API response, not in the modal itself.
    * This test verifies the prop is properly accepted without errors.
    */

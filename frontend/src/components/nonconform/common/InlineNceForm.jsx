@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useContext } from "react";
 import { format } from "date-fns";
+import { labNow } from "../../utils/labClock";
 import {
   Button,
   DatePicker,
@@ -23,6 +24,7 @@ import { NotificationKinds } from "../../common/CustomNotification";
 import UserSessionDetailsContext from "../../../UserSessionDetailsContext";
 import NceFileAttachment from "./NceFileAttachment";
 import "./InlineNceForm.css";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 /**
  * Inline NCE form for embedding in result entry or order workflow pages.
@@ -55,10 +57,12 @@ const InlineNceForm = ({
   const [submitting, setSubmitting] = useState(false);
   const [errors, setErrors] = useState({});
 
+  const today = format(labNow(), "MM/dd/yyyy");
+
   const [nceForm, setNceForm] = useState({
     nceNumber: "",
     reporterName: "",
-    dateOfEvent: format(new Date(), "MM/dd/yyyy"),
+    dateOfEvent: today,
     reportingUnit: "",
     title: "",
     description: initialDescription || "",
@@ -353,7 +357,7 @@ const InlineNceForm = ({
           datePickerType="single"
           dateFormat="m/d/Y"
           value={nceForm.dateOfEvent}
-          maxDate={format(new Date(), "MM/dd/yyyy")}
+          maxDate={today}
           onChange={(dates) => {
             if (dates && dates[0]) {
               const formatted = format(new Date(dates[0]), "MM/dd/yyyy");
@@ -364,11 +368,15 @@ const InlineNceForm = ({
           <DatePickerInput
             id="inline-nce-date"
             placeholder="mm/dd/yyyy"
+            {...requiredProps()}
             labelText={
-              intl.formatMessage({
-                id: "nce.field.dateOfEvent",
-                defaultMessage: "Date of Event",
-              }) + " *"
+              <>
+                {intl.formatMessage({
+                  id: "nce.field.dateOfEvent",
+                  defaultMessage: "Date of Event",
+                })}
+                <RequiredMarker />
+              </>
             }
             invalid={!!errors.dateOfEvent}
             invalidText={errors.dateOfEvent}
@@ -376,11 +384,15 @@ const InlineNceForm = ({
         </DatePicker>
         <Select
           id="inline-nce-reporting-unit"
+          {...requiredProps()}
           labelText={
-            intl.formatMessage({
-              id: "nce.field.reportingUnit",
-              defaultMessage: "Reporting Unit",
-            }) + " *"
+            <>
+              {intl.formatMessage({
+                id: "nce.field.reportingUnit",
+                defaultMessage: "Reporting Unit",
+              })}
+              <RequiredMarker />
+            </>
           }
           value={nceForm.reportingUnit}
           onChange={(e) => handleFormChange("reportingUnit", e.target.value)}
@@ -398,11 +410,15 @@ const InlineNceForm = ({
       <div className="inline-nce-row">
         <Select
           id="inline-nce-category"
+          {...requiredProps()}
           labelText={
-            intl.formatMessage({
-              id: "nce.field.category",
-              defaultMessage: "Category",
-            }) + " *"
+            <>
+              {intl.formatMessage({
+                id: "nce.field.category",
+                defaultMessage: "Category",
+              })}
+              <RequiredMarker />
+            </>
           }
           value={nceForm.categoryId}
           onChange={(e) => {
@@ -539,11 +555,15 @@ const InlineNceForm = ({
 
       <TextArea
         id="inline-nce-description"
+        {...requiredProps()}
         labelText={
-          intl.formatMessage({
-            id: "nce.field.description",
-            defaultMessage: "Description",
-          }) + " *"
+          <>
+            {intl.formatMessage({
+              id: "nce.field.description",
+              defaultMessage: "Description",
+            })}
+            <RequiredMarker />
+          </>
         }
         placeholder={intl.formatMessage({
           id: "nce.field.description.placeholder",

@@ -103,6 +103,24 @@ describe("UserManagement", () => {
     expect(await screen.findByText("Open")).toBeInTheDocument();
   });
 
+  it("keeps the active filter mounted and checked while requesting active users", async () => {
+    getFromOpenElisServer.mockImplementation((url, cb) =>
+      cb(payload([user("1", "Open", "ELIS", "admin")])),
+    );
+    renderScreen();
+    const checkbox = await screen.findByLabelText("Only Active");
+    expect(checkbox).not.toBeChecked();
+    await userEvent.click(screen.getByText("Only Active"));
+    await waitFor(() =>
+      expect(getFromOpenElisServer).toHaveBeenCalledWith(
+        expect.stringContaining("filter=isActive"),
+        expect.any(Function),
+      ),
+    );
+    expect(screen.getByLabelText("Only Active")).toBe(checkbox);
+    expect(checkbox).toBeChecked();
+  });
+
   it("reads the list again after a delete, without reloading the document", async () => {
     const before = payload([
       user("1", "Open", "ELIS", "admin"),

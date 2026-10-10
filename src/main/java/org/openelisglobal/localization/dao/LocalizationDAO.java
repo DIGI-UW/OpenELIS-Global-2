@@ -50,4 +50,14 @@ public interface LocalizationDAO extends BaseDAO<Localization, String> {
      */
     List<Object[]> getTranslationStatsForAllActiveLocales();
 
+    /**
+     * Copies the English value of a test name localization into the stored name
+     * column of every test that uses it. The column is not written when a test is
+     * read (its getter answers in the reader's language), so a rename has to set it
+     * here for the reports that read it (OGC-1442). The row version is left alone
+     * so a test held in the same session can still be saved.
+     *
+     * @param localizationId the renamed localization
+     */
+    void syncStoredTestNames(String localizationId);
 }

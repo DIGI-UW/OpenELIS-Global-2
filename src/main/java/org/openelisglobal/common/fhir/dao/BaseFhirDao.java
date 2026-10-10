@@ -28,16 +28,21 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.BiFunction;
 import java.util.function.Consumer;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.fhir.internals.FhirCriteriaContext;
 import org.openelisglobal.common.fhir.internals.FhirQueryContext;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.fhir.FhirConstants;
+import org.openelisglobal.patient.valueholder.Patient;
+import org.openelisglobal.result.valueholder.Result;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
 import org.openelisglobal.search.FhirPropertyResolver;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -787,6 +792,7 @@ public abstract class BaseFhirDao {
         if (predicateConfigurer != null) {
             predicateConfigurer.accept(context);
         }
+        requireFhirIdentity(context);
 
         criteriaQuery.select(criteriaBuilder.countDistinct(root));
 
@@ -896,6 +902,117 @@ public abstract class BaseFhirDao {
     }
 
     /**
+     * The HumanName {@code name} search shared by Patient and Practitioner: each
+     * value matches the given or the family name of the person.
+     */
+    protected <T, R> Optional<Predicate> createHumanNamePredicate(FhirCriteriaContext<T, R> context,
+            StringAndListParam name) {
+
+        if (name == null) {
+            return Optional.empty();
+        }
+
+        CriteriaBuilder criteriaBuilder = requireCriteriaBuilder(context);
+        Expression<String> given = resolveStringExpression(context, FhirConstants.FIRST_NAME_SEARCH_HANDLER);
+        Expression<String> family = resolveStringExpression(context, FhirConstants.LAST_NAME_SEARCH_HANDLER);
+
+        return handleStringAndListParam(criteriaBuilder, name,
+                parameter -> combineWithOr(criteriaBuilder,
+                        Stream.of(createSingleStringPredicate(criteriaBuilder, given, parameter),
+                                createSingleStringPredicate(criteriaBuilder, family, parameter))
+                                .flatMap(Optional::stream).toList()));
+    }
+
+    /** {@code telecom}: every contact field of the person. */
+    protected <T, R> Optional<Predicate> createTelecomPredicate(FhirCriteriaContext<T, R> context,
+            TokenAndListParam telecom) {
+        return createContactPointPredicate(context, telecom, CONTACT_POINT_PROPERTIES);
+    }
+
+    /** {@code email}: the person's email only. */
+    protected <T, R> Optional<Predicate> createEmailPredicate(FhirCriteriaContext<T, R> context,
+            TokenAndListParam email) {
+        return createContactPointPredicate(context, email, List.of(FhirConstants.EMAIL_SEARCH_HANDLER));
+    }
+
+    /** {@code phone}: the person's telephone numbers, not email or fax. */
+    protected <T, R> Optional<Predicate> createPhonePredicate(FhirCriteriaContext<T, R> context,
+            TokenAndListParam phone) {
+        return createContactPointPredicate(context, phone, PHONE_PROPERTIES);
+    }
+
+    private static final List<String> PHONE_PROPERTIES = List.of(FhirConstants.WORK_PHONE_SEARCH_HANDLER,
+            FhirConstants.HOME_PHONE_SEARCH_HANDLER, FhirConstants.CELL_PHONE_SEARCH_HANDLER,
+            FhirConstants.PRIMARY_PHONE_SEARCH_HANDLER);
+
+    private static final List<String> CONTACT_POINT_PROPERTIES = Stream
+            .concat(Stream.of(FhirConstants.EMAIL_SEARCH_HANDLER, FhirConstants.FAX_SEARCH_HANDLER),
+                    PHONE_PROPERTIES.stream())
+            .toList();
+
+    /**
+     * A ContactPoint token search over the given person fields. Repeated parameters
+     * are ANDed and comma-separated values ORed. The token system ({@code phone},
+     * {@code email}, {@code fax}) narrows the fields searched:
+     * <ul>
+     * <li>{@code system|value} matches the value in those fields, and a system the
+     * parameter cannot hold ({@code phone=email|x}, {@code telecom=sms|x}) matches
+     * nothing rather than dropping the constraint;</li>
+     * <li>{@code system|} matches a person who has any value in those fields;</li>
+     * <li>{@code value} alone matches it in every field of the parameter;</li>
+     * <li>a token with neither is empty and ignored.</li>
+     * </ul>
+     */
+    protected <T, R> Optional<Predicate> createContactPointPredicate(FhirCriteriaContext<T, R> context,
+            TokenAndListParam tokenParam, List<String> propertyPaths) {
+
+        if (tokenParam == null) {
+            return Optional.empty();
+        }
+
+        CriteriaBuilder criteriaBuilder = requireCriteriaBuilder(context);
+
+        return handleTokenAndListParam(criteriaBuilder, tokenParam, token -> {
+            String system = trimToNull(token.getSystem());
+            String value = trimToNull(token.getValue());
+            if (system == null && value == null) {
+                return Optional.empty();
+            }
+            List<String> selected = selectContactPointProperties(system, propertyPaths);
+            if (selected.isEmpty()) {
+                return Optional.of(criteriaBuilder.disjunction());
+            }
+            List<Predicate> matches = selected.stream().map(path -> resolveStringExpression(context, path))
+                    .map(expression -> value == null
+                            ? criteriaBuilder.and(criteriaBuilder.isNotNull(expression),
+                                    criteriaBuilder.notEqual(criteriaBuilder.trim(expression), ""))
+                            : criteriaBuilder.equal(criteriaBuilder.lower(expression), value.toLowerCase(Locale.ROOT)))
+                    .toList();
+            return combineWithOr(criteriaBuilder, matches);
+        });
+    }
+
+    private List<String> selectContactPointProperties(String system, List<String> propertyPaths) {
+        if (system == null) {
+            return propertyPaths;
+        }
+        return switch (system.toLowerCase(Locale.ROOT)) {
+        case "email" -> propertyPaths.stream().filter(FhirConstants.EMAIL_SEARCH_HANDLER::equals).toList();
+        case "fax" -> propertyPaths.stream().filter(FhirConstants.FAX_SEARCH_HANDLER::equals).toList();
+        case "phone" -> propertyPaths.stream().filter(PHONE_PROPERTIES::contains).toList();
+        default -> List.of();
+        };
+    }
+
+    private static String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
+    }
+
+    /**
      * Gets the CriteriaBuilder from the supplied context.
      */
     protected <T, R> CriteriaBuilder requireCriteriaBuilder(FhirCriteriaContext<T, R> context) {
@@ -914,6 +1031,7 @@ public abstract class BaseFhirDao {
      */
     private <R> List<R> executeQuery(FhirCriteriaContext<?, R> context, int firstResult, int maxResults) {
         try {
+            requireFhirIdentity(context);
             applyDefaultOrdering(context);
 
             List<R> results = context.createQuery().setFirstResult(firstResult).setMaxResults(maxResults)
@@ -937,6 +1055,25 @@ public abstract class BaseFhirDao {
      * client walking the pages of a search could see the same resource twice and
      * never see another one at all.
      */
+    /**
+     * Patients, specimens (sample items), analyses (ServiceRequest and
+     * DiagnosticReport) and results (Observation) take their FHIR id from fhir_uuid
+     * alone, and HAPI refuses a whole bundle when one resource in it has no id. A
+     * legacy or hand-seeded row without fhir_uuid used to turn every page that
+     * reached it into a 500; such a row cannot be read by id either, so the search
+     * and its total leave it out. Practitioner, Organization and Device fall back
+     * to the OpenELIS id and are not filtered.
+     */
+    private static final Set<Class<?>> UUID_IDENTIFIED_ROOTS = Set.of(Patient.class, SampleItem.class, Analysis.class,
+            Result.class);
+
+    private void requireFhirIdentity(FhirCriteriaContext<?, ?> context) {
+        Root<?> root = context.getRoot();
+        if (root != null && UUID_IDENTIFIED_ROOTS.contains(root.getJavaType())) {
+            context.addPredicate(context.getCriteriaBuilder().isNotNull(root.get(FhirConstants.ID_PROPERTY)));
+        }
+    }
+
     private void applyDefaultOrdering(FhirCriteriaContext<?, ?> context) {
         if (!(context.getCriteriaQuery() instanceof CriteriaQuery<?> criteriaQuery)) {
             return;

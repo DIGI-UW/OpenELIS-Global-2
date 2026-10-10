@@ -1,5 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+  useContext,
+  useCallback,
+  useMemo,
+} from "react";
 import {
+  Button,
   Modal,
   Loading,
   InlineNotification,
@@ -13,31 +20,42 @@ import {
   TableCell,
   Section,
   TextArea,
+  Dropdown,
 } from "@carbon/react";
 import { FormattedMessage, injectIntl } from "react-intl";
 import PropTypes from "prop-types";
-import { fetchAlertDetails, acknowledgeAlert, resolveAlert } from "./api";
+import "./AlertDetailModal.scss";
+import {
+  fetchAlertDetails,
+  acknowledgeAlert,
+  resolveAlert,
+  deleteAlert,
+  createCorrectiveAction,
+} from "./api";
+import { getActionTypes } from "./CorrectiveActions";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
+import { hasRole, Roles } from "../utils/Utils";
+import { formatDateTime as formatIsoDateTime } from "./shared/timeUtils";
 
-const AlertDetailModal = ({
-  intl,
-  alertId,
-  open,
-  onClose,
-  currentUserId = 1,
-}) => {
+const AlertDetailModal = ({ intl, alertId, open, onClose }) => {
+  const { userSessionDetails } = useContext(UserSessionDetailsContext);
+  const isAdminUser = hasRole(userSessionDetails, Roles.GLOBAL_ADMIN);
+  const correctiveActionTypes = useMemo(() => getActionTypes(intl), [intl]);
   const [alert, setAlert] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [actionInProgress, setActionInProgress] = useState(false);
   const [notes, setNotes] = useState("");
+  const [showCorrectiveActionForm, setShowCorrectiveActionForm] =
+    useState(false);
+  const [correctiveActionType, setCorrectiveActionType] = useState(null);
+  const [correctiveActionDescription, setCorrectiveActionDescription] =
+    useState("");
+  const [correctiveActionSubmitting, setCorrectiveActionSubmitting] =
+    useState(false);
+  const [deleteConfirming, setDeleteConfirming] = useState(false);
 
-  useEffect(() => {
-    if (open && alertId) {
-      loadAlertDetails();
-    }
-  }, [open, alertId]);
-
-  const loadAlertDetails = async () => {
+  const loadAlertDetails = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
@@ -48,33 +66,23 @@ const AlertDetailModal = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, [alertId]);
 
-  const formatDateTime = (dateTimeString) => {
-    if (!dateTimeString) return "-";
-    try {
-      // Handle epoch timestamps (in seconds or milliseconds)
-      if (typeof dateTimeString === "number") {
-        // If timestamp is less than year 2100 in milliseconds, assume it's in seconds
-        const timestamp =
-          dateTimeString < 4102444800000
-            ? dateTimeString * 1000
-            : dateTimeString;
-        return new Date(timestamp).toLocaleString();
-      }
-      // Handle ISO 8601 strings (e.g., "2024-01-01T00:00:00Z")
-      return new Date(dateTimeString).toLocaleString();
-    } catch (error) {
-      console.error("Error formatting date:", dateTimeString, error);
-      return dateTimeString;
+  useEffect(() => {
+    if (open && alertId) {
+      setDeleteConfirming(false);
+      loadAlertDetails();
     }
-  };
+  }, [open, alertId, loadAlertDetails]);
+
+  const formatDateTime = (dateTimeString) =>
+    formatIsoDateTime(dateTimeString, "-");
 
   const handleAcknowledge = async () => {
     setActionInProgress(true);
     setError(null);
     try {
-      await acknowledgeAlert(alertId, currentUserId, notes);
+      await acknowledgeAlert(alertId, notes);
       setNotes("");
       onClose(); // Close modal immediately after successful action
     } catch (err) {
@@ -87,7 +95,7 @@ const AlertDetailModal = ({
     setActionInProgress(true);
     setError(null);
     try {
-      await resolveAlert(alertId, currentUserId, notes || "Resolved");
+      await resolveAlert(alertId, notes || "Resolved");
       setNotes("");
       onClose(); // Close modal immediately after successful action
     } catch (err) {
@@ -96,12 +104,73 @@ const AlertDetailModal = ({
     }
   };
 
+  const handleDelete = async () => {
+    setActionInProgress(true);
+    setError(null);
+    try {
+      await deleteAlert(alertId);
+      onClose();
+    } catch (err) {
+      setError(
+        err.message ||
+          intl.formatMessage({
+            id: "freezer.alert.detail.deleteFailed",
+            defaultMessage: "Failed to delete alert",
+          }),
+      );
+      setActionInProgress(false);
+    }
+  };
+
+  const handleLogCorrectiveAction = async () => {
+    if (!alert?.freezer?.id && !alert?.alertEntityId) {
+      return;
+    }
+    setCorrectiveActionSubmitting(true);
+    setError(null);
+    try {
+      await createCorrectiveAction(
+        alert.freezer?.id ?? alert.alertEntityId,
+        correctiveActionType?.id,
+        correctiveActionDescription,
+      );
+      setShowCorrectiveActionForm(false);
+      setCorrectiveActionType(null);
+      setCorrectiveActionDescription("");
+      await loadAlertDetails();
+    } catch (err) {
+      setError(
+        err.message ||
+          intl.formatMessage({
+            id: "freezer.alert.detail.correctiveActionFailed",
+            defaultMessage: "Failed to log corrective action",
+          }),
+      );
+    } finally {
+      setCorrectiveActionSubmitting(false);
+    }
+  };
+
   const getSeverityTag = (severity) => {
     switch (severity) {
       case "CRITICAL":
-        return <Tag type="red">Critical</Tag>;
+        return (
+          <Tag type="red">
+            <FormattedMessage
+              id="freezer.alert.severity.critical"
+              defaultMessage="Critical"
+            />
+          </Tag>
+        );
       case "WARNING":
-        return <Tag type="warm-gray">Warning</Tag>;
+        return (
+          <Tag type="warm-gray">
+            <FormattedMessage
+              id="freezer.alert.severity.warning"
+              defaultMessage="Warning"
+            />
+          </Tag>
+        );
       default:
         return <Tag>{severity}</Tag>;
     }
@@ -110,15 +179,50 @@ const AlertDetailModal = ({
   const getStatusTag = (status) => {
     switch (status) {
       case "OPEN":
-        return <Tag type="red">Open</Tag>;
+        return (
+          <Tag type="red">
+            <FormattedMessage
+              id="freezer.alert.status.open"
+              defaultMessage="Open"
+            />
+          </Tag>
+        );
       case "ACKNOWLEDGED":
-        return <Tag type="blue">Acknowledged</Tag>;
+        return (
+          <Tag type="blue">
+            <FormattedMessage
+              id="freezer.alert.status.acknowledged"
+              defaultMessage="Acknowledged"
+            />
+          </Tag>
+        );
       case "ESCALATED":
-        return <Tag type="magenta">Escalated</Tag>;
+        return (
+          <Tag type="magenta">
+            <FormattedMessage
+              id="freezer.alert.status.escalated"
+              defaultMessage="Escalated"
+            />
+          </Tag>
+        );
       case "RESOLVED":
-        return <Tag type="green">Resolved</Tag>;
+        return (
+          <Tag type="green">
+            <FormattedMessage
+              id="freezer.alert.status.resolved"
+              defaultMessage="Resolved"
+            />
+          </Tag>
+        );
       case "CLOSED":
-        return <Tag type="gray">Closed</Tag>;
+        return (
+          <Tag type="gray">
+            <FormattedMessage
+              id="freezer.alert.status.closed"
+              defaultMessage="Closed"
+            />
+          </Tag>
+        );
       default:
         return <Tag>{status}</Tag>;
     }
@@ -169,36 +273,88 @@ const AlertDetailModal = ({
       {error && (
         <InlineNotification
           kind="error"
-          title="Error"
+          title={intl.formatMessage({
+            id: "error.title",
+            defaultMessage: "Error",
+          })}
           subtitle={error}
           onCloseButtonClick={() => setError(null)}
         />
       )}
 
+      {alert && !loading && isAdminUser && (
+        <>
+          {deleteConfirming && (
+            <InlineNotification
+              kind="warning"
+              lowContrast
+              hideCloseButton
+              title={intl.formatMessage({
+                id: "freezer.alert.detail.deleteConfirm",
+                defaultMessage: "Delete this alert permanently?",
+              })}
+              subtitle={intl.formatMessage({
+                id: "freezer.alert.detail.deleteWarning",
+                defaultMessage:
+                  "The start time, severity, acknowledgment and notes are removed with no audit trail and cannot be recovered.",
+              })}
+            />
+          )}
+          <div className="oe-coldStorage-alertModalActions">
+            {deleteConfirming ? (
+              <>
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  disabled={actionInProgress}
+                  onClick={() => setDeleteConfirming(false)}
+                >
+                  <FormattedMessage
+                    id="label.button.cancel"
+                    defaultMessage="Cancel"
+                  />
+                </Button>
+                <Button
+                  kind="danger"
+                  size="sm"
+                  disabled={actionInProgress}
+                  onClick={handleDelete}
+                >
+                  <FormattedMessage
+                    id="freezer.alert.detail.deletePermanently"
+                    defaultMessage="Delete permanently"
+                  />
+                </Button>
+              </>
+            ) : (
+              <Button
+                kind="danger--ghost"
+                size="sm"
+                disabled={actionInProgress}
+                onClick={() => setDeleteConfirming(true)}
+              >
+                <FormattedMessage
+                  id="freezer.alert.detail.delete"
+                  defaultMessage="Delete Alert"
+                />
+              </Button>
+            )}
+          </div>
+        </>
+      )}
+
       {alert && !loading && (
-        <div style={{ padding: "1rem 0" }}>
-          <Section style={{ marginBottom: "1.5rem" }}>
-            <h5 style={{ marginBottom: "1rem" }}>
+        <div className="oe-coldStorage-alertModalBody">
+          <Section className="oe-coldStorage-alertModalSection">
+            <h5 className="oe-coldStorage-alertModalSectionTitle">
               <FormattedMessage
                 id="freezer.alert.detail.overview"
                 defaultMessage="Alert Overview"
               />
             </h5>
-            <div
-              style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
-                gap: "1rem",
-              }}
-            >
+            <div className="oe-coldStorage-alertModalGrid">
               <div>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.id"
                     defaultMessage="Alert ID"
@@ -208,13 +364,7 @@ const AlertDetailModal = ({
               </div>
 
               <div>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.freezer"
                     defaultMessage="Freezer"
@@ -224,13 +374,7 @@ const AlertDetailModal = ({
               </div>
 
               <div>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.severity"
                     defaultMessage="Severity"
@@ -240,13 +384,7 @@ const AlertDetailModal = ({
               </div>
 
               <div>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.status"
                     defaultMessage="Status"
@@ -256,13 +394,7 @@ const AlertDetailModal = ({
               </div>
 
               <div>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.startTime"
                     defaultMessage="Start Time"
@@ -274,13 +406,7 @@ const AlertDetailModal = ({
               {alert.acknowledgedAt && (
                 <>
                   <div>
-                    <p
-                      style={{
-                        fontWeight: 600,
-                        marginBottom: "0.25rem",
-                        fontSize: "0.875rem",
-                      }}
-                    >
+                    <p className="oe-coldStorage-alertModalFieldLabel">
                       <FormattedMessage
                         id="freezer.alert.detail.acknowledgedAt"
                         defaultMessage="Acknowledged At"
@@ -290,13 +416,7 @@ const AlertDetailModal = ({
                   </div>
 
                   <div>
-                    <p
-                      style={{
-                        fontWeight: 600,
-                        marginBottom: "0.25rem",
-                        fontSize: "0.875rem",
-                      }}
-                    >
+                    <p className="oe-coldStorage-alertModalFieldLabel">
                       <FormattedMessage
                         id="freezer.alert.detail.acknowledgedBy"
                         defaultMessage="Acknowledged By"
@@ -310,13 +430,7 @@ const AlertDetailModal = ({
               {alert.resolvedAt && (
                 <>
                   <div>
-                    <p
-                      style={{
-                        fontWeight: 600,
-                        marginBottom: "0.25rem",
-                        fontSize: "0.875rem",
-                      }}
-                    >
+                    <p className="oe-coldStorage-alertModalFieldLabel">
                       <FormattedMessage
                         id="freezer.alert.detail.resolvedAt"
                         defaultMessage="Resolved At"
@@ -326,13 +440,7 @@ const AlertDetailModal = ({
                   </div>
 
                   <div>
-                    <p
-                      style={{
-                        fontWeight: 600,
-                        marginBottom: "0.25rem",
-                        fontSize: "0.875rem",
-                      }}
-                    >
+                    <p className="oe-coldStorage-alertModalFieldLabel">
                       <FormattedMessage
                         id="freezer.alert.detail.resolvedBy"
                         defaultMessage="Resolved By"
@@ -345,14 +453,8 @@ const AlertDetailModal = ({
             </div>
 
             {alert.message && (
-              <div style={{ marginTop: "1rem" }}>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+              <div className="oe-coldStorage-alertModalField">
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.message"
                     defaultMessage="Message"
@@ -363,7 +465,7 @@ const AlertDetailModal = ({
             )}
 
             {(alert.status === "OPEN" || alert.status === "ACKNOWLEDGED") && (
-              <div style={{ marginTop: "1rem" }}>
+              <div className="oe-coldStorage-alertModalField">
                 <TextArea
                   id="alert-notes"
                   labelText={
@@ -383,15 +485,21 @@ const AlertDetailModal = ({
               </div>
             )}
 
+            {alert.acknowledgmentNotes && (
+              <div className="oe-coldStorage-alertModalField">
+                <p className="oe-coldStorage-alertModalFieldLabel">
+                  <FormattedMessage
+                    id="freezer.alert.detail.acknowledgmentNotes"
+                    defaultMessage="Acknowledgment Notes"
+                  />
+                </p>
+                <p>{alert.acknowledgmentNotes}</p>
+              </div>
+            )}
+
             {alert.resolutionNotes && (
-              <div style={{ marginTop: "1rem" }}>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+              <div className="oe-coldStorage-alertModalField">
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.resolutionNotes"
                     defaultMessage="Resolution Notes"
@@ -402,14 +510,8 @@ const AlertDetailModal = ({
             )}
 
             {alert.correctiveAction && (
-              <div style={{ marginTop: "1rem" }}>
-                <p
-                  style={{
-                    fontWeight: 600,
-                    marginBottom: "0.25rem",
-                    fontSize: "0.875rem",
-                  }}
-                >
+              <div className="oe-coldStorage-alertModalField">
+                <p className="oe-coldStorage-alertModalFieldLabel">
                   <FormattedMessage
                     id="freezer.alert.detail.correctiveAction"
                     defaultMessage="Corrective Action"
@@ -418,11 +520,94 @@ const AlertDetailModal = ({
                 <p>{alert.correctiveAction}</p>
               </div>
             )}
+
+            <div className="oe-coldStorage-inlineCorrectiveAction">
+              {!showCorrectiveActionForm ? (
+                <Button
+                  kind="tertiary"
+                  size="sm"
+                  onClick={() => setShowCorrectiveActionForm(true)}
+                >
+                  <FormattedMessage
+                    id="freezer.alert.detail.logCorrectiveAction"
+                    defaultMessage="Log corrective action"
+                  />
+                </Button>
+              ) : (
+                <div className="oe-coldStorage-inlineCorrectiveActionForm">
+                  <Dropdown
+                    id="inline-corrective-action-type"
+                    titleText={intl.formatMessage({
+                      id: "freezer.alert.detail.correctiveActionType",
+                      defaultMessage: "Action Type",
+                    })}
+                    label={
+                      correctiveActionType
+                        ? correctiveActionType.label
+                        : intl.formatMessage({
+                            id: "coldStorage.selectType",
+                            defaultMessage: "Select type",
+                          })
+                    }
+                    items={correctiveActionTypes}
+                    itemToString={(item) => (item ? item.label : "")}
+                    selectedItem={correctiveActionType}
+                    onChange={({ selectedItem }) =>
+                      setCorrectiveActionType(selectedItem)
+                    }
+                  />
+                  <TextArea
+                    id="inline-corrective-action-description"
+                    labelText={intl.formatMessage({
+                      id: "freezer.alert.detail.correctiveActionDescription",
+                      defaultMessage: "Description",
+                    })}
+                    rows={3}
+                    value={correctiveActionDescription}
+                    onChange={(e) =>
+                      setCorrectiveActionDescription(e.target.value)
+                    }
+                  />
+                  <div className="oe-coldStorage-inlineCorrectiveActionButtons">
+                    <Button
+                      kind="secondary"
+                      size="sm"
+                      onClick={() => {
+                        setShowCorrectiveActionForm(false);
+                        setCorrectiveActionType(null);
+                        setCorrectiveActionDescription("");
+                      }}
+                      disabled={correctiveActionSubmitting}
+                    >
+                      <FormattedMessage
+                        id="label.button.cancel"
+                        defaultMessage="Cancel"
+                      />
+                    </Button>
+                    <Button
+                      kind="primary"
+                      size="sm"
+                      onClick={handleLogCorrectiveAction}
+                      disabled={
+                        correctiveActionSubmitting ||
+                        !correctiveActionType ||
+                        !correctiveActionDescription.trim()
+                      }
+                    >
+                      <FormattedMessage
+                        id="freezer.alert.detail.logCorrectiveAction"
+                        defaultMessage="Log corrective action"
+                      />
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </Section>
 
           {alert.notifications && alert.notifications.length > 0 && (
-            <Section style={{ marginBottom: "1.5rem" }}>
-              <h5 style={{ marginBottom: "1rem" }}>
+            <Section className="oe-coldStorage-alertModalSection">
+              <h5 className="oe-coldStorage-alertModalSectionTitle">
                 <FormattedMessage
                   id="freezer.alert.detail.notifications"
                   defaultMessage="Notifications Sent"
@@ -434,10 +619,34 @@ const AlertDetailModal = ({
                   ...notif,
                 }))}
                 headers={[
-                  { key: "recipient", header: "Recipient" },
-                  { key: "method", header: "Method" },
-                  { key: "sentAt", header: "Sent At" },
-                  { key: "status", header: "Status" },
+                  {
+                    key: "recipient",
+                    header: intl.formatMessage({
+                      id: "freezer.alert.detail.recipient",
+                      defaultMessage: "Recipient",
+                    }),
+                  },
+                  {
+                    key: "method",
+                    header: intl.formatMessage({
+                      id: "freezer.alert.detail.method",
+                      defaultMessage: "Method",
+                    }),
+                  },
+                  {
+                    key: "sentAt",
+                    header: intl.formatMessage({
+                      id: "freezer.alert.detail.sentAt",
+                      defaultMessage: "Sent At",
+                    }),
+                  },
+                  {
+                    key: "status",
+                    header: intl.formatMessage({
+                      id: "coldStorage.status",
+                      defaultMessage: "Status",
+                    }),
+                  },
                 ]}
               >
                 {({
@@ -481,7 +690,7 @@ const AlertDetailModal = ({
 
           {alert.actions && alert.actions.length > 0 && (
             <Section>
-              <h5 style={{ marginBottom: "1rem" }}>
+              <h5 className="oe-coldStorage-alertModalSectionTitle">
                 <FormattedMessage
                   id="freezer.alert.detail.actions"
                   defaultMessage="Actions Taken"
@@ -493,9 +702,27 @@ const AlertDetailModal = ({
                   ...action,
                 }))}
                 headers={[
-                  { key: "summary", header: "Summary" },
-                  { key: "takenBy", header: "Taken By" },
-                  { key: "takenAt", header: "Taken At" },
+                  {
+                    key: "summary",
+                    header: intl.formatMessage({
+                      id: "freezer.alert.detail.summary",
+                      defaultMessage: "Summary",
+                    }),
+                  },
+                  {
+                    key: "takenBy",
+                    header: intl.formatMessage({
+                      id: "freezer.alert.detail.takenBy",
+                      defaultMessage: "Taken By",
+                    }),
+                  },
+                  {
+                    key: "takenAt",
+                    header: intl.formatMessage({
+                      id: "freezer.alert.detail.takenAt",
+                      defaultMessage: "Taken At",
+                    }),
+                  },
                 ]}
               >
                 {({
@@ -547,7 +774,6 @@ AlertDetailModal.propTypes = {
   alertId: PropTypes.oneOfType([PropTypes.string, PropTypes.number]),
   open: PropTypes.bool.isRequired,
   onClose: PropTypes.func.isRequired,
-  currentUserId: PropTypes.number,
 };
 
 export default injectIntl(AlertDetailModal);

@@ -124,6 +124,23 @@ public final class FhirProviderUtils {
     }
 
     /**
+     * The id part of a read, as the UUID every facade resource is keyed by. A
+     * malformed id is the client's mistake and answers 400, as Location, Device,
+     * ServiceRequest and DiagnosticReport already did, rather than surfacing as an
+     * unexpected server error.
+     */
+    public static UUID requireUuidId(IdType theId, String resourceType) {
+        if (theId == null || !theId.hasIdPart()) {
+            throw new InvalidRequestException(resourceType + " ID must be provided for Read");
+        }
+        try {
+            return UUID.fromString(theId.getIdPart());
+        } catch (IllegalArgumentException e) {
+            throw new InvalidRequestException(resourceType + " ID must be a valid UUID");
+        }
+    }
+
+    /**
      * Returns every AND group from a StringAndListParam.
      *
      * Example:

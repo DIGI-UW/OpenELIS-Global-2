@@ -1,0 +1,200 @@
+import { describe, expect, it } from "vitest";
+import {
+  convertRequestsToSamples,
+  mergeCollectedAndPendingSamples,
+  toRequestedSampleTypes,
+} from "./sampleTypeRequestApi";
+
+describe("convertRequestsToSamples", () => {
+  it("keeps the requested quantity when restoring a pending request", () => {
+    const samples = convertRequestsToSamples([
+      {
+        id: "11",
+        typeOfSampleId: "5",
+        status: "REQUESTED",
+        requestedQuantity: 2.5,
+      },
+      {
+        id: "12",
+        typeOfSampleId: "6",
+        status: "REQUESTED",
+        requestedQuantity: null,
+      },
+    ]);
+
+    expect(samples[0].quantity).toBe("2.5");
+    expect(samples[1].quantity).toBe("");
+  });
+
+  it("preserves test and Method metadata when restoring selected tests", () => {
+    const selectedTest = {
+      id: "42",
+      name: "Blood culture",
+
+      methods: [
+        {
+          methodId: "7",
+          methodName: "Blood Culture Standard",
+          isDefault: true,
+        },
+      ],
+    };
+
+    const samples = convertRequestsToSamples([
+      {
+        id: "11",
+        typeOfSampleId: "5",
+        typeOfSampleName: "Blood",
+        requestedTests: "42",
+        requestedTestNames: "Blood culture",
+        requestedTestDetails: [selectedTest],
+        status: "REQUESTED",
+      },
+    ]);
+
+    expect(samples[0].tests).toEqual([selectedTest]);
+  });
+
+  it("retains compatibility with pending requests that only contain IDs and names", () => {
+    const samples = convertRequestsToSamples([
+      {
+        id: "11",
+        typeOfSampleId: "5",
+        requestedTests: "42",
+        requestedTestNames: "Blood culture",
+      },
+    ]);
+
+    expect(samples[0].tests).toEqual([{ id: "42", name: "Blood culture" }]);
+  });
+});
+
+describe("requested specimens sent with the order", () => {
+  it("carries the entered type, quantity, tests and panels in entry order", () => {
+    const requested = toRequestedSampleTypes([
+      {
+        sampleTypeId: "5",
+        quantity: "2.5",
+        quantityUnit: "9",
+        tests: [{ id: "42" }, { id: "43" }],
+        panels: [{ id: "7" }],
+      },
+      { sampleTypeId: "6" },
+    ]);
+
+    expect(requested).toEqual([
+      {
+        id: null,
+        sampleItemId: null,
+        cultureSetNumber: null,
+        container: null,
+        bodySite: null,
+        collectionLocationId: null,
+        collectionDate: null,
+        collectionTime: null,
+        typeOfSampleId: "5",
+        requestedQuantity: 2.5,
+        unitOfMeasureId: "9",
+        requestedTests: "42,43",
+        requestedPanels: "7",
+      },
+      {
+        id: null,
+        sampleItemId: null,
+        cultureSetNumber: null,
+        container: null,
+        bodySite: null,
+        collectionLocationId: null,
+        collectionDate: null,
+        collectionTime: null,
+        typeOfSampleId: "6",
+        requestedQuantity: null,
+        unitOfMeasureId: null,
+        requestedTests: "",
+        requestedPanels: "",
+      },
+    ]);
+  });
+
+  it("ignores rows where no sample type was chosen", () => {
+    expect(toRequestedSampleTypes([{ quantity: "3" }, {}])).toEqual([]);
+    expect(toRequestedSampleTypes()).toEqual([]);
+  });
+});
+
+describe("mergeCollectedAndPendingSamples", () => {
+  const collected = { sampleItemId: "900", sampleTypeId: "5" };
+  const pendingRequest = {
+    id: "11",
+    typeOfSampleId: "6",
+    status: "REQUESTED",
+  };
+
+  it("keeps pending requests alongside already collected specimens", () => {
+    const merged = mergeCollectedAndPendingSamples(
+      [collected],
+      [pendingRequest],
+      null,
+    );
+
+    expect(merged).toHaveLength(2);
+    expect(merged[0].sampleItemId).toBe("900");
+    expect(merged[1].sampleTypeRequestId).toBe("11");
+  });
+
+  it("drops requests that were already fulfilled or cancelled", () => {
+    const merged = mergeCollectedAndPendingSamples(
+      [collected],
+      [
+        { id: "12", typeOfSampleId: "6", status: "COLLECTED" },
+        { id: "13", typeOfSampleId: "7", status: "CANCELLED" },
+      ],
+      null,
+    );
+
+    expect(merged).toHaveLength(1);
+    expect(merged[0].sampleItemId).toBe("900");
+  });
+
+  it("falls back when neither source has rows", () => {
+    const fallback = [{ index: 0 }];
+    expect(mergeCollectedAndPendingSamples([], [], fallback)).toBe(fallback);
+  });
+});
+
+it("restores and resends specimen identity and recorded culture bottle details", () => {
+  const [sample] = convertRequestsToSamples([
+    {
+      id: "17",
+      typeOfSampleId: "5",
+      status: "REQUESTED",
+      cultureSetNumber: 2,
+      container: "B17",
+      bodySite: "Right arm",
+      collectionDate: "2026-10-07",
+      collectionTime: "14:25",
+    },
+  ]);
+  expect(toRequestedSampleTypes([sample])[0]).toMatchObject({
+    id: "17",
+    cultureSetNumber: 2,
+    container: "B17",
+    bodySite: "Right arm",
+    collectionDate: "2026-10-07",
+    collectionTime: "14:25",
+  });
+});
+
+it("retains per-specimen site identity through requested and collected stages", () => {
+  const row = {
+    sampleTypeId: "5",
+    collectionLocationId: "12",
+    tests: [{ id: "42" }],
+  };
+  expect(toRequestedSampleTypes([row])[0].collectionLocationId).toBe("12");
+  expect(
+    convertRequestsToSamples([
+      { id: "8", typeOfSampleId: "5", collectionLocationId: "12" },
+    ])[0].collectionLocationId,
+  ).toBe("12");
+});

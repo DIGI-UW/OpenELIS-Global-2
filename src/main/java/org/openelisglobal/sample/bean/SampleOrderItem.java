@@ -29,6 +29,7 @@ import java.util.Map;
 import org.hl7.fhir.r4.model.QuestionnaireResponse;
 import org.openelisglobal.common.formfields.FormFields.Field;
 import org.openelisglobal.common.util.IdValuePair;
+import org.openelisglobal.common.util.IsoDateNormalizer;
 import org.openelisglobal.common.util.validator.CustomDateValidator.DateRelation;
 import org.openelisglobal.common.validator.ValidationHelper;
 import org.openelisglobal.sample.form.SampleEditForm;
@@ -68,6 +69,15 @@ public class SampleOrderItem implements Serializable {
     private String labNo;
 
     private String requiredBy;
+
+    /**
+     * Client-generated key for a new order, kept for the life of the draft. It
+     * becomes the order's FHIR UUID, so a save retried after its reply was lost is
+     * recognised as the same order.
+     */
+    @Pattern(regexp = "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12})?$", groups = {
+            SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class })
+    private String orderKey;
 
     @OptionalNotBlank(formFields = { Field.SampleEntryUseRequestDate }, groups = {
             SamplePatientEntryForm.SamplePatientEntry.class, SampleEditForm.SampleEdit.class })
@@ -156,6 +166,18 @@ public class SampleOrderItem implements Serializable {
     @Email(groups = { SamplePatientEntryForm.SamplePatientEntry.class, SamplePatientEntryBatch.class,
             SampleEditForm.SampleEdit.class })
     private String providerEmail;
+
+    /**
+     * The picked provider's title (OGC-1223), echoed by order entry. It is stored
+     * on the provider, so it only applies when the save creates a new provider.
+     */
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String providerTitleCode;
+
+    @SafeHtml(level = SafeHtml.SafeListLevel.NONE, groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String providerTitleAbbreviation;
 
     // Requesting Organization contact info (Environmental/Vector) — the
     // organization itself is addressed via referringSite*; these are the
@@ -280,6 +302,17 @@ public class SampleOrderItem implements Serializable {
      */
     private Map<String, Object> environmentalFields = new HashMap<>();
 
+    /**
+     * A deliberate, recorded decision to order without a patient (OGC-1201 AL).
+     * Carried on the order form so the server can accept the order and record why,
+     * instead of the caller fabricating a patient to satisfy the gate.
+     */
+    private boolean noPatientOverride;
+
+    private String noPatientReasonCode;
+
+    private String noPatientReason;
+
     private boolean isEQASample;
     private String eqaProgramId;
     private String eqaProviderOrganizationId;
@@ -287,6 +320,26 @@ public class SampleOrderItem implements Serializable {
     private String eqaParticipantId;
     private String eqaDeadline;
     private String eqaPriority;
+
+    // Panel receipt captured on the order form
+    private String eqaCycleId;
+    private String eqaReceivedTempC;
+    private Boolean eqaIntegrityOk;
+    private String eqaIntegrityNotes;
+    /** The imported consignment (shipping box) this receipt takes delivery of. */
+    private String eqaShippingBoxId;
+
+    /**
+     * Storage decisions that travel with the step's save (OGC-1266 FR-A5): the
+     * order-level "storage skipped" flag, and the step the client has completed at
+     * its complete level (a value of {@link OrderProgressStatus}), which the server
+     * records as the order's progress.
+     */
+    private Boolean storageSkipped;
+
+    @Pattern(regexp = "^(|ENTERED|SAMPLES_PREPARED)$", groups = { SamplePatientEntryForm.SamplePatientEntry.class,
+            SamplePatientEntryBatch.class, SampleEditForm.SampleEdit.class })
+    private String progressStep;
 
     // Informed consent fields
     private Boolean consentGiven;
@@ -391,12 +444,20 @@ public class SampleOrderItem implements Serializable {
         this.requiredBy = requiredBy;
     }
 
+    public String getOrderKey() {
+        return orderKey;
+    }
+
+    public void setOrderKey(String orderKey) {
+        this.orderKey = orderKey;
+    }
+
     public String getRequestDate() {
         return requestDate;
     }
 
     public void setRequestDate(String requestDate) {
-        this.requestDate = requestDate;
+        this.requestDate = IsoDateNormalizer.toDisplayFormat(requestDate);
     }
 
     public String getReceivedDateForDisplay() {
@@ -404,7 +465,7 @@ public class SampleOrderItem implements Serializable {
     }
 
     public void setReceivedDateForDisplay(String receivedDateForDisplay) {
-        this.receivedDateForDisplay = receivedDateForDisplay;
+        this.receivedDateForDisplay = IsoDateNormalizer.toDisplayFormat(receivedDateForDisplay);
     }
 
     public String getReceivedTime() {
@@ -420,7 +481,7 @@ public class SampleOrderItem implements Serializable {
     }
 
     public void setNextVisitDate(String nextVisitDate) {
-        this.nextVisitDate = nextVisitDate;
+        this.nextVisitDate = IsoDateNormalizer.toDisplayFormat(nextVisitDate);
     }
 
     public String getRequesterSampleID() {
@@ -525,6 +586,22 @@ public class SampleOrderItem implements Serializable {
 
     public void setProviderFax(String providerFax) {
         this.providerFax = providerFax;
+    }
+
+    public String getProviderTitleCode() {
+        return providerTitleCode;
+    }
+
+    public void setProviderTitleCode(String providerTitleCode) {
+        this.providerTitleCode = providerTitleCode;
+    }
+
+    public String getProviderTitleAbbreviation() {
+        return providerTitleAbbreviation;
+    }
+
+    public void setProviderTitleAbbreviation(String providerTitleAbbreviation) {
+        this.providerTitleAbbreviation = providerTitleAbbreviation;
     }
 
     public String getProviderEmail() {
@@ -791,6 +868,30 @@ public class SampleOrderItem implements Serializable {
         this.programId = programId;
     }
 
+    public boolean isNoPatientOverride() {
+        return noPatientOverride;
+    }
+
+    public void setNoPatientOverride(boolean noPatientOverride) {
+        this.noPatientOverride = noPatientOverride;
+    }
+
+    public String getNoPatientReasonCode() {
+        return noPatientReasonCode;
+    }
+
+    public void setNoPatientReasonCode(String noPatientReasonCode) {
+        this.noPatientReasonCode = noPatientReasonCode;
+    }
+
+    public String getNoPatientReason() {
+        return noPatientReason;
+    }
+
+    public void setNoPatientReason(String noPatientReason) {
+        this.noPatientReason = noPatientReason;
+    }
+
     public boolean getIsEQASample() {
         return isEQASample;
     }
@@ -847,6 +948,46 @@ public class SampleOrderItem implements Serializable {
         this.eqaPriority = eqaPriority;
     }
 
+    public String getEqaCycleId() {
+        return eqaCycleId;
+    }
+
+    public void setEqaCycleId(String eqaCycleId) {
+        this.eqaCycleId = eqaCycleId;
+    }
+
+    public String getEqaReceivedTempC() {
+        return eqaReceivedTempC;
+    }
+
+    public void setEqaReceivedTempC(String eqaReceivedTempC) {
+        this.eqaReceivedTempC = eqaReceivedTempC;
+    }
+
+    public Boolean getEqaIntegrityOk() {
+        return eqaIntegrityOk;
+    }
+
+    public void setEqaIntegrityOk(Boolean eqaIntegrityOk) {
+        this.eqaIntegrityOk = eqaIntegrityOk;
+    }
+
+    public String getEqaIntegrityNotes() {
+        return eqaIntegrityNotes;
+    }
+
+    public void setEqaIntegrityNotes(String eqaIntegrityNotes) {
+        this.eqaIntegrityNotes = eqaIntegrityNotes;
+    }
+
+    public String getEqaShippingBoxId() {
+        return eqaShippingBoxId;
+    }
+
+    public void setEqaShippingBoxId(String eqaShippingBoxId) {
+        this.eqaShippingBoxId = eqaShippingBoxId;
+    }
+
     public Map<String, Object> getEnvironmentalFields() {
         return environmentalFields;
     }
@@ -870,6 +1011,22 @@ public class SampleOrderItem implements Serializable {
         return value.toString();
     }
 
+    public Boolean getStorageSkipped() {
+        return storageSkipped;
+    }
+
+    public void setStorageSkipped(Boolean storageSkipped) {
+        this.storageSkipped = storageSkipped;
+    }
+
+    public String getProgressStep() {
+        return progressStep;
+    }
+
+    public void setProgressStep(String progressStep) {
+        this.progressStep = progressStep;
+    }
+
     public Boolean getConsentGiven() {
         return consentGiven;
     }
@@ -891,7 +1048,7 @@ public class SampleOrderItem implements Serializable {
     }
 
     public void setConsentRecordedAt(String consentRecordedAt) {
-        this.consentRecordedAt = consentRecordedAt;
+        this.consentRecordedAt = IsoDateNormalizer.toDisplayFormat(consentRecordedAt);
     }
 
     public String getConsentRecordedBy() {

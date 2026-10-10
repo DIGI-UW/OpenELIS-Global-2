@@ -3,16 +3,15 @@ import type { APIRequestContext } from "@playwright/test";
 import { LONG_TIMEOUT, UI_TIMEOUT } from "../../../helpers/timeouts";
 
 /**
- * Order workflow — Label & Store storage picker smoke.
+ * Order workflow — storage on Prepare Samples (OGC-1266 M4).
  *
- * Precondition: the deep-linked order must already be at Step 3
- * (Label & Store). If it's earlier, OrderContext redirects away and
- * the picker won't render — that's a real precondition failure, not
- * a skip condition.
+ * Storage is assigned on the Prepare Samples step of a clinical order; the
+ * separate Label & Store step is gone and its address opens Prepare Samples.
+ * The picker renders for an order that has a requested sample.
  *
- * Seed lookup: /rest/home-dashboard/ORDERS_IN_PROGRESS. If that
- * endpoint returns no orders the test fails with an actionable
- * diagnostic rather than silently passing.
+ * Seed lookup: /rest/home-dashboard/ORDERS_IN_PROGRESS. If that endpoint
+ * returns no orders the test fails with an actionable diagnostic rather than
+ * silently passing.
  */
 
 async function findInProgressLabNumber(
@@ -41,38 +40,49 @@ async function findInProgressLabNumber(
   return lab as string;
 }
 
-test.describe("Order workflow — Label & Store storage picker", () => {
-  test("renders the new LocationPickerInline when the order is at Step 3", async ({
+test.describe("Order workflow — Prepare Samples storage picker", () => {
+  test("renders the storage picker on Prepare Samples", async ({
     page,
     request,
   }) => {
     const labNumber = await test.step("fetch an in-progress order", async () =>
       findInProgressLabNumber(request));
 
-    await test.step("deep-link into the order at Step 3", async () => {
-      // Order routing is split by workflow (/order/{clinical,environmental,
-      // vector}/label); the flat /order/label no longer exists. OrderLabel
-      // deep-links by ?labNumber regardless of workflow, and in-progress seed
-      // orders are clinical.
+    await test.step("deep-link into the order at Prepare Samples", async () => {
       await page.goto(
-        `/order/clinical/label?labNumber=${encodeURIComponent(labNumber)}`,
+        `/order/clinical/collect?order=${encodeURIComponent(labNumber)}`,
         { waitUntil: "domcontentloaded", timeout: LONG_TIMEOUT },
       );
-    });
-
-    await test.step("assert Step 3 heading (fail loudly if earlier)", async () => {
-      // OrderContext routes back to Step 1 if prerequisites aren't met, so
-      // asserting the Label & Store heading doubles as the precondition check.
       await expect(
-        page.getByRole("heading", { level: 2, name: /label.*store/i }),
-        `Order ${labNumber} must be at Step 3 (Label & Store)`,
+        page.getByRole("heading", { level: 2, name: "Prepare Samples" }),
       ).toBeVisible({ timeout: UI_TIMEOUT });
     });
 
-    await test.step("storage picker is rendered", async () => {
+    await test.step("storage picker is rendered inside the step", async () => {
+      const storage = page.getByTestId("prepare-storage-section");
+      await expect(storage).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
-        page.locator("#storage-location-picker-search-input"),
+        storage.locator("#storage-location-picker-search-input"),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
     });
+  });
+
+  test("the retired Label & Store address opens Prepare Samples", async ({
+    page,
+    request,
+  }) => {
+    const labNumber = await findInProgressLabNumber(request);
+
+    await page.goto(
+      `/order/clinical/label?labNumber=${encodeURIComponent(labNumber)}`,
+      { waitUntil: "domcontentloaded", timeout: LONG_TIMEOUT },
+    );
+
+    await expect(page).toHaveURL(/\/order\/clinical\/collect\?labNumber=/, {
+      timeout: UI_TIMEOUT,
+    });
+    await expect(
+      page.getByRole("heading", { level: 2, name: "Prepare Samples" }),
+    ).toBeVisible({ timeout: UI_TIMEOUT });
   });
 });

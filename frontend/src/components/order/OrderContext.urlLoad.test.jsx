@@ -1,5 +1,5 @@
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { ConfigurationContext } from "../layout/Layout";
@@ -137,5 +137,187 @@ describe("OrderContext — loading an order from the URL", () => {
     expect(await screen.findByText("DEV-5")).toBeTruthy();
     expect(searchCalls()).toEqual(["/rest/order/search?labNumber=DEV-5"]);
     expect(screen.getByTestId("date")).toHaveTextContent("2026-09-03");
+  });
+});
+
+const DirtyProbe = () => {
+  const { labNumber, isDirty, hydrateOrderData, hydrateSamples, setOrderData } =
+    useOrderContext();
+  return (
+    <div>
+      <span data-testid="lab">{labNumber || ""}</span>
+      <span data-testid="dirty">{String(isDirty)}</span>
+      <button
+        onClick={() => {
+          hydrateOrderData((prev) => ({ ...prev, hydrated: true }));
+          hydrateSamples((prev) => prev);
+        }}
+      >
+        hydrate
+      </button>
+      <button onClick={() => setOrderData((prev) => ({ ...prev }))}>
+        edit
+      </button>
+    </div>
+  );
+};
+
+describe("OrderContext — values filled in on load are not edits (OGC-1192)", () => {
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation(answerServer);
+  });
+
+  it("keeps a loaded order clean after hydrating, and dirty after an edit", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/order/environmental/enter?labNumber=DEV-6"]}
+        >
+          <OrderProvider workflowType="environmental">
+            <DirtyProbe />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+    expect(await screen.findByText("DEV-6")).toBeTruthy();
+    expect(screen.getByTestId("dirty")).toHaveTextContent("false");
+
+    fireEvent.click(screen.getByText("hydrate"));
+    expect(screen.getByTestId("dirty")).toHaveTextContent("false");
+
+    fireEvent.click(screen.getByText("edit"));
+    expect(screen.getByTestId("dirty")).toHaveTextContent("true");
+  });
+});
+
+const DatesProbe = () => {
+  const { labNumber, orderData } = useOrderContext();
+  const items = orderData?.sampleOrderItems || {};
+  return (
+    <div>
+      <span data-testid="lab">{labNumber || ""}</span>
+      <span data-testid="received">
+        {`${items.receivedDateForDisplay || ""} ${items.receivedTime || ""}`}
+      </span>
+      <span data-testid="requested">{items.requestDate || ""}</span>
+    </div>
+  );
+};
+
+describe("OrderContext — form defaults arriving after the order (OGC-1192)", () => {
+  let answerDefaults;
+
+  beforeEach(() => {
+    answerDefaults = null;
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation((url, callback) => {
+      if (url === "/rest/SamplePatientEntry") {
+        answerDefaults = () =>
+          callback({
+            currentDate: "28/09/2026",
+            sampleOrderItems: { receivedTime: "20:45" },
+          });
+      } else if (url.startsWith("/rest/order/search?labNumber=")) {
+        callback({
+          ...orderResponse("DEV-7"),
+          sampleOrderItems: {
+            environmentalFields: { workflowType: "environmental" },
+            receivedDateForDisplay: "27/09/2026",
+            receivedTime: "09:15",
+            requestDate: "26/09/2026",
+          },
+        });
+      } else if (typeof callback === "function") {
+        callback({});
+      }
+    });
+  });
+
+  it("keeps the loaded order's received and request dates", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/order/environmental/enter?labNumber=DEV-7"]}
+        >
+          <OrderProvider workflowType="environmental">
+            <DatesProbe />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+    expect(await screen.findByText("DEV-7")).toBeTruthy();
+
+    act(() => answerDefaults());
+
+    expect(screen.getByTestId("received")).toHaveTextContent(
+      "27/09/2026 09:15",
+    );
+    expect(screen.getByTestId("requested")).toHaveTextContent("26/09/2026");
+  });
+});
+
+const DefaultsProbe = () => {
+  const {
+    labNumber,
+    isDirty,
+    samples,
+    fillSampleDefaults,
+    updateSampleCollectionDetails,
+  } = useOrderContext();
+  return (
+    <div>
+      <span data-testid="lab">{labNumber || ""}</span>
+      <span data-testid="dirty">{String(isDirty)}</span>
+      <span data-testid="time">{samples?.[0]?.collectionTime || ""}</span>
+      <button
+        onClick={() => fillSampleDefaults(0, { collectionTime: "08:30" })}
+      >
+        defaults
+      </button>
+      <button
+        onClick={() =>
+          updateSampleCollectionDetails(0, { collectionTime: "09:45" })
+        }
+      >
+        type
+      </button>
+    </div>
+  );
+};
+
+describe("OrderContext — a step's own defaults are not edits (OGC-1443)", () => {
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation(answerServer);
+  });
+
+  it("fills a sample's default time without Unsaved changes, and marks a typed time dirty", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/order/environmental/collect?order=DEV-7"]}
+        >
+          <OrderProvider workflowType="environmental">
+            <DefaultsProbe />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+    expect(await screen.findByText("DEV-7")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("defaults"));
+    expect(screen.getByTestId("time")).toHaveTextContent("08:30");
+    expect(screen.getByTestId("dirty")).toHaveTextContent("false");
+
+    fireEvent.click(screen.getByText("type"));
+    expect(screen.getByTestId("time")).toHaveTextContent("09:45");
+    expect(screen.getByTestId("dirty")).toHaveTextContent("true");
   });
 });

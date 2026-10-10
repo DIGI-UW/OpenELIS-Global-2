@@ -88,8 +88,8 @@ CYPRESS_SKIP_FIXTURES=true npm run cy:run -- --spec "cypress/e2e/storage*.cy.js"
 
 - `--profile=core`: analyzer-minimal safety net, core demo patient, analyzer
   cleanup baseline.
-- `--profile=harness`: everything in `core` plus
-  `analyzer-harness-lane-data.sql` (`HARN-*` lanes).
+- `--profile=harness`: the same foundational data as `core`. Analyzer scenarios
+  create their patients, orders and specimens through OpenELIS APIs.
 
 ### 3. Storage + E2E Test Data
 
@@ -129,11 +129,9 @@ cd /path/to/OpenELIS-Global-2
 
 ### Docker Container Not Found
 
-Ensure the database container is running:
-
-```bash
-docker compose -f dev.docker-compose.yml up -d database
-```
+Use the owning isolated CI runner. It starts the database and passes the exact
+container ID to this internal loader. Do not start a fixed-name database or
+reload fixtures into the interactive development stack to reproduce CI.
 
 ### Direct psql Connection Issues
 

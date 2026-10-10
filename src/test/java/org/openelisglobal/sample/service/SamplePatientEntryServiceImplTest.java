@@ -45,6 +45,8 @@ public class SamplePatientEntryServiceImplTest {
     @Mock
     private OrganizationContactService organizationContactService;
 
+    @Mock
+
     private SamplePatientEntryServiceImpl service;
 
     // TableIdService.INSTANCE is a process-wide static field, not scoped to a
@@ -349,4 +351,5 @@ public class SamplePatientEntryServiceImplTest {
         verify(barcodeInfoService, never()).saveBarcodeInfoForSampleAndSampleItems(isNull(), anyInt(),
                 org.mockito.ArgumentMatchers.anyMap());
     }
+
 }

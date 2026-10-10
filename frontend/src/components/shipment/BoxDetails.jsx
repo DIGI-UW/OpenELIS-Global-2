@@ -23,10 +23,12 @@ import {
   TableRow,
   Tag,
 } from "@carbon/react";
-import { useContext, useEffect, useState } from "react";
+import { useContext, useEffect, useMemo, useState } from "react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { useParams } from "react-router-dom";
+import { AlertDialog } from "../common/CustomNotification";
 import PageBreadCrumb from "../common/PageBreadCrumb";
+import EQABadge from "../eqa/EQABadge";
 import { NotificationContext } from "../layout/Layout";
 import {
   getFromOpenElisServerV2,
@@ -39,8 +41,10 @@ import SampleAssignmentModal from "./SampleAssignmentModal";
 import ShipmentNavigation from "./ShipmentNavigation";
 import { generateLabelPDF, generateManifestPDF } from "./utils/pdfGenerator";
 
+import useInAppNavigation from "../common/useInAppNavigation";
 const BoxDetails = () => {
   const intl = useIntl();
+  const navigate = useInAppNavigation();
   const { boxId } = useParams();
   const { addNotification } = useContext(NotificationContext);
 
@@ -410,9 +414,44 @@ const BoxDetails = () => {
     { key: "actions", header: intl.formatMessage({ id: "label.actions" }) },
   ];
 
+  // An imported box has no local contents rows — its manifest travels as
+  // JSON [{label, type}] on the box itself. Render-only: no reception status,
+  // no per-item actions.
+  const importedRows = useMemo(() => {
+    if (samples.length > 0 || !box?.importedContents) {
+      return [];
+    }
+    try {
+      const items = JSON.parse(box.importedContents);
+      return Array.isArray(items)
+        ? items.map((item, i) => ({
+            id: `imported-${i}`,
+            accessionNumber: item.label || "-",
+            typeOfSample: item.type || "-",
+            referralTests: "-",
+            collectionDate: "-",
+            receptionStatus: "-",
+            receptionNotes: "-",
+            actions: "-",
+          }))
+        : [];
+    } catch {
+      return [];
+    }
+  }, [samples, box?.importedContents]);
+
   const renderSampleRows = () => {
+    if (samples.length === 0 && importedRows.length > 0) {
+      return importedRows;
+    }
     return samples.map((sample) => ({
-      id: sample.sampleItemId || sample.id?.toString() || "-",
+      // EQA panel material has no sample item, so its contents row identifies
+      // itself by the box_sample_item id instead.
+      id:
+        sample.sampleItemId ||
+        sample.boxSampleItemId?.toString() ||
+        sample.id?.toString() ||
+        "-",
       accessionNumber: sample.accessionNumber,
       typeOfSample: sample.typeOfSample || "-",
       referralTests: sample.referralTests
@@ -451,6 +490,8 @@ const BoxDetails = () => {
   if (!box) {
     return (
       <div className="error-container">
+        {/* The fetch failure that lands here raises a message of its own. */}
+        <AlertDialog />
         <p>
           <FormattedMessage id="shipment.error.boxNotFound" />
         </p>
@@ -460,6 +501,9 @@ const BoxDetails = () => {
 
   return (
     <div className="box-details">
+      {/* Without this every message this page raises is discarded, so sending a
+          box, removing a sample or a failed state change all passed in silence. */}
+      <AlertDialog />
       <PageBreadCrumb
         breadcrumbs={[
           { label: "home.label", link: "/" },
@@ -481,8 +525,9 @@ const BoxDetails = () => {
               </h2>
               <div className="box-meta">
                 {renderStateTag(box.state)}
+                {box.eqaCycleId && <EQABadge />}
                 <span className="box-sample-count">
-                  {samples.length}{" "}
+                  {samples.length || importedRows.length}{" "}
                   <FormattedMessage id="shipment.label.samples" />
                 </span>
               </div>
@@ -564,9 +609,9 @@ const BoxDetails = () => {
                       onCloseButtonClick={() => setReconcileBlockCount(null)}
                       actions={
                         <NotificationActionButton
-                          onClick={() =>
-                            (window.location.href = `/SampleShipment/reference-lab-results?view=returned&boxId=${boxId}`)
-                          }
+                          onClick={navigate(
+                            `/SampleShipment/reference-lab-results?view=returned&boxId=${boxId}`,
+                          )}
                         >
                           {intl.formatMessage({
                             id: "referral.box.viewBlockedReferrals",
@@ -663,7 +708,7 @@ const BoxDetails = () => {
               <FormattedMessage id="shipment.label.samples" />
             </h3>
 
-            {samples.length === 0 ? (
+            {samples.length === 0 && importedRows.length === 0 ? (
               <div className="empty-state">
                 <p>
                   <FormattedMessage id="shipment.box.noSamples" />

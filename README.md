@@ -71,6 +71,9 @@ We welcome community contributions to help improve OpenELIS Global!
 Download the OpenELIS Global Installer for each Release from the
 [Release Assets](https://github.com/DIGI-UW/OpenELIS-Global-2/releases)
 
+Supported versions, branches, and the versioning policy are described in
+[RELEASES.md](RELEASES.md).
+
 see full
 [installation instructions](https://uwdigi.atlassian.net/wiki/x/EoBIDg#Downloaded-Installer-Offline-Setup)
 for Offline Installation
@@ -81,82 +84,27 @@ see [OpenELIS-Docker setup](https://github.com/DIGI-UW/openelis-docker)
 
 ### For Running OpenELIS Global2 from Source Code
 
-**Prerequisites for all methods below:**
-
-Before running any `docker compose` command, you must create a `.env` file with
-your environment configuration:
+Use the same launcher from any clone or worktree:
 
 ```bash
-cp .env.example .env
+bash scripts/setup-workspace.sh
+scripts/dev-stack up
+scripts/dev-stack url
 ```
 
-Then edit `.env` to customize settings for your environment (database passwords,
-domain, etc.). See `.env.example` for detailed documentation of each variable.
-
-**IMPORTANT:** Never commit `.env` to version control as it contains secrets and
-server-specific settings. CI copies `.env.example` to `.env` before running
-docker compose.
-
-#### Running OpenELIS Global2 using docker compose With published docker images on dockerhub
-
-    docker compose up -d
-
-#### Running OpenELIS Global2 using docker compose with docker images built directly from the source code
-
-    docker compose -f build.docker-compose.yml up -d --build
-
-#### Running OpenELIS Global2 with docker compose For Development
-
-Here Artifacts (ie the War file and React code) are compiled/built on the local
-machine outside docker and just mounted into the docker compose setup. This
-speeds up the development process
-
-1.  Fork the
-    [OpenELIS-Global Repository](https://github.com/DIGI-UW/OpenELIS-Global-2.git)
-    and clone the forked repo. The `username` below is the `username` of your
-    Github profile.
-
-         git clone https://github.com/username/OpenELIS-Global-2.git
-
-1.  innitialize and build sub modules
-
-        cd OpenELIS-Global-2
-        git submodule update --init --recursive
-        cd dataexport
-        mvn clean install -DskipTests
-
-1.  Navigate back to the repository directory:
-
-         cd ..
-
-1.  Build the War file
-
-          mvn clean install -DskipTests -Dmaven.test.skip=true
-
-1.  Start the containers to mount the locally compiled artifacts
-
-        docker compose -f dev.docker-compose.yml up -d
-
-    Note : For Reflecting Local changes in the Running Containers ;
-
-- Any Changes to the [Front-end](./frontend/) React Source Code will be directly
-  Hot Reloaded in the UI
-- For changes to the [Back-end](./src/) Java Source code
-
-  - Run the maven build again to re-build the War file
-
-         mvn clean install -DskipTests -Dmaven.test.skip=true
-
-  - Recreate the Openelis webapp container
-
-        docker compose -f dev.docker-compose.yml up -d  --no-deps --force-recreate oe.openelis.org
+The launcher builds the backend, frontend, Analyzer Bridge and mock from the
+checkout and pinned submodules. Its containers, images, ports and data belong to
+this worktree. Frontend edits hot reload; re-run `up` after backend or
+dependency changes. Native builds, focused tests, domain setup and
+published-image deployment are described in
+[the development guide](docs/dev_setup.md).
 
 #### The Instances can be accessed at
 
-| Instance     |                   URL                   | credentials (user : password) |
-| ------------ | :-------------------------------------: | ----------------------------: |
-| Legacy UI    | https://localhost/api/OpenELIS-Global/  |            admin: adminADMIN! |
-| New React UI |           https://localhost/            |            admin: adminADMIN! |
+| Instance     |                      URL                       | credentials (user : password) |
+| ------------ | :--------------------------------------------: | ----------------------------: |
+| Legacy UI    | `<scripts/dev-stack url>/api/OpenELIS-Global/` |            admin: adminADMIN! |
+| New React UI |       output of `scripts/dev-stack url`        |            admin: adminADMIN! |
 
 **Note:** If your browser indicates that the website is not secure after
 accessing any of these links, simply follow these steps:
@@ -179,56 +127,19 @@ accessing any of these links, simply follow these steps:
 
         mvn spotless:apply
 
-#### To ensure your code passes the same checks as the CI pipeline
-
-**Recommended: Use the CI check scripts** (replicates exact CI workflow):
+#### Run the local CI test package
 
 ```bash
-# Run backend CI checks (formatting + build + tests)
-./scripts/run-ci-checks.sh
-
-# Run frontend CI checks (formatting + unit tests + E2E tests)
-./scripts/run-frontend-ci-checks.sh
-
-# Run both (full CI simulation)
-./scripts/run-ci-checks.sh && ./scripts/run-frontend-ci-checks.sh
+scripts/run-ci-checks.sh
+scripts/run-ci-checks.sh --list-jobs
+scripts/run-ci-checks.sh --job frontend-static
 ```
 
-**Options:**
-
-- `--skip-submodules`: Skip submodule build (faster, for quick checks)
-- `--skip-tests`: Skip tests (formatting only)
-- `--skip-e2e`: Skip E2E tests (frontend only)
-
-**Manual commands** (if you prefer to run steps individually):
-
-1.  Run Code Formatting Check (Backend). This command checks code formatting and
-    performs validation similar to the CI
-
-        mvn spotless:check
-
-1.  Run Build Check (Backend). This command builds the project similar to CI
-
-        mvn clean install -Dspotless.check.skip=true
-
-1.  To run Individual Integration Test
-
-         mvn verify -Dit.test=<packageName>.<TestClassName>
-
-    **DBUnit test data note:** DB-backed integration tests typically load DBUnit
-    Flat XML datasets from `src/test/resources/testdata/` via
-    `executeDataSetWithStateManagement("testdata/<file>.xml")`. Prefer datasets
-    over inline SQL setup/cleanup to avoid test data pollution.
-
-1.  Run Frontend Formatting, Build, and E2E Test Checks similar to CI
-
-    > **Note:** Frontend checks will only pass successfully if your development
-    > environment is properly set up and running without issues.
-
-        cd frontend/ # from project directory
-        npm install
-        npm run build
-        npm run cy:run # this will run e2e testing same CI
+The default runs the complete local code-check package on committed source in
+isolated environments. `--job` is repeatable and includes each selected job's
+setup; its result is labeled partial. Run the full command after a push while
+GitHub runs. Publishing and GitHub administration remain hosted operations. See
+[the development guide](docs/dev_setup.md) for job mapping and evidence.
 
 ### Environmental & Compliance-Scoped Result Evaluation
 
@@ -300,25 +211,11 @@ For comprehensive testing guidance, see:
 
 ### Test Data Setup
 
-For E2E testing, integration testing, and manual testing, load test fixtures:
-
-```bash
-# Basic usage (loads and verifies automatically)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness fixture lane (includes HARN-* lane data)
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Note**: The unified loader script provides dependency checks, verification,
-and reset capabilities. See
-[Test Data Strategy Guide](.specify/guides/test-data-strategy.md) for details.
+`scripts/dev-stack up` creates development scenarios through application
+services. The local CI runner prepares the workflow's fixtures in fresh,
+isolated test databases. Do not run fixture resets against the interactive
+development stack. For fixture maintenance and backend integration datasets, see
+[the test data guide](.specify/guides/test-data-strategy.md).
 
 ### Pull request guidelines
 

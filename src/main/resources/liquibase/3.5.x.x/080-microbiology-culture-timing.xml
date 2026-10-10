@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <changeSet id="OGC-782-microbiology-culture-timing" author="OGC">
+        <addColumn schemaName="clinlims" tableName="micro_culture_setup">
+            <column name="incubation_hours" type="INTEGER"/>
+            <column name="subculture_at_hours" type="INTEGER"/>
+            <column name="max_incubation_days" type="INTEGER"/>
+        </addColumn>
+        <sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_incubation_hours_chk
+            CHECK (incubation_hours IS NULL OR incubation_hours &gt; 0)
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_subculture_hours_chk
+            CHECK (subculture_at_hours IS NULL OR subculture_at_hours &gt; 0)
+        </sql>
+        <sql>
+            ALTER TABLE clinlims.micro_culture_setup
+            ADD CONSTRAINT micro_culture_setup_max_days_chk
+            CHECK (max_incubation_days IS NULL OR max_incubation_days &gt; 0)
+        </sql>
+        <rollback>
+            <sql>ALTER TABLE clinlims.micro_culture_setup DROP CONSTRAINT micro_culture_setup_incubation_hours_chk</sql>
+            <sql>ALTER TABLE clinlims.micro_culture_setup DROP CONSTRAINT micro_culture_setup_subculture_hours_chk</sql>
+            <sql>ALTER TABLE clinlims.micro_culture_setup DROP CONSTRAINT micro_culture_setup_max_days_chk</sql>
+            <dropColumn schemaName="clinlims" tableName="micro_culture_setup" columnName="incubation_hours"/>
+            <dropColumn schemaName="clinlims" tableName="micro_culture_setup" columnName="subculture_at_hours"/>
+            <dropColumn schemaName="clinlims" tableName="micro_culture_setup" columnName="max_incubation_days"/>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>

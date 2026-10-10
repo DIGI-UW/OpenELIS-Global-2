@@ -113,7 +113,7 @@ const DisposeSampleModal = ({
     <ComposedModal
       open={open}
       onClose={handleClose}
-      size="lg"
+      size="sm"
       data-testid="dispose-modal"
     >
       <ModalHeader

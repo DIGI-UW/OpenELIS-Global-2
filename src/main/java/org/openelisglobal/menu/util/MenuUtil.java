@@ -40,9 +40,14 @@ public class MenuUtil {
     private static final String MENU_CONFIG_PATH = "/var/lib/openelis-global/menu/menu_config.json";
     private static final String MENU_CONFIG_AUTOCREATE_PROPERTY = "org.openelisglobal.menu.configuration.autocreate";
 
+    private static File configurationFile() {
+        return new File(SpringContext.getBean(Environment.class)
+                .getProperty("org.openelisglobal.menu.configuration.file", MENU_CONFIG_PATH));
+    }
+
     /**
      * The intent of this method is to allow menu items to be added outside of the
-     * database. Typically plugins
+     * database.
      *
      * @param menu The menu item to be added
      */
@@ -57,6 +62,12 @@ public class MenuUtil {
             if (insertedMenu.getElementId().equals(menu.getElementId())) {
                 insertedMenu.setActionURL(menu.getActionURL());
                 insertedMenu.setIsActive(menu.getIsActive());
+                if (menu.isPresentationStyleSpecified()) {
+                    insertedMenu.setPresentationStyle(menu.getPresentationStyle());
+                }
+                if (menu.isIconSpecified()) {
+                    insertedMenu.setIcon(menu.getIcon());
+                }
             }
         });
     }
@@ -70,12 +81,10 @@ public class MenuUtil {
             createTree();
         }
 
-        // Apply menu filtering if enabled
-        if (isMenuFilteringEnabled()) {
-            return filterMenuTree(root);
-        }
+        List<MenuItem> menuTree = isMenuFilteringEnabled() ? filterMenuTree(root) : root;
 
-        return root;
+        // Filtered here, not in MenuController, so banner.jsp gets the same tree.
+        return menuService.filterByPrivilege(menuTree);
     }
 
     public static List<MenuItem> getUnfilteredMenuTree() {
@@ -87,7 +96,9 @@ public class MenuUtil {
     }
 
     private static void createTree() {
-        List<Menu> menuList = menuService.getAll();
+        List<Menu> menuList = new ArrayList<>(menuService.getAll());
+
+        MenuConfigurationLoader.loadConfiguredMenus(configurationFile(), menuList);
 
         Map<String, Menu> idToMenuMap = new HashMap<>();
 
@@ -262,7 +273,7 @@ public class MenuUtil {
      */
     private static List<MenuItem> filterMenuTree(List<MenuItem> menuTree) {
         try {
-            File configFile = new File(MENU_CONFIG_PATH);
+            File configFile = configurationFile();
             if (!configFile.exists() || !configFile.isFile()) {
                 LogEvent.logWarn("MenuUtil", "filterMenuTree",
                         "Menu config file not found at: " + MENU_CONFIG_PATH + ". Skipping menu filtering.");
@@ -347,7 +358,7 @@ public class MenuUtil {
      *                          included
      * @return The filtered menu tree containing only included items
      */
-    private static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
+    public static List<MenuItem> filterByIncludes(List<MenuItem> menuTree, Set<String> includes,
             Set<String> wildcardParentIds) {
         return filterByIncludes(menuTree, includes, wildcardParentIds, false);
     }

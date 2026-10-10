@@ -29,6 +29,20 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
         return baseObjectDAO;
     }
 
+    /**
+     * Every provider is published to FHIR as a Practitioner addressed by its uuid;
+     * one inserted without it (the placeholder provider orders fall back to, say)
+     * was sent under its bare database id, which a FHIR server refuses.
+     */
+    @Override
+    @Transactional
+    public String insert(Provider provider) {
+        if (provider.getFhirUuid() == null) {
+            provider.setFhirUuid(UUID.randomUUID());
+        }
+        return super.insert(provider);
+    }
+
     @Override
     @Transactional(readOnly = true)
     public void getData(Provider provider) {
@@ -97,8 +111,20 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
 
     @Override
     @Transactional(readOnly = true)
+    public List<Provider> getPagesOfSearchedProviders(int startingRecNo, String parameter, String titleCode) {
+        return baseObjectDAO.getPagesOfSearchedProviders(startingRecNo, parameter, titleCode);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public int getTotalSearchedProviderCount(String parameter) {
         return baseObjectDAO.getTotalSearchedProviderCount(parameter);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getTotalSearchedProviderCount(String parameter, String titleCode) {
+        return baseObjectDAO.getTotalSearchedProviderCount(parameter, titleCode);
     }
 
     @Override
@@ -143,6 +169,7 @@ public class ProviderServiceImpl extends AuditableBaseObjectServiceImpl<Provider
             dbProvider.getPerson().setWorkPhone(provider.getPerson().getWorkPhone());
             dbProvider.getPerson().setFax(provider.getPerson().getFax());
             dbProvider.getPerson().setCellPhone(provider.getPerson().getCellPhone());
+            dbProvider.getPerson().setTitleCode(provider.getPerson().getTitleCode());
             dbProvider = save(dbProvider);
         } else {
             if (fhirUuid == null) {

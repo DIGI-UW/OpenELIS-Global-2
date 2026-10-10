@@ -131,10 +131,7 @@ public class ObservationProvider implements IResourceProvider {
     public Observation read(@IdParam IdType id) {
         String method = "read";
         try {
-            if (id == null || !id.hasIdPart()) {
-                throw new ResourceNotFoundException("Missing Observation ID");
-            }
-            String uuid = id.getIdPart();
+            String uuid = FhirProviderUtils.requireUuidId(id, "Observation").toString();
 
             Result result = resultService.getResultByFhirUuid(uuid);
             if (result == null) {
@@ -148,7 +145,7 @@ public class ObservationProvider implements IResourceProvider {
 
             return observation;
 
-        } catch (ResourceNotFoundException e) {
+        } catch (ResourceNotFoundException | InvalidRequestException e) {
             throw e;
         } catch (Exception e) {
             if (FhirProviderUtils.isDataError(e)) {
@@ -263,6 +260,15 @@ public class ObservationProvider implements IResourceProvider {
             LogEvent.logInfo(getClass().getSimpleName(), method,
                     "Existing Result found with ID=" + existingResult.getId());
 
+            Observation published = fhirTransformService.transformResultToObservation(existingResult);
+            if (sameContent(published, fhirObservation)) {
+                published.setId(theId);
+                MethodOutcome unchanged = new MethodOutcome();
+                unchanged.setCreated(false);
+                unchanged.setResource(published);
+                return unchanged;
+            }
+
             TestResultItem item = fhirTransformService.createResultFromObservation(fhirObservation);
 
             ResultsUpdateDataSet actionDataSet = handleObservationPersistence(item, fhirObservation, existingResult,
@@ -333,7 +339,7 @@ public class ObservationProvider implements IResourceProvider {
         LogEvent.logDebug(this.getClass().getSimpleName(), method,
                 "Received FHIR DELETE request for Observation ID: " + (theId != null ? theId.getIdPart() : "null"));
         try {
-            FhirProviderUtils.validateIdParam(theId, "Observation", this.getClass().getSimpleName(), method);
+            FhirProviderUtils.requireUuidId(theId, "Observation");
 
             Result result = resultService.getResultByFhirUuid(theId.getIdPart());
 
@@ -420,6 +426,23 @@ public class ObservationProvider implements IResourceProvider {
                     "Error searching Observations: " + e.getMessage());
             throw new InternalErrorException("Unexpected server error searching Observations");
         }
+    }
+
+    /**
+     * True when an update sends back exactly what a read publishes for the stored
+     * result. Saving it anyway records a result modification that did not happen:
+     * the analysis revision and entry date move and the audit trail grows on every
+     * unchanged round trip.
+     */
+    private static boolean sameContent(Observation published, Observation sent) {
+        Observation stored = published.copy();
+        Observation received = sent.copy();
+        for (Observation observation : List.of(stored, received)) {
+            observation.setIdElement(new IdType());
+            observation.setMeta(null);
+            observation.setText(null);
+        }
+        return stored.equalsDeep(received);
     }
 
     private ResultsUpdateDataSet handleObservationPersistence(TestResultItem item, Observation observation,
@@ -534,7 +557,7 @@ public class ObservationProvider implements IResourceProvider {
                         .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
             }
 
-            throw new InternalErrorException("Unexpected Error during validation");
+            throw new UnprocessableEntityException("Observation failed validation", outcome);
         }
 
         boolean useTechnicianName = ConfigurationProperties.getInstance()
@@ -624,7 +647,7 @@ public class ObservationProvider implements IResourceProvider {
                         .setCode(OperationOutcome.IssueType.INVALID).setDiagnostics(error.getDefaultMessage());
             }
 
-            throw new InternalErrorException("Unexpected Error during validation");
+            throw new UnprocessableEntityException("Observation failed validation", outcome);
         }
 
         boolean useTechnicianName = ConfigurationProperties.getInstance()

@@ -1,17 +1,8 @@
 package org.openelisglobal.audittrail.controller.rest;
 
-import com.itextpdf.text.BaseColor;
-import com.itextpdf.text.Document;
-import com.itextpdf.text.DocumentException;
-import com.itextpdf.text.Element;
-import com.itextpdf.text.Font;
-import com.itextpdf.text.PageSize;
-import com.itextpdf.text.Phrase;
-import com.itextpdf.text.pdf.PdfPCell;
-import com.itextpdf.text.pdf.PdfPTable;
-import com.itextpdf.text.pdf.PdfWriter;
 import jakarta.annotation.PostConstruct;
 import jakarta.servlet.http.HttpServletResponse;
+import java.awt.Color;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
@@ -21,7 +12,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -31,15 +21,23 @@ import org.openelisglobal.audittrail.service.AuditEntitySnapshotService;
 import org.openelisglobal.audittrail.util.AuditFieldStringifier;
 import org.openelisglobal.audittrail.valueholder.History;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.common.util.PdfExportSupport;
+import org.openelisglobal.common.util.StringUtil;
 import org.openelisglobal.history.service.HistoryService;
 import org.openelisglobal.internationalization.MessageUtil;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.person.valueholder.Person;
-import org.openelisglobal.referencetables.service.ReferenceTablesService;
-import org.openelisglobal.referencetables.valueholder.ReferenceTables;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openpdf.text.Document;
+import org.openpdf.text.DocumentException;
+import org.openpdf.text.Element;
+import org.openpdf.text.Font;
+import org.openpdf.text.Phrase;
+import org.openpdf.text.pdf.PdfPCell;
+import org.openpdf.text.pdf.PdfPTable;
+import org.openpdf.text.pdf.PdfWriter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -51,12 +49,7 @@ import org.springframework.web.bind.annotation.RestController;
 @PreAuthorize("hasRole('ADMIN')")
 public class SystemAuditEventRestController {
 
-    private static final int MAX_EXPORT_ROWS = 10000;
-
-    private static final List<String> SYSTEM_ENTITY_TABLE_NAMES = Arrays.asList("TEST", "PANEL", "METHOD",
-            "TEST_SECTION", "TYPE_OF_SAMPLE", "RESULT_LIMITS", "SYSTEM_USER", "SYSTEM_ROLE", "SYSTEM_USER_ROLE",
-            "DICTIONARY", "DICTIONARY_CATEGORY", "analyzer", "site_information", "QA_EVENT", "ANALYSIS_QAEVENT",
-            "ANALYSIS_QAEVENT_ACTION", "QA_OBSERVATION", "PATIENT", "PERSON");
+    private static final int MAX_EXPORT_ROWS = PdfExportSupport.MAX_EXPORT_ROWS;
 
     private static final String PATIENT_ENTITY_NAME = "PATIENT";
     private static final String PERSON_ENTITY_NAME = "PERSON";
@@ -65,9 +58,6 @@ public class SystemAuditEventRestController {
 
     @Autowired
     private HistoryService historyService;
-
-    @Autowired
-    private ReferenceTablesService referenceTablesService;
 
     @Autowired
     private SystemUserService systemUserService;
@@ -84,16 +74,9 @@ public class SystemAuditEventRestController {
 
     @PostConstruct
     private void initRefTableCache() {
-        Map<String, String> nameToId = new HashMap<>();
+        this.refTableNameToId = historyService.getSystemAuditReferenceTableIds();
         Map<String, String> idToName = new HashMap<>();
-        for (String tableName : SYSTEM_ENTITY_TABLE_NAMES) {
-            ReferenceTables rt = referenceTablesService.getReferenceTableByName(tableName);
-            if (rt != null) {
-                nameToId.put(tableName, rt.getId());
-                idToName.put(rt.getId(), tableName);
-            }
-        }
-        this.refTableNameToId = Collections.unmodifiableMap(nameToId);
+        this.refTableNameToId.forEach((name, id) -> idToName.put(id, name));
         this.refTableIdToName = Collections.unmodifiableMap(idToName);
     }
 
@@ -345,10 +328,13 @@ public class SystemAuditEventRestController {
             @SuppressWarnings("unchecked")
             Map<String, Map<String, String>> changes = (Map<String, Map<String, String>>) item.get("changes");
             Timestamp ts = (Timestamp) item.get("timestamp");
-            writer.printf("%s,%s,%s,%s,%s,%s,%s%n", csvEscape(ts != null ? sdf.format(ts) : ""),
-                    csvEscape((String) item.get("user")), csvEscape((String) item.get("entityType")),
-                    csvEscape((String) item.get("entityId")), csvEscape((String) item.get("action")),
-                    csvEscape(formatChangesColumn(changes, "old")), csvEscape(formatChangesColumn(changes, "new")));
+            writer.printf("%s,%s,%s,%s,%s,%s,%s%n", StringUtil.csvEscape(ts != null ? sdf.format(ts) : ""),
+                    StringUtil.csvEscape((String) item.get("user")),
+                    StringUtil.csvEscape((String) item.get("entityType")),
+                    StringUtil.csvEscape((String) item.get("entityId")),
+                    StringUtil.csvEscape((String) item.get("action")),
+                    StringUtil.csvEscape(formatChangesColumn(changes, "old")),
+                    StringUtil.csvEscape(formatChangesColumn(changes, "new")));
         }
         writer.flush();
     }
@@ -403,13 +389,13 @@ public class SystemAuditEventRestController {
         SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
 
         try {
-            Document document = new Document(PageSize.A4.rotate());
+            Document document = new Document(PdfExportSupport.pageSize().rotate());
             PdfWriter.getInstance(document, response.getOutputStream());
             document.open();
 
-            Font headerFont = new Font(Font.FontFamily.HELVETICA, 10, Font.BOLD, BaseColor.WHITE);
-            Font cellFont = new Font(Font.FontFamily.HELVETICA, 9);
-            Font titleFont = new Font(Font.FontFamily.HELVETICA, 14, Font.BOLD);
+            Font headerFont = new Font(Font.HELVETICA, 10, Font.BOLD, Color.WHITE);
+            Font cellFont = new Font(Font.HELVETICA, 9);
+            Font titleFont = new Font(Font.HELVETICA, 14, Font.BOLD);
 
             document.add(new Phrase(MessageUtil.getMessage("auditTrail.export.title.systemAuditEvents") + "\n\n",
                     titleFont));
@@ -427,7 +413,7 @@ public class SystemAuditEventRestController {
                     MessageUtil.getMessage("auditTrail.export.header.newValue") };
             for (String header : headers) {
                 PdfPCell cell = new PdfPCell(new Phrase(header, headerFont));
-                cell.setBackgroundColor(new BaseColor(51, 102, 179));
+                cell.setBackgroundColor(new Color(51, 102, 179));
                 cell.setHorizontalAlignment(Element.ALIGN_CENTER);
                 cell.setPadding(5);
                 table.addCell(cell);
@@ -534,23 +520,6 @@ public class SystemAuditEventRestController {
         if ("D".equals(activity))
             return MessageUtil.getMessage("auditTrail.activity.delete");
         return activity;
-    }
-
-    private String csvEscape(String value) {
-        if (value == null) {
-            return "";
-        }
-        // Prevent CSV formula injection (CWE-1236): prefix dangerous leading chars
-        if (!value.isEmpty()) {
-            char first = value.charAt(0);
-            if (first == '=' || first == '+' || first == '-' || first == '@') {
-                value = "'" + value;
-            }
-        }
-        if (value.contains(",") || value.contains("\"") || value.contains("\n")) {
-            return "\"" + value.replace("\"", "\"\"") + "\"";
-        }
-        return value;
     }
 
     private Timestamp parseStartDate(String dateStr) {

@@ -312,12 +312,12 @@ Flag changes that:
   - Use Cypress retry-ability (`should`) rather than sleeps.
 - Use repository-provided npm scripts for Cypress execution (don’t recommend
   direct `npx cypress`).
-- **Pre-push E2E validation is mandatory** when E2E-relevant behavior changes:
-  - Prefer the CI-replication script: `./scripts/run-e2e-like-ci.sh`
-  - Prefer fail-fast when iterating:
-    `E2E_FAIL_FAST=true ./scripts/run-e2e-like-ci.sh`
-  - Or use npm scripts in `frontend/package.json` (examples:
-    `npm run cy:spec ...`, `npm run cy:failfast`)
+- Start interactive development through `scripts/dev-stack up`, export
+  `scripts/dev-stack env`, then use the native npm/Playwright/Cypress commands.
+- For isolated validation, use `scripts/run-ci-checks.sh`; `--job NAME` selects
+  a CI job and includes its setup. `--list-jobs` lists supported names.
+- Run the complete command after each push alongside GitHub. A targeted pass is
+  partial evidence. See [the development guide](../docs/dev_setup.md).
 
 ### Build/format expectations (call out if missing)
 

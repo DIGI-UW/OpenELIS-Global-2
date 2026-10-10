@@ -17,9 +17,13 @@ YELLOW='\033[1;33m'
 NC='\033[0m'
 
 FORCE_RELOAD_CONFIG=false
+LOCAL_MODE=false
+SKIP_SUBMODULES=false
 for arg in "$@"; do
   case $arg in
     --force-reload-config) FORCE_RELOAD_CONFIG=true ;;
+    --local) LOCAL_MODE=true ;;
+    --skip-submodules) SKIP_SUBMODULES=true ;;
   esac
 done
 
@@ -33,7 +37,9 @@ if [ -f "$HARNESS_DIR/.env" ]; then
 elif [ -f "$REPO_ROOT/.env" ]; then
   set -a; . "$REPO_ROOT/.env"; set +a
 fi
-if [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
+if [ "$LOCAL_MODE" = true ]; then
+  : "${LETSENCRYPT_DOMAIN:=localhost}"
+elif [ -z "${LETSENCRYPT_DOMAIN:-}" ]; then
   echo -e "${RED}ERROR: LETSENCRYPT_DOMAIN is not set. Add it to $REPO_ROOT/.env before running bootstrap.${NC}" >&2
   exit 1
 fi
@@ -44,10 +50,13 @@ fi
 export LETSENCRYPT_DOMAIN LETSENCRYPT_BRIDGE_DOMAIN
 
 # --- Submodules ---
-echo "Initializing analyzer Bridge and mock submodules..."
-cd "$REPO_ROOT"
-git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge
-echo -e "  ${GREEN}✓ Submodules initialized${NC}"
+# dev-stack has already initialized missing checkouts and preserved local edits.
+if [ "$SKIP_SUBMODULES" = false ]; then
+  echo "Initializing analyzer Bridge and mock submodules..."
+  cd "$REPO_ROOT"
+  git submodule update --init tools/analyzer-mock-server tools/openelis-analyzer-bridge
+  echo -e "  ${GREEN}✓ Submodules initialized${NC}"
+fi
 
 # --- Volume directory tree ---
 mkdir -p "$HARNESS_VOLUME/database/dbInit"
@@ -58,24 +67,11 @@ mkdir -p "$HARNESS_VOLUME/menu"
 mkdir -p "$HARNESS_VOLUME/logs/oeLogs"
 mkdir -p "$HARNESS_VOLUME/logs/tomcatLogs"
 mkdir -p "$HARNESS_VOLUME/programs"
-mkdir -p "$HARNESS_VOLUME/configuration/backend"
 mkdir -p "$HARNESS_VOLUME/analyzer-imports"
 
-# --- Copy authoritative harness startup catalog into volume ---
-# These CSVs are loaded by ConfigurationInitializationService on OE startup.
-# Do not introduce a second source tree for harness test metadata.
-CONFIG_TEMPLATES="$HARNESS_DIR/config-templates"
-if [ -d "$CONFIG_TEMPLATES" ]; then
-  cp -r "$CONFIG_TEMPLATES"/* "$HARNESS_VOLUME/configuration/backend/" 2>/dev/null || true
-  echo -e "  ${GREEN}✓ Configuration templates copied to volume${NC}"
-fi
-
-# Clear configuration checksums so CSVs are reloaded on next OE startup.
-# Always clear when DB was reset (checksums are on filesystem but data is in DB —
-# when DB is dropped, checksums become stale and OE skips loading CSVs).
-# Also clear when FORCE_RELOAD_CONFIG is set explicitly.
-rm -f "$HARNESS_VOLUME/configuration/backend/"*-checksums.properties 2>/dev/null
-echo -e "  ${GREEN}✓ Cleared configuration checksums (CSVs will reload on next startup)${NC}"
+# Harness molecular tests and result choices are mounted read-only from
+# config-templates and loaded by OE's normal configuration service.
+# Local Catalog Import uploads live in the worktree-scoped configuration volume.
 
 # --- Copy/adapt from root volume (idempotent: only if source exists and target missing or we overwrite nginx) ---
 copy_if_missing() {
@@ -126,7 +122,10 @@ fi
 # nginx.conf: render from the env-driven template in the root volume so
 # ${LETSENCRYPT_DOMAIN} flows through to server_name and cert paths without
 # editing nginx.conf by hand. Fallback to plain copy if only nginx.conf exists.
-if [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
+if [ "$LOCAL_MODE" = true ] && [ -f "$ROOT_VOLUME/nginx/nginx.conf" ]; then
+  cp "$ROOT_VOLUME/nginx/nginx.conf" "$HARNESS_VOLUME/nginx/nginx.conf"
+  echo "  copied local self-signed volume/nginx/nginx.conf"
+elif [ -f "$ROOT_VOLUME/nginx/nginx.conf.template" ]; then
   if ! command -v envsubst >/dev/null 2>&1; then
     # No silent fallback — the committed nginx.conf is a stale snapshot of the
     # template and lacks the bridge vhost + env-substituted domain names.
@@ -151,7 +150,10 @@ if [ ! -f "$HARNESS_VOLUME/analyzer/analyzer-test-map.csv" ]; then
   touch "$HARNESS_VOLUME/analyzer/analyzer-test-map.csv"
   echo "  created placeholder analyzer/analyzer-test-map.csv"
 fi
-if [ ! -f "$HARNESS_VOLUME/menu/menu_config.json" ]; then
+if [ -f "$ROOT_VOLUME/menu/menu_config.json" ]; then
+  cp "$ROOT_VOLUME/menu/menu_config.json" "$HARNESS_VOLUME/menu/menu_config.json"
+  echo "  copied repository menu/menu_config.json"
+elif [ ! -f "$HARNESS_VOLUME/menu/menu_config.json" ]; then
   echo '{}' > "$HARNESS_VOLUME/menu/menu_config.json"
   echo "  created placeholder menu/menu_config.json"
 fi
@@ -159,7 +161,7 @@ fi
 # --- WAR check ---
 WAR="$REPO_ROOT/target/OpenELIS-Global.war"
 if [ ! -f "$WAR" ]; then
-  echo -e "  ${YELLOW}WARN: $WAR not found. Run ./build.sh or mvn clean install -DskipTests -Dmaven.test.skip=true from repo root.${NC}"
+  echo -e "  ${YELLOW}INFO: $WAR not found yet. scripts/dev-stack up builds it from source.${NC}"
 else
   echo -e "  ${GREEN}✓ WAR found${NC}"
 fi

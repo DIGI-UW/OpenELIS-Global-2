@@ -1,5 +1,5 @@
 # Cypress E2E — DEPRECATED (will be removed after full Playwright migration).
-# Called by e2e-playwright.yml as a reusable workflow under the E2E umbrella.
+# Called by e2e-authoritative-reusable.yml under the E2E umbrella.
 # Images come from the shared-build job via e2e-image-map artifact.
 name: E2E / Cypress (Deprecated)
 
@@ -46,41 +46,25 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Balance measured test time, not file count. The five files restored
+          # by PR #4479 have no recent timings and are spread across both groups.
           - shard: core
             shard_name: Core
             specs: >-
               cypress/e2e/login.cy.js,
               cypress/e2e/home.cy.js,
-              cypress/e2e/AdminE2E/organizationManagement.cy.js,
-              cypress/e2e/AdminE2E/providerManagement.cy.js,
-              cypress/e2e/patientEntry.cy.js,
-              cypress/e2e/orderEntity.cy.js,
-              cypress/e2e/modifyOrder.cy.js,
-              cypress/e2e/batchOrderEntry.cy.js,
-              cypress/e2e/workplan.cy.js,
-              cypress/e2e/result.cy.js,
-              cypress/e2e/validation.cy.js,
-              cypress/e2e/nonConform.cy.js,
-              cypress/e2e/dashboard.cy.js,
-              cypress/e2e/report.cy.js,
-              cypress/e2e/AdminE2E/barcode.cy.js
-          - shard: admin
-            shard_name: Admin
-            specs: >-
-              cypress/e2e/AdminE2E/userManagement.cy.js,
               cypress/e2e/siteBranding.cy.js,
-              cypress/e2e/patientMerge.cy.js,
-              cypress/e2e/help.cy.js,
-              cypress/e2e/labNumberManagement.cy.js,
-              cypress/e2e/AdminE2E/dictionaryMenu.cy.js,
               cypress/e2e/AdminE2E/calculatedValueTestsManagement.cy.js,
-              cypress/e2e/AdminE2E/batchTestReassignmentandCancelation.cy.js
+              cypress/e2e/AdminE2E/MenuConfig/studyMenuConfig.cy.js,
+              cypress/e2e/AdminE2E/notifyUser.cy.js,
+              cypress/e2e/AdminE2E/resultReportingConfig.cy.js,
+              cypress/e2e/barcode-workflow.cy.js
           - shard: independent
             shard_name: Independent
             specs: ""
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.head_sha || github.sha }}
           repository: ${{github.repository}}
@@ -128,7 +112,7 @@ jobs:
 
       - name: Download image map from build workflow (non-fork)
         if: inputs.is_fork != 'true' && inputs.build_run_id != ''
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
@@ -137,7 +121,7 @@ jobs:
 
       - name: Download image map from fork-rebuild (fork)
         if: inputs.is_fork == 'true' || inputs.build_run_id == ''
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: e2e-image-map-base
           path: /tmp/e2e-image-map
@@ -191,7 +175,15 @@ jobs:
           else
             SPECS="${{ matrix.specs }}"
           fi
-          echo "Running specs: $SPECS"
+          # The folded matrix lists join with ", "; Cypress does not trim spec
+          # paths, so an untrimmed entry matches no file and is skipped silently.
+          SPECS=$(printf '%s' "$SPECS" | tr -d '[:space:]')
+          missing=0
+          for spec in $(printf '%s' "$SPECS" | tr ',' ' '); do
+            [ -f "$spec" ] || { echo "::error::Listed spec not found: $spec"; missing=1; }
+          done
+          [ "$missing" -eq 0 ] || exit 1
+          echo "Running $(printf '%s' "$SPECS" | tr ',' '\n' | grep -c .) specs: $SPECS"
           npx cypress run --browser chrome --headless --spec "$SPECS"
         working-directory: frontend
         env:

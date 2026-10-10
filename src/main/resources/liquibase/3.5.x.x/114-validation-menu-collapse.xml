@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!-- OGC-1418: Validation is one page with one search (lab number or range,
+         patient, Lab Unit, date range), so the menu item opens it directly and
+         the per-search entries are retired. Children are deactivated rather than
+         deleted, as the storage collapse did: the rows carry ids other
+         installations may reference, and every old URL still opens the one page
+         with the equivalent filter. -->
+    <changeSet id="OGC-1418-collapse-validation-menu" author="mozzy11">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="1">
+                SELECT COUNT(*) FROM clinlims.menu WHERE element_id = 'menu_resultvalidation'
+            </sqlCheck>
+        </preConditions>
+        <comment>Validation becomes a single link to the one-page search</comment>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="action_url" value="/validation"/>
+            <where>element_id = 'menu_resultvalidation'</where>
+        </update>
+        <update tableName="menu" schemaName="clinlims">
+            <column name="is_active" valueBoolean="false"/>
+            <where>element_id IN ('menu_resultvalidation_routine', 'menu_accession_validation',
+                'menu_accession_validation_range', 'menu_resultvalidation_date', 'menu_resultvalidation_study',
+                'menu_resultvalidation_immunology', 'menu_resultvalidation_biochemistry',
+                'menu_resultvalidation_serology', 'menu_resultvalidation_virology', 'menu_resultvalidation_dnapcr',
+                'menu_resultvalidation_viralload', 'menu_resultvalidation_genotyping')</where>
+        </update>
+        <rollback>
+            <!-- The study entries follow the Study Management tab setting, as
+                 2.8.x.x/menu.xml sets them. -->
+            <update tableName="menu" schemaName="clinlims">
+                <column name="action_url" value="/ResultValidation?type=&amp;test="/>
+                <where>element_id = 'menu_resultvalidation'</where>
+            </update>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueBoolean="true"/>
+                <where>element_id IN ('menu_resultvalidation_routine', 'menu_accession_validation',
+                    'menu_accession_validation_range', 'menu_resultvalidation_date')</where>
+            </update>
+            <update tableName="menu" schemaName="clinlims">
+                <column name="is_active" valueComputed="(SELECT COALESCE((SELECT si.value = 'true' FROM clinlims.site_information si WHERE si.name = 'Study Management tab'), false))"/>
+                <where>element_id IN ('menu_resultvalidation_study', 'menu_resultvalidation_immunology',
+                    'menu_resultvalidation_biochemistry', 'menu_resultvalidation_serology',
+                    'menu_resultvalidation_virology', 'menu_resultvalidation_dnapcr',
+                    'menu_resultvalidation_viralload', 'menu_resultvalidation_genotyping')</where>
+            </update>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

@@ -19,8 +19,8 @@ import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 
 public class PatientSpecialRequestReport extends PatientARVReport implements IReportCreator {
     @Override
-    protected String reportFileName() {
-        return "Patient_ARV_Version2";
+    protected boolean usesVersionTwoLayout() {
+        return true;
     }
 
     @Override
@@ -47,12 +47,4 @@ public class PatientSpecialRequestReport extends PatientARVReport implements IRe
         return SPECIAL_REQUEST_STUDY_ID;
     }
 
-    @Override
-    protected void createReportParameters() {
-        super.createReportParameters();
-        reportParameters.put("contact",
-                "CHU de Treichville, 01 BP 1712 Tel : 21-21-42-50/21-25-4189 Fax : 21-24-29-69/" + " 21-25-10-63");
-        reportParameters.put("showSerology", Boolean.FALSE);
-        reportParameters.put("showPCR", Boolean.FALSE);
-    }
 }

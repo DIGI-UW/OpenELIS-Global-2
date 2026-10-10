@@ -27,6 +27,12 @@ test.describe("Admin navigation context", () => {
     await expect(page).toHaveURL(/\/Dashboard$/);
     await expect(sideNav).not.toContainText("Back to main menu");
     await expect(sideNav.getByRole("link", { name: "Home" })).toBeVisible();
-    await expect(sideNav.getByRole("link", { name: "Admin" })).toBeVisible();
+    // Admin carries no submenu: it is a link straight to the dashboard.
+    const adminLink = sideNav.getByRole("link", { name: "Admin", exact: true });
+    await expect(adminLink).toBeVisible();
+    await expect(adminLink).toHaveAttribute("href", "/MasterListsPage");
+    await expect(
+      sideNav.getByRole("button", { name: "Admin", exact: true }),
+    ).toHaveCount(0);
   });
 });

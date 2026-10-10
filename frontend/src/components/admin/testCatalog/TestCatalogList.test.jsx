@@ -105,6 +105,27 @@ describe("TestCatalogList", () => {
     expect(requestedUrl).toContain("sampleType=2");
   });
 
+  it("filters by lab unit and keeps it in the URL", async () => {
+    const requested = [];
+    getFromOpenElisServer.mockImplementation((url, cb) => {
+      if (url.endsWith("/lab-units"))
+        return cb([{ id: "7", name: "Hematology" }]);
+      if (url.includes("/tests")) requested.push(url);
+      cb(pageOf([]));
+    });
+    renderList();
+    fireEvent.click(screen.getByRole("button", { name: "Filters" }));
+    fireEvent.click(screen.getByRole("combobox", { name: "Lab Unit" }));
+    fireEvent.click(await screen.findByRole("option", { name: "Hematology" }));
+
+    await waitFor(() =>
+      expect(requested[requested.length - 1]).toContain("labUnit=7"),
+    );
+    expect(mockHistory.replace).toHaveBeenLastCalledWith({
+      search: expect.stringContaining("labUnit=7"),
+    });
+  });
+
   it("aborts the previous request when filters change (stale-result guard)", () => {
     vi.useFakeTimers();
     try {
@@ -120,7 +141,7 @@ describe("TestCatalogList", () => {
       const search = screen.getByPlaceholderText(
         messages["label.testCatalog.list.search"],
       );
-      fireEvent.change(search, { target: { value: "x" } });
+      fireEvent.change(search, { target: { value: "xy" } });
       act(() => vi.advanceTimersByTime(300)); // debounce fires -> a new fetch starts
       expect(signals.length).toBe(2);
       // The earlier request is aborted so its late response can't overwrite the newer one.
@@ -217,6 +238,46 @@ describe("TestCatalogList", () => {
       expect(getFromOpenElisServer.mock.calls.length).toBe(before + 1); // fired after 300ms
       expect(getFromOpenElisServer.mock.calls.at(-1)[0]).toContain(
         "search=glu",
+      );
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  /**
+   * OGC-1134 — one character matches most of the catalog, so it is not a search
+   * yet: nothing is asked of the server until the term reaches two characters,
+   * and clearing the box asks for the unfiltered list again.
+   */
+  it("does not query for a single character, then queries once at two and again when cleared", () => {
+    vi.useFakeTimers();
+    try {
+      getFromOpenElisServer.mockImplementation((url, cb) => cb(pageOf([])));
+      renderList();
+      const before = getFromOpenElisServer.mock.calls.length;
+      const search = screen.getByPlaceholderText(
+        messages["label.testCatalog.list.search"],
+      );
+
+      fireEvent.change(search, { target: { value: "a" } });
+      act(() => vi.advanceTimersByTime(400));
+      expect(getFromOpenElisServer.mock.calls.length).toBe(before);
+      expect(mockHistory.replace).not.toHaveBeenCalledWith(
+        expect.objectContaining({
+          search: expect.stringContaining("search=a"),
+        }),
+      );
+
+      fireEvent.change(search, { target: { value: "am" } });
+      act(() => vi.advanceTimersByTime(400));
+      expect(getFromOpenElisServer.mock.calls.length).toBe(before + 1);
+      expect(getFromOpenElisServer.mock.calls.at(-1)[0]).toContain("search=am");
+
+      fireEvent.change(search, { target: { value: "" } });
+      act(() => vi.advanceTimersByTime(400));
+      expect(getFromOpenElisServer.mock.calls.length).toBe(before + 2);
+      expect(getFromOpenElisServer.mock.calls.at(-1)[0]).not.toContain(
+        "search=",
       );
     } finally {
       vi.useRealTimers();

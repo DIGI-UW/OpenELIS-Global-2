@@ -1,10 +1,11 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import { Tile, Button, Stack, Tag } from "@carbon/react";
 import { Add, Printer } from "@carbon/icons-react";
 import SampleCollectionCard from "./SampleCollectionCard";
-import { getFromOpenElisServer } from "../../../utils/Utils";
+import ReceivedByLine from "./ReceivedByLine";
 import { sampleObject } from "../../OrderContext";
+import { currentLocalTime, todayLocalIso } from "../../dateUtils";
 
 /**
  * SamplesCollectionSection - Container for all sample collection cards
@@ -13,7 +14,7 @@ import { sampleObject } from "../../OrderContext";
  * - Displays all samples with collection details
  * - Add new sample button
  * - Print more labels button
- * - Auto-populates received date/time from server
+ * - Auto-populates received date/time from the lab's clock
  */
 
 const SamplesCollectionSection = ({
@@ -22,47 +23,18 @@ const SamplesCollectionSection = ({
   sampleTypes,
   unitOfMeasures,
   updateSampleCollectionDetails,
+  fillSampleDefaults,
   isReadOnly,
+  onPrintLabels,
+  printDisabled = false,
+  workflowType = "clinical",
+  labNumber = "",
 }) => {
   const intl = useIntl();
-  const componentMounted = useRef(true);
-
-  // Get current date/time as fallback
-  const getClientDate = () => {
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, "0");
-    const day = String(now.getDate()).padStart(2, "0");
-    return `${year}-${month}-${day}`;
-  };
-
-  const getClientTime = () => {
-    const now = new Date();
-    const hours = String(now.getHours()).padStart(2, "0");
-    const minutes = String(now.getMinutes()).padStart(2, "0");
-    return `${hours}:${minutes}`;
-  };
-
-  // Current server time for "Received at Lab" - always shows current time when page opens
-  // Initialize with client time as fallback, then update with server time
-  const [serverReceivedDate, setServerReceivedDate] = useState(getClientDate());
-  const [serverReceivedTime, setServerReceivedTime] = useState(getClientTime());
-
-  // Fetch current server time on mount - this is "now" for receiving samples
-  useEffect(() => {
-    componentMounted.current = true;
-
-    getFromOpenElisServer("/rest/server-time", (response) => {
-      if (componentMounted.current && response) {
-        setServerReceivedDate(response.date || getClientDate());
-        setServerReceivedTime(response.time || getClientTime());
-      }
-    });
-
-    return () => {
-      componentMounted.current = false;
-    };
-  }, []);
+  // The laboratory's "now" when the page opens: the default collection and
+  // receipt date and time of a new sample.
+  const [serverReceivedDate] = useState(() => todayLocalIso());
+  const [serverReceivedTime] = useState(() => currentLocalTime());
 
   // Handle sample update
   const handleSampleUpdate = (sampleIndex, updates) => {
@@ -71,7 +43,6 @@ const SamplesCollectionSection = ({
 
   // Handle sample removal
   const handleSampleRemove = (sampleIndex) => {
-    if (samples.length <= 1) return; // Keep at least one sample
     const updated = samples.filter((_, i) => i !== sampleIndex);
     // Re-index remaining samples
     const reindexed = updated.map((s, i) => ({ ...s, index: i }));
@@ -80,26 +51,44 @@ const SamplesCollectionSection = ({
 
   // Handle print labels for a specific sample
   const handlePrintLabels = (sampleIndex) => {
-    // TODO: Implement label printing
+    if (onPrintLabels) {
+      onPrintLabels(sampleIndex);
+    }
   };
 
   // Handle add new sample
-  const handleAddSample = () => {
-    // Get current server time for new sample
-    getFromOpenElisServer("/rest/server-time", (response) => {
-      const newSample = {
-        ...sampleObject,
-        index: samples.length,
-        receivedDate: response?.date || "",
-        receivedTime: response?.time || "",
-      };
-      setSamples([...samples, newSample]);
-    });
+  const primarySampleIndexes = samples
+    .map((sample, index) => ({ sample, index }))
+    .filter(
+      ({ sample }) => !sample.qcMetadata?.qcType && !sample.sampleRejected,
+    )
+    .map(({ index }) => index);
+
+  // FR-C9a: one cooler usually carries every tube, so Same for all samples
+  // copies the arrival condition to every primary sample on the order.
+  const handleSameForAll = (arrival) => {
+    primarySampleIndexes.forEach((index) =>
+      updateSampleCollectionDetails(index, arrival),
+    );
   };
 
-  // Handle print more sample labels
-  const handlePrintMoreLabels = () => {
-    // TODO: Implement printing additional labels
+  const handleReceiverChange = ({ id, name }) => {
+    primarySampleIndexes.forEach((index) =>
+      updateSampleCollectionDetails(index, {
+        receivedById: id,
+        receivedByName: name,
+      }),
+    );
+  };
+
+  const handleAddSample = () => {
+    const newSample = {
+      ...sampleObject,
+      index: samples.length,
+      receivedDate: todayLocalIso(),
+      receivedTime: currentLocalTime(),
+    };
+    setSamples([...samples, newSample]);
   };
 
   return (
@@ -107,6 +96,15 @@ const SamplesCollectionSection = ({
       <h4 className="section-title">
         <FormattedMessage id="collect.samples.title" defaultMessage="Samples" />
       </h4>
+      {workflowType === "clinical" && (
+        <ReceivedByLine
+          samples={samples.filter((_, index) =>
+            primarySampleIndexes.includes(index),
+          )}
+          onChange={handleReceiverChange}
+          isReadOnly={isReadOnly}
+        />
+      )}
 
       <Stack gap={5}>
         {/* Sample Cards — only regular (non-QC) samples get full collection forms */}
@@ -123,10 +121,17 @@ const SamplesCollectionSection = ({
                 serverReceivedDate={serverReceivedDate}
                 serverReceivedTime={serverReceivedTime}
                 onUpdate={handleSampleUpdate}
+                onFillDefaults={fillSampleDefaults}
                 onRemove={handleSampleRemove}
                 onPrintLabels={handlePrintLabels}
+                printDisabled={printDisabled}
                 isReadOnly={isReadOnly}
-                canRemove={samples.length > 1}
+                canRemove={!isReadOnly}
+                workflowType={workflowType}
+                labNumber={labNumber}
+                onSameForAll={
+                  primarySampleIndexes.length > 1 ? handleSameForAll : undefined
+                }
               />
 
               {/* Nested QC sample summaries — inherit collection details from parent */}
@@ -219,20 +224,7 @@ const SamplesCollectionSection = ({
           >
             <FormattedMessage
               id="collect.addSample.button"
-              defaultMessage="+ Add Another Sample"
-            />
-          </Button>
-
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Printer}
-            onClick={handlePrintMoreLabels}
-            disabled={isReadOnly}
-          >
-            <FormattedMessage
-              id="collect.printMoreLabels.button"
-              defaultMessage="Print More Sample Labels"
+              defaultMessage="Add Sample"
             />
           </Button>
         </div>
@@ -240,7 +232,7 @@ const SamplesCollectionSection = ({
         <p className="helper-text">
           <FormattedMessage
             id="collect.printMoreLabels.helper"
-            defaultMessage="Use 'Print More Sample Labels' if you draw more than expected or need labels for a different sample type."
+            defaultMessage="Drew more than expected, or need a different sample type? Use Add Sample, then print its labels from the sample card or the Labels section."
           />
         </p>
       </Stack>

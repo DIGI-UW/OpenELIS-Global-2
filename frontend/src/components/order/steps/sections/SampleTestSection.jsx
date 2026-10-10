@@ -1,3 +1,4 @@
+import CultureBottleFields from "./CultureBottleFields";
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -10,6 +11,7 @@ import {
   Button,
   Checkbox,
   Tag,
+  DismissibleTag,
   Search,
   Link,
 } from "@carbon/react";
@@ -21,17 +23,34 @@ import {
   ChevronUp,
 } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
+import {
+  formatHoldingMinutes,
+  holdingDeadline,
+  shortestHoldingMinutes,
+} from "../../dateUtils";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 
 const SampleTestSection = ({
   samples,
   setSamples,
-  orderData,
-  setOrderData,
   isReadOnly,
   workflowType,
+  orderData,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
+
+  const [samplingSites, setSamplingSites] = useState([]);
+  useEffect(() => {
+    if (workflowType !== "environmental") return;
+    let current = true;
+    getFromOpenElisServer("/rest/admin/vector/sampling-sites", (sites) => {
+      if (current && Array.isArray(sites)) setSamplingSites(sites);
+    });
+    return () => {
+      current = false;
+    };
+  }, [workflowType]);
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [testsPerSample, setTestsPerSample] = useState({});
@@ -43,7 +62,14 @@ const SampleTestSection = ({
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPerSample, setLoadingPerSample] = useState({});
 
-  // Environmental manifest dictionary data
+  const cloneSamples = () =>
+    samples.map((sample) => ({
+      ...sample,
+      panels: [...(sample.panels || [])],
+      tests: [...(sample.tests || [])],
+    }));
+
+  // Shared container catalog used by environmental samples and culture bottles.
   const [containerTypes, setContainerTypes] = useState([]);
 
   // Per-row expanded state for test/panel picker (environmental manifest)
@@ -76,16 +102,15 @@ const SampleTestSection = ({
     };
   }, [workflowType]);
 
-  // Fetch environmental manifest dictionaries once
+  // Fetch the shared container catalog once.
   useEffect(() => {
-    if (workflowType !== "environmental") return;
     getFromOpenElisServer(
       "/rest/vector/dictionary/sample-containers",
       (data) => {
         if (componentMounted.current) setContainerTypes(data || []);
       },
     );
-  }, [workflowType]);
+  }, []);
 
   const fetchedSampleTypesRef = useRef({});
 
@@ -100,10 +125,14 @@ const SampleTestSection = ({
         fetchTestsForSampleType(index, sampleTypeId);
       }
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [samples]);
 
   const fetchTestsForSampleType = (sampleIndex, sampleTypeId) => {
+    // A search term left over from the previous sample type would filter the
+    // freshly-fetched lists against text that no longer applies, hiding
+    // everything for no visible reason. Clear both on every (re)fetch.
+    setTestSearchTerms((prev) => ({ ...prev, [sampleIndex]: "" }));
+    setPanelSearchTerms((prev) => ({ ...prev, [sampleIndex]: "" }));
     if (!sampleTypeId) {
       setTestsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
       setPanelsPerSample((prev) => ({ ...prev, [sampleIndex]: [] }));
@@ -154,6 +183,7 @@ const SampleTestSection = ({
     }
   };
 
+  // Get filtered tests for a sample
   const getFilteredTests = (sampleIndex) => {
     const tests = testsPerSample[sampleIndex] || [];
     const term = (testSearchTerms[sampleIndex] || "").toLowerCase();
@@ -168,6 +198,46 @@ const SampleTestSection = ({
     return term
       ? panels.filter((p) => p.name?.toLowerCase().includes(term))
       : panels;
+  };
+
+  // Whether this sample type has ANY tests/panels, regardless of the search
+  // term. The render guards must key off these rather than the filtered
+  // length: gating on the filtered count unmounts the search input along with
+  // the list, leaving no way to clear a term that matched nothing.
+  const hasAnyTests = (sampleIndex) =>
+    (testsPerSample[sampleIndex] || []).length > 0;
+
+  const hasAnyPanels = (sampleIndex) =>
+    (panelsPerSample[sampleIndex] || []).length > 0;
+
+  // AP: holding time is already on the per-test payload but was never shown
+  // at order time, so the limit only surfaced on Results — and there it is
+  // measured from collection rather than from lab receipt.
+  const renderHoldingLimit = (sample) => {
+    const minutes = shortestHoldingMinutes(sample.tests);
+    if (!minutes) {
+      return null;
+    }
+    const deadline = holdingDeadline(sample, sample.tests);
+    return (
+      <p className="sample-holding-limit">
+        <FormattedMessage
+          id="sample.holdingLimit"
+          defaultMessage="Holding time: {limit}"
+          values={{ limit: formatHoldingMinutes(minutes, intl) }}
+        />
+        {deadline && (
+          <>
+            {" — "}
+            <FormattedMessage
+              id="sample.holdingLimit.testBy"
+              defaultMessage="test by {deadline}"
+              values={{ deadline: deadline.toLocaleString() }}
+            />
+          </>
+        )}
+      </p>
+    );
   };
 
   const handleAddSample = () => {
@@ -190,13 +260,42 @@ const SampleTestSection = ({
     setSamples([...samples, newSample]);
   };
 
+  const hasSetTest = (sample, index) =>
+    (sample.tests || []).some((selected) => {
+      const catalog = (testsPerSample[index] || []).find(
+        (test) => String(test.id) === String(selected.id || selected),
+      );
+      return (catalog || selected).collectedInSets === true;
+    });
+
+  const applySamples = (updated) => {
+    const next = updated.map((sample, index) => {
+      if (
+        hasSetTest(sample, index) &&
+        !hasSetTest(samples[index] || {}, index) &&
+        !sample.cultureSetNumber
+      ) {
+        const previous = updated.slice(0, index).filter(hasSetTest).pop();
+        return { ...sample, cultureSetNumber: previous?.cultureSetNumber || 1 };
+      }
+      return sample;
+    });
+    setSamples(next);
+  };
+
   const handleDuplicateSample = (sourceIndex) => {
     const source = samples[sourceIndex];
     const newIndex = samples.length;
     const duplicate = {
       ...source,
       index: newIndex,
+      sampleItemId: "",
+      sampleTypeRequestId: "",
+      clientKey: "",
       sampleXML: null,
+      cultureSetNumber: hasSetTest(source, sourceIndex)
+        ? samples.filter(hasSetTest).pop()?.cultureSetNumber || 1
+        : "",
     };
     setSamples([...samples, duplicate]);
 
@@ -232,6 +331,7 @@ const SampleTestSection = ({
       gpsLatitude: parent.gpsLatitude || "",
       gpsLongitude: parent.gpsLongitude || "",
       locationDetails: parent.locationDetails || "",
+      collectionLocationId: parent.collectionLocationId || "",
       collectionDate: parent.collectionDate || "",
       collectionTime: parent.collectionTime || "",
       qcMetadata: {
@@ -266,11 +366,13 @@ const SampleTestSection = ({
   };
 
   const handleSampleTypeChange = (sampleIndex, sampleTypeId) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentSampleType = updated[sampleIndex]?.sampleTypeId;
     const shouldClearSelections =
       currentSampleType && currentSampleType !== sampleTypeId;
-    const selectedType = sampleTypes.find((t) => t.id === sampleTypeId);
+    const selectedType = sampleTypes.find(
+      (type) => String(type.id) === String(sampleTypeId),
+    );
     updated[sampleIndex] = {
       ...updated[sampleIndex],
       sampleTypeId,
@@ -285,7 +387,7 @@ const SampleTestSection = ({
   };
 
   const handleEnvFieldChange = (sampleIndex, field, value) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     updated[sampleIndex] = { ...updated[sampleIndex], [field]: value };
     setSamples(updated);
   };
@@ -297,7 +399,7 @@ const SampleTestSection = ({
   };
 
   const handlePanelToggle = (sampleIndex, panel, isSelected) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentPanels = updated[sampleIndex].panels || [];
     const currentTests = updated[sampleIndex].tests || [];
     const availableTests = testsPerSample[sampleIndex] || [];
@@ -317,7 +419,7 @@ const SampleTestSection = ({
         )
         .map((testId) => {
           const test = availableTests.find((t) => t.id === testId);
-          return { id: testId, name: test.name };
+          return test || { id: testId, name: testId };
         });
       updated[sampleIndex].tests = [...currentTests, ...testsToAdd];
     } else {
@@ -335,20 +437,20 @@ const SampleTestSection = ({
         (t) => !panelTestIds.includes(t.id) || otherPanelTestIds.has(t.id),
       );
     }
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleTestToggle = (sampleIndex, test, isSelected) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentTests = updated[sampleIndex].tests || [];
     updated[sampleIndex].tests = isSelected
-      ? [...currentTests, { id: test.id, name: test.name }]
+      ? [...currentTests, test]
       : currentTests.filter((t) => t.id !== test.id);
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleRemovePanel = (sampleIndex, panelId) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     const currentPanels = updated[sampleIndex].panels || [];
     const currentTests = updated[sampleIndex].tests || [];
     const panelToRemove = currentPanels.find((p) => p.id === panelId);
@@ -366,15 +468,15 @@ const SampleTestSection = ({
     updated[sampleIndex].tests = currentTests.filter(
       (t) => !panelTestIds.includes(t.id) || remainingPanelTestIds.has(t.id),
     );
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleRemoveTest = (sampleIndex, testId) => {
-    const updated = [...samples];
+    const updated = cloneSamples();
     updated[sampleIndex].tests = updated[sampleIndex].tests.filter(
       (t) => t.id !== testId,
     );
-    setSamples(updated);
+    applySamples(updated);
   };
 
   const handleVectorFieldChange = (sampleIndex, field, value) => {
@@ -402,6 +504,15 @@ const SampleTestSection = ({
     return panelCount + testCount;
   };
 
+  // Carbon labels a tag's close button from title, and falls back to
+  // dismissTooltipLabel only once the tag's own text has been ellipsised, so
+  // both have to be given or the button reads Carbon's English "Dismiss".
+  const removeLabel = (name) =>
+    intl.formatMessage(
+      { id: "common.removeSelection", defaultMessage: "Remove {name}" },
+      { name },
+    );
+
   // Shared test/panel picker — rendered below a row when expanded
   const renderTestPanelPicker = (sampleIndex) => {
     const sample = samples[sampleIndex];
@@ -419,18 +530,18 @@ const SampleTestSection = ({
             </h6>
             <div className="selected-tags">
               {sample.panels?.map((panel) => (
-                <Tag
+                <DismissibleTag
                   key={panel.id}
                   type="blue"
-                  filter
+                  text={panel.name}
                   onClose={() => handleRemovePanel(sampleIndex, panel.id)}
                   disabled={isReadOnly}
-                >
-                  {panel.name}
-                </Tag>
+                  title={removeLabel(panel.name)}
+                  dismissTooltipLabel={removeLabel(panel.name)}
+                />
               ))}
             </div>
-            {getFilteredPanels(sampleIndex).length > 0 ? (
+            {hasAnyPanels(sampleIndex) ? (
               <>
                 <Search
                   id={`panelSearch-${sampleIndex}`}
@@ -450,18 +561,27 @@ const SampleTestSection = ({
                   size="sm"
                 />
                 <div className="checkbox-list">
-                  {getFilteredPanels(sampleIndex).map((panel) => (
-                    <Checkbox
-                      key={panel.id}
-                      id={`panel-${sampleIndex}-${panel.id}`}
-                      labelText={panel.name}
-                      checked={isPanelSelected(sampleIndex, panel.id)}
-                      onChange={(_, { checked }) =>
-                        handlePanelToggle(sampleIndex, panel, checked)
-                      }
-                      disabled={isReadOnly}
-                    />
-                  ))}
+                  {getFilteredPanels(sampleIndex).length > 0 ? (
+                    getFilteredPanels(sampleIndex).map((panel) => (
+                      <Checkbox
+                        key={panel.id}
+                        id={`panel-${sampleIndex}-${panel.id}`}
+                        labelText={panel.name}
+                        checked={isPanelSelected(sampleIndex, panel.id)}
+                        onChange={(_, { checked }) =>
+                          handlePanelToggle(sampleIndex, panel, checked)
+                        }
+                        disabled={isReadOnly}
+                      />
+                    ))
+                  ) : (
+                    <p className="no-items-message">
+                      <FormattedMessage
+                        id="sample.noPanelsMatchSearch"
+                        defaultMessage="No panels match your search"
+                      />
+                    </p>
+                  )}
                 </div>
               </>
             ) : loadingPerSample[sampleIndex] ? (
@@ -491,18 +611,19 @@ const SampleTestSection = ({
             </h6>
             <div className="selected-tags">
               {sample.tests?.map((test) => (
-                <Tag
+                <DismissibleTag
                   key={test.id}
                   type="teal"
-                  filter
+                  text={test.name}
                   onClose={() => handleRemoveTest(sampleIndex, test.id)}
                   disabled={isReadOnly}
-                >
-                  {test.name}
-                </Tag>
+                  title={removeLabel(test.name)}
+                  dismissTooltipLabel={removeLabel(test.name)}
+                />
               ))}
             </div>
-            {getFilteredTests(sampleIndex).length > 0 ? (
+            {renderHoldingLimit(sample)}
+            {hasAnyTests(sampleIndex) ? (
               <>
                 <Search
                   id={`testSearch-${sampleIndex}`}
@@ -522,18 +643,27 @@ const SampleTestSection = ({
                   size="sm"
                 />
                 <div className="checkbox-list checkbox-list-scrollable">
-                  {getFilteredTests(sampleIndex).map((test) => (
-                    <Checkbox
-                      key={test.id}
-                      id={`test-${sampleIndex}-${test.id}`}
-                      labelText={test.name}
-                      checked={isTestSelected(sampleIndex, test.id)}
-                      onChange={(_, { checked }) =>
-                        handleTestToggle(sampleIndex, test, checked)
-                      }
-                      disabled={isReadOnly}
-                    />
-                  ))}
+                  {getFilteredTests(sampleIndex).length > 0 ? (
+                    getFilteredTests(sampleIndex).map((test) => (
+                      <Checkbox
+                        key={test.id}
+                        id={`test-${sampleIndex}-${test.id}`}
+                        labelText={test.name}
+                        checked={isTestSelected(sampleIndex, test.id)}
+                        onChange={(_, { checked }) =>
+                          handleTestToggle(sampleIndex, test, checked)
+                        }
+                        disabled={isReadOnly}
+                      />
+                    ))
+                  ) : (
+                    <p className="no-items-message">
+                      <FormattedMessage
+                        id="sample.noTestsMatchSearch"
+                        defaultMessage="No tests match your search"
+                      />
+                    </p>
+                  )}
                 </div>
                 <span className="test-count-info">
                   <FormattedMessage
@@ -716,6 +846,9 @@ const SampleTestSection = ({
                   />
                 </th>
                 <th>
+                  <FormattedMessage id="env.sample.samplingSite" />
+                </th>
+                <th>
                   <FormattedMessage
                     id="env.sample.locationDetails"
                     defaultMessage="Location Details"
@@ -725,6 +858,12 @@ const SampleTestSection = ({
                   <FormattedMessage
                     id="env.sample.collected"
                     defaultMessage="Collected"
+                  />
+                </th>
+                <th>
+                  <FormattedMessage
+                    id="env.sample.receivedAtLab"
+                    defaultMessage="Received at Lab"
                   />
                 </th>
                 <th>
@@ -844,6 +983,50 @@ const SampleTestSection = ({
                         />
                       </td>
                       <td className="env-manifest-cell">
+                        <Select
+                          id={`sample-site-${sampleIndex}`}
+                          labelText={intl.formatMessage({
+                            id: "env.sample.samplingSite",
+                          })}
+                          hideLabel
+                          value={sample.collectionLocationId || ""}
+                          onChange={(event) =>
+                            handleEnvFieldChange(
+                              sampleIndex,
+                              "collectionLocationId",
+                              event.target.value,
+                            )
+                          }
+                          disabled={isReadOnly}
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage(
+                              { id: "env.sample.useOrderSite" },
+                              {
+                                site:
+                                  orderData?.sampleOrderItems
+                                    ?.environmentalFields?.samplingSiteName ||
+                                  "",
+                              },
+                            )}
+                          />
+                          {samplingSites
+                            .filter(
+                              (site) =>
+                                site.active !== false ||
+                                String(site.id) === sample.collectionLocationId,
+                            )
+                            .map((site) => (
+                              <SelectItem
+                                key={site.id}
+                                value={String(site.id)}
+                                text={`${site.name} (${site.code})`}
+                              />
+                            ))}
+                        </Select>
+                      </td>
+                      <td className="env-manifest-cell">
                         <TextInput
                           id={`locationDetails-${sampleIndex}`}
                           labelText=""
@@ -907,6 +1090,42 @@ const SampleTestSection = ({
                           disabled={isReadOnly}
                         />
                       </td>
+                      {/* Receipt at the lab was stamped silently at save time,
+                          which recorded the order-entry moment rather than
+                          when the specimen actually arrived. Capturing it
+                          here makes it correctable and back-datable. */}
+                      <td className="env-manifest-cell">
+                        <input
+                          id={`receivedAtLab-${sampleIndex}`}
+                          type="datetime-local"
+                          className="env-manifest-datetime"
+                          aria-label={intl.formatMessage({
+                            id: "env.sample.receivedAtLab",
+                            defaultMessage: "Received at Lab",
+                          })}
+                          value={
+                            sample.receivedDate && sample.receivedTime
+                              ? `${sample.receivedDate}T${sample.receivedTime}`
+                              : sample.receivedDate || ""
+                          }
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val && val.includes("T")) {
+                              const [date, time] = val.split("T");
+                              handleEnvFieldsChange(sampleIndex, {
+                                receivedDate: date,
+                                receivedTime: time,
+                              });
+                            } else {
+                              handleEnvFieldsChange(sampleIndex, {
+                                receivedDate: val,
+                                receivedTime: "",
+                              });
+                            }
+                          }}
+                          disabled={isReadOnly}
+                        />
+                      </td>
                       <td className="env-manifest-cell env-manifest-cell--toggle">
                         <Button
                           kind={
@@ -944,25 +1163,23 @@ const SampleTestSection = ({
                           onClick={() => handleDuplicateSample(sampleIndex)}
                           disabled={isReadOnly}
                         />
-                        {samples.length > 1 && (
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            hasIconOnly
-                            iconDescription={intl.formatMessage({
-                              id: "sample.remove.action",
-                              defaultMessage: "Remove Sample",
-                            })}
-                            renderIcon={TrashCan}
-                            onClick={() => handleRemoveSample(sampleIndex)}
-                            disabled={isReadOnly}
-                          />
-                        )}
+                        <Button
+                          kind="ghost"
+                          size="sm"
+                          hasIconOnly
+                          iconDescription={intl.formatMessage({
+                            id: "sample.remove.action",
+                            defaultMessage: "Remove Sample",
+                          })}
+                          renderIcon={TrashCan}
+                          onClick={() => handleRemoveSample(sampleIndex)}
+                          disabled={isReadOnly}
+                        />
                       </td>
                     </tr>
                     {isExpanded && sample.sampleTypeId && (
                       <tr className="env-manifest-row--expanded">
-                        <td colSpan={10}>
+                        <td colSpan={12}>
                           {renderTestPanelPicker(sampleIndex)}
                         </td>
                       </tr>
@@ -992,7 +1209,7 @@ const SampleTestSection = ({
                           </td>
                           <td
                             className="env-manifest-cell env-manifest-cell--inherited"
-                            colSpan={5}
+                            colSpan={6}
                           >
                             <em>
                               <FormattedMessage
@@ -1045,12 +1262,17 @@ const SampleTestSection = ({
         </div>
 
         <div className="env-manifest-footer">
-          <Link onClick={handleAddSample} disabled={isReadOnly}>
+          <Button
+            kind="ghost"
+            size="sm"
+            onClick={handleAddSample}
+            disabled={isReadOnly}
+          >
             <FormattedMessage
               id="env.sample.addRow"
               defaultMessage="+ Add sample row"
             />
-          </Link>
+          </Button>
           <span className="env-manifest-count">
             <FormattedMessage
               id="env.sample.total"
@@ -1177,16 +1399,24 @@ const SampleTestSection = ({
 
   // Non-environmental: original card layout (vector + clinical unchanged)
   return (
-    <Tile className="order-section sample-test-section">
+    <Tile
+      className="order-section sample-test-section"
+      data-testid="order-sample-test-section"
+    >
       <h4 className="section-title">
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
-      <p className="helper-text">
-        <FormattedMessage
-          id="sample.optional.info"
-          defaultMessage="Sample and test selection is optional at this step. Tests and sample type can be specified later during collection."
-        />
-      </p>
+      {/* Only the clinical lane has a Collect step to defer this to; telling an
+          environmental or vector user they can specify it "later during
+          collection" points at a step their workflow does not have. */}
+      {workflowType === "clinical" && (
+        <p className="helper-text">
+          <FormattedMessage
+            id="sample.optional.info"
+            defaultMessage="Tests can wait: Save and exit keeps the order without them. Save and next needs at least one test on every sample."
+          />
+        </p>
+      )}
 
       {/* Sample Cards — only render regular (non-QC), non-rejected samples at top
           level. Rejected/resampled specimens are read-only in the QA intake-
@@ -1214,34 +1444,49 @@ const SampleTestSection = ({
                   </>
                 )}
               </h5>
-              {samples.length > 1 && (
-                <Link
-                  onClick={() => handleRemoveSample(sampleIndex)}
+              {hasSetTest(sample, sampleIndex) && (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={Copy}
                   disabled={isReadOnly}
+                  onClick={() => handleDuplicateSample(sampleIndex)}
                 >
-                  {workflowType === "vector" ? (
-                    <FormattedMessage
-                      id="vector.animalOrganism.remove"
-                      defaultMessage="Remove Animal/Organism"
-                    />
-                  ) : (
-                    <FormattedMessage
-                      id="sample.remove.action"
-                      defaultMessage="Remove Sample"
-                    />
-                  )}
-                </Link>
+                  {intl.formatMessage({ id: "order.cultureBottle.duplicate" })}
+                </Button>
               )}
+              <Link
+                onClick={() => handleRemoveSample(sampleIndex)}
+                disabled={isReadOnly}
+              >
+                {workflowType === "vector" ? (
+                  <FormattedMessage
+                    id="vector.animalOrganism.remove"
+                    defaultMessage="Remove Animal/Organism"
+                  />
+                ) : (
+                  <FormattedMessage
+                    id="sample.remove.action"
+                    defaultMessage="Remove Sample"
+                  />
+                )}
+              </Link>
             </div>
 
             <Grid>
               <Column lg={8} md={4} sm={4}>
                 <Select
                   id={`sampleType-${sampleIndex}`}
-                  labelText={intl.formatMessage({
-                    id: "sample.type",
-                    defaultMessage: "Sample Type",
-                  })}
+                  labelText={
+                    <span>
+                      {intl.formatMessage({
+                        id: "sample.type",
+                        defaultMessage: "Sample Type",
+                      })}
+                      <RequiredMarker />
+                    </span>
+                  }
+                  {...requiredProps()}
                   value={sample.sampleTypeId || ""}
                   onChange={(e) =>
                     handleSampleTypeChange(sampleIndex, e.target.value)
@@ -1263,6 +1508,19 @@ const SampleTestSection = ({
                   ))}
                 </Select>
               </Column>
+
+              {hasSetTest(sample, sampleIndex) && (
+                <CultureBottleFields
+                  sample={sample}
+                  sampleIndex={sampleIndex}
+                  isReadOnly={isReadOnly}
+                  containers={containerTypes}
+                  includeCollectionTime
+                  onChange={(field, value) =>
+                    handleEnvFieldChange(sampleIndex, field, value)
+                  }
+                />
+              )}
 
               {workflowType === "vector" && (
                 <>
@@ -1422,20 +1680,20 @@ const SampleTestSection = ({
                     </h6>
                     <div className="selected-tags">
                       {sample.panels?.map((panel) => (
-                        <Tag
+                        <DismissibleTag
                           key={panel.id}
                           type="blue"
-                          filter
+                          text={panel.name}
                           onClose={() =>
                             handleRemovePanel(sampleIndex, panel.id)
                           }
                           disabled={isReadOnly}
-                        >
-                          {panel.name}
-                        </Tag>
+                          title={removeLabel(panel.name)}
+                          dismissTooltipLabel={removeLabel(panel.name)}
+                        />
                       ))}
                     </div>
-                    {getFilteredPanels(sampleIndex).length > 0 ? (
+                    {hasAnyPanels(sampleIndex) ? (
                       <>
                         <Search
                           id={`panelSearch-${sampleIndex}`}
@@ -1455,18 +1713,27 @@ const SampleTestSection = ({
                           size="sm"
                         />
                         <div className="checkbox-list">
-                          {getFilteredPanels(sampleIndex).map((panel) => (
-                            <Checkbox
-                              key={panel.id}
-                              id={`panel-${sampleIndex}-${panel.id}`}
-                              labelText={panel.name}
-                              checked={isPanelSelected(sampleIndex, panel.id)}
-                              onChange={(_, { checked }) =>
-                                handlePanelToggle(sampleIndex, panel, checked)
-                              }
-                              disabled={isReadOnly}
-                            />
-                          ))}
+                          {getFilteredPanels(sampleIndex).length > 0 ? (
+                            getFilteredPanels(sampleIndex).map((panel) => (
+                              <Checkbox
+                                key={panel.id}
+                                id={`panel-${sampleIndex}-${panel.id}`}
+                                labelText={panel.name}
+                                checked={isPanelSelected(sampleIndex, panel.id)}
+                                onChange={(_, { checked }) =>
+                                  handlePanelToggle(sampleIndex, panel, checked)
+                                }
+                                disabled={isReadOnly}
+                              />
+                            ))
+                          ) : (
+                            <p className="no-items-message">
+                              <FormattedMessage
+                                id="sample.noPanelsMatchSearch"
+                                defaultMessage="No panels match your search"
+                              />
+                            </p>
+                          )}
                         </div>
                       </>
                     ) : loadingPerSample[sampleIndex] ? (
@@ -1494,18 +1761,19 @@ const SampleTestSection = ({
                     </h6>
                     <div className="selected-tags">
                       {sample.tests?.map((test) => (
-                        <Tag
+                        <DismissibleTag
                           key={test.id}
                           type="teal"
-                          filter
+                          text={test.name}
                           onClose={() => handleRemoveTest(sampleIndex, test.id)}
                           disabled={isReadOnly}
-                        >
-                          {test.name}
-                        </Tag>
+                          title={removeLabel(test.name)}
+                          dismissTooltipLabel={removeLabel(test.name)}
+                        />
                       ))}
                     </div>
-                    {getFilteredTests(sampleIndex).length > 0 ? (
+                    {renderHoldingLimit(sample)}
+                    {hasAnyTests(sampleIndex) ? (
                       <>
                         <Search
                           id={`testSearch-${sampleIndex}`}
@@ -1525,18 +1793,27 @@ const SampleTestSection = ({
                           size="sm"
                         />
                         <div className="checkbox-list checkbox-list-scrollable">
-                          {getFilteredTests(sampleIndex).map((test) => (
-                            <Checkbox
-                              key={test.id}
-                              id={`test-${sampleIndex}-${test.id}`}
-                              labelText={test.name}
-                              checked={isTestSelected(sampleIndex, test.id)}
-                              onChange={(_, { checked }) =>
-                                handleTestToggle(sampleIndex, test, checked)
-                              }
-                              disabled={isReadOnly}
-                            />
-                          ))}
+                          {getFilteredTests(sampleIndex).length > 0 ? (
+                            getFilteredTests(sampleIndex).map((test) => (
+                              <Checkbox
+                                key={test.id}
+                                id={`test-${sampleIndex}-${test.id}`}
+                                labelText={test.name}
+                                checked={isTestSelected(sampleIndex, test.id)}
+                                onChange={(_, { checked }) =>
+                                  handleTestToggle(sampleIndex, test, checked)
+                                }
+                                disabled={isReadOnly}
+                              />
+                            ))
+                          ) : (
+                            <p className="no-items-message">
+                              <FormattedMessage
+                                id="sample.noTestsMatchSearch"
+                                defaultMessage="No tests match your search"
+                              />
+                            </p>
+                          )}
                         </div>
                         <span className="test-count-info">
                           <FormattedMessage

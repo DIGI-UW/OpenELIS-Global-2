@@ -29,6 +29,7 @@ import AdminSideNav from "./AdminSideNav";
 import { V1_SECTIONS } from "./testCatalog/sectionConfig";
 import { SAMPLE_TYPE_SECTIONS } from "./sampleTypeManagement/sectionConfig";
 import { LAB_UNIT_SECTIONS } from "./labUnitManagement/sectionConfig";
+import { MICROBIOLOGY_REFERENCE_SECTIONS } from "./microbiologyReference/sectionConfig";
 import messages from "../../languages/en.json";
 
 const renderNav = () =>
@@ -46,6 +47,27 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
 
     expect(screen.queryByText("Analyzer Test Name")).not.toBeInTheDocument();
     expect(container.querySelector('a[href$="/AnalyzerTestName"]')).toBeNull();
+  });
+
+  it("builds every microbiology reference route from shared section config", () => {
+    mockLocation = {
+      pathname: "/MasterListsPage/MicrobiologyReference/organisms",
+      search: "",
+    };
+    const { container } = renderNav();
+
+    MICROBIOLOGY_REFERENCE_SECTIONS.forEach(({ key }) => {
+      expect(
+        container
+          .querySelector(`[data-testid="microbiology-reference-${key}"]`)
+          .getAttribute("href"),
+      ).toBe(`/MasterListsPage/MicrobiologyReference/${key}`);
+    });
+    expect(
+      container
+        .querySelector('[data-testid="microbiology-reference-organisms"]')
+        .getAttribute("aria-current"),
+    ).toBe("page");
   });
 
   it("lists all 9 sections but DISABLED (not navigable) off an editor route", () => {
@@ -345,5 +367,53 @@ describe("AdminSideNav — Test Catalog Management entry", () => {
     expect(
       container.querySelector('[data-cy="labUnitManagement"]').textContent,
     ).toBe("Lab Units Editor");
+  });
+
+  it("offers no sections to pick from on the catalog import screen", () => {
+    // Importing a file edits no single record, so the greyed list that tells a
+    // reader to click a test would be an instruction the page cannot honour.
+    mockLocation = { pathname: "/MasterListsPage/CatalogImport", search: "" };
+    const { container } = renderNav();
+
+    expect(container.querySelectorAll('[aria-disabled="true"]')).toHaveLength(
+      0,
+    );
+    expect(
+      screen.queryByText(
+        messages["sidenav.label.admin.testCatalog.sectionsHelper"],
+      ),
+    ).not.toBeInTheDocument();
+    V1_SECTIONS.forEach((sectionKey) => {
+      expect(
+        container.querySelector(`[data-cy="section-${sectionKey}"]`),
+      ).toBeNull();
+    });
+    // The entity links the screen is reached from stay in place.
+    expect(container.querySelector('[data-cy="catalogImport"]')).not.toBeNull();
+    expect(
+      container.querySelector('[data-cy="testCatalogList"]'),
+    ).not.toBeNull();
+  });
+
+  it("keeps the stuck analyzer events inside the admin route family", () => {
+    // Every item in this nav stays in the admin shell; a link out would swap
+    // the whole navigation underneath the reader.
+    mockLocation = { pathname: "/MasterListsPage", search: "" };
+    const { container } = renderNav();
+
+    const link = container.querySelector('[data-cy="stuckAnalyzerEvents"]');
+    expect(link).toHaveAttribute(
+      "href",
+      "/MasterListsPage/stuckAnalyzerEvents",
+    );
+    expect(
+      Array.from(container.querySelectorAll("a[href]")).filter(
+        (a) =>
+          !a.getAttribute("href").startsWith("/MasterListsPage") &&
+          !a.getAttribute("href").startsWith("/admin") &&
+          a.getAttribute("target") !== "_blank" &&
+          a.getAttribute("href") !== "/Dashboard",
+      ),
+    ).toHaveLength(0);
   });
 });

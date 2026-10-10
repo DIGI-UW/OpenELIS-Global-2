@@ -10,7 +10,7 @@ jobs:
     steps:
 
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{github.repository}}
           submodules: recursive

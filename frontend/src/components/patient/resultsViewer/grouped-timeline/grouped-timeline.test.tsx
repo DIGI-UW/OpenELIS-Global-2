@@ -175,3 +175,43 @@ describe("GroupedTimeline trend graph link", () => {
     expect(screen.getByText("Blood Pressure")).toBeInTheDocument();
   });
 });
+
+describe("GroupedTimeline result presentation", () => {
+  const resultRow = (value: string) => [
+    {
+      flatName: "microbiology",
+      display: "UAT microbiology culture",
+      entries: [{ value, interpretation: "NORMAL" }],
+    },
+  ];
+
+  it("renders long clinical narratives as readable text instead of a truncated tag", () => {
+    const narrative =
+      "ISO-1: Escherichia coli confirmed; Gentamicin (UAT) S, Ciprofloxacin (UAT) R";
+
+    renderTimeline(resultRow(narrative));
+
+    const result = screen.getByText(narrative);
+    expect(result).toBeVisible();
+    expect(result.closest(".cds--tag")).toBeNull();
+  });
+
+  it("preserves line breaks in multiline clinical narratives", () => {
+    const narrative =
+      "Culture: Escherichia coli\nCiprofloxacin: Resistant\nGentamicin: Susceptible";
+
+    renderTimeline(resultRow(narrative));
+
+    const result = screen.getByText(
+      (_content, element) =>
+        element?.tagName === "SPAN" && element.textContent === narrative,
+    );
+    expect(result).toHaveStyle({ whiteSpace: "pre-wrap" });
+  });
+
+  it("keeps concise interpreted results in a Carbon tag", () => {
+    renderTimeline(resultRow("7.2 mmol/L"));
+
+    expect(screen.getByText("7.2 mmol/L").closest(".cds--tag")).not.toBeNull();
+  });
+});

@@ -1,7 +1,10 @@
 package org.openelisglobal.inventory.daoimpl;
 
+import jakarta.persistence.LockModeType;
 import java.sql.Timestamp;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.hibernate.Session;
 import org.hibernate.query.Query;
 import org.openelisglobal.common.daoimpl.BaseDAOImpl;
@@ -19,6 +22,15 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     public InventoryLotDAOImpl() {
         super(InventoryLot.class);
+    }
+
+    @Override
+    public InventoryLot getForUpdate(Long lotId) throws LIMSRuntimeException {
+        try {
+            return entityManager.find(InventoryLot.class, lotId, LockModeType.PESSIMISTIC_WRITE);
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error locking inventory lot for update", e);
+        }
     }
 
     @Override
@@ -44,16 +56,21 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             // - ACTIVE or IN_USE status
             // - QC status PASSED
             // - Have quantity available (currentQuantity > 0)
+            // - Not past their effective expiry
             String hql = "FROM InventoryLot l " + "WHERE l.inventoryItem.id = :itemId "
                     + "AND (l.status = :activeStatus OR l.status = :inUseStatus) " + "AND l.qcStatus = :passedStatus "
-                    + "AND l.currentQuantity > 0 "
-                    + "ORDER BY l.expirationDate ASC NULLS LAST, l.calculatedExpiryAfterOpening ASC NULLS LAST";
+                    + "AND l.currentQuantity > 0 " + "AND (l.expirationDate IS NULL OR l.expirationDate >= :now) "
+                    + "AND (l.calculatedExpiryAfterOpening IS NULL OR l.calculatedExpiryAfterOpening >= :now) "
+                    // Use the lowest of the printed expiration date and calculated
+                    // expiration date, ignoring any null values
+                    + "ORDER BY least(l.expirationDate, l.calculatedExpiryAfterOpening) ASC NULLS LAST";
 
             Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
             query.setParameter("itemId", itemId);
             query.setParameter("activeStatus", LotStatus.ACTIVE);
             query.setParameter("inUseStatus", LotStatus.IN_USE);
             query.setParameter("passedStatus", QCStatus.PASSED);
+            query.setParameter("now", new Timestamp(System.currentTimeMillis()));
             return query.list();
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting available lots by item (FEFO)", e);
@@ -134,19 +151,6 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
 
     @Override
     @Transactional(readOnly = true)
-    public List<InventoryLot> getByStorageLocationId(Long locationId) throws LIMSRuntimeException {
-        try {
-            String hql = "FROM InventoryLot l WHERE l.storageLocation.id = :locationId ORDER BY l.expirationDate";
-            Query<InventoryLot> query = entityManager.unwrap(Session.class).createQuery(hql, InventoryLot.class);
-            query.setParameter("locationId", locationId);
-            return query.list();
-        } catch (Exception e) {
-            throw new LIMSRuntimeException("Error getting lots by storage location ID", e);
-        }
-    }
-
-    @Override
-    @Transactional(readOnly = true)
     public List<InventoryLot> getByQCStatus(QCStatus qcStatus) throws LIMSRuntimeException {
         try {
             String hql = "FROM InventoryLot l WHERE l.qcStatus = :qcStatus ORDER BY l.expirationDate";
@@ -183,6 +187,31 @@ public class InventoryLotDAOImpl extends BaseDAOImpl<InventoryLot, Long> impleme
             return result != null ? result.intValue() : 0;
         } catch (Exception e) {
             throw new LIMSRuntimeException("Error getting total current quantity", e);
+        }
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Map<Long, Double> getAvailableQuantityByItem() throws LIMSRuntimeException {
+        try {
+            // Restates InventoryLot#countsAsAvailableStock(); change the two together.
+            String hql = "SELECT l.inventoryItem.id, SUM(l.currentQuantity) FROM InventoryLot l"
+                    + " WHERE l.status IN (:statuses) AND l.qcStatus IN (:qcStatuses) AND l.currentQuantity > 0"
+                    + " AND (l.expirationDate IS NULL OR l.expirationDate >= :now)"
+                    + " AND (l.calculatedExpiryAfterOpening IS NULL OR l.calculatedExpiryAfterOpening >= :now)"
+                    + " GROUP BY l.inventoryItem.id";
+            Query<Object[]> query = entityManager.unwrap(Session.class).createQuery(hql, Object[].class);
+            query.setParameterList("statuses", List.of(LotStatus.ACTIVE, LotStatus.IN_USE));
+            query.setParameterList("qcStatuses", List.of(QCStatus.PASSED, QCStatus.PENDING));
+            query.setParameter("now", new Timestamp(System.currentTimeMillis()));
+
+            Map<Long, Double> quantities = new HashMap<>();
+            for (Object[] row : query.list()) {
+                quantities.put((Long) row[0], (Double) row[1]);
+            }
+            return quantities;
+        } catch (Exception e) {
+            throw new LIMSRuntimeException("Error getting available quantity by item", e);
         }
     }
 

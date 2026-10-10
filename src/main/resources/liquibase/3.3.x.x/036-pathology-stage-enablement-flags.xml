@@ -1,0 +1,191 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+    xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+    http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+
+    <!--
+    FR-2.3, AC-7: the pathology bench sequence has seven optional
+    stages a deployment may switch off (Decalcification, Processing,
+    Embedding, Microtomy, Staining, Coverslipping & QC, Under Pathologist
+    Review) and four mandatory ones nothing may disable (Accessioned,
+    Grossing, Ready for Pathologist, Completed), so the mandatory stages get
+    no row here at all. A missing row reads as enabled, which is also the
+    hardcoded default in DefaultConfigurationProperties, so a deployment that
+    never runs this changeset, or that later deletes one of these rows, keeps
+    every case moving through the full bench rather than silently losing a
+    stage. The rows live in the resultConfiguration domain so they surface on
+    the existing Result Entry Configuration admin page alongside the other
+    per-deployment result-handling switches, and ship on by default because
+    that reproduces every stage the bench already visits today.
+    -->
+    <changeSet id="OGC-264-pathology-stage-flag-decalcification" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.stage.DECALCIFICATION.enabled';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating whether a pathology case visits the Decalcification bench stage (FR-2.3); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.stage.DECALCIFICATION.enabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, cases pass through the Decalcification stage; if false, it is skipped and shown as not applicable" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.pathology.stage.enabled" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.stage.DECALCIFICATION.enabled'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-stage-flag-processing" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.stage.PROCESSING.enabled';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating whether a pathology case visits the Processing bench stage (FR-2.3); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.stage.PROCESSING.enabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, cases pass through the Processing stage; if false, it is skipped and shown as not applicable" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.pathology.stage.enabled" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.stage.PROCESSING.enabled'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-stage-flag-embedding" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.stage.EMBEDDING.enabled';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating whether a pathology case visits the Embedding bench stage (FR-2.3); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.stage.EMBEDDING.enabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, cases pass through the Embedding stage; if false, it is skipped and shown as not applicable" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.pathology.stage.enabled" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.stage.EMBEDDING.enabled'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-stage-flag-microtomy" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.stage.MICROTOMY.enabled';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating whether a pathology case visits the Microtomy bench stage (FR-2.3); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.stage.MICROTOMY.enabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, cases pass through the Microtomy stage; if false, it is skipped and shown as not applicable" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.pathology.stage.enabled" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.stage.MICROTOMY.enabled'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-stage-flag-staining" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.stage.STAINING.enabled';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating whether a pathology case visits the Staining bench stage (FR-2.3); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.stage.STAINING.enabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, cases pass through the Staining stage; if false, it is skipped and shown as not applicable" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.pathology.stage.enabled" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.stage.STAINING.enabled'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-stage-flag-coverslipping" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.stage.COVERSLIPPING.enabled';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating whether a pathology case visits the Coverslipping and QC bench stage (FR-2.3); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.stage.COVERSLIPPING.enabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, cases pass through the Coverslipping &amp; QC stage; if false, it is skipped and shown as not applicable" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.pathology.stage.enabled" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.stage.COVERSLIPPING.enabled'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+    <changeSet id="OGC-264-pathology-stage-flag-under-review" author="OGC">
+        <preConditions onFail="MARK_RAN">
+            <sqlCheck expectedResult="0">select count(*) from clinlims.site_information where name = 'pathology.stage.UNDER_REVIEW.enabled';</sqlCheck>
+        </preConditions>
+        <comment>Site flag gating whether a pathology case visits the Under Pathologist Review bench stage (FR-2.3); default on</comment>
+        <insert schemaName="clinlims" tableName="site_information">
+            <column name="id" valueSequenceNext="site_information_seq" />
+            <column name="name" value="pathology.stage.UNDER_REVIEW.enabled" />
+            <column name="lastupdated" valueComputed="${now}" />
+            <column name="description" value="If true, cases pass through the Under Pathologist Review stage; if false, it is skipped and shown as not applicable" />
+            <column name="value" value="true" />
+            <column name="encrypted" value="false" />
+            <column name="domain_id" valueComputed="(SELECT id FROM site_information_domain WHERE name = 'resultConfiguration')" />
+            <column name="value_type" value="boolean" />
+            <column name="instruction_key" value="instructions.pathology.stage.enabled" />
+            <column name="group" value="0" />
+        </insert>
+        <rollback>
+            <delete schemaName="clinlims" tableName="site_information">
+                <where>name = 'pathology.stage.UNDER_REVIEW.enabled'</where>
+            </delete>
+        </rollback>
+    </changeSet>
+
+</databaseChangeLog>

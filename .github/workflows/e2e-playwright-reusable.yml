@@ -64,9 +64,9 @@ on:
 
 jobs:
   # ─── Pre-warm Playwright browser cache ─────────────────────────────────────
-  # Runs once per workflow invocation so the 4 parallel shards (2 here × 2
-  # callers — core and harness) don't all hammer the Playwright CDN on a cold
-  # cache. On a warm cache this job finishes in ~10s with no network I/O
+  # Runs once per suite invocation so its parallel shards do not all hammer
+  # the Playwright CDN on a cold cache. On a warm cache this job finishes in
+  # ~10s with no network I/O
   # beyond the cache backend. The shards' own `actions/cache` step restores
   # the key this job saves.
   pre-warm-playwright:
@@ -76,7 +76,7 @@ jobs:
       contents: read
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
@@ -88,7 +88,7 @@ jobs:
 
       - name: Restore Playwright browser cache
         id: pw-cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -139,7 +139,7 @@ jobs:
         shard_index: ${{ fromJSON(inputs.shard_indices) }}
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           submodules: recursive
@@ -171,7 +171,7 @@ jobs:
         working-directory: frontend
 
       - name: Restore Playwright browser cache
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.cache/ms-playwright
           key: ${{ runner.os }}-playwright-${{ hashFiles('frontend/package-lock.json') }}
@@ -213,7 +213,7 @@ jobs:
 
       - name: Download image map (cross-run)
         if: inputs.artifact_source_mode == 'cross_run'
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -222,7 +222,7 @@ jobs:
 
       - name: Download image map (same-run)
         if: inputs.artifact_source_mode == 'same_run'
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           name: ${{ inputs.setup_analyzer_harness && 'e2e-image-map' || 'e2e-image-map-base' }}
           path: /tmp/e2e-image-map
@@ -252,6 +252,10 @@ jobs:
       # ── Container Startup ───────────────────────────────────────────────────
 
       - name: Start containers (no rebuild)
+        env:
+          # The fixture provisioner is intentionally disabled in normal deployments.
+          # Core E2E uses the ADMIN-gated endpoint to build its disposable scenario.
+          OE_UAT_SCENARIOS_ENABLED: "true"
         run: |
           COMPOSE_CMD=(docker compose)
           IFS=',' read -ra FILES <<< "${{ inputs.compose_files }}"
@@ -308,7 +312,7 @@ jobs:
 
       - name: Seed analyzers via REST API
         if: inputs.setup_analyzer_harness
-        run: bash projects/analyzer-harness/seed-analyzers.sh
+        run: bash projects/analyzer-harness/seed-analyzers.sh --ensure-connections
         env:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
@@ -366,6 +370,8 @@ jobs:
           BASE_URL: https://localhost
           TEST_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
           TEST_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
+          ANALYZER_INGRESS_USER: ${{ inputs.test_user || vars.TEST_USER || 'admin' }}
+          ANALYZER_INGRESS_PASS: ${{ inputs.test_pass || vars.TEST_PASS || 'adminADMIN!' }}
           ANALYZER_HARNESS: ${{ inputs.setup_analyzer_harness && 'true' || '' }}
 
       - name: Memory snapshot (post-test) + monitor dump
@@ -441,7 +447,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           ref: ${{ inputs.checkout_ref || github.sha }}
           persist-credentials: false
@@ -458,7 +464,7 @@ jobs:
 
       - name: Download blob reports from shards
         continue-on-error: true
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: frontend/all-blob-reports
           pattern: ${{ inputs.artifact_prefix }}-blob-report-*

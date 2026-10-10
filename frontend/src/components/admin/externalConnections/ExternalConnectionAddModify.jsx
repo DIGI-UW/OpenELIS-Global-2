@@ -26,6 +26,7 @@ import {
 import { FormattedMessage, injectIntl, useIntl } from "react-intl";
 import { useHistory, useLocation } from "react-router-dom";
 import PageBreadCrumb from "../../common/PageBreadCrumb";
+import { RequiredMarker, requiredProps } from "../../common/RequiredMarker";
 
 let breadcrumbs = [
   { label: "home.label", link: "/" },
@@ -236,14 +237,15 @@ function ExternalConnectionAddModify() {
               <Form>
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="connection-name">
                       <FormattedMessage id="externalconnections.name" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="connection-name"
+                      {...requiredProps()}
                       type="text"
                       labelText=""
                       placeholder={intl.formatMessage({
@@ -258,14 +260,15 @@ function ExternalConnectionAddModify() {
 
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="programmed-connection">
                       <FormattedMessage id="externalconnections.programmedconnection" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <Select
                       id="programmed-connection"
+                      {...requiredProps()}
                       labelText=""
                       value={programmedConnection}
                       onChange={(e) => {
@@ -301,14 +304,15 @@ function ExternalConnectionAddModify() {
 
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="auth-type">
                       <FormattedMessage id="externalconnections.authtype" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <Select
                       id="auth-type"
+                      {...requiredProps()}
                       labelText=""
                       value={authType}
                       onChange={(e) => {
@@ -363,14 +367,15 @@ function ExternalConnectionAddModify() {
 
                 <Grid fullWidth={true}>
                   <Column lg={8} md={4} sm={4}>
-                    <>
+                    <label htmlFor="connection-uri">
                       <FormattedMessage id="externalconnections.uri" />
-                      <span className="requiredlabel">*</span> :
-                    </>
+                      <RequiredMarker /> :
+                    </label>
                   </Column>
                   <Column lg={8} md={4} sm={4}>
                     <TextInput
                       id="connection-uri"
+                      {...requiredProps()}
                       type="text"
                       labelText=""
                       placeholder={intl.formatMessage({

@@ -2,11 +2,8 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Locator, Page } from "@playwright/test";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
-import {
-  LONG_TIMEOUT,
-  NAV_TIMEOUT,
-  TIMEOUT_SCALE,
-} from "../../../helpers/timeouts";
+import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
+import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -17,7 +14,6 @@ function escapeRegExp(value: string): string {
 async function openAnalyzerTypes(page: Page) {
   await page.goto("/analyzers/types", {
     waitUntil: "domcontentloaded",
-    timeout: NAV_TIMEOUT,
   });
   await expect(
     page.getByRole("heading", { level: 1, name: "Analyzer Types" }),
@@ -97,7 +93,6 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
 
     await page.reload({
       waitUntil: "domcontentloaded",
-      timeout: NAV_TIMEOUT,
     });
     await expect(page.getByRole("table")).toBeVisible();
     await expect(search).toHaveValue("gene");
@@ -141,14 +136,10 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
       page.getByRole("searchbox", { name: "Search analyzer types" }),
     ).toBeVisible();
     await expect(page.getByRole("table")).toBeVisible();
-    expect(
-      await page.evaluate(
-        () =>
-          document.documentElement.scrollWidth <=
-          document.documentElement.clientWidth,
-      ),
+    await expectNoPageHorizontalOverflow(
+      page,
       "Analyzer Types should not overflow the mobile page horizontally",
-    ).toBe(true);
+    );
 
     const rowAction = page.getByRole("button", {
       name: `Actions for ${SOURCE_PROFILE}`,
@@ -217,9 +208,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     const duplicateName = `M1 GeneXpert Type ${Date.now()}`;
     await openAnalyzerTypes(page);
     const sourceRow = analyzerTypeRow(page, SOURCE_PROFILE);
-    await expect(sourceRow).toContainText(/revision [1-9]\d*/, {
-      timeout: LONG_TIMEOUT,
-    });
+    await expect(sourceRow).toContainText(/revision [1-9]\d*/);
     const sourceCells = sourceRow.getByRole("cell");
     const sourceBefore = await sourceCells.allTextContents();
     const sourceRevision = (await sourceRow.innerText()).match(

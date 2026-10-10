@@ -68,6 +68,9 @@ const AMR_OPTIONS = [
 ];
 
 const SEARCH_DEBOUNCE_MS = 300;
+// A single character matches most of the catalog and is not a search yet
+// (OGC-1134); the box waits for a second one before it asks the server.
+const SEARCH_MIN_LENGTH = 2;
 
 // FR-61 — errors sort ahead of warnings ahead of info in the per-row tag list.
 const SEVERITY_RANK = { ERROR: 0, WARNING: 1, INFO: 2 };
@@ -110,6 +113,8 @@ const TestsList = () => {
     initParams.get("sampleType") || "",
   );
   const [sampleTypes, setSampleTypes] = useState([]);
+  const [labUnit, setLabUnit] = useState(initParams.get("labUnit") || "");
+  const [labUnits, setLabUnits] = useState([]);
   const [search, setSearch] = useState(initParams.get("search") || "");
   const [debouncedSearch, setDebouncedSearch] = useState(
     initParams.get("search") || "",
@@ -126,10 +131,19 @@ const TestsList = () => {
     getFromOpenElisServer("/rest/test-catalog/sample-types", (res) => {
       setSampleTypes(Array.isArray(res) ? res : []);
     });
+    getFromOpenElisServer("/rest/test-catalog/lab-units", (res) => {
+      setLabUnits(Array.isArray(res) ? res : []);
+    });
   }, []);
 
   // Debounce the search box: fetch once the user pauses, not on every keystroke.
+  // A term shorter than the minimum neither queries nor rewrites the URL; the
+  // rows already on screen stay until the term is long enough or cleared.
   useEffect(() => {
+    const term = search.trim();
+    if (term.length > 0 && term.length < SEARCH_MIN_LENGTH) {
+      return undefined;
+    }
     const timer = setTimeout(
       () => setDebouncedSearch(search),
       SEARCH_DEBOUNCE_MS,
@@ -146,6 +160,7 @@ const TestsList = () => {
     if (status && status !== "all") params.set("status", status);
     if (amr) params.set("amr", amr);
     if (sampleType) params.set("sampleType", sampleType);
+    if (labUnit) params.set("labUnit", labUnit);
     if (debouncedSearch) params.set("search", debouncedSearch);
     if (issuesOnly) params.set("issuesOnly", "true");
     params.set("page", String(page));
@@ -176,6 +191,7 @@ const TestsList = () => {
     status,
     amr,
     sampleType,
+    labUnit,
     debouncedSearch,
     issuesOnly,
     page,
@@ -248,11 +264,22 @@ const TestsList = () => {
     ...sampleTypes,
   ];
 
+  const labUnitItems = [
+    {
+      id: "",
+      name: intl.formatMessage({
+        id: "label.testCatalog.list.filter.allLabUnits",
+      }),
+    },
+    ...labUnits,
+  ];
+
   const activeFilterCount =
     (domain ? 1 : 0) +
     (status && status !== "all" ? 1 : 0) +
     (amr ? 1 : 0) +
-    (sampleType ? 1 : 0);
+    (sampleType ? 1 : 0) +
+    (labUnit ? 1 : 0);
 
   const baseRows = (pageData.rows || []).map((r) => ({
     id: r.testId,
@@ -380,6 +407,19 @@ const TestsList = () => {
                   onChange={({ selectedItem }) => {
                     setPage(1);
                     setSampleType(selectedItem ? selectedItem.id : "");
+                  }}
+                />
+                <ComboBox
+                  id="filter-lab-unit"
+                  titleText={intl.formatMessage({
+                    id: "label.testCatalog.basicInfo.labUnit",
+                  })}
+                  items={labUnitItems}
+                  itemToString={(item) => (item ? item.name : "")}
+                  selectedItem={labUnitItems.find((o) => o.id === labUnit)}
+                  onChange={({ selectedItem }) => {
+                    setPage(1);
+                    setLabUnit(selectedItem ? selectedItem.id : "");
                   }}
                 />
                 <Toggle

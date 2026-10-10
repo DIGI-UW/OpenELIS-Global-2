@@ -1,0 +1,382 @@
+import { test, expect } from "../../../helpers/test-base";
+import type { Page } from "@playwright/test";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
+import {
+  createMicrobiologyIsolate,
+  identifyMicrobiologyIsolate,
+  selectCarbonRadio,
+} from "../../../helpers/microbiology-ui";
+import { seedMicrobiologyMvpCase } from "../../../helpers/seed-microbiology-data";
+import { LONG_TIMEOUT } from "../../../helpers/timeouts";
+
+const settleForVideo = async (
+  demo: ReturnType<typeof createDemoPresentation>,
+  ms = 900,
+) => {
+  await demo.pause(ms);
+};
+
+const captureViewport = async (
+  page: Page,
+  demo: ReturnType<typeof createDemoPresentation>,
+  name: string,
+) => {
+  await page.evaluate(() => window.scrollTo({ top: 0, behavior: "instant" }));
+  await settleForVideo(demo);
+  await demo.evidence(name, { fullPage: false });
+  await demo.pause(3000);
+};
+
+const captureCard = async (
+  page: Page,
+  demo: ReturnType<typeof createDemoPresentation>,
+  testId: string,
+  name: string,
+) => {
+  const card = page.getByTestId(testId);
+  await card.scrollIntoViewIfNeeded();
+  const handle = await card.elementHandle();
+  if (handle) {
+    await page.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      window.scrollBy({
+        top: rect.top - 88,
+        behavior: "instant",
+      });
+    }, handle);
+  }
+  await settleForVideo(demo);
+  await demo.evidence(name, { locator: card });
+  await demo.pause(3000);
+};
+
+const accordionButton = (page: Page, name: string) =>
+  page
+    .getByTestId("microbiology-case-view")
+    .getByRole("button", { name, exact: true });
+
+const caseStatusTag = (page: Page, name: string) =>
+  page.locator("header").getByTitle(name);
+
+test.describe("OGC-782 microbiology MVP", () => {
+  test("case setup, isolate creation, manual AST, override, and review", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(180_000);
+    const demo = createDemoPresentation(page, testInfo);
+    const seeded = await seedMicrobiologyMvpCase(page);
+    const { organismId } = seeded;
+    if (!organismId) {
+      throw new Error("Microbiology MVP scenario is missing organismId");
+    }
+
+    await demo.title(
+      "OGC-782 Microbiology MVP",
+      "Guided bacteriology path: setup, isolate, AST, review, release",
+    );
+
+    await test.step("Open the microbiology case", async () => {
+      await demo.step(1, "Open the case workbench and confirm the next step");
+      await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(
+        page.getByRole("heading", { name: "Microbiology case" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(caseStatusTag(page, "Received")).toBeVisible();
+      await expect(
+        page.getByTestId("microbiology-progress-rail"),
+      ).toContainText("Inoculation");
+      await captureViewport(page, demo, "ogc-782-01-case-workbench-overview");
+    });
+
+    await test.step("Record setup activity", async () => {
+      await demo.step(2, "Start inoculation and write the activity timeline");
+      await page
+        .getByTestId("microbiology-current-step-action")
+        .getByRole("button", { name: "Open Inoculation" })
+        .click();
+      await expect(page).toHaveURL(/section=setup/);
+      const setup = page.getByRole("region", { name: "Inoculation" });
+      await setup.getByRole("button", { name: "Start inoculation" }).click();
+      await setup.getByLabel("Bottle or plate ID").fill("UAT-DEMO-BOTTLE-1");
+      await setup.getByLabel("Media or bottle").fill("Blood culture bottle");
+      await setup.getByLabel("Incubation").fill("35 C for 24 hours");
+      await setup.getByLabel("Atmosphere").fill("Ambient");
+      await selectCarbonRadio(
+        page,
+        setup.getByRole("radio", { name: /UAT-MICRO-MEDIA-FEFO/ }),
+      );
+      await captureCard(
+        page,
+        demo,
+        "microbiology-case-section-setup",
+        "ogc-782-02-inoculation-ready",
+      );
+      await setup.getByRole("button", { name: "Save media" }).click();
+      await expect(caseStatusTag(page, "Incubating")).toBeVisible({
+        timeout: LONG_TIMEOUT,
+      });
+      await accordionButton(page, "Timeline").click();
+      await expect(page).toHaveURL(/section=timeline/);
+      await expect(
+        page.getByText(/UAT-DEMO-BOTTLE-1 - Blood culture bottle/),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/Media or bottle: Blood culture bottle/),
+      ).toBeVisible();
+      await expect(
+        page.getByText(/Incubation: 35 C for 24 hours/),
+      ).toBeVisible();
+      await expect(page.getByText(/Atmosphere: Ambient/)).toBeVisible();
+      await captureCard(
+        page,
+        demo,
+        "microbiology-timeline-card",
+        "ogc-782-03-setup-recorded-timeline",
+      );
+    });
+
+    await test.step("Create a clinically significant isolate", async () => {
+      await demo.step(3, "Add a clinically significant isolate");
+      await createMicrobiologyIsolate(page);
+      await expect(page).toHaveURL(/section=isolates/);
+      await captureCard(
+        page,
+        demo,
+        "microbiology-isolates-card",
+        "ogc-782-04-isolate-created",
+      );
+      await identifyMicrobiologyIsolate(page, organismId);
+      await expect(
+        page.getByText(/ISO-1: Escherichia coli \(UAT\)/),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(
+        page.getByTestId("microbiology-isolates-card"),
+      ).toContainText("MALDI-TOF · 99.5% · Clinically significant");
+    });
+
+    await test.step("Start an AST run and record a MIC reading", async () => {
+      await demo.step(4, "Record manual AST and show the interpreted result");
+      await accordionButton(page, "Manual AST").click();
+      await expect(page).toHaveURL(/section=ast/);
+      await expect(
+        page.getByLabel("Manual AST").getByText("Final release blocked"),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(
+        page.getByRole("heading", { name: "Manual AST" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Start AST run" }),
+      ).toBeEnabled({
+        timeout: LONG_TIMEOUT,
+      });
+      await page.getByRole("button", { name: "Start AST run" }).click();
+      await expect(
+        page.getByTestId("microbiology-ast-run-status"),
+      ).toContainText("In Progress", {
+        timeout: LONG_TIMEOUT,
+      });
+      const uatAntibiotic = page
+        .getByTestId("microbiology-ast-card")
+        .getByRole("option", { name: "Ciprofloxacin (UAT)", exact: true });
+      await expect(uatAntibiotic).toBeAttached();
+      await expect(uatAntibiotic).toHaveCount(1);
+      await page
+        .getByLabel("Antibiotic", { exact: true })
+        .selectOption({ label: "Ciprofloxacin (UAT)" });
+      await page.getByRole("button", { name: "Record AST reading" }).click();
+      await expect(
+        page.getByTestId("microbiology-ast-interpretation"),
+      ).toContainText("Susceptible", {
+        timeout: LONG_TIMEOUT,
+      });
+      await page
+        .getByLabel("Antibiotic", { exact: true })
+        .selectOption({ label: "Gentamicin (UAT)" });
+      await page.getByRole("button", { name: "Record AST reading" }).click();
+      await expect(
+        page.getByTestId("microbiology-ast-reading-row"),
+      ).toHaveCount(2, { timeout: LONG_TIMEOUT });
+      await expect(page.getByTestId("microbiology-ast-card")).toContainText(
+        "Ciprofloxacin (UAT)",
+      );
+      await expect(page.getByTestId("microbiology-ast-card")).toContainText(
+        "Gentamicin (UAT)",
+      );
+      await captureCard(
+        page,
+        demo,
+        "microbiology-ast-card",
+        "ogc-782-05-ast-reading-interpreted",
+      );
+    });
+
+    await test.step("Override and review the AST run", async () => {
+      await demo.step(5, "Override the AST result and mark the run reviewed");
+      await page
+        .getByLabel("AST reading", { exact: true })
+        .selectOption({ label: "Ciprofloxacin (UAT): Susceptible" });
+      await page
+        .getByLabel("Override reason")
+        .fill("mixed growth confirmed on repeat");
+      await page.getByRole("button", { name: "Apply override" }).click();
+      const ciprofloxacinRow = page
+        .getByTestId("microbiology-ast-reading-row")
+        .filter({ hasText: "Ciprofloxacin (UAT)" });
+      await expect(
+        ciprofloxacinRow.getByTestId("microbiology-ast-interpretation"),
+      ).toContainText("Resistant", {
+        timeout: LONG_TIMEOUT,
+      });
+      await captureCard(
+        page,
+        demo,
+        "microbiology-ast-card",
+        "ogc-782-06-ast-overridden",
+      );
+      await page.getByRole("button", { name: "Review AST run" }).click();
+      await expect(
+        page.getByTestId("microbiology-ast-run-status"),
+      ).toContainText("Reviewed", {
+        timeout: LONG_TIMEOUT,
+      });
+      await expect(
+        page.getByLabel("Manual AST").getByText("Final release ready"),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      await captureCard(
+        page,
+        demo,
+        "microbiology-ast-card",
+        "ogc-782-07-ast-reviewed-ready",
+      );
+    });
+
+    await test.step("Release a preliminary patient report", async () => {
+      await demo.step(
+        6,
+        "Release the preliminary result into the standard patient report",
+      );
+      await accordionButton(page, "Reports").click();
+      await expect(page).toHaveURL(/section=reports/);
+      await expect(
+        page.getByRole("button", { name: "Release preliminary report" }),
+      ).toBeEnabled({ timeout: LONG_TIMEOUT });
+      await page
+        .getByRole("button", { name: "Release preliminary report" })
+        .click();
+      await expect(
+        page.getByTestId("microbiology-release-state"),
+      ).toContainText("Preliminary Released", { timeout: LONG_TIMEOUT });
+      await captureCard(
+        page,
+        demo,
+        "microbiology-report-card",
+        "ogc-782-08-preliminary-released",
+      );
+    });
+
+    await test.step("Complete a Result-target critical communication", async () => {
+      await demo.step(
+        7,
+        "Log, acknowledge, and close a critical communication against the projected result",
+      );
+      await accordionButton(page, "Critical communication").click();
+      await expect(page).toHaveURL(/section=critical-communication/);
+      await page.getByLabel("Critical result target").selectOption("RESULT");
+      await expect(page.getByLabel("Target record")).not.toHaveValue("");
+      await page
+        .getByLabel("Recipient", { exact: true })
+        .fill("Provider on call");
+      await page
+        .getByLabel("Message")
+        .fill("Resistant isolate result called to provider");
+      await page.getByRole("button", { name: "Log communication" }).click();
+      await expect(
+        page.getByTestId("microbiology-critical-status"),
+      ).toContainText("Open", { timeout: LONG_TIMEOUT });
+      await page.getByRole("button", { name: "Acknowledge" }).click();
+      await expect(
+        page.getByTestId("microbiology-critical-status"),
+      ).toContainText("Acknowledged", { timeout: LONG_TIMEOUT });
+      await page.getByRole("button", { name: "Close communication" }).click();
+      await page
+        .getByLabel("Resolution note")
+        .fill("Provider read back and accepted the result");
+      await page
+        .getByRole("button", { name: "Close communication" })
+        .last()
+        .click();
+      await expect(
+        page.getByTestId("microbiology-critical-status"),
+      ).toContainText("Closed", { timeout: LONG_TIMEOUT });
+      await expect(
+        page.getByText("Provider read back and accepted the result"),
+      ).toBeVisible();
+      await captureCard(
+        page,
+        demo,
+        "microbiology-critical-card",
+        "ogc-782-09-critical-communication-closed",
+      );
+    });
+
+    await test.step("Release the final report", async () => {
+      await demo.step(8, "Review report readiness and release final report");
+      await accordionButton(page, "Reports").click();
+      await expect(page).toHaveURL(/section=reports/);
+      await expect(
+        page.getByRole("heading", { name: "Report readiness" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Release final report" }),
+      ).toBeEnabled({ timeout: LONG_TIMEOUT });
+      await page.getByRole("button", { name: "Release final report" }).click();
+      await expect(
+        page.getByTestId("microbiology-release-state"),
+      ).toContainText("Final Released", { timeout: LONG_TIMEOUT });
+      await captureCard(
+        page,
+        demo,
+        "microbiology-report-card",
+        "ogc-782-10-final-released-readiness",
+      );
+      await expect(page.getByText("Final case is read-only")).toBeVisible();
+      await accordionButton(page, "Isolates").click();
+      await expect(page).toHaveURL(/section=isolates/);
+      await expect(
+        page.getByRole("button", { name: "Edit isolate" }),
+      ).toBeDisabled();
+      await expect(
+        page.getByRole("button", { name: "Create isolate" }),
+      ).toBeDisabled();
+
+      await demo.step(
+        9,
+        "Open the patient results screen and verify the released microbiology result",
+      );
+      await page.goto(`/PatientResults/${seeded.patientId}`, {
+        waitUntil: "domcontentloaded",
+      });
+      await expect(
+        page.getByRole("heading", { name: "Patient History" }),
+      ).toBeVisible({ timeout: LONG_TIMEOUT });
+      const releasedResultRow = page.getByRole("row", {
+        name: /UAT microbiology culture.*ISO-1: Escherichia coli \(UAT\)/,
+      });
+      await expect(releasedResultRow).toBeVisible({ timeout: LONG_TIMEOUT });
+      await expect(releasedResultRow).toContainText("Ciprofloxacin (UAT) R");
+      await expect(releasedResultRow).toContainText("Gentamicin (UAT) S");
+      await settleForVideo(demo);
+      await demo.evidence("ogc-782-11-patient-results-released", {
+        fullPage: false,
+      });
+      await demo.pause(3000);
+      await demo.title(
+        "MVP checkpoint complete",
+        "Setup, isolate, manual AST, review, final release, and visible patient results were exercised.",
+        3500,
+      );
+    });
+  });
+});

@@ -5,6 +5,8 @@ import java.sql.Date;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
@@ -58,6 +60,9 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Autowired
     private NoteService noteService;
 
+    @Autowired
+    private org.springframework.context.ApplicationEventPublisher eventPublisher;
+
     private static String TABLE_REFERENCE_ID;
     private final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
 
@@ -78,11 +83,17 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     }
 
     @Override
+    @Transactional
     public String insert(Analysis analysis) {
         if (analysis.getFhirUuid() == null) {
             analysis.setFhirUuid(UUID.randomUUID());
         }
-        return super.insert(analysis);
+        String id = super.insert(analysis);
+        if (eventPublisher != null) {
+            eventPublisher.publishEvent(new org.openelisglobal.analysis.valueholder.AnalysisCreatedEvent(analysis,
+                    analysis.getSysUserId()));
+        }
+        return id;
     }
 
     /**
@@ -329,7 +340,15 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     @Transactional(readOnly = true)
     public TestSection getTestSection(Analysis analysis) {
-        return analysis == null ? null : analysis.getTestSection();
+        if (analysis == null) {
+            return null;
+        }
+        if (analysis.getTestSection() != null) {
+            return analysis.getTestSection();
+        }
+        // Legacy and imported analyses often carry no section of their own; the
+        // test's home section is the bench that actually ran the work.
+        return analysis.getTest() == null ? null : analysis.getTest().getTestSection();
     }
 
     @Override
@@ -465,6 +484,45 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public List<Analysis> getAllAnalysisByTestSectionAndStatus(String sectionId, List<String> statusList,
             boolean sortedByDateAndAccession) {
         return baseObjectDAO.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, sortedByDateAndAccession);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestSectionIdsWithPendingAnalyses() {
+        return new HashSet<>(baseObjectDAO.getTestSectionIdsWithAnalysesNotInStatus(terminalAnalysisStatusIds()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Set<String> getTestSectionIdsWithAnyAnalyses() {
+        // Empty exclusion list = every analysis counts, terminal or not.
+        return new HashSet<>(baseObjectDAO.getTestSectionIdsWithAnalysesNotInStatus(new ArrayList<>()));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public long[] countAnalysesForLabUnit(String testSectionId) {
+        return baseObjectDAO.countAnalysesByTestSectionSplitByStatus(testSectionId, terminalAnalysisStatusIds());
+    }
+
+    /**
+     * The analysis statuses that count as finished. Finalized and Canceled are
+     * done; the four rejection statuses are dead ends the lab cannot act on any
+     * further. Anything else is still in flight.
+     */
+    private List<String> terminalAnalysisStatusIds() {
+        IStatusService statusService = SpringContext.getBean(IStatusService.class);
+        List<String> terminalStatuses = new ArrayList<>();
+        for (StatusService.AnalysisStatus status : new StatusService.AnalysisStatus[] {
+                StatusService.AnalysisStatus.Finalized, StatusService.AnalysisStatus.Canceled,
+                StatusService.AnalysisStatus.SampleRejected, StatusService.AnalysisStatus.TechnicalRejected,
+                StatusService.AnalysisStatus.BiologistRejected, StatusService.AnalysisStatus.RejectedByReferenceLab }) {
+            String id = statusService.getStatusID(status);
+            if (id != null) {
+                terminalStatuses.add(id);
+            }
+        }
+        return terminalStatuses;
     }
 
     @Override
@@ -732,6 +790,35 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
 
     @Override
     @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(String analyzerId, String testId,
+            Timestamp lowDate, Timestamp highDate) {
+        return getBaseObjectDAO().getAffectedSampleItemIdsByAnalyzerAndTestCompletedInRange(analyzerId, testId, lowDate,
+                highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByAnalyzerAndTest(String analyzerId, String testId, Timestamp before) {
+        return getBaseObjectDAO().existsAnalysisCompletedBeforeByAnalyzerAndTest(analyzerId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Object[]> getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(String testSectionId,
+            String testId, Timestamp lowDate, Timestamp highDate) {
+        return getBaseObjectDAO().getAffectedSampleItemIdsByTestSectionAndTestCompletedInRange(testSectionId, testId,
+                lowDate, highDate);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean existsAnalysisCompletedBeforeByTestSectionAndTest(String testSectionId, String testId,
+            Timestamp before) {
+        return getBaseObjectDAO().existsAnalysisCompletedBeforeByTestSectionAndTest(testSectionId, testId, before);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Analysis> getAllMaxRevisionAnalysesPerTest(Test test) {
         return getBaseObjectDAO().getAllMaxRevisionAnalysesPerTest(test);
     }
@@ -770,6 +857,17 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     @Override
     public List<Analysis> getAllAnalysisByTestsAndStatus(List<String> testIdList, List<String> statusIdList) {
         return baseObjectDAO.getAllAnalysisByTestsAndStatus(testIdList, statusIdList);
+    }
+
+    @Override
+    public List<Analysis> getPendingAnalysesForWorkplan(List<String> statusIdList, List<String> testIdList,
+            Collection<String> excludedAnalysisIds, int maxResults) {
+        return baseObjectDAO.getPendingAnalysesForWorkplan(statusIdList, testIdList, excludedAnalysisIds, maxResults);
+    }
+
+    @Override
+    public List<Analysis> getAnalysesByIdsWithDetails(List<String> analysisIds) {
+        return baseObjectDAO.getAnalysesByIdsWithDetails(analysisIds);
     }
 
     @Override
@@ -881,6 +979,14 @@ public class AnalysisServiceImpl extends AuditableBaseObjectServiceImpl<Analysis
     public int getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
             List<String> testSectionIds) {
         return baseObjectDAO.getCountOfAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList, testSectionIds);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public int getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(List<String> statusIdList,
+            List<String> testSectionIds) {
+        return baseObjectDAO.getCountOfCollectedAnalysesForStatusIdsAndTestSectionsExcludingQc(statusIdList,
+                testSectionIds);
     }
 
     @Override

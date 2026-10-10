@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import {
+  Button,
   NumberInput,
   Stack,
   Table,
@@ -12,7 +13,7 @@ import {
   Tag,
   Tooltip,
 } from "@carbon/react";
-import { Locked } from "@carbon/icons-react";
+import { Locked, Printer } from "@carbon/icons-react";
 import { FormattedMessage, useIntl } from "react-intl";
 import { clampToMax, normalizeQuantity } from "./quantity";
 import "./LabelsSection.scss";
@@ -141,6 +142,18 @@ export const buildPersistPayload = (
   })),
 });
 
+// The quantities an untouched section would persist: every cell at its
+// resolved default (clamped), so a save made without editing the section still
+// carries the labels the presets and the test catalog call for.
+export const seedPersistPayload = (labelRequest) =>
+  buildPersistPayload(
+    labelRequest?.order_columns,
+    labelRequest?.sample_columns,
+    labelRequest?.sample_rows,
+    seedOrderQuantities(labelRequest?.order_row),
+    seedSampleQuantities(labelRequest?.sample_rows),
+  );
+
 // Source tag i18n + colour for an aggregated cell. Falls back to the raw
 // source string so an unknown future source still renders a chip.
 const SOURCE_TAG = {
@@ -149,6 +162,7 @@ const SOURCE_TAG = {
     id: "orderEntry.labels.source.presetDefault",
     type: "gray",
   },
+  saved: { id: "orderEntry.labels.source.saved", type: "green" },
 };
 
 // ---------------------------------------------------------------------------
@@ -214,14 +228,15 @@ const LabelQuantityCell = ({ idPrefix, cell, value, inputLabel, onChange }) => {
           />
         )}
         {sourceMeta || cell.source ? (
-          <Tag
-            type={sourceMeta ? sourceMeta.type : "gray"}
-            size="sm"
-            className="labels-section__source-tag"
-            title={sourceTitle}
-          >
-            {sourceTitle}
-          </Tag>
+          <span title={sourceTitle}>
+            <Tag
+              type={sourceMeta ? sourceMeta.type : "gray"}
+              size="sm"
+              className="labels-section__source-tag"
+            >
+              {sourceTitle}
+            </Tag>
+          </span>
         ) : null}
       </div>
     </TableCell>
@@ -242,6 +257,11 @@ const LabelTable = ({
   inputLabelFor,
   quantityFor,
   onCellChange,
+  onPrintColumn,
+  onPrintRow,
+  printColumnLabelFor,
+  printRowLabelFor,
+  printDisabled,
 }) => {
   const intl = useIntl();
   const title = intl.formatMessage({ id: titleId });
@@ -256,9 +276,29 @@ const LabelTable = ({
             </TableHeader>
             {columns.map((col) => (
               <TableHeader key={col.preset_id} scope="col">
-                {col.name}
+                <span className="labels-section__col-header">
+                  {col.name}
+                  {onPrintColumn ? (
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      hasIconOnly
+                      renderIcon={Printer}
+                      iconDescription={printColumnLabelFor(col)}
+                      tooltipPosition="bottom"
+                      disabled={printDisabled}
+                      onClick={() => onPrintColumn(col)}
+                      data-testid={`${idPrefix}-print-col-${col.preset_id}`}
+                    />
+                  ) : null}
+                </span>
               </TableHeader>
             ))}
+            {onPrintRow ? (
+              <TableHeader scope="col">
+                <FormattedMessage id="label.print.title" />
+              </TableHeader>
+            ) : null}
           </TableRow>
         </TableHead>
         <TableBody>
@@ -282,6 +322,21 @@ const LabelTable = ({
                     }
                   />
                 ))}
+                {onPrintRow ? (
+                  <TableCell>
+                    <Button
+                      kind="ghost"
+                      size="sm"
+                      hasIconOnly
+                      renderIcon={Printer}
+                      iconDescription={printRowLabelFor(row)}
+                      tooltipPosition="left"
+                      disabled={printDisabled}
+                      onClick={() => onPrintRow(row)}
+                      data-testid={`${idPrefix}-print-row-${row.key}`}
+                    />
+                  </TableCell>
+                ) : null}
               </TableRow>
             );
           })}
@@ -294,7 +349,16 @@ const LabelTable = ({
 // ---------------------------------------------------------------------------
 // API-driven two-table view.
 // ---------------------------------------------------------------------------
-const ApiLabelsSection = ({ labelRequest, onChange, sampleLabelFor }) => {
+const ApiLabelsSection = ({
+  labelRequest,
+  onChange,
+  sampleLabelFor,
+  onPrintRow,
+  onPrintColumn,
+  onPrintAll,
+  printDisabled,
+  pendingSave,
+}) => {
   const intl = useIntl();
   const orderColumns = labelRequest.order_columns || [];
   const sampleColumns = labelRequest.sample_columns || [];
@@ -379,6 +443,36 @@ const ApiLabelsSection = ({ labelRequest, onChange, sampleLabelFor }) => {
           inputLabelFor={(_row, col) => col.name}
           quantityFor={(_row, presetId) => orderQuantities[presetId] ?? 0}
           onCellChange={handleOrderChange}
+          onPrintColumn={
+            onPrintColumn
+              ? (col) =>
+                  onPrintColumn({
+                    scope: "order",
+                    presetId: col.preset_id,
+                    name: col.name,
+                  })
+              : undefined
+          }
+          onPrintRow={
+            onPrintRow ? () => onPrintRow({ scope: "order" }) : undefined
+          }
+          printColumnLabelFor={(col) =>
+            intl.formatMessage(
+              { id: "orderEntry.labels.printColumn" },
+              { label: col.name },
+            )
+          }
+          printRowLabelFor={() =>
+            intl.formatMessage(
+              { id: "orderEntry.labels.printRow" },
+              {
+                label: intl.formatMessage({
+                  id: "orderEntry.labels.orderRow.header",
+                }),
+              },
+            )
+          }
+          printDisabled={printDisabled}
         />
 
         <LabelTable
@@ -398,11 +492,68 @@ const ApiLabelsSection = ({ labelRequest, onChange, sampleLabelFor }) => {
             sampleQuantities[row.sampleIdLocal]?.[presetId] ?? 0
           }
           onCellChange={handleSampleChange}
+          onPrintColumn={
+            onPrintColumn
+              ? (col) =>
+                  onPrintColumn({
+                    scope: "sample",
+                    presetId: col.preset_id,
+                    name: col.name,
+                  })
+              : undefined
+          }
+          onPrintRow={
+            onPrintRow
+              ? (row) =>
+                  onPrintRow({
+                    scope: "sample",
+                    sampleIdLocal: row.sampleIdLocal,
+                    sampleNumber: row.sampleNumber,
+                  })
+              : undefined
+          }
+          printColumnLabelFor={(col) =>
+            intl.formatMessage(
+              { id: "orderEntry.labels.printColumn" },
+              { label: col.name },
+            )
+          }
+          printRowLabelFor={(row) =>
+            intl.formatMessage(
+              { id: "orderEntry.labels.printRow" },
+              { label: sampleLabelFor(row) },
+            )
+          }
+          printDisabled={printDisabled}
         />
 
-        <p className="labels-section__total" role="status">
-          <FormattedMessage id="orderEntry.labels.total" values={{ total }} />
-        </p>
+        <div className="labels-section__footer">
+          <div className="labels-section__total" role="status">
+            <FormattedMessage id="orderEntry.labels.total" values={{ total }} />
+            {pendingSave ? (
+              <Tag
+                type="gray"
+                size="sm"
+                className="labels-section__pending"
+                data-testid="labels-pending-save"
+              >
+                {intl.formatMessage({ id: "orderEntry.labels.pendingSave" })}
+              </Tag>
+            ) : null}
+          </div>
+          {onPrintAll ? (
+            <Button
+              kind="tertiary"
+              size="sm"
+              renderIcon={Printer}
+              disabled={printDisabled || total === 0}
+              onClick={() => onPrintAll({ total })}
+              data-testid="labels-print-all"
+            >
+              {intl.formatMessage({ id: "orderEntry.labels.printAll" })}
+            </Button>
+          ) : null}
+        </div>
       </Stack>
     </div>
   );
@@ -550,6 +701,11 @@ const LabelsSection = ({
     `Specimen labels sample ${sampleNumber}`,
   runningTotalLabel = "Running total",
   sampleLabelFormatter = undefined,
+  onPrintRow = undefined,
+  onPrintColumn = undefined,
+  onPrintAll = undefined,
+  printDisabled = false,
+  pendingSave = false,
 }) => {
   const intl = useIntl();
 
@@ -566,6 +722,11 @@ const LabelsSection = ({
         labelRequest={labelRequest}
         onChange={onChange}
         sampleLabelFor={sampleLabelFor}
+        onPrintRow={onPrintRow}
+        onPrintColumn={onPrintColumn}
+        onPrintAll={onPrintAll}
+        printDisabled={printDisabled}
+        pendingSave={pendingSave}
       />
     );
   }

@@ -19,23 +19,38 @@ dotenv.config({ path: new URL("../.env", import.meta.url).pathname });
  */
 
 // Demo story proof on the build stack (video-ready).
-const CORE_DEMO_TESTS = ["**/demo/core/**/*.spec.ts"];
+const CORE_DEMO_TESTS = [
+  "**/demo/core/**/*.spec.ts",
+  "playwright/tests/demo/core/ogc-782-microbiology-mvp.spec.ts",
+];
 
-// Core foundational verification (ci-safe).
+// Core foundational verification on the build stack.
 const CORE_FOUNDATIONAL_TESTS = ["**/foundational/core/**/*.spec.ts"];
+
+// Focused WCAG 2.1 AA qualification for stable core-app feature surfaces.
+const CORE_ACCESSIBILITY_TESTS = ["**/accessibility/core/**/*.spec.ts"];
+
+// Explicit disposable-stack performance qualification for core-app surfaces.
+const CORE_PERFORMANCE_TESTS = ["**/performance/core/**/*.spec.ts"];
+
+// Explicit operator-run verification against a deployed review target.
+const CORE_LIVE_UAT_TESTS = ["**/manual-only/core/**/*.spec.ts"];
 
 // Foundational stories verify the catalog and shared mapping surfaces used by
 // setup. The demo project owns the guided connection and assembled result
-// stories. Video evidence targets the assembled result story alone.
+// stories. Integrated result/transport stories use API prerequisites in the
+// foundational lane. Video records those same registered UI and integrated stories.
 const HARNESS_FOUNDATIONAL_TESTS = [
+  "**/foundational/harness/**/*.spec.ts",
   "**/demo/harness/ogc-1054-m1-analyzer-types.spec.ts",
   "**/demo/harness/ogc-1054-m2-shared-mapping.spec.ts",
 ];
-const HARNESS_DEMO_TESTS = [
+const HARNESS_DEMO_TESTS = ["**/demo/harness/ogc-1054-m3-guided-setup.spec.ts"];
+const HARNESS_VIDEO_TESTS = [
   "**/demo/harness/ogc-1054-m3-guided-setup.spec.ts",
-  "**/demo/harness/ogc-1054-analyzer-mvp.spec.ts",
+  "**/foundational/harness/ogc-1054-analyzer-mvp.spec.ts",
+  "**/foundational/harness/ogc-1054-delivery-issues.spec.ts",
 ];
-const HARNESS_VIDEO_TESTS = ["**/demo/harness/ogc-1054-analyzer-mvp.spec.ts"];
 
 // Manual-only harness coverage (real hardware or operator-managed infra).
 const HARNESS_MANUAL_ONLY_TESTS = [
@@ -99,7 +114,14 @@ export default defineConfig({
     // Auth setup — runs once, saves session state
     {
       name: "setup",
-      testMatch: /.*\.setup\.ts/,
+      testMatch: "**/auth.setup.ts",
+    },
+
+    // EQA participant credentials belong only to core projects that use them.
+    {
+      name: "participant-setup",
+      testMatch: "**/participant-auth.setup.ts",
+      dependencies: ["setup"],
     },
 
     // Core foundational verification — runs on CI build stack.
@@ -109,6 +131,45 @@ export default defineConfig({
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup", "participant-setup"],
+    },
+
+    {
+      name: "core-accessibility",
+      testMatch: CORE_ACCESSIBILITY_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-accessibility-mobile",
+      testMatch: CORE_ACCESSIBILITY_TESTS,
+      testIgnore: "**/microbiology-keyboard.spec.ts",
+      use: {
+        ...devices["Pixel 5"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
+      },
+      dependencies: ["setup"],
+    },
+
+    {
+      name: "core-performance",
+      testMatch: CORE_PERFORMANCE_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+        contextOptions: { reducedMotion: "reduce" },
+        serviceWorkers: "block",
       },
       dependencies: ["setup"],
     },
@@ -121,7 +182,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
       },
-      dependencies: ["setup"],
+      dependencies: ["setup", "participant-setup"],
     },
 
     // Core demo video — same core demos with slowMo and video (local only)
@@ -136,12 +197,24 @@ export default defineConfig({
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },
       },
+      dependencies: ["setup", "participant-setup"],
+    },
+
+    {
+      name: "core-live-uat",
+      testMatch: CORE_LIVE_UAT_TESTS,
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "playwright/.auth/user.json",
+      },
       dependencies: ["setup"],
     },
 
     // Analyzer-stack verification (CI: reusable harness workflow only).
     {
       name: "harness-foundational",
+      // Condition-based waits share the existing whole-test deadline.
+      expect: { timeout: 0 },
       testMatch: HARNESS_FOUNDATIONAL_TESTS,
       use: {
         ...devices["Desktop Chrome"],
@@ -151,6 +224,8 @@ export default defineConfig({
     },
     {
       name: "harness-demo",
+      // Condition-based waits share the existing whole-test deadline.
+      expect: { timeout: 0 },
       testMatch: HARNESS_DEMO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
@@ -160,12 +235,14 @@ export default defineConfig({
     },
     {
       name: "harness-demo-video",
+      // Condition-based waits share the existing whole-test deadline.
+      expect: { timeout: 0 },
       testMatch: HARNESS_VIDEO_TESTS,
       use: {
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
         trace: "on",
-        video: "on",
+        video: { mode: "on", size: { width: 1600, height: 1000 } },
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },

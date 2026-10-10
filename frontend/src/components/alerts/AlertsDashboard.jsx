@@ -28,6 +28,14 @@ const AlertsDashboard = () => {
   const [searchText, setSearchText] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [selectedAlert, setSelectedAlert] = useState(null);
+  const [actionError, setActionError] = useState(null);
+  const [alertTypes, setAlertTypes] = useState([]);
+
+  useEffect(() => {
+    getFromOpenElisServer("/rest/alerts/dashboard/types", (types) => {
+      setAlertTypes(Array.isArray(types) ? types : []);
+    });
+  }, []);
 
   const fetchSummary = useCallback(() => {
     getFromOpenElisServer("/rest/alerts/dashboard/summary", (data) => {
@@ -65,15 +73,17 @@ const AlertsDashboard = () => {
     return () => clearInterval(interval);
   }, [fetchSummary, fetchAlerts]);
 
-  const handleAcknowledge = (alert) => {
+  const handleAlertAction = (alert) => {
     setSelectedAlert(alert);
+    setActionError(null);
     setModalOpen(true);
   };
 
-  const handleAcknowledgeSubmit = (alertId, comment) => {
+  const handleAlertActionSubmit = (alert, comment) => {
+    const resolving = alert.status === "ACKNOWLEDGED";
     const payload = comment ? JSON.stringify({ notes: comment }) : "{}";
     putToOpenElisServer(
-      `/rest/alerts/dashboard/${alertId}/acknowledge`,
+      `/rest/alerts/dashboard/${alert.id}/${resolving ? "resolve" : "acknowledge"}`,
       payload,
       (status) => {
         if (status === 200) {
@@ -81,6 +91,14 @@ const AlertsDashboard = () => {
           setSelectedAlert(null);
           fetchSummary();
           fetchAlerts();
+        } else {
+          setActionError(
+            intl.formatMessage({
+              id: resolving
+                ? "alerts.resolve.error"
+                : "alerts.acknowledge.error",
+            }),
+          );
         }
       },
     );
@@ -110,30 +128,15 @@ const AlertsDashboard = () => {
             }}
           >
             <SelectItem value="" text="" />
-            <SelectItem
-              value="EQA_DEADLINE"
-              text={intl.formatMessage({ id: "alerts.type.eqa_deadline" })}
-            />
-            <SelectItem
-              value="REQUIRED_BY_DEADLINE"
-              text={intl.formatMessage({
-                id: "alerts.type.required_by_deadline",
-              })}
-            />
-            <SelectItem
-              value="SAMPLE_EXPIRATION"
-              text={intl.formatMessage({ id: "alerts.type.sample_expiration" })}
-            />
-            <SelectItem
-              value="STAT_OVERDUE"
-              text={intl.formatMessage({ id: "alerts.type.stat_overdue" })}
-            />
-            <SelectItem
-              value="CRITICAL_UNACKNOWLEDGED"
-              text={intl.formatMessage({
-                id: "alerts.type.critical_unacknowledged",
-              })}
-            />
+            {alertTypes.map((type) => (
+              <SelectItem
+                key={type}
+                value={type}
+                text={intl.formatMessage({
+                  id: `alerts.type.${type.toLowerCase()}`,
+                })}
+              />
+            ))}
           </Select>
         </Column>
         <Column lg={4} md={4} sm={4}>
@@ -183,16 +186,26 @@ const AlertsDashboard = () => {
           </Select>
         </Column>
         <Column lg={4} md={4} sm={4}>
-          <Search
-            id="alert-search"
-            labelText={intl.formatMessage({ id: "alerts.filter.search" })}
-            placeholder={intl.formatMessage({ id: "alerts.filter.search" })}
-            value={searchText}
-            onChange={(e) => {
-              setSearchText(e.target.value);
-              setPage(0);
-            }}
-          />
+          {/* Carbon hides a Search's own label, which left this field sitting a
+              label's height above the three Selects beside it. The form item is
+              what a Carbon field uses to stack its label and control, so the
+              four filters share one baseline. */}
+          <div className="cds--form-item">
+            <label className="cds--label" htmlFor="alert-search">
+              {intl.formatMessage({ id: "alerts.filter.search" })}
+            </label>
+            <Search
+              id="alert-search"
+              size="md"
+              labelText={intl.formatMessage({ id: "alerts.filter.search" })}
+              placeholder={intl.formatMessage({ id: "alerts.filter.search" })}
+              value={searchText}
+              onChange={(e) => {
+                setSearchText(e.target.value);
+                setPage(0);
+              }}
+            />
+          </div>
         </Column>
       </Grid>
 
@@ -202,7 +215,7 @@ const AlertsDashboard = () => {
         page={page}
         pageSize={pageSize}
         onPageChange={handlePageChange}
-        onAcknowledge={handleAcknowledge}
+        onAction={handleAlertAction}
       />
 
       <EQADeadlineSummary
@@ -217,11 +230,12 @@ const AlertsDashboard = () => {
       <AlertAcknowledgeModal
         open={modalOpen}
         alert={selectedAlert}
+        error={actionError}
         onClose={() => {
           setModalOpen(false);
           setSelectedAlert(null);
         }}
-        onSubmit={handleAcknowledgeSubmit}
+        onSubmit={handleAlertActionSubmit}
       />
     </div>
   );

@@ -1,6 +1,81 @@
 # AGENTS.md - README for AI Coding Agents
 
-## FILE Ownership Model (014 Remediation)
+## Start here — do these three things before any other work
+
+These are not optional and not "if needed". Skipping them is the single most
+common way an agent wastes a session in this repository.
+
+### 1. Install the agent command assets
+
+```bash
+python3 scripts/install-agent-skills.py -y claude
+```
+
+This installs `/fix-ci`, `/download-ci-logs`, `/address-pr-comments`,
+`/careful-rebase` and ~22 others, plus the packaged skills.
+
+**`.claude/` is gitignored.** It is created by this script, not by `git clone`
+and not by `git pull`. A second clone or worktree of this repository therefore
+has **no commands at all** until you run the installer there — and nothing warns
+you, the commands are simply absent. Run it once per checkout, including every
+worktree.
+
+### 2. Never judge CI from a run's conclusion
+
+Use `gh pr checks <PR>`. It matches the GitHub UI and exits non-zero unless
+everything passes.
+
+```bash
+gh pr checks 1234                      # the whole picture
+gh pr checks 1234 | grep -E "fail"     # just the failures
+```
+
+The three build checkpoints are `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, and `03 Checkpoint - E2E`. The trusted
+`Validation / Submodule pins` check is also required after its rollout below.
+Early in a run only some checks exist, so **confirm all required checks are
+present and none are `pending`** before calling a PR green.
+
+Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
+a `workflow_run` follow-up stage, so the underlying run's own conclusion does
+not tell you whether the checkpoint passed, and `gh run watch` exits 0 on
+failure for this pipeline. Do not write ad hoc `jq` over `statusCheckRollup`
+either: it mixes `CheckRun` nodes (`.conclusion`) with `StatusContext` nodes
+(`.state`), an in-flight check reports an empty conclusion rather than null, and
+a re-run leaves the earlier run of a check in the list. Naive `jq` reports
+passing checks as queued and single checks as "all green";
+`scripts/download-ci-logs.sh` handles all three.
+
+For a commit or branch tip with no PR (develop after a merge), read the same
+checks GitHub shows on that commit:
+`./scripts/download-ci-logs.sh --branch develop --list`. Never list runs by
+branch or commit (`gh run list --branch`/`--commit`,
+`gh api .../actions/runs?head_sha=`), and never read `check-runs`,
+`check-suites` or `commits/<sha>/status`. `workflow_run` runs execute on the
+default branch, so GitHub files every PR's `E2E / Tests` run and every
+Dependabot run under develop's newest commit; those queries show other PRs'
+failures as develop's. The combined status endpoint leaves out check runs.
+
+`03 Checkpoint - E2E` stays pending until every suite has finished. Open the run
+it links (`gh run view <run-id>`) to see shards that have already failed. When
+someone links a run or job, diagnose that job first
+(`gh run view <run-id> --job <job-id> --log`).
+
+`/fix-ci` automates the whole diagnose-fix-push-recheck loop.
+`specs/plans/ci-e2e-architecture-spec.md` is the authority on checkpoint
+semantics.
+
+### 3. Work in the worktree that owns the branch
+
+```bash
+git worktree list
+```
+
+This project keeps several worktrees. When asked to work on a branch or PR, find
+its worktree first and make every edit there — never in the primary directory.
+Note that each worktree needs its own installer run, per step 1.
+
+## FILE Ownership Model
 
 For FILE-based analyzer workflows in OpenELIS Global 2:
 
@@ -12,8 +87,7 @@ For FILE-based analyzer workflows in OpenELIS Global 2:
   not be added. Any proposal to change this requires an explicit architecture
   decision that supersedes this ownership model.
 
-When guidance conflicts, this ownership model takes precedence for remediation
-work in feature 014.
+When guidance conflicts, this ownership model takes precedence.
 
 ## OpenELIS Work Product/Engineering Boundary
 
@@ -126,7 +200,9 @@ reporting, serving 30+ countries worldwide.
 **Repository:**
 
 - GitHub: `DIGI-UW/OpenELIS-Global-2`
-- Branch strategy: `develop` (main development), `main` (production releases)
+- Branch strategy: `develop` (integration and default branch; development PRs
+  target it), `main` (the latest release; changes only through a reviewed
+  release PR). See [RELEASES.md](RELEASES.md).
 - Feature branches: `feat/{NNN}[-{jira}]-{feature-name}-m{N}-{desc}`
   (recommended) or `{###-feature-name}` (legacy SpecKit numbering only)
 
@@ -189,7 +265,8 @@ mvn clean install -DskipTests
 - **Docker + Docker Compose**: For container orchestration
 - **PostgreSQL 14+**: Database (runs in Docker)
 - **Maven 3.8+**: Build system
-- **Node.js 16+**: Frontend development
+- **Node.js**: Use the version selected by the local CI runner; see
+  `frontend/package.json` for supported development versions.
 - **Git with submodules**: `git submodule update --init --recursive`
 
 ### Environment Configuration (.env file) - CRITICAL
@@ -251,7 +328,7 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Core Framework:**
 
-- **React 17** (react-scripts 5.0.1)
+- **React 17** (Vite; versions are maintained in `frontend/package.json`)
 - **Carbon Design System v1.15** (@carbon/react v1.15.0) - OFFICIAL UI FRAMEWORK
 - **Carbon Icons** (@carbon/icons-react v11.17.0)
 - **Carbon Charts** (@carbon/charts-react v1.5.2)
@@ -612,7 +689,8 @@ resistance, pulling all future work toward the wrong design.
 - Do NOT add features to superseded components (entities, readers, handlers)
 - Remove legacy code in the same PR, a paired PR, or a tracked priority issue
 - No dual-write to old and new tables/entities
-- Respect component boundaries (bridge owns parsing, OE owns config)
+- Respect component boundaries (Bridge owns parsing and analyzer runtime
+  configuration; OE owns clinical bindings and review)
 - Build on the target architecture, not the legacy one
 
 **Anti-pattern:** Marking code `@Deprecated` without migrating callers or
@@ -622,6 +700,58 @@ exists in one of them.
 ---
 
 ## Development Workflow
+
+### Authoritative Development Stack
+
+Use `scripts/dev-stack` from the root of every clone or worktree. It is the only
+supported interactive development launcher and starts the complete core
+OpenELIS + analyzer harness with worktree-scoped containers, images, networks,
+ports, and volumes.
+
+```bash
+scripts/dev-stack up
+scripts/dev-stack status
+eval "$(scripts/dev-stack env)"  # before Playwright
+scripts/dev-stack down
+```
+
+Never invoke the development Compose files directly or invent per-task Compose
+commands. Never use SQL fixture loaders for feature setup; use property-gated
+application scenario services. `scripts/dev-stack down --volumes --yes` is the
+only supported destructive reset. CI-parity and release tooling are separate
+interfaces and are not replacements for this development path.
+
+Localhost uses random loopback ports and self-signed TLS. Domain-enabled dev
+servers use the same command after setting `LETSENCRYPT_DOMAIN` and
+`LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
+existing Let's Encrypt flow.
+
+### Source development, candidate CI and published deployment
+
+Use the mode matching the work:
+
+- `scripts/dev-stack up` builds this checkout using worktree-specific images,
+  including the Bridge and analyzer mock exactly as checked out in their
+  submodules. It initializes only empty submodules, never moves or resets a
+  populated one, and prints a line for each submodule that differs from the
+  recorded commit or has uncommitted changes. It does not reuse published
+  application images.
+- `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
+  revision and its recorded submodule commits, concurrently with GitHub after
+  each push. Targeted tests alone are not full parity. Retain and inspect the
+  aggregate result and reports.
+- Published deployments use the released image Compose/installer path described
+  in [the setup guide](docs/dev_setup.md). Pull a coherent version or digest
+  set; do not mount source, a local WAR, or silently build missing application
+  images.
+
+Use the selected Docker context. Native tests and browser tools run on the host;
+see [docs/dev_setup.md](docs/dev_setup.md) for environment export and
+prerequisites. CI implementation is divided into `scripts/ci/backend.sh`,
+`frontend.sh`, `e2e-core.sh`, `e2e-analyzers.sh`, and `e2e-cypress.sh`,
+corresponding to GitHub's jobs. Invoke them through
+`scripts/run-ci-checks.sh --job NAME`. They do not introduce additional public
+startup commands. Dependency caches remain reusable.
 
 ### Initial Setup
 
@@ -638,23 +768,71 @@ java -version  # Must be Java 21
 # OR use SDKMAN
 sdk env  # Automatically switches to Java 21
 
-# Build DataExport submodule
-cd dataexport
-mvn clean install -DskipTests -Dmaven.test.skip=true
-cd ..
-
-# Build OpenELIS WAR
-mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# Start development containers
-docker compose -f dev.docker-compose.yml up -d
+# Check prerequisites, then build and start the complete source stack
+scripts/dev-stack doctor
+scripts/dev-stack up
 ```
 
 **Access Points:**
 
-- React UI: https://localhost/
-- Legacy UI: https://localhost/api/OpenELIS-Global/
-- FHIR Server: https://fhir.openelis.org:8443/fhir/
+- React UI: output of `scripts/dev-stack url`
+- Legacy UI: `<scripts/dev-stack url>/api/OpenELIS-Global/`
+- FHIR Server: use `FHIR_URL` from `scripts/dev-stack env`
+
+### Git Worktrees
+
+**Every worktree goes in `.worktrees/<short-name>` at the repo root, and every
+new worktree needs `setup-workspace.sh` run inside it.**
+
+```bash
+git worktree add -b <branch> .worktrees/<short-name> <base>
+cd .worktrees/<short-name> && bash scripts/setup-workspace.sh
+```
+
+**Never create a worktree in `/tmp`, `/private/tmp`, or any other system temp
+directory.** macOS reaps those, which destroys the worktree while
+`git worktree list` keeps reporting it, so the failure surfaces later as a
+confusing `not a git repository` error. This has already cost work here:
+`/private/tmp/oe2-reporting-stack-audit.<suffix>` was reaped and took
+`/private/tmp/oe2-reporting-samples-fix` with it, because that worktree's `.git`
+file pointed into the deleted parent. Some `/private/tmp/oe2-*` worktrees may
+still appear in `git worktree list`; they are the legacy mistake, not the
+convention. Relocate one with `git worktree move <old> .worktrees/<short-name>`,
+which preserves commits, and clear dead entries with `git worktree prune`.
+
+**Do not skip the setup step.** `git worktree add` does not initialize
+submodules, so a fresh worktree has all of them empty. Several are build inputs
+rather than optional extras: `./Dockerfile` does
+`WORKDIR /build/dataexport/dataexport-core` and runs maven there, and CI checks
+out with `submodules: recursive`. Skip it and a Docker build fails roughly
+twenty minutes in with `there is no POM in this directory`, which reads like a
+broken Dockerfile rather than a missing checkout step. If you only need the
+submodules, `git submodule update --init --recursive` is the relevant part.
+
+**Analyzer submodule pins.** OpenELIS builds the Bridge and analyzer mock images
+from the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` pins.
+The `Validation / Submodule pins` status applies to pull requests into `develop`
+and every pull request of a stack based on `develop`. Its `pull_request_target`
+workflow executes only the validator and repository mappings from `develop`. The
+PR's exact commit is read through GitHub's tree/blob API as data; PR scripts are
+never executed and submodules are never initialized by this check. The check
+rejects repository URL changes and pins absent from upstream default branches.
+Equivalent GitHub HTTPS and SSH URLs are accepted. A squash merge creates a new
+upstream commit, so update the pin to that merged commit. Dependabot proposes
+submodule bumps daily.
+
+After installing this workflow on `develop`, dispatch `submodule-pins.yml` with
+its `pull_request` input to verify a result, then require
+`Validation / Submodule pins` in the develop branch rules. The manual dispatch
+also supports rechecking a pin after its upstream PR merges. Keep the existing
+three checkpoints required. This check uses the GitHub Actions identity; it
+prevents PR code from replacing the executing validator but does not prevent a
+writer from deliberately forging a same-named Actions status. Stronger identity
+isolation requires a separate GitHub App as the required status source.
+
+The same reasoning applies to anything else worth keeping (evidence, triage
+notes, reports, artifacts): if losing the file would cost something, it does not
+belong in a temp directory.
 
 ### Context Recovery After Session Resume
 
@@ -788,8 +966,7 @@ mvn spotless:apply
 mvn spotless:check
 
 # Hot reload (after code changes)
-mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+scripts/dev-stack up
 ```
 
 **Frontend:**
@@ -820,16 +997,16 @@ npm run cy:run
 
 ```bash
 # Start development environment
-docker compose -f dev.docker-compose.yml up -d
+scripts/dev-stack up
 
 # Stop all containers
-docker compose -f dev.docker-compose.yml down
+scripts/dev-stack down
 
-# Rebuild specific container (after code changes)
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+# Explicitly reset this worktree's data
+scripts/dev-stack down --volumes --yes
 
 # View logs
-docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
+scripts/dev-stack logs -f oe.openelis.org
 ```
 
 ### Branch Strategy
@@ -838,8 +1015,14 @@ docker compose -f dev.docker-compose.yml logs -f oe.openelis.org
 
 **Primary Branches:**
 
-- **`develop`** - Main development branch (ALL PRs target this)
-- **`main`** - Production releases only (reviewers backport from develop)
+- **`develop`** - Integration and default branch (development PRs target this)
+- **`main`** - The latest release. It changes only through a reviewed release PR
+  from a `release/<X.Y>.x` branch, merged with a merge commit; each release is
+  tagged on `main`.
+- **`release/<X.Y>.x`** - One branch per supported release line. It receives
+  only fixes already merged to `develop`, cherry-picked by the release manager.
+
+See [RELEASES.md](RELEASES.md) for supported lines and versioning.
 
 **Feature Development (Principle IX):**
 
@@ -1050,42 +1233,26 @@ detailed guidance, see the Testing Roadmap.
 
 ### Test Data Management
 
-**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
-fixture loading system.
-
 **Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
 for comprehensive guide.
 
-**Key Principles:**
+Test data belongs to its environment:
 
-- Single source of truth: `storage-test-data.sql` contains all test fixtures
-- Unified loader: `load-test-fixtures.sh` used by all test types
-- Dependency validation: Scripts verify required tables exist before loading
-- Comprehensive verification: Automatic verification after loading
-- Safe cleanup: Only removes test-created data, preserves fixtures
+- **Interactive and manual development**: `scripts/dev-stack` creates
+  property-gated application scenarios. Do not load SQL fixtures or reset this
+  database to reproduce CI.
+- **Full local CI**: `scripts/run-ci-checks.sh` owns fresh isolated databases.
+  Its internal lane runners load the same baseline as their GitHub workflows
+  through `load-test-fixtures.sh`. This loader is not a development launcher.
+- **Analyzer workflows**: Create connections, mappings and per-test clinical
+  data through the application APIs; fixture setup must not manufacture the
+  behavior under test.
+- **Backend integration**: Tests own their DBUnit datasets and cleanup.
+  `BaseStorageTest` uses `executeDataSetWithStateManagement`, not the shell
+  fixture loader.
 
-**Quick Start:**
-
-```bash
-# Load test fixtures (basic usage)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness fixture lane (includes HARN-* lane data)
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Fixture Loading:**
-
-- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
-  `load-test-fixtures.sh`
-- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
-- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+For an isolated Cypress CI job, `cy.loadStorageFixtures()` delegates to the
+internal baseline loader. Keep this CI-only setup inside the owning runner.
 
 **DBUnit datasets (MANDATORY for DB-backed tests):**
 
@@ -1604,8 +1771,9 @@ the npm scripts.**
 **Execution Strategy (Constitution V.5):**
 
 1. **During Development:** Run individual tests for fast feedback
-2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
-3. **In CI/CD:** Automatic via GitHub Actions
+2. **Before Pushing:** Run focused checks for the affected change
+3. **After Each Push:** Run `scripts/run-ci-checks.sh` while GitHub CI runs; it
+   owns the isolated Cypress stacks and the full test package
 
 **Available npm Scripts (use these, NOT direct cypress commands):**
 
@@ -1616,40 +1784,25 @@ npm run cy:spec "cypress/e2e/home.cy.js"
 # Run all admin tests
 npm run cy:admin
 
-# Run all analyzer tests
-npm run cy:analyzer
-
 # Run full suite (development)
 npm run cy:run
 
-# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
+# Focused debugging with fail-fast (not full CI parity)
 npm run cy:failfast
 
 # Run specific test with fail-fast
-npm run cy:failfast:spec "cypress/e2e/AdminE2E/organizationManagement.cy.js"
+npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 
 # Open Cypress UI (interactive mode)
 npm run cy:open
 ```
 
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
+**Anti-Pattern:** Reporting a targeted browser run as full CI parity. Use the
+aggregate runner after each push and inspect every lane outcome.
 
-**Configuration (`cypress.config.js`):**
-
-```javascript
-module.exports = defineConfig({
-  video: false, // MUST be disabled by default (Constitution V.5)
-  screenshotOnRunFailure: true, // MUST be enabled (Constitution V.5)
-  defaultCommandTimeout: 10000,
-  e2e: {
-    baseUrl: "https://localhost",
-    testIsolation: true, // Default: true (cy.session() handles caching)
-  },
-  viewportWidth: 1025, // Desktop default
-  viewportHeight: 900,
-});
-```
+Cypress configuration is maintained in `frontend/cypress.config.js`; do not copy
+its timeouts, URLs or viewport settings into this guide. Isolated runners supply
+the URL of their own stack.
 
 **Post-Run Review (MANDATORY - Constitution V.5):**
 
@@ -1704,6 +1857,25 @@ describe("User Story P1: Sample Storage Assignment", () => {
 - ❌ Recreating test data via UI (use API-based setup)
 - ❌ Starting new sessions unnecessarily (use cy.session())
 
+### User-story UAT and implementation E2E ownership
+
+- Original user stories and approved designs in `DIGI-UW/openelis-work` govern
+  acceptance. Implementation specs scope increments and record approved deltas;
+  they do not redefine the story to fit the code.
+- Grist holds the live story-based UAT walkthrough and reviewer feedback. Keep
+  original story/requirement references alongside stable Grist story/step keys.
+- Implementation-specific automated E2E and video proof live with this code.
+  Link assertions, recordings and exact build/test revisions back to the story.
+  Video proof does not establish human acceptance.
+- Run affected checks before merge, refresh video proof for changed workflows,
+  then reuse selected E2E checks on each deployed increment. Human UAT primarily
+  evaluates integrated/post-merge behavior and can begin on usable PR previews.
+- Eventually synchronize story coverage and findings with `DIGI-UW/OpenELIS-QA`;
+  do not duplicate suites or build a new synchronization service in feature
+  work.
+- Cross-project details:
+  [validation ownership](https://github.com/DIGI-UW/openelis-review-tooling/blob/codex/grist-backend-authoring/docs/validation-ownership.md).
+
 ### E2E Tests (Playwright) — RECOMMENDED
 
 > **Playwright is the recommended E2E framework** for all new tests. It provides
@@ -1713,9 +1885,10 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - `harness`, `harness-demo`, and `harness-demo-video` require analyzer harness
->   stack preflight (see `/restart-analyzer-harness`). `core-demo` /
->   `core-demo-video` run on the build stack only.
+> - For interactive development, export `scripts/dev-stack env` from the
+>   repository root, then run `npm run pw:test --` from `frontend`. For CI
+>   validation, the full runner owns fresh stacks for the core and analyzer
+>   projects.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -1735,21 +1908,25 @@ Tests are organized into projects by infrastructure requirement. New test files
 must be explicitly added to a project's `testMatch` allowlist in
 `playwright.config.ts`.
 
-| Project              | Purpose                                           | CI Workflow                        | Infra Required   |
-| -------------------- | ------------------------------------------------- | ---------------------------------- | ---------------- |
-| `core-app`           | Core UI tests (no plugins/bridge)                 | `e2e-playwright.yml`               | Build stack only |
-| `core-demo`          | UI demos on build stack + SQL fixtures            | `e2e-playwright.yml`               | Build stack only |
-| `core-demo-video`    | `core-demo` + `slowMo` + video                    | Local only                         | Build stack only |
-| `harness`            | Analyzer infra tests (bridge, simulator, plugins) | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo`       | UI demos requiring full analyzer harness          | Analyzer harness reusable workflow | Full harness     |
-| `harness-demo-video` | `harness-demo` + `slowMo` + video                 | Local only                         | Full harness     |
+| Project                | Purpose                                        | CI job               | Infra Required   |
+| ---------------------- | ---------------------------------------------- | -------------------- | ---------------- |
+| `core-app`             | Core UI tests (no Bridge)                      | `Playwright Core`    | Build stack only |
+| `core-demo`            | UI demos on build stack + SQL fixtures         | `Playwright Core`    | Build stack only |
+| `core-demo-video`      | `core-demo` + `slowMo` + video                 | Local only           | Build stack only |
+| `harness-foundational` | Analyzer workflows through Bridge and the mock | `Playwright Harness` | Full harness     |
+| `harness-demo`         | UI demos requiring the full analyzer harness   | `Playwright Harness` | Full harness     |
+| `harness-demo-video`   | `harness-demo` + `slowMo` + video              | Local only           | Full harness     |
+| `harness-manual-only`  | Real-hardware / manual-only coverage           | Not run in CI        | Full harness     |
 
 #### CI Workflows
 
-| Workflow                                   | Compose Files                                          | Projects Run               | Fixtures Loaded                           |
-| ------------------------------------------ | ------------------------------------------------------ | -------------------------- | ----------------------------------------- |
-| `e2e-playwright.yml` (`playwright-core`)   | `build.docker-compose.yml`                             | `core-app` + `core-demo`   | `load-test-fixtures.sh --profile=core`    |
-| `e2e-playwright-analyzer-harness-reusable` | `build.docker-compose.yml` + `ci.analyzer-harness.yml` | `harness` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
+Both jobs run from `e2e-tests.yml` through `e2e-authoritative-reusable.yml`,
+which calls `e2e-playwright-reusable.yml` once per lane.
+
+| Job                  | Compose Files                                                                                                | Projects Run                            | Fixtures Loaded                           |
+| -------------------- | ------------------------------------------------------------------------------------------------------------ | --------------------------------------- | ----------------------------------------- |
+| `Playwright Core`    | `build.docker-compose.yml`                                                                                   | `core-app` + `core-demo`                | `load-test-fixtures.sh --profile=core`    |
+| `Playwright Harness` | `build.docker-compose.yml` + `projects/analyzer-harness/docker-compose.base.yml` + `ci.analyzer-harness.yml` | `harness-foundational` + `harness-demo` | `load-test-fixtures.sh --profile=harness` |
 
 #### Key Patterns
 
@@ -1851,7 +2028,7 @@ npm run pw:test -- --project=core-demo-video
 npm run pw:test -- --project=harness-demo-video
 
 # Run specific test file
-npm run pw:test -- playwright/tests/demo/harness/file-import-ui.spec.ts
+npm run pw:test -- playwright/tests/demo/harness/ogc-1054-m3-guided-setup.spec.ts
 
 # Interactive UI mode
 npm run pw:test:ui
@@ -1859,48 +2036,22 @@ npm run pw:test:ui
 
 #### Local Execution
 
-**Prerequisites:**
-
-1. App running at `https://localhost` (or set `BASE_URL`)
-2. Auth env vars: `TEST_USER` and `TEST_PASS`
-
-**Core-app tests (build stack):**
+For interactive checks, the development launcher owns setup and endpoints:
 
 ```bash
+scripts/dev-stack up
+eval "$(scripts/dev-stack env)"
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-app <spec-path>
+npm run pw:test -- --project=harness-demo <spec-path>
+npm run pw:test -- --project=core-demo-video <spec-path>
 ```
 
-**Harness tests (analyzer harness stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness
-```
-
-**Harness demos:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
-```
-
-**Core demos (build stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
-```
-
-**Demo video recording:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
-# or full harness demos:
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
-# Videos saved to frontend/test-results/
-```
+For full CI, run `scripts/run-ci-checks.sh` on the committed candidate. For a
+focused CI reproduction, select `--job NAME`. For native tests and recording,
+follow the development instructions in `frontend/playwright/README.md`. A
+development database and a CI fixture database are different environments; do
+not reset one to imitate the other.
 
 #### Adding New Tests
 
@@ -2198,7 +2349,10 @@ Before creating PR, verify ALL items:
 
 3. **Target Branch:**
 
-   - Always target `develop` (unless hotfix to `main`)
+   - Development PRs target `develop`, including hotfixes. Fixes for a released
+     line are cherry-picked onto its `release/<X.Y>.x` branch after they merge.
+     Release PRs from a release branch target `main` (see
+     [RELEASES.md](RELEASES.md)).
 
 4. **Code Formatting (MANDATORY):**
 
@@ -2264,15 +2418,14 @@ Before creating PR, verify ALL items:
 **GitHub Actions workflows (MUST pass):**
 
 - `backend.yml` (`01 - Backend`) — Maven build + Spotless format check + unit
-  tests (PR + push)
-- `e2e-playwright.yml` (`03 - Playwright`) — Playwright E2E (core + analyzer
-  harness) with required Playwright gate (PR)
-- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks +
-  required frontend gate (PR)
-- `e2e-cypress-deprecated.yml` (`04 - Cypress`) — Cypress E2E shards + required
-  deprecated Cypress gate (PR)
-- `publish-and-test.yml` — Docker publish + E2E tests (push to `develop` +
-  releases only)
+  tests; reports the required `01 Checkpoint - Backend` check
+- `frontend.yml` (`02 - Frontend`) — Frontend static/unit/image checks; reports
+  the required `02 Checkpoint - Frontend` check
+- `e2e-playwright.yml` (`03 - E2E`) — builds the E2E images; `e2e-tests.yml`
+  then runs Playwright (core + analyzer harness) and the deprecated Cypress
+  suite and reports the required `03 Checkpoint - E2E` check
+- `publish-images.yml` (`Publish Images`) — after `03 - E2E` passes, publishes
+  the tested images to Docker Hub (push to `develop`, and releases)
 
 ### Code Review Standards
 
@@ -2365,13 +2518,11 @@ mvn clean install -DskipTests -Dmaven.test.skip=true
 mvn spotless:apply && cd frontend && npm run format && cd ..
 
 # Hot reload backend
-mvn clean install -DskipTests -Dmaven.test.skip=true
-docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
+scripts/dev-stack up
 
 # E2E tests - ALWAYS use npm scripts (unset ELECTRON_RUN_AS_NODE is required)
 npm run cy:spec "cypress/e2e/{feature}.cy.js"  # Individual test (development)
 npm run cy:admin                                # All admin tests
-npm run cy:analyzer                             # All analyzer tests
 npm run cy:failfast                             # Full suite with fail-fast (BEFORE PUSHING)
 npm run cy:failfast:spec "cypress/e2e/..."      # Specific test with fail-fast
 
@@ -2404,6 +2555,6 @@ sdk env        # SDKMAN auto-switch
 
 ---
 
-**Last Updated:** 2026-01-27 **Constitution Version:** 1.9.0 **Maintained By:**
+**Last Updated:** 2026-09-29 **Constitution Version:** 1.12.0 **Maintained By:**
 OpenELIS Global Core Team **Questions?** Post in GitHub Discussions or weekly
 developer sync

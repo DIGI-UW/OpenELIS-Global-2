@@ -44,7 +44,7 @@ public class ReadingIngestionServiceTest extends BaseWebContextSensitiveTest {
         BigDecimal temperature = new BigDecimal("-78.5");
         BigDecimal humidity = new BigDecimal("45.0");
 
-        readingIngestionService.ingest(freezer, recordedAt, temperature, humidity, true, null);
+        readingIngestionService.ingest(freezer, recordedAt, temperature, humidity, null, true, null);
 
         Optional<FreezerReading> latestReading = freezerReadingService.getLatestReading(freezerId);
         assertTrue("Latest reading should exist", latestReading.isPresent());
@@ -65,7 +65,7 @@ public class ReadingIngestionServiceTest extends BaseWebContextSensitiveTest {
         OffsetDateTime recordedAt = OffsetDateTime.now();
         BigDecimal temperature = new BigDecimal("-79.0");
 
-        readingIngestionService.ingest(freezer, recordedAt, temperature, null, true, null);
+        readingIngestionService.ingest(freezer, recordedAt, temperature, null, null, true, null);
 
         Optional<FreezerReading> latestReading = freezerReadingService.getLatestReading(freezerId);
         assertTrue("Latest reading should exist", latestReading.isPresent());
@@ -85,7 +85,7 @@ public class ReadingIngestionServiceTest extends BaseWebContextSensitiveTest {
         BigDecimal temperature = new BigDecimal("-80.0");
         String errorMessage = "Connection timeout";
 
-        readingIngestionService.ingest(freezer, recordedAt, temperature, null, false, errorMessage);
+        readingIngestionService.ingest(freezer, recordedAt, temperature, null, null, false, errorMessage);
 
         Optional<FreezerReading> latestReading = freezerReadingService.getLatestReading(freezerId);
         assertTrue("Latest reading should exist", latestReading.isPresent());
@@ -105,9 +105,12 @@ public class ReadingIngestionServiceTest extends BaseWebContextSensitiveTest {
         OffsetDateTime time2 = OffsetDateTime.now().minusMinutes(5);
         OffsetDateTime time3 = OffsetDateTime.now();
 
-        readingIngestionService.ingest(freezer, time1, new BigDecimal("-78.0"), new BigDecimal("40.0"), true, null);
-        readingIngestionService.ingest(freezer, time2, new BigDecimal("-79.0"), new BigDecimal("42.0"), true, null);
-        readingIngestionService.ingest(freezer, time3, new BigDecimal("-80.0"), new BigDecimal("44.0"), true, null);
+        readingIngestionService.ingest(freezer, time1, new BigDecimal("-78.0"), new BigDecimal("40.0"), null, true,
+                null);
+        readingIngestionService.ingest(freezer, time2, new BigDecimal("-79.0"), new BigDecimal("42.0"), null, true,
+                null);
+        readingIngestionService.ingest(freezer, time3, new BigDecimal("-80.0"), new BigDecimal("44.0"), null, true,
+                null);
 
         Optional<FreezerReading> latestReading = freezerReadingService.getLatestReading(freezerId);
         assertTrue("Latest reading should exist", latestReading.isPresent());
@@ -132,8 +135,8 @@ public class ReadingIngestionServiceTest extends BaseWebContextSensitiveTest {
         BigDecimal temp1 = new BigDecimal("-78.0");
         BigDecimal temp2 = new BigDecimal("-5.0");
 
-        readingIngestionService.ingest(freezer1, recordedAt, temp1, null, true, null);
-        readingIngestionService.ingest(freezer2, recordedAt, temp2, null, true, null);
+        readingIngestionService.ingest(freezer1, recordedAt, temp1, null, null, true, null);
+        readingIngestionService.ingest(freezer2, recordedAt, temp2, null, null, true, null);
 
         Optional<FreezerReading> reading1 = freezerReadingService.getLatestReading(freezerId1);
         Optional<FreezerReading> reading2 = freezerReadingService.getLatestReading(freezerId2);
@@ -154,7 +157,7 @@ public class ReadingIngestionServiceTest extends BaseWebContextSensitiveTest {
         OffsetDateTime recordedAt = OffsetDateTime.now();
         BigDecimal temperature = new BigDecimal("-196.0"); // Liquid nitrogen temperature
 
-        readingIngestionService.ingest(freezer, recordedAt, temperature, null, true, null);
+        readingIngestionService.ingest(freezer, recordedAt, temperature, null, null, true, null);
 
         Optional<FreezerReading> latestReading = freezerReadingService.getLatestReading(freezerId);
         assertTrue("Latest reading should exist", latestReading.isPresent());
@@ -173,7 +176,7 @@ public class ReadingIngestionServiceTest extends BaseWebContextSensitiveTest {
         BigDecimal temperature = new BigDecimal("-80.0");
         BigDecimal humidity = new BigDecimal("95.5");
 
-        readingIngestionService.ingest(freezer, recordedAt, temperature, humidity, true, null);
+        readingIngestionService.ingest(freezer, recordedAt, temperature, humidity, null, true, null);
 
         Optional<FreezerReading> latestReading = freezerReadingService.getLatestReading(freezerId);
         assertTrue("Latest reading should exist", latestReading.isPresent());

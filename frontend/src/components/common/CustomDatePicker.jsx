@@ -1,15 +1,41 @@
-import React, { useEffect, useState, useContext } from "react";
+import React, { useCallback, useContext, useRef, useState } from "react";
 import { DatePicker, DatePickerInput } from "@carbon/react";
-import { format } from "date-fns";
+import { format, isValid, parse } from "date-fns";
 import { useIntl } from "react-intl";
 import { ConfigurationContext } from "../layout/Layout";
+import { labNow } from "../utils/labClock";
 
 const CustomDatePicker = (props) => {
   const [currentDate, setCurrentDate] = useState(
     props.value ? props.value : "",
   );
-  const { configurationProperties } = useContext(ConfigurationContext);
+  const { configurationProperties = { DEFAULT_DATE_LOCALE: "en-US" } } =
+    useContext(ConfigurationContext) || {};
   const intl = useIntl();
+  const dateLocale = useRef(configurationProperties.DEFAULT_DATE_LOCALE);
+  dateLocale.current = configurationProperties.DEFAULT_DATE_LOCALE;
+  // The calendar keeps the parser it was created with. Carbon's built-in one
+  // only reads month-first dates, so a picker created before the site's
+  // day-first format loaded read "26/09/2026" as 9 January. This parser reads
+  // whichever format the site uses at the time.
+  const parseDisplayDate = useCallback((text) => {
+    const parsed = parse(
+      text,
+      dateLocale.current == "fr-FR" ? "dd/MM/yyyy" : "MM/dd/yyyy",
+      labNow(),
+    );
+    return isValid(parsed) ? parsed : undefined;
+  }, []);
+  // Today's bounds as timestamps. A formatted date string is parsed back by
+  // the calendar with its own rules, which read "26/09/2026" as a January
+  // date, and a value set after mount was then clamped to that bound.
+  const [todayBounds] = useState(() => ({
+    start: labNow().setHours(0, 0, 0, 0),
+    end: labNow().setHours(23, 59, 59, 999),
+  }));
+  // A typed date past a disallowed bound is refused here. The calendar never
+  // offers it, but typing did reach the form while flatpickr blanked the box.
+  const [refused, setRefused] = useState(null);
   function handleDatePickerChange(e) {
     const raw = e?.[0];
     if (!raw || isNaN(new Date(raw).getTime())) {
@@ -17,6 +43,7 @@ const CustomDatePicker = (props) => {
       props.onChange("");
       return;
     }
+    setRefused(null);
     const formatDate = format(
       new Date(raw),
       configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
@@ -35,7 +62,9 @@ const CustomDatePicker = (props) => {
     // without this branch a manual clear silently leaves the prior value in
     // place.
     if (inputValue === "") {
+      setRefused(null);
       setCurrentDate("");
+      props.onChange("");
       return;
     }
 
@@ -54,24 +83,45 @@ const CustomDatePicker = (props) => {
       return;
     }
     if (fullDateRegex.test(inputValue)) {
+      const typed = parseDisplayDate(inputValue);
+      const bound =
+        typed && props.disallowFutureDate && typed.getTime() > todayBounds.end
+          ? "future"
+          : typed &&
+              props.disallowPastDate &&
+              typed.getTime() < todayBounds.start
+            ? "past"
+            : null;
+      setRefused(bound);
+      if (bound) {
+        setCurrentDate("");
+        props.onChange("");
+        return;
+      }
       setCurrentDate(inputValue);
+      props.onChange(inputValue);
     }
   }
 
-  useEffect(() => {
-    props.onChange(currentDate);
-  }, [currentDate]);
+  const refusedText =
+    refused === "future"
+      ? props.futureDateText ||
+        intl.formatMessage({ id: "datepicker.future.notAllowed" })
+      : refused === "past"
+        ? props.pastDateText ||
+          intl.formatMessage({ id: "datepicker.past.notAllowed" })
+        : null;
+  const invalid = props.invalid || Boolean(refusedText);
+  const invalidText = refusedText || props.invalidText;
 
-  useEffect(() => {
-    if (props.updateStateValue) {
-      setCurrentDate(props.value);
-    }
-  }, [props.value]);
+  const displayedDate = props.updateStateValue
+    ? props.value || ""
+    : currentDate;
 
   return (
     <>
       <DatePicker
-        id={props.id}
+        id={`${props.id}-picker`}
         dateFormat={
           configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
             ? "d/m/Y"
@@ -79,28 +129,13 @@ const CustomDatePicker = (props) => {
         }
         className={props.className}
         datePickerType="single"
-        value={currentDate}
+        parseDate={parseDisplayDate}
+        value={displayedDate}
         onChange={(e) => handleDatePickerChange(e)}
-        maxDate={
-          props.disallowFutureDate
-            ? format(
-                new Date(),
-                configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-                  ? "dd/MM/yyyy"
-                  : "MM/dd/yyyy",
-              )
-            : ""
-        }
-        minDate={
-          props.disallowPastDate
-            ? format(
-                new Date(),
-                configurationProperties.DEFAULT_DATE_LOCALE == "fr-FR"
-                  ? "dd/MM/yyyy"
-                  : "MM/dd/yyyy",
-              )
-            : ""
-        }
+        invalid={invalid}
+        invalidText={invalidText}
+        maxDate={props.disallowFutureDate ? todayBounds.end : ""}
+        minDate={props.disallowPastDate ? todayBounds.start : ""}
       >
         <DatePickerInput
           id={props.id}
@@ -116,10 +151,13 @@ const CustomDatePicker = (props) => {
           })}
           type="text"
           labelText={props.labelText}
-          invalid={props.invalid}
-          invalidText={props.invalidText}
+          helperText={props.helperText}
+          invalid={invalid}
+          invalidText={invalidText}
+          aria-invalid={invalid || undefined}
+          aria-required={props["aria-required"]}
           disabled={props.disabled}
-          onChange={handleInputChange}
+          onInput={handleInputChange}
         />
       </DatePicker>
     </>

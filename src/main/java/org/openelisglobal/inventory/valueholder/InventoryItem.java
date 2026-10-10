@@ -39,6 +39,10 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "fhir_uuid", nullable = false, unique = true)
     private UUID fhirUuid;
 
+    @Column(name = "code", nullable = false, unique = true, length = 64)
+    @Size(max = 64)
+    private String code;
+
     @Column(name = "name", nullable = false, length = 255)
     @NotNull
     @Size(min = 1, max = 255)
@@ -75,6 +79,11 @@ public class InventoryItem extends BaseObject<Long> {
     @Column(name = "low_stock_threshold")
     @Min(0)
     private Integer lowStockThreshold;
+
+    /** Order-to-arrival days, set per lab, never shared; null when unset. */
+    @Column(name = "lead_time_days")
+    @Min(value = 0, message = "Lead time cannot be negative")
+    private Integer leadTimeDays;
 
     @Column(name = "expiration_alert_days")
     @Min(1)

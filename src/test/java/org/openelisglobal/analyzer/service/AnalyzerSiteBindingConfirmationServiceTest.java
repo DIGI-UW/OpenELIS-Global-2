@@ -136,7 +136,28 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
     }
 
     @Test
-    public void rejectsUnresolvedOrOmittedSourceRowsBeforeWriting() {
+    public void confirmsResolvedDecisionsWhileOtherRowsRemainUnresolved() throws Exception {
+        AnalyzerSiteBindingSnapshot base = completeCandidate("61", BINDING_FINGERPRINT);
+        AnalyzerSiteBindingTest pending = test(base.revision(), "PENDING", AnalyzerSiteBindingMappingState.UNRESOLVED);
+        AnalyzerSiteBindingSnapshot candidate = new AnalyzerSiteBindingSnapshot(base.binding(), base.revision(),
+                List.of(base.tests().get(0), base.tests().get(1), pending), base.results());
+
+        AnalyzerSiteBindingConfirmationView view = service.confirm(candidate, RECOGNITION_FINGERPRINT, exactRequest(),
+                "17");
+
+        assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT, view.state());
+        assertEquals(exactRequest().confirmedRows(), view.confirmedRows());
+        assertEquals(exactRequest().excludedRows(), view.excludedRows());
+        assertEquals(AnalyzerSiteBindingMappingState.UNRESOLVED, pending.getMappingState());
+        ArgumentCaptor<AnalyzerSiteBindingConfirmation> written = ArgumentCaptor
+                .forClass(AnalyzerSiteBindingConfirmation.class);
+        verify(confirmationDAO).insert(written.capture());
+        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(written.getValue()));
+        assertTrue(service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).mappingsCurrent());
+    }
+
+    @Test
+    public void rejectsFalselyConfirmedUnresolvedRowsOrOmittedBoundRowsBeforeWriting() {
         AnalyzerSiteBindingSnapshot unresolved = completeCandidate("61", BINDING_FINGERPRINT);
         unresolved.tests().get(0).setMappingState(AnalyzerSiteBindingMappingState.UNRESOLVED);
         AnalyzerSiteBindingConfirmationRequest omitted = new AnalyzerSiteBindingConfirmationRequest(BINDING_FINGERPRINT,
@@ -182,6 +203,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertTrue(assessment.mappingsCurrent());
         assertFalse(assessment.recognitionCurrent());
         assertEquals(Optional.empty(), assessment.currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate, "sha256:" + "d".repeat(64)));
     }
 
     @Test
@@ -206,6 +228,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
     }
 
     @Test
@@ -217,6 +240,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
     }
 
     @Test
@@ -235,6 +259,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         assertFalse(assessment.mappingsCurrent());
         assertTrue(assessment.recognitionCurrent());
         assertEquals(Optional.empty(), assessment.currentConfirmation());
+        assertTrue(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
     }
 
     @Test
@@ -259,6 +284,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE,
                 service.getStatus(candidate, RECOGNITION_FINGERPRINT).state());
     }
@@ -272,6 +298,7 @@ public class AnalyzerSiteBindingConfirmationServiceTest {
         when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
+        assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
         AnalyzerSiteBindingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
         assertEquals(AnalyzerSiteBindingConfirmationView.State.STALE, status.state());
         assertEquals(List.of(), status.confirmedRows());

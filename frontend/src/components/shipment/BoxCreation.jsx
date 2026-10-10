@@ -106,6 +106,10 @@ const BoxCreation = () => {
     fetchRejectionReasons();
     fetchBoxLabelPrefix();
     generateBoxNumber();
+    // Ambient is what an unset box is saved as, so show it as chosen rather than
+    // leaving the field reading "Select" while the summary and the saved box both
+    // say Ambient.
+    setSelectedTemperature(temperatureOptions[0]);
   }, []);
 
   useEffect(() => {
@@ -423,7 +427,6 @@ const BoxCreation = () => {
       destinationFacilityId: Number.parseInt(selectedFacility.id),
       temperatureRequirement: selectedTemperature?.id || "AMBIENT",
       capacity: capacity,
-      actualSampleCount: addedSamples.length,
       notes: notes,
       state: "DRAFT",
     };
@@ -469,13 +472,27 @@ const BoxCreation = () => {
               }
             }
 
-            addNotification({
-              kind: errors > 0 ? "warning" : "success",
-              title: intl.formatMessage({ id: "notification.success" }),
-              message: intl.formatMessage({
-                id: "shipment.notification.boxCreated",
-              }),
-            });
+            addNotification(
+              errors > 0
+                ? {
+                    kind: "error",
+                    title: intl.formatMessage({ id: "notification.error" }),
+                    message: intl.formatMessage(
+                      { id: "shipment.error.partialSampleAdd" },
+                      {
+                        added: addedSamples.length - errors,
+                        total: addedSamples.length,
+                      },
+                    ),
+                  }
+                : {
+                    kind: "success",
+                    title: intl.formatMessage({ id: "notification.success" }),
+                    message: intl.formatMessage({
+                      id: "shipment.notification.boxCreated",
+                    }),
+                  },
+            );
             setLoading(false);
             history.push(`/SampleShipment/box/${response.id}`);
           };
@@ -501,7 +518,6 @@ const BoxCreation = () => {
       destinationFacilityId: Number.parseInt(selectedFacility.id),
       temperatureRequirement: selectedTemperature?.id || "AMBIENT",
       capacity: capacity,
-      actualSampleCount: addedSamples.length,
       notes: notes,
       state: "DRAFT",
     };
@@ -522,25 +538,41 @@ const BoxCreation = () => {
 
         if (response && response.id) {
           const addSamplesAndMarkReady = async () => {
-            // Add all samples in parallel using Promise.all
-            if (addedSamples.length > 0) {
-              await Promise.all(
-                addedSamples.map(
-                  (sample) =>
-                    new Promise((resolve) => {
-                      postToOpenElisServerJsonResponse(
-                        "/rest/box-sample/items",
-                        JSON.stringify({
-                          shippingBoxId: response.id,
-                          sampleItemId: sample.sampleItemId || sample.id,
-                        }),
-                        () => {
-                          resolve();
-                        },
-                      );
-                    }),
+            // One sample at a time, and each answer read: these all write the same box
+            // row, and a box that quietly holds fewer samples than the operator staged
+            // sends a short shipment to the reference lab.
+            let added = 0;
+            for (const sample of addedSamples) {
+              const ok = await new Promise((resolve) => {
+                postToOpenElisServerJsonResponse(
+                  "/rest/box-sample/items",
+                  JSON.stringify({
+                    shippingBoxId: response.id,
+                    sampleItemId: sample.sampleItemId || sample.id,
+                  }),
+                  (res) => {
+                    resolve(!(res?.error || res?.status >= 400));
+                  },
+                );
+              });
+              if (ok) {
+                added++;
+              }
+            }
+
+            if (added < addedSamples.length) {
+              // Left as a draft on purpose: the operator can still add what is missing.
+              addNotification({
+                kind: "error",
+                title: intl.formatMessage({ id: "notification.error" }),
+                message: intl.formatMessage(
+                  { id: "shipment.error.partialSampleAdd" },
+                  { added, total: addedSamples.length },
                 ),
-              );
+              });
+              setLoading(false);
+              history.push(`/SampleShipment/box/${response.id}`);
+              return;
             }
 
             // Mark as ready after all samples added
@@ -971,10 +1003,7 @@ const BoxCreation = () => {
                   <FormattedMessage id="shipment.box.temperature" />:
                 </span>
                 <span className="summary-value">
-                  {selectedTemperature?.label ||
-                    intl.formatMessage({
-                      id: "shipment.temperature.ambient",
-                    })}
+                  {selectedTemperature?.label}
                 </span>
               </div>
             </div>

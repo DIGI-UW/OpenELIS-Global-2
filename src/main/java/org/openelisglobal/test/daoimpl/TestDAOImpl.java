@@ -31,6 +31,7 @@ import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.util.ConfigurationProperties;
 import org.openelisglobal.common.util.StringUtil;
+import org.openelisglobal.common.util.TestDescriptionNormalizer;
 import org.openelisglobal.method.valueholder.Method;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.test.dao.TestDAO;
@@ -675,6 +676,51 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
 
     @Override
     @Transactional(readOnly = true)
+    public Test getTestByLocalCode(String localCode) {
+        if (localCode == null || localCode.isBlank()) {
+            return null;
+        }
+        String hql = "FROM Test t WHERE LOWER(t.localCode) = LOWER(:localCode) ORDER BY t.id";
+        try {
+            List<Test> tests = entityManager.unwrap(Session.class).createQuery(hql, Test.class)
+                    .setParameter("localCode", localCode.trim()).setMaxResults(1).list();
+            return tests.isEmpty() ? null : tests.get(0);
+        } catch (HibernateException e) {
+            handleException(e, "getTestByLocalCode");
+        }
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByLocalCode(String localCode) {
+        if (localCode == null || localCode.isBlank()) {
+            return new ArrayList<>();
+        }
+        String hql = "FROM Test t WHERE LOWER(t.localCode) = LOWER(:localCode) ORDER BY t.id";
+        return entityManager.unwrap(Session.class).createQuery(hql, Test.class)
+                .setParameter("localCode", localCode.trim()).list();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getTestsByNormalizedDescriptionPrefix(String plainName) {
+        String prefix = TestDescriptionNormalizer.normalizeText(plainName);
+        if (prefix.isEmpty()) {
+            return new ArrayList<>();
+        }
+        String hql = "FROM Test t WHERE t.normalizedDescription LIKE :prefix ORDER BY t.id";
+        try {
+            return entityManager.unwrap(Session.class).createQuery(hql, Test.class).setParameter("prefix", prefix + "%")
+                    .list();
+        } catch (HibernateException e) {
+            handleException(e, "getTestsByNormalizedDescriptionPrefix");
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public Test getTestByGUID(String guid) {
         String sql = "From Test t where t.guid = :guid";
         try {
@@ -726,6 +772,23 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     }
 
     @Override
+    public boolean isNameLocalization(String localizationId) {
+        if (localizationId == null || localizationId.isBlank()) {
+            return false;
+        }
+        String hql = "select count(t) from Test t where t.localizedTestName.id = :id"
+                + " or t.localizedReportingName.id = :id";
+        try {
+            Long count = entityManager.unwrap(Session.class).createQuery(hql, Long.class)
+                    .setParameter("id", localizationId).uniqueResult();
+            return count != null && count > 0;
+        } catch (HibernateException e) {
+            handleException(e, "isNameLocalization");
+        }
+        return false;
+    }
+
+    @Override
     public List<Test> getActiveTestsByLoinc(String[] loincCodes) {
         String sql = "From Test t where t.loinc IN (:loinc) and t.isActive='Y'";
         try {
@@ -769,6 +832,23 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
             handleException(e, "getTestsByTestSectionId");
         }
 
+        return null;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Test> getAllTestsByTestSectionIds(List<String> ids) throws LIMSRuntimeException {
+        try {
+            // Deliberately no isActive filter — see getAllTestsByTestSectionIds
+            // on TestDAO. Viewer paths must see a deactivated test's in-flight
+            // work so it can still be completed.
+            String sql = "from Test t where t.testSection.id IN (:ids)";
+            Query<Test> query = entityManager.unwrap(Session.class).createQuery(sql, Test.class);
+            query.setParameterList("ids", ids);
+            return query.list();
+        } catch (RuntimeException e) {
+            handleException(e, "getAllTestsByTestSectionIds");
+        }
         return null;
     }
 
@@ -825,34 +905,6 @@ public class TestDAOImpl extends BaseDAOImpl<Test, String> implements TestDAO {
     }
 
     private String normalizeDescription(String description) {
-        if (description == null) {
-            return "";
-        }
-
-        String normalized;
-        String sampleType = "";
-
-        if (description.contains("(") && description.contains(")")) {
-            int startParen = description.indexOf("(");
-            int endParen = description.indexOf(")");
-
-            sampleType = description.substring(startParen + 1, endParen);
-            sampleType = normalizeText(sampleType);
-            normalized = description.substring(0, startParen);
-        } else {
-            normalized = description;
-        }
-
-        normalized = normalizeText(normalized);
-        return normalized + sampleType;
-    }
-
-    private String normalizeText(String text) {
-        if (text == null) {
-            return "";
-        }
-        // Remove accents and diacritics, then remove non-alphanumeric, then lowercase
-        return java.text.Normalizer.normalize(text, java.text.Normalizer.Form.NFD)
-                .replaceAll("\\p{InCombiningDiacriticalMarks}+", "").replaceAll("[^a-zA-Z0-9]", "").toLowerCase();
+        return TestDescriptionNormalizer.normalizeDescription(description);
     }
 }

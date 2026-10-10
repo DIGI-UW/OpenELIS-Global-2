@@ -65,6 +65,22 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
     }
 
     @Override
+    public List<ShippingBox> findByEqaCycleId(Long eqaCycleId) {
+        try {
+            // LEFT JOIN FETCH: the caller reads courier details off every box, and the
+            // shipment side is lazy, so fetching it here is what keeps this one query.
+            String hql = "FROM ShippingBox b LEFT JOIN FETCH b.shipment WHERE b.eqaCycleId = :eqaCycleId"
+                    + " ORDER BY b.id";
+            Query<ShippingBox> query = entityManager.unwrap(Session.class).createQuery(hql, ShippingBox.class);
+            query.setParameter("eqaCycleId", eqaCycleId);
+            return query.list();
+        } catch (Exception e) {
+            logger.error("Error finding ShippingBoxes by eqaCycleId", e);
+            throw new LIMSRuntimeException("Error finding ShippingBoxes by eqaCycleId", e);
+        }
+    }
+
+    @Override
     public List<ShippingBox> findByState(BoxState state) {
         try {
             String hql = "FROM ShippingBox b WHERE b.state = :state AND b.inbound = false ORDER BY b.createdDate DESC";
@@ -141,6 +157,19 @@ public class ShippingBoxDAOImpl extends BaseDAOImpl<ShippingBox, Integer> implem
         } catch (Exception e) {
             logger.error("Error counting ShippingBoxes by state", e);
             throw new LIMSRuntimeException("Error counting ShippingBoxes by state", e);
+        }
+    }
+
+    @Override
+    public void adjustSampleCount(Integer shippingBoxId, int delta) {
+        try {
+            String hql = "UPDATE ShippingBox b SET b.actualSampleCount = COALESCE(b.actualSampleCount, 0) + :delta"
+                    + " WHERE b.id = :id";
+            entityManager.unwrap(Session.class).createQuery(hql).setParameter("delta", delta)
+                    .setParameter("id", shippingBoxId).executeUpdate();
+        } catch (Exception e) {
+            logger.error("Error adjusting ShippingBox sample count", e);
+            throw new LIMSRuntimeException("Error adjusting ShippingBox sample count", e);
         }
     }
 }

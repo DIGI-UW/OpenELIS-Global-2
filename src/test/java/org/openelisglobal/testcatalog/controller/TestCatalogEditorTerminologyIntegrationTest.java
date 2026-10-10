@@ -289,6 +289,38 @@ public class TestCatalogEditorTerminologyIntegrationTest extends BaseWebContextS
         assertTrue(controller.getLoincIntegrity(testId()).getBody().noLoinc);
     }
 
+    /**
+     * FR-16/17 (OGC-1119) — another ACTIVE test carrying the same legacy LOINC is
+     * reported (the resolver would route that code to whichever comes first); the
+     * test itself never is, and deactivating the twin clears the warning (FR-18).
+     */
+    @Test
+    public void duplicates_listOtherActiveTestsSharingTheLoinc_neverTheTestItself() {
+        long twinId = TEST_ID + 1;
+        jdbc.update("DELETE FROM clinlims.test WHERE id = ?", twinId);
+        jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", twinId);
+        jdbc.update("UPDATE clinlims.test SET loinc = '4548-4' WHERE id = ?", TEST_ID);
+        jdbc.update("INSERT INTO clinlims.localization (id, description, lastupdated) VALUES (?, ?, NOW())", twinId,
+                "TerminologyIT twin");
+        jdbc.update(
+                "INSERT INTO clinlims.test (id, name, description, is_active, loinc, guid, lastupdated,"
+                        + " name_localization_id) VALUES (?, ?, ?, 'Y', '4548-4', ?, NOW(), ?)",
+                twinId, "TerminologyIT twin", "TerminologyIT twin desc", UUID.randomUUID().toString(), twinId);
+        try {
+            java.util.List<org.openelisglobal.testcatalog.service.LoincIntegrityService.TestRef> duplicates = controller
+                    .getLoincIntegrity(testId()).getBody().duplicates;
+            assertEquals("exactly the twin is reported", 1, duplicates.size());
+            assertEquals(String.valueOf(twinId), duplicates.get(0).testId);
+
+            jdbc.update("UPDATE clinlims.test SET is_active = 'N' WHERE id = ?", twinId);
+            assertTrue("deactivating the twin clears the warning",
+                    controller.getLoincIntegrity(testId()).getBody().duplicates.isEmpty());
+        } finally {
+            jdbc.update("DELETE FROM clinlims.test WHERE id = ?", twinId);
+            jdbc.update("DELETE FROM clinlims.localization WHERE id = ?", twinId);
+        }
+    }
+
     /** A soft-deleted mapping does not count. */
     @Test
     public void noLoinc_ignoresAnInactiveMapping() {

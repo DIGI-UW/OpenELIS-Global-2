@@ -5,6 +5,8 @@ import java.sql.Timestamp;
 import java.text.ParseException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.Address;
 import org.hl7.fhir.r4.model.ContactPoint;
@@ -26,6 +28,9 @@ import org.openelisglobal.patient.action.bean.PatientManagementInfo;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.valueholder.Patient;
 import org.openelisglobal.patient.valueholder.PatientContact;
+import org.openelisglobal.patientidentity.service.PatientIdentityService;
+import org.openelisglobal.patientidentity.valueholder.PatientIdentity;
+import org.openelisglobal.patientidentitytype.util.PatientIdentityTypeMap;
 import org.openelisglobal.person.valueholder.Person;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -33,8 +38,16 @@ import org.springframework.stereotype.Service;
 @Service
 public class PatientTransformServiceImpl implements PatientTransformService {
 
+    /**
+     * The commune has no FHIR address element, so it is published as an address
+     * line with this prefix and read back from one.
+     */
+    private static final String COMMUNE_LINE_PREFIX = "commune: ";
+
     @Autowired
     private FhirConfig fhirConfig;
+    @Autowired
+    private PatientIdentityService patientIdentityService;
     @Autowired
     private PatientService patientService;
     @Autowired
@@ -91,15 +104,22 @@ public class PatientTransformServiceImpl implements PatientTransformService {
         if (fhirPatient.hasAddress()) {
             Address address = fhirPatient.getAddressFirstRep();
             if (address != null) {
-                if (address.hasLine()) {
-                    patient.setStreetAddress(
-                            address.getLine().stream().map(StringType::getValue).collect(Collectors.joining(", ")));
+                List<String> streetLines = address.getLine().stream().map(StringType::getValue)
+                        .filter(line -> !GenericValidator.isBlankOrNull(line) && !line.startsWith(COMMUNE_LINE_PREFIX))
+                        .collect(Collectors.toList());
+                if (!streetLines.isEmpty()) {
+                    patient.setStreetAddress(String.join(", ", streetLines));
                 }
                 if (address.hasCity()) {
                     patient.setCity(address.getCity());
                 }
                 if (address.hasDistrict()) {
                     patient.setCommune(address.getDistrict());
+                } else {
+                    address.getLine().stream().map(StringType::getValue)
+                            .filter(line -> line != null && line.startsWith(COMMUNE_LINE_PREFIX))
+                            .map(line -> line.substring(COMMUNE_LINE_PREFIX.length()).trim())
+                            .filter(commune -> !commune.isEmpty()).findFirst().ifPresent(patient::setCommune);
                 }
                 if (address.hasState()) {
                     patient.setAddressDepartment(address.getState());
@@ -190,7 +210,7 @@ public class PatientTransformServiceImpl implements PatientTransformService {
             patientSearchResults.setLastName(name.getFamily());
         }
 
-        switch (fhirPatient.getGender()) {
+        switch (fhirPatient.hasGender() ? fhirPatient.getGender() : AdministrativeGender.NULL) {
         case MALE:
             patientSearchResults.setGender("M");
             break;
@@ -240,18 +260,75 @@ public class PatientTransformServiceImpl implements PatientTransformService {
                 dept = address;
             }
         }
-        Address address = new Address() //
-                .addLine(person.getStreetAddress()) //
-                .setCity(person.getCity()) //
-                // .setDistrict(value)
-                .setState(person.getState()) //
-                // .setPostalCode(value)
-                .setCountry(person.getCountry()) //
-        ;
-        if (commune != null) {
-            address.addLine("commune: " + commune.getValue());
+        Address address = common.transformToAddress(person);
+        if (commune != null && !GenericValidator.isBlankOrNull(commune.getValue())) {
+            address.addLine(COMMUNE_LINE_PREFIX + commune.getValue());
         }
         return address;
+    }
+
+    @Override
+    public void addAddressToPerson(org.hl7.fhir.r4.model.Patient fhirPatient, Person person) {
+        Address address = fhirPatient.hasAddress() ? fhirPatient.getAddressFirstRep() : new Address();
+        person.setState(blankToNull(address.getState()));
+        person.setZipCode(blankToNull(address.getPostalCode()));
+        person.setCountry(blankToNull(address.getCountry()));
+    }
+
+    @Override
+    public void keepDetailsFhirDoesNotCarry(PatientManagementInfo patientInfo, Patient storedPatient) {
+        List<PatientIdentity> identities = patientIdentityService.getPatientIdentitiesForPatient(storedPatient.getId());
+        PatientIdentityTypeMap types = PatientIdentityTypeMap.getInstance();
+        patientInfo.setMothersName(types.getIdentityValue(identities, "MOTHER"));
+        patientInfo.setAka(types.getIdentityValue(identities, "AKA"));
+        patientInfo.setInsuranceNumber(types.getIdentityValue(identities, "INSURANCE"));
+        patientInfo.setOccupation(types.getIdentityValue(identities, "OCCUPATION"));
+        patientInfo.setCustomNotes(types.getIdentityValue(identities, "CUSTOM_NOTES"));
+        patientInfo.setTargetDiseaseProgramme(types.getIdentityValue(identities, "DISEASE_PROGRAMME"));
+        patientInfo.setMothersInitial(types.getIdentityValue(identities, "MOTHERS_INITIAL"));
+        patientInfo.setEducation(types.getIdentityValue(identities, "EDUCATION"));
+        patientInfo.setMaritialStatus(types.getIdentityValue(identities, "MARITIAL"));
+        patientInfo.setNationality(types.getIdentityValue(identities, "NATIONALITY"));
+        patientInfo.setHealthDistrict(types.getIdentityValue(identities, "HEALTH DISTRICT"));
+        patientInfo.setHealthRegion(types.getIdentityValue(identities, "HEALTH REGION"));
+        patientInfo.setOtherNationality(types.getIdentityValue(identities, "OTHER NATIONALITY"));
+
+        Person person = storedPatient.getPerson();
+        if (person != null) {
+            patientInfo
+                    .setGpsLatitude(person.getGpsLatitude() == null ? null : person.getGpsLatitude().toPlainString());
+            patientInfo.setGpsLongitude(
+                    person.getGpsLongitude() == null ? null : person.getGpsLongitude().toPlainString());
+        }
+    }
+
+    @Override
+    public void keepUnchangedContactDetails(Person stored, Person working) {
+        keepIfSame(stored.getStreetAddress(), working.getStreetAddress(), working::setStreetAddress);
+        keepIfSame(stored.getCity(), working.getCity(), working::setCity);
+        keepIfSame(stored.getState(), working.getState(), working::setState);
+        keepIfSame(stored.getZipCode(), working.getZipCode(), working::setZipCode);
+        keepIfSame(stored.getCountry(), working.getCountry(), working::setCountry);
+        keepIfSame(stored.getEmail(), working.getEmail(), working::setEmail);
+        keepIfSame(stored.getFax(), working.getFax(), working::setFax);
+        if (sameText(stored.getPrimaryPhone(), working.getPrimaryPhone())) {
+            working.setPrimaryPhone(stored.getPrimaryPhone());
+            working.setCellPhone(stored.getCellPhone());
+        }
+    }
+
+    private static void keepIfSame(String stored, String sent, Consumer<String> setter) {
+        if (sameText(stored, sent)) {
+            setter.accept(stored);
+        }
+    }
+
+    private static boolean sameText(String stored, String sent) {
+        return Objects.equals(blankToNull(stored), blankToNull(sent));
+    }
+
+    private static String blankToNull(String value) {
+        return GenericValidator.isBlankOrNull(value) ? null : value.trim();
     }
 
     private List<Identifier> createPatientIdentifiers(String subjectNumber, String nationalId, String stNumber,

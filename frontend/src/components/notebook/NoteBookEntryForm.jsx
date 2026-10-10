@@ -53,6 +53,7 @@ import {
 } from "../utils/Utils";
 import { Add } from "@carbon/icons-react";
 import { sampleTypeTestsStructure } from "../data/SampleEntryTestsForTypeProvider";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 const NoteBookEntryForm = () => {
   let breadcrumbs = [
@@ -642,16 +643,12 @@ const NoteBookEntryForm = () => {
                 hour12: false,
               });
             }
-            return { ...item, id: index + 1, time: formattedTime };
+            return { ...item, id: String(index + 1), time: formattedTime };
           });
           setAuditTrailItems(updatedAuditTrailItems);
         } else {
           setAuditTrailItems([]);
         }
-        setAuditTrailLoading(false);
-      },
-      () => {
-        setAuditTrailItems([]);
         setAuditTrailLoading(false);
       },
     );
@@ -740,13 +737,14 @@ const NoteBookEntryForm = () => {
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={16} md={8} sm={4}>
                 <TextInput
+                  {...requiredProps()}
                   id="entryTitle"
                   labelText={
                     <>
                       {intl.formatMessage({
                         id: "notebook.label.title",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   placeholder={intl.formatMessage({
@@ -793,6 +791,7 @@ const NoteBookEntryForm = () => {
             <Grid fullWidth={true} className="gridBoundary">
               <Column lg={8} md={8} sm={4}>
                 <Select
+                  {...requiredProps()}
                   id="experimenttype"
                   name="experimenttype"
                   labelText={
@@ -800,7 +799,7 @@ const NoteBookEntryForm = () => {
                       {intl.formatMessage({
                         id: "notebook.label.experimentType",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   value={noteBookData.type || ""}
@@ -811,7 +810,7 @@ const NoteBookEntryForm = () => {
                     });
                   }}
                 >
-                  <SelectItem />
+                  <SelectItem value="" text="" />
                   {types.map((type, index) => {
                     return (
                       <SelectItem
@@ -880,13 +879,14 @@ const NoteBookEntryForm = () => {
               </Column>
               <Column lg={16} md={8} sm={4}>
                 <TextArea
+                  {...requiredProps()}
                   id="objective"
                   labelText={
                     <>
                       {intl.formatMessage({
                         id: "notebook.label.objective",
                       })}
-                      <span className="requiredlabel">*</span>
+                      <RequiredMarker />
                     </>
                   }
                   placeholder={intl.formatMessage({
@@ -1774,7 +1774,7 @@ const NoteBookEntryForm = () => {
                 }}
                 disabled={noteBookData.status === "ARCHIVED"}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {statuses.map((status, index) => {
                   return (
                     <SelectItem
@@ -1805,7 +1805,7 @@ const NoteBookEntryForm = () => {
                   });
                 }}
               >
-                <SelectItem />
+                <SelectItem value="" text="" />
                 {technicianUsers.map((user, index) => {
                   return (
                     <SelectItem key={index} text={user.value} value={user.id} />

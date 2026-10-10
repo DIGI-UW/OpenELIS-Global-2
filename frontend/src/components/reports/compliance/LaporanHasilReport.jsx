@@ -33,7 +33,10 @@ import { FormattedMessage, useIntl } from "react-intl";
 import {
   getFromOpenElisServer,
   postToOpenElisServerForBlob,
+  toLocalIsoDate,
+  parseIsoDate,
 } from "../../utils/Utils";
+import { labNow } from "../../utils/labClock";
 
 const STATUS_TAG_TYPE = {
   COMPLIANT: "green",
@@ -192,7 +195,7 @@ export default function LaporanHasilReport() {
           a.download = `LH-${safeLabel}.pdf`;
           a.click();
           URL.revokeObjectURL(url);
-          const now = new Date().toLocaleString();
+          const now = labNow().toLocaleString();
           setReportData((prev) => {
             if (!prev) return prev;
             return {
@@ -252,7 +255,7 @@ export default function LaporanHasilReport() {
         a.click();
         URL.revokeObjectURL(url);
 
-        const now = new Date().toLocaleString();
+        const now = labNow().toLocaleString();
         setReportData((prev) => {
           if (!prev) return prev;
           return {
@@ -342,10 +345,11 @@ export default function LaporanHasilReport() {
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             dateFormat="Y-m-d"
+            parseDate={parseIsoDate}
             datePickerType="single"
             onChange={(dates) =>
               setDateFrom(
-                dates[0] ? dates[0].toISOString().split("T")[0] : "",
+                dates[0] ? toLocalIsoDate(dates[0]) : "",
               )
             }
           >
@@ -359,9 +363,10 @@ export default function LaporanHasilReport() {
         <Column lg={3} md={4} sm={4}>
           <DatePicker
             dateFormat="Y-m-d"
+            parseDate={parseIsoDate}
             datePickerType="single"
             onChange={(dates) =>
-              setDateTo(dates[0] ? dates[0].toISOString().split("T")[0] : "")
+              setDateTo(dates[0] ? toLocalIsoDate(dates[0]) : "")
             }
           >
             <DatePickerInput

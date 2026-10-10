@@ -1,6 +1,11 @@
 package org.openelisglobal.program.service;
 
 import jakarta.transaction.Transactional;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneId;
+import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
@@ -22,6 +27,9 @@ import org.openelisglobal.program.valueholder.pathology.PathologyTechnique.Techn
 import org.openelisglobal.questionnaire.service.QuestionnaireStorageService;
 import org.openelisglobal.sample.bean.SampleOrderItem;
 import org.openelisglobal.sample.service.SampleService;
+import org.openelisglobal.sampleitem.service.SampleItemService;
+import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -38,6 +46,8 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
     private QuestionnaireStorageService questionnaireStorageService;
     @Autowired
     private OrganizationService organizationService;
+    @Autowired
+    private SampleItemService sampleItemService;
 
     @Override
     @Transactional
@@ -45,7 +55,7 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         PathologySample pathologySample = pathologySampleService.get(pathologySampleId);
         PathologyDisplayItem displayItem = new PathologyDisplayItem();
         displayItem.setStatus(pathologySample.getStatus());
-        displayItem.setRequestDate(pathologySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(localDate(pathologySample.getSample().getEnteredDate()));
         if (pathologySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(pathologySample.getPathologist().getDisplayName());
         }
@@ -53,8 +63,10 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
             displayItem.setAssignedTechnician(pathologySample.getTechnician().getDisplayName());
         }
         Patient patient = sampleService.getPatient(pathologySample.getSample());
-        displayItem.setFirstName(patient.getPerson().getFirstName());
-        displayItem.setLastName(patient.getPerson().getLastName());
+        if (patient != null && patient.getPerson() != null) {
+            displayItem.setFirstName(patient.getPerson().getFirstName());
+            displayItem.setLastName(patient.getPerson().getLastName());
+        }
         displayItem.setLabNumber(pathologySample.getSample().getAccessionNumber());
         displayItem.setPathologySampleId(pathologySample.getId());
         return displayItem;
@@ -66,7 +78,9 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         PathologySample pathologySample = pathologySampleService.get(pathologySampleId);
         PathologyCaseViewDisplayItem displayItem = new PathologyCaseViewDisplayItem();
         displayItem.setStatus(pathologySample.getStatus());
-        displayItem.setRequestDate(pathologySample.getSample().getEnteredDate());
+        displayItem.setRequestDate(localDate(pathologySample.getSample().getEnteredDate()));
+        displayItem.setReceivedDate(localDate(pathologySample.getSample().getReceivedDate()));
+        displayItem.setSpecimenTypes(specimenTypes(pathologySample.getSample().getId()));
         if (pathologySample.getPathologist() != null) {
             displayItem.setAssignedPathologist(pathologySample.getPathologist().getDisplayName());
             displayItem.setAssignedPathologistId(pathologySample.getPathologist().getId());
@@ -106,10 +120,6 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
         if (conclusion.isPresent())
             displayItem.setConclusionText(conclusion.get().getValue());
 
-        displayItem.setConclusions(
-                pathologySample.getConclusions().stream().filter(e -> e.getType() == ConclusionType.DICTIONARY)
-                        .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
-                        .collect(Collectors.toList()));
         displayItem.setTechniques(
                 pathologySample.getTechniques().stream().filter(e -> e.getType() == TechniqueType.DICTIONARY)
                         .map(e -> new IdValuePair(e.getValue(), dictionaryService.get(e.getValue()).getLocalizedName()))
@@ -128,10 +138,37 @@ public class PathologyDisplayServiceImpl implements PathologyDisplayService {
                 displayItem.setDepartment(org.getOrganizationName());
             }
         }
-        displayItem.setRequester(sampleItem.getProviderLastName() + " " + sampleItem.getProviderFirstName());
+        displayItem.setRequester(requesterName(sampleItem.getProviderLastName(), sampleItem.getProviderFirstName()));
         displayItem.setAge(DateUtil.getCurrentAgeForDate(patient.getBirthDate(), DateUtil.getNowAsTimestamp()));
         displayItem.setSex(patient.getGender());
         return displayItem;
+    }
+
+    /**
+     * The calendar day a stored instant falls on, resolved once here in the
+     * server's own zone because the JSON layer formats dates in UTC.
+     */
+    private static LocalDate localDate(java.util.Date date) {
+        // Not date.toInstant(): java.sql.Date, which the driver may hand back for a
+        // date column, throws from it.
+        return date == null ? null : Instant.ofEpochMilli(date.getTime()).atZone(ZoneId.systemDefault()).toLocalDate();
+    }
+
+    /**
+     * The case's specimen types, one entry per sample item in the order the items
+     * were taken, so repeated types are repeated entries (FR-1).
+     */
+    private List<String> specimenTypes(String sampleId) {
+        return sampleItemService.getSampleItemsBySampleId(sampleId).stream().map(SampleItem::getTypeOfSample)
+                .filter(Objects::nonNull).map(TypeOfSample::getLocalizedName).collect(Collectors.toList());
+    }
+
+    /**
+     * A case ordered without a requester has no name to show, rather than the two
+     * words "null null" that joining the parts unconditionally produced.
+     */
+    private static String requesterName(String lastName, String firstName) {
+        return StringUtils.trimToNull(StringUtils.trimToEmpty(lastName) + " " + StringUtils.trimToEmpty(firstName));
     }
 
     @Override
