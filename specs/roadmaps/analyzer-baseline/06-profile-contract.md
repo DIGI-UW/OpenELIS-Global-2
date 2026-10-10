@@ -66,11 +66,16 @@ unit, values, value_codes, translations, sub_identity`) and `call_component` (ru
   ignored); `Quantity.comparator`
   from the flag, with the documented limit as the value when the instrument
   sends no number (rules 11 and 17; OE2 maps it in step 2b), and the
-  raw-value extension left as the instrument sent it; `Device.version` from assay version; `Observation.note`
+  raw-value extension left as the instrument sent it; the assay name as
+  `Observation.method.text` and its version in the extension
+  `https://openelis-global.org/fhir/StructureDefinition/analyzer-assay-version`
+  on `Observation.method` (decided 6 Oct: the bundle's one Device is the
+  connection, so it cannot carry a per-result assay); the instrument's other
+  flags (R.7 `N`, `A`, `H`, `L`) as `Observation.interpretation`; `Observation.note`
   from C records; a value the profile declares a run failure (ERROR, NO
   RESULT) goes out with no value and `Observation.dataAbsentReason` (`error`),
   the raw text kept in the raw-value extension, which OE2 holds as a failed run
-  (step 2); `Observation.performer` from operator; existing extension
+  (step 2); `Observation.performer.display` from operator; existing extension
   namespace `https://openelis-global.org/fhir/...` for anything without a
   slot.
 - One Observation per record (rule 17): its code is the test code; its

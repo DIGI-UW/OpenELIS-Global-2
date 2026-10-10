@@ -38,6 +38,8 @@ import ResultAlertModal, {
   acknowledgementRefusal,
 } from "../resultPage/ResultAlertModal";
 import PlacementNotice from "./PlacementNotice";
+import InstrumentReported from "./InstrumentReported";
+import ResultParts, { groupTestParts } from "./ResultParts";
 import DeliveryBundleModal from "./DeliveryBundleModal";
 import RedirectControl from "./RedirectControl";
 
@@ -153,6 +155,11 @@ const AnalyserResults = (props) => {
 
   const allResults = props.results?.resultList ?? [];
   const patientResults = allResults.filter((r) => !r.isControl);
+  // Accept, retest and ignore are decided per test: its first row carries the
+  // decision, and the rows on its components show beneath its main result.
+  const { decisionHeadIds, partsByHeadId, partIds } =
+    groupTestParts(patientResults);
+  const tableRows = patientResults.filter((row) => !partIds.has(row.id));
   const arrows = serverPageArrowsProps({
     paging: props.results?.paging,
     onPageRequest: (pageNumber) => props.loadPage?.(pageNumber),
@@ -606,7 +613,7 @@ const AnalyserResults = (props) => {
         return (
           <>
             <div>
-              {sampleGroupHasId(row.id) && (
+              {decisionHeadIds.has(row.id) && (
                 <Field name="isAccepted">
                   {({ field }) => (
                     <Checkbox
@@ -630,7 +637,7 @@ const AnalyserResults = (props) => {
         }
         return (
           <>
-            {sampleGroupHasId(row.id) && (
+            {decisionHeadIds.has(row.id) && (
               <Field name="isRejected">
                 {({ field }) => (
                   <Checkbox
@@ -653,7 +660,7 @@ const AnalyserResults = (props) => {
         }
         return (
           <>
-            {sampleGroupHasId(row.id) && (
+            {decisionHeadIds.has(row.id) && (
               <Field name="isDeleted">
                 {({ field }) => (
                   <Checkbox
@@ -692,48 +699,60 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        if (held && !awaitingReview) {
-          return renderHeldResult(row);
-        }
-        switch (row.testResultType) {
-          case "M":
-          case "C":
-          case "D":
-            return (
-              <>
-                {
-                  row.dictionaryResultList.find(
-                    (result) => result.id == row.result,
-                  )?.displayValue
-                }
-              </>
-            );
-          default:
-            if (row.readOnly) {
-              return row.result;
-            } else {
-              return (
-                <>
-                  <div className="result">
-                    <TextInput
-                      id={"resultList" + row.id + ".result"}
-                      name={"resultList[?(@.id == " + row.id + ")].result"}
-                      disabled={false}
-                      type="text"
-                      value={row.result}
-                      labelText=""
-                      size="lg"
-                      onChange={(e) => handleChange(e, row.id)}
-                    ></TextInput>
-                  </div>
-                </>
-              );
-            }
-        }
+        return (
+          <>
+            {renderResultValue(row, held && !awaitingReview)}
+            <InstrumentReported row={row} />
+            <ResultParts
+              headId={row.id}
+              parts={partsByHeadId.get(row.id) || []}
+            />
+          </>
+        );
 
       default:
     }
     return row.result;
+  };
+
+  const renderResultValue = (row, heldForMapping) => {
+    if (heldForMapping) {
+      return renderHeldResult(row);
+    }
+    switch (row.testResultType) {
+      case "M":
+      case "C":
+      case "D":
+        return (
+          <>
+            {
+              row.dictionaryResultList.find((result) => result.id == row.result)
+                ?.displayValue
+            }
+          </>
+        );
+      default:
+        if (row.readOnly) {
+          return row.result;
+        } else {
+          return (
+            <>
+              <div className="result">
+                <TextInput
+                  id={"resultList" + row.id + ".result"}
+                  name={"resultList[?(@.id == " + row.id + ")].result"}
+                  disabled={false}
+                  type="text"
+                  value={row.result}
+                  labelText=""
+                  size="lg"
+                  onChange={(e) => handleChange(e, row.id)}
+                ></TextInput>
+              </div>
+            </>
+          );
+        }
+    }
   };
 
   return (
@@ -885,7 +904,7 @@ const AnalyserResults = (props) => {
           <Form onChange={handleChange}>
             {arrows.show && <ServerPageArrows {...arrows} />}
             <DataTable
-              data={patientResults}
+              data={tableRows}
               columns={columns}
               isSortable
             ></DataTable>

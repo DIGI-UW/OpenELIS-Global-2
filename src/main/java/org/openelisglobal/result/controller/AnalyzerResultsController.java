@@ -57,6 +57,8 @@ import org.openelisglobal.testreflex.service.TestReflexService;
 import org.openelisglobal.testreflex.valueholder.TestReflex;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleTestService;
 import org.openelisglobal.typeofsample.valueholder.TypeOfSample;
@@ -137,6 +139,8 @@ public class AnalyzerResultsController extends BaseController {
     private NoteService noteService;
     @Autowired
     private AnalyzerService analyzerService;
+    @Autowired
+    private TestResultComponentService testResultComponentService;
 
     private TypeOfSampleService typeOfSampleService;
 
@@ -367,6 +371,10 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setId(result.getId());
         resultItem.setTestId(result.getTestId());
         resultItem.setComponentId(result.getComponentId());
+        if (!GenericValidator.isBlankOrNull(result.getComponentId())) {
+            resultItem.setComponentLabel(testResultComponentService.getMatch("id", result.getComponentId())
+                    .map(TestResultComponent::getLabel).orElse(null));
+        }
         resultItem.setCompleteDate(result.getCompleteDateForDisplay());
         resultItem.setLastUpdated(result.getLastupdated());
         resultItem.setReadOnly((held && !awaitingReview) || result.isReadOnly() || result.getTestId() == null);
@@ -387,6 +395,10 @@ public class AnalyzerResultsController extends BaseController {
         resultItem.setRawTestCode(result.getRawTestCode());
         resultItem.setRawResultValue(result.getRawResultValue());
         resultItem.setInstrumentNote(result.getInstrumentNote());
+        resultItem.setInstrumentFlags(result.getInstrumentFlags());
+        resultItem.setAssayName(result.getAssayName());
+        resultItem.setAssayVersion(result.getAssayVersion());
+        resultItem.setInstrumentOperator(result.getInstrumentOperator());
 
         if (resultItem.isUserChoiceReflex()) {
             setChoiceForCurrentValue(resultItem, result);

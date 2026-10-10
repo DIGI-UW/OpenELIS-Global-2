@@ -157,6 +157,13 @@ export interface AnalyzerMappingResultOption {
   value: string;
   label: string;
   answerCode?: string | null;
+  componentId?: string | null;
+}
+
+export interface AnalyzerMappingComponentOption {
+  id: string;
+  code?: string | null;
+  label?: string | null;
 }
 
 export type AnalyzerMappingOrigin = "DEFAULT" | "OVERRIDE";
@@ -169,6 +176,8 @@ export interface AnalyzerTypeMappingResultRow {
   selectedOption?: AnalyzerMappingResultOption | null;
   suggestedOption?: AnalyzerMappingResultOption | null;
   unresolvedReason?: AnalyzerUnresolvedReason | null;
+  /** The declared value this row's text translates, for a translation. */
+  translationOf?: string | null;
 }
 
 export interface AnalyzerTypeMappingTestRow {
@@ -188,6 +197,13 @@ export interface AnalyzerTypeMappingTestRow {
   origin?: AnalyzerMappingOrigin;
   testId?: string | null;
   componentId?: string | null;
+  /** Empty for a test's main record. */
+  subIdentity?: string;
+  callComponentId?: string | null;
+  /** The component code the profile declares for this record. */
+  componentCode?: string | null;
+  /** The component code the profile declares for the main record's call. */
+  callComponentCode?: string | null;
   selectedTest?: AnalyzerMappingTestOption | null;
   suggestedTest?: AnalyzerMappingTestOption | null;
   unresolvedReason?: AnalyzerUnresolvedReason | null;
@@ -230,21 +246,30 @@ export interface AnalyzerTypeMappingView {
     confirmedBy?: string | null;
     confirmedByDisplayName?: string | null;
     confirmedAt?: string | null;
-    confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
-    excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+    confirmedRows: AnalyzerMappingSourceRow[];
+    excludedRows: AnalyzerMappingSourceRow[];
   };
+}
+
+export interface AnalyzerMappingSourceRow {
+  sourceRowKey: string;
+  subIdentity?: string;
+  rawValue?: string | null;
 }
 
 export interface AnalyzerTypeMappingUpdate {
   baseMappingFingerprint?: string | null;
   tests: Array<{
     sourceRowKey: string;
+    subIdentity: string;
     mappingState: AnalyzerMappingState;
     testId?: string | null;
     componentId?: string | null;
+    callComponentId?: string | null;
   }>;
   results: Array<{
     sourceRowKey: string;
+    subIdentity: string;
     rawValue: string;
     mappingState: AnalyzerMappingState;
     testResultId?: string | null;
@@ -254,8 +279,8 @@ export interface AnalyzerTypeMappingUpdate {
 export interface AnalyzerTypeMappingConfirmationRequest {
   baseMappingFingerprint: string;
   recognitionFingerprint: string;
-  confirmedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
-  excludedRows: Array<{ sourceRowKey: string; rawValue?: string | null }>;
+  confirmedRows: AnalyzerMappingSourceRow[];
+  excludedRows: AnalyzerMappingSourceRow[];
 }
 
 export interface AnalyzerProfileDraftResponse extends AnalyzerApiError {
@@ -671,6 +696,16 @@ export const getAnalyzerMappingResultOptions = (
 ) => {
   getFromOpenElisServer(
     `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/result-options`,
+    callback,
+  );
+};
+
+export const getAnalyzerMappingComponents = (
+  testId: string,
+  callback: DataCallback<AnalyzerMappingComponentOption[] | undefined>,
+) => {
+  getFromOpenElisServer(
+    `/rest/analyzer-types/mapping-catalog/tests/${encodeURIComponent(testId)}/components`,
     callback,
   );
 };

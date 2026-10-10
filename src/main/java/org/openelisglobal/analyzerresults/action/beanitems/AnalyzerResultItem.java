@@ -81,6 +81,7 @@ public class AnalyzerResultItem implements Serializable {
     // OGC-1129 — the resolved result component (test_result_component.id); null =
     // PRIMARY. Carried from the staged AnalyzerResults row through to accept.
     private String componentId;
+    private String componentLabel;
 
     // OGC-1145 FR-8 — the sample type the reviewer chose for a specimen-ambiguous
     // row (test runs on several sample types, message carried no specimen).
@@ -130,6 +131,10 @@ public class AnalyzerResultItem implements Serializable {
     private String rawResultValue;
 
     private String instrumentNote;
+    private String instrumentFlags;
+    private String assayName;
+    private String assayVersion;
+    private String instrumentOperator;
 
     public String getSignificantDigits() {
         return significantDigits;
@@ -352,6 +357,14 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setComponentId(String componentId) {
         this.componentId = componentId;
+    }
+
+    public String getComponentLabel() {
+        return componentLabel;
+    }
+
+    public void setComponentLabel(String componentLabel) {
+        this.componentLabel = componentLabel;
     }
 
     public String getComponentId() {
@@ -613,6 +626,38 @@ public class AnalyzerResultItem implements Serializable {
 
     public void setRawResultValue(String rawResultValue) {
         this.rawResultValue = rawResultValue;
+    }
+
+    public String getInstrumentFlags() {
+        return instrumentFlags;
+    }
+
+    public void setInstrumentFlags(String instrumentFlags) {
+        this.instrumentFlags = instrumentFlags;
+    }
+
+    public String getAssayName() {
+        return assayName;
+    }
+
+    public void setAssayName(String assayName) {
+        this.assayName = assayName;
+    }
+
+    public String getAssayVersion() {
+        return assayVersion;
+    }
+
+    public void setAssayVersion(String assayVersion) {
+        this.assayVersion = assayVersion;
+    }
+
+    public String getInstrumentOperator() {
+        return instrumentOperator;
+    }
+
+    public void setInstrumentOperator(String instrumentOperator) {
+        this.instrumentOperator = instrumentOperator;
     }
 
     public String getInstrumentNote() {

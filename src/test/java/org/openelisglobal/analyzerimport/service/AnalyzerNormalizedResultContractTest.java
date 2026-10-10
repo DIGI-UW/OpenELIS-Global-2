@@ -108,6 +108,44 @@ public class AnalyzerNormalizedResultContractTest {
         assertNull(result.note());
     }
 
+    @Test
+    public void readsTheInstrumentsFlagAssayAndOperatorAsSent() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        Observation observation = firstObservation(bundle);
+        observation.addInterpretation().setText("Detected").addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("DET");
+        observation.addInterpretation().addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("H")
+                .setDisplay("H");
+        observation.getMethod().setText("Xpert HIV-1 Viral Load").addExtension(
+                "https://openelis-global.org/fhir/StructureDefinition/analyzer-assay-version", new StringType("4"));
+        observation.addPerformer().setDisplay("Operator 12");
+
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results()
+                .get(0);
+
+        assertEquals("H", result.flags());
+        assertEquals("Xpert HIV-1 Viral Load", result.assayName());
+        assertEquals("4", result.assayVersion());
+        assertEquals("Operator 12", result.operator());
+    }
+
+    @Test
+    public void aResultWithoutInstrumentProvenanceCarriesNone() throws IOException {
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract
+                .parse(fixture("normalized-known-test.fhir.json"), FHIR).results().get(0);
+
+        assertNull(result.flags());
+        assertNull(result.assayName());
+        assertNull(result.assayVersion());
+        assertNull(result.operator());
+    }
+
+    private static Observation firstObservation(Bundle bundle) {
+        return bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+    }
+
     private static void addPatient(Bundle bundle, String fullUrl, String identifier, String name,
             boolean instrumentReported) {
         Patient patient = new Patient();

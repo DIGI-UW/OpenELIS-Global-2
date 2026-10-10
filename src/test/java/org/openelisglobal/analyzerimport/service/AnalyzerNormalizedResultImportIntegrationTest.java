@@ -24,6 +24,7 @@ import javax.sql.DataSource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.StringType;
@@ -459,6 +460,28 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 staged.stream().noneMatch(row -> "comp-call".equals(row.getComponentId())));
     }
 
+    @Test
+    public void aStagedResultKeepsTheInstrumentsFlagAssayAndOperator() throws Exception {
+        bindViralLoadRecords();
+        Observation main = number(record(null, "^1009.64"), "1009.64", null);
+        main.addInterpretation().addCoding()
+                .setSystem("http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation").setCode("H")
+                .setDisplay("H");
+        main.getMethod().setText("Xpert HIV-1 Viral Load").addExtension(
+                "https://openelis-global.org/fhir/StructureDefinition/analyzer-assay-version", new StringType("4"));
+        main.addPerformer().setDisplay("Operator 12");
+        Bundle bundle = viralLoadBundle(main);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        AnalyzerResults staged = stagedOn(resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)), null);
+        assertEquals("H", staged.getInstrumentFlags());
+        assertEquals("Xpert HIV-1 Viral Load", staged.getAssayName());
+        assertEquals("4", staged.getAssayVersion());
+        assertEquals("Operator 12", staged.getInstrumentOperator());
+    }
+
     // Cepheid 303-0251 §2.1.1, below range: R|1 "DETECTED^" with R.7 "<" and R.6
     // "40.00 to 10000000.00"; R|2 LOG "^" with "<" and "1.60 to 7.00".
     @Test
@@ -556,8 +579,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void aRecordWhoseSubIdentityIsNotMappedIsHeldAsAnUnknownTest() throws Exception {
         bindViralLoadRecords();
-        Bundle bundle = viralLoadBundle(number(record(null, "^1009.64"), "1009.64", null),
-                number(record("HIV-1&EndPt", "^257.0"), "257.0", null));
+        // An instrument completes every record of a run at the same time (R.13).
+        DateTimeType completed = new DateTimeType("2026-10-06T09:15:00Z");
+        Bundle bundle = viralLoadBundle(
+                number(record(null, "^1009.64"), "1009.64", null).setEffective(completed.copy()),
+                number(record("HIV-1&EndPt", "^257.0"), "257.0", null).setEffective(completed.copy()));
         confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
 
         importService.importBundle(bundle, "1");
@@ -566,6 +592,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(2, staged.size());
         AnalyzerResults endPoint = staged.stream().filter(AnalyzerResults::isReadOnly).findFirst().orElseThrow();
         assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, endPoint.getImportIssueReason());
+        assertEquals("HIVVL", endPoint.getRawTestCode());
+        assertEquals("HIV-1&EndPt", endPoint.getRawSubIdentity());
+        assertEquals("", stagedOn(staged, null).getRawSubIdentity());
         assertFalse("the mapped main record still lands", stagedOn(staged, null).isReadOnly());
     }
 

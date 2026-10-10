@@ -14,6 +14,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 import org.junit.Before;
@@ -418,6 +419,222 @@ public class AnalyzerMappingEditorServiceTest {
             assertNull(answer.suggestedOption());
             assertEquals(AnalyzerUnresolvedReason.NO_MATCH, answer.unresolvedReason());
         }
+    }
+
+    @Test
+    public void getDefaultsShowsEachRecordOfATestAsItsOwnRow() throws Exception {
+        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
+        viralLoadCatalog();
+
+        AnalyzerMappingView view = service.getDefaults("site.viral-load", 1);
+
+        AnalyzerMappingView.TestRow main = recordRow(view, "");
+        assertEquals("9701", main.testId());
+        assertNull(main.componentId());
+        assertEquals("comp-call", main.callComponentId());
+        assertEquals("opt-detected", main.results().get(0).resultOptionId());
+        AnalyzerMappingView.TestRow log = recordRow(view, "&LOG");
+        assertEquals("HIVVL", log.rawCode());
+        assertEquals("comp-LOG", log.componentId());
+        assertEquals("call", main.callComponentCode());
+        assertNull(main.componentCode());
+        assertEquals("LOG", log.componentCode());
+        assertNull(log.callComponentCode());
+    }
+
+    @Test
+    public void aMappingWithTwoRecordsUnderOneCodeOpensAndSavesWithoutLosingEither() throws Exception {
+        AnalyzerMapping mapping = revision("71", 1, "sha256:" + "f".repeat(64));
+        mapping.setProfileId("site.viral-load");
+        mapping.setProfileRevision(1);
+        AnalyzerMappingSnapshot latest = new AnalyzerMappingSnapshot(mapping,
+                List.of(testRow(mapping, "", null, "comp-call"), testRow(mapping, "&LOG", "comp-LOG", null)),
+                List.of());
+        Analyzer analyzer = analyzer();
+        analyzer.setMapping(mapping);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
+        when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
+        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
+        when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"))).thenReturn(latest);
+        viralLoadCatalog();
+
+        AnalyzerMappingView view = service.getMapping("42");
+        assertEquals("comp-LOG", recordRow(view, "&LOG").componentId());
+
+        service.saveMapping("42",
+                new AnalyzerMappingUpdate(mapping.getMappingFingerprint(),
+                        List.of(new AnalyzerMappingTestDraft(
+                                "HIVVL", AnalyzerMappingState.BOUND, "9701", null, null, null, "", "comp-call"),
+                                new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND, "9701", "comp-LOG",
+                                        null, null, "&LOG", null)),
+                        List.of(new AnalyzerMappingResultDraft("HIVVL", "DETECTED", AnalyzerMappingState.UNRESOLVED,
+                                null),
+                                new AnalyzerMappingResultDraft("HIVVL", "DÉTECTÉ", AnalyzerMappingState.UNRESOLVED,
+                                        null))),
+                "17");
+
+        ArgumentCaptor<AnalyzerMappingDraft> saved = ArgumentCaptor.forClass(AnalyzerMappingDraft.class);
+        verify(mappingService).appendRevision(eq(analyzer), saved.capture(), eq("17"));
+        assertEquals(List.of("", "&LOG"),
+                saved.getValue().tests().stream().map(AnalyzerMappingTestDraft::subIdentity).toList());
+        assertEquals("comp-call", saved.getValue().tests().get(0).callComponentId());
+    }
+
+    @Test
+    public void aTranslationIsShownRightAfterTheValueItTranslates() throws Exception {
+        BridgeProfileCatalog.ProfileRevision revision = viralLoadRevision();
+        var viralLoad = (com.fasterxml.jackson.databind.node.ObjectNode) revision.profile()
+                .path("default_test_mappings").get(0);
+        viralLoad.set("values", objectMapper.readTree("[\"DETECTED\",\"NOT DETECTED\"]"));
+        viralLoad.set("translations",
+                objectMapper.readTree("{\"DETECTED\":[\"DÉTECTÉ\"],\"NOT DETECTED\":[\"NON DÉTECTÉ\"]}"));
+        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(revision);
+        viralLoadCatalog();
+
+        List<AnalyzerMappingView.ResultRow> results = recordRow(service.getDefaults("site.viral-load", 1), "")
+                .results();
+
+        assertEquals(List.of("DETECTED", "DÉTECTÉ", "NOT DETECTED", "NON DÉTECTÉ"),
+                results.stream().map(AnalyzerMappingView.ResultRow::rawValue).toList());
+        assertEquals(Arrays.asList(null, "DETECTED", null, "NOT DETECTED"),
+                results.stream().map(AnalyzerMappingView.ResultRow::translationOf).toList());
+    }
+
+    @Test
+    public void aRecordWhoseComponentIsUnknownIsOfferedNoAnswerFromAnotherComponent() throws Exception {
+        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.TestOption("9701", "HIV-1 viral load", null,
+                        List.of("20447-9"))));
+        when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
+        when(mappingCatalogService.getActiveComponents("9701"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG", "Log viral load")));
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", "LA11882-0",
+                        "comp-qualitative")));
+
+        AnalyzerMappingView.TestRow main = recordRow(service.getDefaults("site.viral-load", 1), "");
+
+        assertEquals(AnalyzerMappingState.UNRESOLVED, main.mappingState());
+        assertNull(main.results().get(0).suggestedOption());
+        assertEquals(AnalyzerUnresolvedReason.NO_MATCH, main.results().get(0).unresolvedReason());
+    }
+
+    @Test
+    public void aHeldRecordWithASubIdentityShowsAsItsOwnRowAndCanBeAdded() throws Exception {
+        AnalyzerMapping mapping = revision("71", 1, "sha256:" + "f".repeat(64));
+        mapping.setProfileId("site.viral-load");
+        mapping.setProfileRevision(1);
+        AnalyzerMappingSnapshot latest = new AnalyzerMappingSnapshot(mapping,
+                List.of(testRow(mapping, "", null, "comp-call"), testRow(mapping, "&LOG", "comp-LOG", null)),
+                List.of());
+        Analyzer analyzer = analyzer();
+        analyzer.setMapping(mapping);
+        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
+        when(analyzerService.findByIdForUpdate("42")).thenReturn(Optional.of(analyzer));
+        when(mappingService.findLatestByAnalyzerId("42")).thenReturn(Optional.of(latest));
+        when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
+        when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17"))).thenReturn(latest);
+        viralLoadCatalog();
+        AnalyzerResults held = new AnalyzerResults();
+        held.setRawTestCode("HIVVL");
+        held.setRawSubIdentity("HIV-1&EndPt");
+        held.setRawResultValue("257.0");
+        held.setResultType("N");
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+
+        AnalyzerMappingView view = service.getMapping("42");
+
+        assertEquals(3, view.tests().size());
+        assertEquals(AnalyzerMappingState.UNRESOLVED, recordRow(view, "HIV-1&EndPt").mappingState());
+        assertEquals("comp-call", recordRow(view, "").callComponentId());
+
+        service.saveMapping("42",
+                new AnalyzerMappingUpdate(mapping.getMappingFingerprint(),
+                        List.of(new AnalyzerMappingTestDraft(
+                                "HIVVL", AnalyzerMappingState.BOUND, "9701", null, null, null, "", "comp-call"),
+                                new AnalyzerMappingTestDraft(
+                                        "HIVVL", AnalyzerMappingState.BOUND, "9701", "comp-LOG", null, null, "&LOG",
+                                        null),
+                                new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.EXCLUDED, null, null, null,
+                                        null, "HIV-1&EndPt", null)),
+                        List.of(new AnalyzerMappingResultDraft("HIVVL", "DETECTED", AnalyzerMappingState.UNRESOLVED,
+                                null),
+                                new AnalyzerMappingResultDraft("HIVVL", "DÉTECTÉ", AnalyzerMappingState.UNRESOLVED,
+                                        null))),
+                "17");
+
+        ArgumentCaptor<AnalyzerMappingDraft> saved = ArgumentCaptor.forClass(AnalyzerMappingDraft.class);
+        verify(mappingService).appendRevision(eq(analyzer), saved.capture(), eq("17"));
+        assertEquals(AnalyzerMappingOrigin.OVERRIDE, saved.getValue().tests().get(2).origin());
+    }
+
+    private void viralLoadCatalog() {
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.TestOption("9701", "HIV-1 viral load", null,
+                        List.of("20447-9"))));
+        when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
+        when(mappingCatalogService.getActiveComponents("9701"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ComponentOption("comp-call", "call", "Call"),
+                        new AnalyzerMappingCatalogService.ComponentOption("comp-LOG", "LOG", "Log viral load")));
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.ResultOption("opt-detected", "1301", "Detected", "LA11882-0",
+                        "comp-call")));
+    }
+
+    private BridgeProfileCatalog.ProfileRevision viralLoadRevision() throws Exception {
+        JsonNode profile = objectMapper.readTree("""
+                {
+                  "profileMeta":{"id":"site.viral-load","displayName":"Viral load"},
+                  "protocol":{"name":"ASTM"},
+                  "catalog":{
+                    "revision":1,
+                    "revisionFingerprint":"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+                    "source":"SHIPPED",
+                    "status":"ACTIVE"
+                  },
+                  "default_test_mappings":[
+                    {
+                      "test_code":"HIVVL",
+                      "loinc":"20447-9",
+                      "unit":"copies/mL",
+                      "result_type":"quantitative",
+                      "values":["DETECTED"],
+                      "value_codes":{"DETECTED":{"system":"http://loinc.org","code":"LA11882-0"}},
+                      "translations":{"DETECTED":["DÉTECTÉ"]},
+                      "call_component":"call",
+                      "components":[
+                        {"code":"call","result_type":"qualitative"},
+                        {"code":"LOG","sub_identity":"&LOG","result_type":"quantitative","unit":"log copies/mL"}
+                      ]
+                    }
+                  ]
+                }
+                """);
+        BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
+                recognitionFingerprint(), "RULES", "Control results match any configured condition.", false, List.of());
+        return new BridgeProfileCatalog.ProfileRevision(profile, JsonNodeFactory.instance.objectNode(), recognition);
+    }
+
+    private static org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest testRow(AnalyzerMapping mapping,
+            String subIdentity, String componentId, String callComponentId) {
+        var row = new org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest();
+        row.setId(new org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK(mapping.getId(), "HIVVL",
+                subIdentity));
+        row.setMapping(mapping);
+        row.setMappingState(AnalyzerMappingState.BOUND);
+        row.setOrigin(AnalyzerMappingOrigin.DEFAULT);
+        row.setTestId("9701");
+        row.setComponentId(componentId);
+        row.setCallComponentId(callComponentId);
+        return row;
+    }
+
+    private static AnalyzerMappingView.TestRow recordRow(AnalyzerMappingView view, String subIdentity) {
+        return view.tests().stream().filter(row -> subIdentity.equals(row.subIdentity())).findFirst()
+                .orElseThrow(() -> new AssertionError("no editor row for '" + subIdentity + "'"));
     }
 
     private Analyzer savableWithLatest(AnalyzerMappingSnapshot latest) throws Exception {

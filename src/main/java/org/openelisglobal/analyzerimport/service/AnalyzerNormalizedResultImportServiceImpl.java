@@ -369,6 +369,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setSourceProtocol(contract.sourceProtocol());
         row.setSourceTransport(result.sourceTransport());
         row.setRawTestCode(result.rawTestCode());
+        row.setRawSubIdentity(result.subIdentity());
         row.setRawResultValue(result.rawValue());
         row.setResultClassification(result.classification());
         row.setRecognitionMode(result.recognitionMode());
@@ -376,6 +377,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setRecognitionFingerprint(result.recognitionFingerprint());
         row.setSourcePayload(result.sourcePayload());
         row.setInstrumentNote(result.note());
+        row.setInstrumentFlags(result.flags());
+        row.setAssayName(result.assayName());
+        row.setAssayVersion(result.assayVersion());
+        row.setInstrumentOperator(result.operator());
     }
 
     private void requireMatchingProfile(Analyzer analyzer, AnalyzerNormalizedResultContract contract) {
