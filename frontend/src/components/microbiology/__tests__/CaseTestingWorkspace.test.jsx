@@ -1,4 +1,5 @@
 import React from "react";
+import { vi } from "vitest";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
@@ -96,6 +97,72 @@ describe("case testing workspace", () => {
       ),
     );
     await screen.findByText("Awaiting validation");
+  });
+  test.each(["M", "C"])(
+    "empty %s selections cannot be submitted",
+    async (type) => {
+      const api = service();
+      api.getTests.mockResolvedValue([
+        {
+          ...assay,
+          components: [
+            {
+              ...component("selection", "Selection"),
+              resultType: type,
+              multiSelectResultValues: "{}",
+            },
+          ],
+        },
+      ]);
+      show(api);
+      await openEditor();
+      expect(
+        screen.getByRole("button", { name: "Save results" }),
+      ).toBeDisabled();
+      expect(api.saveResults).not.toHaveBeenCalled();
+    },
+  );
+  test.each(["M", "C"])(
+    "a selected %s result remains saveable",
+    async (type) => {
+      const api = service();
+      api.getTests.mockResolvedValue([
+        {
+          ...assay,
+          components: [
+            {
+              ...component("selection", "Selection"),
+              resultType: type,
+              multiSelectResultValues: '{"1":"42"}',
+              dictionaryResults: [{ id: "42", value: "Selected option" }],
+            },
+          ],
+        },
+      ]);
+      show(api);
+      await openEditor();
+      expect(
+        screen.getByRole("button", { name: "Save results" }),
+      ).toBeEnabled();
+    },
+  );
+  test("blank selection groups cannot be submitted", async () => {
+    const api = service();
+    api.getTests.mockResolvedValue([
+      {
+        ...assay,
+        components: [
+          {
+            ...component("selection", "Selection"),
+            resultType: "M",
+            multiSelectResultValues: '{"1":" , "}',
+          },
+        ],
+      },
+    ]);
+    show(api);
+    await openEditor();
+    expect(screen.getByRole("button", { name: "Save results" })).toBeDisabled();
   });
   test("invalid precision blocks saving and failed saves preserve both fields", async () => {
     const api = service();

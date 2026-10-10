@@ -49,6 +49,30 @@ function valid(row) {
   return true;
 }
 
+function hasResult(row) {
+  if (row.resultType === "M" || row.resultType === "C") {
+    try {
+      const groups = JSON.parse(row.multiSelectResultValues || "{}");
+      return (
+        groups !== null &&
+        !Array.isArray(groups) &&
+        typeof groups === "object" &&
+        Object.values(groups).some(
+          (group) =>
+            typeof group === "string" &&
+            group.split(",").some((id) => id.trim()),
+        )
+      );
+    } catch {
+      return false;
+    }
+  }
+  return (
+    Boolean(row.resultValue?.trim()) &&
+    !(row.resultType === "D" && row.resultValue === "0")
+  );
+}
+
 function ResultEditor({ test, service, caseId, onSaved, onCancel }) {
   const intl = useIntl();
   const t = (id) => intl.formatMessage({ id });
@@ -213,7 +237,7 @@ function ResultEditor({ test, service, caseId, onSaved, onCancel }) {
               date !== test.performedAt)) ||
           rows.length === 0 ||
           !rows.every(valid) ||
-          !rows.some((r) => r.resultValue || r.multiSelectResultValues)
+          !rows.some(hasResult)
         }
         onClick={() => submit(false)}
       >

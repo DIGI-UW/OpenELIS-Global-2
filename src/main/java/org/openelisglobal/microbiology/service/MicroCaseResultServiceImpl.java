@@ -343,16 +343,27 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             try {
                 var groups = new com.fasterxml.jackson.databind.ObjectMapper()
                         .readTree(input.multiSelectResultValues == null ? "{}" : input.multiSelectResultValues);
-                if (!groups.isObject())
+                if (groups == null || !groups.isObject())
                     bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
+                boolean selected = false;
                 var values = groups.elements();
                 while (values.hasNext()) {
                     var group = values.next();
                     if (!group.isTextual())
                         bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
-                    for (String id : group.asText().split(","))
-                        if (!id.isBlank() && !options.contains(id))
-                            bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
+                    for (String id : group.asText().split(",")) {
+                        if (!id.isBlank()) {
+                            if (!options.contains(id))
+                                bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
+                            selected = true;
+                        }
+                    }
+                }
+                // The empty selector emits {} (or blank groups), which is not a
+                // result. Normalize it for the shared presence/deletion checks.
+                if (!selected) {
+                    row.setResultValue("");
+                    row.setMultiSelectResultValues(null);
                 }
             } catch (com.fasterxml.jackson.core.JsonProcessingException invalid) {
                 bad("MICROBIOLOGY_INVALID_RESULT_OPTION");
@@ -360,9 +371,16 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         }
         if ("N".equals(row.getResultType()) && !value.isEmpty()) {
             try {
-                var number = new java.math.BigDecimal(org.openelisglobal.common.util.StringUtil
-                        .normalizeScientificNotation(value).replaceFirst("^[<>]=?\\s*", ""));
-                if (!Objects.equals(value, row.getRawResultValue()) && number.scale() > row.getSignificantDigits())
+                String normalized = org.openelisglobal.common.util.StringUtil.normalizeScientificNotation(value)
+                        .replaceFirst("^[<>]=?\\s*", "");
+                new java.math.BigDecimal(normalized); // Validate the entire number, including its exponent.
+                int exponent = Math.max(normalized.indexOf('e'), normalized.indexOf('E'));
+                String mantissa = exponent < 0 ? normalized : normalized.substring(0, exponent);
+                int dot = mantissa.indexOf('.');
+                int places = dot < 0 ? 0 : mantissa.length() - dot - 1;
+                int configured = row.getSignificantDigits();
+                if (!Objects.equals(value, row.getRawResultValue()) && configured >= 0
+                        && (exponent < 0 || configured > 0) && places > configured)
                     bad("MICROBIOLOGY_INVALID_PRECISION");
             } catch (NumberFormatException invalid) {
                 bad("MICROBIOLOGY_INVALID_RESULT");
