@@ -8,23 +8,17 @@ set -euo pipefail
 
 # --no-mock-network: the mock sends to each connection's own Bridge listener
 #   port, so a stack without the Docker socket skips per-analyzer networks.
-# --activate: activate only newly created priority connections when their
-#   shipped mapping is already confirmed. It never edits clinical mappings.
+# Analyzers are created in Setup: a person confirms each analyzer's mapping and
+# activates it in OpenELIS. The seed never confirms a mapping.
 ENSURE_CONNECTIONS=false
 MOCK_NETWORK=true
-ACTIVATE=false
 for arg in "$@"; do
   case "$arg" in
     --ensure-connections) ENSURE_CONNECTIONS=true ;;
     --no-mock-network) MOCK_NETWORK=false ;;
-    --activate) ACTIVATE=true ;;
-    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network] [--activate]" >&2; exit 2 ;;
+    *) echo "Usage: $0 [--ensure-connections] [--no-mock-network]" >&2; exit 2 ;;
   esac
 done
-if [ "$ACTIVATE" = true ] && [ "$ENSURE_CONNECTIONS" = false ]; then
-  echo "--activate requires --ensure-connections" >&2
-  exit 2
-fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 REPO_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd)"
@@ -50,16 +44,15 @@ if [ "${DEV_STACK_TLS:-self-signed}" = "self-signed" ]; then
   CURL_TLS_FLAG=--insecure
 fi
 
-GENEXPERT_PROFILE_ID="genexpert-astm"
-FLUOROCYCLER_PROFILE_ID="fluorocycler-xt"
-QUANTSTUDIO_PROFILE_ID="quantstudio"
+GENEXPERT_PROFILE_ID="cepheid-genexpert-astm"
+FLUOROCYCLER_PROFILE_ID="hain-fluorocycler-xt"
+QUANTSTUDIO_PROFILE_ID="thermo-quantstudio"
 
 CATALOG_FILE="$(mktemp)"
 ANALYZERS_FILE="$(mktemp)"
 LAB_UNITS_FILE="$(mktemp)"
 RESPONSE_FILE="$(mktemp)"
-ACTIVATION_PAYLOAD_FILE="$(mktemp)"
-trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$LAB_UNITS_FILE" "$RESPONSE_FILE" "$ACTIVATION_PAYLOAD_FILE"' EXIT
+trap 'rm -f "$CATALOG_FILE" "$ANALYZERS_FILE" "$LAB_UNITS_FILE" "$RESPONSE_FILE"' EXIT
 
 fetch_json() {
   local url="$1"
@@ -142,51 +135,6 @@ if matches:
 PY
 }
 
-activate_confirmed_analyzer() {
-  local analyzer_id="$1"
-  local profile_id="$2"
-  local profile_revision="$3"
-  local status
-
-  fetch_json "$TYPE_API/$profile_id/mapping?revision=$profile_revision" "$RESPONSE_FILE" "$profile_id mapping"
-  python3 - "$RESPONSE_FILE" "$ACTIVATION_PAYLOAD_FILE" <<'PY'
-import json
-import sys
-
-with open(sys.argv[1], encoding="utf-8") as handle:
-    mapping = json.load(handle)
-if mapping.get("confirmation", {}).get("state") != "CURRENT":
-    raise SystemExit(
-        f"{mapping.get('profileId')} has no confirmed stock mapping; review it in OpenELIS before activation"
-    )
-if not mapping.get("siteBindingId") or not mapping.get("bindingFingerprint"):
-    raise SystemExit("Confirmed mapping has no persisted binding reference")
-with open(sys.argv[2], "w", encoding="utf-8") as handle:
-    json.dump({
-        "siteBindingId": mapping["siteBindingId"],
-        "revision": mapping["siteBindingRevision"],
-        "bindingFingerprint": mapping["bindingFingerprint"],
-    }, handle)
-PY
-  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" \
-    -u "$TEST_USER:$TEST_PASS" -X PUT -H "Content-Type: application/json" \
-    --data-binary "@$ACTIVATION_PAYLOAD_FILE" "$ANALYZER_API/$analyzer_id/site-binding")"
-  if [ "$status" != "200" ]; then
-    echo "ERROR: Could not adopt confirmed $profile_id binding (HTTP $status)" >&2
-    sed 's/^/  /' "$RESPONSE_FILE" >&2
-    return 1
-  fi
-  status="$(curl -sS "$CURL_TLS_FLAG" --connect-timeout 5 --max-time 45 -o "$RESPONSE_FILE" -w "%{http_code}" \
-    -u "$TEST_USER:$TEST_PASS" -X POST -H "Content-Type: application/json" \
-    -d '{}' "$ANALYZER_API/$analyzer_id/activate")"
-  if [ "$status" != "200" ]; then
-    echo "ERROR: Could not activate $profile_id analyzer $analyzer_id (HTTP $status)" >&2
-    sed 's/^/  /' "$RESPONSE_FILE" >&2
-    return 1
-  fi
-  echo "  Activated newly created $profile_id analyzer $analyzer_id"
-}
-
 reconcile_profile_analyzer() {
   local name="$1"
   local profile_id="$2"
@@ -239,9 +187,6 @@ PY
     return 1
   fi
   echo "  $action_label: $name ($profile_id@$profile_revision)"
-  if [ "$ACTIVATE" = true ] && { [ "$profile_id" = "$GENEXPERT_PROFILE_ID" ] || [ "$profile_id" = "$FLUOROCYCLER_PROFILE_ID" ]; }; then
-    activate_confirmed_analyzer "$(find_analyzer_id "$name")" "$profile_id" "$profile_revision"
-  fi
 }
 
 lookup_mock_network_ip() {
@@ -294,18 +239,22 @@ PY
 
 verify_profile_pins() {
   fetch_json "$ANALYZER_API" "$ANALYZERS_FILE" "Analyzer list"
-  python3 - "$ANALYZERS_FILE" "$GENEXPERT_REVISION" "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_REVISION" <<'PY'
+  python3 - "$ANALYZERS_FILE" "$GENEXPERT_PROFILE_ID" "$GENEXPERT_REVISION" "$QUANTSTUDIO_PROFILE_ID" \
+    "$QUANTSTUDIO_REVISION" "$FLUOROCYCLER_PROFILE_ID" "$FLUOROCYCLER_REVISION" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as handle:
     analyzers = json.load(handle).get("analyzers", [])
 
+genexpert = (sys.argv[2], int(sys.argv[3]))
+quantstudio = (sys.argv[4], int(sys.argv[5]))
+fluorocycler = (sys.argv[6], int(sys.argv[7]))
 expected = {
-    "Cepheid GeneXpert (ASTM Mode)": ("genexpert-astm", int(sys.argv[2])),
-    "QuantStudio 5": ("quantstudio", int(sys.argv[3])),
-    "QuantStudio 7": ("quantstudio", int(sys.argv[3])),
-    "FluoroCycler XT": ("fluorocycler-xt", int(sys.argv[4])),
+    "Cepheid GeneXpert (ASTM Mode)": genexpert,
+    "QuantStudio 5": quantstudio,
+    "QuantStudio 7": quantstudio,
+    "FluoroCycler XT": fluorocycler,
 }
 problems = []
 for name, pin in expected.items():

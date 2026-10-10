@@ -6,6 +6,7 @@ const API = "/api/OpenELIS-Global/rest";
 
 type MappingRow = {
   rawCode: string;
+  subIdentity: string | null;
   loinc: string;
   mappingState: string;
   testId: string | null;
@@ -77,8 +78,9 @@ export async function stockClinicalBinding(
     page,
     `/analyzer-types/${scenario.profileId}/mapping?revision=${scenario.profileRevision}`,
   );
+  // A test's own row; its component records have rows of their own.
   const rows = mapping.tests.filter(
-    (row) => row.rawCode === scenario.sourceCode,
+    (row) => row.rawCode === scenario.sourceCode && !row.subIdentity,
   );
   expect(rows, `One shipped ${scenario.sourceCode} row`).toHaveLength(1);
   const row = rows[0];

@@ -617,6 +617,34 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals("1009.64", number.getResult());
     }
 
+    /**
+     * As the Bridge sends Cepheid's below-range viral load: the raw value is the
+     * call alone, and the baseline profile maps that call. The call's answer
+     * belongs on the call component; the number keeps "<40".
+     */
+    @Test
+    public void aBelowRangeViralLoadKeepsItsNumberWhenItsCallIsMapped() throws Exception {
+        bindViralLoadRecords();
+        jdbc.update("INSERT INTO clinlims.test_result"
+                + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
+                + " VALUES (?, ?, 'D', 'Detected', true, 1, 'comp-call', NOW())", RESULT_OPTION_ID, TEST_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
+                + " (mapping_id, source_row_key, sub_identity, raw_value, mapping_state, test_result_id, last_updated)"
+                + " VALUES (?, 'HIVVL', '', 'DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, RESULT_OPTION_ID);
+        Observation main = number(record(null, "DETECTED"), "40", Quantity.QuantityComparator.LESS_THAN);
+        main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        Bundle bundle = viralLoadBundle(main);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("the number and the call, once each", 2, staged.size());
+        assertEquals("<40", stagedOn(staged, null).getResult());
+        assertEquals("N", stagedOn(staged, null).getResultType());
+        assertEquals("Detected", stagedOn(staged, "comp-call").getResult());
+    }
+
     @Test
     public void aBelowRangeRecordHeldWholeRecoversIntoItsNumberAndItsCallWithoutDuplicates() throws Exception {
         bindTest("HIVVL", TEST_ID);

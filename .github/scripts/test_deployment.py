@@ -263,7 +263,7 @@ class DeploymentTest(unittest.TestCase):
         self.assertIn("BASE_URL=http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port), seed)
         self.assertIn("MOCK_URL=" + deployment.DEFAULT_MOCK_URL, seed)
         self.assertEqual(["bash", str(release / "projects/analyzer-harness/seed-analyzers.sh"),
-                          "--ensure-connections", "--no-mock-network", "--activate"], seed[-5:])
+                          "--ensure-connections", "--no-mock-network"], seed[-4:])
         self.assertLess(self.commands.index(self.compose_calls("up")[0]), self.commands.index(seed))
         self.assertEqual([("http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port)
                            + "/api/OpenELIS-Global/rest", deployment.DEFAULT_MOCK_URL, "DEV01900361250089391")],

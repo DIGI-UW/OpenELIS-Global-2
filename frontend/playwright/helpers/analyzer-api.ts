@@ -34,16 +34,31 @@ export async function analyzerByName(
   return matches[0];
 }
 
-/** What the analyzer's results screen holds for one accession, as the API reports it. */
-export async function worklistFor(
+/**
+ * What the analyzer's results screen holds for one accession, as the API
+ * reports it. The screen is paged by accession; this reads the accession's page.
+ */
+export async function worklistFor<Row extends WorklistRow = WorklistRow>(
   page: Page,
   analyzerId: string,
   accession: string,
-): Promise<WorklistRow[]> {
-  const response = await page.request.get(
-    `${API}/AnalyzerResults?id=${analyzerId}`,
-  );
-  expect(response.ok()).toBeTruthy();
-  const payload = (await response.json()) as { resultList: WorklistRow[] };
+): Promise<Row[]> {
+  const read = async (pageNumber?: string) => {
+    const response = await page.request.get(
+      `${API}/AnalyzerResults?id=${analyzerId}${pageNumber ? `&page=${pageNumber}` : ""}`,
+    );
+    expect(response.ok()).toBeTruthy();
+    return (await response.json()) as {
+      resultList: Row[];
+      paging?: { searchTermToPage?: Array<{ id: string; value: string }> };
+    };
+  };
+  let payload = await read();
+  const accessionPage = payload.paging?.searchTermToPage?.find(
+    (term) => term.id === accession,
+  )?.value;
+  if (accessionPage && accessionPage !== "1") {
+    payload = await read(accessionPage);
+  }
   return payload.resultList.filter((row) => row.accessionNumber === accession);
 }

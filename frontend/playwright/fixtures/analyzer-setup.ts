@@ -36,18 +36,28 @@ export class AnalyzerSetupPage {
     await expect(this.nameInput).toHaveValue(name);
   }
 
-  async selectProfile(profileName: string) {
+  /**
+   * Pick an analyzer type by name. Shipped types can share a display name, so
+   * `pin` names the exact profile and revision the option must be.
+   */
+  async selectProfile(
+    profileName: string,
+    pin?: { profileId: string; revision: number },
+  ) {
     await this.typePicker.click();
     await this.typePicker.fill(profileName);
-    await this.page
-      .getByRole("option", {
-        name: new RegExp(escapeRegExp(profileName), "i"),
-      })
-      .first()
-      .click();
+    const name = pin
+      ? new RegExp(
+          `^${escapeRegExp(profileName)} · .* · revision ${pin.revision}$`,
+          "i",
+        )
+      : new RegExp(escapeRegExp(profileName), "i");
+    await this.page.getByRole("option", { name }).first().click();
     await expect(this.page).toHaveURL(
       (url) =>
-        Boolean(url.searchParams.get("profile")) &&
+        (pin
+          ? url.searchParams.get("profile") === pin.profileId
+          : Boolean(url.searchParams.get("profile"))) &&
         Boolean(url.searchParams.get("revision")),
     );
     await expect(this.typePicker).toHaveValue(

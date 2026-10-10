@@ -269,7 +269,7 @@ def deploy(request, diagnostics, bundle):
         if not report["ready"]:
             raise RuntimeError("Application did not become ready; inspect deployment diagnostics")
         run(["env", "BASE_URL=" + origin, "MOCK_URL=" + mock_url,
-             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network", "--activate"],
+             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network"],
             release, env={**os.environ, **settings})
         authenticated_http = functools.partial(http_json, username=settings["TEST_USER"],
                                                password=settings["TEST_PASS"], auth_origin=origin)
