@@ -13,7 +13,7 @@ vi.mock("../../../utils/Utils", () => ({
 
 // ========== IMPORTS ==========
 import React from "react";
-import { render, screen } from "@testing-library/react";
+import { render, screen, fireEvent } from "@testing-library/react";
 import "@testing-library/jest-dom";
 import { IntlProvider } from "react-intl";
 import LinkReagentModal from "./LinkReagentModal";
@@ -42,8 +42,8 @@ describe("LinkReagentModal", () => {
   it("shows the reagent multi-select populated from inventory", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
       cb([
-        { id: 7, name: "Glucose Reagent" },
-        { id: 9, name: "Buffer Solution" },
+        { id: 7, name: "Glucose Reagent", itemType: "REAGENT" },
+        { id: 9, name: "Buffer Solution", itemType: "REAGENT" },
       ]),
     );
     renderModal();
@@ -62,7 +62,7 @@ describe("LinkReagentModal", () => {
 
   it("excludes already-linked reagents and shows the all-linked notice", async () => {
     getFromOpenElisServer.mockImplementation((url, cb) =>
-      cb([{ id: 7, name: "Glucose Reagent" }]),
+      cb([{ id: 7, name: "Glucose Reagent", itemType: "REAGENT" }]),
     );
     renderModal({ linkedReagentIds: [7] });
     expect(
@@ -71,4 +71,27 @@ describe("LinkReagentModal", () => {
       ),
     ).toBeInTheDocument();
   });
+});
+
+it("offers tagged media of any inventory type while excluding unrelated inventory", async () => {
+  getFromOpenElisServer.mockImplementation((url, cb) =>
+    cb([
+      {
+        id: 1,
+        name: "Tagged agar",
+        itemType: "OTHER",
+        microbiologyMedium: true,
+      },
+      {
+        id: 2,
+        name: "Unrelated gloves",
+        itemType: "OTHER",
+        microbiologyMedium: false,
+      },
+    ]),
+  );
+  renderModal();
+  fireEvent.click(await screen.findByRole("combobox"));
+  expect(await screen.findByText("Tagged agar")).toBeInTheDocument();
+  expect(screen.queryByText("Unrelated gloves")).toBeNull();
 });

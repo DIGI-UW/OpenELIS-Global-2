@@ -15,7 +15,7 @@ import {
 /**
  * OGC-949 M15 / OGC-992 (epic OGC-762) — Link Reagent modal.
  *
- * Multi-select of reagent inventory (item_type=REAGENT) minus the reagents
+ * Multi-select of reagents and tagged culture media minus the inventory items
  * already linked to this test. "Link Selected" creates one test_reagent_link
  * per selected reagent with default usage_type=PRIMARY (quantity left null,
  * filled in later via the per-row inline edit, OGC-993).
@@ -41,11 +41,15 @@ const LinkReagentModal = ({
     setSelected([]);
     setError(null);
     const linked = new Set(linkedReagentIds.map((id) => String(id)));
-    getFromOpenElisServer("/rest/inventory/items/type/REAGENT", (res) => {
+    getFromOpenElisServer("/rest/inventory/items", (res) => {
       const items = Array.isArray(res) ? res : [];
       setAvailable(
         items
-          .filter((i) => !linked.has(String(i.id)))
+          .filter(
+            (i) =>
+              (i.itemType === "REAGENT" || i.microbiologyMedium) &&
+              !linked.has(String(i.id)),
+          )
           .map((i) => ({ id: i.id, name: i.name })),
       );
     });

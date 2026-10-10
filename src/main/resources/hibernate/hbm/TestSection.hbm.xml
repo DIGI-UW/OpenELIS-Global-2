@@ -60,6 +60,11 @@
 
         <property name="sortOrderInt" column="sort_order"
             type="integer" />
+        <property name="requireTrackedMedia" type="boolean"
+            column="require_tracked_media" />
+        <property name="gramStainTestId"
+            type="org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType"
+            column="gram_stain_test_id" />
     </class>
     <!-- <query name="testsection.getNext"> -->
     <!-- from TestSection ts order by ts.organization.organizationName, -->

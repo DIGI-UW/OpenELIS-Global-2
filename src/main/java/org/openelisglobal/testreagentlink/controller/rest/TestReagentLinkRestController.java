@@ -66,10 +66,14 @@ public class TestReagentLinkRestController extends BaseRestController {
 
     /** Request body for link create/update. */
     public static class ReagentLinkRequest {
+        public Boolean cultureDefaultsChanged;
         public Long reagentId;
         public String usageType;
         public BigDecimal quantityPerTest;
         public String quantityUnit;
+        public String sampleTypeId, cultureDurationUnit, cultureAtmosphereId;
+        public BigDecimal cultureDuration, cultureCheckIntervalHours, cultureLoopVolume, cultureTemperature;
+
     }
 
     /** A linked reagent enriched with inventory display fields + current stock. */
@@ -81,6 +85,9 @@ public class TestReagentLinkRestController extends BaseRestController {
         public String usageType;
         public BigDecimal quantityPerTest;
         public String quantityUnit;
+        public String sampleTypeId, cultureDurationUnit, cultureAtmosphereId;
+        public BigDecimal cultureDuration, cultureCheckIntervalHours, cultureLoopVolume, cultureTemperature;
+
         public Double currentStock;
         public Integer lowStockThreshold;
     }
@@ -111,6 +118,15 @@ public class TestReagentLinkRestController extends BaseRestController {
         link.setUsageType(body.usageType);
         link.setQuantityPerTest(body.quantityPerTest);
         link.setQuantityUnit(body.quantityUnit);
+        if (Boolean.TRUE.equals(body.cultureDefaultsChanged)) {
+            link.setSampleTypeId(body.sampleTypeId);
+            link.setCultureDuration(body.cultureDuration);
+            link.setCultureDurationUnit(body.cultureDurationUnit);
+            link.setCultureCheckIntervalHours(body.cultureCheckIntervalHours);
+            link.setCultureLoopVolume(body.cultureLoopVolume);
+            link.setCultureAtmosphereId(body.cultureAtmosphereId);
+            link.setCultureTemperature(body.cultureTemperature);
+        }
         link.setSysUserId(getSysUserId(request));
         reagentLinkService.insert(link);
 
@@ -131,6 +147,15 @@ public class TestReagentLinkRestController extends BaseRestController {
         }
         link.setQuantityPerTest(body.quantityPerTest);
         link.setQuantityUnit(body.quantityUnit);
+        if (Boolean.TRUE.equals(body.cultureDefaultsChanged)) {
+            link.setSampleTypeId(body.sampleTypeId);
+            link.setCultureDuration(body.cultureDuration);
+            link.setCultureDurationUnit(body.cultureDurationUnit);
+            link.setCultureCheckIntervalHours(body.cultureCheckIntervalHours);
+            link.setCultureLoopVolume(body.cultureLoopVolume);
+            link.setCultureAtmosphereId(body.cultureAtmosphereId);
+            link.setCultureTemperature(body.cultureTemperature);
+        }
         link.setSysUserId(getSysUserId(request));
         reagentLinkService.update(link);
         return toResponse(link);
@@ -166,7 +191,7 @@ public class TestReagentLinkRestController extends BaseRestController {
         if (item == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Reagent not found: " + reagentId);
         }
-        if (item.getItemType() != ItemType.REAGENT) {
+        if (item.getItemType() != ItemType.REAGENT && !item.isMicrobiologyMedium()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
                     "Inventory item " + reagentId + " is not a reagent");
         }
@@ -191,6 +216,13 @@ public class TestReagentLinkRestController extends BaseRestController {
         r.usageType = link.getUsageType();
         r.quantityPerTest = link.getQuantityPerTest();
         r.quantityUnit = link.getQuantityUnit();
+        r.sampleTypeId = link.getSampleTypeId();
+        r.cultureDuration = link.getCultureDuration();
+        r.cultureDurationUnit = link.getCultureDurationUnit();
+        r.cultureCheckIntervalHours = link.getCultureCheckIntervalHours();
+        r.cultureLoopVolume = link.getCultureLoopVolume();
+        r.cultureAtmosphereId = link.getCultureAtmosphereId();
+        r.cultureTemperature = link.getCultureTemperature();
         InventoryItem item = findItem(link.getReagentId());
         if (item != null) {
             r.reagentName = item.getName();

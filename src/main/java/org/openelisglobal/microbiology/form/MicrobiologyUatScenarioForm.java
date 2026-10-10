@@ -2,6 +2,7 @@ package org.openelisglobal.microbiology.form;
 
 public class MicrobiologyUatScenarioForm {
 
+    public Long mediumItemId;
     public String scenario;
     public String scenarioKey;
     public String accessionNumber;

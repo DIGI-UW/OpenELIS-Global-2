@@ -38,6 +38,10 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.dataexchange.fhir.service.FhirTransformService fhir;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.samplehuman.service.SampleHumanService sampleHumans;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseInoculationDAO cultureRows;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCultureDAO cultureData;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -100,7 +104,9 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             f.analysisId = a.getId();
             f.testId = a.getTest().getId();
             f.testName = a.getTest().getName();
-            f.placement = "ADDITIONAL".equals(link.getPlacement()) ? "ADDITIONAL" : "INITIAL";
+            f.placement = link.getCultureId() != null ? "CULTURE"
+                    : "ADDITIONAL".equals(link.getPlacement()) ? "ADDITIONAL" : "INITIAL";
+            f.cultureId = link.getCultureId();
             f.status = state(a);
             f.version = version(a);
             f.enteredBy = link.getEnteredBy();
@@ -125,10 +131,18 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     @Transactional
     public List<MicroCaseTestForm> addTests(String caseId, MicroCaseAddTestsForm request, String actor) {
         var c = writeCase(caseId, actor, Constants.ROLE_RESULTS);
-        if (request == null || !List.of("INITIAL", "ADDITIONAL").contains(request.placement))
+        if (request == null || !List.of("INITIAL", "ADDITIONAL", "CULTURE").contains(request.placement))
             bad("MICROBIOLOGY_PLACEMENT_REQUIRED");
-        var specimen = search.getSamples(caseId).stream().filter(s -> s.getId().equals(request.sampleItemId))
-                .findFirst().orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_SAMPLE_CASE_MISMATCH"));
+        var specimen = ("CULTURE".equals(request.placement) ? cultureData.getSources(caseId)
+                : search.getSamples(caseId)).stream().filter(s -> s.getId().equals(request.sampleItemId)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_SAMPLE_CASE_MISMATCH"));
+        if ("CULTURE".equals(request.placement)) {
+            var culture = cultureRows.get(request.cultureId)
+                    .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_CULTURE_REQUIRED"));
+            if (!caseId.equals(culture.getCaseId()) || !request.sampleItemId.equals(culture.getSourceSampleItemId()))
+                bad("MICROBIOLOGY_CULTURE_SOURCE");
+        } else if (request.cultureId != null)
+            bad("MICROBIOLOGY_CULTURE_PLACEMENT");
         if (specimen.isRejected())
             bad("MICROBIOLOGY_SAMPLE_REJECTED");
         Set<String> ids = new LinkedHashSet<>(request.testIds == null ? List.of() : request.testIds);
@@ -149,7 +163,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             bad("MICROBIOLOGY_TEST_SAMPLE_MISMATCH");
         var existing = links.getAnalyses(caseId);
         for (var t : selected) {
-            if (existing.stream().anyMatch(a -> t.getId().equals(a.getTest().getId())))
+            if (existing.stream().anyMatch(a -> t.getId().equals(a.getTest().getId())
+                    && Objects.equals(request.cultureId, links.getByCaseAndAnalysis(caseId, a.getId()).getCultureId())))
                 continue;
             Analysis a = new Analysis();
             a.setTest(t);
@@ -167,6 +182,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             link.setCaseId(caseId);
             link.setAnalysisId(a.getId());
             link.setPlacement(request.placement);
+            link.setCultureId(request.cultureId);
             link.setSysUserId(actor);
             links.insert(link);
             record(caseId, "TEST_ADDED", a.getId(), actor);

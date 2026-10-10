@@ -628,4 +628,5 @@
   <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
   <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
 
+  <include relativeToChangelogFile="true" file="121-amr-v2-culture-workspace.xml"/>
 </databaseChangeLog>

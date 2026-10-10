@@ -154,4 +154,22 @@ public class InventoryItem extends BaseObject<Long> {
     public boolean isActive() {
         return "Y".equals(isActive);
     }
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "microbiology_medium")
+    private boolean microbiologyMedium;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "track_lots")
+    private boolean trackLots;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "usual_atmosphere_id")
+    @org.hibernate.annotations.Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String usualAtmosphereId;
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "usual_temperature")
+    private java.math.BigDecimal usualTemperature;
 }

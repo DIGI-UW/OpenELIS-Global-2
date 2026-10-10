@@ -170,6 +170,10 @@ public class InventoryItemRestController extends BaseRestController {
             existingItem.setName(item.getName());
             existingItem.setItemType(item.getItemType());
             existingItem.setCategory(item.getCategory());
+            existingItem.setMicrobiologyMedium(item.isMicrobiologyMedium());
+            existingItem.setTrackLots(item.isTrackLots());
+            existingItem.setUsualAtmosphereId(item.getUsualAtmosphereId());
+            existingItem.setUsualTemperature(item.getUsualTemperature());
             existingItem.setManufacturer(item.getManufacturer());
             existingItem.setUnits(item.getUnits());
             existingItem.setLowStockThreshold(item.getLowStockThreshold());
