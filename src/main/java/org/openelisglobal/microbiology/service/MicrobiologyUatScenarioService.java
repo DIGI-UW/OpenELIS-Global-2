@@ -261,11 +261,17 @@ public class MicrobiologyUatScenarioService {
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
         MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), method.getId(), performedBy);
-        microCase.setSampleId(sample.getId());
-        microCase.setSampleTypeId(sampleItem.getTypeOfSample().getId());
-        microCase.setLabUnitId(test.getTestSection().getId());
-        entityManager.merge(microCase);
-        membership.addSample(microCase.getId(), sampleItem.getId(), performedBy);
+        String sampleItemId = sampleItem.getId();
+        boolean alreadyAttached = membership.getCaseSamples(microCase.getId()).stream()
+                .anyMatch(member -> sampleItemId.equals(member.getSampleItemId()) && member.getSplitOutAt() == null);
+        // Reusing a released fixture must not re-enter guarded membership writes.
+        if (!alreadyAttached) {
+            microCase.setSampleId(sample.getId());
+            microCase.setSampleTypeId(sampleItem.getTypeOfSample().getId());
+            microCase.setLabUnitId(test.getTestSection().getId());
+            entityManager.merge(microCase);
+            membership.addSample(microCase.getId(), sampleItemId, performedBy);
+        }
         caseAnalysisService.linkAnalysis(microCase, analysis, reportableTestAnalyte.getId());
         if (WHONET_EXPORT_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
             // Stands in for a stored V1 bacteriology row so the WHONET export's
