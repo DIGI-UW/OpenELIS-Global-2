@@ -25,4 +25,10 @@ public interface AnalyzerMappingEditorService {
      * catalog as it is now. Read-only; nothing is saved.
      */
     AnalyzerMappingView getDefaults(String profileId, int profileRevision);
+
+    /**
+     * The analyzer's mapping as it would read on another revision of its profile
+     * with these decisions. Read-only; nothing is saved.
+     */
+    AnalyzerMappingView preview(String analyzerId, int profileRevision, AnalyzerMappingDraft decisions);
 }

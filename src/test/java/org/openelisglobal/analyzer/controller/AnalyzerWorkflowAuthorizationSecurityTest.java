@@ -106,7 +106,8 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
         @Bean
         AnalyzerInstanceRestController analyzerInstanceRestController(AnalyzerInstanceService service) {
             return new AnalyzerInstanceRestController(service,
-                    mock(org.openelisglobal.analyzer.service.AnalyzerAdoptionService.class));
+                    mock(org.openelisglobal.analyzer.service.AnalyzerAdoptionService.class),
+                    mock(org.openelisglobal.analyzer.service.AnalyzerMappingEditorService.class));
         }
 
         @Bean

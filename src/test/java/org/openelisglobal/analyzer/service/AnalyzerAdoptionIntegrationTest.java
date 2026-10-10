@@ -22,7 +22,6 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import javax.sql.DataSource;
@@ -127,7 +126,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 Long.valueOf(analyzerId));
 
         AnalyzerAdoptionService.AdoptionPlan plan = adoptionService.prepareAdoption(analyzerId, 2);
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, proposals(plan), "1");
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2, plan.proposals(), "1");
         confirm(adopted);
         BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
         apply(adopted);
@@ -162,7 +161,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(AnalyzerMappingAdoption.BlockReason.HELD_RESULTS, blocked.blockReason());
 
         IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
-                () -> adoptionService.adopt(analyzerId, 2, proposals(plan), "1"));
+                () -> adoptionService.adopt(analyzerId, 2, plan.proposals(), "1"));
         assertTrue(refusal.getMessage(), refusal.getMessage().contains("ADOPT-C still has held results"));
         assertEquals("nothing was saved on revision 2", 1,
                 mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow().mapping().getProfileRevision());
@@ -180,7 +179,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertEquals(AnalyzerMappingAdoption.BlockReason.INACTIVE_TEST, blocked.blockReason());
 
         IllegalArgumentException refusal = assertThrows(IllegalArgumentException.class,
-                () -> adoptionService.adopt(analyzerId, 2, proposals(plan), "1"));
+                () -> adoptionService.adopt(analyzerId, 2, plan.proposals(), "1"));
         assertTrue(refusal.getMessage(),
                 refusal.getMessage().contains("ADOPT-A is mapped to a test that is no longer active"));
         assertEquals(1, mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow().mapping().getProfileRevision());
@@ -194,7 +193,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
 
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                proposals(adoptionService.prepareAdoption(analyzerId, 2)), "1");
+                adoptionService.prepareAdoption(analyzerId, 2).proposals(), "1");
         confirm(adopted);
         verifyZeroInteractions(bridge);
         assertEquals("adopting and confirming leave revision 1 in force", revisionOne, inForceMappingId());
@@ -224,7 +223,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         when(bridge.updateConnection(eq(CONNECTION_ID), any(ObjectNode.class)))
                 .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                proposals(adoptionService.prepareAdoption(analyzerId, 2)), "1");
+                adoptionService.prepareAdoption(analyzerId, 2).proposals(), "1");
         confirm(adopted);
 
         assertThrows(BridgeAnalyzerConnectionException.class, () -> apply(adopted));
@@ -242,7 +241,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         when(bridge.applyRuntimeCommand(eq(CONNECTION_ID), anyInt(), eq("ACTIVATE"), anyString()))
                 .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.unreachable"));
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                proposals(adoptionService.prepareAdoption(analyzerId, 2)), "1");
+                adoptionService.prepareAdoption(analyzerId, 2).proposals(), "1");
         confirm(adopted);
 
         assertThrows(BridgeAnalyzerConnectionException.class, () -> apply(adopted));
@@ -259,7 +258,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         analyzerOnRevisionOne();
         String testId = catalog.searchActiveTests(null).get(0).id();
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                bind(proposals(adoptionService.prepareAdoption(analyzerId, 2)), "ADOPT-A", testId), "1");
+                bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", testId), "1");
         confirm(adopted);
         bridgeOn(1);
         apply(adopted);
@@ -287,7 +286,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         assertTrue(staged("ADOPT-D").isReadOnly());
         List<AnalyzerMappingCatalogService.TestOption> tests = catalog.searchActiveTests(null);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                bind(bind(proposals(adoptionService.prepareAdoption(analyzerId, 2)), "ADOPT-A", tests.get(0).id()),
+                bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", tests.get(0).id()),
                         "ADOPT-D", tests.get(1).id()),
                 "1");
         confirm(adopted);
@@ -418,16 +417,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         new JdbcTemplate(dataSource).update("UPDATE analyzer SET mapping_id = ?, bridge_connection_id = ? WHERE id = ?",
                 Long.valueOf(first.mapping().getId()), CONNECTION_ID, Long.valueOf(analyzerId));
         return analyzer;
-    }
-
-    private static AnalyzerMappingDraft proposals(AnalyzerAdoptionService.AdoptionPlan plan) {
-        List<AnalyzerMappingTestDraft> tests = new ArrayList<>();
-        List<AnalyzerMappingResultDraft> results = new ArrayList<>();
-        plan.rows().stream().filter(row -> row.proposed() != null).forEach(row -> {
-            tests.add(row.proposed().test());
-            results.addAll(row.proposed().results());
-        });
-        return new AnalyzerMappingDraft(tests, results);
     }
 
     private void confirm(AnalyzerMappingSnapshot adopted) {

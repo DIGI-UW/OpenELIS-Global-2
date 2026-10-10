@@ -46,6 +46,9 @@ public class AnalyzerInstanceRestControllerTest {
     @Mock
     private org.openelisglobal.analyzer.service.AnalyzerAdoptionService adoptionService;
 
+    @Mock
+    private org.openelisglobal.analyzer.service.AnalyzerMappingEditorService editorService;
+
     private AnalyzerInstanceRestController controller;
     private MockMvc mockMvc;
     private AnalyzerInstanceRequest input;
@@ -53,7 +56,7 @@ public class AnalyzerInstanceRestControllerTest {
 
     @Before
     public void setUp() {
-        controller = new AnalyzerInstanceRestController(service, adoptionService);
+        controller = new AnalyzerInstanceRestController(service, adoptionService, editorService);
         mockMvc = MockMvcBuilders.standaloneSetup(controller).setControllerAdvice(new ControllerSetup()).build();
         input = new AnalyzerInstanceRequest();
         input.setName("Synthetic bench 1");
@@ -109,13 +112,17 @@ public class AnalyzerInstanceRestControllerTest {
     }
 
     @Test
-    public void adoptionIsPlannedForTheRequestedRevision() throws Exception {
-        when(adoptionService.prepareAdoption("42", 4)).thenReturn(
-                new org.openelisglobal.analyzer.service.AnalyzerAdoptionService.AdoptionPlan("42",
-                        "fixture.synthetic-connection", 3, 4, List.of()));
+    public void adoptionIsPlannedForTheRequestedRevisionWithTheMappingItWouldSave() throws Exception {
+        org.openelisglobal.analyzer.service.AnalyzerAdoptionService.AdoptionPlan plan = new org.openelisglobal.analyzer.service.AnalyzerAdoptionService.AdoptionPlan(
+                "42", "fixture.synthetic-connection", 3, 4, List.of());
+        when(adoptionService.prepareAdoption("42", 4)).thenReturn(plan);
+        when(editorService.preview("42", 4, plan.proposals())).thenReturn(
+                new org.openelisglobal.analyzer.service.AnalyzerMappingView("42", "fixture.synthetic-connection", 4,
+                        FINGERPRINT, "Synthetic", "ASTM", null, 0, null, List.of(), null, null));
 
         mockMvc.perform(get("/rest/analyzer/analyzers/42/adoption").param("revision", "4")).andExpect(status().isOk())
-                .andExpect(jsonPath("$.fromRevision").value(3)).andExpect(jsonPath("$.toRevision").value(4));
+                .andExpect(jsonPath("$.fromRevision").value(3)).andExpect(jsonPath("$.toRevision").value(4))
+                .andExpect(jsonPath("$.proposal.profileRevision").value(4));
     }
 
     @Test

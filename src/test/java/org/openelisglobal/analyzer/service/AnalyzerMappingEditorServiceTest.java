@@ -422,6 +422,26 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     @Test
+    public void previewShowsTheAnalyzersDecisionsOnAnotherRevisionWithoutSavingThem() throws Exception {
+        analyzerWithLatest(currentMapping());
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 3)).thenReturn(profileRevision());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
+
+        AnalyzerMappingView view = service.preview("42", 3, validDraft());
+
+        assertEquals("42", view.analyzerId());
+        assertNull("nothing is saved", view.mappingId());
+        AnalyzerMappingView.TestRow first = view.tests().get(0);
+        assertEquals(AnalyzerMappingState.BOUND, first.mappingState());
+        assertEquals("SARS-CoV-2 RNA", first.selectedTest().name());
+        assertEquals("Positive", first.results().get(0).selectedOption().label());
+        assertEquals(AnalyzerMappingState.EXCLUDED, view.tests().get(1).mappingState());
+        verify(bridgeProfileCatalogService).getProfile("site.mock-analyzer", 3);
+        verify(mappingService, never()).appendRevision(any(), any(), any());
+    }
+
+    @Test
     public void getDefaultsShowsEachRecordOfATestAsItsOwnRow() throws Exception {
         when(bridgeProfileCatalogService.getProfile("site.viral-load", 1)).thenReturn(viralLoadRevision());
         viralLoadCatalog();
