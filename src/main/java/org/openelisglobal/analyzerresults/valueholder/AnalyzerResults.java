@@ -91,6 +91,7 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
     // types and the message carried no specimen; the review page's chooser
     // resolves it.
     public static final String IMPORT_ISSUE_AWAITING_SPECIMEN = "awaiting_specimen";
+    public static final String IMPORT_ISSUE_AWAITING_PLACEMENT = "awaiting_placement";
     public static final String IMPORT_ISSUE_UNKNOWN_TEST = "unknown_analyzer_test";
     public static final String IMPORT_ISSUE_TEST_MAPPING_NOT_READY = "test_mapping_not_ready";
     public static final String IMPORT_ISSUE_UNKNOWN_RESULT_VALUE = "unknown_analyzer_result_value";
@@ -102,6 +103,15 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;
+
+    @Column(name = "instrument_specimen_id", length = 255)
+    private String instrumentSpecimenId;
+
+    @Column(name = "instrument_patient_id", length = 255)
+    private String instrumentPatientId;
+
+    @Column(name = "instrument_patient_name", length = 255)
+    private String instrumentPatientName;
 
     @Column(name = "source_message_id", length = 255)
     private String sourceMessageId;
@@ -164,6 +174,34 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
 
     public void setImportIssueReason(String importIssueReason) {
         this.importIssueReason = importIssueReason;
+    }
+
+    /** The specimen ID as the instrument reported it: an accession or a tube ID. */
+    public String getInstrumentSpecimenId() {
+        return instrumentSpecimenId;
+    }
+
+    public void setInstrumentSpecimenId(String instrumentSpecimenId) {
+        this.instrumentSpecimenId = instrumentSpecimenId;
+    }
+
+    /**
+     * The patient ID the instrument reported, as reported. Not an OpenELIS patient.
+     */
+    public String getInstrumentPatientId() {
+        return instrumentPatientId;
+    }
+
+    public void setInstrumentPatientId(String instrumentPatientId) {
+        this.instrumentPatientId = instrumentPatientId;
+    }
+
+    public String getInstrumentPatientName() {
+        return instrumentPatientName;
+    }
+
+    public void setInstrumentPatientName(String instrumentPatientName) {
+        this.instrumentPatientName = instrumentPatientName;
     }
 
     public String getSourceMessageId() {

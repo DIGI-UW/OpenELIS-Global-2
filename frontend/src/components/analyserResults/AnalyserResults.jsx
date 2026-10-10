@@ -37,6 +37,12 @@ import config from "../../config.json";
 import ResultAlertModal, {
   acknowledgementRefusal,
 } from "../resultPage/ResultAlertModal";
+import PlacementNotice from "./PlacementNotice";
+import DeliveryBundleModal from "./DeliveryBundleModal";
+import RedirectControl from "./RedirectControl";
+
+// Held for a decision the reviewer can make on the page, not for a mapping fix.
+const REVIEWABLE_HOLDS = ["awaiting_specimen", "awaiting_placement"];
 
 export const buildAnalyzerResultsRedirectUrl = (analyzerId) => {
   if (!analyzerId) {
@@ -91,6 +97,7 @@ const AnalyserResults = (props) => {
   // OGC-1417: retyped values the server will not accept until the reviewer
   // acknowledges them as critical, or confirms them outside the valid range
   const [resultAlert, setResultAlert] = useState(null);
+  const [bundleReceiptId, setBundleReceiptId] = useState(null);
 
   useEffect(() => {
     componentMounted.current = true;
@@ -157,8 +164,14 @@ const AnalyserResults = (props) => {
   const actionablePatientResults = patientResults.filter(
     (result) =>
       !result.importIssueReason ||
-      result.importIssueReason === "awaiting_specimen",
+      REVIEWABLE_HOLDS.includes(result.importIssueReason),
   );
+  // One tick saves a whole grouping, so "accept all" ticks only the groupings
+  // whose every result has exactly one analysis waiting for it.
+  const groupIsMatched = (grouping) =>
+    actionablePatientResults
+      .filter((result) => result.sampleGroupingNumber === grouping)
+      .every((result) => result.placement?.state === "RESOLVED");
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
@@ -345,6 +358,26 @@ const AnalyserResults = (props) => {
     }
   };
 
+  const handleAnalysisChoice = (analysisId, rowId) => {
+    const row = (props.results.resultList || []).find(
+      (r) => String(r.id) === String(rowId),
+    );
+    if (row) {
+      row.chosenAnalysisId = analysisId;
+      rememberEdit(rowId, "chosenAnalysisId", analysisId);
+    }
+  };
+
+  const handleRedirect = (field, value, rowId) => {
+    const row = (props.results.resultList || []).find(
+      (r) => String(r.id) === String(rowId),
+    );
+    if (row) {
+      row[field] = value;
+      rememberEdit(rowId, field, value);
+    }
+  };
+
   const handleAutomatedCheck = (checked, rowId, fieldName) => {
     const row = (props.results.resultList || []).find(
       (result) => String(result.id) === String(rowId),
@@ -365,7 +398,7 @@ const AnalyserResults = (props) => {
   const renderCell = (row, index, column, id) => {
     let formatLabNum = configurationProperties.AccessionFormat === "ALPHANUM";
     const held = Boolean(row.importIssueReason);
-    const awaitingSpecimen = row.importIssueReason === "awaiting_specimen";
+    const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
       case "sampleInfo":
         return (
@@ -398,9 +431,21 @@ const AnalyserResults = (props) => {
                   {formatLabNum
                     ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
                     : row.accessionNumber}
+                  {row.instrumentSpecimenId &&
+                    row.instrumentSpecimenId !== row.accessionNumber && (
+                      <div data-testid="InstrumentSpecimenId">
+                        <FormattedMessage
+                          id="analyzer.placement.instrumentSpecimen"
+                          values={{ id: row.instrumentSpecimenId }}
+                        />
+                      </div>
+                    )}
                   <br></br>
                   <br></br>
                 </div>
+                {row.placement && (
+                  <RedirectControl row={row} onChange={handleRedirect} />
+                )}
                 {row.nonconforming && (
                   <picture>
                     <img
@@ -419,6 +464,11 @@ const AnalyserResults = (props) => {
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
             {row.testName}
+            <PlacementNotice
+              row={row}
+              onChooseAnalysis={handleAnalysisChoice}
+              onViewBundle={setBundleReceiptId}
+            />
             {/* OGC-1145 FR-8 — specimen-ambiguous row: the reviewer picks the
                 sample type; accepting without a choice keeps the row staged
                 (awaiting specimen) instead of guessing. */}
@@ -452,7 +502,7 @@ const AnalyserResults = (props) => {
         );
 
       case "save":
-        if (held && !awaitingSpecimen) {
+        if (held && !awaitingReview) {
           return null;
         }
         return (
@@ -544,7 +594,7 @@ const AnalyserResults = (props) => {
         );
 
       case "result":
-        if (held && !awaitingSpecimen) {
+        if (held && !awaitingReview) {
           const resolutionUrl = buildHeldResultResolutionUrl(
             row,
             props.analyzerId,
@@ -697,6 +747,12 @@ const AnalyserResults = (props) => {
                     "resultList" + result.id + ".isAccepted",
                   );
                   if (!checkbox) return;
+                  if (
+                    e.target.checked &&
+                    !groupIsMatched(result.sampleGroupingNumber)
+                  ) {
+                    return;
+                  }
                   checkbox.checked = e.target.checked;
                   handleAutomatedCheck(
                     e.target.checked,
@@ -839,6 +895,10 @@ const AnalyserResults = (props) => {
         customCriticalMessage={resultAlert?.customCriticalMessage}
         onConfirm={confirmResultAlert}
         onCorrect={() => setResultAlert(null)}
+      />
+      <DeliveryBundleModal
+        receiptId={bundleReceiptId}
+        onClose={() => setBundleReceiptId(null)}
       />
     </>
   );

@@ -31,11 +31,17 @@ const importIssuesBreadcrumbs = [
 
 const groupActionFields = ["isAccepted", "isRejected", "isDeleted"];
 
+// Held for a decision the reviewer can make on the page, not for a mapping fix.
+const reviewableHolds = ["awaiting_specimen", "awaiting_placement"];
+
 const restorableResultFields = [
   "isAccepted",
   "isRejected",
   "isDeleted",
   "typeOfSampleId",
+  "chosenAnalysisId",
+  "redirectAccession",
+  "redirectReason",
   "note",
   "result",
 ];
@@ -122,7 +128,7 @@ const Index = () => {
     const reviewPriority = (item) =>
       !item.importIssueReason
         ? 2
-        : item.importIssueReason === "awaiting_specimen"
+        : reviewableHolds.includes(item.importIssueReason)
           ? 1
           : 0;
     const groups = new Map();
@@ -196,7 +202,7 @@ const Index = () => {
         ? data.resultList.map((row) => {
             if (
               row.importIssueReason &&
-              row.importIssueReason !== "awaiting_specimen"
+              !reviewableHolds.includes(row.importIssueReason)
             ) {
               return row;
             }

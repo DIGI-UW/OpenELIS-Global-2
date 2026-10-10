@@ -28,6 +28,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO;
 import org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.common.log.LogEvent;
@@ -50,13 +51,14 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
     private final QCResultProcessingService qcResultProcessingService;
     private final FhirContext fhirContext;
     private final AnalyzerDeliveryReceiptDAO receiptDAO;
+    private final AnalyzerResultPlacementService placementService;
 
     public AnalyzerNormalizedResultImportServiceImpl(AnalyzerService analyzerService,
             AnalyzerSiteBindingService siteBindingService, AnalyzerResultsService analyzerResultsService,
             TestResultService testResultService, QCResultProcessingService qcResultProcessingService,
             FhirContext fhirContext, AnalyzerDeliveryReceiptDAO receiptDAO,
             AnalyzerSiteBindingConfirmationService confirmationService,
-            AnalyzerMappingCatalogService mappingCatalogService) {
+            AnalyzerMappingCatalogService mappingCatalogService, AnalyzerResultPlacementService placementService) {
         this.analyzerService = analyzerService;
         this.siteBindingService = siteBindingService;
         this.analyzerResultsService = analyzerResultsService;
@@ -66,6 +68,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         this.receiptDAO = receiptDAO;
         this.confirmationService = confirmationService;
         this.mappingCatalogService = mappingCatalogService;
+        this.placementService = placementService;
     }
 
     @Override
@@ -116,6 +119,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         receipt.setControlsProcessed(controlsProcessed);
         receipt.setAcceptedBy(effectiveActor);
         receipt.setAcceptedAt(new Timestamp(System.currentTimeMillis()));
+        receipt.setBundleJson(fhirContext.newJsonParser().encodeResourceToString(bundle));
         receiptDAO.insert(receipt);
         return new AnalyzerNormalizedResultImportSummary(receipt.getId(), analyzer.getId(), staged.size(), held,
                 controlsProcessed);
@@ -144,7 +148,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             Observation observation = fhirContext.newJsonParser().parseResource(Observation.class,
                     held.getSourcePayload());
             var source = AnalyzerNormalizedResultContract.parseResult(observation,
-                    Map.of(observation.getSpecimen().getReference(), held.getAccessionNumber()),
+                    Map.of(observation.getSpecimen().getReference(), specimenIdOf(held)), Map.of(),
                     observation.getDevice().getReference(), fhirContext);
             var contract = new AnalyzerNormalizedResultContract(held.getSourceMessageId(), held.getSourceConnectionId(),
                     held.getSourceProfileId(), held.getSourceProfileRevision(), held.getSourceProtocol(),
@@ -159,6 +163,8 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                 continue;
             }
             recovered.setId(held.getId());
+            recovered.setInstrumentPatientId(held.getInstrumentPatientId());
+            recovered.setInstrumentPatientName(held.getInstrumentPatientName());
             recovered.setLastupdated(held.getLastupdated());
             recovered.setSysUserId(effectiveActor);
             analyzerResultsService.update(recovered);
@@ -170,6 +176,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             }
         }
         return recoveredCount;
+    }
+
+    /** A row staged before tube IDs were kept has only its accession. */
+    private static String specimenIdOf(AnalyzerResults row) {
+        return row.getInstrumentSpecimenId() != null ? row.getInstrumentSpecimenId() : row.getAccessionNumber();
     }
 
     private List<AnalyzerResults> mapResults(AnalyzerNormalizedResultContract contract, Analyzer analyzer) {
@@ -206,7 +217,10 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
             boolean mappingConfirmed, AnalyzerSiteBindingCatalogState.Validation catalog) {
         AnalyzerResults row = new AnalyzerResults();
         row.setAnalyzerId(analyzer.getId());
-        row.setAccessionNumber(result.accessionNumber());
+        row.setInstrumentSpecimenId(result.accessionNumber());
+        row.setInstrumentPatientId(result.instrumentPatientId());
+        row.setInstrumentPatientName(result.instrumentPatientName());
+        row.setAccessionNumber(placementService.accessionFor(result.accessionNumber()));
         row.setTestName(result.rawTestCode());
         row.setResult(result.rawValue());
         row.setUnits(result.units());

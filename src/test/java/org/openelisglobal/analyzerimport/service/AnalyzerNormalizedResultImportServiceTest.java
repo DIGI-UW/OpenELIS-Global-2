@@ -40,6 +40,7 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingResultPK;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTestPK;
+import org.openelisglobal.analyzerresults.service.AnalyzerResultPlacementService;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.openelisglobal.testresult.service.TestResultService;
@@ -65,6 +66,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
     private TestResultService testResultService;
     @Mock
     private QCResultProcessingService qcResultProcessingService;
+    @Mock
+    private AnalyzerResultPlacementService placementService;
 
     @Mock
     private org.openelisglobal.analyzerimport.dao.AnalyzerDeliveryReceiptDAO receiptDAO;
@@ -78,7 +81,8 @@ public class AnalyzerNormalizedResultImportServiceTest {
         MockitoAnnotations.initMocks(this);
         service = new AnalyzerNormalizedResultImportServiceImpl(analyzerService, siteBindingService,
                 analyzerResultsService, testResultService, qcResultProcessingService, FHIR, receiptDAO,
-                confirmationService, mappingCatalogService);
+                confirmationService, mappingCatalogService, placementService);
+        when(placementService.accessionFor(any())).thenAnswer(call -> call.getArgument(0));
         when(receiptDAO.findByDelivery(any(), any())).thenReturn(Optional.empty());
         when(confirmationService.hasMatchingConfirmation(any(), any())).thenReturn(true);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
@@ -116,6 +120,65 @@ public class AnalyzerNormalizedResultImportServiceTest {
         assertEquals("7.5", row.getRawResultValue());
         assertEquals("PATIENT", row.getResultClassification());
         assertFalse(row.getSourcePayload().isBlank());
+    }
+
+    @Test
+    public void aTubeIdIsKeptVerbatimBesideTheAccessionItResolvesTo() throws IOException {
+        when(placementService.accessionFor("ACC-KNOWN-001")).thenReturn("ACC-KNOWN");
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+
+        service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+
+        AnalyzerResults row = capturedRow();
+        assertEquals("ACC-KNOWN-001", row.getInstrumentSpecimenId());
+        assertEquals("ACC-KNOWN", row.getAccessionNumber());
+    }
+
+    @Test
+    public void theDeliverysBundleIsKeptOnItsReceipt() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+
+        service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+
+        ArgumentCaptor<org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt> receipt = ArgumentCaptor
+                .forClass(org.openelisglobal.analyzerimport.valueholder.AnalyzerDeliveryReceipt.class);
+        verify(receiptDAO).insert(receipt.capture());
+        Bundle kept = FHIR.newJsonParser().parseResource(Bundle.class, receipt.getValue().getBundleJson());
+        assertEquals(fixture("normalized-known-test.fhir.json").getEntry().size(), kept.getEntry().size());
+        assertTrue(receipt.getValue().getBundleJson().contains("ACC-KNOWN-001"));
+    }
+
+    @Test
+    public void theInstrumentReportedPatientIsKeptOnTheStagedRowAsReported() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        org.hl7.fhir.r4.model.Patient patient = new org.hl7.fhir.r4.model.Patient();
+        patient.addIdentifier().setValue("PAT-77");
+        patient.addName().setText("Doe, Jane");
+        patient.addExtension("https://openelis-global.org/fhir/StructureDefinition/analyzer-patient-source",
+                new org.hl7.fhir.r4.model.StringType("instrument"));
+        bundle.addEntry().setFullUrl("urn:uuid:patient-1").setResource(patient);
+        bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(org.hl7.fhir.r4.model.Observation.class::isInstance)
+                .map(org.hl7.fhir.r4.model.Observation.class::cast).forEach(observation -> observation
+                        .setSubject(new org.hl7.fhir.r4.model.Reference("urn:uuid:patient-1")));
+
+        service.importBundle(bundle, "7");
+
+        AnalyzerResults row = capturedRow();
+        assertEquals("PAT-77", row.getInstrumentPatientId());
+        assertEquals("Doe, Jane", row.getInstrumentPatientName());
+    }
+
+    @Test
+    public void anAccessionIsStoredAsReportedAndAsTheInstrumentsSpecimenId() throws IOException {
+        arrangeBinding(List.of(boundTest("WBC", "501")), List.of());
+
+        service.importBundle(fixture("normalized-known-test.fhir.json"), "7");
+
+        AnalyzerResults row = capturedRow();
+        assertEquals("ACC-KNOWN-001", row.getInstrumentSpecimenId());
+        assertEquals("ACC-KNOWN-001", row.getAccessionNumber());
     }
 
     @Test

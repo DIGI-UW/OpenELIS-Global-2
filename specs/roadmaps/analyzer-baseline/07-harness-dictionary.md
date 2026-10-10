@@ -48,6 +48,7 @@ significantDigits,flags,significance`). Dictionary rows carry `loincCode`.
 ```
 - [ ] T7.1 Red: E2E, fresh setup of every shipped analyzer binds every declared test, value and component
 - [ ] T7.2 Red: E2E, every vendor outcome from the mock lands on the right test, component or QC result, or is held with its note; readback by accession, test, value
+- [ ] T7.2b E2E for each placement state of step 1b through native mock traffic: tube ID to its tube, rerun on a held result, two tubes, unordered test, unknown ID, a mistyped ID placed on its order, a mismatched patient, and a FILE plate with one mistyped sample name
 - [ ] T7.3 Create projects/analyzer-harness/dictionary/ as a copy of volume/configuration/backend/ with: answers for SARS-CoV-2 PCR as the instrument reports them (Positive, Negative, Invalid; LOINC LL2021-5), tests for Influenza A, Influenza B and RSV with the same answers for the 302-7279 panels (LOINC from the step-5 note), Xpert MTB/RIF -> three tests per rule 12, HIV-1 Viral Load as one test per rule 11 (numeric copies/mL primary; components for the call with Detected, Not detected and Invalid, the LOG, and the HIV-1, IQS-H and IQS-L analyte records with their Ct), components per assay, corrected LOINC on the legacy rows, answer codings in the step-2c answer terminology CSV (every LOINC, SNOMED and CIEL code step 5 cites)
 - [ ] T7.4 Point harness-catalog-init at the new directory; delete config-templates/; fix .gitignore
 - [ ] T7.5 Bump Bridge and mock submodule pins and image tags to the step-6 and step-8 releases
