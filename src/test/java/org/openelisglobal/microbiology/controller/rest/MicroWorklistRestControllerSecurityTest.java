@@ -35,6 +35,12 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
     @Autowired
     private MicroWorklistService worklistService;
 
+    private static org.openelisglobal.login.valueholder.UserSessionData actor() {
+        var actor = new org.openelisglobal.login.valueholder.UserSessionData();
+        actor.setSytemUserId(7);
+        return actor;
+    }
+
     @Test
     public void getWorklistWithoutAuthenticationReturns401() throws Exception {
         mockMvc.perform(get("/rest/microbiology/worklist")).andExpect(status().isUnauthorized());
@@ -42,35 +48,41 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
 
     @Test
     public void getWorklistWithUnrelatedRoleReturns403() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("reception").roles("RECEPTION")))
-                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, actor())
+                .with(user("reception").roles("RECEPTION"))).andExpect(status().isForbidden());
     }
 
     @Test
     public void getWorklistWithResultsRoleReturns200() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("analyst").roles("RESULTS")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, actor())
+                .with(user("analyst").roles("RESULTS"))).andExpect(status().isOk());
     }
 
     @Test
     public void getWorklistWithValidationRoleReturns200() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("validator").roles("VALIDATION")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, actor())
+                .with(user("validator").roles("VALIDATION"))).andExpect(status().isOk());
     }
 
     @Test
     public void getWorklistWithAdminRoleReturns200() throws Exception {
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("manager").roles("ADMIN")))
-                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, actor())
+                .with(user("manager").roles("ADMIN"))).andExpect(status().isOk());
     }
 
     @Test
     public void getWorklistBindsCanonicalSurveillanceScope() throws Exception {
         clearInvocations(worklistService);
-        mockMvc.perform(get("/rest/microbiology/worklist").with(user("analyst").roles("RESULTS")).param("grain", "ast")
-                .param("from", "2026-07-01").param("to", "2026-07-31").param("specimen", "blood", "urine")
-                .param("organism", "ecoli").param("origin", "icu").param("significance", "pathogen", "screening")
-                .param("page", "3").param("pageSize", "50")).andExpect(status().isOk());
+        mockMvc.perform(get("/rest/microbiology/worklist")
+                .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, actor())
+                .with(user("analyst").roles("RESULTS")).param("grain", "ast").param("from", "2026-07-01")
+                .param("to", "2026-07-31").param("specimen", "blood", "urine").param("organism", "ecoli")
+                .param("origin", "icu").param("significance", "pathogen", "screening").param("page", "3")
+                .param("pageSize", "50")).andExpect(status().isOk());
 
         ArgumentCaptor<MicroWorklistQueryForm> queryCaptor = ArgumentCaptor.forClass(MicroWorklistQueryForm.class);
         verify(worklistService).getWorklistPage(queryCaptor.capture());
@@ -107,7 +119,8 @@ public class MicroWorklistRestControllerSecurityTest extends SecuritySliceMockMv
 
         @Bean
         MicroWorklistRestController microWorklistRestController(MicroWorklistService service) {
-            return new MicroWorklistRestController(service);
+            return new MicroWorklistRestController(service,
+                    mock(org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService.class));
         }
     }
 }

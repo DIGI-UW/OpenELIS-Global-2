@@ -248,7 +248,8 @@ public class MicrobiologyUatScenarioServiceTest {
                 testResultService, testMethodService, statusService, statusOfSampleService, configurationService,
                 caseService, caseAnalysisService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
-                nceCategoryService, nceTypeService, isolateService, astService, analyzerService);
+                nceCategoryService, nceTypeService, isolateService, astService, analyzerService,
+                mock(MicroCaseMembershipService.class));
 
         EntityManager entityManager = mock(EntityManager.class);
         Query bulkUpdate = mock(Query.class);

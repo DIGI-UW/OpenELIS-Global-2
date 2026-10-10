@@ -41,7 +41,7 @@ test.describe("microbiology worklist and critical communication", () => {
     page,
   }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto("/Microbiology/worklist", {
+    await page.goto("/Microbiology/worklist?grain=cultures", {
       waitUntil: "domcontentloaded",
     });
     await expect(
@@ -168,7 +168,7 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(page).toHaveURL(/\/Microbiology\/worklist\?sort=newest$/);
     await sortResponse;
 
-    await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
     await expect(

@@ -60,7 +60,7 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     );
     await expectNoWcag21AaViolations(page, testInfo, "microbiology-worklist");
 
-    await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+    await page.goto(`/Microbiology/cases/${seeded.caseId}?view=workbench`, {
       waitUntil: "domcontentloaded",
     });
     await expect(

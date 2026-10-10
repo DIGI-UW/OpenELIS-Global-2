@@ -85,7 +85,10 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         if (AST_GRAIN.equals(normalized.grain) && "reviewed".equals(normalized.status)) {
             return getReviewedAstWorklistPage(normalized);
         }
-        List<MicroCase> worklistCases = caseDAO.getOpenCases();
+        List<MicroCase> worklistCases = caseDAO.getOpenCases().stream()
+                .filter(c -> normalized.permittedLabUnitIds == null
+                        || normalized.permittedLabUnitIds.contains(c.getLabUnitId()))
+                .toList();
         List<String> caseIds = worklistCases.stream().map(MicroCase::getId).toList();
         List<String> sampleItemIds = worklistCases.stream().map(MicroCase::getSampleItemId).distinct().toList();
         Map<String, List<MicroIsolate>> isolatesByCase = groupBy(isolateDAO.getByCaseIds(caseIds),
@@ -140,7 +143,8 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
 
     private MicroWorklistPageForm getReviewedAstWorklistPage(MicroWorklistQueryForm query) {
         MicroReviewedAstWorklistQuery reviewedQuery = new MicroReviewedAstWorklistQuery(query.stage, query.urgency,
-                query.due, query.q, query.sort, (query.page - 1) * query.pageSize, query.pageSize);
+                query.due, query.q, query.sort, (query.page - 1) * query.pageSize, query.pageSize,
+                query.permittedLabUnitIds);
         List<MicroReviewedAstWorklistRow> selected = astRunDAO.getReviewedWorklistPage(reviewedQuery);
         List<MicroCase> cases = selected.stream().map(MicroReviewedAstWorklistRow::microCase).collect(
                 Collectors.toMap(MicroCase::getId, Function.identity(), (first, ignored) -> first, LinkedHashMap::new))
@@ -284,6 +288,7 @@ public class MicroWorklistServiceImpl implements MicroWorklistService {
         if (query == null) {
             return normalized;
         }
+        normalized.permittedLabUnitIds = query.permittedLabUnitIds;
         normalized.grain = AST_GRAIN.equals(query.grain) ? AST_GRAIN : CULTURES_GRAIN;
         normalized.status = statusForGrain(normalized.grain, query.status);
         normalized.from = AST_GRAIN.equals(normalized.grain) ? filterDate(query.from) : "";

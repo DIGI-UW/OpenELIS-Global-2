@@ -68,7 +68,8 @@ test.describe("Microbiology analyzer AST review", () => {
     await page.keyboard.press("Enter");
     await page.waitForURL((url) => {
       return (
-        url.pathname === `/Microbiology/cases/${seeded.caseId}` &&
+        url.pathname ===
+          `/Microbiology/cases/${seeded.caseId}?view=workbench` &&
         url.searchParams.get("grain") === "ast" &&
         url.searchParams.get("status") === "results-in" &&
         url.searchParams.get("section") === "ast" &&
