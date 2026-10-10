@@ -46,6 +46,13 @@ import {
   sectionBadge,
   stageBadgeKind,
 } from "./pathologySections";
+import {
+  countedRows,
+  needsParentBlock,
+  objectNaming,
+  stripClientKeys,
+} from "./pathologyRows";
+import DeactivateRowDialog from "./DeactivateRowDialog";
 import CaseInformationSection from "./sections/CaseInformationSection";
 import GrossingSection from "./sections/GrossingSection";
 import StagePlaceholderSection from "./sections/StagePlaceholderSection";
@@ -53,6 +60,13 @@ import MicrotomySection from "./sections/MicrotomySection";
 import ReviewSection from "./sections/ReviewSection";
 import FindingsSection from "./sections/FindingsSection";
 import ReportsSection from "./sections/ReportsSection";
+
+// The switch that shows a list's deactivated rows, where focus lands once
+// the row it was on has left the list.
+const SHOW_DEACTIVATED_SWITCH = {
+  block: "showDeactivatedCassettes",
+  slide: "showDeactivatedSlides",
+};
 
 /**
  * The anatomic-pathology case, on the shared case-view shell.
@@ -110,6 +124,9 @@ function PathologyCaseView() {
   const [totalApiPages, setTotalApiPages] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [postSavePrintModel, setPostSavePrintModel] = useState(null);
+  const [pendingDeactivation, setPendingDeactivation] = useState(null);
+  const focusAfterLoad = useRef(null);
+  const [saveRefusedForBlock, setSaveRefusedForBlock] = useState(false);
   const [reportParams, setReportParams] = useState({
     0: {
       submited: false,
@@ -168,6 +185,13 @@ function PathologyCaseView() {
     }
     setCaseInfo(loaded);
     setDirty(false);
+    // A load drops every unsaved slide, so an earlier refusal marks nothing.
+    setSaveRefusedForBlock(false);
+    const focusId = focusAfterLoad.current;
+    focusAfterLoad.current = null;
+    if (focusId) {
+      setTimeout(() => document.getElementById(focusId)?.focus());
+    }
     setCaseLoaded(true);
     setFormVersion((version) => version + 1);
   };
@@ -245,13 +269,35 @@ function PathologyCaseView() {
       // read back rather than assumed.
       reloadCase();
     } else {
+      // The server's own sentence is English and names internal ids, so only
+      // a refusal the bench can act on gets words of its own.
       addNotification({
         kind: NotificationKinds.error,
         title: intl.formatMessage({ id: "notification.title" }),
-        message: intl.formatMessage({ id: "error.save.msg" }),
+        message: intl.formatMessage({
+          id:
+            body?.conflict === "designation"
+              ? "pathology.error.designationConflict"
+              : "error.save.msg",
+        }),
       });
     }
   }
+
+  // Deactivate cannot be pressed while the form is dirty or saving, so this
+  // read-back can never overwrite work that was not yet saved.
+  const onRowDeactivated = (pending) => {
+    const naming = objectNaming(pending.kind, pending.row);
+    focusAfterLoad.current = SHOW_DEACTIVATED_SWITCH[pending.kind];
+    setPendingDeactivation(null);
+    setNotificationVisible(true);
+    addNotification({
+      kind: NotificationKinds.success,
+      title: intl.formatMessage({ id: "notification.title" }),
+      message: intl.formatMessage({ id: naming.toastKey }, naming.values),
+    });
+    reloadCase();
+  };
 
   const reportStatus = async (pdfGenerated, blob, index) => {
     setNotificationVisible(true);
@@ -303,14 +349,26 @@ function PathologyCaseView() {
     if (isSubmitting) {
       return;
     }
+    // The server would refuse it anyway, in a sentence naming no row.
+    const refused = (caseInfo.slides ?? []).some(needsParentBlock);
+    setSaveRefusedForBlock(refused);
+    if (refused) {
+      setNotificationVisible(true);
+      addNotification({
+        kind: NotificationKinds.error,
+        title: intl.formatMessage({ id: "notification.title" }),
+        message: intl.formatMessage({ id: "pathology.locked.slideNeedsBlock" }),
+      });
+      return;
+    }
     setIsSubmitting(true);
     setPostSavePrintModel(null);
     let submitValues = {
       assignedTechnicianId: caseInfo.assignedTechnicianId,
       assignedPathologistId: caseInfo.assignedPathologistId,
       status: caseInfo.status,
-      blocks: caseInfo.blocks,
-      slides: caseInfo.slides,
+      blocks: stripClientKeys(caseInfo.blocks),
+      slides: stripClientKeys(caseInfo.slides),
       reports: caseInfo.reports,
       grossExam: caseInfo.grossExam,
       microscopyExam: caseInfo.microscopyExam,
@@ -415,6 +473,9 @@ function PathologyCaseView() {
             updateCase={updateCase}
             readOnly={readOnly}
             technicianUsers={technicianUsers}
+            dirty={dirty}
+            saving={isSubmitting}
+            onDeactivate={setPendingDeactivation}
           />
         );
       case "pathology-section-microtomy":
@@ -424,6 +485,10 @@ function PathologyCaseView() {
             updateCase={updateCase}
             readOnly={readOnly}
             onSlideFile={(index, file) => attachFile("slides", index, file)}
+            dirty={dirty}
+            saving={isSubmitting}
+            saveRefusedForBlock={saveRefusedForBlock}
+            onDeactivate={setPendingDeactivation}
           />
         );
       case "pathology-section-review":
@@ -534,13 +599,13 @@ function PathologyCaseView() {
     },
     {
       id: "blocks",
-      labelKey: "pathology.label.blocks",
-      value: (caseInfo.blocks ?? []).length,
+      labelKey: "pathology.label.cassettes",
+      value: countedRows(caseInfo.blocks).length,
     },
     {
       id: "slides",
       labelKey: "pathology.label.slides",
-      value: (caseInfo.slides ?? []).length,
+      value: countedRows(caseInfo.slides).length,
     },
     {
       id: "requests",
@@ -704,6 +769,11 @@ function PathologyCaseView() {
                   ))}
                 </Accordion>
               </CaseViewLayout>
+              <DeactivateRowDialog
+                pending={pendingDeactivation}
+                onClose={() => setPendingDeactivation(null)}
+                onRowDeactivated={onRowDeactivated}
+              />
             </>
           )}
         </Stack>

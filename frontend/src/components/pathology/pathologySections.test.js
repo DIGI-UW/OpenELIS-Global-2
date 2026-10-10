@@ -4,6 +4,7 @@ import { PATHOLOGY_STAGES } from "./pathologyStages";
 import { SECTION_STATE } from "../caseView/sectionState";
 import {
   PATHOLOGY_SECTIONS,
+  grossingComplete,
   stageEnablementProperty,
   isStageEnabled,
   stageBadgeKind,
@@ -523,15 +524,17 @@ describe("sectionBadge", () => {
     // blocks are still counted.
     expect(
       sectionBadge(grossing, {
-        caseInfo: { grossExam: "   ", blocks: [{}, {}] },
+        caseInfo: { grossExam: "   ", blocks: [{ id: "1" }, { id: "2" }] },
       }),
     ).toEqual({
       kind: "inProgress",
-      textKey: "pathology.badge.blockCount",
+      textKey: "pathology.badge.cassetteCount",
       values: { count: 2 },
     });
     expect(
-      sectionBadge(microtomy, { caseInfo: { slides: [{}, {}, {}] } }),
+      sectionBadge(microtomy, {
+        caseInfo: { slides: [{ id: "1" }, { id: "2" }, { id: "3" }] },
+      }),
     ).toEqual({
       kind: "inProgress",
       textKey: "pathology.badge.slideCount",
@@ -712,5 +715,76 @@ describe("a status this build does not recognize", () => {
     });
     expect(items.some((item) => item.complete)).toBe(false);
     expect(railCurrentIndex(sections, status)).toBe(-1);
+  });
+});
+
+describe("grossingComplete over saved cassettes in use", () => {
+  it("does not call a case cut whose only cassette has been deactivated", () => {
+    expect(
+      grossingComplete({
+        grossExam: "Firm tan nodule",
+        blocks: [{ id: "1", active: false }],
+      }),
+    ).toBe(false);
+    expect(
+      grossingComplete({
+        grossExam: "Firm tan nodule",
+        blocks: [
+          { id: "1", active: false },
+          { id: "2", active: true },
+        ],
+      }),
+    ).toBe(true);
+  });
+
+  it("does not call a case cut on a cassette added but not yet saved", () => {
+    expect(
+      grossingComplete({
+        grossExam: "Firm tan nodule",
+        blocks: [{ location: "" }],
+      }),
+    ).toBe(false);
+  });
+});
+
+describe("counting badges over rows in use", () => {
+  const sections = deriveCaseSections({
+    intl,
+    status: "READY_PATHOLOGIST",
+    isPathologist: true,
+  });
+
+  it("counts only the cassettes and slides still in use", () => {
+    expect(
+      sectionBadge(byId(sections, "pathology-section-grossing"), {
+        caseInfo: {
+          blocks: [{ id: "1" }, { id: "2", active: false }, { location: "" }],
+        },
+      }),
+    ).toEqual({
+      kind: "inProgress",
+      textKey: "pathology.badge.cassetteCount",
+      values: { count: 1 },
+    });
+    expect(
+      sectionBadge(byId(sections, "pathology-section-microtomy"), {
+        caseInfo: { slides: [{ id: "1", active: false }] },
+      }),
+    ).toBeNull();
+  });
+
+  it("ticks microtomy on the rail for a saved slide in use, and for no other slide", () => {
+    const microtomy = (slides) =>
+      deriveRailItems(sections, {
+        intl,
+        status: "READY_PATHOLOGIST",
+        reportCount: 0,
+        openRequestNames: [],
+        caseInfo: { slides },
+      }).find((item) => item.id === "pathology-section-microtomy");
+
+    expect(microtomy([{ id: "1", active: false }]).complete).toBe(false);
+    expect(microtomy([{ blockId: "1", location: "" }]).complete).toBe(false);
+    expect(microtomy([{ id: "1", active: true }]).complete).toBe(true);
   });
 });

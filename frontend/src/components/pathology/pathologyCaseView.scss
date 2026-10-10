@@ -1,19 +1,18 @@
 @use "@carbon/styles/scss/spacing";
 @use "@carbon/styles/scss/type";
 
-// One form field's width, for every row field and the count boxes.
+// One form field's width, for every row field.
 $field-inline-size: 12rem;
 
-// The repeating rows of the pathology case view: one block, one slide, one
+// The repeating rows of the pathology case view: one cassette, one slide, one
 // report version.
 //
 // These rows sit inside the shell's centre column, which is nine of the
 // layout's sixteen. A Carbon Grid nested there still counts its own columns
 // to sixteen, so rows laid out as Grid columns wrapped inside the narrower
-// column and their controls landed on top of one another: Upload file over
-// Print Label on a slide, the block remover against the description above it.
-// A row is one wrapping flex line instead. It needs no column arithmetic and
-// reflows at whatever width the centre column happens to have.
+// column and their controls landed on top of one another. A row is one
+// wrapping flex line instead. It needs no column arithmetic and reflows at
+// whatever width the centre column happens to have.
 
 .pathology-case-view__row {
   border-block-end: 1px solid var(--cds-border-subtle);
@@ -67,8 +66,65 @@ $field-inline-size: 12rem;
   padding-block-start: spacing.$spacing-05;
 }
 
-.pathology-case-view__add-count {
-  inline-size: $field-inline-size;
+// A row's identity line: designation, barcode and state tag side by side, above
+// the fields, so a reader sees which object the row is before its controls.
+.pathology-case-view__row-identity {
+  align-items: center;
+  display: flex;
+  flex-basis: 100%;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-03;
+}
+
+.pathology-case-view__row-designation {
+  @include type.type-style("heading-compact-01");
+}
+
+// The barcode is read aloud to a scanner or a colleague, so it sets in the
+// monospace style and stays secondary to the designation.
+.pathology-case-view__row-barcode {
+  @include type.type-style("code-01");
+
+  color: var(--cds-text-secondary);
+}
+
+// A deactivated identifier reads as such before the tag is noticed; the tag
+// still carries the word for anyone who cannot see the strike-through.
+.pathology-case-view__row--deactivated {
+  color: var(--cds-text-secondary);
+}
+
+.pathology-case-view__row--deactivated .pathology-case-view__row-designation {
+  text-decoration: line-through;
+}
+
+// Read-only text standing beside a field, such as a slide's parent block.
+.pathology-case-view__row-meta {
+  display: flex;
+  flex: 0 1 $field-inline-size;
+  flex-direction: column;
+  gap: spacing.$spacing-02;
+}
+
+// Matches the label of a TextInput beside it so the two line up.
+.pathology-case-view__row-meta-label {
+  @include type.type-style("label-01");
+
+  color: var(--cds-text-secondary);
+}
+
+// Add, Print and the Show deactivated switch share one line under a list,
+// with the switch pushed to the end.
+.pathology-case-view__list-toolbar {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: spacing.$spacing-05;
+  padding-block-start: spacing.$spacing-05;
+}
+
+.pathology-case-view__list-toolbar-end {
+  margin-inline-start: auto;
 }
 
 // A selector the bench picks one name from has no business spanning the whole
