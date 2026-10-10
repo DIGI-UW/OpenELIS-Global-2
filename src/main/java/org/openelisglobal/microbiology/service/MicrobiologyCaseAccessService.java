@@ -13,5 +13,4 @@ public interface MicrobiologyCaseAccessService {
 
     boolean canReadLabUnit(String systemUserId, String labUnitId);
 
-    void filterRelatedCases(org.openelisglobal.microbiology.form.MicroCaseDetailForm detail, String systemUserId);
 }

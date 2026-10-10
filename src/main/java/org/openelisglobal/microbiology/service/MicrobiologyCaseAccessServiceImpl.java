@@ -78,9 +78,4 @@ public class MicrobiologyCaseAccessServiceImpl implements MicrobiologyCaseAccess
         return cases.getBySampleItem(sampleItemId).stream().anyMatch(c -> canReadLabUnit(userId, c.getLabUnitId()));
     }
 
-    @Override
-    public void filterRelatedCases(org.openelisglobal.microbiology.form.MicroCaseDetailForm detail, String userId) {
-        if (detail != null)
-            detail.siblingCases.removeIf(c -> !canAccessCase(c.id, userId, false));
-    }
 }

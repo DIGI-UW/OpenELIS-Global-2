@@ -11,4 +11,5 @@ public class MicroCaseShellForm extends MicroCaseSummaryForm {
     public List<IdValuePair> transferLabUnits = new ArrayList<>();
     public boolean canWrite;
     public boolean canValidate;
+    public boolean readOnlyAccess;
 }

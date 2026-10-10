@@ -57,27 +57,6 @@ public class MicrobiologyCaseAccessServiceTest {
     }
 
     @Test
-    public void retainedDetailFiltersEveryRelatedCaseIndependently() {
-        assign("10", "r");
-        var visible = new MicroCase();
-        visible.setLabUnitId("10");
-        var hidden = new MicroCase();
-        hidden.setLabUnitId("11");
-        when(cases.get("visible")).thenReturn(Optional.of(visible));
-        when(cases.get("hidden")).thenReturn(Optional.of(hidden));
-        var detail = new org.openelisglobal.microbiology.form.MicroCaseDetailForm();
-        var allowedLink = new org.openelisglobal.microbiology.form.MicroCaseLookupForm();
-        allowedLink.id = "visible";
-        var deniedLink = new org.openelisglobal.microbiology.form.MicroCaseLookupForm();
-        deniedLink.id = "hidden";
-        detail.siblingCases.add(allowedLink);
-        detail.siblingCases.add(deniedLink);
-        access.filterRelatedCases(detail, "7");
-        assertEquals(1, detail.siblingCases.size());
-        assertEquals("visible", detail.siblingCases.get(0).id);
-    }
-
-    @Test
     public void validationAllowsReadButDoesNotGrantResultsWrites() {
         assign("10", "v");
         assertTrue(access.canReadLabUnit("7", "10"));
