@@ -18,6 +18,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresult.valueholder.TestResultSignificance;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.testterminology.service.TestTerminologyMappingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -28,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
  * defining test results (possible values/options for tests).
  *
  * Expected CSV format:
- * testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags
+ * testName,resultType,resultValue,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,componentCode
  * HIV Rapid Test,D,Positive,1,N,Y,N,, HIV Rapid Test,D,Negative,2,N,Y,Y,, HIV
  * Rapid Test,D,Inconclusive,3,N,Y,N,, Hemoglobin,N,,1,Y,Y,N,2,
  * Glucose,N,,1,Y,Y,N,0,
@@ -46,8 +47,9 @@ import org.springframework.transaction.annotation.Transactional;
  * isQuantifiable defaults to "N" if not specified - isActive defaults to "Y" if
  * not specified - isNormal defaults to "N" if not specified - significantDigits
  * is optional, used for numeric types - flags is optional (e.g., "H" for high,
- * "L" for low) - Existing test results with matching test and value will be
- * updated
+ * "L" for low) - componentCode is optional and names the result component the
+ * option belongs to (blank: the primary result) - Existing test results with
+ * matching test, value and component will be updated
  */
 @Component
 public class TestResultConfigurationHandler implements DomainConfigurationHandler {
@@ -113,6 +115,7 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         int significantDigitsIndex = findColumnIndex(headers, "significantDigits");
         int flagsIndex = findColumnIndex(headers, "flags");
         int significanceIndex = findColumnIndex(headers, "significance");
+        int componentCodeIndex = findColumnIndex(headers, "componentCode");
 
         String line;
         int lineNumber = 1;
@@ -135,7 +138,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 String[] values = parseCsvLine(line);
                 int resultsCreated = processCsvLine(values, testNameIndex, resultTypeIndex, resultValueIndex,
                         dictionaryCategoryIndex, sortOrderIndex, isQuantifiableIndex, isActiveIndex, isNormalIndex,
-                        significantDigitsIndex, flagsIndex, significanceIndex, lineNumber, fileName, touchedTestIds);
+                        significantDigitsIndex, flagsIndex, significanceIndex, componentCodeIndex, lineNumber, fileName,
+                        touchedTestIds);
                 if (resultsCreated > 0) {
                     totalResultsCreated += resultsCreated;
                 } else {
@@ -243,8 +247,8 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
      */
     private int processCsvLine(String[] values, int testNameIndex, int resultTypeIndex, int resultValueIndex,
             int dictionaryCategoryIndex, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex,
-            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int significanceIndex, int lineNumber,
-            String fileName, Set<String> touchedTestIds) {
+            int isNormalIndex, int significantDigitsIndex, int flagsIndex, int significanceIndex,
+            int componentCodeIndex, int lineNumber, String fileName, Set<String> touchedTestIds) {
 
         String testName = getValueOrEmpty(values, testNameIndex);
         String resultType = getValueOrEmpty(values, resultTypeIndex);
@@ -324,11 +328,27 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
             resultValue = dictionary.getId();
         }
 
+        // A named component takes the answer; without one it belongs to the primary
+        // result.
+        String componentCode = getValueOrEmpty(values, componentCodeIndex);
+
         // Apply the result configuration to all matching tests
         int resultsCreated = 0;
         for (Test test : tests) {
-            // Check if test result already exists
-            TestResult existingResult = findExistingTestResult(test.getId(), resultType, resultValue);
+            String componentId = null;
+            if (!componentCode.isEmpty()) {
+                TestResultComponent component = testResultComponentService.getByTestIdAndCode(test.getId(),
+                        componentCode);
+                if (component == null) {
+                    LogEvent.logError(this.getClass().getSimpleName(), "processCsvLine",
+                            "CONFIGURATION ERROR: component '" + componentCode + "' not found for test '" + testName
+                                    + "' in line " + lineNumber + " of " + fileName
+                                    + ". Load it in the 'result-components' domain first. Skipping.");
+                    continue;
+                }
+                componentId = component.getId();
+            }
+            TestResult existingResult = findExistingTestResult(test.getId(), resultType, resultValue, componentId);
 
             if (existingResult != null) {
                 updateTestResult(existingResult, values, sortOrderIndex, isQuantifiableIndex, isActiveIndex,
@@ -336,8 +356,9 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Updated existing test result for test: " + test.getDescription());
             } else {
-                createTestResult(test, resultType, resultValue, values, sortOrderIndex, isQuantifiableIndex,
-                        isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex, significanceIndex);
+                createTestResult(test, resultType, resultValue, componentId, values, sortOrderIndex,
+                        isQuantifiableIndex, isActiveIndex, isNormalIndex, significantDigitsIndex, flagsIndex,
+                        significanceIndex);
                 LogEvent.logDebug(this.getClass().getSimpleName(), "processCsvLine",
                         "Created new test result for test: " + test.getDescription());
             }
@@ -438,12 +459,20 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         return matchingTests;
     }
 
-    private TestResult findExistingTestResult(String testId, String resultType, String resultValue) {
+    /**
+     * The answer this row updates: same type and value on the same component, where
+     * no component means the primary result.
+     */
+    private TestResult findExistingTestResult(String testId, String resultType, String resultValue,
+            String componentId) {
         List<TestResult> existingResults = testResultService.getActiveTestResultsByTest(testId);
+        String primaryId = componentId == null ? primaryComponentId(testId) : null;
 
         for (TestResult result : existingResults) {
+            boolean sameComponent = componentId != null ? componentId.equals(result.getComponentId())
+                    : result.getComponentId() == null || result.getComponentId().equals(primaryId);
             // Match by type and value
-            if (resultType.equals(result.getTestResultType())) {
+            if (sameComponent && resultType.equals(result.getTestResultType())) {
                 // For dictionary types and titer, match by value
                 // D, M, C store dictionary IDs; T stores titer values like "1:10"
                 if ("D".equals(resultType) || "M".equals(resultType) || "C".equals(resultType)
@@ -459,6 +488,11 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         }
 
         return null;
+    }
+
+    private String primaryComponentId(String testId) {
+        return testResultComponentService.getActiveComponentsByTestId(testId).stream()
+                .filter(TestResultComponent::getIsPrimary).map(TestResultComponent::getId).findFirst().orElse(null);
     }
 
     private TestResult updateTestResult(TestResult testResult, String[] values, int sortOrderIndex,
@@ -513,14 +547,15 @@ public class TestResultConfigurationHandler implements DomainConfigurationHandle
         return testResult;
     }
 
-    private TestResult createTestResult(Test test, String resultType, String resultValue, String[] values,
-            int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
+    private TestResult createTestResult(Test test, String resultType, String resultValue, String componentId,
+            String[] values, int sortOrderIndex, int isQuantifiableIndex, int isActiveIndex, int isNormalIndex,
             int significantDigitsIndex, int flagsIndex, int significanceIndex) {
 
         TestResult testResult = new TestResult();
         testResult.setTest(test);
         testResult.setTestResultType(resultType);
         testResult.setValue(resultValue);
+        testResult.setComponentId(componentId);
 
         // Set sort order
         String sortOrder = getValueOrEmpty(values, sortOrderIndex);

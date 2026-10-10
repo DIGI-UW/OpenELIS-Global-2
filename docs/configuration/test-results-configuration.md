@@ -33,6 +33,10 @@ the following columns:
   to "N")
 - **significantDigits**: Number of significant digits for numeric types
 - **flags**: Optional flags (e.g., "H" for high, "L" for low)
+- **componentCode**: The result component the option belongs to, by its code.
+  Blank means the test's primary result. The component must already exist; load
+  it in the `result-components` domain. A row naming a component the test lacks
+  is skipped.
 
 ## Result Types
 
@@ -66,6 +70,22 @@ HIV Rapid Test,D,Inconclusive,Test Results,3,N,Y,N,,
 - Without `dictionaryCategory`, the system finds the first matching entry
 - Create the dictionary entries first using the
   [dictionaries configuration](./dictionaries-configuration.md).
+
+### Answers on a Component (e.g., the call beside a viral load)
+
+A test whose primary result is a number can report a coded call as a second
+component. The component comes from the `result-components` domain; its answers
+name it:
+
+```csv
+testName,resultType,resultValue,dictionaryCategory,sortOrder,isQuantifiable,isActive,isNormal,significantDigits,flags,componentCode
+HIV-1 Viral Load,N,,,1,Y,Y,N,0,,
+HIV-1 Viral Load,D,Detected,Test Results,1,N,Y,N,,,call
+HIV-1 Viral Load,D,Not detected,Test Results,2,N,Y,Y,,,call
+```
+
+An option is matched for update by its value and its component, so the same
+answer can be offered on several components of one test.
 
 ### Numeric Test Results (e.g., Hemoglobin)
 
