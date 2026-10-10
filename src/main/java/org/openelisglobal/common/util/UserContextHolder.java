@@ -2,6 +2,7 @@ package org.openelisglobal.common.util;
 
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.log.LogEvent;
+import org.openelisglobal.security.AnalyzerBridgeAuthenticationToken;
 import org.openelisglobal.security.DaemonAuthenticationToken;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -37,7 +38,7 @@ public class UserContextHolder {
             return null;
         }
 
-        if (auth instanceof DaemonAuthenticationToken) {
+        if (auth instanceof DaemonAuthenticationToken || auth instanceof AnalyzerBridgeAuthenticationToken) {
             return daemonSystemUser;
         }
 

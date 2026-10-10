@@ -62,13 +62,12 @@ services:
       - "2575:2575" # MLLP HL7 listener (OGC-325)
     volumes:
       - key_trust-store-volume:/etc/openelis-global
-      - ./volume/openelis-analyzer-bridge/configuration.yml:/app/configuration.yml:ro
       - ./projects/analyzer-harness/volume/analyzer-imports:/data/analyzer-imports
     environment:
       - SPRING_PROFILES_ACTIVE=dev
       - LOGGING_LEVEL_ORG_ITECH=INFO
-      - BRIDGE_SECURITY_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
-      - BRIDGE_SECURITY_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
+      # OpenELIS pairs with the same code on startup.
+      - BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-HARNESS-PAIRING-CODE}
       - BRIDGE_FILE_ENABLED=true
       # Fast polling for CI — files are written atomically by Playwright tests.
       # Production keeps FileConfig.java defaults (5000ms poll, 3000ms stability).
@@ -77,11 +76,6 @@ services:
       # Bridge connects directly to app (not through proxy), so no /api/ prefix
       # HttpForwardingRouter appends /astm, /hl7, /csv per message protocol
       - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_URI=https://oe.openelis.org:8443/OpenELIS-Global/analyzer
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_USERNAME=admin
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_PASSWORD=adminADMIN!
-      - ORG_ITECH_AHB_FORWARD_HTTP_SERVER_INSECURE_TLS=true
-      # TEST-ONLY: disables hostname verification for self-signed harness certs
-      - JDK_JAVA_OPTIONS=-Djdk.internal.httpclient.disableHostnameVerification=true
       - ORG_ITECH_AHB_LISTEN_ASTM_SERVER_PORT=12001
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_HOST_NAME=astm-simulator
       - ORG_ITECH_AHB_FORWARD_ASTM_SERVER_PORT=9600
@@ -98,8 +92,7 @@ services:
       - configuration-data:/var/lib/openelis-global/configuration
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
-      - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
-      - ANALYZER_BRIDGE_PASSWORD=${ANALYZER_BRIDGE_PASSWORD:-adminADMIN!}
+      - ANALYZER_BRIDGE_PAIRING_CODE=${ANALYZER_BRIDGE_PAIRING_CODE:-HARNESS-PAIRING-CODE}
       # Full CATALINA_OPTS required here so compose merge replaces (not drops) base JVM flags.
       # Bridge owns FILE polling (FileAlterationMonitor); OE polling is disabled.
       - CATALINA_OPTS=-Ddatasource.url=jdbc:postgresql://db.openelis.org:5432/clinlims -Ddatasource.username=clinlims -Ddatasource.password=${OE_DB_PASSWORD:-clinlims} -Doe.ssl.truststorepath=${SSL_TRUSTSTORE_PATH:-/etc/openelis-global/truststore} -Doe.ssl.truststorepassword=${SSL_TRUSTSTORE_PASSWORD:-tspass} -Doe.ssl.keystorepath=${SSL_KEYSTORE_PATH:-/etc/openelis-global/keystore} -Doe.ssl.keystorepassword=${SSL_KEYSTORE_PASSWORD:-kspass}

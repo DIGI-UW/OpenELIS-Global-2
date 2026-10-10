@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/analyzer-types")
-@PreAuthorize("hasAnyRole('ANALYSER_IMPORT', 'ADMIN')")
+@PreAuthorize("hasRole('GLOBAL_ADMIN')")
 public class AnalyzerTypeRestController extends BaseRestController {
 
     private final AnalyzerTypeCatalogService catalogService;

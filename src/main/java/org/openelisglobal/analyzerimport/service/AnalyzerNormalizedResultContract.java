@@ -14,6 +14,7 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Patient;
 import org.hl7.fhir.r4.model.PrimitiveType;
 import org.hl7.fhir.r4.model.Specimen;
+import org.openelisglobal.common.util.BoundedDecimal;
 
 /** Consumer projection of the versioned Bridge normalized-result contract. */
 public record AnalyzerNormalizedResultContract(String messageId, String bridgeConnectionId, String profileId,
@@ -150,6 +151,13 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String recognitionFingerprint = requireNestedExtensionText(recognition, "recognitionFingerprint",
                 "Control-recognition fingerprint is required");
 
+        // The quantity becomes the stored number through toPlainString, which writes
+        // out every digit an exponent implies; stored numbers are also read back
+        // into calculations.
+        if (observation.hasValueQuantity() && observation.getValueQuantity().hasValue()
+                && !BoundedDecimal.isBounded(observation.getValueQuantity().getValue())) {
+            throw new IllegalArgumentException("A numeric analyzer result must be a bounded decimal");
+        }
         String units = observation.hasValueQuantity() ? observation.getValueQuantity().getUnit() : null;
         String comparator = observation.hasValueQuantity() && observation.getValueQuantity().hasComparator()
                 ? observation.getValueQuantity().getComparator().toCode()

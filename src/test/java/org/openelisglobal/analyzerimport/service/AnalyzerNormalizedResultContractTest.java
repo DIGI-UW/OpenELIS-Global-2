@@ -8,6 +8,7 @@ import static org.junit.Assert.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import org.hl7.fhir.r4.model.Bundle;
@@ -185,6 +186,35 @@ public class AnalyzerNormalizedResultContractTest {
                 () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
 
         assertEquals("Normalized analyzer traffic requires one Bridge connection ID", error.getMessage());
+    }
+
+    @Test
+    public void rejectsANumericResultWithAHugeExponent() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observation(bundle).getValueQuantity().setValue(new BigDecimal("1E+2000000000"));
+
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> AnalyzerNormalizedResultContract.parse(bundle, FHIR));
+
+        assertEquals("A numeric analyzer result must be a bounded decimal", error.getMessage());
+    }
+
+    @Test
+    public void theStoredNumberIsTheQuantityNotTheRawText() throws IOException {
+        Bundle bundle = fixture("normalized-known-test.fhir.json");
+        observation(bundle).getExtension().stream()
+                .filter(extension -> extension.getUrl().endsWith("/analyzer-raw-value")).findFirst().orElseThrow()
+                .setValue(new StringType("7.5; java.lang.System.exit(0)"));
+
+        AnalyzerNormalizedResultContract.Result result = AnalyzerNormalizedResultContract.parse(bundle, FHIR).results()
+                .get(0);
+
+        assertEquals("7.5", result.number());
+    }
+
+    private static Observation observation(Bundle bundle) {
+        return bundle.getEntry().stream().map(Bundle.BundleEntryComponent::getResource)
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
     }
 
     private static Bundle fixture(String name) throws IOException {

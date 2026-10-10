@@ -51,10 +51,21 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
     }
 
     @Test
-    public void establishedAnalyzerRoleCanReadActivationReadiness() throws Exception {
+    public void analyzerImportRoleCannotActivateProbeOrOpenQc() throws Exception {
         mockMvc.perform(get("/rest/analyzer/analyzers/77/activation-readiness")
                 .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))
-                .andExpect(status().isOk());
+                .andExpect(status().isForbidden());
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection")
+                .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isForbidden());
+        mockMvc.perform(get("/rest/qc/control-lots").with(user("analyzer").roles("ANALYSER_IMPORT"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isForbidden());
+    }
+
+    @Test
+    public void analyzerImportRoleCanStillListAnalyzers() throws Exception {
+        mockMvc.perform(get("/rest/analyzer/analyzers").with(user("analyzer").roles("ANALYSER_IMPORT"))
+                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
     @Test
@@ -64,13 +75,14 @@ public class AnalyzerWorkflowAuthorizationSecurityTest extends SecuritySliceMock
     }
 
     @Test
-    public void establishedAnalyzerRoleCanOpenSetupProbeAndLinkedQc() throws Exception {
-        mockMvc.perform(get("/rest/analyzer/analyzers").with(user("analyzer").roles("ANALYSER_IMPORT"))
-                .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
-        mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection")
-                .with(user("analyzer").roles("ANALYSER_IMPORT")).contentType(MediaType.APPLICATION_JSON))
+    public void globalAdminCanOpenSetupProbeAndLinkedQc() throws Exception {
+        mockMvc.perform(get("/rest/analyzer/analyzers/77/activation-readiness")
+                .with(user("admin").roles("GLOBAL_ADMIN", "ADMIN")).contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk());
-        mockMvc.perform(get("/rest/qc/control-lots").with(user("analyzer").roles("ANALYSER_IMPORT"))
+        mockMvc.perform(post("/rest/analyzer/analyzers/77/test-connection")
+                .with(user("admin").roles("GLOBAL_ADMIN", "ADMIN")).contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+        mockMvc.perform(get("/rest/qc/control-lots").with(user("admin").roles("GLOBAL_ADMIN", "ADMIN"))
                 .contentType(MediaType.APPLICATION_JSON)).andExpect(status().isOk());
     }
 
