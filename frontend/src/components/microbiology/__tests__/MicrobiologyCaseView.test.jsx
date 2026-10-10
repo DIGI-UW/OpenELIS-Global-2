@@ -114,7 +114,7 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(
       service,
-      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+      "/Microbiology/cases/case-1?grain=cultures&q=UATMICRO001&sort=newest&section=setup",
     );
 
     const nextStep = await screen.findByTestId("microbiology-next-step");
@@ -123,7 +123,7 @@ describe("MicrobiologyCaseView", () => {
     );
 
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
+      "/Microbiology/cases/case-1?grain=cultures&q=UATMICRO001&sort=newest&section=setup&action=start-inoculation",
     );
     expect(screen.getByLabelText("Bottle or plate ID")).toHaveFocus();
   });
@@ -138,7 +138,7 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(
       service,
-      "/Microbiology/cases/case-1?section=setup&action=start-inoculation",
+      "/Microbiology/cases/case-1?grain=cultures&section=setup&action=start-inoculation",
     );
 
     expect(await screen.findByLabelText("Bottle or plate ID")).toHaveFocus();
@@ -147,7 +147,7 @@ describe("MicrobiologyCaseView", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?section=setup",
+        "/Microbiology/cases/case-1?grain=cultures&section=setup",
       ),
     );
     await waitFor(() => expect(setupSection).toHaveFocus());
@@ -164,7 +164,7 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(
       service,
-      "/Microbiology/cases/case-1?section=setup&action=start-inoculation",
+      "/Microbiology/cases/case-1?grain=cultures&section=setup&action=start-inoculation",
     );
 
     expect(await screen.findByLabelText("Bottle or plate ID")).toHaveFocus();
@@ -172,7 +172,7 @@ describe("MicrobiologyCaseView", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?section=timeline",
+        "/Microbiology/cases/case-1?grain=cultures&section=timeline",
       ),
     );
     await waitFor(() =>
@@ -189,7 +189,10 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?section=setup");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&section=setup",
+    );
 
     expect(
       await screen.findByTestId("microbiology-case-section-setup"),
@@ -292,7 +295,9 @@ describe("MicrobiologyCaseView", () => {
       await waitFor(() =>
         expect(
           screen.getByTestId("microbiology-current-url"),
-        ).toHaveTextContent("/Microbiology/cases/case-1?section=setup"),
+        ).toHaveTextContent(
+          "/Microbiology/cases/case-1?grain=cultures&section=setup",
+        ),
       );
       expect(
         screen.getByTestId("microbiology-current-url"),
@@ -330,7 +335,7 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(
       service,
-      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+      "/Microbiology/cases/case-1?grain=cultures&q=UATMICRO001&sort=newest&section=setup",
     );
 
     const nextStep = await screen.findByTestId("microbiology-next-step");
@@ -351,7 +356,7 @@ describe("MicrobiologyCaseView", () => {
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=reports",
+        "/Microbiology/cases/case-1?grain=cultures&q=UATMICRO001&sort=newest&section=reports",
       ),
     );
     await waitFor(() =>
@@ -404,7 +409,7 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(
       service,
-      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup",
+      "/Microbiology/cases/case-1?grain=cultures&q=UATMICRO001&sort=newest&section=setup",
     );
 
     const nextStep = await screen.findByTestId("microbiology-next-step");
@@ -413,7 +418,7 @@ describe("MicrobiologyCaseView", () => {
     );
 
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-      "/Microbiology/cases/case-1?q=UATMICRO001&sort=newest&section=setup&action=mark-positive",
+      "/Microbiology/cases/case-1?grain=cultures&q=UATMICRO001&sort=newest&section=setup&action=mark-positive",
     );
     expect(
       screen.getByRole("heading", { name: "Mark culture positive" }),
@@ -492,7 +497,10 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?section=setup");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&section=setup",
+    );
 
     expect(
       await screen.findByRole("heading", { name: "Microbiology case" }),
@@ -552,7 +560,10 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?section=reports");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&section=reports",
+    );
 
     expect(
       await screen.findByRole("link", { name: "View patient results" }),
@@ -569,7 +580,7 @@ describe("MicrobiologyCaseView", () => {
 
     renderCase(
       service,
-      "/Microbiology/cases/case-1?section=critical-communication",
+      "/Microbiology/cases/case-1?grain=cultures&section=critical-communication",
     );
 
     await screen.findByRole("heading", { name: "Microbiology case" });
@@ -637,7 +648,10 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?section=timeline");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&section=timeline",
+    );
 
     await screen.findByRole("heading", { name: "Microbiology case" });
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
@@ -748,7 +762,10 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?section=amendment");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&section=amendment",
+    );
 
     await screen.findByRole("heading", { name: "Microbiology case" });
     expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
@@ -793,7 +810,10 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn().mockResolvedValue({ id: "iso-1" }),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&section=isolates",
+    );
 
     expect(
       await screen.findByRole("heading", { name: "Microbiology case" }),
@@ -838,14 +858,17 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?urgency=HIGH&sort=newest");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&urgency=HIGH&sort=newest",
+    );
 
     await screen.findByRole("heading", { name: "Microbiology case" });
     await user.click(getAccordionButton("Isolates"));
 
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/cases/case-1?urgency=HIGH&sort=newest&section=isolates",
+        "/Microbiology/cases/case-1?grain=cultures&urgency=HIGH&sort=newest&section=isolates",
       ),
     );
 
@@ -854,7 +877,7 @@ describe("MicrobiologyCaseView", () => {
     );
     await waitFor(() =>
       expect(screen.getByTestId("microbiology-current-url")).toHaveTextContent(
-        "/Microbiology/worklist?urgency=HIGH&sort=newest",
+        "/Microbiology/worklist?grain=cultures&urgency=HIGH&sort=newest",
       ),
     );
   });
@@ -881,7 +904,10 @@ describe("MicrobiologyCaseView", () => {
       createIsolate: vi.fn(),
     };
 
-    renderCase(service, "/Microbiology/cases/case-1?section=isolates");
+    renderCase(
+      service,
+      "/Microbiology/cases/case-1?grain=cultures&section=isolates",
+    );
 
     expect(
       await screen.findByText("Final case is read-only"),

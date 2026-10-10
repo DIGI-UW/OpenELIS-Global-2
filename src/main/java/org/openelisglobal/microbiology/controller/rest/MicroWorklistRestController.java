@@ -2,8 +2,6 @@ package org.openelisglobal.microbiology.controller.rest;
 
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
-import org.openelisglobal.common.rest.BaseRestController;
-import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
@@ -17,17 +15,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/worklist")
-public class MicroWorklistRestController extends BaseRestController {
+public class MicroWorklistRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroWorklistService worklistService;
-    private final MicrobiologyCaseAccessService accessService;
-    private final UserModuleService userModuleService;
+    private final org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService access;
 
     public MicroWorklistRestController(MicroWorklistService worklistService,
-            MicrobiologyCaseAccessService accessService, UserModuleService userModuleService) {
+            org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService access) {
         this.worklistService = worklistService;
-        this.accessService = accessService;
-        this.userModuleService = userModuleService;
+        this.access = access;
     }
 
     @GetMapping
@@ -40,11 +36,15 @@ public class MicroWorklistRestController extends BaseRestController {
             @RequestParam(required = false) String urgency, @RequestParam(required = false) String due,
             @RequestParam(required = false) String q, @RequestParam(required = false) String sort,
             @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize,
-            HttpServletRequest request) {
+            jakarta.servlet.http.HttpServletRequest request) {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
-        if (!userModuleService.isUserAdmin(request)) {
-            String userId = getSysUserId(request);
-            query.sampleItemVisible = sampleItemId -> accessService.canAccessSampleItem(sampleItemId, userId, false);
+        String actor = authenticatedUserId(request);
+        var results = access.permittedLabUnitIds(actor, org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+        var validation = access.permittedLabUnitIds(actor,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        if (results != null && validation != null) {
+            query.permittedLabUnitIds = new java.util.LinkedHashSet<>(results);
+            query.permittedLabUnitIds.addAll(validation);
         }
         query.grain = grain;
         query.status = status;
