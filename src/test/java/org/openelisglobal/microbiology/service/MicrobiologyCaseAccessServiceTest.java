@@ -1,83 +1,105 @@
 package org.openelisglobal.microbiology.service;
 
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.junit.Assert.*;
+import static org.mockito.Mockito.*;
 
-import java.util.Collections;
+import java.util.*;
 import org.junit.Before;
 import org.junit.Test;
-import org.openelisglobal.analysis.service.AnalysisService;
-import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.microbiology.dao.MicroCaseDAO;
 import org.openelisglobal.microbiology.valueholder.MicroCase;
-import org.openelisglobal.sampleitem.service.SampleItemService;
-import org.openelisglobal.sampleitem.valueholder.SampleItem;
+import org.openelisglobal.role.service.RoleService;
+import org.openelisglobal.role.valueholder.Role;
 import org.openelisglobal.systemuser.service.UserService;
+import org.openelisglobal.userrole.service.UserRoleService;
+import org.openelisglobal.userrole.valueholder.*;
 
 public class MicrobiologyCaseAccessServiceTest {
-
-    private MicroCaseService caseService;
-    private SampleItemService sampleItemService;
-    private AnalysisService analysisService;
-    private UserService userService;
-    private MicrobiologyCaseAccessServiceImpl accessService;
+    private MicroCaseDAO cases;
+    private UserService users;
+    private UserRoleService userRoles;
+    private MicrobiologyCaseAccessServiceImpl access;
 
     @Before
-    public void setUp() {
-        caseService = org.mockito.Mockito.mock(MicroCaseService.class);
-        sampleItemService = org.mockito.Mockito.mock(SampleItemService.class);
-        analysisService = org.mockito.Mockito.mock(AnalysisService.class);
-        userService = org.mockito.Mockito.mock(UserService.class);
-        accessService = new MicrobiologyCaseAccessServiceImpl(caseService, sampleItemService, analysisService,
-                userService);
+    public void setup() {
+        cases = mock(MicroCaseDAO.class);
+        users = mock(UserService.class);
+        userRoles = mock(UserRoleService.class);
+        RoleService roles = mock(RoleService.class);
+        Role results = new Role();
+        results.setId("r");
+        Role validation = new Role();
+        validation.setId("v");
+        when(roles.getRoleByName(Constants.ROLE_RESULTS)).thenReturn(results);
+        when(roles.getRoleByName(Constants.ROLE_VALIDATION)).thenReturn(validation);
+        access = new MicrobiologyCaseAccessServiceImpl(cases, users, roles, userRoles);
+    }
+
+    private void assign(String unit, String role) {
+        LabUnitRoleMap map = new LabUnitRoleMap();
+        map.setLabUnit(unit);
+        map.setRoles(Set.of(role));
+        UserLabUnitRoles assignments = new UserLabUnitRoles();
+        assignments.setLabUnitRoleMap(Set.of(map));
+        when(users.getUserLabUnitRoles("7")).thenReturn(assignments);
     }
 
     @Test
-    public void administratorCanAccessCaseWithoutLabUnitFiltering() {
-        assertTrue(accessService.canAccessCase("case-1", "7", true));
-
-        verify(caseService, never()).getCase("case-1");
+    public void pendingCaseUsesCurrentUnitWithoutAnAnalysis() {
+        MicroCase c = new MicroCase();
+        c.setLabUnitId("10");
+        when(cases.get("case")).thenReturn(Optional.of(c));
+        assign("10", "r");
+        assertTrue(access.canAccessCase("case", "7", false));
+        c.setLabUnitId("11");
+        assertFalse(access.canAccessCase("case", "7", false));
     }
 
     @Test
-    public void resultsUserCanAccessCaseWhenAnySampleAnalysisIsInTheirLabUnit() {
-        MicroCase microCase = new MicroCase();
-        microCase.setSampleItemId("sample-item-1");
-        SampleItem sampleItem = new SampleItem();
-        Analysis analysis = new Analysis();
-        when(caseService.getCase("case-1")).thenReturn(microCase);
-        when(sampleItemService.get("sample-item-1")).thenReturn(sampleItem);
-        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(Collections.singletonList(analysis));
-        when(userService.filterAnalysesByLabUnitRoles("7", Collections.singletonList(analysis), Constants.ROLE_RESULTS))
-                .thenReturn(Collections.singletonList(analysis));
-
-        assertTrue(accessService.canAccessCase("case-1", "7", false));
+    public void retainedDetailFiltersEveryRelatedCaseIndependently() {
+        assign("10", "r");
+        var visible = new MicroCase();
+        visible.setLabUnitId("10");
+        var hidden = new MicroCase();
+        hidden.setLabUnitId("11");
+        when(cases.get("visible")).thenReturn(Optional.of(visible));
+        when(cases.get("hidden")).thenReturn(Optional.of(hidden));
+        var detail = new org.openelisglobal.microbiology.form.MicroCaseDetailForm();
+        var allowedLink = new org.openelisglobal.microbiology.form.MicroCaseLookupForm();
+        allowedLink.id = "visible";
+        var deniedLink = new org.openelisglobal.microbiology.form.MicroCaseLookupForm();
+        deniedLink.id = "hidden";
+        detail.siblingCases.add(allowedLink);
+        detail.siblingCases.add(deniedLink);
+        access.filterRelatedCases(detail, "7");
+        assertEquals(1, detail.siblingCases.size());
+        assertEquals("visible", detail.siblingCases.get(0).id);
     }
 
     @Test
-    public void userWithoutResultsOrValidationLabUnitAccessCannotAccessCase() {
-        MicroCase microCase = new MicroCase();
-        microCase.setSampleItemId("sample-item-1");
-        SampleItem sampleItem = new SampleItem();
-        Analysis analysis = new Analysis();
-        when(caseService.getCase("case-1")).thenReturn(microCase);
-        when(sampleItemService.get("sample-item-1")).thenReturn(sampleItem);
-        when(analysisService.getAnalysesBySampleItem(sampleItem)).thenReturn(Collections.singletonList(analysis));
-        when(userService.filterAnalysesByLabUnitRoles("7", Collections.singletonList(analysis), Constants.ROLE_RESULTS))
-                .thenReturn(Collections.emptyList());
-        when(userService.filterAnalysesByLabUnitRoles("7", Collections.singletonList(analysis),
-                Constants.ROLE_VALIDATION)).thenReturn(Collections.emptyList());
-
-        assertFalse(accessService.canAccessCase("case-1", "7", false));
+    public void validationAllowsReadButDoesNotGrantResultsWrites() {
+        assign("10", "v");
+        assertTrue(access.canReadLabUnit("7", "10"));
+        assertFalse(access.hasLabUnitRole("7", "10", Constants.ROLE_RESULTS));
     }
 
     @Test
-    public void missingCaseCannotBeAccessed() {
-        when(caseService.getCase("missing")).thenReturn(null);
+    public void missingAssignmentsAndMissingCaseAreDenied() {
+        assertFalse(access.canReadLabUnit("7", "10"));
+        assertFalse(access.canAccessCase("missing", "7", false));
+        assertFalse(access.canReadLabUnit(null, "10"));
+    }
 
-        assertFalse(accessService.canAccessCase("missing", "7", false));
+    @Test
+    public void allUnitAssignmentIsRoleSpecific() {
+        assign(org.openelisglobal.systemuser.controller.UnifiedSystemUserController.ALL_LAB_UNITS, "r");
+        assertTrue(access.hasLabUnitRole("7", "19", Constants.ROLE_RESULTS));
+        assertFalse(access.hasLabUnitRole("7", "19", Constants.ROLE_VALIDATION));
+    }
+
+    @Test public void administratorStillCannotFetchANonexistentCase() {
+        when(userRoles.userInRole("7",Constants.ROLE_GLOBAL_ADMIN)).thenReturn(true);
+        assertTrue(access.canReadLabUnit("7","10"));assertFalse(access.canAccessCase("missing","7",true));
     }
 }

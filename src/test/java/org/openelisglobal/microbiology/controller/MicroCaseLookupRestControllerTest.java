@@ -32,6 +32,7 @@ public class MicroCaseLookupRestControllerTest {
         MicroCase tb = caseRow("case-2");
         when(userModuleService.isUserAdmin(request)).thenReturn(false);
         when(accessService.canAccessSampleItem("1001", "7", false)).thenReturn(true);
+        when(accessService.canAccessCase("case-1", "7", false)).thenReturn(true);
         when(service.getSiblingCases("1001")).thenReturn(List.of(bacteriology, tb));
 
         ResponseEntity<List<MicroCaseLookupForm>> response = new MicroCaseRestController(service, accessService,
@@ -39,7 +40,7 @@ public class MicroCaseLookupRestControllerTest {
                 org.mockito.Mockito.mock(MicroCaseOrderDetailService.class)).getCasesForSampleItem("1001", request);
 
         assertEquals(200, response.getStatusCode().value());
-        assertEquals(2, response.getBody().size());
+        assertEquals(1, response.getBody().size());
         assertEquals("case-1", response.getBody().get(0).id);
     }
 
