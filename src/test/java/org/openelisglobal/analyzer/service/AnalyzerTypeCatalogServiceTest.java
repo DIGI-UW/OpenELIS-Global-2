@@ -205,8 +205,8 @@ public class AnalyzerTypeCatalogServiceTest {
     }
 
     private static List<AnalyzerMappingCatalogService.ResultOption> answers() {
-        return List.of(new AnalyzerMappingCatalogService.ResultOption("200", "POS", "Positive", "LA6576-8"),
-                new AnalyzerMappingCatalogService.ResultOption("201", "NEG", "Negative", "LA6577-6"));
+        return List.of(new AnalyzerMappingCatalogService.ResultOption("200", "POS", "Positive", loinc("LA6576-8")),
+                new AnalyzerMappingCatalogService.ResultOption("201", "NEG", "Negative", loinc("LA6577-6")));
     }
 
     private static Analyzer analyzer(String id, String name, int profileRevision, int mappingRevision) {
@@ -234,7 +234,7 @@ public class AnalyzerTypeCatalogServiceTest {
                           "communication":{"mode":"BOTH","supports_lis_initiated":true},
                           "default_test_mappings":[
                             {"test_code":"WBC","loinc":"6690-2","result_type":"quantitative"},
-                            {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"],"value_codes":{"POS":{"system":"http://loinc.org","code":"LA6576-8"},"NEG":{"system":"http://loinc.org","code":"LA6577-6"}}}
+                            {"test_code":"FLAG","loinc":"58410-2","result_type":"qualitative","values":["POS","NEG"],"value_codes":{"POS":[{"system":"http://loinc.org","code":"LA6576-8"}],"NEG":[{"system":"http://loinc.org","code":"LA6577-6"}]}}
                           ],
                           "configDefaults":{"connectionRole":"SERVER","transport":"TCP/IP","port":9100,"aggregationMode":"PER_MESSAGE"},
                           "catalog":{
@@ -292,5 +292,9 @@ public class AnalyzerTypeCatalogServiceTest {
         JsonNode publication = objectMapper
                 .readTree("{\"action\":\"PUBLISHED\",\"actor\":\"17\",\"markedAt\":\"2026-08-18T12:00:00Z\"}");
         return new BridgeProfileCatalog.ProfileRevision(profile, publication);
+    }
+
+    private static List<AnalyzerMappingCatalogService.AnswerCoding> loinc(String code) {
+        return List.of(new AnalyzerMappingCatalogService.AnswerCoding("http://loinc.org", code));
     }
 }

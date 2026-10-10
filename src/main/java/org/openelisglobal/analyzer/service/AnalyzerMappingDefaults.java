@@ -122,13 +122,14 @@ public class AnalyzerMappingDefaults {
      * it lands on.
      */
     public AnalyzerMappingResultDraft resolveAnswer(String code, String subIdentity,
-            Map<String, BridgeAnalyzerProfile.NormalizedCoding> valueCodes, String rawValue,
+            Map<String, List<BridgeAnalyzerProfile.NormalizedCoding>> valueCodes, String rawValue,
             List<AnalyzerMappingCatalogService.ResultOption> options) {
-        BridgeAnalyzerProfile.NormalizedCoding coding = valueCodes.get(rawValue);
-        if (coding == null) {
+        List<BridgeAnalyzerProfile.NormalizedCoding> codings = valueCodes.getOrDefault(rawValue, List.of());
+        if (codings.isEmpty()) {
             return unresolvedAnswer(code, subIdentity, rawValue, AnalyzerUnresolvedReason.NO_MATCH);
         }
-        var matches = options.stream().filter(option -> sameCode(option.answerCode(), coding.code())).toList();
+        var matches = options.stream().filter(option -> option.codings().stream()
+                .anyMatch(answer -> codings.stream().anyMatch(value -> sameCoding(answer, value)))).toList();
         if (matches.size() > 1) {
             return unresolvedAnswer(code, subIdentity, rawValue, AnalyzerUnresolvedReason.AMBIGUOUS);
         }
@@ -229,11 +230,14 @@ public class AnalyzerMappingDefaults {
     }
 
     /**
-     * The profile names an answer by system and code; the dictionary stores the
-     * code alone.
+     * An answer and a profile value share a coding when the system and the code
+     * agree; the code compares without case or surrounding space.
      */
-    private static boolean sameCode(String local, String profile) {
-        return local != null && profile != null && !local.isBlank() && local.trim().equalsIgnoreCase(profile.trim());
+    private static boolean sameCoding(AnalyzerMappingCatalogService.AnswerCoding answer,
+            BridgeAnalyzerProfile.NormalizedCoding value) {
+        return answer.system() != null && value.system() != null && answer.system().trim().equals(value.system().trim())
+                && answer.code() != null && value.code() != null && !answer.code().isBlank()
+                && answer.code().trim().equalsIgnoreCase(value.code().trim());
     }
 
     private record TestResolution(AnalyzerMappingTestDraft draft,

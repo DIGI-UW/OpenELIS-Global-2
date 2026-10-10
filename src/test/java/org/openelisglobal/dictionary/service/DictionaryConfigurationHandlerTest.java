@@ -42,6 +42,9 @@ public class DictionaryConfigurationHandlerTest {
     @Mock
     private SupportedLocaleService supportedLocaleService;
 
+    @Mock
+    private org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService answerTerminology;
+
     @InjectMocks
     private DictionaryConfigurationHandler handler;
 

@@ -95,7 +95,7 @@ public class AnalyzerTypeRestControllerTest {
     @Test
     public void getMappingResultOptionsScopesChoicesToTheMappedTest() {
         List<AnalyzerMappingCatalogService.ResultOption> expected = List
-                .of(new AnalyzerMappingCatalogService.ResultOption("11", "501", "Detected", null));
+                .of(new AnalyzerMappingCatalogService.ResultOption("11", "501", "Detected", List.of()));
         when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(expected);
 
         assertSame(expected, controller.getMappingResultOptions("1").getBody());
