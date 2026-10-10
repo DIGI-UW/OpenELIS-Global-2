@@ -36,7 +36,7 @@ public class CovidResultsReport extends Report implements IReportParameterSetter
             form.setUseUpperDateRange(Boolean.TRUE);
         } catch (RuntimeException e) {
             LogEvent.logError(this.getClass().getSimpleName(), "setRequestParameters",
-                    "Runtime exception occured while setting params");
+                    "Runtime exception occurred while setting params");
         }
     }
 
