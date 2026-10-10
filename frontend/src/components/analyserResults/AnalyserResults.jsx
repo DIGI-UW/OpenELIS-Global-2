@@ -13,6 +13,7 @@ import {
   Pagination,
   Select,
   SelectItem,
+  Stack,
   Tag,
   TextArea,
   TextInput,
@@ -541,65 +542,62 @@ const AnalyserResults = (props) => {
     const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
       case "sampleInfo":
-        return (
-          <>
-            {sampleGroupHasId(row.id) && (
-              <>
-                <Button
-                  onClick={async () => {
-                    if ("clipboard" in navigator) {
-                      return await navigator.clipboard.writeText(
-                        row.accessionNumber,
-                      );
-                    } else {
-                      return document.execCommand(
-                        "copy",
-                        true,
-                        row.accessionNumber,
-                      );
-                    }
-                  }}
-                  kind="ghost"
-                  iconDescription={intl.formatMessage({
-                    id: "instructions.copy.labnum",
-                  })}
-                  hasIconOnly
-                  renderIcon={Copy}
-                />
-                <div className="sampleInfo" data-testid="LabNo">
-                  <br></br>
-                  {formatLabNum
-                    ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
-                    : row.accessionNumber}
-                  {row.instrumentSpecimenId &&
-                    row.instrumentSpecimenId !== row.accessionNumber && (
-                      <div data-testid="InstrumentSpecimenId">
-                        <FormattedMessage
-                          id="analyzer.placement.instrumentSpecimen"
-                          values={{ id: row.instrumentSpecimenId }}
-                        />
-                      </div>
-                    )}
-                  <br></br>
-                  <br></br>
-                </div>
-                {row.placement && (
-                  <RedirectControl row={row} onChange={handleRedirect} />
-                )}
-                {row.nonconforming && (
-                  <picture>
-                    <img
-                      src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                      alt="nonconforming"
-                      width="20"
-                      height="15"
-                    />
-                  </picture>
-                )}
-              </>
+        // The table's cells break words anywhere, so the lab number gets a row
+        // to itself: beside the redirect control it shrinks to one character a line.
+        return sampleGroupHasId(row.id) ? (
+          <Stack gap={3}>
+            <Stack orientation="horizontal" gap={2}>
+              <Button
+                onClick={async () => {
+                  if ("clipboard" in navigator) {
+                    return await navigator.clipboard.writeText(
+                      row.accessionNumber,
+                    );
+                  } else {
+                    return document.execCommand(
+                      "copy",
+                      true,
+                      row.accessionNumber,
+                    );
+                  }
+                }}
+                kind="ghost"
+                iconDescription={intl.formatMessage({
+                  id: "instructions.copy.labnum",
+                })}
+                hasIconOnly
+                renderIcon={Copy}
+              />
+              <div className="sampleInfo" data-testid="LabNo">
+                {formatLabNum
+                  ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+                  : row.accessionNumber}
+                {row.instrumentSpecimenId &&
+                  row.instrumentSpecimenId !== row.accessionNumber && (
+                    <div data-testid="InstrumentSpecimenId">
+                      <FormattedMessage
+                        id="analyzer.placement.instrumentSpecimen"
+                        values={{ id: row.instrumentSpecimenId }}
+                      />
+                    </div>
+                  )}
+              </div>
+              {row.nonconforming && (
+                <picture>
+                  <img
+                    src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                    alt="nonconforming"
+                    width="20"
+                    height="15"
+                  />
+                </picture>
+              )}
+            </Stack>
+            {row.placement && (
+              <RedirectControl row={row} onChange={handleRedirect} />
             )}
-          </>
-        );
+          </Stack>
+        ) : null;
       case "testName":
         return (
           <div className="sampleInfo" data-testid="sampleInfo">

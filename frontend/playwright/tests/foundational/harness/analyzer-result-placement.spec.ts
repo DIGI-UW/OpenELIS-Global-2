@@ -1,5 +1,5 @@
 import { randomUUID } from "node:crypto";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import { expect, test } from "../../../helpers/test-base";
 import {
   worklistFor,
@@ -34,6 +34,23 @@ async function ownRow(page: Page, analyzer: Analyzer, specimenId: string) {
     (row) => !row.componentId,
   );
 }
+
+/** How many lines the lab number takes in a review row; it reads on one. */
+const labNumberLines = (row: Locator) =>
+  row
+    .getByTestId("LabNo")
+    .first()
+    .evaluate((cell) => {
+      const labNumber = [...cell.childNodes].find(
+        (node) => node.nodeType === Node.TEXT_NODE && node.textContent?.trim(),
+      );
+      if (!labNumber) return 0;
+      const range = document.createRange();
+      range.selectNodeContents(labNumber);
+      return new Set(
+        [...range.getClientRects()].map((rect) => Math.round(rect.top)),
+      ).size;
+    });
 
 /** The ID with a letter swapped in, as a person mistyping a label would, matching no order. */
 const mistyped = (accession: string) => accession.replace("DEV", "DVE");
@@ -104,6 +121,7 @@ test.describe("Where an instrument's result is placed", () => {
     await expect(row.first()).toContainText(
       `One analysis on ${tube} is waiting for this result.`,
     );
+    expect(await labNumberLines(row.first())).toBe(1);
     await demo.caption("The review row names the analysis the result goes to.");
     await demo.highlight(row.first());
     await demo.caption("The reviewer accepts it and saves.");
