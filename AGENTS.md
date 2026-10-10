@@ -75,19 +75,12 @@ This project keeps several worktrees. When asked to work on a branch or PR, find
 its worktree first and make every edit there — never in the primary directory.
 Note that each worktree needs its own installer run, per step 1.
 
-## FILE Ownership Model
+## Analyzer architecture
 
-For FILE-based analyzer workflows in OpenELIS Global 2:
-
-- Bridge owns the analyzer connection, its runtime configuration, directory
-  watching/polling, parsing, archive/error handling, and file transport.
-- OpenELIS owns the lab-facing connection reference, local clinical bindings,
-  direct normalized ingestion endpoint, result processing, review, and audit.
-- An OpenELIS app-side FILE poller is outside the target architecture and must
-  not be added. Any proposal to change this requires an explicit architecture
-  decision that supersedes this ownership model.
-
-When guidance conflicts, this ownership model takes precedence.
+What the Analyzer Bridge and OpenELIS each own (profiles, connections, FILE
+watching, mappings, adoption, placement, import, pairing and roles) is specified
+in [specs/analyzers/spec.md](specs/analyzers/spec.md). Read it before analyzer
+work; it, not this file, is the authority.
 
 ## OpenELIS Work Product/Engineering Boundary
 
@@ -106,11 +99,6 @@ source only.
   explicit ADR or versioned contract when a new decision is required.
 - Use `openelis-work` screenshots and prototypes for functional and visual
   comparison, never as an implementation specification.
-
-Analyzer architecture (what Analyzer Bridge and OpenELIS each own, profiles,
-mappings, adoption, placement and import) is specified in
-[specs/analyzers/spec.md](specs/analyzers/spec.md). Read it before analyzer
-work; it, not this file, is the authority.
 
 > **Purpose:** This file provides comprehensive project context for ALL AI
 > coding agents (Claude, Cursor, Copilot, Jules, Aider, etc.). It contains
@@ -642,8 +630,8 @@ resistance, pulling all future work toward the wrong design.
 - Do NOT add features to superseded components (entities, readers, handlers)
 - Remove legacy code in the same PR, a paired PR, or a tracked priority issue
 - No dual-write to old and new tables/entities
-- Respect component boundaries (Bridge owns parsing and analyzer runtime
-  configuration; OE owns clinical bindings and review)
+- Respect component boundaries (for analyzers, as
+  [specs/analyzers/spec.md](specs/analyzers/spec.md) assigns them)
 - Build on the target architecture, not the legacy one
 
 **Anti-pattern:** Marking code `@Deprecated` without migrating callers or

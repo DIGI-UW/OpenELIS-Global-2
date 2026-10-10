@@ -53,17 +53,32 @@ is listed in [roadmap.md](roadmap.md).
    one-time migration kept every existing analyzer's identity, history, lab
    units and Bridge connection, exported its old mapping, cleared it, and left
    it inactive until a person sets it up again on a baseline profile.
+9. **OpenELIS and the Bridge trust each other by certificate.** They pair once,
+   with the Bridge's single-use pairing code. Each side then pins the other's
+   certificate by its SHA-256 fingerprint and accepts only that certificate,
+   in both directions: no password, no certificate authority, no host name
+   check. `/analyzer/fhir` admits only the paired Bridge and records its
+   deliveries as the system user. OpenELIS keeps its own key pair for this,
+   apart from the certificate it serves HTTPS with, and reads the pairing from
+   its database wherever it checks it, so pairing again needs no restart.
+   [Pairing](../../docs/analyzers/bridge-pairing.md) is the operator's guide.
+10. **Setting analyzers up and working their results are separate roles.**
+    Global Admin owns everything that changes how results are read: analyzer
+    types, each analyzer's setup and mapping, adoption, activation, connection
+    probes and pairing. The Analyser Import role (and administrators) works
+    the results: the review page, held results and failed runs, import and
+    delivery issues, and the analyzer list.
 
 ## Who owns what
 
-| System        | Owns                                                                                                                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bridge        | Analyzer profiles (immutable revisions), connections and secrets, protocols and transports, parsing, control-result recognition, the raw message audit copy, and the FHIR bundle it builds.             |
-| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's mapping to the local catalog, placement and review of results, held results, quality control, activation, the bundle copy. |
-| Analyzer mock | Deterministic instrument behaviour and real ASTM, HL7 and FILE traffic, replayed from vendor-documented messages.                                                                                       |
+| System        | Owns                                                                                                                                                                                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bridge        | Analyzer profiles (immutable revisions), connections and secrets, protocols and transports (including watching result folders), parsing, control-result recognition, the raw message audit copy, the FHIR bundle it builds, and its own key pair and pairing record. |
+| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's mapping to the local catalog, placement and review of results, held results, quality control, activation, the bundle copy, and its own key pair and the paired Bridge's fingerprint.    |
+| Analyzer mock | Deterministic instrument behaviour and real ASTM, HL7 and FILE traffic, replayed from vendor-documented messages.                                                                                                                                                    |
 
 Production code never branches on a manufacturer, model, profile ID or
-analyzer code.
+analyzer code. OpenELIS has no file poller and never opens a result file.
 
 ## What must always hold
 
