@@ -227,6 +227,20 @@
         <class>org.openelisglobal.orderentry.valueholder.OrderTestTestedElsewhere</class>
         <class>org.openelisglobal.orderentry.valueholder.PossibleMatchOverride</class>
 
+
+        <!-- Label entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.label.valueholder.Label</class>
+
+        <!-- County entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.county.valueholder.County</class>
+
+        <!-- Address entities (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.address.valueholder.AddressPart</class>
+        <class>org.openelisglobal.address.valueholder.OrganizationAddress</class>
+
+        <!-- Barcode entity (migrated from HBM to JPA annotations) -->
+        <class>org.openelisglobal.barcode.valueholder.BarcodeLabelInfo</class>
+      
         <!-- Test Accreditation (OGC-686) -->
         <class>org.openelisglobal.accreditation.valueholder.AccreditingBody</class>
         <class>org.openelisglobal.accreditation.valueholder.TestAccreditation</class>

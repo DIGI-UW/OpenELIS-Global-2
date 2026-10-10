@@ -13,31 +13,28 @@
  */
 package org.openelisglobal.address.valueholder;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Embeddable;
 import java.io.Serializable;
 import java.util.Objects;
+import lombok.Getter;
+import lombok.Setter;
+import org.hibernate.annotations.Type;
 
+@Setter
+@Getter
+@Embeddable
 public class AddressPK implements Serializable {
 
     private static final long serialVersionUID = 1L;
 
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "targetId", nullable = false)
     private String targetId;
+
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    @Column(name = "address_part_id", nullable = false)
     private String addressPartId;
-
-    public String getTargetId() {
-        return targetId;
-    }
-
-    public void setTargetId(String targetId) {
-        this.targetId = targetId;
-    }
-
-    public String getAddressPartId() {
-        return addressPartId;
-    }
-
-    public void setAddressPartId(String addressPartId) {
-        this.addressPartId = addressPartId;
-    }
 
     public boolean equals(Object o) {
         if (this == o)
