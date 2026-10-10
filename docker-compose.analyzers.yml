@@ -9,7 +9,7 @@
 services:
   openelis-analyzer-bridge:
     container_name: openelis-analyzer-bridge
-    image: itechuw/openelis-analyzer-bridge:3.2.6
+    image: itechuw/openelis-analyzer-bridge:3.3.0
     platform: linux/amd64
     depends_on:
       certs:
@@ -48,7 +48,7 @@ services:
 
   astm-simulator:
     container_name: openelis-astm-simulator
-    image: itechuw/astm-mock-server:0.1.3
+    image: itechuw/astm-mock-server:0.2.0
     platform: linux/amd64
     volumes:
       - analyzer-imports:/data/analyzer-imports
