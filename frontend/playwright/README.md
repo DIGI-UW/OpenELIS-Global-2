@@ -336,7 +336,10 @@ test("my demo test", async ({ page }, testInfo) => {
 - `createDemoPresentation(page, testInfo)` — shared presentation wrapper so a
   single UI-only scenario can run in both its normal and `*-demo-video` modes;
   prefer its structured `chapter()` method for opening, story, and completion
-  cards
+  cards. A narrated story uses `intro()` (stays up while off-screen preparation
+  runs), `caption()` (a narration line that survives page loads), `highlight()`
+  (outlines the element that shows the outcome) and `verified()` (closes on the
+  values the assertions read back)
 
 ## Adding New Tests
 
