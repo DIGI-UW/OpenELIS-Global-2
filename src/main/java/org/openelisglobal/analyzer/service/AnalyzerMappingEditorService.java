@@ -1,5 +1,7 @@
 package org.openelisglobal.analyzer.service;
 
+import java.util.Map;
+
 /**
  * Reads, edits and confirms one analyzer's own mapping, and previews a
  * profile's defaults.
@@ -31,4 +33,11 @@ public interface AnalyzerMappingEditorService {
      * with these decisions. Read-only; nothing is saved.
      */
     AnalyzerMappingView preview(String analyzerId, int profileRevision, AnalyzerMappingDraft decisions);
+
+    /**
+     * The code this instrument sends for each assay of its applied mapping that it
+     * runs under a code other than the profile's, keyed by the profile's code.
+     * Empty until a mapping is applied.
+     */
+    Map<String, String> appliedInstrumentCodes(String analyzerId);
 }
