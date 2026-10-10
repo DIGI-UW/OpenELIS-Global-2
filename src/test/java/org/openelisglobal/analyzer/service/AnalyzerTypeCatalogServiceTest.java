@@ -131,6 +131,23 @@ public class AnalyzerTypeCatalogServiceTest {
     }
 
     @Test
+    public void getCatalogShowsTheProfilesTheBridgeSetAside() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology")).thenReturn(List.of());
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.retired-file")).thenReturn(List.of());
+        BridgeProfileCatalog loaded = catalog();
+        List<BridgeProfileCatalog.CatalogIssue> issues = List
+                .of(new BridgeProfileCatalog.CatalogIssue("file [/app/analyzer-profiles/broken.json]", "Unexpected character"));
+        when(bridgeCatalogService.getCatalog()).thenReturn(new BridgeProfileCatalog(loaded.schemaVersion(),
+                loaded.catalogFingerprint(), loaded.profiles(), issues));
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
+
+        AnalyzerTypeCatalogView view = service.getCatalog();
+
+        assertEquals(2, view.types().size());
+        assertEquals(issues, view.issues());
+    }
+
+    @Test
     public void getCatalogTreatsAProfileWithNoActiveTestsAsNotStarted() throws Exception {
         when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
                 .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 3, 1)));

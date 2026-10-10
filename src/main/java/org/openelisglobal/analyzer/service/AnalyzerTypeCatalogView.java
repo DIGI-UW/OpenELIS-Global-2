@@ -2,11 +2,16 @@ package org.openelisglobal.analyzer.service;
 
 import java.util.List;
 
+/**
+ * The analyzer types OE2 offers, with {@code issues}: the profile files the
+ * Bridge set aside when it loaded, which it does not serve.
+ */
 public record AnalyzerTypeCatalogView(String schemaVersion, String catalogFingerprint, CatalogSummary summary,
-        List<TypeSummary> types) {
+        List<TypeSummary> types, List<BridgeProfileCatalog.CatalogIssue> issues) {
 
     public AnalyzerTypeCatalogView {
         types = types == null ? List.of() : List.copyOf(types);
+        issues = issues == null ? List.of() : List.copyOf(issues);
     }
 
     public record CatalogSummary(int total, int inUse, int needsAttention, int deactivated) {
