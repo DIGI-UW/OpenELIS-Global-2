@@ -44,6 +44,9 @@ public interface AnalyzerMappingCatalogService {
     record AnswerCoding(String system, String code) {
     }
 
-    record ComponentOption(String id, String code, String label) {
+    record ComponentOption(String id, String code, String label, boolean primary) {
+        public ComponentOption(String id, String code, String label) {
+            this(id, code, label, false);
+        }
     }
 }

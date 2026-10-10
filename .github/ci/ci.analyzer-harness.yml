@@ -2,7 +2,7 @@ services:
   harness-catalog-init:
     image: alpine:3.21
     volumes:
-      - ./projects/analyzer-harness/config-templates:/templates:ro
+      - ./projects/analyzer-harness/dictionary:/dictionary:ro
 
   astm-simulator:
     build:

@@ -72,7 +72,7 @@ public class AnalyzerMappingDefaults {
             } else {
                 tests.add(new AnalyzerMappingTestDraft(definition.analyzerCode(), AnalyzerMappingState.BOUND, testId,
                         null, null, null, "", callTarget));
-                var mainOptions = callTarget == null ? resolution.options()
+                var mainOptions = callTarget == null ? primaryOptions(resolution.options(), components)
                         : optionsOf(resolution.options(), callTarget);
                 definition.resultValues().forEach(raw -> results
                         .addAll(translated(resolveAnswer(definition, raw, mainOptions), definition.translations())));
@@ -161,6 +161,19 @@ public class AnalyzerMappingDefaults {
     private static String componentId(List<AnalyzerMappingCatalogService.ComponentOption> components, String code) {
         var matches = components.stream().filter(component -> code.equals(component.code())).toList();
         return matches.size() == 1 ? matches.get(0).id() : null;
+    }
+
+    /**
+     * The answers of the test's primary result: those on no component or on the
+     * primary one. An analyte record's answers may share the same codes.
+     */
+    private static List<AnalyzerMappingCatalogService.ResultOption> primaryOptions(
+            List<AnalyzerMappingCatalogService.ResultOption> options,
+            List<AnalyzerMappingCatalogService.ComponentOption> components) {
+        java.util.Set<String> others = components.stream().filter(component -> !component.primary())
+                .map(AnalyzerMappingCatalogService.ComponentOption::id).collect(java.util.stream.Collectors.toSet());
+        return options.stream().filter(option -> option.componentId() == null || !others.contains(option.componentId()))
+                .toList();
     }
 
     private static List<AnalyzerMappingCatalogService.ResultOption> optionsOf(

@@ -1,0 +1,7 @@
+testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en,localization:fr,localization:es,localization:id
+Influenza A PCR,Molecular Biology,Nasopharyngeal Swab,85477-8,Y,Y,77,,Influenza A PCR,Grippe A PCR,Influenza A PCR,Influenza A PCR
+Influenza B PCR,Molecular Biology,Nasopharyngeal Swab,85478-6,Y,Y,78,,Influenza B PCR,Grippe B PCR,Influenza B PCR,Influenza B PCR
+RSV PCR,Molecular Biology,Nasopharyngeal Swab,85479-4,Y,Y,79,,RSV PCR,VRS PCR,VSR PCR,RSV PCR
+Internal Control DNA,Molecular Biology,Plasma|Serum,89578-3,Y,N,80,,Internal Control DNA,Contrôle interne ADN,Control interno ADN,Kontrol Internal DNA
+COVIDPCR,Molecular Biology,Respiratory Swab|Sputum,,N,,,,,,,
+COVIDPCR,Molecular Biology,Fluid,94309-2,Y,,,,,,,

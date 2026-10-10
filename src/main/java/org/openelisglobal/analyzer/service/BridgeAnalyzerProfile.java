@@ -78,7 +78,7 @@ public final class BridgeAnalyzerProfile {
                     requiredText(mapping, "loinc"), nullableText(mapping, "unit"), nullableText(mapping, "result_type"),
                     values, normalizedCoding, valueCodes(mapping.path("value_codes"), values),
                     nullableText(mapping, "call_component"), components(mapping.path("components")),
-                    translations(mapping.path("translations"), values)));
+                    translations(mapping.path("translations"), values, mapping.path("run_failure_values"))));
         }
 
         JsonNode lineage = catalog.path("lineage");
@@ -262,9 +262,12 @@ public final class BridgeAnalyzerProfile {
 
     /**
      * The vendor's translations of declared values (Cepheid 303-0251 §3): each key
-     * a declared value, each entry the same result in another language.
+     * a declared value, each entry the same result in another language. A run
+     * failure may be translated too; the Bridge reads those, and OpenELIS maps only
+     * the answers, so they are not kept here.
      */
-    private static Map<String, List<String>> translations(JsonNode node, List<String> values) {
+    private static Map<String, List<String>> translations(JsonNode node, List<String> values,
+            JsonNode runFailureValues) {
         if (node.isMissingNode() || node.isNull()) {
             return Map.of();
         }
@@ -272,11 +275,13 @@ public final class BridgeAnalyzerProfile {
             throw new IllegalArgumentException("Bridge analyzer translations must be an object");
         }
         Map<String, List<String>> result = new LinkedHashMap<>();
+        List<String> runFailures = runFailureValues.isArray() ? values(runFailureValues) : List.of();
         node.fields().forEachRemaining(entry -> {
-            if (!values.contains(entry.getKey())) {
+            if (values.contains(entry.getKey())) {
+                result.put(entry.getKey(), values(entry.getValue()));
+            } else if (!runFailures.contains(entry.getKey())) {
                 throw new IllegalArgumentException("Bridge analyzer translation must name a declared raw value");
             }
-            result.put(entry.getKey(), values(entry.getValue()));
         });
         return result;
     }
@@ -299,7 +304,7 @@ public final class BridgeAnalyzerProfile {
             components.add(new ComponentDefinition(requiredText(component, "code"), nullableText(component, "label"),
                     nullableText(component, "result_type"), nullableText(component, "unit"),
                     nullableText(component, "sub_identity"), values, valueCodes(component.path("value_codes"), values),
-                    translations(component.path("translations"), values)));
+                    translations(component.path("translations"), values, component.path("run_failure_values"))));
         }
         return components;
     }

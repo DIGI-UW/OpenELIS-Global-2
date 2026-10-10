@@ -1,0 +1,7 @@
+category,dictEntry,localAbbreviation,isActive,sortOrder,loincCode,localization:en,localization:fr,localization:es,localization:id
+Sample Type,H Whole Blood,WB,Y,1,26881-3,Whole Blood,Sang Total,Sangre Entera,Darah Lengkap
+Sample Type,H Serum,SER,Y,2,26882-1,Serum,Sérum,Suero,Serum
+Sample Type,H Plasma,PLS,Y,3,26883-9,Plasma,Plasma,Plasma,Plasma
+Sample Type,H Urine,UR,Y,4,26884-7,Urine,Urine,Orina,Urin
+Sample Type,H Saliva,SAL,Y,5,,Saliva,Salive,Saliva,Air Liur
+Sample Type,H Tissue,TIS,Y,6,,Tissue,Tissu,Tejido,Jaringan

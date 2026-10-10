@@ -29,11 +29,14 @@ traces and service logs. Video-only pacing is presentation, never readiness.
 
 ## Startup Catalog
 
-Before OE starts, the harness copies missing molecular test and result-choice
-CSVs from `projects/analyzer-harness/config-templates/` into the writable
-`configuration-data` volume. OE loads them through its ordinary startup
-configuration service. The harness files are test data, not application-wide
-clinical defaults. Existing uploaded files are not overwritten on restart.
+Before OE starts, the harness copies its dictionary,
+`projects/analyzer-harness/dictionary/`, into the writable `configuration-data`
+volume. OE loads it through its ordinary startup configuration service. The
+dictionary is a copy of OE2's generic dictionary
+(`volume/configuration/backend/`) plus the concepts every shipped analyzer
+profile sends, so each binds on a fresh setup with no operator work. It is test
+data, not an application-wide clinical default. A file already in the volume,
+such as a Catalog Import upload, is not overwritten on restart.
 
 - CI and local parity load the same harness catalog through the normal loader.
 - Local development keeps optional Catalog Import uploads in its worktree-scoped
