@@ -1,0 +1,60 @@
+package org.openelisglobal.${module}.controller;
+
+import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import org.junit.Before;
+import org.junit.Test;
+import org.junit.runner.RunWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.MockitoJUnitRunner;
+import org.openelisglobal.${module}.service.${ServiceName};
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+
+/**
+ * Standalone MockMvc REST controller test for ${ControllerName}.
+ * No database, DBUnit datasets, or Spring Web Context initialization required.
+ * Runs in <100ms.
+ */
+@RunWith(MockitoJUnitRunner.class)
+public class ${ControllerName}Test {
+
+    @Mock
+    private ${ServiceName} service;
+
+    @InjectMocks
+    private ${ControllerName} controller;
+
+    private MockMvc mockMvc;
+
+    @Before
+    public void setUp() {
+        mockMvc = MockMvcBuilders.standaloneSetup(controller).build();
+    }
+
+    @Test
+    public void get_knownEndpoint_returns200AndExpectedJson() throws Exception {
+        // Arrange
+        // when(service.someMethod()).thenReturn(...);
+
+        // Act & Assert
+        mockMvc.perform(get("${endpoint}")
+                .accept(MediaType.APPLICATION_JSON_VALUE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("SUCCESS"));
+    }
+
+    @Test
+    public void post_invalidInput_returns400() throws Exception {
+        mockMvc.perform(post("${endpoint}")
+                .contentType(MediaType.APPLICATION_JSON_VALUE)
+                .content("{}"))
+                .andExpect(status().isBadRequest());
+    }
+}
