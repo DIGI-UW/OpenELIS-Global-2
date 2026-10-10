@@ -109,10 +109,12 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
             analyzer.setMapping(mappingService
                     .assignProfile(analyzer, requestedProfileId, requestedRevision, exactActor).mapping());
         } else if (profile == null || !requestedProfileId.equals(profile.getProfileId())) {
-            throw new IllegalArgumentException("A configured analyzer keeps its profile");
+            throw new AnalyzerRequestException("analyzer.setup.error.profileKept",
+                    "A configured analyzer keeps its profile");
         } else if (requestedRevision != profile.getProfileRevision()) {
-            throw new IllegalArgumentException("Adopt revision " + requestedRevision + " of " + requestedProfileId
-                    + " to move this analyzer to it");
+            throw new AnalyzerRequestException("analyzer.setup.error.adoptToMove",
+                    Map.of("revision", requestedRevision), "Adopt revision " + requestedRevision + " of "
+                            + requestedProfileId + " to move this analyzer to it");
         }
         analyzer.setName(name);
         analyzer.setTestUnitIds(labUnitIds);
@@ -136,14 +138,16 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
                 || revision != current.mapping().getRevisionNumber()
                 || !Objects.equals(requireText(mappingFingerprint, "Mapping fingerprint"),
                         current.mapping().getMappingFingerprint())) {
-            throw new IllegalArgumentException("The analyzer's mapping changed after Verify was loaded");
+            throw new AnalyzerRequestException("analyzer.mapping.error.changedSinceLoaded",
+                    "The analyzer's mapping changed after Verify was loaded");
         }
         AnalyzerMappingView mapping = mappingEditorService.getMapping(analyzer.getId());
         if (mapping.confirmation().state() != AnalyzerMappingConfirmationView.State.CURRENT
                 || !Objects.equals(mapping.mappingId(), current.mapping().getId())
                 || mapping.mappingRevision() != revision
                 || !Objects.equals(mapping.mappingFingerprint(), current.mapping().getMappingFingerprint())) {
-            throw new IllegalArgumentException("Confirm the analyzer's current mapping before applying it");
+            throw new AnalyzerRequestException("analyzer.mapping.error.confirmBeforeApply",
+                    "Confirm the analyzer's current mapping before applying it");
         }
         if (analyzer.getMapping() != null && Objects.equals(analyzer.getMapping().getId(), current.mapping().getId())) {
             importService.recoverHeldMappingResults(analyzer.getId(), actor);

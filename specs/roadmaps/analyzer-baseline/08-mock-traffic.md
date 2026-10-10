@@ -34,11 +34,11 @@ contract test keeps it aligned with the pinned baseline profile.
 ### Build
 
 ```
-- [ ] T8.1 Red: contract test, every fixture's codes, values and record types are declared by the pinned baseline profile, and every declared outcome has a fixture
-- [ ] T8.2 Fixtures from the Cepheid examples per Facts
-- [ ] T8.3 Endpoint: POST /simulate/fixture/{profile}/{assay}/{outcome} with sample_id, patient, optional code overrides
-- [ ] T8.4 Rebuild templates/genexpert.json from the profile or delete it; delete fieldOverrides seeding
-- [ ] T8.5 Green; PR; release tag
+- [x] T8.1 (`test_fixtures_match_profile.py`, against `genexpert-astm-v8.json` in `ANALYZER_BRIDGE_PROFILES_DIR`) Red: contract test, every fixture's codes, values and record types are declared by the pinned baseline profile, and every declared outcome has a fixture
+- [x] T8.2 (24 fixtures under `fixtures/genexpert/<assay>/<outcome>.astm`; 301-2002 examples belong to assays the profile does not declare, so none) Fixtures from the Cepheid examples per Facts
+- [x] T8.3 (mock #53) Endpoint: POST /simulate/fixture/{profile}/{assay}/{outcome} with sample_id, patient, optional code overrides
+- [ ] T8.4 Delete `templates/genexpert.json` (HL7; hand-written codes and values break rule 15, and no HL7 baseline profile exists to rebuild it from). Delete the generative `genexpert_astm` template and its `fieldOverrides` seeding after OE2 T7.6 removes its callers (`analyzer-native-traffic.ts`, `seed-analyzers.sh`, `ogc-1054-delivery-issues.spec.ts`, `deploy-published-testing.py`); until then it stays, pinned to profile revision 4
+- [ ] T8.5 Green and PR done (mock #53, draft). Open: the release tag is a maintainer step after review
 ```
 
 ### Verify

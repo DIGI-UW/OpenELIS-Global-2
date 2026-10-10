@@ -126,13 +126,17 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     result as the call with an R.7 `<` or `>` flag and the limit in the R.6
     range, with no number in R.4 (303-0251 §2.1.1); the Bridge maps that to a
     FHIR quantity with the comparator and the limit (rule 17).
-12. MTB/RIF is three results: MTB detection (Detected, Not detected, Trace
+12. (On hold until a vendor LIS document or verified capture states them; step 5.)
+    MTB/RIF is three results: MTB detection (Detected, Not detected, Trace
     detected), bacillary level, rifampicin resistance on LOINC 89372-7
     (Detected, Not detected, Indeterminate). 46244-0 is retired.
 13. Instrument codes are a per-analyzer override. The profile ships the
     vendor's suggested codes; setup lets the operator change what this
     instrument uses; the Bridge uses the override for result translation and
-    outbound orders. A code the profile does not declare (a cartridge or test
+    outbound orders. Setup lists the profile's assays the way the instrument's
+    host test code table does: the lab enables the ones this instrument runs
+    and sets each code, and only enabled assays are mapped. A result for an
+    assay that is not enabled is held, never dropped. A code the profile does not declare (a cartridge or test
     the default profile does not cover) reaches OE2 and is held as an unknown
     test; the operator maps it like any other override, from the held row or
     the editor, as a row of that analyzer's mapping. What the default profile
@@ -255,7 +259,13 @@ uses; they are restated so a step can be run without re-reading those files.
   landed.
 - The top OE2 PR (step 7) bumps the pins (`tools/openelis-analyzer-bridge`
   and `tools/analyzer-mock-server` submodules, and image tags) to the Bridge
-  and mock releases and carries the baseline E2E, green.
+  and mock releases and carries the baseline E2E, green. Order: the pins move
+  to the Bridge and mock PR heads as soon as they exist (CI builds both from
+  the submodules); a maintainer reviews and cuts the Bridge release, then the
+  mock release; only then do the image tags move, which is what turns the
+  `deployment-contract` check green. Bridge and mock edits are made inside
+  the submodule checkouts of the OE2 worktree, and each task's tick and pin
+  bump ride in the OE2 commit that lands it.
 - Distro follow-on, out of scope here: each distro removes profiles core now
   carries, unsets the shipped-pattern override, rebuilds any remaining
   instrument as a fresh baseline profile, runs the migration.

@@ -76,6 +76,19 @@ public class AnalyzerMappingRestControllerTest {
         assertEquals("The analyzer has no mapping", response.getBody().get("error"));
     }
 
+    @Test
+    public void aRefusalTheOperatorCanActOnCarriesItsMessageKeyAndArguments() {
+        ResponseEntity<java.util.Map<String, Object>> response = controller.handleInvalidRequest(
+                new org.openelisglobal.analyzer.service.AnalyzerRequestException("analyzer.adoption.error.heldResults",
+                        java.util.Map.of("record", "ADOPT-C", "revision", 1),
+                        "ADOPT-C still has held results from revision 1"));
+
+        assertEquals(HttpStatus.BAD_REQUEST, response.getStatusCode());
+        assertEquals("analyzer.adoption.error.heldResults", response.getBody().get("messageKey"));
+        assertEquals(java.util.Map.of("record", "ADOPT-C", "revision", 1), response.getBody().get("messageArgs"));
+        assertEquals("ADOPT-C still has held results from revision 1", response.getBody().get("error"));
+    }
+
     private static AnalyzerMappingView view(String analyzerId, String mappingId, int revision) {
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
                 "NONE", "This analyzer interface transports no control results.", true, List.of());

@@ -106,11 +106,13 @@ public class AnalyzerResults extends BaseObject<String> implements Cloneable {
      * for a record the two revisions read differently.
      */
     public static final String IMPORT_ISSUE_OTHER_REVISION = "arrived_under_other_revision";
+    /** For an assay the analyzer's setup says this instrument does not run. */
+    public static final String IMPORT_ISSUE_ASSAY_NOT_ENABLED = "assay_not_enabled";
     /** Held results that applying the analyzer's mapping retries. */
     public static final Set<String> MAPPING_IMPORT_ISSUES = Set.of(IMPORT_ISSUE_UNKNOWN_TEST,
             IMPORT_ISSUE_TEST_MAPPING_NOT_READY, IMPORT_ISSUE_UNKNOWN_RESULT_VALUE,
             IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, IMPORT_ISSUE_INVALID_RESULT_MAPPING, IMPORT_ISSUE_QC_TARGET_MISSING,
-            IMPORT_ISSUE_OTHER_REVISION);
+            IMPORT_ISSUE_OTHER_REVISION, IMPORT_ISSUE_ASSAY_NOT_ENABLED);
 
     @Column(name = "import_issue_reason", length = 200)
     private String importIssueReason;

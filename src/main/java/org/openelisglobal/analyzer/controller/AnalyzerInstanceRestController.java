@@ -17,6 +17,7 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingView;
+import org.openelisglobal.analyzer.service.AnalyzerRequestException;
 import org.openelisglobal.analyzer.service.BridgeAnalyzerConnectionException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -124,8 +125,7 @@ public class AnalyzerInstanceRestController extends BaseRestController {
 
     @ExceptionHandler(IllegalArgumentException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(IllegalArgumentException exception) {
-        String message = exception.getMessage() == null ? "Invalid analyzer request" : exception.getMessage();
-        return ResponseEntity.badRequest().body(Map.of("error", message));
+        return ResponseEntity.badRequest().body(AnalyzerRequestException.body(exception, "Invalid analyzer request"));
     }
 
     /**

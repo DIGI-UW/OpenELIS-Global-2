@@ -188,6 +188,8 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         entity.setComponentId(row.componentId());
         entity.setCallComponentId(row.callComponentId());
         entity.setUnresolvedReason(row.unresolvedReason());
+        entity.setEnabled(row.isEnabled());
+        entity.setInstrumentCode(row.instrumentCode());
         testDAO.insert(entity);
         return entity;
     }

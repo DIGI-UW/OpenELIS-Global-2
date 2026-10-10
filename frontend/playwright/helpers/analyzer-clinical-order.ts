@@ -138,7 +138,32 @@ export async function createAnalyzerClinicalOrder(
     ).toHaveLength(definition.components.length ? 1 : 0);
     orderedTests.push({ testId, primaryComponentId: primary[0]?.id ?? null });
   }
-  const testIds = orderedTests.map((test) => test.testId);
+  const order = await createClinicalOrder(page, {
+    testIds: orderedTests.map((test) => test.testId),
+    specimenName: scenario.specimenName,
+    accession: scenario.accession,
+  });
+  return {
+    ...order,
+    primaryComponentId: orderedTests[0].primaryComponentId,
+    orderedTests,
+  };
+}
+
+/** A synthetic patient with one specimen and these catalog tests ordered. */
+export async function createClinicalOrder(
+  page: Page,
+  {
+    testIds,
+    specimenName,
+    accession: existingAccession,
+  }: { testIds: string[]; specimenName: string; accession?: string },
+): Promise<{
+  accession: string;
+  patientLastName: string;
+  testId: string;
+  specimenId: string;
+}> {
   const compatibility = await jsonGet<{
     tests: Array<{
       testId: string;
@@ -155,18 +180,15 @@ export async function createAnalyzerClinicalOrder(
     );
     expect(compatible, `Compatibility for test ${testId}`).toBeDefined();
     const specimens = compatible!.compatibleSampleTypes.filter(
-      (type) => type.name === scenario.specimenName,
+      (type) => type.name === specimenName,
     );
-    expect(
-      specimens,
-      `${testId} accepts ${scenario.specimenName}`,
-    ).toHaveLength(1);
+    expect(specimens, `${testId} accepts ${specimenName}`).toHaveLength(1);
     return specimens[0].id;
   });
   expect(new Set(specimenIds).size).toBe(1);
   const specimenId = specimenIds[0];
 
-  let accession = scenario.accession;
+  let accession = existingAccession;
   if (!accession) {
     const generated = await page.request.get(
       `${API}/SampleEntryGenerateScanProvider`,
@@ -263,7 +285,5 @@ export async function createAnalyzerClinicalOrder(
     patientLastName,
     testId: testIds[0],
     specimenId,
-    primaryComponentId: orderedTests[0].primaryComponentId,
-    orderedTests,
   };
 }

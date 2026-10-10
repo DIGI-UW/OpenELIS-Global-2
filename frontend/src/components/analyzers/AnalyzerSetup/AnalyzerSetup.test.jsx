@@ -13,6 +13,9 @@ import {
   createAnalyzer,
   getAnalyzer,
   getAnalyzerMapping,
+  getAnalyzerMappingComponents,
+  getAnalyzerMappingResultOptions,
+  getAnalyzerMappingTests,
   getAnalyzerActivationReadiness,
   getAnalyzerLabUnits,
   getAnalyzerTypeCatalog,
@@ -27,11 +30,16 @@ vi.mock("../../../services/analyzerService", () => ({
   applyAnalyzerMapping: vi.fn(),
   createAnalyzer: vi.fn(),
   getAnalyzer: vi.fn(),
+  confirmAnalyzerMapping: vi.fn(),
   getAnalyzerMapping: vi.fn(),
+  getAnalyzerMappingComponents: vi.fn(),
+  getAnalyzerMappingResultOptions: vi.fn(),
+  getAnalyzerMappingTests: vi.fn(),
   getAnalyzerActivationReadiness: vi.fn(),
   getAnalyzerLabUnits: vi.fn(),
   getAnalyzerTypeCatalog: vi.fn(),
   testConnection: vi.fn(),
+  saveAnalyzerMapping: vi.fn(),
   updateAnalyzer: vi.fn(),
 }));
 
@@ -206,6 +214,15 @@ describe("AnalyzerSetup Instrument step", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     window.history.replaceState({}, "", "/analyzers?setup=instrument");
+    // Verify embeds the mapping editor, which loads the catalog's tests and,
+    // for a mapped test, its answers and components.
+    getAnalyzerMappingTests.mockImplementation((callback) => callback([]));
+    getAnalyzerMappingResultOptions.mockImplementation((_id, callback) =>
+      callback([]),
+    );
+    getAnalyzerMappingComponents.mockImplementation((_id, callback) =>
+      callback([]),
+    );
     getAnalyzerTypeCatalog.mockImplementation((callback) =>
       callback({
         schemaVersion: "1.0",
@@ -281,7 +298,7 @@ describe("AnalyzerSetup Instrument step", () => {
       await screen.findByRole("option", { name: "Molecular Biology" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     await waitFor(() =>
@@ -301,7 +318,7 @@ describe("AnalyzerSetup Instrument step", () => {
       "42",
     );
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "verify",
+      "assays",
     );
   });
 
@@ -362,7 +379,7 @@ describe("AnalyzerSetup Instrument step", () => {
     renderSetup();
 
     await userEvent.click(
-      await screen.findByRole("button", { name: "Continue to Verify" }),
+      await screen.findByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(screen.getByText("Select an analyzer type")).toBeVisible();
@@ -371,7 +388,7 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(createAnalyzer).not.toHaveBeenCalled();
   });
 
-  it("persists the selected candidate and advances to URL-backed Verify", async () => {
+  it("persists the selected candidate and advances to URL-backed Assays", async () => {
     window.history.replaceState(
       {},
       "",
@@ -415,7 +432,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
 
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(createAnalyzer).toHaveBeenCalledWith(
@@ -429,12 +446,12 @@ describe("AnalyzerSetup Instrument step", () => {
     );
     const params = new URLSearchParams(window.location.search);
     expect(params.get("search")).toBe("gene");
-    expect(params.get("setup")).toBe("verify");
+    expect(params.get("setup")).toBe("assays");
     expect(params.get("analyzerId")).toBe("42");
     expect(params.get("profile")).toBe(activeType.profileId);
     expect(params.get("revision")).toBe("3");
     expect(
-      screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
+      screen.getByRole("heading", { level: 3, name: "Assays" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
     expect(screen.getByText("GX bench 1")).toBeVisible();
     expect(screen.getByText("Molecular Biology")).toBeVisible();
@@ -470,6 +487,9 @@ describe("AnalyzerSetup Instrument step", () => {
     expect(
       screen.getByRole("heading", { level: 3, name: "Verify" }).closest("li"),
     ).toHaveAttribute("aria-current", "step");
+    expect(
+      screen.getByRole("region", { name: "Set up GX bench 1" }),
+    ).toBeVisible();
   });
 
   it("edits completed setup sections through bookmarkable URLs", async () => {
@@ -556,24 +576,14 @@ describe("AnalyzerSetup Instrument step", () => {
     const history = renderSetupWithHistory(entry);
 
     expect(
-      await screen.findByRole("heading", {
-        name: "Review analyzer mappings",
-      }),
+      await screen.findAllByTestId("analyzer-type-mapping-row"),
+    ).toHaveLength(2);
+    expect(
+      screen.getAllByText("Rule-based control recognition")[0],
     ).toBeVisible();
-    expect(screen.getByText("2 of 2 tests ready")).toBeVisible();
-    expect(screen.getByText("2 of 2 result values ready")).toBeVisible();
-    expect(screen.getByText("Rule-based control recognition")).toBeVisible();
     expect(screen.getByText("Specimen ID starts with QC")).toBeVisible();
     expect(screen.getByText(/Casey Iiams-Hauser/)).toBeVisible();
     expect(getAnalyzerMapping).toHaveBeenCalledWith("42", expect.any(Function));
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
-
-    const reviewLink = screen.getByRole("link", {
-      name: "Review mappings",
-    });
-    const reviewUrl = new URL(reviewLink.href);
-    expect(reviewUrl.pathname).toBe("/analyzers/42/mapping");
-    expect(reviewUrl.searchParams.get("returnTo")).toBe(entry);
 
     await userEvent.click(
       screen.getByRole("button", { name: "Continue to Connect" }),
@@ -617,7 +627,7 @@ describe("AnalyzerSetup Instrument step", () => {
     );
 
     expect(
-      await screen.findByText("Control recognition not configured"),
+      (await screen.findAllByText("Control recognition not configured"))[0],
     ).toBeVisible();
     expect(
       screen.getByText(
@@ -632,7 +642,7 @@ describe("AnalyzerSetup Instrument step", () => {
     ).not.toBeInTheDocument();
   });
 
-  it("allows a confirmed partial mapping to continue without hiding unresolved counts", async () => {
+  it("keeps Connect closed while a record of an assay that is on is unmapped", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback(connectedCandidate()),
     );
@@ -645,12 +655,47 @@ describe("AnalyzerSetup Instrument step", () => {
             mappingState: "UNRESOLVED",
             testId: null,
             selectedTest: null,
-            results: currentMapping.tests[0].results.map((result) => ({
-              ...result,
-              mappingState: "UNRESOLVED",
-              resultOptionId: null,
-              selectedOption: null,
-            })),
+          },
+          currentMapping.tests[1],
+        ],
+      }),
+    );
+    renderSetupWithHistory(
+      `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
+    );
+
+    expect(
+      await screen.findByText(
+        "1 record or value of the assays that are on still need mapping. Map them below, or turn the assay off in Assays if this instrument does not run it.",
+      ),
+    ).toBeVisible();
+    expect(
+      screen.getByRole("button", { name: "Continue to Connect" }),
+    ).toBeDisabled();
+  });
+
+  it("does not hold Connect closed for an assay this instrument does not run", async () => {
+    getAnalyzer.mockImplementation((_id, callback) =>
+      callback(connectedCandidate()),
+    );
+    applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+      callback(connectedCandidate()),
+    );
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...currentMapping,
+        tests: [
+          currentMapping.tests[0],
+          {
+            sourceRowKey: "test:FLU",
+            rawCode: "FLU",
+            aliases: [],
+            mappingState: "UNRESOLVED",
+            unresolvedReason: "NO_MATCH",
+            enabled: false,
+            testId: null,
+            selectedTest: null,
+            results: [],
           },
         ],
       }),
@@ -658,10 +703,12 @@ describe("AnalyzerSetup Instrument step", () => {
     const history = renderSetupWithHistory(
       `/analyzers?setup=verify&analyzerId=42&profile=${activeType.profileId}&revision=3`,
     );
+
     const button = await screen.findByRole("button", {
       name: "Continue to Connect",
     });
-    expect(button).toBeEnabled();
+    await waitFor(() => expect(button).toBeEnabled());
+    expect(screen.queryByText("FLU")).not.toBeInTheDocument();
     await userEvent.click(button);
     expect(applyAnalyzerMapping).toHaveBeenCalled();
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
@@ -675,7 +722,11 @@ describe("AnalyzerSetup Instrument step", () => {
       callback(connectedCandidate()),
     );
     applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
-      callback({ error: "stale binding", statusCode: 400 }),
+      callback({
+        error: "stale binding",
+        statusCode: 400,
+        messageKey: "analyzer.mapping.error.changedSinceLoaded",
+      }),
     );
     const history = renderSetupWithHistory(entry);
 
@@ -688,12 +739,18 @@ describe("AnalyzerSetup Instrument step", () => {
         "Could not apply the reviewed mappings. Reload Verify and try again.",
       ),
     ).toBeVisible();
+    expect(
+      screen.getByText(
+        "This analyzer's mapping changed after this page was loaded. Reload the page to see the current mapping.",
+      ),
+    ).toBeVisible();
+    expect(screen.queryByText("stale binding")).not.toBeInTheDocument();
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
       "verify",
     );
   });
 
-  it("blocks Connect and uses the analyzer's own mapping editor when verification needs attention", async () => {
+  it("blocks Connect and resolves in the embedded mapping editor when verification needs attention", async () => {
     getAnalyzer.mockImplementation((_id, callback) =>
       callback({
         id: "42",
@@ -726,14 +783,16 @@ describe("AnalyzerSetup Instrument step", () => {
     );
 
     expect(
-      await screen.findByText("Verification needs attention"),
+      await screen.findByText(
+        "1 record or value of the assays that are on still need mapping. Map them below, or turn the assay off in Assays if this instrument does not run it.",
+      ),
     ).toBeVisible();
-    expect(screen.getByText("0 of 1 tests ready")).toBeVisible();
     expect(
       screen.getByRole("button", { name: "Continue to Connect" }),
     ).toBeDisabled();
-    expect(screen.getByRole("link", { name: "Review mappings" })).toBeVisible();
-    expect(screen.queryByRole("checkbox")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("link", { name: "Review mappings" }),
+    ).not.toBeInTheDocument();
   });
 
   it("returns to and updates the same candidate through browser history", async () => {
@@ -777,11 +836,11 @@ describe("AnalyzerSetup Instrument step", () => {
       await screen.findByRole("option", { name: "Molecular Biology" }),
     );
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "verify",
+      "assays",
     );
     history.goBack();
     await waitFor(() =>
@@ -798,7 +857,7 @@ describe("AnalyzerSetup Instrument step", () => {
     await userEvent.clear(nameInput);
     await userEvent.type(nameInput, "GX bench A");
     await userEvent.click(
-      screen.getByRole("button", { name: "Continue to Verify" }),
+      screen.getByRole("button", { name: "Continue to Assays" }),
     );
 
     expect(createAnalyzer).not.toHaveBeenCalled();
@@ -813,7 +872,7 @@ describe("AnalyzerSetup Instrument step", () => {
       expect.any(Function),
     );
     expect(new URLSearchParams(history.location.search).get("setup")).toBe(
-      "verify",
+      "assays",
     );
     expect(new URLSearchParams(history.location.search).get("analyzerId")).toBe(
       "42",

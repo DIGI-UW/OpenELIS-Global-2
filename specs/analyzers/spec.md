@@ -19,9 +19,10 @@ file against the landed code. Work outside the remediation is listed in
 2. **Each analyzer owns its mapping.** When a lab adds an analyzer, OpenELIS
    resolves the profile's standard codes against the local catalog by exact
    match into that analyzer's own mapping. In the setup wizard the operator
-   resolves or acknowledges every unresolved row, confirms, and activates. Instrument
-   codes, language and number format can be overridden per analyzer, and a
-   code the profile never declared is mapped the same way.
+   enables the assays this instrument runs, as on the instrument's own host test
+   code table, resolves every unresolved row among them, confirms, and activates.
+   Instrument codes, language and number format can be overridden per analyzer,
+   and a code the profile never declared is mapped the same way.
 3. **Results arrive as FHIR bundles.** The Bridge parses the instrument's
    message and puts everything it understood into the bundle: each part of a
    result (number with comparator, qualitative call, log, analyte values,

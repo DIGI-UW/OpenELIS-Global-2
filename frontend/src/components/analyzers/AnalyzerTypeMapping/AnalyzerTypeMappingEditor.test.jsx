@@ -109,6 +109,7 @@ const mapping = {
         {
           rawValue: "NOT DETECTED",
           mappingState: "UNRESOLVED",
+          unresolvedReason: "NO_MATCH",
           resultOptionId: null,
           selectedOption: null,
         },
@@ -148,6 +149,7 @@ const mapping = {
       resultType: "qualitative",
       normalizedCoding: null,
       mappingState: "UNRESOLVED",
+      unresolvedReason: "AMBIGUOUS",
       testId: null,
       selectedTest: null,
       suggestedTest: null,
@@ -155,6 +157,7 @@ const mapping = {
         {
           rawValue: "HIGH",
           mappingState: "UNRESOLVED",
+          unresolvedReason: "NO_MATCH",
           resultOptionId: null,
           selectedOption: null,
         },
@@ -591,6 +594,77 @@ describe("AnalyzerTypeMappingEditor", () => {
     });
   });
 
+  it("says why each unmapped record and value was not mapped", async () => {
+    renderEditor();
+
+    const rawC = (
+      await screen.findAllByTestId("analyzer-type-mapping-row")
+    ).find((row) => within(row).queryByText("RAW-C"));
+    expect(
+      within(rawC).getByText(
+        "Not mapped: several tests in this lab's catalog carry its code. Choose one.",
+      ),
+    ).toBeInTheDocument();
+    const rawA = screen
+      .getAllByTestId("analyzer-type-mapping-row")
+      .find((row) => within(row).queryByText("RAW-A"));
+    expect(
+      await within(rawA).findByText(
+        "Not mapped: no answer for this test carries this value's code.",
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("embedded in Verify, shows only the assays this instrument runs and reports its mapping", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({
+        ...mapping,
+        tests: mapping.tests.map((test) =>
+          test.sourceRowKey === "RAW-B" ? { ...test, enabled: false } : test,
+        ),
+      }),
+    );
+    const onMappingChange = vi.fn();
+    render(
+      <MemoryRouter initialEntries={["/analyzers?setup=verify"]}>
+        <IntlProvider locale="en" messages={messages}>
+          <AnalyzerTypeMappingEditor
+            analyzerId="501"
+            embedded
+            onMappingChange={onMappingChange}
+          />
+        </IntlProvider>
+      </MemoryRouter>,
+    );
+
+    const rows = await screen.findAllByTestId("analyzer-type-mapping-row");
+    expect(rows.map((row) => within(row).queryByText("RAW-B"))).toEqual([
+      null,
+      null,
+    ]);
+    expect(getAnalyzerMapping).toHaveBeenCalledWith(
+      "501",
+      expect.any(Function),
+    );
+    expect(document.querySelector("h1")).toBeNull();
+    expect(
+      screen.queryByRole("button", {
+        name: "Apply mappings and retry held results",
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", {
+        name: "Confirm mappings and control recognition",
+      }),
+    ).toBeInTheDocument();
+    await waitFor(() =>
+      expect(onMappingChange).toHaveBeenLastCalledWith(
+        expect.objectContaining({ mappingId: mapping.mappingId }),
+        false,
+      ),
+    );
+  });
+
   it("returns to the worklist with its unsaved review choices", async () => {
     const worklistDraft = {
       analyzerId: "501",
@@ -642,6 +716,82 @@ describe("AnalyzerTypeMappingEditor", () => {
         "Current mappings applied to this analyzer. Eligible held results were retried.",
       ),
     ).toBeVisible();
+  });
+
+  it.each([
+    [
+      "a refusal",
+      {
+        status: 400,
+        error: "Confirm the analyzer's current mapping before applying it",
+        messageKey: "analyzer.mapping.error.confirmBeforeApply",
+      },
+      "Confirm the analyzer's current mapping before applying it.",
+    ],
+    [
+      "an unreachable Bridge",
+      {
+        status: 502,
+        error: "The Analyzer Bridge could not switch with this mapping",
+        messageKey: "analyzer.bridge.connection.unreachable",
+      },
+      "The Analyzer Bridge could not be reached.",
+    ],
+  ])(
+    "explains %s when Apply fails, in words rather than the server's text",
+    async (_case, response, words) => {
+      getAnalyzerMapping.mockImplementation((_id, callback) =>
+        callback({
+          ...mapping,
+          confirmation: { ...unconfirmed, state: "CURRENT" },
+        }),
+      );
+      applyAnalyzerMapping.mockImplementation((_id, _selection, callback) =>
+        callback(response),
+      );
+      renderEditor();
+
+      await userEvent.click(
+        await screen.findByRole("button", {
+          name: "Apply mappings and retry held results",
+        }),
+      );
+
+      expect(await screen.findByText(words)).toBeVisible();
+      expect(screen.queryByText(response.error)).not.toBeInTheDocument();
+    },
+  );
+
+  it("shows its own load error, not the server's text, when the mapping cannot load", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ status: 400, error: "Analyzer has no mapping: 501" }),
+    );
+    renderEditor();
+
+    expect(
+      await screen.findByText(
+        messages["analyzerType.mappingEditor.error.load"],
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Analyzer has no mapping: 501"),
+    ).not.toBeInTheDocument();
+  });
+
+  it("says so when the analyzer type declares no tests, instead of an empty list", async () => {
+    getAnalyzerMapping.mockImplementation((_id, callback) =>
+      callback({ ...mapping, tests: [] }),
+    );
+    renderEditor();
+
+    expect(
+      await screen.findByText(
+        messages["analyzerType.mappingEditor.tests.none"],
+      ),
+    ).toBeVisible();
+    expect(
+      screen.queryByTestId("analyzer-type-mapping-row"),
+    ).not.toBeInTheDocument();
   });
 
   it.each(["UNCONFIRMED", "STALE"])(

@@ -1,7 +1,9 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +46,7 @@ public class AnalyzerMappingDefaultsTest {
         assertEquals("2", draft.tests().get(0).testId());
         assertNull(draft.tests().get(0).unresolvedReason());
         assertEquals("21", draft.results().get(0).testResultId());
+        assertTrue("a test the catalog binds is an assay this lab runs", draft.tests().get(0).isEnabled());
     }
 
     @Test
@@ -59,6 +62,7 @@ public class AnalyzerMappingDefaultsTest {
         assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, draft.tests().get(0).unresolvedReason());
         assertNull(draft.results().get(0).testResultId());
         assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, draft.results().get(0).unresolvedReason());
+        assertTrue("the lab has tests for it, so it is likely run here", draft.tests().get(0).isEnabled());
     }
 
     @Test
@@ -67,6 +71,7 @@ public class AnalyzerMappingDefaultsTest {
                 new AnalyzerMappingCatalogService.TestOption("1", "Other", "OTH", List.of("99999-9"))));
         var draft = defaults.resolve(profile("qualitative", codes("DETECTED", DETECTED)));
         assertEquals(AnalyzerUnresolvedReason.NO_MATCH, draft.tests().get(0).unresolvedReason());
+        assertFalse("no local test carries its code, so it starts off", draft.tests().get(0).isEnabled());
     }
 
     @Test
@@ -86,6 +91,7 @@ public class AnalyzerMappingDefaultsTest {
         assertEquals(AnalyzerMappingState.UNRESOLVED, draft.tests().get(0).mappingState());
         assertEquals(AnalyzerUnresolvedReason.INCOMPATIBLE, draft.tests().get(0).unresolvedReason());
         assertEquals(AnalyzerUnresolvedReason.INCOMPATIBLE, draft.results().get(0).unresolvedReason());
+        assertTrue(draft.tests().get(0).isEnabled());
     }
 
     @Test

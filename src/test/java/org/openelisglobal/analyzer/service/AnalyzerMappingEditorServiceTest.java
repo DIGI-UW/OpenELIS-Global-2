@@ -1,8 +1,10 @@
 package org.openelisglobal.analyzer.service;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
+import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -225,6 +227,46 @@ public class AnalyzerMappingEditorServiceTest {
     }
 
     @Test
+    public void aHeldCodeTheProfileDoesNotDeclareIsNotAnEnabledAssayUntilTheOperatorMapsIt() throws Exception {
+        AnalyzerResults held = new AnalyzerResults();
+        held.setRawTestCode("VENDOR-NEW-42");
+        held.setRawResultValue("INDETERMINATE");
+        held.setResultType("A");
+        held.setImportIssueReason(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
+        analyzerWithLatest(currentMapping());
+        when(analyzerResultsService.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held));
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+
+        AnalyzerMappingView view = service.getMapping("42");
+
+        assertTrue("a profile assay stored on stays on", view.tests().get(0).enabled());
+        assertFalse("the lab never chose to run a code nobody declared", view.tests().get(3).enabled());
+    }
+
+    @Test
+    public void mappingARowThatWasOffTurnsItOnWhileLeavingAnotherOffRowAlone() throws Exception {
+        AnalyzerMappingSnapshot current = currentMapping();
+        current.tests().get(1).setEnabled(false);
+        current.tests().get(2).setEnabled(false);
+        Analyzer analyzer = savableWithLatest(current);
+        when(mappingService.appendRevision(eq(analyzer), any(AnalyzerMappingDraft.class), eq("17")))
+                .thenReturn(savedMapping());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
+        AnalyzerMappingDraft base = validDraft();
+        List<AnalyzerMappingTestDraft> tests = List.of(base.tests().get(0),
+                new AnalyzerMappingTestDraft("RAW-B", AnalyzerMappingState.BOUND, "9701"), base.tests().get(2));
+
+        service.saveMapping("42",
+                new AnalyzerMappingUpdate(current.mapping().getMappingFingerprint(), tests, base.results()), "17");
+
+        ArgumentCaptor<AnalyzerMappingDraft> savedDraft = ArgumentCaptor.forClass(AnalyzerMappingDraft.class);
+        verify(mappingService).appendRevision(eq(analyzer), savedDraft.capture(), eq("17"));
+        assertEquals(List.of(true, true, false),
+                savedDraft.getValue().tests().stream().map(AnalyzerMappingTestDraft::isEnabled).toList());
+    }
+
+    @Test
     public void observedNumericTestDoesNotCreateMappingsForIndividualReadings() throws Exception {
         AnalyzerResults held = new AnalyzerResults();
         held.setRawTestCode("NEW-NUMERIC");
@@ -366,6 +408,7 @@ public class AnalyzerMappingEditorServiceTest {
                         "17"));
 
         assertEquals("The analyzer's mapping changed after this editor was loaded", error.getMessage());
+        assertEquals("analyzer.mapping.error.changedSinceLoaded", ((AnalyzerRequestException) error).messageKey());
         verify(mappingService, never()).appendRevision(any(), any(), any());
     }
 
@@ -428,7 +471,11 @@ public class AnalyzerMappingEditorServiceTest {
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
 
-        AnalyzerMappingView view = service.preview("42", 3, validDraft());
+        AnalyzerMappingDraft valid = validDraft();
+        AnalyzerMappingDraft draft = new AnalyzerMappingDraft(List.of(valid.tests().get(0), valid.tests().get(1),
+                valid.tests().get(2).withAssay(false, "RAW-C-LOCAL")), valid.results());
+
+        AnalyzerMappingView view = service.preview("42", 3, draft);
 
         assertEquals("42", view.analyzerId());
         assertNull("nothing is saved", view.mappingId());
@@ -437,6 +484,9 @@ public class AnalyzerMappingEditorServiceTest {
         assertEquals("SARS-CoV-2 RNA", first.selectedTest().name());
         assertEquals("Positive", first.results().get(0).selectedOption().label());
         assertEquals(AnalyzerMappingState.EXCLUDED, view.tests().get(1).mappingState());
+        assertTrue(first.enabled());
+        assertFalse("an assay this instrument does not run", view.tests().get(2).enabled());
+        assertEquals("RAW-C-LOCAL", view.tests().get(2).instrumentCode());
         verify(bridgeProfileCatalogService).getProfile("site.mock-analyzer", 3);
         verify(mappingService, never()).appendRevision(any(), any(), any());
     }

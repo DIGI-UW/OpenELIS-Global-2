@@ -103,18 +103,18 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
 ### Build
 
 ```
-- [ ] T6.0 Red: replay 303-0251 §2.1.1 (every outcome) and 301-2002 Rev E §6.3.4.1.9 to 6.3.4.1.11; the LOG main result arrives as its own Observation with sub-identity `&LOG`, never under the viral load's; a quantified main result carries 1009.64 in valueQuantity and DETECTED as its interpretation; `<40` arrives as valueQuantity 40 with comparator `<` and DETECTED as interpretation; NOT DETECTED arrives as the value with no quantity; analyte records arrive with their sub-identity (`HIV-1`, `HIV-1&Ct`)
-- [ ] T6.1 Red: validator tests, each contract rule rejects its violation
-- [ ] T6.2 Red: parser tests from the Cepheid example messages (301-2002 Rev E, 303-0251, 302-7279, MTB/RIF Ultra once verified): every record type, flag, component and C record parsed
-- [ ] T6.3 Red: bundle round-trip test, every parsed fact present in the bundle in its slot
-- [ ] T6.4 Red: outbox test, delivered entries survive the purge by default
-- [ ] T6.5 Red: runtime test, a connection codeOverride changes inbound translation and outbound order code; a connection numberFormat of `,` reads `40,00` as 40
-- [ ] T6.6 Schema and validator per Facts
-- [ ] T6.7 docs/profile-authoring.md and templates/{astm,hl7,file}.json
-- [ ] T6.8 genexpert-astm rev 8: the three assays in scope (step 5) from docs/profiles/genexpert-astm.md; no hints; components; value codes; translations; sources
-- [ ] T6.9 Parsers and bundle per Facts; HL7 PID fallback removed
-- [ ] T6.10 Outbox retention default; codeOverrides and numberFormat
-- [ ] T6.11 Green; PR; release tag; then FluoroCycler XT and QuantStudio as baseline revisions, then one PR per Madagascar profile, each with its step-5 note
+- [ ] T6.0 303-0251 §2.1.1 and 302-7279 §6 done (`ASTMResultPartsParserTest`, `ASTMResultPartsBundleTest`, `GeneXpertBaselineProfileTest`); 301-2002 Rev E §6.3.4.1.9 to 6.3.4.1.11 still open as parser-level tests (their assays are not in the profile, so they check structure: multi-result, single-result, quantitative with LOG and C notes). Red: replay 303-0251 §2.1.1 (every outcome) and 301-2002 Rev E §6.3.4.1.9 to 6.3.4.1.11; the LOG main result arrives as its own Observation with sub-identity `&LOG`, never under the viral load's; a quantified main result carries 1009.64 in valueQuantity and DETECTED as its interpretation; `<40` arrives as valueQuantity 40 with comparator `<` and DETECTED as interpretation; NOT DETECTED arrives as the value with no quantity; analyte records arrive with their sub-identity (`HIV-1`, `HIV-1&Ct`)
+- [x] T6.1 (`BaselineProfileContractTest`) Red: validator tests, each contract rule rejects its violation
+- [ ] T6.2 303-0251 and 302-7279 done; 301-2002 with T6.0; MTB/RIF Ultra stays unverified (step 5). Red: parser tests from the Cepheid example messages (301-2002 Rev E, 303-0251, 302-7279, MTB/RIF Ultra once verified): every record type, flag, component and C record parsed
+- [x] T6.3 (`ASTMResultPartsBundleTest`, validated against `normalized-fhir-bundle.schema.json`; OE2's `AnalyzerNormalizedResultContract` read the bundles as intended) Red: bundle round-trip test, every parsed fact present in the bundle in its slot
+- [x] T6.4 Red: outbox test, delivered entries survive the purge by default
+- [x] T6.5 (found 6 Oct: the connection catalog refused any value a profile did not declare as a field, so a runtime-only test passed while the API rejected `codeOverrides`; the test now goes through `AnalyzerConnectionCatalog.create` and `update`, and the reading is built for every protocol) Red: through the connection API, a connection codeOverride changes inbound translation and outbound order code; a connection numberFormat of `,` reads `40,00` as 40
+- [x] T6.6 Schema and validator per Facts (`schemaVersion` 2.0; 1.0 revisions keep their hints because a published revision never changes)
+- [x] T6.7 (`ProfileTemplatesTest`: each template is a valid draft as it stands) docs/profile-authoring.md and templates/{astm,hl7,file}.json
+- [x] T6.8 (MTB and RIF added as text results on the codes 302-2261 cites; profiles authored or duplicated in the Bridge are written to 2.0) genexpert-astm rev 8: the three assays in scope (step 5) from docs/profiles/genexpert-astm.md; no hints; components; value codes; translations; sources
+- [ ] T6.9 ASTM parsers and bundle done; HL7 PID fallback removed. Open: HL7 result parts (OBX-4 sub-identity, OBX-5 components, OBX-8, NTE), which land with the first HL7 baseline profile
+- [x] T6.10 Outbox retention default; codeOverrides and numberFormat
+- [ ] T6.11 Green and PR done (Bridge #75, draft, with FluoroCycler XT rev 5 and QuantStudio rev 4). Open: the release tag is a maintainer step after review (Claude does not cut releases); then one PR per Madagascar profile, each with its step-5 note
 ```
 
 ### Verify

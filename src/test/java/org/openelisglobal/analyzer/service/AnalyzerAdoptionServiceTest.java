@@ -131,8 +131,11 @@ public class AnalyzerAdoptionServiceTest {
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
         when(results.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of(held("RAW-B", 1)));
 
-        assertThrows("RAW-B still has held results", IllegalArgumentException.class, () -> service.adopt("42", 2,
-                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17"));
+        AnalyzerRequestException held = assertThrows("RAW-B still has held results", AnalyzerRequestException.class,
+                () -> service.adopt("42", 2,
+                        reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1")), "17"));
+        assertEquals("analyzer.adoption.error.heldResults", held.messageKey());
+        assertEquals(java.util.Map.of("record", "RAW-B", "revision", 1), held.messageArgs());
 
         when(results.findHeldMappingResultsByAnalyzer("42")).thenReturn(List.of());
         assertThrows("every adopted record needs a decision", IllegalArgumentException.class,

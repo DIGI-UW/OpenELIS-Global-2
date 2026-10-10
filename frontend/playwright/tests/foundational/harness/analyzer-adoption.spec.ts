@@ -1,66 +1,15 @@
-import type { Page } from "@playwright/test";
 import { randomUUID } from "node:crypto";
 import { expect, test } from "../../../helpers/test-base";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
-import { csrfToken } from "../../../helpers/api-session";
-
-const API = "/api/OpenELIS-Global/rest";
-
-type ProfileTest = {
-  test_code: string;
-  loinc: string;
-  unit: string;
-  result_type: string;
-};
-
-type Draft = {
-  draftId: string;
-  profile: Record<string, unknown> & { profileMeta: { id: string } };
-};
-
-const numeric = (code: string, loinc: string): ProfileTest => ({
-  test_code: code,
-  loinc,
-  unit: "mmol/L",
-  result_type: "quantitative",
-});
-
-async function send(
-  page: Page,
-  method: "post" | "put",
-  path: string,
-  data: unknown,
-) {
-  const response = await page.request[method](`${API}${path}`, {
-    headers: { "X-CSRF-Token": await csrfToken(page) },
-    data,
-  });
-  expect(
-    response.ok(),
-    `${method.toUpperCase()} ${path}: ${response.status()} ${await response.text()}`,
-  ).toBeTruthy();
-  return response.json();
-}
-
-/** Saves the draft with these tests and publishes it as the next revision. */
-async function publish(page: Page, draft: Draft, tests: ProfileTest[]) {
-  const saved = await send(
-    page,
-    "put",
-    `/analyzer-types/drafts/${draft.draftId}`,
-    {
-      profile: { ...draft.profile, default_test_mappings: tests },
-    },
-  );
-  expect(saved.validationIssues || []).toEqual([]);
-  await send(
-    page,
-    "post",
-    `/analyzer-types/drafts/${draft.draftId}/publish`,
-    {},
-  );
-}
+import {
+  API,
+  createProfile,
+  numeric,
+  publish,
+  send,
+  type Draft,
+} from "../../../helpers/analyzer-profile-api";
 
 test.describe("Adopting a newer profile revision", () => {
   test("an analyzer adopts the next revision: a fixed LOINC binds by default and a new code needs mapping", async ({
@@ -94,21 +43,10 @@ test.describe("Adopting a newer profile revision", () => {
       "2160-0",
     ].filter((code) => !loincCounts.has(code));
 
-    const shipped = (
-      (await (await page.request.get(`${API}/analyzer-types`)).json()) as {
-        types: Array<{ profileId: string; revision: number; status: string }>;
-      }
-    ).types.find(
-      (type) => type.profileId === "genexpert-astm" && type.status === "ACTIVE",
-    );
-    const first: Draft = await send(
-      page,
-      "post",
-      "/analyzer-types/genexpert-astm/duplicate",
-      { sourceRevision: shipped!.revision, displayName },
-    );
+    const first = await createProfile(page, displayName, [
+      numeric("ADOPT-FIX", wrongLoinc),
+    ]);
     const profileId = first.profile.profileMeta.id;
-    await publish(page, first, [numeric("ADOPT-FIX", wrongLoinc)]);
 
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);

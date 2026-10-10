@@ -70,16 +70,22 @@ const hasHeldResults = (analyzer: Analyzer) =>
 const isAnalyzerSetupStep = (
   value: string | null,
 ): value is AnalyzerSetupStep =>
-  value === "instrument" || value === "verify" || value === "connect";
+  value === "instrument" ||
+  value === "assays" ||
+  value === "verify" ||
+  value === "connect";
 
 const isAnalyzerLifecycleAction = (
   value: string | null,
 ): value is AnalyzerLifecycleAction =>
-  value === "deactivate" || value === "reactivate";
+  value === "activate" || value === "deactivate" || value === "reactivate";
 
 const lifecycleActionsFor = (
   status: AnalyzerStatus,
 ): AnalyzerLifecycleAction[] => {
+  if (status === "SETUP") {
+    return ["activate"];
+  }
   if (status === "INACTIVE") {
     return ["reactivate"];
   }

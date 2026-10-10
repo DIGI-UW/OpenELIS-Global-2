@@ -159,11 +159,13 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     private static void validateConfirmable(AnalyzerMappingView view) {
         for (AnalyzerMappingView.TestRow test : view.tests()) {
             if (test.mappingState() == AnalyzerMappingState.BOUND && test.selectedTest() == null) {
-                throw new IllegalArgumentException("Bound test rows must reference a current catalog Test");
+                throw new AnalyzerRequestException("analyzer.mapping.error.testNotCurrent",
+                        "Bound test rows must reference a current catalog Test");
             }
             for (AnalyzerMappingView.ResultRow result : test.results()) {
                 if (result.mappingState() == AnalyzerMappingState.BOUND && result.selectedOption() == null) {
-                    throw new IllegalArgumentException("Bound result rows must reference a current Result Option");
+                    throw new AnalyzerRequestException("analyzer.mapping.error.resultNotCurrent",
+                            "Bound result rows must reference a current Result Option");
                 }
             }
         }
@@ -220,9 +222,16 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                     && Objects.equals(old.getTestId(), row.testId())
                     && Objects.equals(old.getComponentId(), row.componentId())
                     && Objects.equals(old.getCallComponentId(), row.callComponentId());
+            // An edit that does not state an assay's switch or code keeps what it had,
+            // except that mapping a row that was not mapped is the lab choosing to run it.
+            boolean newlyMapped = row.mappingState() == AnalyzerMappingState.BOUND
+                    && (old == null || old.getMappingState() != AnalyzerMappingState.BOUND);
+            Boolean enabled = row.enabled() != null ? row.enabled() : old == null || old.isEnabled() || newlyMapped;
+            String instrumentCode = row.enabled() != null || row.instrumentCode() != null ? row.instrumentCode()
+                    : old == null ? null : old.getInstrumentCode();
             return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
                     row.unresolvedReason(), same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE, row.subIdentity(),
-                    row.callComponentId());
+                    row.callComponentId(), enabled, instrumentCode);
         }).toList();
         List<AnalyzerMappingResultDraft> results = draft.results().stream().map(row -> {
             var old = beforeResults.get(new ResultSourceKey(row.rowKey(), row.rawValue()));
@@ -238,7 +247,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     private static void validateLoadedFingerprint(AnalyzerMappingSnapshot current, String loadedFingerprint) {
         String normalized = loadedFingerprint == null || loadedFingerprint.isBlank() ? null : loadedFingerprint.trim();
         if (!Objects.equals(normalized, current.mapping().getMappingFingerprint())) {
-            throw new IllegalArgumentException("The analyzer's mapping changed after this editor was loaded");
+            throw new AnalyzerRequestException("analyzer.mapping.error.changedSinceLoaded",
+                    "The analyzer's mapping changed after this editor was loaded");
         }
     }
 
@@ -308,7 +318,8 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                 definition.aliases(), definition.testNameHint(), definition.loinc(), record.unit(), record.resultType(),
                 definition.normalizedCoding(), state, origin, testId, componentId, selected, suggested, testReason,
                 results, key.subIdentity(), callComponentId, record.componentCode(),
-                key.subIdentity().isEmpty() ? definition.callComponent() : null);
+                key.subIdentity().isEmpty() ? definition.callComponent() : null, current != null && current.enabled(),
+                current == null ? null : current.instrumentCode());
     }
 
     private static AnalyzerMappingRowKey recordOf(AnalyzerResults staged) {
@@ -385,7 +396,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
     }
 
     private record CurrentTest(AnalyzerMappingState state, AnalyzerMappingOrigin origin, String testId,
-            String componentId, String callComponentId) {
+            String componentId, String callComponentId, boolean enabled, String instrumentCode) {
     }
 
     private record CurrentResult(AnalyzerMappingState state, AnalyzerMappingOrigin origin, String testResultId) {
@@ -399,8 +410,10 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
 
         static CurrentRows of(AnalyzerMappingSnapshot snapshot) {
             Map<AnalyzerMappingRowKey, CurrentTest> tests = snapshot.tests().stream()
-                    .collect(Collectors.toMap(AnalyzerMappingRowKey::of, row -> new CurrentTest(row.getMappingState(),
-                            row.getOrigin(), row.getTestId(), row.getComponentId(), row.getCallComponentId())));
+                    .collect(Collectors.toMap(AnalyzerMappingRowKey::of,
+                            row -> new CurrentTest(row.getMappingState(), row.getOrigin(), row.getTestId(),
+                                    row.getComponentId(), row.getCallComponentId(), row.isEnabled(),
+                                    row.getInstrumentCode())));
             Map<ResultSourceKey, CurrentResult> results = snapshot.results().stream()
                     .collect(Collectors.toMap(ResultSourceKey::of,
                             row -> new CurrentResult(row.getMappingState(), row.getOrigin(), row.getTestResultId())));
@@ -408,9 +421,10 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         }
 
         static CurrentRows of(AnalyzerMappingDraft draft) {
-            Map<AnalyzerMappingRowKey, CurrentTest> tests = draft.tests().stream().collect(
-                    Collectors.toMap(AnalyzerMappingTestDraft::rowKey, row -> new CurrentTest(row.mappingState(),
-                            row.origin(), row.testId(), row.componentId(), row.callComponentId())));
+            Map<AnalyzerMappingRowKey, CurrentTest> tests = draft.tests().stream()
+                    .collect(Collectors.toMap(AnalyzerMappingTestDraft::rowKey,
+                            row -> new CurrentTest(row.mappingState(), row.origin(), row.testId(), row.componentId(),
+                                    row.callComponentId(), row.isEnabled(), row.instrumentCode())));
             Map<ResultSourceKey, CurrentResult> results = draft.results().stream()
                     .collect(Collectors.toMap(row -> new ResultSourceKey(row.rowKey(), row.rawValue()),
                             row -> new CurrentResult(row.mappingState(), row.origin(), row.testResultId())));
