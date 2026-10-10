@@ -61,15 +61,7 @@ PR B, results and import:
 PR C, deploy, harness and docs:
 
 ```
-- [ ] R18 (4632#1, 4644#5, high) The testing deployment's delivery check reaches an active GeneXpert: the seed ignores rows on assays that are off; the smoke analyzer activates on the bundled catalog; a kept connection whose profile is gone is recreated. Rehearsed against a local stack built like the deployment
-- [ ] R19 (4579#0, 4579#1, 4584#0, 4593#0, 4611#0) AGENTS.md says each analyzer owns its mapping and editor, the types page previews defaults read-only, and changeset 124 is the one-time baseline migration
-- [ ] R20 Low findings in files PRs A to C already touch are fixed there; the rest are filed as issues with the thread linked
-```
-
-PR D, pairing proof:
-
-```
-- [ ] R21 (4657#1) The pairing code never crosses the wire: OE2 sends an HMAC of the code over the observed Bridge certificate and both of its own; the Bridge checks it and answers with its own HMAC, which OE2 checks. Bridge 3.3.1 first, then OE2
+- [x] R19 (4579#0, 4579#1, 4584#0, 4593#0, 4611#0) AGENTS.md restates no analyzer design and points to the spec, which states that each analyzer owns its mapping, the types page only previews defaults, and the one-time baseline migration (rules 2 and 8)
 ```
 
 Review of the top three PRs, 9 Oct (fixed on the top PR):
@@ -84,18 +76,18 @@ Review of the top three PRs, 9 Oct (fixed on the top PR):
 - [x] R31 (4657 review) bridge-pairing.md says the first pairing trusts whichever certificate answers
 ```
 
-Follow-ups, deferred by the user on 9 Oct (after the stack merges):
-
-```
-- [ ] R32 (4657 review) Whoever owns QC roles decides whether the four QC controllers' reads are gated on `QaPermissions.VIEW_QC`, as `QCRestController` is, instead of ADMIN, so Lab Supervisors keep the QC dashboard
-- [ ] R33 (4657 Codex) The Linux installer's `oe_server.xml` requests client certificates through `AnyClientCertificateTrustManager`, so installer deployments accept the paired Bridge's deliveries; `bridge-pairing.md` then drops its installer caveat
-```
+Moved on 9 Oct to the [analyzers roadmap](../../analyzers/roadmap.md), "After
+the baseline merges": R18 (the testing deployment's delivery check), R20 (low
+findings), R21 (pairing proof, a Bridge release first), R32 (QC read
+permission) and R33 (the Linux installer's client certificates). The changeset
+132 renumber is safe on databases that ran it as 120 (`2da79e8fc2`, test
+`AnalyzerResultInstrumentSpecimenIdLiquibaseTest`).
 
 Threads:
 
 ```
 - [ ] R22 Replies drafted for the 50 threads to answer and for every thread fixed above, shown to the user, then posted and resolved
-- [ ] R23 Every CI check on the top PR is green; then step 10 resumes at F7b
+- [ ] R23 Every CI check on the top PR is green; then step 10 resumes at F10
 ```
 
 ### Verify
