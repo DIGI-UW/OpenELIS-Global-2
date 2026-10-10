@@ -27,4 +27,5 @@ public class MicrobiologyUatScenarioForm {
     public String methodId;
     public String sampleTypeId;
     public String cultureTestId;
+    public String followUpTestId;
 }

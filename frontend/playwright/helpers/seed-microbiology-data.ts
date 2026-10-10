@@ -66,6 +66,7 @@ export interface SeededMicrobiologyCase {
   alternateMethodId?: string;
   sampleTypeId?: string;
   cultureTestId?: string;
+  followUpTestId?: string;
   tbCultureTestId?: string;
   nonCultureTestId?: string;
 }
@@ -127,6 +128,7 @@ type MicrobiologyScenario =
   | "CASE"
   | "MVP"
   | "WORKLIST"
+  | "INITIAL_TESTING"
   | "M3"
   | "M4"
   | "R1"
@@ -1124,4 +1126,10 @@ export async function seedFinalizedMicrobiologyCase(
   );
 
   return seeded;
+}
+
+export function seedMicrobiologyInitialTestingCase(
+  page: Page,
+): Promise<SeededMicrobiologyCase> {
+  return provisionMicrobiologyScenario(page, "INITIAL_TESTING");
 }

@@ -58,6 +58,57 @@ public class MicroCaseAnalysis extends BaseObject<String> {
     @Column(name = "cancellation_reason")
     private String cancellationReason;
 
+    @Column(name = "entered_by")
+    private String enteredBy;
+    @Column(name = "tested_elsewhere")
+    private boolean testedElsewhere;
+    @Column(name = "performing_lab_id")
+    private String performingLabId;
+    @Column(name = "performing_user_id")
+    private String performingUserId;
+    @Column(name = "performed_at")
+    private Timestamp performedAt;
+
+    public String getEnteredBy() {
+        return enteredBy;
+    }
+
+    public void setEnteredBy(String value) {
+        enteredBy = value;
+    }
+
+    public boolean getTestedElsewhere() {
+        return testedElsewhere;
+    }
+
+    public void setTestedElsewhere(boolean value) {
+        testedElsewhere = value;
+    }
+
+    public String getPerformingLabId() {
+        return performingLabId;
+    }
+
+    public void setPerformingLabId(String value) {
+        performingLabId = value;
+    }
+
+    public String getPerformingUserId() {
+        return performingUserId;
+    }
+
+    public void setPerformingUserId(String value) {
+        performingUserId = value;
+    }
+
+    public Timestamp getPerformedAt() {
+        return performedAt;
+    }
+
+    public void setPerformedAt(Timestamp value) {
+        performedAt = value;
+    }
+
     @Override
     public String getId() {
         return id;

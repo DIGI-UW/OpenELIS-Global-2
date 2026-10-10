@@ -563,3 +563,13 @@ describe("ValidationReviewPanel attachments (review only)", () => {
     expect(document.querySelector('input[type="file"]')).toBeNull();
   });
 });
+
+test("the entry actor sees why validation is disabled", () => {
+  renderPanel(row({ selfValidationBlocked: true }));
+  expect(
+    screen.getByTestId("review-release").querySelector("button"),
+  ).toBeDisabled();
+  expect(
+    screen.getByText(messages["microbiology.testing.selfValidationBlocked"]),
+  ).toBeInTheDocument();
+});
