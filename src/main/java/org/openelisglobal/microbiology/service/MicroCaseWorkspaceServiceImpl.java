@@ -92,6 +92,7 @@ public class MicroCaseWorkspaceServiceImpl implements MicroCaseWorkspaceService 
             MicroCaseSpecimenForm s = new MicroCaseSpecimenForm();
             s.id = si.getId();
             s.sampleItemId = si.getId();
+            s.sampleTypeId = si.getTypeOfSample() == null ? null : si.getTypeOfSample().getId();
             s.label = si.getExternalId();
             if (s.label == null || s.label.isBlank())
                 s.label = si.getSample().getAccessionNumber() + "-" + si.getSortOrder();
