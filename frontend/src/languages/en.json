@@ -12456,6 +12456,7 @@
   "microbiology.case.chooseUnit": "Choose a lab unit",
   "microbiology.case.transferError": "The case could not be transferred. Refresh and try again.",
   "microbiology.enum.CASE_TRANSFERRED": "Case transferred",
+  "microbiology.enum.SAMPLE_JOINED": "Sample attached",
   "common.refresh": "Refresh",
   "common.previous": "Previous",
   "common.next": "Next"

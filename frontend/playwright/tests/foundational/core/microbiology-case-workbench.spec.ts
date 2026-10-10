@@ -111,7 +111,10 @@ test.describe("Microbiology case workbench", () => {
     await expect(
       timeline.getByText("Subculture Recorded", { exact: true }),
     ).toBeVisible();
-    await expect(timeline.getByText("Auto", { exact: true })).toHaveCount(3);
+    await expect(
+      timeline.getByText("Sample attached", { exact: true }),
+    ).toBeVisible();
+    await expect(timeline.getByText("Auto", { exact: true })).toHaveCount(4);
     await page.getByRole("button", { name: "Add note" }).click();
     await page
       .getByLabel("Note or observation")
