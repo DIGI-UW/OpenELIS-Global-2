@@ -47,9 +47,15 @@ const HARNESS_FOUNDATIONAL_TESTS = [
 const HARNESS_DEMO_TESTS = ["**/demo/harness/ogc-1054-m3-guided-setup.spec.ts"];
 const HARNESS_VIDEO_TESTS = [
   "**/demo/harness/ogc-1054-m3-guided-setup.spec.ts",
+  "**/foundational/harness/analyzer-setup-assays.spec.ts",
   "**/foundational/harness/analyzer-setup-to-result.spec.ts",
+  "**/foundational/harness/analyzer-result-placement.spec.ts",
+  "**/foundational/harness/analyzer-adoption.spec.ts",
+  "**/foundational/harness/analyzer-profile-unavailable.spec.ts",
   "**/foundational/harness/ogc-1054-delivery-issues.spec.ts",
 ];
+// The recorded viewport is the video frame, so nothing is scaled or padded.
+const HARNESS_VIDEO_FRAME = { width: 1280, height: 800 };
 
 // Manual-only harness coverage (real hardware or operator-managed infra).
 const HARNESS_MANUAL_ONLY_TESTS = [
@@ -245,7 +251,8 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         storageState: "playwright/.auth/user.json",
         trace: "on",
-        video: { mode: "on", size: { width: 1600, height: 1000 } },
+        viewport: HARNESS_VIDEO_FRAME,
+        video: { mode: "on", size: HARNESS_VIDEO_FRAME },
         launchOptions: {
           slowMo: parseInt(process.env.PLAYWRIGHT_SLOWMO || "500"),
         },

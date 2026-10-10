@@ -2,6 +2,9 @@ import { expect, test } from "../../../helpers/test-base";
 import type { Page, TestInfo } from "@playwright/test";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
+import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
+import { withAuthedPage } from "../../../helpers/api-session";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
@@ -17,15 +20,23 @@ async function capture(page: Page, testInfo: TestInfo, name: string) {
 }
 
 test.describe("OGC-1054 M3 guided analyzer setup", () => {
-  test("creates, verifies, connects, activates, links QC, and deactivates through the UI", async ({
+  test("creates, verifies, connects, activates and links QC through the UI", async ({
     page,
   }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "Set up a GeneXpert through the guided screens",
+      "Choose its type, confirm the mappings, connect it, and activate it.",
+    );
     const runId = Date.now().toString().slice(-8);
     const analyzerName = `M3 GeneXpert ${runId}`;
     const senderId = `GX-GUIDED-${runId}`;
     const profileName = `Guided GeneXpert ${runId}`;
     // A new profile exercises first-time confirmation on every run, through the
     // same duplication/publish workflow an operator uses. No mapping is seeded.
+    await demo.caption(
+      "A new analyzer type is published from the GeneXpert profile the Bridge ships, so its mappings start unconfirmed.",
+    );
     await page.goto("/analyzers/types", { waitUntil: "domcontentloaded" });
     await page
       .getByRole("button", { name: "Duplicate Profile", exact: true })
@@ -48,6 +59,9 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
 
+    await demo.caption(
+      "Add an analyzer: choose its type, name it, and pick its lab unit.",
+    );
     await list.goto();
     await list.expectLoaded();
     const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
@@ -69,9 +83,12 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(
       page.getByRole("button", { name: "Edit Instrument" }),
     ).toBeVisible();
-    await expect(
-      page.getByText("Not confirmed", { exact: true }),
-    ).toBeVisible();
+    const notConfirmed = page.getByText("Not confirmed", { exact: true });
+    await expect(notConfirmed).toBeVisible();
+    await demo.caption(
+      "Verify shows each assay's default mapping to a local test. Nothing is used until the operator confirms.",
+    );
+    await demo.highlight(notConfirmed);
     // The mapping is reviewed in Verify itself; nothing is confirmed until the operator says so.
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
@@ -87,6 +104,8 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(
       page.getByRole("button", { name: "Continue to Connect" }),
     ).toBeEnabled();
+    await demo.caption("Confirmed. Continue to Connect opens.");
+    await demo.highlight(page.getByText("Current confirmation"));
     const verifyUrl = page.url();
     await capture(page, testInfo, "m3-verify");
 
@@ -103,7 +122,11 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("setup") === "connect",
     );
 
+    await demo.caption(
+      "Connect: the system name the instrument sends tells the Bridge which analyzer a message is from.",
+    );
     await setup.fillSenderId(senderId);
+    await demo.caption("Setup can be saved and finished later.");
     await page.getByRole("button", { name: "Save and finish later" }).click();
     await expect(setup.surface).not.toBeVisible();
 
@@ -119,6 +142,8 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       page.getByTestId("stat-setup").locator(".stat-value"),
     ).toHaveText("1");
     await expect(analyzerRow).toContainText("Setup");
+    await demo.caption("The analyzer waits in Setup on the dashboard.");
+    await demo.highlight(analyzerRow);
     await capture(page, testInfo, "m3-in-setup-dashboard");
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
     await page.getByRole("menuitem", { name: "Configure connection" }).click();
@@ -132,6 +157,10 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       }),
     ).toHaveValue(senderId);
     await expect(page.getByText("Analyzer is ready to activate")).toBeVisible();
+    await demo.caption(
+      "Back in Connect, everything is ready. Finish and activate.",
+    );
+    await demo.highlight(page.getByText("Analyzer is ready to activate"));
     await capture(page, testInfo, "m3-ready-to-activate");
 
     await page.getByRole("button", { name: "Finish and activate" }).click();
@@ -149,6 +178,8 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       (url) => url.searchParams.get("search") === analyzerName,
     );
     await expect(analyzerRow).toBeVisible();
+    await demo.caption("The analyzer is Active.");
+    await demo.highlight(analyzerRow);
     await capture(page, testInfo, "m3-active-dashboard");
 
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
@@ -165,14 +196,18 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(
       page.getByRole("button", { name: "Save and finish later" }),
     ).not.toBeVisible();
+    await demo.caption(
+      "Test connection shows what the Bridge reports for this analyzer.",
+    );
     await setup.testConnection();
-    await page
-      .getByRole("heading", { name: "Connection evidence" })
-      .scrollIntoViewIfNeeded();
+    const evidence = page.getByRole("heading", { name: "Connection evidence" });
+    await evidence.scrollIntoViewIfNeeded();
+    await demo.pause(2500);
     await capture(page, testInfo, "m3-connection-evidence");
     await setup.close();
     await expect(analyzerRow).toBeVisible();
 
+    await demo.caption("Its Quality Control page opens from the analyzer.");
     await analyzerRow.getByRole("button", { name: "Actions" }).click();
     await page.getByRole("menuitem", { name: "Quality Control" }).click();
     await expect(page).toHaveURL(
@@ -191,6 +226,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     const analyzerReturnUrl = new URL(analyzerReturnHref!, page.url());
     expect(analyzerReturnUrl.pathname).toBe("/analyzers");
     expect(analyzerReturnUrl.searchParams.get("search")).toBe(analyzerName);
+    await demo.pause(2000);
     await capture(page, testInfo, "m3-linked-operational-qc");
 
     await analyzerReturnLink.click();
@@ -199,15 +235,8 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     );
     await list.expectLoaded();
     await expect(analyzerRow).toBeVisible();
-    await analyzerRow.getByRole("button", { name: "Actions" }).click();
-    await page.getByRole("menuitem", { name: "Deactivate" }).click();
-    await expect(page).toHaveURL(/lifecycle=deactivate/);
-    await expect(
-      page.getByRole("heading", { name: "Deactivate analyzer" }),
-    ).toBeVisible();
-    await page.getByRole("button", { name: "Deactivate analyzer" }).click();
-    await expect(analyzerRow).toContainText("Inactive");
 
+    await demo.caption("The dashboard also fits a phone screen.");
     await page.setViewportSize({ width: 390, height: 844 });
     await page.reload({ waitUntil: "domcontentloaded" });
     await expect(analyzerRow).toBeVisible();
@@ -220,6 +249,73 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
       page,
       "Analyzer dashboard should not overflow the mobile page horizontally",
     );
+    await demo.pause(2000);
     await capture(page, testInfo, "m3-mobile-dashboard");
+    await demo.verified(
+      `${analyzerName} is active on ${profileName}`,
+      "Its mappings were confirmed in Verify, then it was connected and activated.",
+    );
+  });
+
+  test("deactivates and reactivates an analyzer through the UI", async ({
+    browser,
+    page,
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "Deactivate and reactivate an analyzer",
+      "Both from the analyzer's actions on the dashboard.",
+    );
+    const runId = Date.now().toString().slice(-8);
+    const analyzerName = `Lifecycle GeneXpert ${runId}`;
+    await demo.caption(
+      "Off screen: a GeneXpert is set up and activated through the same guided screens.",
+    );
+    await withAuthedPage(browser, (setupPage) =>
+      activateShippedGeneXpert(setupPage, analyzerName, `GX-LIFE-${runId}`),
+    );
+
+    const list = new AnalyzerListPage(page);
+    await list.goto();
+    await list.expectLoaded();
+    await list.search(analyzerName);
+    const analyzerRow = page.getByRole("row", {
+      name: new RegExp(escapeRegExp(analyzerName), "i"),
+    });
+    await expect(analyzerRow).toContainText("Active");
+
+    await demo.caption(
+      "Deactivate stops new use. Its configuration and history are kept.",
+    );
+    await analyzerRow.getByRole("button", { name: "Actions" }).click();
+    await page.getByRole("menuitem", { name: "Deactivate" }).click();
+    await expect(page).toHaveURL(/lifecycle=deactivate/);
+    await expect(
+      page.getByRole("heading", { name: "Deactivate analyzer" }),
+    ).toBeVisible();
+    await demo.pause(1500);
+    await page.getByRole("button", { name: "Deactivate analyzer" }).click();
+    await expect(analyzerRow).toContainText("Inactive");
+    await demo.caption("The analyzer is Inactive.");
+    await demo.highlight(analyzerRow);
+
+    await demo.caption(
+      "Reactivate checks its setup again before it can be used.",
+    );
+    await analyzerRow.getByRole("button", { name: "Actions" }).click();
+    await page.getByRole("menuitem", { name: "Reactivate" }).click();
+    await expect(page).toHaveURL(/lifecycle=reactivate/);
+    await expect(
+      page.getByRole("heading", { name: "Reactivate analyzer" }),
+    ).toBeVisible();
+    await demo.pause(1500);
+    await page.getByRole("button", { name: "Reactivate analyzer" }).click();
+    await expect(analyzerRow).toContainText("Active");
+    await expect(analyzerRow).not.toContainText("Inactive");
+    await demo.highlight(analyzerRow);
+    await demo.verified(
+      `${analyzerName} is active again`,
+      "It was deactivated, then reactivated, from the dashboard.",
+    );
   });
 });

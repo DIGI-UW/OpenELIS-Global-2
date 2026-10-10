@@ -1,5 +1,6 @@
 import type { Page, TestInfo } from "@playwright/test";
 import { expect, test as baseTest } from "../../../helpers/test-base";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 
 const API = "/api/OpenELIS-Global/rest";
 
@@ -58,6 +59,14 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
     page,
     unregisteredSource,
   }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "A result from an instrument nobody set up is shown, not lost",
+      "The Bridge cannot say which analyzer sent it, so it is listed as undelivered with the reason.",
+    );
+    await demo.caption(
+      "Off screen: a mock GeneXpert that no analyzer connection names sends an HIV-1 viral load to the Bridge.",
+    );
     const { mockUrl, mockName, network } = unregisteredSource;
     const senderId = `UNREGISTERED-${Date.now()}`;
     const accession = `DEV01${String(Date.now()).padStart(15, "0")}`;
@@ -112,6 +121,10 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
     const banner = page.getByTestId("delivery-issues-attention");
     await expect(banner).toContainText("not delivered");
     await capture(page, testInfo, "01-analyzers-undelivered-banner");
+    await demo.caption(
+      "The Analyzers page flags results that were not delivered.",
+    );
+    await demo.highlight(banner);
 
     await banner
       .getByRole("button", { name: "Review undelivered results" })
@@ -132,10 +145,19 @@ test.describe("OGC-1054 undelivered analyzer results", () => {
     );
     await expect(unrecognizedRow.getByText("Not delivered")).toBeVisible();
     await capture(page, testInfo, "02-undelivered-result-explained");
+    await demo.caption(
+      "The row names the sender and says why: it matches no saved analyzer connection.",
+    );
+    await demo.highlight(unrecognizedRow, 3500);
+    await demo.caption("The reviewer dismisses it.");
 
     await unrecognizedRow.getByRole("button", { name: "Dismiss" }).click();
 
     await expect(unrecognizedRow).not.toBeVisible();
     await capture(page, testInfo, "03-undelivered-result-dismissed");
+    await demo.verified(
+      "The undelivered result was shown with its reason, then dismissed",
+      "Unrecognized sender: set up the analyzer, then retry.",
+    );
   });
 });

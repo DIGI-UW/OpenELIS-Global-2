@@ -12,6 +12,7 @@ import { createClinicalOrder } from "../../../helpers/analyzer-clinical-order";
 import { sendGeneXpertFixture } from "../../../helpers/analyzer-native-traffic";
 import { activateShippedGeneXpert } from "../../../helpers/analyzer-setup-flow";
 import { createProfile, numeric } from "../../../helpers/analyzer-profile-api";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 
 const continueToConnect = (page: Page) =>
   page.getByRole("button", { name: "Continue to Connect" });
@@ -50,7 +51,15 @@ async function confirmMapping(page: Page) {
 test.describe("Assays step on a populated catalog", () => {
   test("turns on what the catalog can bind, maps the rest in Verify, and holds Continue until every assay that is on is mapped", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "The Assays step on a lab's own catalog",
+      "Each assay is matched to the lab's tests, and Verify holds Continue until every assay that is on is mapped.",
+    );
+    await demo.caption(
+      "Off screen: three local tests and an analyzer type with three assays are created. One assay's LOINC matches one test, one matches two, one matches none.",
+    );
     const run = randomUUID().slice(0, 6);
     const base = randomInt(1_000_000, 9_000_000);
     const loinc = {
@@ -75,6 +84,9 @@ test.describe("Assays step on a populated catalog", () => {
       numeric("E2E-NONE", loinc.none),
     ]);
 
+    await demo.caption(
+      "Add an analyzer of that type and open its Assays step.",
+    );
     const list = new AnalyzerListPage(page);
     const setup = new AnalyzerSetupPage(page);
     await list.goto();
@@ -98,6 +110,10 @@ test.describe("Assays step on a populated catalog", () => {
       "No test in this lab's catalog",
     );
     await expect(assay("E2E-NONE").getByRole("checkbox")).not.toBeChecked();
+    await demo.caption(
+      "Two assays find tests in the catalog and start on. The one with no match starts off.",
+    );
+    await demo.highlight(assay("E2E-NONE"));
 
     // Verify lists the assays that are on, never the one that is off.
     await page.getByRole("button", { name: "Continue to Verify" }).click();
@@ -119,15 +135,26 @@ test.describe("Assays step on a populated catalog", () => {
     await expect(
       page.getByRole("combobox", { name: "OpenELIS test for E2E-NONE" }),
     ).toHaveCount(0);
+    await demo.caption(
+      "Verify asks only about assays that are on. Continue to Connect stays shut: one assay matches two tests.",
+    );
+    await demo.highlight(continueToConnect(page));
 
     // Mapping the one that needs it still leaves the gate shut until it is confirmed.
+    await demo.caption(
+      "The operator picks which test it means and saves. Continue opens only once the mapping is confirmed.",
+    );
     await mapTo(page, "E2E-TWIN", twinA.name);
     await saveMapping(page);
     await expect(continueToConnect(page)).toBeDisabled();
     await confirmMapping(page);
     await expect(continueToConnect(page)).toBeEnabled();
+    await demo.highlight(continueToConnect(page));
 
     // Turning the third assay on brings it into Verify and shuts the gate again.
+    await demo.caption(
+      "Turning the third assay on brings it into Verify and shuts the gate again.",
+    );
     await page.getByRole("button", { name: "Edit Assays" }).click();
     await assay("E2E-NONE").locator("label").first().click();
     await expect(assay("E2E-NONE").getByRole("checkbox")).toBeChecked();
@@ -140,6 +167,9 @@ test.describe("Assays step on a populated catalog", () => {
     ).toBeVisible();
     await expect(continueToConnect(page)).toBeDisabled();
 
+    await demo.caption(
+      "The operator maps it to a local test, saves and confirms. Setup continues to Connect.",
+    );
     await mapTo(page, "E2E-NONE", twinB.name);
     await saveMapping(page);
     await confirmMapping(page);
@@ -148,18 +178,30 @@ test.describe("Assays step on a populated catalog", () => {
     await expect(page).toHaveURL(
       (url) => url.searchParams.get("setup") === "connect",
     );
+    await demo.verified(
+      "Setup reached Connect with every assay that is on mapped",
+      "Continue stayed shut while any assay that is on was unmapped or unconfirmed.",
+    );
   });
 });
 
 test.describe("Results the mapping does not cover", () => {
   test("a result for an assay that is off and one under a code the profile does not declare are held, then recover once the operator maps them", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "Results the mapping does not cover are held, then recovered",
+      "An assay that is off, and a code the profile does not declare. Each is held on its own and recovers once mapped.",
+    );
     const run = randomUUID().slice(0, 6);
     const senderId = `GX-${run}`;
     const specimen = "Nasopharyngeal Swab";
 
     // The lab turns Influenza B off in setup.
+    await demo.caption(
+      "Set up a GeneXpert with the Influenza B assay turned off.",
+    );
     const analyzer = await activateShippedGeneXpert(
       page,
       `Held bench ${run}`,
@@ -186,6 +228,9 @@ test.describe("Results the mapping does not cover", () => {
       );
 
     // A panel result: Influenza A lands, Influenza B is held because its assay is off.
+    await demo.caption(
+      "Off screen: a respiratory panel is ordered and the GeneXpert sends every result positive.",
+    );
     const assayOff = await orderPanel();
     await sendGeneXpertFixture(
       page,
@@ -215,6 +260,13 @@ test.describe("Results the mapping does not cover", () => {
     await expect(heldOff).toContainText(
       "This assay is off in the analyzer's setup",
     );
+    await demo.caption(
+      "Influenza A lands. Influenza B is held because its assay is off, and the row says so.",
+    );
+    await demo.highlight(heldOff);
+    await demo.caption(
+      "The row leads to the Assays step: turn the assay on, confirm, and the held result is retried.",
+    );
     await heldOff.getByRole("link", { name: "Turn the assay on" }).click();
     await expect(page).toHaveURL(
       (url) => url.searchParams.get("setup") === "assays",
@@ -233,6 +285,9 @@ test.describe("Results the mapping does not cover", () => {
     expect((await own(assayOff.accession, "FLUB"))?.testId).toBe(tests.fluB);
 
     // The instrument sends RSV as RSVX, a code the profile does not declare.
+    await demo.caption(
+      "Off screen: a second panel arrives with RSV sent as RSVX, a code the profile does not declare.",
+    );
     const undeclared = await orderPanel();
     await sendGeneXpertFixture(
       page,
@@ -254,8 +309,13 @@ test.describe("Results the mapping does not cover", () => {
       waitUntil: "domcontentloaded",
     });
     const rsvRow = (await own(undeclared.accession, "RSVX"))!;
-    await page
-      .getByTestId(`held-analyzer-result-${rsvRow.id}`)
+    const heldCode = page.getByTestId(`held-analyzer-result-${rsvRow.id}`);
+    await demo.caption("The RSVX result is held as a code nobody has mapped.");
+    await demo.highlight(heldCode);
+    await demo.caption(
+      "From the held row, the operator maps RSVX and its answer for this analyzer, then applies and retries.",
+    );
+    await heldCode
       .getByRole("link", { name: "Review analyzer mapping" })
       .click();
     await mapTo(page, "RSVX", "RSV PCR");
@@ -291,5 +351,9 @@ test.describe("Results the mapping does not cover", () => {
       )
       .toBeFalsy();
     expect((await own(undeclared.accession, "RSVX"))?.testId).toBe(tests.rsv);
+    await demo.verified(
+      "Both held results recovered without a resend",
+      "Influenza B now binds to Influenza B PCR, and RSVX to RSV PCR.",
+    );
   });
 });

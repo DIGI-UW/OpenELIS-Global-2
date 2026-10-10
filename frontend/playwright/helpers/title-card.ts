@@ -1,10 +1,12 @@
-import { Page, TestInfo } from "@playwright/test";
+import { Locator, Page, TestInfo } from "@playwright/test";
 import { isVideoProject } from "./video-pause";
 
 export type TitleCardOptions = {
   eyebrow?: string;
   accent?: string;
   align?: "left" | "center";
+  /** Leave the card up after its duration; the next page load replaces it. */
+  hold?: boolean;
 };
 
 /**
@@ -46,6 +48,7 @@ export async function showTitleCard(
         borderLeft: `6px solid ${accent}`,
         boxSizing: "border-box",
         padding: "0 64px",
+        pointerEvents: "none",
       });
       if (eyebrow) {
         const eyebrowText = document.createElement("p");
@@ -62,11 +65,11 @@ export async function showTitleCard(
       const h1 = document.createElement("h1");
       h1.textContent = title;
       Object.assign(h1.style, {
-        fontSize: "2rem",
+        fontSize: "2.25rem",
         fontWeight: "600",
         lineHeight: "1.2",
         margin: "0",
-        maxWidth: "680px",
+        maxWidth: "860px",
         textAlign: align,
       });
       overlay.appendChild(h1);
@@ -74,11 +77,11 @@ export async function showTitleCard(
         const p = document.createElement("p");
         p.textContent = subtitle;
         Object.assign(p.style, {
-          fontSize: "1rem",
+          fontSize: "1.25rem",
           lineHeight: "1.5",
-          color: "#a8a8a8",
-          margin: "0.75rem 0 0",
-          maxWidth: "680px",
+          color: "#c6c6c6",
+          margin: "1rem 0 0",
+          maxWidth: "860px",
           textAlign: align,
         });
         overlay.appendChild(p);
@@ -94,9 +97,82 @@ export async function showTitleCard(
     },
   );
   await page.waitForTimeout(durationMs);
+  if (options.hold) return;
   await page.evaluate(() =>
     document.getElementById("e2e-title-card")?.remove(),
   );
+}
+
+/**
+ * Shows a narration line at the bottom of the viewport, replacing the previous
+ * one; null removes it. Clicks pass through it.
+ * No-op when not recording video.
+ */
+export async function showCaption(
+  page: Page,
+  text: string | null,
+  testInfo?: TestInfo,
+) {
+  if (testInfo && !isVideoProject(testInfo)) return;
+
+  await page.evaluate((captionText) => {
+    let el = document.getElementById("e2e-caption");
+    if (!captionText) {
+      el?.remove();
+      return;
+    }
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "e2e-caption";
+      Object.assign(el.style, {
+        position: "fixed",
+        bottom: "28px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        maxWidth: "72%",
+        zIndex: "100000",
+        pointerEvents: "none",
+        background: "rgba(22,22,22,0.9)",
+        color: "#f4f4f4",
+        fontFamily: "'IBM Plex Sans', Arial, sans-serif",
+        fontSize: "19px",
+        lineHeight: "1.4",
+        textAlign: "center",
+        padding: "10px 22px",
+        borderLeft: "4px solid #0f62fe",
+        borderRadius: "4px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.35)",
+      });
+      document.body.appendChild(el);
+    }
+    el.textContent = captionText;
+  }, text);
+}
+
+/**
+ * Outlines one element on the page, for as long as `durationMs`.
+ * No-op when not recording video.
+ */
+export async function showHighlight(
+  locator: Locator,
+  durationMs: number,
+  testInfo?: TestInfo,
+) {
+  if (testInfo && !isVideoProject(testInfo)) return;
+
+  await locator.scrollIntoViewIfNeeded();
+  await locator.evaluate((el: HTMLElement) => {
+    el.style.outline = "3px solid #f1c21b";
+    el.style.outlineOffset = "2px";
+  });
+  await locator.page().waitForTimeout(durationMs);
+  // The element may have left the page meanwhile.
+  await locator
+    .evaluate((el: HTMLElement) => {
+      el.style.outline = "";
+      el.style.outlineOffset = "";
+    })
+    .catch(() => undefined);
 }
 
 /**
