@@ -327,15 +327,20 @@ class AnalyzerDeliveryTest(unittest.TestCase):
     def setUp(self):
         self.calls = []
         self.rows = []
+        self.on_page = "1"
 
     def http(self, method, url, body=None):
         self.calls.append((method, url, body))
-        if url.endswith("/simulate/astm/genexpert_astm"):
+        if url.endswith("/simulate/fixture/genexpert_astm/hivvl/quantified"):
             return {"status": "completed", "pushed": 1}
         if url.endswith("/analyzer/analyzers"):
             return {"analyzers": [{"id": 7, "name": "QuantStudio 5"},
                                   {"id": 2, "name": deployment.SMOKE_ANALYZER}]}
         if url.endswith("/AnalyzerResults?id=2"):
+            return {"resultList": self.rows if self.on_page == "1" else [],
+                    "paging": {"searchTermToPage": [{"id": "DEV01900000000000011", "value": self.on_page}]
+                               if self.rows else []}}
+        if url.endswith("/AnalyzerResults?id=2&page=2"):
             return {"resultList": self.rows}
         raise AssertionError(url)
 
@@ -349,11 +354,20 @@ class AnalyzerDeliveryTest(unittest.TestCase):
         report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
                                                      http=self.http, sleep=arrive_on_second_poll, timeout=5)
         push = self.calls[0]
-        self.assertEqual(("POST", "http://mock/simulate/astm/genexpert_astm",
+        self.assertEqual(("POST", "http://mock/simulate/fixture/genexpert_astm/hivvl/quantified",
                           {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
                            "sender_id": "OE2-TEST-GENEXPERT"}), push)
         self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
         self.assertEqual(1, len(polls))
+
+    def test_reads_the_page_of_the_review_list_that_holds_the_accession(self):
+        self.on_page = "2"
+        self.rows = [{"accessionNumber": "DEV01900000000000011", "rawTestCode": "HIVVL"}]
+
+        report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
+                                                     http=self.http, sleep=lambda _: None, timeout=5)
+
+        self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
 
     def test_result_that_never_arrives_fails_with_the_last_response(self):
         with self.assertRaisesRegex(RuntimeError, "never reached OpenELIS"):

@@ -233,9 +233,20 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
 Deferred and not in this roadmap: moving Analyzer Types under Admin; pairing
 the Bridge to its OE2 instance instead of password authentication (6 Oct: "I
 would love to have a non-password-based authentication that pairs the bridge
-to the OE2 instance instead, but that might be a follow up PR").
+to the OE2 instance instead, but that might be a follow up PR"); opening the
+OE2 submodule bump automatically when the Bridge or mock default branch moves,
+and the image-tag bump in `docker-compose.analyzers.yml` from the Bridge and
+mock release workflows (7 Oct: "why are we manually pinning anything??";
+decided "Only remove cross-checks now").
 
 ## Repo working agreements
+
+- Each repository tests only itself; tests that need the Bridge and the mock
+  together run in OE2 (`.github/workflows/analyzer-components.yml`) against
+  the submodule commits OE2 records, and no repository's CI checks another out
+  at a commit (7 Oct: "bridge should test bridge concerns, mock should test
+  it's own concerns no? and then wherever we need both we do it in the Oe2
+  umbrella where submodules literally are there to pin the right version").
 
 `AGENTS.md` and `CLAUDE.md` govern. The items below are the ones every step
 uses; they are restated so a step can be run without re-reading those files.
