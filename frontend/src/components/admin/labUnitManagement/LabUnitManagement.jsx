@@ -41,6 +41,7 @@ import {
   RadioButtonGroup,
   RadioButton,
   Toggle,
+  Dropdown,
   Button,
   InlineNotification,
   Modal,
@@ -101,6 +102,8 @@ const mapLabUnit = (item) => ({
   names: item.names || {},
   description: item.description || "",
   domain: item.domain || "CLINICAL",
+  requireTrackedMedia: !!item.requireTrackedMedia,
+  gramStainTestId: item.gramStainTestId || "",
   active: item.isActive !== undefined ? item.isActive : true,
   testCount: item.testCount || 0,
   sortOrder: item.sortOrder || 0,
@@ -180,10 +183,8 @@ function LabUnitManagement({ intl }) {
 
   // Tests assigned to the lab unit currently being edited (drives the
   // deactivate-in-use warning).
-  // Only the setter is read now: the deactivation impact summary fetches live
-  // counts from the server (M3) rather than deriving them from this cache,
-  // which could be stale relative to what the flow is about to act on.
-  const [, setAssignedTests] = useState([]);
+  // Supplies the configured Gram stain choices; deactivation uses live counts.
+  const [assignedTests, setAssignedTests] = useState([]);
 
   // OGC-189 M3 — guarded deactivation. Switching a lab unit off opens an
   // impact summary with three options behind a typed confirmation, instead of
@@ -353,6 +354,16 @@ function LabUnitManagement({ intl }) {
     setPendingDomain(null);
   }, [view, labUnits.length, editingUnit]);
 
+  useEffect(() => {
+    if (editingUnit?.id)
+      getFromOpenElisServer(
+        `/rest/lab-units-management/${editingUnit.id}/tests`,
+        (data) => {
+          if (Array.isArray(data)) setAssignedTests(data);
+        },
+      );
+  }, [editingUnit?.id]);
+
   // Clear editor state when returning to the list URL.
   useEffect(() => {
     if (view === "list" && editingUnit) {
@@ -469,6 +480,8 @@ function LabUnitManagement({ intl }) {
           names: trimmedNames(editingUnit.names),
           description: editingUnit.description?.trim() || undefined,
           domain: editingUnit.domain || "CLINICAL",
+          requireTrackedMedia: !!editingUnit.requireTrackedMedia,
+          gramStainTestId: editingUnit.gramStainTestId || "",
         };
         const created = await new Promise((resolve, reject) => {
           postToOpenElisServerJsonResponse(
@@ -499,6 +512,8 @@ function LabUnitManagement({ intl }) {
           names: trimmedNames(editingUnit.names),
           description: editingUnit.description?.trim(),
           domain: editingUnit.domain || "CLINICAL",
+          requireTrackedMedia: !!editingUnit.requireTrackedMedia,
+          gramStainTestId: editingUnit.gramStainTestId || "",
           isActive:
             editingUnit.active !== undefined ? editingUnit.active : true,
         };
@@ -1288,6 +1303,63 @@ function LabUnitManagement({ intl }) {
                               </p>
                             </div>
 
+                            {view === "editor" && (
+                              <>
+                                <Toggle
+                                  id="lu-tracked-media"
+                                  labelText={intl.formatMessage({
+                                    id: "microbiology.culture.requireTrackedMedia",
+                                  })}
+                                  labelA={intl.formatMessage({
+                                    id: "label.inactive",
+                                  })}
+                                  labelB={intl.formatMessage({
+                                    id: "label.active",
+                                  })}
+                                  toggled={!!editingUnit?.requireTrackedMedia}
+                                  onToggle={(requireTrackedMedia) =>
+                                    setEditingUnit((prev) => ({
+                                      ...prev,
+                                      requireTrackedMedia,
+                                    }))
+                                  }
+                                />
+                                <Dropdown
+                                  id="lu-gram-stain-test"
+                                  titleText={intl.formatMessage({
+                                    id: "microbiology.culture.gramTest",
+                                  })}
+                                  label={intl.formatMessage({
+                                    id: "microbiology.culture.choose",
+                                  })}
+                                  items={[
+                                    {
+                                      id: "",
+                                      name: intl.formatMessage({
+                                        id: "microbiology.culture.noGramTest",
+                                      }),
+                                    },
+                                    ...assignedTests,
+                                  ]}
+                                  itemToString={(item) =>
+                                    item?.name || item?.testName || ""
+                                  }
+                                  selectedItem={
+                                    assignedTests.find(
+                                      (test) =>
+                                        test.id ===
+                                        editingUnit?.gramStainTestId,
+                                    ) || null
+                                  }
+                                  onChange={({ selectedItem }) =>
+                                    setEditingUnit((prev) => ({
+                                      ...prev,
+                                      gramStainTestId: selectedItem?.id || "",
+                                    }))
+                                  }
+                                />
+                              </>
+                            )}
                             {view === "editor" && (
                               <>
                                 <Toggle

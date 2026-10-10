@@ -50,6 +50,97 @@ public class MicroCaseInoculation extends BaseObject<String> {
     @Column(name = "performed_by", nullable = false, length = 20)
     private String performedBy;
 
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "source_sample_item_id")
+    @Type(type = "org.openelisglobal.hibernate.resources.usertype.LIMSStringNumberUserType")
+    private String sourceSampleItemId;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "subculture_purpose")
+    private String subculturePurpose;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "medium_item_id")
+    private Long mediumItemId;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "lot_id")
+    private Long lotId;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "not_tracked")
+    private boolean notTracked;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "temperature")
+    private java.math.BigDecimal temperature;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "duration")
+    private java.math.BigDecimal duration;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "duration_unit")
+    private String durationUnit;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "check_interval_hours")
+    private java.math.BigDecimal checkIntervalHours;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "loop_volume")
+    private java.math.BigDecimal loopVolume;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "positive_at")
+    private Timestamp positiveAt;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "positive_source")
+    private String positiveSource;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "outcome")
+    private String outcome;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "outcome_by")
+    private String outcomeBy;
+
+    @lombok.Getter
+    @lombok.Setter
+    @Column(name = "outcome_at")
+    private Timestamp outcomeAt;
+
+    @lombok.Getter
+    @jakarta.persistence.OneToMany(mappedBy = "inoculation")
+    @jakarta.persistence.OrderBy("recordedAt, id")
+    private java.util.List<MicroCultureReading> readings = new java.util.ArrayList<>();
+
+    @lombok.Getter
+    @jakarta.persistence.OneToMany(mappedBy = "inoculation")
+    @jakarta.persistence.OrderBy("recordedAt, id")
+    private java.util.List<MicroCultureExtension> extensions = new java.util.ArrayList<>();
+
+    @lombok.Getter
+    @jakarta.persistence.OneToMany(mappedBy = "inoculation")
+    @jakarta.persistence.OrderBy("recordedAt, id")
+    private java.util.List<MicroCultureProposal> proposals = new java.util.ArrayList<>();
+
     @Override
     public String getId() {
         return id;

@@ -7,6 +7,7 @@ import React, {
 } from "react";
 import {
   Modal,
+  Checkbox,
   TextInput,
   Dropdown,
   NumberInput,
@@ -49,6 +50,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
     name: "",
     itemType: "REAGENT",
     category: "",
+    microbiologyMedium: false,
+    trackLots: false,
     manufacturer: "",
     units: "",
     lowStockThreshold: 0,
@@ -113,6 +116,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         name: item.name || "",
         itemType: item.itemType || "REAGENT",
         category: item.category || "",
+        microbiologyMedium: !!item.microbiologyMedium,
+        trackLots: !!item.trackLots,
         manufacturer: item.manufacturer || "",
         units: item.units || "",
         lowStockThreshold: item.lowStockThreshold || 0,
@@ -220,6 +225,8 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
       const sanitizedData = {
         name: formData.name,
         itemType: formData.itemType,
+        microbiologyMedium: !!formData.microbiologyMedium,
+        trackLots: !!formData.trackLots,
         category: formData.category,
         manufacturer: formData.manufacturer,
         units: formData.units,
@@ -383,6 +390,20 @@ const InventoryItemForm = ({ open, onClose, onSave, item = null }) => {
         />
 
         {/* Type-specific fields */}
+        <Checkbox
+          id="inventory-microbiology-medium"
+          labelText={intl.formatMessage({ id: "inventory.microbiologyMedium" })}
+          checked={!!formData.microbiologyMedium}
+          onChange={(_, { checked }) =>
+            handleChange("microbiologyMedium", checked)
+          }
+        />
+        <Checkbox
+          id="inventory-track-lots"
+          labelText={intl.formatMessage({ id: "inventory.trackLots" })}
+          checked={!!formData.trackLots}
+          onChange={(_, { checked }) => handleChange("trackLots", checked)}
+        />
         {formData.itemType === "REAGENT" && (
           <>
             <NumberInput

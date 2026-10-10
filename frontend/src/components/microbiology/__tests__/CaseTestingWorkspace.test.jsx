@@ -1,6 +1,6 @@
 import React from "react";
 import { vi } from "vitest";
-import { render, screen, fireEvent } from "@testing-library/react";
+import { render, screen, fireEvent, within } from "@testing-library/react";
 import { waitFor } from "@testing-library/dom";
 import { IntlProvider } from "react-intl";
 import CaseTestingWorkspace from "../CaseTestingWorkspace";
@@ -340,4 +340,106 @@ test("critical acknowledgement applies only to the flagged component", async () 
       }),
     ),
   );
+});
+
+// Real workspace + picker + culture tree; HTTP collaborators are stubbed.
+// Guards the UI wiring and source selection, not persistence or access policy.
+describe("culture test chooser", () => {
+  const cultureApi = () => {
+    const api = service();
+    api.getCultures = vi.fn().mockResolvedValue([
+      {
+        id: "culture-1",
+        sourceSampleItemId: "sample-1",
+        containerIdentifier: "PLATE-1",
+        mediumName: "Blood agar",
+        readings: [],
+        extensions: [],
+        proposals: [],
+      },
+    ]);
+    api.getCultureOptions = vi.fn().mockResolvedValue({
+      sources: detail.samples,
+      media: [],
+      mediaLinks: [],
+      atmospheres: [],
+      readings: [],
+      quantities: [],
+      extensionReasons: [],
+      gramStainTest: { id: "30", value: "Follow-up test" },
+      gramStainSampleTypeIds: ["type-1"],
+    });
+    return api;
+  };
+  const openCulture = async (api) => {
+    show(api, {
+      ...detail,
+      samples: [
+        ...detail.samples,
+        {
+          sampleItemId: "sample-2",
+          sampleTypeId: "type-2",
+          specimenType: "Blood",
+        },
+      ],
+    });
+    await screen.findByText("Two-component assay");
+    fireEvent.change(
+      screen.getByLabelText(messages["microbiology.testing.scope"]),
+      { target: { value: "CULTURE" } },
+    );
+    await screen.findByRole("heading", { name: /PLATE-1/ });
+  };
+  test("Gram shortcut visibly selects its catalog test and submits only the culture's source", async () => {
+    const api = cultureApi();
+    await openCulture(api);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.culture.gramStain"],
+      }),
+    );
+    const chooser = document.getElementById("culture-test-chooser");
+    expect(
+      within(chooser).getByRole("button", { name: /Sputum.*1/ }),
+    ).toBeInTheDocument();
+    expect(within(chooser).queryByRole("button", { name: /Blood/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Add selected tests" }));
+    await waitFor(() =>
+      expect(api.addTests).toHaveBeenCalledWith("case-1", {
+        placement: "CULTURE",
+        cultureId: "culture-1",
+        sampleItemId: "sample-1",
+        testIds: ["30"],
+        panelIds: [],
+      }),
+    );
+    expect(
+      screen.getByRole("button", { name: "Add selected tests" }),
+    ).toBeDisabled();
+  });
+  test("manual selection updates the selected culture picker and becomes saveable", async () => {
+    const api = cultureApi();
+    await openCulture(api);
+    fireEvent.click(
+      screen.getByRole("button", {
+        name: messages["microbiology.culture.testOnCulture"],
+      }),
+    );
+    const chooser = document.getElementById("culture-test-chooser");
+    fireEvent.click(within(chooser).getByRole("button", { name: /Sputum.*0/ }));
+    fireEvent.click(
+      await within(chooser).findByRole("button", { name: "Follow-up test" }),
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Add selected tests" }));
+    await waitFor(() =>
+      expect(api.addTests).toHaveBeenCalledWith(
+        "case-1",
+        expect.objectContaining({
+          cultureId: "culture-1",
+          sampleItemId: "sample-1",
+          testIds: ["30"],
+        }),
+      ),
+    );
+  });
 });

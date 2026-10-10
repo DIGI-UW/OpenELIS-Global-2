@@ -128,6 +128,7 @@ type MicrobiologyScenario =
   | "CASE"
   | "MVP"
   | "WORKLIST"
+  | "CULTURE_WORKSPACE"
   | "INITIAL_TESTING"
   | "M3"
   | "M4"
@@ -1133,3 +1134,6 @@ export function seedMicrobiologyInitialTestingCase(
 ): Promise<SeededMicrobiologyCase> {
   return provisionMicrobiologyScenario(page, "INITIAL_TESTING");
 }
+
+export const seedMicrobiologyCultureWorkspace = (page: Page) =>
+  provisionMicrobiologyScenario(page, "CULTURE_WORKSPACE");

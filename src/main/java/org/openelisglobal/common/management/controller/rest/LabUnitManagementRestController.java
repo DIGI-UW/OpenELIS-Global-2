@@ -103,6 +103,13 @@ public class LabUnitManagementRestController extends BaseRestController {
         private int sortOrder;
         private int testCount;
 
+        @lombok.Getter
+        @lombok.Setter
+        private Boolean requireTrackedMedia;
+        @lombok.Getter
+        @lombok.Setter
+        private String gramStainTestId;
+
         public LabUnitManagementDTO() {
         }
 
@@ -122,6 +129,8 @@ public class LabUnitManagementRestController extends BaseRestController {
             this.name = nameValue;
             this.description = testSection.getDescription();
             this.domain = Domain.normalize(testSection.getDomain());
+            this.requireTrackedMedia = testSection.isRequireTrackedMedia();
+            this.gramStainTestId = testSection.getGramStainTestId();
             this.isActive = "Y".equals(testSection.getIsActive());
             this.isExternal = "Y".equals(testSection.getIsExternal());
             this.sortOrder = testSection.getSortOrderInt();
@@ -321,6 +330,7 @@ public class LabUnitManagementRestController extends BaseRestController {
         testSection.setNameKey("testSection." + identifyingName.replaceAll(" ", "_"));
         testSection.setSortOrderInt(Integer.MAX_VALUE);
         testSection.setDomain(Domain.normalize(labUnitDTO.getDomain()));
+        testSection.setRequireTrackedMedia(Boolean.TRUE.equals(labUnitDTO.getRequireTrackedMedia()));
         testSection.setSysUserId(userId);
 
         SystemModule workplanModule = createSystemModule("Workplan", identifyingName, userId);
@@ -433,6 +443,16 @@ public class LabUnitManagementRestController extends BaseRestController {
                 section.setIsActive(labUnitDTO.getIsActive() ? "Y" : "N");
             }
 
+            if (labUnitDTO.getRequireTrackedMedia() != null)
+                section.setRequireTrackedMedia(labUnitDTO.getRequireTrackedMedia());
+            if (labUnitDTO.getGramStainTestId() != null) {
+                String gram = labUnitDTO.getGramStainTestId();
+                if (!gram.isBlank() && testSectionService.getTestsInSection(labUnitId).stream()
+                        .noneMatch(t -> t.getId().equals(gram) && t.isActive()))
+                    return ResponseEntity.unprocessableEntity()
+                            .body(new ApiResponse<>(false, "Select an active test in this lab unit", null));
+                section.setGramStainTestId(gram.isBlank() ? null : gram);
+            }
             section.setSysUserId(userId);
             testSectionService.update(section);
 

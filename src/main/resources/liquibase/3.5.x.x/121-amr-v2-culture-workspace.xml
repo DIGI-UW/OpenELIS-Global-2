@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.8.xsd">
+<changeSet id="amr-v2-m4-culture-workspace" author="openelis">
+<addColumn schemaName="clinlims" tableName="micro_case_inoculation">
+<column name="source_sample_item_id" type="numeric(10)"/>
+<column name="subculture_purpose" type="varchar(40)"/>
+<column name="medium_item_id" type="bigint"/>
+<column name="lot_id" type="bigint"/>
+<column name="not_tracked" type="boolean" defaultValueBoolean="false"/>
+<column name="temperature" type="numeric(6,2)"/>
+<column name="duration" type="numeric(10,2)"/>
+<column name="duration_unit" type="varchar(10)"/>
+<column name="check_interval_hours" type="numeric(10,2)"/>
+<column name="loop_volume" type="numeric(10,2)"/>
+<column name="positive_at" type="timestamp"/>
+<column name="positive_source" type="varchar(20)"/>
+<column name="outcome" type="varchar(20)"/>
+<column name="outcome_by" type="varchar(20)"/>
+<column name="outcome_at" type="timestamp"/>
+</addColumn>
+<addColumn schemaName="clinlims" tableName="inventory_item">
+<column name="microbiology_medium" type="boolean" defaultValueBoolean="false"/>
+<column name="track_lots" type="boolean" defaultValueBoolean="false"/>
+<column name="usual_atmosphere_id" type="numeric(10)"/>
+<column name="usual_temperature" type="numeric(6,2)"/>
+</addColumn>
+<addColumn schemaName="clinlims" tableName="test_section">
+<column name="gram_stain_test_id" type="numeric(10)"/>
+<column name="require_tracked_media" type="boolean" defaultValueBoolean="false"/>
+</addColumn>
+<addColumn schemaName="clinlims" tableName="test_reagent_link">
+<column name="sample_type_id" type="numeric(10)"/>
+<column name="culture_duration" type="numeric(10,2)"/>
+<column name="culture_duration_unit" type="varchar(10)"/>
+<column name="culture_check_interval_hours" type="numeric(10,2)"/>
+<column name="culture_loop_volume" type="numeric(10,2)"/>
+<column name="culture_atmosphere_id" type="numeric(10)"/>
+<column name="culture_temperature" type="numeric(6,2)"/>
+</addColumn>
+<addColumn schemaName="clinlims" tableName="micro_case_analysis">
+<column name="culture_id" type="varchar(36)"/>
+</addColumn>
+<createTable schemaName="clinlims" tableName="micro_culture_reading">
+<column name="id" type="varchar(36)"><constraints nullable="false" primaryKey="true"/></column>
+<column name="inoculation_id" type="varchar(36)"><constraints nullable="false"/></column>
+<column name="recorded_by" type="varchar(20)"><constraints nullable="false"/></column>
+<column name="recorded_at" type="timestamp"><constraints nullable="false"/></column>
+<column name="lastupdated" type="timestamp" defaultValueComputed="now()"><constraints nullable="false"/></column>
+<column name="last_updated" type="timestamp"><constraints nullable="true"/></column>
+<column name="reading_id" type="numeric(10)"><constraints nullable="true"/></column>
+<column name="quantity_id" type="numeric(10)"><constraints nullable="true"/></column>
+<column name="note" type="varchar(2000)"><constraints nullable="true"/></column>
+<column name="incubation_day" type="numeric(10,2)"><constraints nullable="true"/></column>
+</createTable>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_culture_reading" baseColumnNames="inoculation_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_inoculation" referencedColumnNames="id" constraintName="fk_micro_culture_reading_row"/>
+<createIndex schemaName="clinlims" tableName="micro_culture_reading" indexName="idx_micro_culture_reading_row"><column name="inoculation_id"/></createIndex>
+<createTable schemaName="clinlims" tableName="micro_culture_extension">
+<column name="id" type="varchar(36)"><constraints nullable="false" primaryKey="true"/></column>
+<column name="inoculation_id" type="varchar(36)"><constraints nullable="false"/></column>
+<column name="recorded_by" type="varchar(20)"><constraints nullable="false"/></column>
+<column name="recorded_at" type="timestamp"><constraints nullable="false"/></column>
+<column name="lastupdated" type="timestamp" defaultValueComputed="now()"><constraints nullable="false"/></column>
+<column name="last_updated" type="timestamp"><constraints nullable="true"/></column>
+<column name="extend_by" type="numeric(10,2)"><constraints nullable="true"/></column>
+<column name="unit" type="varchar(10)"><constraints nullable="true"/></column>
+<column name="reason_id" type="numeric(10)"><constraints nullable="true"/></column>
+<column name="note" type="varchar(2000)"><constraints nullable="true"/></column>
+</createTable>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_culture_extension" baseColumnNames="inoculation_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_inoculation" referencedColumnNames="id" constraintName="fk_micro_culture_extension_row"/>
+<createIndex schemaName="clinlims" tableName="micro_culture_extension" indexName="idx_micro_culture_extension_row"><column name="inoculation_id"/></createIndex>
+<createTable schemaName="clinlims" tableName="micro_culture_proposal">
+<column name="id" type="varchar(36)"><constraints nullable="false" primaryKey="true"/></column>
+<column name="inoculation_id" type="varchar(36)"><constraints nullable="false"/></column>
+<column name="recorded_by" type="varchar(20)"><constraints nullable="false"/></column>
+<column name="recorded_at" type="timestamp"><constraints nullable="false"/></column>
+<column name="lastupdated" type="timestamp" defaultValueComputed="now()"><constraints nullable="false"/></column>
+<column name="last_updated" type="timestamp"><constraints nullable="true"/></column>
+<column name="signal" type="varchar(1000)"><constraints nullable="true"/></column>
+<column name="confirmed_by" type="varchar(20)"><constraints nullable="true"/></column>
+<column name="confirmed_at" type="timestamp"><constraints nullable="true"/></column>
+</createTable>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_culture_proposal" baseColumnNames="inoculation_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_inoculation" referencedColumnNames="id" constraintName="fk_micro_culture_proposal_row"/>
+<createIndex schemaName="clinlims" tableName="micro_culture_proposal" indexName="idx_micro_culture_proposal_row"><column name="inoculation_id"/></createIndex>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="medium_item_id" referencedTableSchemaName="clinlims" referencedTableName="inventory_item" referencedColumnNames="id" constraintName="fk_m4_medium_item_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="lot_id" referencedTableSchemaName="clinlims" referencedTableName="inventory_lot" referencedColumnNames="id" constraintName="fk_m4_lot_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" baseColumnNames="source_sample_item_id" referencedTableSchemaName="clinlims" referencedTableName="sample_item" referencedColumnNames="id" constraintName="fk_m4_source_sample_item_id"/>
+<addForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_analysis" baseColumnNames="culture_id" referencedTableSchemaName="clinlims" referencedTableName="micro_case_inoculation" referencedColumnNames="id" constraintName="fk_m4_culture_id"/>
+<rollback>
+<dropColumn schemaName="clinlims" tableName="test_section" columnName="gram_stain_test_id"/>
+<dropTable schemaName="clinlims" tableName="micro_culture_proposal"/>
+<dropTable schemaName="clinlims" tableName="micro_culture_extension"/>
+<dropTable schemaName="clinlims" tableName="micro_culture_reading"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" constraintName="fk_m4_medium_item_id"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" constraintName="fk_m4_lot_id"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_inoculation" constraintName="fk_m4_source_sample_item_id"/>
+<dropForeignKeyConstraint baseTableSchemaName="clinlims" baseTableName="micro_case_analysis" constraintName="fk_m4_culture_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="source_sample_item_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="subculture_purpose"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="medium_item_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="lot_id"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="not_tracked"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="temperature"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="duration"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="duration_unit"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="check_interval_hours"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="loop_volume"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="positive_at"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="positive_source"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="outcome"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="outcome_by"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_inoculation" columnName="outcome_at"/>
+<dropColumn schemaName="clinlims" tableName="inventory_item" columnName="microbiology_medium"/>
+<dropColumn schemaName="clinlims" tableName="inventory_item" columnName="track_lots"/>
+<dropColumn schemaName="clinlims" tableName="inventory_item" columnName="usual_atmosphere_id"/>
+<dropColumn schemaName="clinlims" tableName="inventory_item" columnName="usual_temperature"/>
+
+<dropColumn schemaName="clinlims" tableName="test_section" columnName="require_tracked_media"/>
+<dropColumn schemaName="clinlims" tableName="test_reagent_link" columnName="sample_type_id"/>
+<dropColumn schemaName="clinlims" tableName="test_reagent_link" columnName="culture_duration"/>
+<dropColumn schemaName="clinlims" tableName="test_reagent_link" columnName="culture_duration_unit"/>
+<dropColumn schemaName="clinlims" tableName="test_reagent_link" columnName="culture_check_interval_hours"/>
+<dropColumn schemaName="clinlims" tableName="test_reagent_link" columnName="culture_loop_volume"/>
+<dropColumn schemaName="clinlims" tableName="test_reagent_link" columnName="culture_atmosphere_id"/>
+<dropColumn schemaName="clinlims" tableName="test_reagent_link" columnName="culture_temperature"/>
+<dropColumn schemaName="clinlims" tableName="micro_case_analysis" columnName="culture_id"/>
+</rollback></changeSet>
+<changeSet id="amr-v2-m4-CultAtmos-category" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary_category"><column name="id" valueSequenceNext="dictionary_category_seq"/><column name="name" value="Culture atmosphere"/><column name="description" value="Culture atmosphere"/><column name="local_abbrev" value="CultAtmos"/><column name="lastupdated" valueComputed="now()"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary_category"><where>name = 'Culture atmosphere'</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultAtmos-0" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture atmosphere' AND d.dict_entry = 'Aerobic'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Aerobic"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="1"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Aerobic' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultAtmos-1" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture atmosphere' AND d.dict_entry = 'Anaerobic'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Anaerobic"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="2"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Anaerobic' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultAtmos-2" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture atmosphere' AND d.dict_entry = 'CO2'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="CO2"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="3"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'CO2' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultAtmos-3" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture atmosphere' AND d.dict_entry = 'Microaerophilic'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Microaerophilic"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="4"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Microaerophilic' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture atmosphere')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultRead-category" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'Culture reading'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary_category"><column name="id" valueSequenceNext="dictionary_category_seq"/><column name="name" value="Culture reading"/><column name="description" value="Culture reading"/><column name="local_abbrev" value="CultRead"/><column name="lastupdated" valueComputed="now()"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary_category"><where>name = 'Culture reading'</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultRead-0" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture reading' AND d.dict_entry = 'Growth observed'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Growth observed"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="1"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture reading')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Growth observed' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture reading')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultRead-1" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture reading' AND d.dict_entry = 'No growth observed'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="No growth observed"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="2"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture reading')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'No growth observed' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture reading')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultRead-2" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture reading' AND d.dict_entry = 'Contamination observed'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Contamination observed"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="3"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture reading')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Contamination observed' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture reading')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultQty-category" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'Culture quantity'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary_category"><column name="id" valueSequenceNext="dictionary_category_seq"/><column name="name" value="Culture quantity"/><column name="description" value="Culture quantity"/><column name="local_abbrev" value="CultQty"/><column name="lastupdated" valueComputed="now()"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary_category"><where>name = 'Culture quantity'</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultQty-0" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture quantity' AND d.dict_entry = 'Scant'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Scant"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="1"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture quantity')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Scant' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture quantity')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultQty-1" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture quantity' AND d.dict_entry = 'Moderate'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Moderate"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="2"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture quantity')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Moderate' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture quantity')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultQty-2" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Culture quantity' AND d.dict_entry = 'Heavy'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Heavy"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="3"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture quantity')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Heavy' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Culture quantity')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultExtend-category" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary_category WHERE name = 'Extend incubation reason'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary_category"><column name="id" valueSequenceNext="dictionary_category_seq"/><column name="name" value="Extend incubation reason"/><column name="description" value="Extend incubation reason"/><column name="local_abbrev" value="CultExtend"/><column name="lastupdated" valueComputed="now()"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary_category"><where>name = 'Extend incubation reason'</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultExtend-0" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Extend incubation reason' AND d.dict_entry = 'Awaiting growth'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Awaiting growth"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="1"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Extend incubation reason')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Awaiting growth' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Extend incubation reason')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultExtend-1" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Extend incubation reason' AND d.dict_entry = 'Repeat observation'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Repeat observation"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="2"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Extend incubation reason')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Repeat observation' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Extend incubation reason')</where></delete></rollback></changeSet>
+<changeSet id="amr-v2-m4-CultExtend-2" author="openelis"><preConditions onFail="MARK_RAN"><sqlCheck expectedResult="0">SELECT count(*) FROM clinlims.dictionary d JOIN clinlims.dictionary_category c ON c.id = d.dictionary_category_id WHERE c.name = 'Extend incubation reason' AND d.dict_entry = 'Other'</sqlCheck></preConditions><insert schemaName="clinlims" tableName="dictionary"><column name="id" valueSequenceNext="dictionary_seq"/><column name="dict_entry" value="Other"/><column name="is_active" value="Y"/><column name="lastupdated" valueComputed="now()"/><column name="sort_order" valueNumeric="3"/><column name="dictionary_category_id" valueComputed="(SELECT id FROM clinlims.dictionary_category WHERE name = 'Extend incubation reason')"/></insert><rollback><delete schemaName="clinlims" tableName="dictionary"><where>dict_entry = 'Other' AND dictionary_category_id = (SELECT id FROM clinlims.dictionary_category WHERE name = 'Extend incubation reason')</where></delete></rollback></changeSet>
+</databaseChangeLog>

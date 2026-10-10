@@ -105,6 +105,7 @@ public class MicrobiologyUatScenarioService {
     private org.openelisglobal.testresultcomponent.service.TestResultComponentService components;
     private static final String WORKLIST_SCENARIO = "WORKLIST";
     private static final String REFERENCE_ADMIN_SCENARIO = "M3";
+    private static final String CULTURE_WORKSPACE_SCENARIO = "CULTURE_WORKSPACE";
     private static final String WHONET_EXPORT_SCENARIO = "M4";
     private static final String REVIEWED_AST_SCENARIO = "AST_REVIEWED";
     private static final String WHONET_FILTER_SCENARIO = "WHONET_FILTERS";
@@ -267,6 +268,53 @@ public class MicrobiologyUatScenarioService {
             getOrCreateReportableTestAnalyte(followUp, performedBy);
             ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), followUp, performedBy);
         }
+        InventoryItem cultureMedium = null;
+        if (CULTURE_WORKSPACE_SCENARIO.equals(scenario)) {
+            test = getOrCreateUatTest("UAT culture " + suffix, true, method, performedBy);
+            var unit = testSectionService.getTestSectionByName("M4 " + suffix);
+            if (unit == null)
+                unit = new TestSection();
+            unit.setTestSectionName("M4 " + suffix);
+            unit.setDescription("Synthetic culture workspace");
+            if (unit.getLocalization() == null)
+                unit.setLocalization(createUatTestLocalization("M4 lab unit " + suffix, "M4 " + suffix, performedBy));
+            unit.setIsExternal(IActionConstants.NO);
+            unit.setIsActive("Y");
+            unit.setDomain("CLINICAL");
+            unit.setSysUserId(performedBy);
+            if (unit.getId() == null)
+                testSectionService.insert(unit);
+            test.setTestSection(unit);
+            test.setMicrobiologyCaseRole("CULTURE");
+            test.setOpensMicrobiologyCase(true);
+            testService.update(test);
+            followUp = getOrCreateUatTest("UAT Gram stain " + suffix, true, method, performedBy);
+            followUp.setTestSection(unit);
+            followUp.setOpensMicrobiologyCase(true);
+            followUp.setMicrobiologyCaseRole("DIRECT");
+            testService.update(followUp);
+            ensureRemarkTestResult(followUp, performedBy);
+            getOrCreateReportableTestAnalyte(followUp, performedBy);
+            ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), followUp, performedBy);
+            unit.setGramStainTestId(followUp.getId());
+            unit.setRequireTrackedMedia(true);
+            testSectionService.update(unit);
+            cultureMedium = getOrCreateInventoryItem("UAT culture medium " + suffix, ItemType.REAGENT, "plate",
+                    performedBy);
+            cultureMedium.setMicrobiologyMedium(true);
+            cultureMedium.setTrackLots(true);
+            inventoryItemService.update(cultureMedium);
+            ensureLot(cultureMedium, "M4-LOT-" + suffix, 30, 20.0, performedBy);
+            getOrCreateReagentLink(test, cultureMedium, "PRIMARY", "plate", performedBy);
+            var mediaLink = testReagentLinkService.getByTestIdAndReagentId(test.getId(), cultureMedium.getId());
+            mediaLink.setCultureDuration(new BigDecimal("48"));
+            mediaLink.setCultureDurationUnit("HOURS");
+            mediaLink.setCultureCheckIntervalHours(new BigDecimal("8"));
+            mediaLink.setSysUserId(performedBy);
+            testReagentLinkService.update(mediaLink);
+            sampleItem.setReceivedDate(Timestamp.from(java.time.Instant.now().minusSeconds(3600)));
+            sampleItemService.update(sampleItem);
+        }
         ensureInventoryTraceability(test, performedBy);
         ensureSpecimenLostVocabulary(performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
@@ -322,6 +370,7 @@ public class MicrobiologyUatScenarioService {
         form.sampleTypeId = sampleItem.getTypeOfSample().getId();
         form.cultureTestId = test.getId();
         form.followUpTestId = followUp == null ? null : followUp.getId();
+        form.mediumItemId = cultureMedium == null ? null : cultureMedium.getId();
         form.organismId = referenceAdminData == null ? astReferenceData.organism().getId()
                 : referenceAdminData.organismId();
         form.antibioticId = referenceAdminData == null ? astReferenceData.antibiotic().getId()
@@ -1161,10 +1210,11 @@ public class MicrobiologyUatScenarioService {
 
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
-        if (!"CASE".equals(normalized) && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
-                && !INITIAL_TESTING_SCENARIO.equals(normalized) && !REFERENCE_ADMIN_SCENARIO.equals(normalized)
-                && !WHONET_EXPORT_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
-                && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
+        if (!CULTURE_WORKSPACE_SCENARIO.equals(normalized) && !"CASE".equals(normalized) && !"MVP".equals(normalized)
+                && !WORKLIST_SCENARIO.equals(normalized) && !INITIAL_TESTING_SCENARIO.equals(normalized)
+                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
+                && !REVIEWED_AST_SCENARIO.equals(normalized) && !WHONET_FILTER_SCENARIO.equals(normalized)
+                && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
             throw new IllegalArgumentException(
                     "scenario must be CASE, MVP, WORKLIST, M3, M4, AST_REVIEWED, WHONET_FILTERS, or AST_ANALYZER_REVIEW");
         }

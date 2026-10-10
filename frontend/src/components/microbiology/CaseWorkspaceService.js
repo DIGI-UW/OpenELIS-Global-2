@@ -54,7 +54,21 @@ export const validateResult = (id, analysisId, version) =>
   });
 export const getTimeline = (id) => read(`${caseUrl(id)}/timeline`);
 export const addNote = (id, text) => mutate(`${caseUrl(id)}/notes`, { text });
+export const getCultures = (id) => read(`${caseUrl(id)}/cultures`);
+export const getCultureOptions = (id) =>
+  read(`${caseUrl(id)}/cultures/options`);
+export const inoculateCulture = (id, body) =>
+  mutate(`${caseUrl(id)}/cultures`, body);
+export const cultureAction = (id, rowId, action, body) =>
+  mutate(
+    `${caseUrl(id)}/cultures/${encodeURIComponent(rowId)}/${encodeURIComponent(action)}`,
+    body,
+  );
 export default {
+  getCultures,
+  getCultureOptions,
+  inoculateCulture,
+  cultureAction,
   searchCases,
   getCase,
   transferCase,

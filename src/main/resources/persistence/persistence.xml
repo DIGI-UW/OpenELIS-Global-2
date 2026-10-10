@@ -89,6 +89,10 @@
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAmendment</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseAnalysis</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroCaseInoculation</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureReading</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureExtension</class>
+        <class>org.openelisglobal.microbiology.valueholder.MicroCultureProposal</class>
+
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolate</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroIsolateIdentificationEvent</class>
         <class>org.openelisglobal.microbiology.valueholder.MicroAstRun</class>
