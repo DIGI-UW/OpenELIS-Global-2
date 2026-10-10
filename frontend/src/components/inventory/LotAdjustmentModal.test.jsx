@@ -58,4 +58,27 @@ describe("LotAdjustmentModal", () => {
     expect(unmountedWarnings).toEqual([]);
     consoleError.mockRestore();
   });
+
+  it("sends the notes along with the reason", async () => {
+    InventoryLotAPI.adjust.mockResolvedValue({});
+    render(
+      <IntlProvider locale="en" messages={messages}>
+        <LotAdjustmentModal open lot={lot} onClose={vi.fn()} onSave={vi.fn()} />
+      </IntlProvider>,
+    );
+
+    fireEvent.change(screen.getByLabelText(messages["adjustment.notes"]), {
+      target: { value: "One box crushed in transit" },
+    });
+    fireEvent.click(screen.getByText(messages["button.adjust"]));
+
+    await waitFor(() =>
+      expect(InventoryLotAPI.adjust).toHaveBeenCalledWith(
+        3,
+        4,
+        "INVENTORY_COUNT",
+        "One box crushed in transit",
+      ),
+    );
+  });
 });

@@ -3,6 +3,7 @@ package org.openelisglobal.inventory.service;
 import java.sql.Timestamp;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -99,10 +100,15 @@ public class InventoryManagementServiceImpl implements InventoryManagementServic
             throw new IllegalArgumentException("Quantity needed must be greater than 0");
         }
 
+        // Lock in id order so concurrent consumers queue without deadlocking.
+        List<InventoryLot> fefoLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId);
+        fefoLots.stream().sorted(Comparator.comparing(InventoryLot::getId))
+                .forEach(inventoryLotService::refreshForUpdate);
+
         // The FEFO query has no expiry predicate; isAvailableForUse is the rule
         // check-availability answers with, so it decides here too.
-        List<InventoryLot> availableLots = inventoryLotService.getAvailableLotsByItemFEFO(itemId).stream()
-                .filter(InventoryLot::isAvailableForUse).collect(Collectors.toList());
+        List<InventoryLot> availableLots = fefoLots.stream().filter(InventoryLot::isAvailableForUse)
+                .collect(Collectors.toList());
 
         if (availableLots == null || availableLots.isEmpty()) {
             throw noAvailableLots(itemId);

@@ -257,7 +257,7 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
         // The fields a partial update carries, with no barcode among them.
         Map<String, Object> body = new HashMap<>();
         body.put("inventoryItem", Map.of("id", 7000));
-        body.put("lotNumber", "OGC657-LOT-001");
+        body.put("lotNumber", "OGC657-LOT-001-RELABELLED");
         body.put("initialQuantity", 10.0);
         body.put("currentQuantity", 3.0);
         body.put("qcStatus", "PASSED");
@@ -272,8 +272,9 @@ public class InventoryLotRestControllerIntegrationTest extends BaseWebContextSen
         JsonNode lot = objectMapper.readTree(result.getResponse().getContentAsString());
         assertEquals("A PUT without a barcode must not orphan the printed label", "OGC657-TEST-REAGENT-OGC657-LOT-001",
                 lot.get("barcode").asText());
-        assertEquals("The fields the body did carry must still be applied", 3.0, lot.get("currentQuantity").asDouble(),
-                0.001);
+        assertEquals("The fields the body did carry must still be applied", "OGC657-LOT-001-RELABELLED",
+                lot.get("lotNumber").asText());
+        assertEquals("A PUT never moves stock; adjust does", 10.0, lot.get("currentQuantity").asDouble(), 0.001);
     }
 
     @Test

@@ -182,8 +182,8 @@ export const InventoryLotAPI = {
     put(`/lots/${id}/qc-status`, { qcStatus, notes }),
 
   // Adjust quantity
-  adjust: (id, newQuantity, reason) =>
-    post(`/lots/${id}/adjust`, { newQuantity, reason }),
+  adjust: (id, newQuantity, reason, notes) =>
+    post(`/lots/${id}/adjust`, { newQuantity, reason, notes }),
 
   // Dispose lot
   dispose: (id, reason, notes) =>
