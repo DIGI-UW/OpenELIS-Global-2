@@ -42,4 +42,5 @@
   <!-- OGC-1507: shipped NCE and dictionary labels read through display keys; stored labels record who wrote them -->
   <include relativeToChangelogFile="true" file="023-shipped-reference-data-labels.xml"/>
 
+  <include relativeToChangelogFile="true" file="014-microbiology-case-result-entry.xml"/>
 </databaseChangeLog>

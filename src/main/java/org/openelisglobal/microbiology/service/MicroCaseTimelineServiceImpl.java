@@ -24,6 +24,9 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
 
+    @Autowired
+    private MicrobiologyCaseAccessService access;
+
     private static final String NOTE_SUBJECT_PREFIX = "MICROBIOLOGY_CASE:";
 
     private final MicroCaseDAO caseDAO;
@@ -63,8 +66,9 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
         for (MicroCaseActivity activity : activityDAO.getByCaseId(caseId)) {
             timeline.add(toForm(activity, userDisplayById));
         }
-        for (Note note : noteService.getNotesChronologicallyByRefIdAndRefTableAndType(microCase.getSampleItemId(),
-                sampleItemTableId(), List.of(Note.INTERNAL))) {
+        for (Note note : microCase.getSampleItemId() == null ? List.<Note>of()
+                : noteService.getNotesChronologicallyByRefIdAndRefTableAndType(microCase.getSampleItemId(),
+                        sampleItemTableId(), List.of(Note.INTERNAL))) {
             if (subject(caseId).equals(note.getSubject())) {
                 timeline.add(toForm(note, caseId, userDisplayById));
             }
@@ -78,7 +82,26 @@ public class MicroCaseTimelineServiceImpl implements MicroCaseTimelineService {
     public MicroCaseActivityForm addNote(String caseId, String text, String performedBy) {
         MicroCaseServiceImpl.requireText(text, "text");
         MicroCaseServiceImpl.requireText(performedBy, "performedBy");
-        MicroCase microCase = requireCase(caseId);
+        MicroCase microCase = caseDAO.getForUpdate(caseId);
+        if (microCase == null)
+            throw new IllegalArgumentException("Case not found");
+        if (!access.hasLabUnitRole(performedBy, microCase.getLabUnitId(),
+                org.openelisglobal.common.constants.Constants.ROLE_RESULTS))
+            throw new org.springframework.security.access.AccessDeniedException("Case lab unit access required");
+        MicroCaseMutationGuard.requireMutable(microCase);
+        if (text.trim().length() > 4000)
+            throw new IllegalArgumentException("MICROBIOLOGY_NOTE_TOO_LONG");
+        if (microCase.getSampleItemId() == null) {
+            var activity = new MicroCaseActivity();
+            activity.setCaseId(caseId);
+            activity.setActivityType(MicroCaseActivityType.MANUAL_NOTE.name());
+            activity.setNote(text.trim());
+            activity.setOccurredAt(MicroCaseServiceImpl.now());
+            activity.setPerformedBy(performedBy);
+            activity.setSysUserId(performedBy);
+            activityDAO.insert(activity);
+            return toForm(activity, new HashMap<>());
+        }
         Note note = noteService.createSavableNote(binding(microCase), NoteServiceImpl.NoteType.INTERNAL, text.trim(),
                 subject(caseId), performedBy);
         if (note == null) {
