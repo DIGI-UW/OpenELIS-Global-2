@@ -298,7 +298,9 @@ uses; they are restated so a step can be run without re-reading those files.
   setting up the harness analyzers as an operator would (T7.4b); the
   remaining specs rewritten straight to the end state; then the evidence
   package. From 7 Oct the remaining work is one ordered list,
-  [step 10](analyzer-baseline/10-finish-line.md).
+  [step 10](analyzer-baseline/10-finish-line.md). From 8 Oct the review
+  findings are fixed in new PRs above the security PR (#4657), not in the
+  PRs they were filed on ([step 11](analyzer-baseline/11-review-remediation.md)).
 - Last: step 9 as its own PR on `develop`, after everything above has
   landed.
 - The top OE2 PR carries the submodule pins (`tools/openelis-analyzer-bridge`
@@ -333,3 +335,4 @@ Each step is one file. It is self-contained: its Facts section holds everything 
 | 8    | [Manufacturer-shaped mock traffic](analyzer-baseline/08-mock-traffic.md)                     | the mock replays vendor-documented messages for every outcome, and a contract test keeps it aligned with the pinned baseline profile.                                                                                                      |
 | 9    | [Validate and sync the spec](analyzer-baseline/09-spec-sync.md)                              | `specs/analyzers/spec.md` describes the analyzer setup that landed, so it can be read without this roadmap.                                                                                                                                |
 | 10   | [Finish line](analyzer-baseline/10-finish-line.md)                                           | the remaining work as one ordered list, ending in the recorded evidence for the three analyzer workflows.                                                                                                                                  |
+| 11   | [Review remediation](analyzer-baseline/11-review-remediation.md)                             | every review thread on the stack is fixed or answered and the top PR is green, before step 10's final green and evidence.                                                                                                                  |

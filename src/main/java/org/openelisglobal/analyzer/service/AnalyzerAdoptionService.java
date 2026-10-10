@@ -11,7 +11,7 @@ public interface AnalyzerAdoptionService {
      * mapping.
      */
     record AdoptionPlan(String analyzerId, String profileId, int fromRevision, int toRevision,
-            List<AnalyzerMappingAdoption.Row> rows) {
+            String baseMappingFingerprint, List<AnalyzerMappingAdoption.Row> rows) {
 
         /** What adoption saves if the operator changes nothing. */
         public AnalyzerMappingDraft proposals() {
@@ -36,8 +36,11 @@ public interface AnalyzerAdoptionService {
      * Saves the reviewed decisions as the analyzer's next mapping revision on
      * {@code toRevision}. Every record the revision keeps needs a decision; nothing
      * may still be blocked. A decision equal to the plan's proposal keeps its
-     * origin, and one the operator changed is an override. The existing Confirm and
-     * Apply then put it in force.
+     * origin, and one the operator changed is an override. The decisions are
+     * refused when the analyzer's mapping is no longer the one the plan was made
+     * from ({@code baseMappingFingerprint}). The existing Confirm and Apply then
+     * put it in force.
      */
-    AnalyzerMappingSnapshot adopt(String analyzerId, int toRevision, AnalyzerMappingDraft decisions, String actor);
+    AnalyzerMappingSnapshot adopt(String analyzerId, int toRevision, String baseMappingFingerprint,
+            AnalyzerMappingDraft decisions, String actor);
 }

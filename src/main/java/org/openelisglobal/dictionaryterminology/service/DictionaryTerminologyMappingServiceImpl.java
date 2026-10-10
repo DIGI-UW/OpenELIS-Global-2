@@ -58,6 +58,25 @@ public class DictionaryTerminologyMappingServiceImpl
 
     @Override
     @Transactional
+    public Dictionary saveAnswer(Dictionary dictionary, String previousLoinc, boolean frozenCheckRequired) {
+        if (dictionary.getId() == null || dictionary.getId().isBlank() || "0".equals(dictionary.getId())) {
+            dictionary.setId(dictionaryService.insert(dictionary));
+        } else {
+            dictionaryService.update(dictionary, frozenCheckRequired);
+        }
+        String loinc = blankToNull(dictionary.getLoincCode());
+        if (!java.util.Objects.equals(blankToNull(previousLoinc), loinc)) {
+            syncLegacyLoinc(dictionary.getId(), loinc, dictionary.getSysUserId());
+        }
+        return dictionary;
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
+    }
+
+    @Override
+    @Transactional
     public void syncLegacyLoinc(String dictionaryId, String loinc, String sysUserId) {
         String code = (loinc == null || loinc.trim().isEmpty()) ? null : loinc.trim();
         List<DictionaryTerminologyMapping> all = getAllMatching("dictionaryId", dictionaryId);

@@ -167,16 +167,10 @@ public class DictionaryController extends BaseController {
 
         try {
             String id = form.getId();
-            if (!(id == null || "0".equals(id))) {
-                // UPDATE
-                // bugzilla 2062
-                boolean isDictionaryFrozenCheckRequired = checkForDictionaryFrozenCheck(form);
-                dictionaryService.update(dictionary, isDictionaryFrozenCheckRequired);
-            } else {
-                // INSERT
-                dictionary.setId(dictionaryService.insert(dictionary));
-            }
-            syncLoincIfChanged(dictionary, previousLoinc);
+            // bugzilla 2062
+            boolean isDictionaryFrozenCheckRequired = !(id == null || "0".equals(id))
+                    && checkForDictionaryFrozenCheck(form);
+            answerTerminology.saveAnswer(dictionary, previousLoinc, isDictionaryFrozenCheckRequired);
         } catch (LIMSRuntimeException e) {
             // bugzilla 2154
             LogEvent.logError(e);
@@ -324,11 +318,4 @@ public class DictionaryController extends BaseController {
         return StringUtils.isBlank(id) || "0".equals(id);
     }
 
-    /** A LOINC code changed here reaches the answer's terminology mappings. */
-    private void syncLoincIfChanged(Dictionary dictionary, String previousLoinc) {
-        String loinc = StringUtils.trimToNull(dictionary.getLoincCode());
-        if (!java.util.Objects.equals(StringUtils.trimToNull(previousLoinc), loinc)) {
-            answerTerminology.syncLegacyLoinc(dictionary.getId(), loinc, dictionary.getSysUserId());
-        }
-    }
 }

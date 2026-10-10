@@ -71,6 +71,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         validateLoadedFingerprint(current, update.baseMappingFingerprint());
         List<AnalyzerResults> observed = analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzer.getId());
         AnalyzerMappingDraft draft = withOrigins(current, validateUpdate(profile, current, observed, update));
+        draft.requireComponentTargets(profile);
         AnalyzerMappingSnapshot saved = mappingService.appendRevision(analyzer, draft, actor);
         return compose(analyzer, revision, profile, CurrentRows.of(saved), observed, saved);
     }
@@ -84,6 +85,7 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
         BridgeProfileCatalog.ProfileRevision revision = bridgeProfileCatalogService
                 .getProfile(candidate.mapping().getProfileId(), candidate.mapping().getProfileRevision());
         BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(revision.profile());
+        AnalyzerMappingDraft.of(candidate).requireComponentTargets(profile);
         validateConfirmable(compose(analyzer, revision, profile, CurrentRows.of(candidate),
                 analyzerResultsService.findHeldMappingResultsByAnalyzer(analyzer.getId()), candidate));
         return confirmationService.confirm(candidate, revision.controlRecognitionSummary().recognitionFingerprint(),
@@ -247,16 +249,11 @@ public class AnalyzerMappingEditorServiceImpl implements AnalyzerMappingEditorSe
                     && Objects.equals(old.getTestId(), row.testId())
                     && Objects.equals(old.getComponentId(), row.componentId())
                     && Objects.equals(old.getCallComponentId(), row.callComponentId());
-            // An edit that does not state an assay's switch or code keeps what it had,
-            // except that mapping a row that was not mapped is the lab choosing to run it.
-            boolean newlyMapped = row.mappingState() == AnalyzerMappingState.BOUND
-                    && (old == null || old.getMappingState() != AnalyzerMappingState.BOUND);
-            Boolean enabled = row.enabled() != null ? row.enabled() : old == null || old.isEnabled() || newlyMapped;
-            String instrumentCode = row.enabled() != null || row.instrumentCode() != null ? row.instrumentCode()
-                    : old == null ? null : old.getInstrumentCode();
+            AnalyzerMappingTestDraft kept = old == null ? row.keepingAssayOf(null, true, null)
+                    : row.keepingAssayOf(old.getMappingState(), old.isEnabled(), old.getInstrumentCode());
             return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
                     row.unresolvedReason(), same ? old.getOrigin() : AnalyzerMappingOrigin.OVERRIDE, row.subIdentity(),
-                    row.callComponentId(), enabled, instrumentCode);
+                    row.callComponentId(), kept.enabled(), kept.instrumentCode());
         }).toList();
         List<AnalyzerMappingResultDraft> results = draft.results().stream().map(row -> {
             var old = beforeResults.get(new ResultSourceKey(row.rowKey(), row.rawValue()));

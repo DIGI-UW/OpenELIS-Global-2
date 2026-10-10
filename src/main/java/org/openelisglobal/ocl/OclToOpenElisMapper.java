@@ -616,33 +616,9 @@ public class OclToOpenElisMapper {
                     Map<String, String> names = extractNames(mapConcept);
                     String englishName = names.get("englishName");
                     String frenchName = names.get("frenchName");
-                    String loinc = getLoinc(toCoceptCode);
-
-                    Dictionary dictionary = new Dictionary();
-                    dictionary.setSortOrder(1);
-                    dictionary.setIsActive("Y");
-                    dictionary.setDictEntry(englishName);
-                    dictionary.setLocalAbbreviation(toCoceptCode);
-                    dictionary.setSysUserId(systemUserId);
-                    dictionary.setLoincCode(loinc);
-                    dictionary.setDictionaryCategory(
-                            dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
-                    if (dictionaryService.duplicateDictionaryExists(dictionary)) {
-                        if (StringUtils.isNotBlank(loinc)) {
-                            dictionary = dictionaryService.getDictionaryByDictEntry(englishName);
-                            dictionary.setLoincCode(loinc);
-                            dictionary = dictionaryService.update(dictionary);
-                        }
-                    } else {
-                        Localization localization = createLocalization(frenchName, englishName, "create Dictionary",
-                                systemUserId);
-                        localization = localizationService.save(localization);
-                        dictionary.setLocalizedDictionaryName(localization);
-                        dictionary = dictionaryService.save(dictionary);
-                    }
-                    if (dictionary.getId() != null) {
-                        syncAnswerCodes(dictionary.getId(), answerCodes(rootNode, mapConcept));
-                    }
+                    Dictionary dictionary = resolveAnswer(englishName, frenchName, toCoceptCode,
+                            getLoinc(toCoceptCode));
+                    syncAnswerCodes(dictionary.getId(), answerCodes(rootNode, mapConcept));
                     ObjectNode dictEntry = objectMapper.createObjectNode();
                     dictEntry.put("id", String.valueOf(dictionary.getId()));
                     dictEntry.put("qualified", "N");
@@ -655,6 +631,38 @@ public class OclToOpenElisMapper {
         jsonWad.put("defaultTestResult", "");
         jsonWad.put("dictionaryReference", "");
 
+    }
+
+    /**
+     * The saved answer named {@code englishName}: the existing one, its LOINC
+     * replaced when the concept has one, or a new one. An existing answer is always
+     * the saved row, so the codes synced onto it are kept.
+     */
+    Dictionary resolveAnswer(String englishName, String frenchName, String conceptCode, String loinc) {
+        Dictionary dictionary = new Dictionary();
+        dictionary.setSortOrder(1);
+        dictionary.setIsActive("Y");
+        dictionary.setDictEntry(englishName);
+        dictionary.setLocalAbbreviation(conceptCode);
+        dictionary.setSysUserId(systemUserId);
+        dictionary.setLoincCode(loinc);
+        dictionary.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
+        if (!dictionaryService.duplicateDictionaryExists(dictionary)) {
+            Localization localization = createLocalization(frenchName, englishName, "create Dictionary", systemUserId);
+            dictionary.setLocalizedDictionaryName(localizationService.save(localization));
+            return dictionaryService.save(dictionary);
+        }
+        // The duplicate is the Test Result answer with this name or this concept code.
+        Dictionary existing = dictionaryService.getDictionaryEntryByNameAndCategoryName(englishName, "Test Result");
+        if (existing == null) {
+            existing = dictionaryService.getDictionaryByLocalAbbrev(dictionary);
+        }
+        if (StringUtils.isNotBlank(loinc)) {
+            existing.setLoincCode(loinc);
+            existing.setSysUserId(systemUserId);
+            existing = dictionaryService.update(existing);
+        }
+        return existing;
     }
 
     public JsonNode getConceptById(String id) {

@@ -56,7 +56,7 @@ public class AnalyzerInstanceRestController extends BaseRestController {
      * nothing, as the editor shows it.
      */
     public record AdoptionReview(String analyzerId, String profileId, int fromRevision, int toRevision,
-            List<AnalyzerMappingAdoption.Row> rows, AnalyzerMappingView proposal) {
+            String baseMappingFingerprint, List<AnalyzerMappingAdoption.Row> rows, AnalyzerMappingView proposal) {
     }
 
     @PostMapping
@@ -107,7 +107,8 @@ public class AnalyzerInstanceRestController extends BaseRestController {
     public ResponseEntity<AdoptionReview> prepareAdoption(@PathVariable String id, @RequestParam int revision) {
         AnalyzerAdoptionService.AdoptionPlan plan = adoptionService.prepareAdoption(id, revision);
         return ResponseEntity.ok(new AdoptionReview(plan.analyzerId(), plan.profileId(), plan.fromRevision(),
-                plan.toRevision(), plan.rows(), editorService.preview(id, revision, plan.proposals())));
+                plan.toRevision(), plan.baseMappingFingerprint(), plan.rows(),
+                editorService.preview(id, revision, plan.proposals())));
     }
 
     /**
@@ -117,8 +118,8 @@ public class AnalyzerInstanceRestController extends BaseRestController {
     @PostMapping("/{id}/adoption")
     public ResponseEntity<Map<String, Object>> adopt(@PathVariable String id, @RequestParam int revision,
             @RequestBody AnalyzerMappingUpdate decisions, HttpServletRequest request) {
-        AnalyzerMappingSnapshot adopted = adoptionService.adopt(id, revision, decisions.toDraft(),
-                getSysUserId(request));
+        AnalyzerMappingSnapshot adopted = adoptionService.adopt(id, revision, decisions.baseMappingFingerprint(),
+                decisions.toDraft(), getSysUserId(request));
         Map<String, Object> response = new LinkedHashMap<>();
         response.put("mappingId", adopted.mapping().getId());
         response.put("mappingRevision", adopted.mapping().getRevisionNumber());
@@ -133,13 +134,17 @@ public class AnalyzerInstanceRestController extends BaseRestController {
 
     /**
      * Apply switches OE2 and the Bridge together, so a Bridge failure there means
-     * nothing was applied.
+     * nothing was applied, unless the Bridge could not be put back.
      */
     @ExceptionHandler(BridgeAnalyzerConnectionException.class)
     public ResponseEntity<Map<String, Object>> handleBridgeFailure(BridgeAnalyzerConnectionException exception) {
         Map<String, Object> body = new LinkedHashMap<>();
-        body.put("error", "The Analyzer Bridge could not switch with this mapping, so nothing was applied."
-                + " Try again when it is reachable.");
+        body.put("error",
+                "analyzer.bridge.connection.reconcileRequired".equals(exception.messageKey())
+                        ? "OpenELIS kept the previous mapping, but the Analyzer Bridge may still be on the new one."
+                                + " Apply the mapping again when the Bridge is reachable."
+                        : "The Analyzer Bridge could not switch with this mapping, so nothing was applied."
+                                + " Try again when it is reachable.");
         body.put("messageKey", exception.messageKey());
         return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(body);
     }

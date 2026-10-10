@@ -18,6 +18,7 @@ describe("analyzerErrorText", () => {
     "analyzer.bridge.connection.invalidEvidence",
     "analyzer.bridge.connection.invalidRequest",
     "analyzer.bridge.connection.notConfigured",
+    "analyzer.bridge.connection.reconcileRequired",
     "analyzer.bridge.connection.referenceNotStored",
   ])("shows %s in words, never the server's text", (key) => {
     const text = analyzerErrorText(
@@ -43,6 +44,19 @@ describe("analyzerErrorText", () => {
       ),
     ).toBe(
       "ADOPT-C still has held results from revision 1. Resolve them before adopting.",
+    );
+    expect(
+      analyzerErrorText(
+        intl,
+        {
+          error: "BOUND test row HIV LOG must name the component it lands on",
+          messageKey: "analyzer.mapping.error.componentRequired",
+          messageArgs: { record: "HIV LOG" },
+        },
+        "analyzer.setup.instrument.saveError",
+      ),
+    ).toBe(
+      "HIV LOG lands on a component of its test. Choose that component, or leave the record unresolved.",
     );
   });
 
