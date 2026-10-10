@@ -128,10 +128,10 @@ test.describe("microbiology worklist and critical communication", () => {
   test("critical communication raises worklist priority", async ({ page }) => {
     test.setTimeout(120_000);
     const seeded = await seedMicrobiologyWorklistCase(page);
-    const scopedWorklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
+    const scopedWorklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
-    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?q=${encodeURIComponent(
+    const scopedCaseUrl = `/Microbiology/cases/${seeded.caseId}?grain=cultures&q=${encodeURIComponent(
       seeded.caseId,
     )}&sort=newest`;
 
@@ -153,6 +153,9 @@ test.describe("microbiology worklist and critical communication", () => {
     await expect(
       page.getByRole("heading", { name: "Microbiology worklist" }),
     ).toBeVisible({ timeout: LONG_TIMEOUT });
+    await page.goto("/Microbiology/worklist?grain=cultures", {
+      waitUntil: "domcontentloaded",
+    });
     await expect(
       page.getByTestId("microbiology-worklist-summary-total"),
     ).toBeVisible({ timeout: LONG_TIMEOUT });

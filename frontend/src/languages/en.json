@@ -12786,5 +12786,6 @@
   "microbiology.case.range": "{min}–{max} of {total} cases",
   "microbiology.case.chooseUnit": "Choose a lab unit",
   "microbiology.case.collectionDate": "Collection date",
-  "microbiology.case.sort": "Sort cases"
+  "microbiology.case.sort": "Sort cases",
+  "microbiology.enum.SAMPLE_JOINED": "Sample attached"
 }
