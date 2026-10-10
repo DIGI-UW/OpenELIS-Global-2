@@ -3,7 +3,6 @@ import type { Page, TestInfo } from "@playwright/test";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -21,7 +20,6 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
   test("creates, verifies, connects, activates, links QC, and deactivates through the UI", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(180_000 * TIMEOUT_SCALE);
     const runId = Date.now().toString().slice(-8);
     const analyzerName = `M3 GeneXpert ${runId}`;
     const senderId = `GX-GUIDED-${runId}`;
@@ -74,13 +72,7 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(
       page.getByText("Not confirmed", { exact: true }),
     ).toBeVisible();
-    await page
-      .getByRole("link", { name: "Review mappings in Analyzer Types" })
-      .click();
-    await expect(page).toHaveURL(/\/analyzers\/types\/[^/]+\/mapping/);
-    await expect(
-      page.getByRole("button", { name: "Update shared mappings" }),
-    ).toBeDisabled();
+    // The mapping is reviewed in Verify itself; nothing is confirmed until the operator says so.
     const confirm = page.getByRole("button", {
       name: "Confirm mappings and control recognition",
     });
@@ -90,7 +82,6 @@ test.describe("OGC-1054 M3 guided analyzer setup", () => {
     await expect(
       page.getByText("Mappings and control recognition confirmed"),
     ).toBeVisible();
-    await page.goBack({ waitUntil: "domcontentloaded" });
     await expect(page.getByText("Current", { exact: true })).toBeVisible();
     await expect(page.getByText("Current confirmation")).toBeVisible();
     await expect(

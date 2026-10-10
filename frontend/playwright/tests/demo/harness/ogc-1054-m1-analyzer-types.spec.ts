@@ -3,7 +3,6 @@ import type { Locator, Page } from "@playwright/test";
 import { AnalyzerSetupPage } from "../../../fixtures/analyzer-setup";
 import { AnalyzerListPage } from "../../../fixtures/analyzer-list";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 const SOURCE_PROFILE = "Cepheid GeneXpert (ASTM Mode)";
 
@@ -40,7 +39,6 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("shows the lab-facing catalog and restores bookmarkable filters", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(120_000 * TIMEOUT_SCALE);
     await openAnalyzerTypes(page);
 
     const breadcrumb = page.getByRole("navigation", { name: "Breadcrumb" });
@@ -162,7 +160,6 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("starts a Bridge-owned site profile draft from Create Profile", async ({
     page,
   }) => {
-    test.setTimeout(120_000 * TIMEOUT_SCALE);
     const draftName = `M1 Site Draft ${Date.now()}`;
     await openAnalyzerTypes(page);
     await page
@@ -204,7 +201,6 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
   test("duplicates a profile without changing its source and retains lifecycle history", async ({
     page,
   }, testInfo) => {
-    test.setTimeout(180_000 * TIMEOUT_SCALE);
     const duplicateName = `M1 GeneXpert Type ${Date.now()}`;
     await openAnalyzerTypes(page);
     const sourceRow = analyzerTypeRow(page, SOURCE_PROFILE);
@@ -251,7 +247,7 @@ test.describe("OGC-1054 M1 Analyzer Types", () => {
     await expect(duplicateRow).toBeVisible();
     await expect(duplicateRow).toContainText("Site-created");
     await expect(duplicateRow).toContainText(
-      `Derived from genexpert-astm revision ${sourceRevision}`,
+      `Derived from cepheid-genexpert-astm revision ${sourceRevision}`,
     );
     await expect(duplicateRow).toContainText("revision 1");
     await expect(duplicateRow).toContainText("Not in use");

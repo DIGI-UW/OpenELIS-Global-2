@@ -1,13 +1,16 @@
 package org.openelisglobal.analyzer.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.util.Map;
 import org.openelisglobal.analyzer.service.AnalyzerActivationResult;
 import org.openelisglobal.analyzer.service.AnalyzerActivationService;
 import org.openelisglobal.analyzer.service.AnalyzerDeactivationResult;
+import org.openelisglobal.analyzer.service.AnalyzerRequestException;
 import org.openelisglobal.common.rest.BaseRestController;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -46,5 +49,16 @@ public class AnalyzerActivationRestController extends BaseRestController {
     public ResponseEntity<AnalyzerActivationResult> reactivate(@PathVariable String id, HttpServletRequest request) {
         AnalyzerActivationResult result = service.reactivate(id, getSysUserId(request));
         return ResponseEntity.status(result.activated() ? HttpStatus.OK : HttpStatus.UNPROCESSABLE_ENTITY).body(result);
+    }
+
+    @PostMapping("/{id}/reset-profile")
+    public ResponseEntity<Void> resetProfile(@PathVariable String id, HttpServletRequest request) {
+        service.resetUnavailableProfile(id, getSysUserId(request));
+        return ResponseEntity.noContent().build();
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidRequest(IllegalArgumentException exception) {
+        return ResponseEntity.badRequest().body(AnalyzerRequestException.body(exception, "Invalid analyzer request"));
     }
 }

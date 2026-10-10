@@ -36,7 +36,7 @@ plan for the remediation; nothing unfinished from the earlier roadmap is lost.
 - [x] T0.3 Create specs/analyzers/spec.md: a short overview of the target setup (how it works, who owns what, what must always hold, where the detail is in openelis-work and the Bridge)
 - [x] T0.4 Create specs/analyzers/roadmap.md from the old roadmap: each unfinished item kept, moved into this remediation, or dropped as done, with the reason
 - [x] T0.5 Delete specs/OGC-1054-analyzer-qc-config/ and specs/roadmaps/ogc-1054-analyzer-feature-roadmap.md; repoint the Westgard spec's two links to specs/analyzers/spec.md
-- [ ] T0.6 Format cold; commit; push; the PR stays at the bottom of the stack
+- [x] T0.6 (#4579) Format cold; commit; push; the PR stays at the bottom of the stack
 ```
 
 ### Verify

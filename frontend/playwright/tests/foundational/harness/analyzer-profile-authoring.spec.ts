@@ -1,13 +1,11 @@
 import { expect, test } from "../../../helpers/test-base";
 import { expectNoPageHorizontalOverflow } from "../../../helpers/responsive-layout";
-import { TIMEOUT_SCALE } from "../../../helpers/timeouts";
 
 // Synthetic interface settings; these are not claims about any manufacturer's device.
 for (const protocol of ["FILE", "ASTM", "HL7"] as const) {
   test(`creates, reopens and publishes a ${protocol} profile with explicit control recognition`, async ({
     page,
   }, testInfo) => {
-    test.setTimeout(180_000 * TIMEOUT_SCALE);
     const name = `Synthetic ${protocol} authoring ${Date.now()}`;
     await page.goto("/analyzers/types", {
       waitUntil: "domcontentloaded",

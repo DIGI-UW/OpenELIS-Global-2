@@ -1,4 +1,8 @@
 testName,testSection,sampleType,loinc,isActive,isOrderable,sortOrder,unitOfMeasure,localization:en,localization:fr,localization:es,localization:id
+HIV-1 Viral Load,Molecular Biology,Plasma|Serum,20447-9,Y,Y,73,copies/mL,HIV-1 Viral Load,Charge Virale VIH-1,Carga Viral VIH-1,Viral Load HIV-1
+SARS-CoV-2 PCR,Molecular Biology,Nasopharyngeal Swab|Sputum,94500-6,Y,Y,74,,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR,SARS-CoV-2 PCR
+Xpert MTB/RIF,Molecular Biology,Sputum,85362-2,Y,Y,75,,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF,Xpert MTB/RIF
+Rifampin Resistance,Molecular Biology,Sputum,89372-7,Y,Y,76,,Rifampin Resistance,Résistance à la Rifampicine,Resistencia a Rifampicina,Resistensi Rifampin
 Influenza A PCR,Molecular Biology,Nasopharyngeal Swab,85477-8,Y,Y,77,,Influenza A PCR,Grippe A PCR,Influenza A PCR,Influenza A PCR
 Influenza B PCR,Molecular Biology,Nasopharyngeal Swab,85478-6,Y,Y,78,,Influenza B PCR,Grippe B PCR,Influenza B PCR,Influenza B PCR
 RSV PCR,Molecular Biology,Nasopharyngeal Swab,85479-4,Y,Y,79,,RSV PCR,VRS PCR,VSR PCR,RSV PCR

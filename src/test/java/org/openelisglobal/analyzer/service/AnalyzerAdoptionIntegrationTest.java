@@ -24,6 +24,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Objects;
+import java.util.UUID;
 import javax.sql.DataSource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Device;
@@ -32,12 +33,14 @@ import org.hl7.fhir.r4.model.Observation;
 import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.After;
+import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InOrder;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.AnalyzerTestProfileCatalog;
 import org.openelisglobal.analyzer.dao.AnalyzerDAO;
+import org.openelisglobal.analyzer.form.AnalyzerInstanceRequest;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
@@ -79,8 +82,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Autowired
     private AnalyzerResultsService results;
     @Autowired
-    private AnalyzerMappingCatalogService catalog;
-    @Autowired
     private AnalyzerInstanceService instances;
     @Autowired
     private AnalyzerActivationService activations;
@@ -88,8 +89,23 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     private AnalyzerNormalizedResultImportService importService;
 
     private String analyzerId;
-    private String deactivatedTestId;
     private BridgeAnalyzerConnectionClient realBridge;
+    /**
+     * Active catalog tests of this class's own; other suites may leave the catalog
+     * empty.
+     */
+    private final List<String> catalogTests = List.of("98201", "98202");
+
+    @Before
+    public void createCatalogTests() {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        for (String id : catalogTests) {
+            jdbc.update(
+                    "INSERT INTO test (id, name, description, is_active, guid, domain, orderable, lastupdated)"
+                            + " VALUES (?, ?, ?, 'Y', ?, 'CLINICAL', true, NOW())",
+                    Long.valueOf(id), "Adoption IT " + id, "Adoption IT " + id, UUID.randomUUID().toString());
+        }
+    }
 
     @After
     public void deleteAnalyzer() {
@@ -97,13 +113,15 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
             useBridge(realBridge);
         }
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
-        if (deactivatedTestId != null) {
-            jdbc.update("UPDATE test SET is_active = 'Y' WHERE id = ?", Long.valueOf(deactivatedTestId));
+        if (analyzerId != null) {
+            deleteAnalyzerRows(jdbc, Long.valueOf(analyzerId));
         }
-        if (analyzerId == null) {
-            return;
+        for (String id : catalogTests) {
+            jdbc.update("DELETE FROM test WHERE id = ?", Long.valueOf(id));
         }
-        Long id = Long.valueOf(analyzerId);
+    }
+
+    private void deleteAnalyzerRows(JdbcTemplate jdbc, Long id) {
         jdbc.update("DELETE FROM analyzer_results WHERE analyzer_id = ?", id);
         jdbc.update("DELETE FROM analyzer_delivery_receipt WHERE connection_id = ?", CONNECTION_ID);
         jdbc.update("UPDATE analyzer SET latest_activation_record_id = NULL, mapping_id = NULL WHERE id = ?", id);
@@ -256,7 +274,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     @Test
     public void aResultStampedWithTheOldRevisionMapsWhenTheNewOneReadsItAlikeAndIsHeldWhenNot() throws Exception {
         analyzerOnRevisionOne();
-        String testId = catalog.searchActiveTests(null).get(0).id();
+        String testId = catalogTests.get(0);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
                 bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", testId), "1");
         confirm(adopted);
@@ -284,10 +302,9 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerResults heldA = staged("ADOPT-A");
         assertTrue("ADOPT-A has no test on revision 1", heldA.isReadOnly());
         assertTrue(staged("ADOPT-D").isReadOnly());
-        List<AnalyzerMappingCatalogService.TestOption> tests = catalog.searchActiveTests(null);
         AnalyzerMappingSnapshot adopted = adoptionService.adopt(analyzerId, 2,
-                bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", tests.get(0).id()),
-                        "ADOPT-D", tests.get(1).id()),
+                bind(bind(adoptionService.prepareAdoption(analyzerId, 2).proposals(), "ADOPT-A", catalogTests.get(0)),
+                        "ADOPT-D", catalogTests.get(1)),
                 "1");
         confirm(adopted);
         bridgeOn(1);
@@ -297,7 +314,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerResults recovered = staged("ADOPT-A");
         assertEquals(heldA.getId(), recovered.getId());
         assertFalse("only ADOPT-A's LOINC changed", recovered.isReadOnly());
-        assertEquals(tests.get(0).id(), recovered.getTestId());
+        assertEquals(catalogTests.get(0), recovered.getTestId());
         assertEquals(Integer.valueOf(1), recovered.getSourceProfileRevision());
         AnalyzerResults otherUnit = staged("ADOPT-D");
         assertTrue("revision 2 reports ADOPT-D in another unit", otherUnit.isReadOnly());
@@ -320,8 +337,7 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
         AnalyzerMappingDraft draft = AnalyzerMappingDraft.of(first);
         String inForce = draft.tests().stream().filter(test -> test.sourceRowKey().equals("ADOPT-A"))
                 .map(AnalyzerMappingTestDraft::testId).filter(Objects::nonNull).findFirst().orElse(null);
-        String other = catalog.searchActiveTests(null).stream().map(AnalyzerMappingCatalogService.TestOption::id)
-                .filter(id -> !id.equals(inForce)).findFirst().orElseThrow();
+        String other = catalogTests.stream().filter(id -> !id.equals(inForce)).findFirst().orElseThrow();
         List<AnalyzerMappingTestDraft> tests = draft.tests().stream()
                 .map(test -> test.sourceRowKey().equals("ADOPT-A")
                         ? new AnalyzerMappingTestDraft(test.sourceRowKey(), AnalyzerMappingState.BOUND, other, null,
@@ -338,7 +354,6 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     private void deactivate(String testId) {
         JdbcTemplate jdbc = new JdbcTemplate(dataSource);
         jdbc.update("UPDATE test SET is_active = 'N' WHERE id = ?", Long.valueOf(testId));
-        deactivatedTestId = testId;
     }
 
     private void hold(String code, int revision) {
@@ -415,6 +430,58 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
                 .orElseThrow(() -> new AssertionError("no adoption row for " + code));
     }
 
+    /**
+     * The upgrade path: changeset 124 leaves an analyzer inactive with no mapping
+     * and its Bridge connection kept. The operator sets it up again on an available
+     * type, the Bridge connection is pinned to it, and it activates.
+     */
+    @Test
+    public void anAnalyzerTheUpgradeLeftWithoutAMappingIsSetUpAgainAndActivates() {
+        Analyzer analyzer = new Analyzer();
+        analyzer.ensureFhirUuid();
+        analyzer.setName("Migrated bench");
+        analyzer.setStatus(Analyzer.AnalyzerStatus.INACTIVE);
+        analyzer.setActive(false);
+        analyzer.setTestUnitIds(List.of(labUnit()));
+        analyzer.setSysUserId("1");
+        analyzerDAO.insert(analyzer);
+        analyzerId = analyzer.getId();
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("UPDATE analyzer SET bridge_connection_id = ? WHERE id = ?", CONNECTION_ID,
+                Long.valueOf(analyzerId));
+        BridgeAnalyzerConnectionClient bridge = bridgeOn(1);
+        when(bridge.getConnection(CONNECTION_ID)).thenReturn(connection(1));
+        when(bridge.updateConnection(eq(CONNECTION_ID), any(ObjectNode.class))).thenReturn(connection(1));
+        when(bridge.applyRuntimeCommand(eq(CONNECTION_ID), anyInt(), eq("ACTIVATE"), anyString()))
+                .thenAnswer(call -> acknowledgement(call.getArgument(3), 1));
+
+        AnalyzerInstanceRequest request = new AnalyzerInstanceRequest();
+        request.setName("Migrated bench");
+        request.setTestUnitIds(List.of(labUnit()));
+        request.setProfileId(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID);
+        request.setProfileRevision(1);
+        request.setConnectionValues(JSON.createObjectNode());
+        instances.update(analyzerId, request, "1");
+
+        ArgumentCaptor<ObjectNode> repin = ArgumentCaptor.forClass(ObjectNode.class);
+        verify(bridge).updateConnection(eq(CONNECTION_ID), repin.capture());
+        assertEquals(AnalyzerTestProfileCatalog.ADOPTABLE_PROFILE_ID,
+                repin.getValue().path("profileRef").path("profileId").asText());
+        Analyzer setUp = analyzerDAO.get(analyzerId).orElseThrow();
+        assertEquals("Migrated bench", setUp.getName());
+        assertEquals(CONNECTION_ID, setUp.getBridgeConnectionId());
+        assertEquals(Analyzer.AnalyzerStatus.INACTIVE, setUp.getStatus());
+        assertTrue("the analyzer has a mapping on the chosen type again",
+                mappingService.findLatestByAnalyzerId(analyzerId).isPresent());
+
+        confirm(mappingService.findLatestByAnalyzerId(analyzerId).orElseThrow());
+        AnalyzerActivationResult result = activations.activate(analyzerId, "1");
+
+        assertTrue("blockers: " + result.blockers(), result.activated());
+        assertEquals("ACTIVE", jdbc.queryForObject("SELECT status FROM analyzer WHERE id = ?", String.class,
+                Long.valueOf(analyzerId)));
+    }
+
     private Analyzer analyzerOnRevisionOne() {
         Analyzer analyzer = new Analyzer();
         analyzer.ensureFhirUuid();
@@ -485,13 +552,17 @@ public class AnalyzerAdoptionIntegrationTest extends BaseWebContextSensitiveTest
     }
 
     private ObjectNode acknowledgement(String commandId) {
+        return acknowledgement(commandId, 2);
+    }
+
+    private ObjectNode acknowledgement(String commandId, int revision) {
         ObjectNode acknowledgement = JSON.createObjectNode();
         acknowledgement.put("schemaVersion", "1.0");
         acknowledgement.put("commandId", commandId);
         acknowledgement.put("action", "ACTIVATE");
         acknowledgement.put("outcome", "APPLIED");
         acknowledgement.put("connectionId", CONNECTION_ID);
-        acknowledgement.set("profileRef", connection(2).path("profileRef"));
+        acknowledgement.set("profileRef", connection(revision).path("profileRef"));
         acknowledgement.put("configRevision", 1);
         acknowledgement.put("configFingerprint", CONFIG_FINGERPRINT);
         acknowledgement.put("runtimeRevision", 2);

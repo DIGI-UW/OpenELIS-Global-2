@@ -68,3 +68,21 @@ export async function seedNumericTests(
     return { id: match!.id, name: match!.name, loinc };
   });
 }
+
+/** The catalog test of this name on this specimen. */
+export async function activeTestId(page: Page, name: string, specimen: string) {
+  const response = await page.request.get(
+    `${API}/test-catalog/tests?status=active&search=${encodeURIComponent(name)}&pageSize=100`,
+  );
+  const rows = (
+    (await response.json()) as {
+      rows: Array<{ testId: string; name: string; sampleTypes: string[] }>;
+    }
+  ).rows.filter(
+    (row) =>
+      (row.name === name || row.name.startsWith(`${name}(`)) &&
+      row.sampleTypes.includes(specimen),
+  );
+  expect(rows, `One active ${name} on ${specimen}`).toHaveLength(1);
+  return rows[0].testId;
+}

@@ -607,6 +607,30 @@ export const deactivateAnalyzer = (
   );
 };
 
+/**
+ * Returns an analyzer whose type the Bridge no longer has to the state the
+ * upgrade migration leaves one in, so it can be set up again on an available type.
+ */
+export const resetAnalyzerProfile = (
+  id: string,
+  callback: (result: { ok: boolean; messageKey?: string }) => void,
+) => {
+  fetch(config.serverBaseUrl + `/rest/analyzer/analyzers/${id}/reset-profile`, {
+    credentials: "include",
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-CSRF-Token": localStorage.getItem("CSRF") || "",
+    },
+    body: JSON.stringify({}),
+  })
+    .then(async (response) => {
+      const json = await response.json().catch(() => ({}));
+      callback({ ok: response.ok, messageKey: json?.messageKey });
+    })
+    .catch(() => callback({ ok: false }));
+};
+
 const postAnalyzerLifecycle = <T extends object>(
   id: string,
   action: "activate" | "deactivate" | "reactivate",

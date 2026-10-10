@@ -111,7 +111,7 @@ registered UI setup and integrated result stories with their original assertions
 
 The ordinary CI harness run covers the M1-M2 catalog, mapping and M4 integrated
 result stories through `harness-foundational`, then M3 guided setup through
-`harness-demo`. The M4 story can run alone through `pw:test:harness-mvp`.
+`harness-demo`. The setup-to-result stories can run alone through `pw:test:harness-results`.
 Record those same tests with `harness-demo-video` after checking the screenshots,
 trace, console output and runtime state.
 
@@ -237,7 +237,7 @@ then visible UI only):
 
 ```bash
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-mvp
+TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test:harness-results
 ```
 
 **Harness manual-only checks** (real hardware / operator-managed):

@@ -31,10 +31,10 @@ import org.springframework.test.util.ReflectionTestUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 
 /**
- * The analyzer harness runs on its own copy of the generic dictionary. Loaded
- * the way OpenELIS loads configuration at startup, it lets every baseline
- * profile the Bridge ships bind every test, record and value with no operator
- * work.
+ * The analyzer harness loads only the configuration the analyzer stories use.
+ * Loaded the way OpenELIS loads configuration at startup, it lets every
+ * baseline profile the Bridge ships bind every test, record and value with no
+ * operator work.
  */
 @ContextConfiguration(inheritLocations = false, classes = { AppTestConfig.class,
         HarnessDictionaryIntegrationTest.TestConfig.class })
@@ -98,7 +98,7 @@ public class HarnessDictionaryIntegrationTest extends BaseWebContextSensitiveTes
 
     /**
      * The analyzer codes are unambiguous: no two active tests carry one on the same
-     * specimen. Other tests in the generic dictionary may share a code.
+     * specimen.
      */
     @Test
     public void noTwoActiveTestsShareAnAnalyzerLoincOnASpecimenAndTheCovidReportFindsItsTest() throws Exception {

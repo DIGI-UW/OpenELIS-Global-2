@@ -26,7 +26,8 @@ class PublicationWorkflowTest(unittest.TestCase):
         images = {service: "test-org/openelis-global-2" + suffix + "@sha256:" + "b" * 64
                   for service, suffix in [("oe.openelis.org", ""), ("db.openelis.org", "-database"),
                                           ("fhir.openelis.org", "-fhir"), ("frontend.openelis.org", "-frontend"),
-                                          ("proxy", "-proxy")]}
+                                          ("proxy", "-proxy"), ("openelis-analyzer-bridge", "-analyzer-bridge"),
+                                          ("astm-simulator", "-analyzer-mock")]}
         env = {**os.environ, "DEPLOY_HOST": "testing.example.org", "DEPLOY_USER": "ubuntu", "DEPLOY_PORT": "22",
                "DOCKERHUB_NAMESPACE": "test-org", "SITE_PATH": "/srv/openelis-testing", "GITHUB_RUN_ID": "123",
                "GITHUB_RUN_ATTEMPT": "2", "READINESS_URL": "https://testing.example.org/health",
