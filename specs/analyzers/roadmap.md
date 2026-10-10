@@ -1,51 +1,142 @@
-# Analyzer work after the baseline remediation
+# Analyzer roadmap
 
-Analyzer work that is not part of the
-[analyzer baseline remediation](../roadmaps/analyzer-baseline-roadmap.md). It
-keeps the unfinished items of the roadmap that preceded the remediation
-(`specs/roadmaps/ogc-1054-analyzer-feature-roadmap.md`, in git history), each
-with its verdict as of 6 October 2026.
+Analyzer work after the
+[baseline remediation](../roadmaps/analyzer-baseline-roadmap.md) (stack
+#4588), in order. The [spec](spec.md) is the design authority; a decision
+changes it in the PR that makes it.
 
-## Remaining work, in order
+How this list works:
 
-| Order | Work                       | Next step                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Acceptance                                                                                                                                                                          |
-| ----- | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 1     | FILE and HL7 qualification | Qualify, with native traffic, the FILE and HL7 instruments the remediation brings into core beyond GeneXpert and FluoroCycler (steps 5 and 6 ship their profiles; this proves them): exports, assays, units, status and control semantics, archive and error retention.                                                                                                                                                                                                                                                                                                                           | UI directory configuration reaches Bridge watching; native files and HL7 messages save correct clinical values with independent readback.                                           |
-| 2     | Durable delivery           | Prove OpenELIS queue outage, restart and replay on the current traffic helper, and operator retry after another transient failure (after #4421). Restore mock attachment after a Bridge replacement.                                                                                                                                                                                                                                                                                                                                                                                              | Replay returns the original counts; a retried delivery adds no clinical result.                                                                                                     |
-| 3     | Core qualification         | After the baseline lands, run every supported workflow and present recordings from the same registered tests.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | Every supported ASTM, FILE and HL7 workflow and required recovery scenario has passing independent readback, exact image identities and accessible reviewed video.                  |
-| 4     | Madagascar distro          | After core qualification: remove profiles core carries, unset the shipped-pattern override, rebuild the rest as baseline profiles, run the migration, update pins.                                                                                                                                                                                                                                                                                                                                                                                                                                | The distro consumes working core profiles and defaults without site-specific mapping repair.                                                                                        |
-| 5     | Answer codes UI            | Deferred from step 2c (decided 6 Oct): Dictionary Management edits an answer's codes in any system through `/rest/test-catalog/answers/{id}/terminology` (shipped in step 2c), and the test catalog's option table shows each answer's codes read-only.                                                                                                                                                                                                                                                                                                                                           | An answer's LOINC, SNOMED, CIEL and OCL codes are edited in Dictionary Management and shown in the catalog; saving keeps `dictionary.loinc_code` on the SAME_AS LOINC code.         |
-| 6     | Codes settled at setup     | Deferred from the #4611 review (9 Oct): a profile entry's `test_code` both names the entry and is the code the instrument is assumed to send. Give entries an `id`; setup writes, on the Bridge connection, the code this instrument sends for each entry it runs; the Bridge reads and orders under that code and puts it in the bundle; OE2 keys each mapping row by that code and links it to the entry for defaults and adoption. A renamed code and an undeclared code take one path. Bridge first, then OE2. Open: answer codes too; the entry `id` format; whether labs rename components. | After setup, no record of the analyzer (connection, bundle, mapping, review row) holds a code the instrument does not send; harness E2E covers a renamed code inbound and outbound. |
+- Each item is one piece of work. A piece that needs more than one PR or more
+  than one repository has its own plan under `specs/roadmaps/`, with its scope
+  fixed when the plan is written.
+- Anything found while a piece is under way becomes a new item here, never a
+  step added to the running plan.
+- An item is removed when its work lands.
 
-## Deferred review items
+## In order
 
-Open findings from the #4332 review that the remediation does not address.
+1. **The testing deployment's delivery check reaches an active GeneXpert.**
+   One PR. The seed (`projects/analyzer-harness/seed-analyzers.sh`) checks
+   only the assays that are on, as setup does; the smoke analyzer activates on
+   the bundled catalog; a kept connection whose profile is gone is recreated.
+   Rehearse against a local stack built like the deployment. From the
+   baseline review (#4632, #4644).
+2. **Upgrade rehearsal on the testing site.** An analyzer left by the baseline
+   migration is set up again on a baseline type, its connection re-pinned, and
+   it activates, recorded as the upgrade user story with the deployed build's
+   SHA. The deployment needs the maintainer's go at the time.
+3. **The Linux installer receives analyzer results.** One PR, a template and a
+   doc. The installer mounts
+   `install/installerTemplate/linux/templates/oe_server.xml` over Tomcat's
+   `server.xml`, and its 8443 connector requests no client certificate, so
+   every `/analyzer/fhir` delivery gets 401. Replace that connector with the
+   `SSLHostConfig` form in `tomcat/oe_server.xml`
+   (`certificateVerification="optional"`, `AnyClientCertificateTrustManager`),
+   keeping the installer's keystore secret and `[% keystore_password %]` and
+   dropping the truststore attributes; the trust manager already ships in the
+   image. Delete the installer caveat at the end of
+   [bridge-pairing.md](../../docs/analyzers/bridge-pairing.md). Verify on a
+   rendered, booted install: a request with no certificate still succeeds, and
+   a paired Bridge's delivery gets 2xx. The Bridge must reach 8443 directly;
+   TLS ending at nginx would strip its certificate.
+4. **Analyzer cleanup.** One PR.
+   - The profile editor stops carrying hints: profiles carry no result value
+     hints (rule 1), yet `ProfileTestDefinitions.jsx` (lines 86 to 95) still
+     reads `result_value_hints` and writes them back when a test's values
+     change. Set the values only.
+   - `TestQcTarget.expectedDictResultId` holds a dictionary entry ID, as
+     `TestResult.value` does for a type D answer, not a test result ID. Rename
+     it `expectedDictionaryEntryId`.
+   - Answer codes load in one query:
+     `AnalyzerMappingCatalogServiceImpl.getActiveResultOptions` runs one
+     terminology query per answer (`codingsOf`).
+   - Affected analyzers load in one query:
+     `AnalyzerTypeCatalogServiceImpl.affectedAnalyzer` loads each analyzer's
+     latest mapping separately, for every revision in the catalog.
+5. **Review rows are built in a service, in bulk.** One PR.
+   `AnalyzerResultsController.analyzerResultsToAnalyzerResultItem` builds one
+   review row at a time, each looking up its delivery receipt, placement and
+   component label, and the paging helper builds rows for the whole queue.
+   Move row building into a service that takes the list, resolves each lookup
+   in one query, and builds only the page shown.
+6. **Low findings from the baseline review** that the stack did not fix: each
+   filed as an issue, linking its thread.
+7. **Pairing proves the code without sending it.** A Bridge release, then the
+   OpenELIS pin. Plan: [analyzer-pairing-proof](../roadmaps/analyzer-pairing-proof.md).
+8. **The Bridge contract drops result value hints.** The profile schema and
+   its README still define `result_value_hints`, the validator checks them and
+   the catalog strips them on load. Reject them instead. Rides with the Bridge
+   release of item 7.
+9. **Codes settled at setup.** Bridge, mock and OpenELIS. Plan:
+   [analyzer-codes-at-setup](../roadmaps/analyzer-codes-at-setup.md).
+10. **Outbound orders.** OpenELIS sends no orders to analyzers. The user, 7
+    Oct: "obviously we would use the translation for both ways in the
+    future". After item 9, so an order carries the code the instrument was set
+    up with.
+11. **FILE and HL7 qualification.** Qualify, with native traffic, the FILE and
+    HL7 instruments core ships beyond GeneXpert and FluoroCycler: exports,
+    assays, units, status and control semantics, archive and error retention.
+    HL7 result parts (OBX-4 sub-identity, OBX-5 components, OBX-8, NTE) land
+    with the first HL7 baseline profile. Decide here which domains the
+    harness's filesystem catalogs may replace: today they suppress the bundled
+    Horiba CBC and vector CSVs. Acceptance: UI directory configuration reaches
+    Bridge watching; native files and HL7 messages save correct clinical values
+    with independent readback.
+12. **Durable delivery.** Prove OpenELIS queue outage, restart and replay on
+    the current traffic helper, and operator retry after another transient
+    failure (with #4421). Restore mock attachment after a Bridge replacement.
+    Acceptance: replay returns the original counts; a retried delivery adds no
+    clinical result.
+13. **Cepheid coverage in the Bridge.** Parser-level tests for 301-2002 Rev E
+    §6.3.4.1.9 to 6.3.4.1.11 (assays outside the profile: multi-result,
+    single-result, quantitative with LOG and C notes). MTB/RIF values and
+    MTB/RIF Ultra verified from Cepheid LIS guidance, then added to the profile
+    and the mock's fixtures.
+14. **Core qualification.** Run every supported workflow and present
+    recordings from the same registered tests. Acceptance: every supported
+    ASTM, FILE and HL7 workflow and required recovery scenario has passing
+    independent readback, exact image identities and accessible reviewed
+    video.
+15. **Madagascar distro.** Each distro profile written from its vendor
+    host-interface document (openelis-work vendor manuals and integration
+    specs first) with `docs/profiles/<id>.md` and its unverifiable rows marked;
+    then the distro removes profiles core carries, unsets the shipped-pattern
+    override, rebuilds the rest as baseline profiles, runs the migration and
+    updates pins. Acceptance: the distro consumes working core profiles and
+    defaults without site-specific mapping repair.
+16. **Answer codes UI.** Dictionary Management edits an answer's codes in any
+    system through `/rest/test-catalog/answers/{id}/terminology`, and the test
+    catalog's option table shows each answer's codes read-only. Acceptance:
+    saving keeps `dictionary.loinc_code` on the SAME_AS LOINC code.
+17. **Analyzer Types under Admin.** The types page (`/analyzers/types`) moves
+    to the Admin menu; analyzers stay in the Analyzers menu (decided 6 Oct).
+18. **The Bridge and mock bump OpenELIS's pins.** When either default branch
+    moves, a workflow opens the OpenELIS submodule bump as a PR (decided 7 Oct).
 
-| ID     | Finding                                                                                                                                                    | Owner                        | Follow-up                                                                                                                                                                     |
-| ------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| F-REV1 | Harness filesystem catalogs suppress bundled Horiba CBC and vector CSVs for those domains. Confirmed loader behaviour; intended coverage needs a decision. | FILE/HL7 qualification (1)   | Step 7 trims the harness catalog to the analyzer files; they still replace the built-ins of every domain they supply, so the suppression remains; state the supported corpus. |
-| F-REV2 | Transactional TRUNCATE can retain locks that block a second connection or `REQUIRES_NEW` work. Credible risk; no failing case demonstrated.                | Backend test infrastructure  | Reproduce the cross-connection case; fix fixture isolation or transaction ownership so it finishes or fails diagnostically without hanging.                                   |
-| F-REV4 | Repeated `SpringContext.getBean` access and reference-table lookups add indirection and query work. No functional failure or measured problem.             | OpenELIS service maintenance | Prefer injected or context-scoped dependencies where appropriate; verify lifecycle correctness and query reduction.                                                           |
-| F-REV5 | The 2.3.x seed assigns the COVID LOINC to HIV viral-load variants. Step 7 corrects the harness CSVs only; the main dictionary and deployed sites remain.   | General catalog correction   | Audit affected records on deployed sites; apply a narrowly scoped correction preserving IDs, history and report labels.                                                       |
+## Owned elsewhere
 
-## Moved into the remediation
+- **QC read permission.** Whoever owns QC roles decides whether QC reads are
+  gated on `QaPermissions.VIEW_QC`, as the QC export is, instead of ADMIN, so
+  Lab Supervisors keep the QC dashboard.
 
-| Old item                                                         | Now                                                                         |
-| ---------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| Repin OpenELIS to Bridge 3.2.6 (#4497)                           | Merged 1 October; the remediation repins again in step 7.                   |
-| Reconcile populated catalogs and upgrade from a previous version | Step 2 (fresh-baseline migration) and step 4 (populated-catalog setup E2E). |
-| A shipped core HL7 profile                                       | Steps 5 and 6 bring the Madagascar profiles, HL7 ones included, into core.  |
-| F-REV3: a single local-code candidate bypasses disambiguation    | Step 1 (exact-match resolver) and step 1b (placement).                      |
-| F-REV6: duplicate raw values render one hint editor              | Moot: profiles carry no hints (rule 1).                                     |
+## Open findings
 
-## Related open pull requests
+| ID     | Finding                                                                                                                                            | Next step                                                                                                                                   |
+| ------ | -------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- |
+| F-REV2 | Transactional TRUNCATE can retain locks that block a second connection or `REQUIRES_NEW` work. Credible risk; no failing case demonstrated.        | Reproduce the cross-connection case; fix fixture isolation or transaction ownership so it finishes or fails diagnostically without hanging. |
+| F-REV4 | Repeated `SpringContext.getBean` access and reference-table lookups add indirection and query work. No functional failure or measured problem.     | Prefer injected or context-scoped dependencies; verify lifecycle correctness and query reduction.                                           |
+| F-REV5 | The 2.3.x seed assigns the COVID LOINC to HIV viral-load variants. The harness CSVs are corrected; the main dictionary and deployed sites are not. | Audit affected records on deployed sites; apply a narrowly scoped correction preserving IDs, history and report labels.                     |
 
-| PR                                       | Disposition                                                                                                                                  |
-| ---------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| OpenELIS #4421                           | Persists Retry and Dismiss of undelivered results in the audit trail. Open on 6 October.                                                     |
-| OpenELIS #3974                           | TypeScript migration of analyzer forms; its targets were mostly removed in September. Close it, or narrow it. Open.                          |
-| Madagascar test harness #4, #9, #10, #11 | After core qualification: reconcile #4 with merged #15; narrow #10; review the outbound proof in #9 and #11. Not re-checked since 1 October. |
-| Review tooling #16, #31                  | Compare #16 with merged #17; update #31's evidence manifests to the tested pins. Not re-checked since 1 October.                             |
+## Open pull requests
+
+| PR                                       | State                        | Next step                                                                                                  |
+| ---------------------------------------- | ---------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| OpenELIS #4421                           | Open, behind develop (9 Oct) | Retry and Dismiss of undelivered results in the audit trail; item 12 builds on it.                         |
+| OpenELIS #3974                           | Open, conflicting (9 Oct)    | TypeScript migration of analyzer forms whose targets were mostly removed in September: close or narrow it. |
+| OpenELIS issue #4428                     | Open (9 Oct)                 | Profile editor acceptance and advanced settings.                                                           |
+| Madagascar test harness #4, #9, #10, #11 | As of 1 Oct                  | With item 15: reconcile #4 with merged #15; narrow #10; review the outbound proof in #9 and #11.           |
+| Review tooling #16, #31                  | As of 1 Oct                  | With item 14: compare #16 with merged #17; update #31's evidence manifests to the tested pins.             |
 
 ## Acceptance and test rules for this work
 
