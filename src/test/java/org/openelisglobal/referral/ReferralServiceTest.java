@@ -8,6 +8,7 @@ import java.sql.Timestamp;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -25,6 +26,13 @@ public class ReferralServiceTest extends BaseWebContextSensitiveTest {
     ReferralService rService;
 
     @Before
+    @After
+    public void cleanUp() throws Exception {
+        cleanRowsInCurrentConnection(new String[] { "referral", "analysis_qaevent", "qa_event", "analysis",
+                "sample_requester", "sample_organization", "sample_human", "sample_item", "sample", "person", "patient",
+                "provider", "result" });
+    }
+
     public void init() throws Exception {
         executeDataSetWithStateManagement("testdata/referral.xml");
     }
