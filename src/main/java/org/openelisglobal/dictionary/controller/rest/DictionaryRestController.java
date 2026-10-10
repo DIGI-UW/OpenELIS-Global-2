@@ -47,7 +47,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 public class DictionaryRestController extends BaseController {
 
     private static final String[] ALLOWED_FIELDS = new String[] { "dirtyFormFields", "id",
-            "selectedDictionaryCategoryId", "isActive", "dictEntry", "localAbbreviation" };
+            "selectedDictionaryCategoryId", "isActive", "dictEntry", "localAbbreviation", "containerPopulation" };
 
     @Autowired
     private DictionaryFormValidator formValidator;

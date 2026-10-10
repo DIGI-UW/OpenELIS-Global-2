@@ -11,17 +11,11 @@ import {
   DatePicker,
   DatePickerInput,
   InlineNotification,
-  Modal,
 } from "@carbon/react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
 import { filterByTypedLabel } from "../../comboFilter";
 import Questionnaire from "../../../common/Questionnaire";
 import VectorFieldSurveyPanel from "./VectorFieldSurveyPanel";
-import MicrobiologyOrderEntrySection from "../../../microbiology/MicrobiologyOrderEntrySection";
-import {
-  hasCultureWorkflowTest,
-  isMicrobiologyOrder,
-} from "../../orderDataUtils";
 
 /**
  * ProgramSection - Program selection with dynamic additional fields
@@ -36,13 +30,7 @@ import {
  * is given the picker only offers active programs of that domain (OGC-781
  * FR-6); without it every active program is offered.
  */
-const ProgramSection = ({
-  orderData,
-  setOrderData,
-  samples = [],
-  isReadOnly,
-  domain,
-}) => {
+const ProgramSection = ({ orderData, setOrderData, isReadOnly, domain }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const questionnaireProgramIdRef = useRef(null);
@@ -53,37 +41,14 @@ const ProgramSection = ({
   const [questionnaire, setQuestionnaire] = useState(
     orderData?.sampleOrderItems?.questionnaire || null,
   );
-  const [pendingProgram, setPendingProgram] = useState(undefined);
-
-  const hasCultureWorkflow = hasCultureWorkflowTest(samples);
-  const microbiologyProgram = programs.find(
-    (program) => program.code?.toUpperCase() === "MICROBIOLOGY",
-  );
   const currentProgramId = orderData?.sampleOrderItems?.programId;
-  const effectiveProgramId =
-    hasCultureWorkflow && microbiologyProgram
-      ? microbiologyProgram.id
-      : currentProgramId;
   const selectedProgram =
     programs.find(
-      (program) => String(program.id) === String(effectiveProgramId || ""),
+      (program) => String(program.id) === String(currentProgramId || ""),
     ) || null;
-  const microbiologyProgramSelected =
-    selectedProgram?.code?.toUpperCase() === "MICROBIOLOGY";
-  // The shared rule reads the order, which only names the Microbiology program
-  // once a selection has been written back to it. This section has the resolved
-  // program list, so it also recognises a program selected or loaded by id.
-  const isMicroOrder =
-    isMicrobiologyOrder(orderData, samples) || microbiologyProgramSelected;
-  const displayedQuestionnaire = microbiologyProgramSelected
-    ? null
-    : questionnaire;
+  const displayedQuestionnaire = questionnaire;
   const questionnaireResponse =
     orderData?.sampleOrderItems?.additionalQuestions || null;
-  const hasMicrobiologyDetail = Object.values(
-    orderData?.microbiologyOrderDetail || {},
-  ).some((value) => value !== "" && value !== null && value !== false);
-
   // Convert questionnaire to response format
   const convertQuestionnaireToResponse = (questionnaireData) => {
     if (!questionnaireData || !questionnaireData.item) {
@@ -163,42 +128,6 @@ const ProgramSection = ({
     });
   }, [programsLoaded, programs, currentProgramId]);
 
-  useEffect(() => {
-    if (!hasCultureWorkflow || !microbiologyProgram) {
-      return;
-    }
-
-    if (
-      String(orderData?.sampleOrderItems?.programId || "") !==
-        String(microbiologyProgram.id) ||
-      String(orderData?.sampleOrderItems?.microbiologyProgramId || "") !==
-        String(microbiologyProgram.id)
-    ) {
-      setOrderData((previous) => ({
-        ...previous,
-        sampleOrderItems: {
-          ...previous.sampleOrderItems,
-          microbiologyPreviousProgramId:
-            previous.sampleOrderItems?.microbiologyPreviousProgramId ??
-            previous.sampleOrderItems?.programId ??
-            "",
-          programId: microbiologyProgram.id,
-          microbiologyProgramId: microbiologyProgram.id,
-          programCode: microbiologyProgram.code,
-          questionnaire: null,
-          additionalQuestions: null,
-        },
-      }));
-      setQuestionnaire(null);
-    }
-  }, [
-    hasCultureWorkflow,
-    microbiologyProgram,
-    orderData?.sampleOrderItems?.programId,
-    orderData?.sampleOrderItems?.microbiologyProgramId,
-    setOrderData,
-  ]);
-
   // Fetch program-specific questionnaire. Saved responses remain canonical in
   // orderData; this component only owns the fetched questionnaire structure.
   const fetchProgramQuestionnaire = useCallback(
@@ -245,11 +174,7 @@ const ProgramSection = ({
   );
 
   useEffect(() => {
-    if (
-      !programsLoaded ||
-      !selectedProgram ||
-      selectedProgram.code?.toUpperCase() === "MICROBIOLOGY"
-    ) {
+    if (!programsLoaded || !selectedProgram) {
       questionnaireProgramIdRef.current = null;
       return;
     }
@@ -271,10 +196,7 @@ const ProgramSection = ({
     selectedProgram,
   ]);
 
-  const applyProgramChange = (selectedItem, discardMicrobiologyDetail) => {
-    const discardedMicrobiologyDetail = discardMicrobiologyDetail
-      ? { microbiologyOrderDetail: undefined }
-      : {};
+  const applyProgramChange = (selectedItem) => {
     if (selectedItem) {
       setOrderData((prev) => ({
         ...prev,
@@ -282,16 +204,8 @@ const ProgramSection = ({
           ...prev.sampleOrderItems,
           programId: selectedItem.id,
           programCode: selectedItem.code,
-          microbiologyProgramId:
-            selectedItem.code?.toUpperCase() === "MICROBIOLOGY"
-              ? selectedItem.id
-              : undefined,
         },
-        ...discardedMicrobiologyDetail,
       }));
-      if (selectedItem.code?.toUpperCase() === "MICROBIOLOGY") {
-        setQuestionnaire(null);
-      }
     } else {
       setOrderData((prev) => ({
         ...prev,
@@ -301,31 +215,14 @@ const ProgramSection = ({
           programCode: undefined,
           questionnaire: null,
           additionalQuestions: null,
-          microbiologyProgramId: undefined,
         },
-        ...discardedMicrobiologyDetail,
       }));
       setQuestionnaire(null);
     }
   };
 
-  // Handle program selection. A typed culture test owns the derived Program,
-  // while the manual fallback can be changed after confirming data loss.
   const handleProgramChange = ({ selectedItem }) => {
-    const leavesManualMicrobiology =
-      microbiologyProgramSelected &&
-      !hasCultureWorkflow &&
-      selectedItem?.code?.toUpperCase() !== "MICROBIOLOGY";
-    if (leavesManualMicrobiology && hasMicrobiologyDetail) {
-      setPendingProgram(selectedItem ?? null);
-      return;
-    }
-    applyProgramChange(selectedItem, false);
-  };
-
-  const confirmProgramChange = () => {
-    applyProgramChange(pendingProgram ?? null, true);
-    setPendingProgram(undefined);
+    applyProgramChange(selectedItem);
   };
 
   // Get answer for a questionnaire item
@@ -616,8 +513,8 @@ const ProgramSection = ({
     </div>
   );
 
-  // Identify the programme by its configured code, the way Microbiology above
-  // does. The name is only a fallback, and then only on a whole-word match:
+  // Identify the programme by its configured code.
+  // The name is only a fallback, and then only on a whole-word match:
   // a bare "vl" substring also fires on names like Sylvatic or Salvador.
   const programCode = selectedProgram?.code?.toUpperCase() || "";
   const programName = selectedProgram?.value?.toLowerCase() || "";
@@ -634,25 +531,6 @@ const ProgramSection = ({
 
   return (
     <Tile className="order-section program-section">
-      <Modal
-        open={pendingProgram !== undefined}
-        modalHeading={intl.formatMessage({
-          id: "microbiology.orderEntry.programDiscardHeading",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id: "microbiology.orderEntry.discardConfirm",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-        danger
-        onRequestSubmit={confirmProgramChange}
-        onRequestClose={() => setPendingProgram(undefined)}
-      >
-        <p>
-          {intl.formatMessage({
-            id: "microbiology.orderEntry.programDiscardMessage",
-          })}
-        </p>
-      </Modal>
       <h4 className="section-title">
         <FormattedMessage id="label.program" defaultMessage="Program" />
       </h4>
@@ -675,22 +553,18 @@ const ProgramSection = ({
               id: "program.placeholder",
               defaultMessage: "Type to filter or select from the list",
             })}
-            disabled={isReadOnly || hasCultureWorkflow}
+            disabled={isReadOnly}
           />
           <p className="helper-text">
-            {hasCultureWorkflow ? (
-              <FormattedMessage id="microbiology.orderEntry.programDerived" />
-            ) : (
-              <FormattedMessage
-                id="program.helper"
-                defaultMessage="Type to filter or select from the list. Selecting a program displays its specific Additional Order Information fields below."
-              />
-            )}
+            <FormattedMessage
+              id="program.helper"
+              defaultMessage="Type to filter or select from the list. Selecting a program displays its specific Additional Order Information fields below."
+            />
           </p>
         </Column>
       </Grid>
 
-      {programsLoaded && programs.length === 0 && !hasCultureWorkflow && (
+      {programsLoaded && programs.length === 0 && (
         <InlineNotification
           kind="info"
           lowContrast
@@ -709,28 +583,6 @@ const ProgramSection = ({
           }
         />
       )}
-
-      {hasCultureWorkflow && programsLoaded && !microbiologyProgram && (
-        <InlineNotification
-          kind="error"
-          lowContrast
-          hideCloseButton
-          title={intl.formatMessage({
-            id: "microbiology.orderEntry.programMissingTitle",
-          })}
-          subtitle={intl.formatMessage({
-            id: "microbiology.orderEntry.programMissingMessage",
-          })}
-        />
-      )}
-
-      <MicrobiologyOrderEntrySection
-        samples={samples}
-        orderFormValues={orderData}
-        setOrderFormValues={setOrderData}
-        enabled={isMicroOrder}
-        isReadOnly={isReadOnly}
-      />
 
       {/* Additional Order Information - Program Specific */}
       {selectedProgram && (

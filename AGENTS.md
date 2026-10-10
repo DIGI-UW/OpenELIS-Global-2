@@ -30,10 +30,11 @@ gh pr checks 1234                      # the whole picture
 gh pr checks 1234 | grep -E "fail"     # just the failures
 ```
 
-Three checks are required — `01 Checkpoint - Backend`,
-`02 Checkpoint - Frontend`, `03 Checkpoint - E2E`. Early in a run only some of
-them exist, so **confirm all three are present and none are `pending`** before
-calling a PR green.
+The three build checkpoints are `01 Checkpoint - Backend`,
+`02 Checkpoint - Frontend`, and `03 Checkpoint - E2E`. The trusted
+`Validation / Submodule pins` check is also required after its rollout below.
+Early in a run only some checks exist, so **confirm all required checks are
+present and none are `pending`** before calling a PR green.
 
 Do **not** use `gh run watch --exit-status`: `03 Checkpoint - E2E` is posted by
 a `workflow_run` follow-up stage, so the underlying run's own conclusion does
@@ -264,7 +265,8 @@ mvn clean install -DskipTests
 - **Docker + Docker Compose**: For container orchestration
 - **PostgreSQL 14+**: Database (runs in Docker)
 - **Maven 3.8+**: Build system
-- **Node.js 16+**: Frontend development
+- **Node.js**: Use the version selected by the local CI runner; see
+  `frontend/package.json` for supported development versions.
 - **Git with submodules**: `git submodule update --init --recursive`
 
 ### Environment Configuration (.env file) - CRITICAL
@@ -326,7 +328,7 @@ Then customize `.env` for your environment (database passwords, domain, etc.).
 
 **Core Framework:**
 
-- **React 17** (react-scripts 5.0.1)
+- **React 17** (Vite; versions are maintained in `frontend/package.json`)
 - **Carbon Design System v1.15** (@carbon/react v1.15.0) - OFFICIAL UI FRAMEWORK
 - **Carbon Icons** (@carbon/icons-react v11.17.0)
 - **Carbon Charts** (@carbon/charts-react v1.5.2)
@@ -724,6 +726,33 @@ servers use the same command after setting `LETSENCRYPT_DOMAIN` and
 `LETSENCRYPT_EMAIL` in `.env`; the stack then exposes 80/443 and uses the
 existing Let's Encrypt flow.
 
+### Source development, candidate CI and published deployment
+
+Use the mode matching the work:
+
+- `scripts/dev-stack up` builds this checkout using worktree-specific images,
+  including the Bridge and analyzer mock exactly as checked out in their
+  submodules. It initializes only empty submodules, never moves or resets a
+  populated one, and prints a line for each submodule that differs from the
+  recorded commit or has uncommitted changes. It does not reuse published
+  application images.
+- `scripts/run-ci-checks.sh` runs the complete local CI package on one committed
+  revision and its recorded submodule commits, concurrently with GitHub after
+  each push. Targeted tests alone are not full parity. Retain and inspect the
+  aggregate result and reports.
+- Published deployments use the released image Compose/installer path described
+  in [the setup guide](docs/dev_setup.md). Pull a coherent version or digest
+  set; do not mount source, a local WAR, or silently build missing application
+  images.
+
+Use the selected Docker context. Native tests and browser tools run on the host;
+see [docs/dev_setup.md](docs/dev_setup.md) for environment export and
+prerequisites. CI implementation is divided into `scripts/ci/backend.sh`,
+`frontend.sh`, `e2e-core.sh`, `e2e-analyzers.sh`, and `e2e-cypress.sh`,
+corresponding to GitHub's jobs. Invoke them through
+`scripts/run-ci-checks.sh --job NAME`. They do not introduce additional public
+startup commands. Dependency caches remain reusable.
+
 ### Initial Setup
 
 ```bash
@@ -739,23 +768,16 @@ java -version  # Must be Java 21
 # OR use SDKMAN
 sdk env  # Automatically switches to Java 21
 
-# Build DataExport submodule
-cd dataexport
-mvn clean install -DskipTests -Dmaven.test.skip=true
-cd ..
-
-# Build OpenELIS WAR
-mvn clean install -DskipTests -Dmaven.test.skip=true
-
-# Start the complete isolated development stack
+# Check prerequisites, then build and start the complete source stack
+scripts/dev-stack doctor
 scripts/dev-stack up
 ```
 
 **Access Points:**
 
-- React UI: https://localhost/
-- Legacy UI: https://localhost/api/OpenELIS-Global/
-- FHIR Server: https://fhir.openelis.org:8443/fhir/
+- React UI: output of `scripts/dev-stack url`
+- Legacy UI: `<scripts/dev-stack url>/api/OpenELIS-Global/`
+- FHIR Server: use `FHIR_URL` from `scripts/dev-stack env`
 
 ### Git Worktrees
 
@@ -786,6 +808,27 @@ out with `submodules: recursive`. Skip it and a Docker build fails roughly
 twenty minutes in with `there is no POM in this directory`, which reads like a
 broken Dockerfile rather than a missing checkout step. If you only need the
 submodules, `git submodule update --init --recursive` is the relevant part.
+
+**Analyzer submodule pins.** OpenELIS builds the Bridge and analyzer mock images
+from the `tools/openelis-analyzer-bridge` and `tools/analyzer-mock-server` pins.
+The `Validation / Submodule pins` status applies to pull requests into `develop`
+and every pull request of a stack based on `develop`. Its `pull_request_target`
+workflow executes only the validator and repository mappings from `develop`. The
+PR's exact commit is read through GitHub's tree/blob API as data; PR scripts are
+never executed and submodules are never initialized by this check. The check
+rejects repository URL changes and pins absent from upstream default branches.
+Equivalent GitHub HTTPS and SSH URLs are accepted. A squash merge creates a new
+upstream commit, so update the pin to that merged commit. Dependabot proposes
+submodule bumps daily.
+
+After installing this workflow on `develop`, dispatch `submodule-pins.yml` with
+its `pull_request` input to verify a result, then require
+`Validation / Submodule pins` in the develop branch rules. The manual dispatch
+also supports rechecking a pin after its upstream PR merges. Keep the existing
+three checkpoints required. This check uses the GitHub Actions identity; it
+prevents PR code from replacing the executing validator but does not prevent a
+writer from deliberately forging a same-named Actions status. Stronger identity
+isolation requires a separate GitHub App as the required status source.
 
 The same reasoning applies to anything else worth keeping (evidence, triage
 notes, reports, artifacts): if losing the file would cost something, it does not
@@ -1190,42 +1233,26 @@ detailed guidance, see the Testing Roadmap.
 
 ### Test Data Management
 
-**MANDATORY**: All test types (E2E, backend integration, manual) use the unified
-fixture loading system.
-
 **Reference**: [Test Data Strategy Guide](.specify/guides/test-data-strategy.md)
 for comprehensive guide.
 
-**Key Principles:**
+Test data belongs to its environment:
 
-- Single source of truth: `storage-test-data.sql` contains all test fixtures
-- Unified loader: `load-test-fixtures.sh` used by all test types
-- Dependency validation: Scripts verify required tables exist before loading
-- Comprehensive verification: Automatic verification after loading
-- Safe cleanup: Only removes test-created data, preserves fixtures
+- **Interactive and manual development**: `scripts/dev-stack` creates
+  property-gated application scenarios. Do not load SQL fixtures or reset this
+  database to reproduce CI.
+- **Full local CI**: `scripts/run-ci-checks.sh` owns fresh isolated databases.
+  Its internal lane runners load the same baseline as their GitHub workflows
+  through `load-test-fixtures.sh`. This loader is not a development launcher.
+- **Analyzer workflows**: Create connections, mappings and per-test clinical
+  data through the application APIs; fixture setup must not manufacture the
+  behavior under test.
+- **Backend integration**: Tests own their DBUnit datasets and cleanup.
+  `BaseStorageTest` uses `executeDataSetWithStateManagement`, not the shell
+  fixture loader.
 
-**Quick Start:**
-
-```bash
-# Load test fixtures (basic usage)
-./src/test/resources/load-test-fixtures.sh --profile=core
-
-# Harness profile: core fixtures; analyzer orders are created through the API
-./src/test/resources/load-test-fixtures.sh --profile=harness
-
-# Reset database before loading (clean state)
-./src/test/resources/load-test-fixtures.sh --profile=core --reset
-
-# Load without verification (faster)
-./src/test/resources/load-test-fixtures.sh --profile=core --no-verify
-```
-
-**Fixture Loading:**
-
-- **E2E/Cypress**: `cy.loadStorageFixtures()` → Cypress task →
-  `load-test-fixtures.sh`
-- **Backend Integration**: `BaseStorageTest` → `load-test-fixtures.sh`
-- **Manual Testing**: Direct execution of `load-test-fixtures.sh`
+For an isolated Cypress CI job, `cy.loadStorageFixtures()` delegates to the
+internal baseline loader. Keep this CI-only setup inside the owning runner.
 
 **DBUnit datasets (MANDATORY for DB-backed tests):**
 
@@ -1744,8 +1771,9 @@ the npm scripts.**
 **Execution Strategy (Constitution V.5):**
 
 1. **During Development:** Run individual tests for fast feedback
-2. **Before Pushing (MANDATORY):** Run full suite with fail-fast
-3. **In CI/CD:** Automatic via GitHub Actions
+2. **Before Pushing:** Run focused checks for the affected change
+3. **After Each Push:** Run `scripts/run-ci-checks.sh` while GitHub CI runs; it
+   owns the isolated Cypress stacks and the full test package
 
 **Available npm Scripts (use these, NOT direct cypress commands):**
 
@@ -1759,7 +1787,7 @@ npm run cy:admin
 # Run full suite (development)
 npm run cy:run
 
-# Run full suite with fail-fast (stops on first failure) - USE BEFORE PUSHING
+# Focused debugging with fail-fast (not full CI parity)
 npm run cy:failfast
 
 # Run specific test with fail-fast
@@ -1769,24 +1797,12 @@ npm run cy:failfast:spec "cypress/e2e/AdminE2E/userManagement.cy.js"
 npm run cy:open
 ```
 
-**Anti-Pattern:** Running only individual tests, pushing, and waiting for CI.
-This wastes 60+ minutes of CI time.
+**Anti-Pattern:** Reporting a targeted browser run as full CI parity. Use the
+aggregate runner after each push and inspect every lane outcome.
 
-**Configuration (`cypress.config.js`):**
-
-```javascript
-module.exports = defineConfig({
-  video: false, // MUST be disabled by default (Constitution V.5)
-  screenshotOnRunFailure: true, // MUST be enabled (Constitution V.5)
-  defaultCommandTimeout: 10000,
-  e2e: {
-    baseUrl: "https://localhost",
-    testIsolation: true, // Default: true (cy.session() handles caching)
-  },
-  viewportWidth: 1025, // Desktop default
-  viewportHeight: 900,
-});
-```
+Cypress configuration is maintained in `frontend/cypress.config.js`; do not copy
+its timeouts, URLs or viewport settings into this guide. Isolated runners supply
+the URL of their own stack.
 
 **Post-Run Review (MANDATORY - Constitution V.5):**
 
@@ -1869,9 +1885,10 @@ describe("User Story P1: Sample Storage Assignment", () => {
 > **Execution Contract:**
 >
 > - Always use `npm run pw:test` scripts (never raw `npx playwright test`)
-> - The `harness-*` projects need the analyzer stack (`scripts/dev-stack up`,
->   then `eval "$(scripts/dev-stack env)"`). `core-demo` / `core-demo-video` run
->   on the build stack only.
+> - For interactive development, export `scripts/dev-stack env` from the
+>   repository root, then run `npm run pw:test --` from `frontend`. For CI
+>   validation, the full runner owns fresh stacks for the core and analyzer
+>   projects.
 > - `TEST_USER` and `TEST_PASS` are required
 > - Do not create new Cypress tests
 
@@ -2019,49 +2036,22 @@ npm run pw:test:ui
 
 #### Local Execution
 
-**Prerequisites:**
-
-1. App running through `scripts/dev-stack up`
-2. Auth env vars: `TEST_USER` and `TEST_PASS`
-3. Run `eval "$(scripts/dev-stack env)"` from the repo root
-
-**Core-app tests (build stack):**
+For interactive checks, the development launcher owns setup and endpoints:
 
 ```bash
+scripts/dev-stack up
+eval "$(scripts/dev-stack env)"
 cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-app
+npm run pw:test -- --project=core-app <spec-path>
+npm run pw:test -- --project=harness-demo <spec-path>
+npm run pw:test -- --project=core-demo-video <spec-path>
 ```
 
-**Harness tests (analyzer harness stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-foundational
-```
-
-**Harness demos:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo
-```
-
-**Core demos (build stack):**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo
-```
-
-**Demo video recording:**
-
-```bash
-cd frontend
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=core-demo-video
-# or full harness demos:
-TEST_USER=admin TEST_PASS='adminADMIN!' npm run pw:test -- --project=harness-demo-video
-# Videos saved to frontend/test-results/
-```
+For full CI, run `scripts/run-ci-checks.sh` on the committed candidate. For a
+focused CI reproduction, select `--job NAME`. For native tests and recording,
+follow the development instructions in `frontend/playwright/README.md`. A
+development database and a CI fixture database are different environments; do
+not reset one to imitate the other.
 
 #### Adding New Tests
 

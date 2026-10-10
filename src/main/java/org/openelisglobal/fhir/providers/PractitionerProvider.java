@@ -74,11 +74,8 @@ public class PractitionerProvider implements IResourceProvider {
     public Practitioner getPractitionerByUUID(@IdParam IdType theId) {
         String method = "Read";
         try {
-            if (theId == null || !theId.hasIdPart()) {
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Practitioner ID for Read");
-                throw new InvalidRequestException("Practitioner ID must be provided for Read");
-            }
-            Provider provider = providerService.getProviderByFhirId(UUID.fromString(theId.getIdPart()));
+            Provider provider = providerService
+                    .getProviderByFhirId(FhirProviderUtils.requireUuidId(theId, "Practitioner"));
             if (provider == null) {
                 throw new ResourceNotFoundException("Provider is null " + theId.getIdPart());
             }
@@ -161,7 +158,10 @@ public class PractitionerProvider implements IResourceProvider {
             practitioner.setId(theId);
 
             Provider provider = providerService
-                    .getProviderByFhirId(UUID.fromString(practitioner.getIdElement().getIdPart()));
+                    .getProviderByFhirId(FhirProviderUtils.requireUuidId(theId, "Practitioner"));
+            if (provider == null) {
+                throw new ResourceNotFoundException("Practitioner/" + theId.getIdPart());
+            }
             Person existingPerson = personService.get(provider.getPerson().getId());
 
             fhirTransformService.addHumanNameToPerson(practitioner.getNameFirstRep(), existingPerson);
@@ -179,7 +179,7 @@ public class PractitionerProvider implements IResourceProvider {
 
             return FhirProviderUtils.buildUpdateOutcome(practitionerToSave);
 
-        } catch (UnprocessableEntityException | InvalidRequestException e) {
+        } catch (UnprocessableEntityException | InvalidRequestException | ResourceNotFoundException e) {
             throw e;
 
         } catch (Exception e) {
@@ -205,7 +205,8 @@ public class PractitionerProvider implements IResourceProvider {
 
             FhirProviderUtils.validateIdParam(theId, "Practitioner", this.getClass().getSimpleName(), method);
 
-            Provider provider = providerService.getProviderByFhirId(UUID.fromString(theId.getIdPart()));
+            Provider provider = providerService
+                    .getProviderByFhirId(FhirProviderUtils.requireUuidId(theId, "Practitioner"));
 
             if (provider == null) {
                 throw new ResourceNotFoundException("Practitioner/" + theId.getIdPart());

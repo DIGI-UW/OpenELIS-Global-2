@@ -338,3 +338,63 @@ describe("LabelsSection — legacy count mode", () => {
     );
   });
 });
+
+describe("print actions (OGC-1422)", () => {
+  test("renders row, column and print-all actions and reports scope, preset and sample", () => {
+    const onPrintRow = vi.fn();
+    const onPrintColumn = vi.fn();
+    const onPrintAll = vi.fn();
+    renderWithIntl(
+      <LabelsSection
+        labelRequest={labelRequestFixture()}
+        onPrintRow={onPrintRow}
+        onPrintColumn={onPrintColumn}
+        onPrintAll={onPrintAll}
+      />,
+    );
+
+    fireEvent.click(screen.getByTestId("sample-label-print-row-S1"));
+    expect(onPrintRow).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "sample", sampleIdLocal: "S1" }),
+    );
+    fireEvent.click(screen.getByTestId("order-label-print-row-order"));
+    expect(onPrintRow).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "order" }),
+    );
+    fireEvent.click(screen.getByTestId("sample-label-print-col-17"));
+    expect(onPrintColumn).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "sample", presetId: 17 }),
+    );
+    fireEvent.click(screen.getByTestId("order-label-print-col-1"));
+    expect(onPrintColumn).toHaveBeenCalledWith(
+      expect.objectContaining({ scope: "order", presetId: 1 }),
+    );
+    fireEvent.click(screen.getByTestId("labels-print-all"));
+    expect(onPrintAll).toHaveBeenCalledTimes(1);
+  });
+
+  test("renders no print control without handlers, and disables them while printing", () => {
+    const { rerender } = renderWithIntl(
+      <LabelsSection labelRequest={labelRequestFixture()} />,
+    );
+    expect(screen.queryByTestId("labels-print-all")).toBeNull();
+    expect(screen.queryByTestId("sample-label-print-row-S1")).toBeNull();
+
+    rerender(
+      <IntlProvider locale="en" messages={messages}>
+        <LabelsSection
+          labelRequest={labelRequestFixture()}
+          onPrintAll={vi.fn()}
+          onPrintRow={vi.fn()}
+          printDisabled
+          pendingSave
+        />
+      </IntlProvider>,
+    );
+    expect(screen.getByTestId("labels-print-all")).toBeDisabled();
+    expect(screen.getByTestId("sample-label-print-row-S1")).toBeDisabled();
+    expect(screen.getByTestId("labels-pending-save")).toHaveTextContent(
+      messages["orderEntry.labels.pendingSave"],
+    );
+  });
+});

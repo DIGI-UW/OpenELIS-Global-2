@@ -42,6 +42,17 @@ public class DictionaryForm extends BaseForm {
 
     private String loincCode;
 
+    @Pattern(regexp = "^(ADULT|PAEDIATRIC)?$")
+    private String containerPopulation;
+
+    public String getContainerPopulation() {
+        return containerPopulation;
+    }
+
+    public void setContainerPopulation(String value) {
+        containerPopulation = value;
+    }
+
     public DictionaryForm() {
         setFormName("dictionaryForm");
     }

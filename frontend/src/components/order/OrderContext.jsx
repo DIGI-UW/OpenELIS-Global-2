@@ -21,11 +21,11 @@ import {
 } from "./api/sampleTypeRequestApi";
 import { createSampleOrderFormValues } from "../formModel/innitialValues/OrderEntryFormValues";
 import { ConfigurationContext } from "../layout/Layout";
+import UserSessionDetailsContext from "../../UserSessionDetailsContext";
 import { getEnforcement } from "./api/sampleAcceptanceApi";
 import {
   buildLoadedOrderData,
   buildSubmissionSampleOrderItems,
-  buildSubmittedMicrobiologyOrderDetail,
 } from "./orderDataUtils";
 import {
   currentLocalTime,
@@ -149,6 +149,10 @@ const xmlAttribute = (value) =>
 export const sampleObject = {
   index: 0,
   sampleItemId: "",
+  sampleTypeRequestId: "",
+  cultureSetNumber: "",
+  container: "",
+  bodySite: "",
   sampleRejected: false,
   rejectionReason: "",
   sampleTypeId: "",
@@ -170,6 +174,9 @@ export const sampleObject = {
   receivedDate: "",
   receivedTime: "",
   receivedBy: "",
+  receivedById: "",
+  arrivalCondition: "",
+  arrivalTemperature: "",
   hasNCE: false,
   nceId: "",
   qcMetadata: null,
@@ -211,7 +218,11 @@ const flattenSampleManifestFields = (
       sampleTemperature: s.sampleTemperature || xml.sampleTemperature || "",
       specimenOrigin: s.specimenOrigin || xml.specimenOrigin || "",
       container: s.container || xml.container || "",
+      cultureSetNumber: s.cultureSetNumber ?? xml.cultureSetNumber ?? "",
+      bodySite: s.bodySite || xml.bodySite || "",
       locationDetails: s.locationDetails || xml.locationDetails || "",
+      collectionLocationId:
+        s.collectionLocationId || xml.collectionLocationId || "",
       gpsLatitude: s.gpsLatitude || xml.gpsLatitude || "",
       gpsLongitude: s.gpsLongitude || xml.gpsLongitude || "",
       labPerformedSampling:
@@ -255,6 +266,10 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     useContext(ConfigurationContext) || {};
   const dateLocale = configurationProperties.DEFAULT_DATE_LOCALE || "en-US";
   const location = useLocation();
+  const { userSessionDetails } = useContext(UserSessionDetailsContext) || {};
+  const signedIn = userSessionDetails
+    ? userSessionDetails.authenticated === true
+    : true;
 
   const [orderId, setOrderId] = useState(null);
   const [labNumber, setLabNumber] = useState(null);
@@ -286,6 +301,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   // Persisted to backend via /rest/order/storage-skipped endpoint
   const [storageSkipped, setStorageSkippedState] = useState(false);
 
+  // Label quantities chosen in the Labels section (OGC-1422, FR-E5). They
+  // travel with the step's save as labelPersistRequest and replace the order's
+  // saved label requests; printing then reads the saved rows (FR-I6).
+  const [labelPersistRequest, setLabelPersistRequest] = useState(null);
+
   // Where the order stands in order entry (OGC-1266 FR-F5), as the server
   // records it: the status, the time each step was completed, and whether
   // order entry is finished for this laboratory's Sample check setting.
@@ -295,6 +315,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   // Sample check step (FR-F1), so every step needs to know it.
   const [acceptanceModes, setAcceptanceModes] = useState({});
   useEffect(() => {
+    if (!signedIn) {
+      return undefined;
+    }
     let active = true;
     getEnforcement().then((modes) => {
       if (active) {
@@ -304,7 +327,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     return () => {
       active = false;
     };
-  }, []);
+  }, [signedIn]);
   const acceptanceMode = (
     acceptanceModes?.[workflowType] || "OPTIONAL"
   ).toUpperCase();
@@ -653,10 +676,11 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           // deconvolution. Same VectorSamplingSite id space as collectionLocationId.
           const collectionLocationId =
             sampleItem.collectionLocationId ||
+            envFields.samplingSiteId ||
             envFields.vecCollectionSiteId ||
             "";
 
-          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
+          sampleXmlString += `<sample sampleID='${sampleIndex}' typeId='${sampleItem.sampleTypeId}' sampleItemId='${sampleItemId}' sampleTypeRequestId='${xmlAttribute(sampleItem.sampleTypeRequestId || "")}' cultureSetNumber='${xmlAttribute(sampleItem.cultureSetNumber ?? "")}' bodySite='${xmlAttribute(sampleItem.bodySite || "")}' clientKey='${sampleItem.clientKey || ""}' date='${collectionDate}' time='${collectionTime}' collector='${xmlAttribute(collector)}' collectionConditions='${xmlAttribute(collectionConditions)}' collectionMethod='${xmlAttribute(collectionMethod)}' sampleTemperature='${xmlAttribute(sampleTemperature)}' specimenOrigin='${xmlAttribute(specimenOrigin)}' quantity='${xmlAttribute(quantity)}' uom='${xmlAttribute(uom)}' receivedDate='${receivedDate}' receivedTime='${receivedTime}' tests='${tests}' testSectionMap='' testSampleTypeMap='' panels='${panels}' rejected='${rejected}' rejectReasonId='${xmlAttribute(rejectReasonId)}' initialConditionIds='' storageLocationId='${storageLocationId}' storageLocationType='${storageLocationType}' storagePositionCoordinate='${storagePositionCoordinate}' storageNotes='${storageNotes}' gpsLatitude='${gpsLatitude}' gpsLongitude='${gpsLongitude}' gpsAccuracy='${gpsAccuracy}' gpsCaptureMethod='${xmlAttribute(gpsCaptureMethod)}' container='${xmlAttribute(container)}' locationDetails='${xmlAttribute(locationDetails)}' labPerformedSampling='${labPerformedSampling}' receivedById='${xmlAttribute(sampleItem.receivedById || "")}' arrivalCondition='${xmlAttribute(sampleItem.arrivalCondition || "")}' arrivalTemperature='${xmlAttribute(sampleItem.arrivalTemperature ?? "")}' collectionLocationId='${collectionLocationId}' qcType='${qcType}' qcParentSampleIndex='${qcParentSampleIndex}' qcExpectedValue='${xmlAttribute(qcExpectedValue)}'/>`;
         }
       });
 
@@ -892,6 +916,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         useReferral: useReferral,
         // Flag for decoupled workflow: samples not required when orderEntryOnly=true
         orderEntryOnly: orderEntryOnly,
+        cancelReason: orderData.cancelReason,
         // Clean up display lists that shouldn't be sent. The step the client
         // has completed travels with the save (FR-F5), as does the storage
         // decision staged on the order.
@@ -899,12 +924,9 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
           ...orderData.sampleOrderItems,
           progressStep: progressStep || "",
         }),
-        microbiologyOrderDetail: buildSubmittedMicrobiologyOrderDetail(
-          orderData,
-          effectiveSamples,
-        ),
         initialSampleConditionList: [],
         testSectionList: [],
+        ...(labelPersistRequest ? { labelPersistRequest } : {}),
       };
 
       const save = new Promise((resolve, reject) => {
@@ -1067,6 +1089,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
       buildSampleXML,
       buildReferralItems,
       dateLocale,
+      labelPersistRequest,
     ],
   );
 
@@ -1153,10 +1176,6 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         // Include per-sample vector observations merged above.
         environmentalFields: envFields,
       }),
-      microbiologyOrderDetail: buildSubmittedMicrobiologyOrderDetail(
-        orderData,
-        samples,
-      ),
       requestedSampleTypes: toRequestedSampleTypes(samples),
       initialSampleConditionList: [],
       testSectionList: [],
@@ -1416,6 +1435,23 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, []);
 
   /**
+   * Fills a sample's default collection and receipt date and time, which the
+   * Prepare Samples step sets on its own for a sample not yet saved. The user
+   * has changed nothing, so the order stays clean: no "Unsaved changes" on a
+   * step that was just opened or saved (OGC-1443).
+   */
+  const fillSampleDefaults = useCallback((sampleIndex, details) => {
+    setSamplesState((prevSamples) => {
+      if (!prevSamples[sampleIndex]) {
+        return prevSamples;
+      }
+      const updated = [...prevSamples];
+      updated[sampleIndex] = { ...updated[sampleIndex], ...details };
+      return updated;
+    });
+  }, []);
+
+  /**
    * Reset the order context to initial state.
    * Used when starting a new order.
    */
@@ -1481,10 +1517,17 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
   }, [workflowType]);
 
   /**
-   * Initialize form defaults from API on mount.
-   * This ensures we get the correct date format from the server.
+   * Initialize form defaults from API once signed in.
+   * This ensures we get the correct date format from the server. The provider
+   * mounts outside SecureRoute, possibly while the session check still waits
+   * for an unreachable server (OGC-1442), so loading at mount could leave the
+   * form without its lists; rendered without a session provider it loads at
+   * mount as before.
    */
   useEffect(() => {
+    if (!signedIn) {
+      return;
+    }
     getFromOpenElisServer("/rest/SamplePatientEntry", (response) => {
       if (response && response.currentDate) {
         setOrderDataState((prev) => ({
@@ -1524,7 +1567,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
         }));
       }
     });
-  }, []);
+  }, [signedIn]);
 
   // On mount (and on refresh), if the URL addresses an order — ?order=<labNumber>,
   // or ?labNumber= as the dashboards push it — and the path prefix matches this
@@ -1600,6 +1643,7 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     fieldErrors,
     stepProgress,
     storageSkipped,
+    labelPersistRequest,
     progress,
     acceptanceMode,
     sampleCheckEnabled,
@@ -1622,11 +1666,13 @@ export const OrderProvider = ({ children, workflowType = "clinical" }) => {
     markStepComplete,
     setStorageSkipped,
     stageStorageSkipped,
+    setLabelPersistRequest,
     adoptProgress,
     // Test assignment actions (Step 2)
     assignTestToSample,
     removeTestFromSample,
     updateSampleCollectionDetails,
+    fillSampleDefaults,
   };
 
   return (

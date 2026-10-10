@@ -87,7 +87,7 @@ public class WorkplanByTestRestController extends WorkplanRestController {
 
         if (!(GenericValidator.isBlankOrNull(testType) || testType.equals("0"))) {
 
-            testList = analysisService.getAllAnalysisByTestAndStatus(testType, statusList);
+            testList = withoutReferredOut(analysisService.getAllAnalysisByTestAndStatus(testType, statusList));
 
             if (testList.isEmpty()) {
                 return new ArrayList<>();

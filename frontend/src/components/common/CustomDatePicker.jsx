@@ -155,6 +155,7 @@ const CustomDatePicker = (props) => {
           invalid={invalid}
           invalidText={invalidText}
           aria-invalid={invalid || undefined}
+          aria-required={props["aria-required"]}
           disabled={props.disabled}
           onInput={handleInputChange}
         />

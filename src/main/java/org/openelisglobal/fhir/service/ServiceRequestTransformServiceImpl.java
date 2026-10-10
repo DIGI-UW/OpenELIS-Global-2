@@ -1,5 +1,8 @@
 package org.openelisglobal.fhir.service;
 
+import ca.uhn.fhir.model.api.TemporalPrecisionEnum;
+import ca.uhn.fhir.rest.server.exceptions.InvalidRequestException;
+import ca.uhn.fhir.rest.server.exceptions.UnprocessableEntityException;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
@@ -8,6 +11,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.hl7.fhir.r4.model.CodeableConcept;
 import org.hl7.fhir.r4.model.Coding;
+import org.hl7.fhir.r4.model.DateTimeType;
 import org.hl7.fhir.r4.model.Identifier;
 import org.hl7.fhir.r4.model.Reference;
 import org.hl7.fhir.r4.model.ResourceType;
@@ -21,6 +25,7 @@ import org.openelisglobal.analysis.valueholder.Analysis;
 import org.openelisglobal.common.log.LogEvent;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.SampleAddService.SampleTestCollection;
+import org.openelisglobal.common.services.SampleOrderService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
 import org.openelisglobal.common.services.TableIdService;
 import org.openelisglobal.common.util.DateUtil;
@@ -208,7 +213,7 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         if (eOrders.size() <= 0) {
             serviceRequest.setIntent(ServiceRequestIntent.ORIGINALORDER);
         } else if (ElectronicOrderType.FHIR.equals(eOrders.get(eOrders.size() - 1).getType())) {
-            serviceRequest.addBasedOn(common.createReferenceFor(ResourceType.ServiceRequest, sample.getReferringId()));
+            serviceRequest.addBasedOn(basedOnFor(sample));
             serviceRequest.setIntent(ServiceRequestIntent.ORDER);
         } else if (ElectronicOrderType.HL7_V2.equals(eOrders.get(eOrders.size() - 1).getType())) {
             serviceRequest.setIntent(ServiceRequestIntent.ORDER);
@@ -248,7 +253,7 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         SampleItem analysisSampleItem = analysis.getSampleItem();
         serviceRequest.setCode(terminologyTransformService.transformTestToCodeableConcept(test.getId(),
                 analysisSampleItem == null ? null : analysisSampleItem.getTypeOfSampleId()));
-        serviceRequest.setAuthoredOn(new Date());
+        serviceRequest.setAuthoredOnElement(authoredOnFor(sample));
         for (Note note : noteService.getNotes(analysis)) {
             serviceRequest.addNote(common.transformNoteToAnnotation(note));
         }
@@ -268,6 +273,143 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         }
 
         return serviceRequest;
+    }
+
+    /**
+     * The EMR ServiceRequest the order came from. The sample keeps that request's
+     * order number (its first identifier) as its referring id, not the request's
+     * id, so the request is found through its local copy, which keeps the EMR id.
+     * When that copy cannot be read the reference is logical, by the order number.
+     */
+    private Reference basedOnFor(Sample sample) {
+        try {
+            Optional<ServiceRequest> emrRequest = fhirPersistanceService
+                    .getServiceRequestByReferingId(sample.getReferringId());
+            if (emrRequest.isPresent()) {
+                return common.createReferenceFor(ResourceType.ServiceRequest,
+                        emrRequest.get().getIdElement().getIdPart());
+            }
+        } catch (RuntimeException e) {
+            LogEvent.logWarn(this.getClass().getSimpleName(), "basedOnFor", "could not look up the EMR ServiceRequest "
+                    + sample.getReferringId() + " for sample " + sample.getId() + ": " + e.getMessage());
+        }
+        Reference reference = new Reference();
+        reference.setType(ResourceType.ServiceRequest.name());
+        reference.setIdentifier(new Identifier().setValue(sample.getReferringId()));
+        return reference;
+    }
+
+    /**
+     * When the order was requested: the order's request date, known to the day,
+     * else when it was entered. This used to be the time of the read, so the same
+     * order was published with a different authoredOn on every request and an
+     * update sending it back moved the request date to today.
+     */
+    private DateTimeType authoredOnFor(Sample sample) {
+        String requestDate = observationHistoryService.getValueForSample(ObservationType.REQUEST_DATE, sample.getId());
+        if (!GenericValidator.isBlankOrNull(requestDate)) {
+            try {
+                return new DateTimeType(DateUtil.convertStringDateToSqlDate(requestDate), TemporalPrecisionEnum.DAY);
+            } catch (RuntimeException e) {
+                LogEvent.logWarn(this.getClass().getSimpleName(), "authoredOnFor",
+                        "unreadable request date '" + requestDate + "' on sample " + sample.getId());
+            }
+        }
+        Date entered = sample.getEnteredDate() != null ? sample.getEnteredDate()
+                : sample.getReceivedTimestamp() != null ? sample.getReceivedTimestamp() : sample.getLastupdated();
+        return entered == null ? null : new DateTimeType(entered);
+    }
+
+    @Override
+    public SampleOrderItem buildSampleOrderItemForUpdate(ServiceRequest serviceRequest, Sample sample, String sysUserId)
+            throws Exception {
+        SampleOrderItem requested = buildSampleOrderItemFromServiceRequest(serviceRequest, sysUserId);
+        SampleOrderItem orderItem = new SampleOrderService(sample).getSampleOrderItem();
+
+        if (serviceRequest.hasPriority()
+                && serviceRequest.getPriority() != convertToServiceRequestPriority(sample.getPriority())) {
+            orderItem.setPriority(requested.getPriority());
+        }
+
+        Provider storedProvider = sampleHumanService.getProviderForSample(sample);
+        String requesterId = serviceRequest.hasRequester()
+                ? serviceRequest.getRequester().getReferenceElement().getIdPart()
+                : null;
+        boolean orderDetailsChanged = false;
+        if (requesterId != null && (storedProvider == null || storedProvider.getFhirUuid() == null
+                || !requesterId.equals(storedProvider.getFhirUuidAsString()))) {
+            if (requested.getProviderId() == null) {
+                throw new InvalidRequestException(
+                        "ServiceRequest.requester Practitioner/" + requesterId + " does not exist");
+            }
+            orderDetailsChanged = true;
+            orderItem.setProviderId(requested.getProviderId());
+            orderItem.setProviderPersonId(requested.getProviderPersonId());
+            orderItem.setProviderFirstName(requested.getProviderFirstName());
+            orderItem.setProviderLastName(requested.getProviderLastName());
+            orderItem.setProviderWorkPhone(requested.getProviderWorkPhone());
+            orderItem.setProviderFax(requested.getProviderFax());
+            orderItem.setProviderEmail(requested.getProviderEmail());
+        }
+
+        Organization storedSite = sampleService.getOrganizationRequester(sample,
+                TableIdService.getInstance().REFERRING_ORG_TYPE_ID);
+        Organization firstPublishedLocation = storedSite != null ? storedSite
+                : sampleService.getOrganizationRequester(sample,
+                        TableIdService.getInstance().REFERRING_ORG_DEPARTMENT_TYPE_ID);
+        String locationId = serviceRequest.hasLocationReference()
+                ? serviceRequest.getLocationReferenceFirstRep().getReferenceElement().getIdPart()
+                : null;
+        if (locationId != null && (firstPublishedLocation == null || firstPublishedLocation.getFhirUuid() == null
+                || !locationId.equals(firstPublishedLocation.getFhirUuidAsString()))) {
+            if (!isReferringSite(requested.getReferringSiteId())) {
+                throw new InvalidRequestException(
+                        "ServiceRequest.locationReference Location/" + locationId + " is not a referring site");
+            }
+            orderDetailsChanged = true;
+            orderItem.setReferringSiteId(requested.getReferringSiteId());
+            orderItem.setReferringSiteName(requested.getReferringSiteName());
+            orderItem.setReferringSiteCode(requested.getReferringSiteCode());
+        }
+
+        DateTimeType publishedAuthoredOn = authoredOnFor(sample);
+        if (serviceRequest.hasAuthoredOn()
+                && (publishedAuthoredOn == null || !DateUtil.formatDateAsText(serviceRequest.getAuthoredOn())
+                        .equals(DateUtil.formatDateAsText(publishedAuthoredOn.getValue())))) {
+            orderDetailsChanged = true;
+            orderItem.setRequestDate(requested.getRequestDate());
+        }
+
+        orderItem.setReadOnly(requested.isReadOnly());
+        orderItem.setModified(orderDetailsChanged);
+        return orderItem;
+    }
+
+    /**
+     * True when {@code code} is the code a read publishes for the analysis. A test
+     * with no LOINC code or terminology mapping is published by name only, as
+     * {@code code.text}, which no coding lookup can resolve, so sending it back
+     * unchanged was refused.
+     */
+    private boolean publishesTheAnalysisCode(CodeableConcept code, Analysis analysis) {
+        if (analysis == null || analysis.getTest() == null) {
+            return false;
+        }
+        SampleItem sampleItem = analysis.getSampleItem();
+        CodeableConcept published = terminologyTransformService.transformTestToCodeableConcept(
+                analysis.getTest().getId(), sampleItem == null ? null : sampleItem.getTypeOfSampleId());
+        return published != null && published.equalsDeep(code);
+    }
+
+    /**
+     * Only an organization of the referring-site type is read back as the order's
+     * location; storing any other one leaves a requester the read cannot see and
+     * that the next update duplicates.
+     */
+    private boolean isReferringSite(String organizationId) {
+        return organizationId != null
+                && organizationService.getByTypeIdWithTypes(TableIdService.getInstance().REFERRING_ORG_TYPE_ID).stream()
+                        .anyMatch(site -> organizationId.equals(site.getId()));
     }
 
     private CodeableConcept transformSampleProgramToCodeableConcept(ObservationHistory program) {
@@ -361,13 +503,24 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
         }
 
         Test requestedTest = null;
-        if (serviceRequest.hasCode()) {
+        if (serviceRequest.hasCode() && publishesTheAnalysisCode(serviceRequest.getCode(), existingAnalysis)) {
+            requestedTest = existingAnalysis.getTest();
+        } else if (serviceRequest.hasCode()) {
             List<Test> foundTests = resolveTestsFromCodeableConcept(serviceRequest.getCode());
+            if (foundTests.isEmpty()) {
+                throw new UnprocessableEntityException("ServiceRequest.code does not name an active test");
+            }
+            if (existingAnalysis != null && existingAnalysis.getTest() != null) {
+                String existingTestId = existingAnalysis.getTest().getId();
+                requestedTest = foundTests.stream().filter(candidate -> existingTestId.equals(candidate.getId()))
+                        .findFirst().orElse(null);
+            }
             // OGC-1145: the ServiceRequest's specimen was resolved above —
             // prefer the candidate test associated with that sample type
             // instead of first-match, so a shared code (or a test spanning
             // several specimens) resolves to the specimen the order names
-            if (sampleItem != null && sampleItem.getTypeOfSample() != null && foundTests.size() > 1) {
+            if (requestedTest == null && sampleItem != null && sampleItem.getTypeOfSample() != null
+                    && foundTests.size() > 1) {
                 String specimenTypeId = sampleItem.getTypeOfSample().getId();
                 requestedTest = foundTests
                         .stream().filter(candidate -> typeOfSampleService.getTypeOfSampleForTest(candidate.getId())
@@ -544,8 +697,9 @@ public class ServiceRequestTransformServiceImpl implements ServiceRequestTransfo
 
             if (ServiceRequest.ServiceRequestPriority.STAT.equals(fhirPriority)) {
                 priority = OrderPriority.STAT;
-            } else if (ServiceRequest.ServiceRequestPriority.URGENT.equals(fhirPriority)
-                    || ServiceRequest.ServiceRequestPriority.ASAP.equals(fhirPriority)) {
+            } else if (ServiceRequest.ServiceRequestPriority.ASAP.equals(fhirPriority)) {
+                priority = OrderPriority.ASAP;
+            } else if (ServiceRequest.ServiceRequestPriority.URGENT.equals(fhirPriority)) {
                 priority = OrderPriority.TIMED;
             } else {
                 priority = OrderPriority.ROUTINE;

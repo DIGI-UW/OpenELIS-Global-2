@@ -22,8 +22,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.barcode.service.BarcodeInfoService;
 import org.openelisglobal.common.services.TableIdService;
-import org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm;
-import org.openelisglobal.microbiology.service.MicroCaseOrderDetailService;
 import org.openelisglobal.organization.service.OrganizationContactService;
 import org.openelisglobal.organization.valueholder.OrganizationContact;
 import org.openelisglobal.person.service.PersonService;
@@ -48,7 +46,6 @@ public class SamplePatientEntryServiceImplTest {
     private OrganizationContactService organizationContactService;
 
     @Mock
-    private MicroCaseOrderDetailService microCaseOrderDetailService;
 
     private SamplePatientEntryServiceImpl service;
 
@@ -68,7 +65,6 @@ public class SamplePatientEntryServiceImplTest {
     public void setUp() {
         service = new SamplePatientEntryServiceImpl();
         ReflectionTestUtils.setField(service, "barcodeInfoService", barcodeInfoService);
-        ReflectionTestUtils.setField(service, "microCaseOrderDetailService", microCaseOrderDetailService);
         ReflectionTestUtils.setField(service, "personService", personService);
         ReflectionTestUtils.setField(service, "sampleRequesterService", sampleRequesterService);
         ReflectionTestUtils.setField(service, "organizationContactService", organizationContactService);
@@ -356,25 +352,4 @@ public class SamplePatientEntryServiceImplTest {
                 org.mockito.ArgumentMatchers.anyMap());
     }
 
-    @Test
-    public void persistMicrobiologyOrderDraftUsesTheAuthenticatedActorAndSavedSample() {
-        Sample sample = new Sample();
-        sample.setId("99");
-        MicroCaseOrderDetailRequestForm detail = new MicroCaseOrderDetailRequestForm();
-        detail.clinicalHistory = "Fever";
-
-        service.persistMicrobiologyOrderDraft(sample, detail, "7");
-
-        verify(microCaseOrderDetailService).saveOrderDraft(sample, detail, "7");
-    }
-
-    @Test
-    public void persistMicrobiologyOrderDraftSkipsAbsentDetail() {
-        Sample sample = new Sample();
-        sample.setId("99");
-
-        service.persistMicrobiologyOrderDraft(sample, null, "7");
-
-        verify(microCaseOrderDetailService, never()).saveOrderDraft(eq(sample), isNull(), eq("7"));
-    }
 }

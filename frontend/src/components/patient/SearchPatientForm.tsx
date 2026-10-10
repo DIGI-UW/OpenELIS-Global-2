@@ -63,6 +63,8 @@ interface SearchPatientFormProps {
   renderNotifications?: boolean;
   /** False when the page's own `labNumber` URL parameter names the order it loads, not a patient search. */
   followUrlLabNumber?: boolean;
+  /** "prefix" matches names exactly or by their first letters only (order entry, FR-B6a); otherwise names also match by contained text and close spelling. */
+  nameMatch?: "prefix";
   [key: string]: unknown;
 }
 
@@ -210,6 +212,9 @@ function SearchPatientForm(props: SearchPatientFormProps) {
 
     if (values.crSearch === true) {
       searchEndPoint += "&crSearch=true";
+    }
+    if (props.nameMatch) {
+      searchEndPoint += "&nameMatch=" + props.nameMatch;
     }
 
     getFromOpenElisServer(searchEndPoint, fetchPatientResults);
@@ -603,7 +608,7 @@ function SearchPatientForm(props: SearchPatientFormProps) {
       {arrows.show && <ServerPageArrows {...arrows} />}
       <DataTable
         rows={visibleResults}
-        headers={patientSearchHeaderData}
+        headers={patientSearchHeaderData(intl)}
         isSortable
       >
         {({ rows, headers, getHeaderProps, getTableProps }) => (
@@ -666,21 +671,31 @@ function SearchPatientForm(props: SearchPatientFormProps) {
                               patientName={patientName}
                             />
                             {isMerged && (
-                              <Tag
-                                type="magenta"
-                                size="sm"
+                              <span
                                 title={
                                   mergedIntoLabel
-                                    ? `Merged into ${mergedIntoLabel}`
-                                    : "Merged"
+                                    ? intl.formatMessage(
+                                        {
+                                          id: "patient.merged.banner.subtitle",
+                                        },
+                                        { target: mergedIntoLabel },
+                                      )
+                                    : intl.formatMessage({
+                                        id: "patient.merged.banner.subtitle.noTarget",
+                                      })
                                 }
-                                style={{ marginLeft: "0.5rem" }}
                               >
-                                <FormattedMessage
-                                  id="patient.search.merged.tag"
-                                  defaultMessage="Merged"
-                                />
-                              </Tag>
+                                <Tag
+                                  type="magenta"
+                                  size="sm"
+                                  style={{ marginLeft: "0.5rem" }}
+                                >
+                                  <FormattedMessage
+                                    id="patient.search.merged.tag"
+                                    defaultMessage="Merged"
+                                  />
+                                </Tag>
+                              </span>
                             )}
                           </div>
                         ) : (

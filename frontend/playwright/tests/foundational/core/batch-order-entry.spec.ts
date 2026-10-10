@@ -90,7 +90,9 @@ async function chooseRoutineSerum(
   panels: string[],
   tests: string[],
 ) {
-  await page.getByRole("combobox", { name: "Form:*" }).selectOption("routine");
+  await page
+    .getByRole("combobox", { name: "Form:", exact: true })
+    .selectOption("routine");
   await page
     .getByRole("combobox", { name: "Sample Type" })
     .selectOption({ label: "Serum" });
@@ -178,15 +180,17 @@ async function pickExistingPatient(page: Page, patient: SeededPatient) {
     .fill(patient.lastName);
   await main(page).getByRole("button", { name: "Search", exact: true }).click();
   await page.locator(`label[for="${patient.patientPK}"]`).click();
-  await expect(page.getByRole("textbox", { name: "National ID*" })).toHaveValue(
-    patient.nationalId,
-    { timeout: UI_TIMEOUT },
-  );
+  await expect(
+    page.getByRole("textbox", { name: "National ID", exact: true }),
+  ).toHaveValue(patient.nationalId, { timeout: UI_TIMEOUT });
 }
 
 /** Generates the pre-printed lab number, which saves the order; returns it. */
 async function generateAndSave(page: Page): Promise<string> {
-  const labNumberField = page.getByRole("textbox", { name: "Lab Number *" });
+  const labNumberField = page.getByRole("textbox", {
+    name: "Lab Number",
+    exact: true,
+  });
   await main(page).getByRole("link", { name: "Generate", exact: true }).click();
   await expect(labNumberField).not.toHaveValue("", { timeout: UI_TIMEOUT });
   const labNumber = await labNumberField.inputValue();
@@ -224,7 +228,9 @@ test.describe("Batch order entry", () => {
     page,
   }) => {
     await openSetup(page);
-    await page.getByRole("combobox", { name: "Form:*" }).selectOption("EID");
+    await page
+      .getByRole("combobox", { name: "Form:", exact: true })
+      .selectOption("EID");
     await page
       .getByRole("combobox", { name: "Methods" })
       .selectOption({ label: "Pre-Printed" });
@@ -298,7 +304,7 @@ test.describe("Batch order entry", () => {
     await test.step("enter a new patient and generate the first barcode", async () => {
       await main(page).getByRole("button", { name: "New Patient" }).click();
       await page
-        .getByRole("textbox", { name: "National ID*" })
+        .getByRole("textbox", { name: "National ID", exact: true })
         .fill(patient.nationalId);
       await page
         .getByRole("textbox", { name: "Last Name" })
@@ -308,15 +314,16 @@ test.describe("Batch order entry", () => {
         .fill(patient.firstName);
       await page.getByRole("spinbutton", { name: "Age/Years" }).fill("30");
       await page
-        .getByRole("group", { name: "Sex *" })
+        .getByRole("group", { name: /^Sex( required)?$/ })
         .getByText("Female", { exact: true })
         .click();
       await expect(
-        page.getByRole("textbox", { name: "Date of Birth *" }),
+        page.getByRole("textbox", { name: "Date of Birth", exact: true }),
       ).not.toHaveValue("");
 
       const labNumberField = page.getByRole("textbox", {
-        name: "Lab Number *",
+        name: "Lab Number",
+        exact: true,
       });
       await expect(labNumberField).toHaveValue("");
       await page
@@ -335,7 +342,7 @@ test.describe("Batch order entry", () => {
     await test.step("Next Label clears the lab number for the next order", async () => {
       await page.getByRole("button", { name: "Next Label" }).click();
       await expect(
-        page.getByRole("textbox", { name: "Lab Number *" }),
+        page.getByRole("textbox", { name: "Lab Number", exact: true }),
       ).toHaveValue("");
       await expect(
         page.getByRole("button", { name: "Next Label" }),
@@ -437,7 +444,10 @@ test.describe("Batch order entry", () => {
       await pickExistingPatient(page, patient);
     });
 
-    const labNumberField = page.getByRole("textbox", { name: "Lab Number *" });
+    const labNumberField = page.getByRole("textbox", {
+      name: "Lab Number",
+      exact: true,
+    });
     const save = main(page).getByRole("button", { name: "Save", exact: true });
 
     await test.step("typing the lab number saves nothing", async () => {
@@ -536,7 +546,9 @@ test.describe("Batch order entry", () => {
 
     await test.step("set up a pre-printed EID batch with a dry tube and DNA PCR", async () => {
       await openSetup(page);
-      await page.getByRole("combobox", { name: "Form:*" }).selectOption("EID");
+      await page
+        .getByRole("combobox", { name: "Form:", exact: true })
+        .selectOption("EID");
       await page
         .getByRole("combobox", { name: "Methods" })
         .selectOption({ label: "Pre-Printed" });

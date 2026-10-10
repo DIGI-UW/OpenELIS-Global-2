@@ -24,11 +24,11 @@ jobs:
       contents: read
     steps:
       - name: Checkout
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           submodules: recursive
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
@@ -61,7 +61,7 @@ jobs:
     steps:
       - name: Checkout
         if: github.event_name == 'pull_request'
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
       # GitHub runs every pull request in a stack as if it targeted the stack's
       # base, so a 20-PR stack would run Build + Test 20 times per push. The top
       # pull request contains every commit of the stack, so its run covers them
@@ -111,8 +111,6 @@ jobs:
               - 'Dockerfile'
               - 'build.docker-compose.yml'
               - 'docker-compose.yml'
-              - 'dev.docker-compose.yml'
-              - 'docker-compose.letsencrypt.yml'
               - '.github/ci/ci.analyzer-harness.yml'
               - '.github/workflows/backend.yml'
               - '.github/scripts/publish-checkpoints*.cjs'
@@ -124,20 +122,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout OpenELIS-Global2
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
         with:
           repository: ${{github.repository}}
           submodules: recursive
 
       - name: Set up JDK 21
-        uses: actions/setup-java@v5
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: "21"
       # Must follow checkout: hashFiles reads the workspace, so a key computed
       # before it hashes nothing and the cache never rotates.
       - name: Cache local Maven repository
-        uses: actions/cache@v5
+        uses: actions/cache@v6
         with:
           path: ~/.m2/repository
           key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}

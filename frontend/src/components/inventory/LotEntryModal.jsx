@@ -24,6 +24,7 @@ import {
   positionToCoordinate,
 } from "../storage/LocationPicker/locationSelectionMapper";
 import { labNow } from "../utils/labClock";
+import { RequiredMarker } from "../common/RequiredMarker";
 
 // Calendar dates are stored as midnight UTC so the day holds in every time zone.
 const toStoredCalendarDate = (date) =>
@@ -43,7 +44,7 @@ const fromStoredCalendarDate = (value) => {
   );
 };
 
-const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
+const LotEntryModal = ({ open, onClose, onSave, lot = null, item = null }) => {
   const intl = useIntl();
   const isEdit = !!lot;
 
@@ -103,6 +104,12 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
   useEffect(() => {
     fetchItems();
   }, []);
+
+  useEffect(() => {
+    if (!lot && item) {
+      setFormData((prev) => ({ ...prev, inventoryItem: item }));
+    }
+  }, [lot, item]);
 
   useEffect(() => {
     if (lot) {
@@ -468,7 +475,7 @@ const LotEntryModal = ({ open, onClose, onSave, lot = null }) => {
             >
               <FormLabel>
                 <FormattedMessage id="lot.selectLocation" />
-                <span style={{ color: "#da1e28" }}> *</span>
+                <RequiredMarker announce />
               </FormLabel>
               <Button
                 kind="ghost"

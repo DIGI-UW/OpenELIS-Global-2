@@ -84,14 +84,9 @@ export const updateIsolateIdentification = (isolateId, payload) =>
     );
   });
 
-export const getAstPanels = (workflowType) =>
+export const getAstPanels = () =>
   new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/reference/ast-panels?workflowType=${encodeURIComponent(
-        workflowType,
-      )}`,
-      resolve,
-    );
+    getFromOpenElisServer("/rest/microbiology/reference/ast-panels", resolve);
   });
 
 export const getAstSetupForIsolate = (isolateId) =>
@@ -128,16 +123,6 @@ export const getBreakpointStandards = () =>
     );
   });
 
-export const getCultureMethods = (workflowType) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/reference/culture-methods?workflowType=${encodeURIComponent(
-        workflowType,
-      )}`,
-      resolve,
-    );
-  });
-
 export const getPatientOrigins = (organizationId) =>
   new Promise((resolve) => {
     const query = organizationId
@@ -146,44 +131,6 @@ export const getPatientOrigins = (organizationId) =>
     getFromOpenElisServer(
       `/rest/microbiology/reference/patient-origins${query}`,
       resolve,
-    );
-  });
-
-export const changeCaseWorkflow = (caseId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/workflow`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
-    );
-  });
-
-export const getCaseProtocolOptions = (caseId) =>
-  new Promise((resolve) => {
-    getFromOpenElisServer(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/protocol/options`,
-      resolve,
-    );
-  });
-
-export const changeCaseProtocol = (caseId, payload) =>
-  new Promise((resolve) => {
-    putToOpenElisServerFullResponse(
-      `/rest/microbiology/cases/${encodeURIComponent(caseId)}/protocol`,
-      JSON.stringify(payload),
-      (response) => {
-        if (!response) {
-          resolve({ status: 0 });
-          return;
-        }
-        response.json().then(resolve);
-      },
     );
   });
 
@@ -314,7 +261,6 @@ export const getWorklistRows = (query = {}) =>
       "status",
       "from",
       "to",
-      "workflow",
       "stage",
       "urgency",
       "due",
@@ -542,11 +488,7 @@ const MicrobiologyService = {
   getAntibiotics,
   getOrganisms,
   getBreakpointStandards,
-  getCultureMethods,
   getPatientOrigins,
-  changeCaseWorkflow,
-  getCaseProtocolOptions,
-  changeCaseProtocol,
   getAstRunsForIsolate,
   getAnalyzers,
   startAstRun,
@@ -582,3 +524,24 @@ const MicrobiologyService = {
 };
 
 export default MicrobiologyService;
+
+export const previewMicrobiologyOrder = (payload) =>
+  new Promise((resolve, reject) => {
+    postToOpenElisServerJsonResponse(
+      "/rest/microbiology/order-preview",
+      JSON.stringify(payload),
+      settleJsonResponse((response) => {
+        if (
+          !Array.isArray(response.cases) ||
+          !Array.isArray(response.ordinaryTests) ||
+          !Array.isArray(response.warnings) ||
+          !Array.isArray(response.reflexRules) ||
+          !Array.isArray(response.newUnitWarnings)
+        ) {
+          reject(new Error("Invalid order preview response"));
+          return;
+        }
+        resolve(response);
+      }, reject),
+    );
+  });

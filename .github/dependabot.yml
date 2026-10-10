@@ -75,12 +75,12 @@ updates:
       docker-images:
         patterns: ["*"]
 
+  # The submodule pins record the Bridge and mock versions OpenELIS builds, so bumps are daily
+  # and without a cooldown.
   - package-ecosystem: gitsubmodule
     directory: /
     schedule:
-      interval: monthly
-    cooldown:
-      default-days: 7
+      interval: daily
     groups:
       submodules:
         patterns: ["*"]

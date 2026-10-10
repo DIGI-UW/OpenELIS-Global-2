@@ -249,8 +249,47 @@ public class SampleStorageServiceImpl implements SampleStorageService {
         result.put("positionCoordinate",
                 assignment.getPositionCoordinate() != null ? assignment.getPositionCoordinate() : "");
         result.put("notes", assignment.getNotes() != null ? assignment.getNotes() : "");
+        StorageDevice device = deviceForAssignment(assignment);
+        result.put("temperatureSetting",
+                device != null && device.getTemperatureSetting() != null
+                        ? device.getTemperatureSetting().toPlainString()
+                        : "");
 
         return result;
+    }
+
+    /**
+     * The storage device that holds an assignment's location, or null when the
+     * sample sits in a room or the location no longer exists. Its temperature
+     * setting is the location's condition order entry compares against the test
+     * catalog's requirement (OGC-1424).
+     */
+    private StorageDevice deviceForAssignment(SampleStorageAssignment assignment) {
+        if (assignment.getLocationId() == null || assignment.getLocationType() == null) {
+            return null;
+        }
+        switch (assignment.getLocationType()) {
+        case "device":
+            return (StorageDevice) storageLocationService.get(assignment.getLocationId(), StorageDevice.class);
+        case "shelf": {
+            StorageShelf shelf = (StorageShelf) storageLocationService.get(assignment.getLocationId(),
+                    StorageShelf.class);
+            return shelf == null ? null : shelf.getParentDevice();
+        }
+        case "rack": {
+            StorageRack rack = (StorageRack) storageLocationService.get(assignment.getLocationId(), StorageRack.class);
+            StorageShelf shelf = rack == null ? null : rack.getParentShelf();
+            return shelf == null ? null : shelf.getParentDevice();
+        }
+        case "box": {
+            StorageBox box = (StorageBox) storageLocationService.get(assignment.getLocationId(), StorageBox.class);
+            StorageRack rack = box == null ? null : box.getParentRack();
+            StorageShelf shelf = rack == null ? null : rack.getParentShelf();
+            return shelf == null ? null : shelf.getParentDevice();
+        }
+        default:
+            return null;
+        }
     }
 
     @Override

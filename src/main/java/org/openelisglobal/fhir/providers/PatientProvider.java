@@ -30,6 +30,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
+import org.apache.commons.beanutils.PropertyUtils;
 import org.apache.commons.lang.StringUtils;
 import org.hibernate.StaleObjectStateException;
 import org.hl7.fhir.instance.model.api.IBaseResource;
@@ -44,12 +45,11 @@ import org.openelisglobal.fhir.FhirConstants;
 import org.openelisglobal.fhir.search.searchparams.PatientSearchParams;
 import org.openelisglobal.patient.action.IPatientUpdate.PatientUpdateStatus;
 import org.openelisglobal.patient.action.bean.PatientManagementInfo;
-import org.openelisglobal.patient.service.PatientContactService;
 import org.openelisglobal.patient.service.PatientService;
 import org.openelisglobal.patient.util.PatientUtil;
 import org.openelisglobal.patient.validator.ValidatePatientInfo;
 import org.openelisglobal.patient.valueholder.Patient;
-import org.openelisglobal.patient.valueholder.PatientContact;
+import org.openelisglobal.person.valueholder.Person;
 import org.openelisglobal.search.service.PatientSearchService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -90,9 +90,6 @@ public class PatientProvider implements IResourceProvider {
     @Autowired
     private PatientService patientService;
 
-    @Autowired
-    private PatientContactService patientContactService;
-
     @Override
     public Class<? extends IBaseResource> getResourceType() {
         return org.hl7.fhir.r4.model.Patient.class;
@@ -102,10 +99,7 @@ public class PatientProvider implements IResourceProvider {
     public org.hl7.fhir.r4.model.Patient getPatientByUUID(@IdParam IdType theId) {
         String method = "Read";
         try {
-            if (theId == null || !theId.hasIdPart()) {
-                LogEvent.logError(this.getClass().getSimpleName(), method, "Missing Patient ID for Read");
-                throw new InvalidRequestException("Patient ID must be provided for Read");
-            }
+            FhirProviderUtils.requireUuidId(theId, "Patient");
             Patient patient = getPatientByFhirId(theId.getIdPart());
             if (patient == null) {
                 throw new ResourceNotFoundException("Patient/" + theId.getIdPart());
@@ -172,12 +166,7 @@ public class PatientProvider implements IResourceProvider {
             } else {
                 LogEvent.logInfo(this.getClass().getSimpleName(), method, "No telecom info provided for patient");
             }
-
-            if (patientInfo.getPatientContact() != null) {
-                patientInfo.getPatientContact().setPerson(patient.getPerson());
-            } else {
-                LogEvent.logInfo(this.getClass().getSimpleName(), method, "No patient contact info provided");
-            }
+            fhirTransformService.addPatientAddressToPerson(fhirPatient, patient.getPerson());
 
             patientService.persistPatientData(patientInfo, patient, FhirProviderUtils.getSysUserId(request));
             LogEvent.logInfo(this.getClass().getSimpleName(), method, "Patient persisted with ID: " + patient.getId());
@@ -236,6 +225,19 @@ public class PatientProvider implements IResourceProvider {
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_FAMILY) StringAndListParam family,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_BIRTHDATE) DateRangeParam birthdate,
             @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_GENDER) TokenAndListParam gender,
+            @OptionalParam(name = "address-city") StringAndListParam city,
+
+            @OptionalParam(name = "address-state") StringAndListParam state,
+
+            @OptionalParam(name = "address-postalcode") StringAndListParam postalCode,
+
+            @OptionalParam(name = "address-country") StringAndListParam country,
+
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_TELECOM) TokenAndListParam telecom,
+
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_EMAIL) TokenAndListParam email,
+
+            @OptionalParam(name = org.hl7.fhir.r4.model.Patient.SP_PHONE) TokenAndListParam phone,
             @OptionalParam(name = "_lastUpdated") DateRangeParam lastUpdated, @Sort SortSpec sort,
             @Offset Integer offset, @Count Integer count,
             @IncludeParam(reverse = true, allow = { FhirConstants.SERVICE_REQUEST_PATIENT_REV_INCLUDE,
@@ -250,7 +252,7 @@ public class PatientProvider implements IResourceProvider {
 
         try {
             PatientSearchParams params = new PatientSearchParams(id, identifier, name, given, family, birthdate, gender,
-                    lastUpdated, sort, revIncludes);
+                    city, state, postalCode, country, telecom, email, phone, lastUpdated, sort, revIncludes);
             return FhirProviderUtils.withPaging(patientSearchService.searchPatients(params), offset, count);
         } catch (InvalidRequestException e) {
             throw e;
@@ -288,6 +290,7 @@ public class PatientProvider implements IResourceProvider {
             throw new InvalidRequestException("FHIR Patient resource body is required");
         }
 
+        FhirProviderUtils.requireUuidId(theId, "Patient");
         Patient existingPatient = getPatientByFhirId(fhirUuid);
 
         if (existingPatient == null) {
@@ -295,6 +298,9 @@ public class PatientProvider implements IResourceProvider {
         }
 
         try {
+
+            Person storedPerson = new Person();
+            PropertyUtils.copyProperties(storedPerson, existingPatient.getPerson());
 
             PatientManagementInfo patientInfo = fhirTransformService.createOePatientManagementInfo(fhirPatient);
 
@@ -304,6 +310,7 @@ public class PatientProvider implements IResourceProvider {
 
             patientInfo.setPatientPK(existingPatient.getId());
             patientInfo.setPatientUpdateStatus(PatientUpdateStatus.UPDATE);
+            fhirTransformService.keepPatientDetailsFhirDoesNotCarry(patientInfo, existingPatient);
 
             Errors errors = new BindException(patientInfo, "patientInfo");
             ValidatePatientInfo.validatePatientInfo(errors, patientInfo);
@@ -323,16 +330,8 @@ public class PatientProvider implements IResourceProvider {
             if (fhirPatient.hasTelecom()) {
                 fhirTransformService.addTelecomToPerson(fhirPatient.getTelecom(), workingPatient.getPerson());
             }
-
-            List<PatientContact> contacts = patientContactService.getForPatient(existingPatient.getId());
-
-            if (contacts == null || contacts.isEmpty()) {
-                throw new InternalErrorException("No PatientContact found for patient id=" + existingPatient.getId());
-            }
-
-            PatientContact contact = contacts.get(0);
-            contact.setPerson(workingPatient.getPerson());
-            patientInfo.setPatientContact(contact);
+            fhirTransformService.addPatientAddressToPerson(fhirPatient, workingPatient.getPerson());
+            fhirTransformService.keepUnchangedPatientContactDetails(storedPerson, workingPatient.getPerson());
 
             String sysUserId = FhirProviderUtils.getSysUserId(request);
             if (sysUserId == null) {
@@ -370,6 +369,9 @@ public class PatientProvider implements IResourceProvider {
         } catch (StaleObjectStateException e) {
             throw new ResourceVersionConflictException("Patient was modified by another user");
 
+        } catch (BaseServerResponseException e) {
+            throw e;
+
         } catch (Exception e) {
             if (FhirProviderUtils.isDataError(e)) {
                 throw FhirProviderUtils.unprocessableData("Patient", e);
@@ -387,7 +389,7 @@ public class PatientProvider implements IResourceProvider {
 
         try {
 
-            FhirProviderUtils.validateIdParam(theId, "Patient", this.getClass().getSimpleName(), method);
+            FhirProviderUtils.requireUuidId(theId, "Patient");
 
             Patient patient = getPatientByFhirId(theId.getIdPart());
 

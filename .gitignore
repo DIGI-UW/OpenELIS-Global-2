@@ -125,6 +125,7 @@ frontend/e2e-evidence/
 e2e-evidence-*.zip
 
 # Miscellaneous dev artifacts
+.devin/
 volume/properties/TotalSystemConfiguration.properties
 volume/properties/SystemConfiguration.properties
 volume/properties/ChangedSystemConfiguration.properties

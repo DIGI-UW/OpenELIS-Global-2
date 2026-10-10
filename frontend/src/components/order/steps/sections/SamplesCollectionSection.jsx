@@ -3,6 +3,7 @@ import { useIntl, FormattedMessage } from "react-intl";
 import { Tile, Button, Stack, Tag } from "@carbon/react";
 import { Add, Printer } from "@carbon/icons-react";
 import SampleCollectionCard from "./SampleCollectionCard";
+import ReceivedByLine from "./ReceivedByLine";
 import { sampleObject } from "../../OrderContext";
 import { currentLocalTime, todayLocalIso } from "../../dateUtils";
 
@@ -22,8 +23,12 @@ const SamplesCollectionSection = ({
   sampleTypes,
   unitOfMeasures,
   updateSampleCollectionDetails,
+  fillSampleDefaults,
   isReadOnly,
-  admissionDate,
+  onPrintLabels,
+  printDisabled = false,
+  workflowType = "clinical",
+  labNumber = "",
 }) => {
   const intl = useIntl();
   // The laboratory's "now" when the page opens: the default collection and
@@ -45,11 +50,37 @@ const SamplesCollectionSection = ({
   };
 
   // Handle print labels for a specific sample
-  const handlePrintLabels = (_sampleIndex) => {
-    // TODO: Implement label printing
+  const handlePrintLabels = (sampleIndex) => {
+    if (onPrintLabels) {
+      onPrintLabels(sampleIndex);
+    }
   };
 
   // Handle add new sample
+  const primarySampleIndexes = samples
+    .map((sample, index) => ({ sample, index }))
+    .filter(
+      ({ sample }) => !sample.qcMetadata?.qcType && !sample.sampleRejected,
+    )
+    .map(({ index }) => index);
+
+  // FR-C9a: one cooler usually carries every tube, so Same for all samples
+  // copies the arrival condition to every primary sample on the order.
+  const handleSameForAll = (arrival) => {
+    primarySampleIndexes.forEach((index) =>
+      updateSampleCollectionDetails(index, arrival),
+    );
+  };
+
+  const handleReceiverChange = ({ id, name }) => {
+    primarySampleIndexes.forEach((index) =>
+      updateSampleCollectionDetails(index, {
+        receivedById: id,
+        receivedByName: name,
+      }),
+    );
+  };
+
   const handleAddSample = () => {
     const newSample = {
       ...sampleObject,
@@ -60,16 +91,20 @@ const SamplesCollectionSection = ({
     setSamples([...samples, newSample]);
   };
 
-  // Handle print more sample labels
-  const handlePrintMoreLabels = () => {
-    // TODO: Implement printing additional labels
-  };
-
   return (
     <Tile className="order-section samples-collection-section">
       <h4 className="section-title">
         <FormattedMessage id="collect.samples.title" defaultMessage="Samples" />
       </h4>
+      {workflowType === "clinical" && (
+        <ReceivedByLine
+          samples={samples.filter((_, index) =>
+            primarySampleIndexes.includes(index),
+          )}
+          onChange={handleReceiverChange}
+          isReadOnly={isReadOnly}
+        />
+      )}
 
       <Stack gap={5}>
         {/* Sample Cards — only regular (non-QC) samples get full collection forms */}
@@ -86,11 +121,17 @@ const SamplesCollectionSection = ({
                 serverReceivedDate={serverReceivedDate}
                 serverReceivedTime={serverReceivedTime}
                 onUpdate={handleSampleUpdate}
+                onFillDefaults={fillSampleDefaults}
                 onRemove={handleSampleRemove}
                 onPrintLabels={handlePrintLabels}
+                printDisabled={printDisabled}
                 isReadOnly={isReadOnly}
                 canRemove={!isReadOnly}
-                admissionDate={admissionDate}
+                workflowType={workflowType}
+                labNumber={labNumber}
+                onSameForAll={
+                  primarySampleIndexes.length > 1 ? handleSameForAll : undefined
+                }
               />
 
               {/* Nested QC sample summaries — inherit collection details from parent */}
@@ -183,20 +224,7 @@ const SamplesCollectionSection = ({
           >
             <FormattedMessage
               id="collect.addSample.button"
-              defaultMessage="+ Add Another Sample"
-            />
-          </Button>
-
-          <Button
-            kind="tertiary"
-            size="md"
-            renderIcon={Printer}
-            onClick={handlePrintMoreLabels}
-            disabled={isReadOnly}
-          >
-            <FormattedMessage
-              id="collect.printMoreLabels.button"
-              defaultMessage="Print More Sample Labels"
+              defaultMessage="Add Sample"
             />
           </Button>
         </div>
@@ -204,7 +232,7 @@ const SamplesCollectionSection = ({
         <p className="helper-text">
           <FormattedMessage
             id="collect.printMoreLabels.helper"
-            defaultMessage="Use 'Print More Sample Labels' if you draw more than expected or need labels for a different sample type."
+            defaultMessage="Drew more than expected, or need a different sample type? Use Add Sample, then print its labels from the sample card or the Labels section."
           />
         </p>
       </Stack>

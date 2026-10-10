@@ -115,7 +115,8 @@ public class WorkplanByTestSectionRestController extends WorkplanRestController 
         if (!(GenericValidator.isBlankOrNull(testSectionId))) {
 
             String sectionId = testSectionId;
-            testList = analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, true);
+            testList = withoutReferredOut(
+                    analysisService.getAllAnalysisByTestSectionAndStatus(sectionId, statusList, true));
 
             if (testList.isEmpty()) {
                 return new ArrayList<>();

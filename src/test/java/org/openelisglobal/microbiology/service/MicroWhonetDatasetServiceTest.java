@@ -885,7 +885,6 @@ public class MicroWhonetDatasetServiceTest {
         MicroCase microCase = new MicroCase();
         microCase.setId(id);
         microCase.setSampleItemId(sampleItemId);
-        microCase.setWorkflowType("BACTERIOLOGY");
         microCase.setFinalReleaseState(MicroCaseFinalReleaseState.FINAL_RELEASED.name());
         microCase.setClosedAt(Timestamp.valueOf(closedAt));
         return microCase;

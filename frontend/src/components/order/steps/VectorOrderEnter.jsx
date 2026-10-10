@@ -175,9 +175,11 @@ const VectorOrderEnter = () => {
     try {
       await saveOrderEntry();
       markStepComplete("enter");
+      const savedLabNumber =
+        labNumber || orderData?.sampleOrderItems?.labNo || "";
       history.push(
-        labNumber
-          ? `/order/vector/label?order=${encodeURIComponent(labNumber)}`
+        savedLabNumber
+          ? `/order/vector/label?order=${encodeURIComponent(savedLabNumber)}`
           : "/order/vector/label",
       );
     } catch (error) {

@@ -7,11 +7,13 @@ import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.hibernate.Session;
 import org.openelisglobal.common.service.BaseObjectServiceImpl;
+import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.qaevent.criticalcallback.bean.CallbackDetailResponse;
 import org.openelisglobal.qaevent.criticalcallback.bean.CallbackEvent;
 import org.openelisglobal.qaevent.criticalcallback.bean.CallbackSummaryResponse;
@@ -87,6 +89,9 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
     @Autowired
     private QiConfigService qiConfigService;
 
+    @Autowired
+    private LocalizationService localizationService;
+
     CriticalCallbackServiceImpl() {
         super(CriticalCallback.class);
     }
@@ -148,24 +153,30 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
         // memory. DISTINCT ON collapses result_limits variants; the lateral picks
         // the latest callback attempt.
         @SuppressWarnings("unchecked")
-        List<Object[]> rows = session.createNativeQuery("SELECT DISTINCT ON (a.id) CAST(a.id AS varchar),"
-                + " s.accession_number, t.name, COALESCE(cc.result_value, r.value),"
-                + " rl.low_critical, rl.high_critical, a.released_date,"
-                + " cc.recipient_name, cc.status, cc.logged_at, TRIM(CONCAT(su.first_name, ' ', su.last_name))"
-                + CRITICAL_FROM + " JOIN sample_item si ON si.id = a.sampitem_id JOIN sample s ON s.id = si.samp_id"
-                + " JOIN test t ON t.id = a.test_id"
-                + " LEFT JOIN LATERAL (SELECT * FROM critical_callback c2 WHERE c2.analysis_id = a.id"
-                + " ORDER BY c2.logged_at DESC LIMIT 1) cc ON true"
-                + " LEFT JOIN system_user su ON su.id = cc.logged_by" + CRITICAL_WHERE + " ORDER BY a.id")
+        List<Object[]> rows = session
+                .createNativeQuery("SELECT DISTINCT ON (a.id) CAST(a.id AS varchar),"
+                        + " s.accession_number, t.name, COALESCE(cc.result_value, r.value),"
+                        + " rl.low_critical, rl.high_critical, a.released_date,"
+                        + " cc.recipient_name, cc.status, cc.logged_at, TRIM(CONCAT(su.first_name, ' ', su.last_name)),"
+                        + " CAST(t.name_localization_id AS varchar)" + CRITICAL_FROM
+                        + " JOIN sample_item si ON si.id = a.sampitem_id JOIN sample s ON s.id = si.samp_id"
+                        + " JOIN test t ON t.id = a.test_id"
+                        + " LEFT JOIN LATERAL (SELECT * FROM critical_callback c2 WHERE c2.analysis_id = a.id"
+                        + " ORDER BY c2.logged_at DESC LIMIT 1) cc ON true"
+                        + " LEFT JOIN system_user su ON su.id = cc.logged_by" + CRITICAL_WHERE + " ORDER BY a.id")
                 .setParameter("fromTs", QiReportSupport.startOf(fromDate))
                 .setParameter("toTs", QiReportSupport.endOf(toDate)).list();
 
         List<CallbackEvent> all = new ArrayList<>();
+        Map<String, String> testNames = new HashMap<>();
         for (Object[] row : rows) {
             CallbackEvent event = new CallbackEvent();
             event.setAnalysisId((String) row[0]);
             event.setLabNumber((String) row[1]);
-            event.setTestName((String) row[2]);
+            String nameLocalizationId = (String) row[11];
+            String storedName = (String) row[2];
+            event.setTestName(testNames.computeIfAbsent(nameLocalizationId + "|" + storedName,
+                    key -> localizedTestName(nameLocalizationId, storedName)));
             event.setResultValue((String) row[3]);
             event.setCriticalRange(criticalRange((Double) row[4], (Double) row[5]));
             event.setReleasedAt((Timestamp) row[6]);
@@ -195,6 +206,19 @@ public class CriticalCallbackServiceImpl extends BaseObjectServiceImpl<CriticalC
         response.setItems(QiReportSupport.page(all, page, pageSize));
         response.setTotalCount(all.size());
         return response;
+    }
+
+    /**
+     * The test's name in the reader's language. The stored name column is written
+     * once, when the test is created (OGC-1442), so it only stands in for a test
+     * that has no translated name.
+     */
+    private String localizedTestName(String nameLocalizationId, String storedName) {
+        if (nameLocalizationId == null) {
+            return storedName;
+        }
+        String localized = localizationService.getLocalizedValueById(nameLocalizationId);
+        return localized == null || localized.isBlank() ? storedName : localized;
     }
 
     /**

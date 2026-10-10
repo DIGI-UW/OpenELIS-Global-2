@@ -1,6 +1,7 @@
 package org.openelisglobal.inventory.dao;
 
 import java.util.List;
+import java.util.Map;
 import org.openelisglobal.common.dao.BaseDAO;
 import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.inventory.valueholder.InventoryEnums.LotStatus;
@@ -56,6 +57,12 @@ public interface InventoryLotDAO extends BaseDAO<InventoryLot, Long> {
      * Get total current quantity for an inventory item across all lots
      */
     Integer getTotalCurrentQuantity(Long itemId) throws LIMSRuntimeException;
+
+    /**
+     * Get available stock per item ID, by the rule of
+     * {@link InventoryLot#countsAsAvailableStock()}
+     */
+    Map<Long, Double> getAvailableQuantityByItem() throws LIMSRuntimeException;
 
     /**
      * Get lot by FHIR UUID

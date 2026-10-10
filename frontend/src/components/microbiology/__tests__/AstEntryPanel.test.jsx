@@ -141,7 +141,6 @@ const renderPanel = (service, props = {}) =>
     <IntlProvider locale="en" messages={messages}>
       <AstEntryPanel
         caseId="case-1"
-        workflowType="BACTERIOLOGY"
         isolates={[isolate]}
         service={service}
         saving={false}

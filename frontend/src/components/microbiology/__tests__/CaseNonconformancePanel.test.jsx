@@ -113,7 +113,6 @@ describe("CaseNonconformancePanel", () => {
   it("creates a scoped AST retest from an NCE disposition", async () => {
     const user = userEvent.setup();
     const { service } = renderPanel({
-      workflowType: "BACTERIOLOGY",
       isolates: [{ id: "iso-1", isolateLabel: "ISO-1" }],
     });
     service.getAstRunsForIsolate = vi.fn().mockResolvedValue([

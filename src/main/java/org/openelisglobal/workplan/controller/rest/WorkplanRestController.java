@@ -43,6 +43,10 @@ public class WorkplanRestController extends BaseRestController {
     protected static boolean useReceptionTime = FormFields.getInstance().useField(Field.SampleEntryUseReceptionHour);
     protected static List<String> nfsTestIdList;
 
+    protected static List<Analysis> withoutReferredOut(List<Analysis> analyses) {
+        return WorklistAnalyses.withoutReferredOut(analyses);
+    }
+
     @PostConstruct
     private void initialize() {
         IStatusService statusService = SpringContext.getBean(IStatusService.class);

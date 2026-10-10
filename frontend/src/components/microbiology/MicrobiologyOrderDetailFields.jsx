@@ -32,12 +32,6 @@ export const emptyMicrobiologyOrderDetail = {
   antibioticExposure: false,
 };
 
-// Starting values for an order that qualifies for the microbiology workflow.
-export const defaultMicrobiologyOrderDetail = {
-  ...emptyMicrobiologyOrderDetail,
-  culturePurpose: "CLINICAL_DIAGNOSTIC",
-};
-
 export const formatAdmissionDateForPicker = formatIsoDateForBackend;
 export const formatAdmissionDateForApi = formatPickerDateForIso;
 

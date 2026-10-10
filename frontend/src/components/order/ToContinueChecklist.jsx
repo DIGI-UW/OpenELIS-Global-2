@@ -7,7 +7,8 @@ import { useIntl } from "react-intl";
  * (FR-A9). Each missing item is a link that scrolls to and focuses its field.
  * The list updates as the user works and disappears when the step is complete.
  *
- * Items: { id, label, targetId }. `label` is already translated.
+ * Items: { id, label, targetId }. `label` is already translated. `targetId`
+ * may list fallbacks: the first that is on the page and enabled is focused.
  */
 const ToContinueChecklist = ({ nextStep, items = [] }) => {
   const intl = useIntl();
@@ -19,17 +20,22 @@ const ToContinueChecklist = ({ nextStep, items = [] }) => {
     { step: nextStep },
   );
 
-  const focusTarget = (targetId) => {
-    if (!targetId) return;
-    const element = document.getElementById(targetId);
-    if (!element) return;
-    element.scrollIntoView({ behavior: "smooth", block: "center" });
-    const focusable = element.matches("input, select, textarea, button")
+  const focusable = (element) =>
+    element.matches("input, select, textarea, button")
       ? element
       : element.querySelector("input, select, textarea, button");
-    if (focusable) {
-      focusable.focus({ preventScroll: true });
-    }
+
+  const focusTarget = (targetId) => {
+    const candidates = [].concat(targetId || []);
+    const element = candidates
+      .map((id) => document.getElementById(id))
+      .find((candidate) => {
+        const control = candidate && focusable(candidate);
+        return control && !control.matches(":disabled");
+      });
+    if (!element) return;
+    element.scrollIntoView({ behavior: "smooth", block: "center" });
+    focusable(element).focus({ preventScroll: true });
   };
 
   return (
@@ -45,7 +51,9 @@ const ToContinueChecklist = ({ nextStep, items = [] }) => {
         {items.map((item) => (
           <li key={item.id}>
             <Link
-              href={item.targetId ? `#${item.targetId}` : undefined}
+              href={
+                item.targetId ? `#${[].concat(item.targetId)[0]}` : undefined
+              }
               onClick={(event) => {
                 event.preventDefault();
                 focusTarget(item.targetId);

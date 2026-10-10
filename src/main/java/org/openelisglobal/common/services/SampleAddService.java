@@ -38,6 +38,7 @@ import org.openelisglobal.common.util.DateUtil;
 import org.openelisglobal.observationhistory.valueholder.ObservationHistory;
 import org.openelisglobal.observationhistorytype.service.ObservationHistoryTypeService;
 import org.openelisglobal.observationhistorytype.valueholder.ObservationHistoryType;
+import org.openelisglobal.orderentry.service.SampleReceiptAndArrival;
 import org.openelisglobal.panel.service.PanelService;
 import org.openelisglobal.panel.valueholder.Panel;
 import org.openelisglobal.panelitem.service.PanelItemService;
@@ -175,6 +176,9 @@ public class SampleAddService {
                 item.setCollectionMethod(sampleItem.attributeValue("collectionMethod"));
                 item.setSampleTemperature(sampleItem.attributeValue("sampleTemperature"));
                 item.setSpecimenOrigin(sampleItem.attributeValue("specimenOrigin"));
+                String setNumber = sampleItem.attributeValue("cultureSetNumber");
+                item.setCultureSetNumber(GenericValidator.isBlankOrNull(setNumber) ? null : Integer.valueOf(setNumber));
+                item.setBodySite(sampleItem.attributeValue("bodySite"));
                 item.setContainer(sampleItem.attributeValue("container"));
                 item.setLocationDetails(sampleItem.attributeValue("locationDetails"));
                 item.setGpsLatitude(sampleItem.attributeValue("gpsLatitude"));
@@ -201,6 +205,9 @@ public class SampleAddService {
                                 "Failed to parse receivedDateTime=" + receivedDateTime + ": " + e.getMessage());
                     }
                 }
+                SampleReceiptAndArrival.apply(item, sampleItem.attributeValue("receivedById"),
+                        sampleItem.attributeValue("arrivalCondition"), sampleItem.attributeValue("arrivalTemperature"),
+                        currentUserId, new Timestamp(System.currentTimeMillis()));
 
                 String quantityStr = sampleItem.attributeValue("quantity");
                 if (quantityStr != null && !quantityStr.trim().isEmpty()) {
@@ -247,6 +254,16 @@ public class SampleAddService {
                         storageLocationId, storageLocationType, storagePositionCoordinate, gpsLatitude, gpsLongitude,
                         gpsAccuracy, gpsCaptureMethod, numOrderLabels, numSpecimenLabels);
                 stc.existingSampleItemId = existingSampleItemId;
+                String requestId = sampleItem.attributeValue("sampleTypeRequestId");
+                stc.sampleTypeRequestId = GenericValidator.isBlankOrNull(requestId) ? null : Integer.valueOf(requestId);
+                if (stc.sampleTypeRequestId != null && stc.sampleTypeRequestId < 1) {
+                    throw new IllegalArgumentException("Requested specimen identity must be positive");
+                }
+                for (String field : List.of("cultureSetNumber", "container", "bodySite", "date", "time",
+                        "collectionLocationId")) {
+                    if (sampleItem.attributeValue(field) != null)
+                        stc.suppliedCollectionFields.add(field);
+                }
                 stc.storageNotes = storageNotes;
                 stc.panelIds = splitIds(panelIDs);
 
@@ -419,6 +436,8 @@ public class SampleAddService {
 
         // Existing sample item ID - for updates, identifies which sample_item to update
         public String existingSampleItemId;
+        public Integer sampleTypeRequestId;
+        public java.util.Set<String> suppliedCollectionFields = new java.util.HashSet<>();
 
         // Panels selected on this sample; a test is attributed only to one of these
         public List<String> panelIds = new ArrayList<>();

@@ -34,15 +34,13 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
             + "newer.occurredAt > activity.occurredAt or (newer.occurredAt = activity.occurredAt"
             + " and newer.id > activity.id)))"
             + " left join SystemUser activityUser on activityUser.id = activity.performedBy"
-            + " where run.status = :reviewedStatus" + " and (:workflow = '' or microCase.workflowType = :workflow)"
-            + " and (:stage = '' or microCase.stage = :stage)" + " and (:urgency = ''"
-            + " or (:urgency = 'HIGH' and microCase.priority in ('STAT', 'URGENT'))"
+            + " where run.status = :reviewedStatus" + " and (:stage = '' or microCase.stage = :stage)"
+            + " and (:urgency = ''" + " or (:urgency = 'HIGH' and microCase.priority in ('STAT', 'URGENT'))"
             + " or (:urgency = 'ROUTINE' and microCase.priority not in ('STAT', 'URGENT')))"
             + " and (:due = '' or :due = 'VIEW')" + " and (:search = '' or lower(run.id) like :searchLike"
             + " or lower(microCase.id) like :searchLike"
             + " or lower(cast(microCase.sampleItemId as string)) like :searchLike"
-            + " or lower(microCase.workflowType) like :searchLike" + " or lower(microCase.stage) like :searchLike"
-            + " or lower(isolate.isolateLabel) like :searchLike"
+            + " or lower(microCase.stage) like :searchLike" + " or lower(isolate.isolateLabel) like :searchLike"
             + " or lower(coalesce(isolate.preliminaryOrganismText, '')) like :searchLike"
             + " or lower(coalesce(isolate.organismId, '')) like :searchLike"
             + " or lower(coalesce(run.panelId, '')) like :searchLike" + " or lower(run.status) like :searchLike"
@@ -143,16 +141,12 @@ public class MicroAstRunDAOImpl extends BaseDAOImpl<MicroAstRun, String> impleme
         if ("newest".equals(sort)) {
             return " order by run.startedAt desc, " + priorityOrder + ", run.id";
         }
-        if ("workflow".equals(sort)) {
-            return " order by microCase.workflowType, " + priorityOrder + ", run.startedAt, run.id";
-        }
         return " order by " + priorityOrder + ", run.startedAt, run.id";
     }
 
     private void setReviewedWorklistParameters(Query<?> query, MicroReviewedAstWorklistQuery worklistQuery) {
         String search = worklistQuery.search() == null ? "" : worklistQuery.search().trim().toLowerCase(Locale.ROOT);
         query.setParameter("reviewedStatus", MicroAstRunStatus.REVIEWED.name());
-        query.setParameter("workflow", text(worklistQuery.workflow()));
         query.setParameter("stage", text(worklistQuery.stage()));
         query.setParameter("urgency", text(worklistQuery.urgency()));
         query.setParameter("due", text(worklistQuery.due()));

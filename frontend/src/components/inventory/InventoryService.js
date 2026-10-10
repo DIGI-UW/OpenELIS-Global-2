@@ -162,6 +162,11 @@ export const InventoryItemAPI = {
   activate: (id) => put(`/items/${id}/activate`, {}),
 };
 
+/** Items board API: one row per active item, sorted by urgency server side. */
+export const InventoryBoardAPI = {
+  get: () => get("/board"),
+};
+
 /**
  * Inventory Lot API
  */

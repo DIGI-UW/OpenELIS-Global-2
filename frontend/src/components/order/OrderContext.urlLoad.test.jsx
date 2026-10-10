@@ -260,3 +260,64 @@ describe("OrderContext — form defaults arriving after the order (OGC-1192)", (
     expect(screen.getByTestId("requested")).toHaveTextContent("26/09/2026");
   });
 });
+
+const DefaultsProbe = () => {
+  const {
+    labNumber,
+    isDirty,
+    samples,
+    fillSampleDefaults,
+    updateSampleCollectionDetails,
+  } = useOrderContext();
+  return (
+    <div>
+      <span data-testid="lab">{labNumber || ""}</span>
+      <span data-testid="dirty">{String(isDirty)}</span>
+      <span data-testid="time">{samples?.[0]?.collectionTime || ""}</span>
+      <button
+        onClick={() => fillSampleDefaults(0, { collectionTime: "08:30" })}
+      >
+        defaults
+      </button>
+      <button
+        onClick={() =>
+          updateSampleCollectionDetails(0, { collectionTime: "09:45" })
+        }
+      >
+        type
+      </button>
+    </div>
+  );
+};
+
+describe("OrderContext — a step's own defaults are not edits (OGC-1443)", () => {
+  beforeEach(() => {
+    getFromOpenElisServerMock.mockReset();
+    getFromOpenElisServerMock.mockImplementation(answerServer);
+  });
+
+  it("fills a sample's default time without Unsaved changes, and marks a typed time dirty", async () => {
+    render(
+      <ConfigurationContext.Provider
+        value={{ configurationProperties: { DEFAULT_DATE_LOCALE: "fr-FR" } }}
+      >
+        <MemoryRouter
+          initialEntries={["/order/environmental/collect?order=DEV-7"]}
+        >
+          <OrderProvider workflowType="environmental">
+            <DefaultsProbe />
+          </OrderProvider>
+        </MemoryRouter>
+      </ConfigurationContext.Provider>,
+    );
+    expect(await screen.findByText("DEV-7")).toBeTruthy();
+
+    fireEvent.click(screen.getByText("defaults"));
+    expect(screen.getByTestId("time")).toHaveTextContent("08:30");
+    expect(screen.getByTestId("dirty")).toHaveTextContent("false");
+
+    fireEvent.click(screen.getByText("type"));
+    expect(screen.getByTestId("time")).toHaveTextContent("09:45");
+    expect(screen.getByTestId("dirty")).toHaveTextContent("true");
+  });
+});

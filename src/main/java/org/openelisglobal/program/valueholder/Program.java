@@ -57,6 +57,8 @@ public class Program extends BaseObject<String> {
     // Deactivate/reactivate flag; 'Y'/'N' to match panel / test_section / test.
     private String isActive = "Y";
 
+    private boolean showOnMicroCase;
+
     // Many-to-many replacement for the single testSection FK; the legacy
     // testSection field stays for readers that have not migrated yet.
     private Set<TestSection> labUnits = new HashSet<>();
@@ -129,6 +131,14 @@ public class Program extends BaseObject<String> {
 
     public void setIsActive(String isActive) {
         this.isActive = isActive;
+    }
+
+    public boolean isShowOnMicroCase() {
+        return showOnMicroCase;
+    }
+
+    public void setShowOnMicroCase(boolean showOnMicroCase) {
+        this.showOnMicroCase = showOnMicroCase;
     }
 
     public Set<TestSection> getLabUnits() {

@@ -18,6 +18,7 @@ import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analysis.service.AnalysisService;
 import org.openelisglobal.common.services.IStatusService;
 import org.openelisglobal.common.services.StatusService.AnalysisStatus;
+import org.openelisglobal.common.services.StatusService.OrderStatus;
 import org.openelisglobal.common.services.StatusService.SampleStatus;
 import org.openelisglobal.localization.service.LocalizationService;
 import org.openelisglobal.localization.valueholder.Localization;
@@ -32,6 +33,7 @@ import org.openelisglobal.statusofsample.service.StatusOfSampleService;
 import org.openelisglobal.statusofsample.valueholder.StatusOfSample;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
+import org.openelisglobal.test.service.TestSectionService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.testmethod.service.TestMethodService;
 import org.openelisglobal.typeofsample.service.TypeOfSampleService;
@@ -69,6 +71,9 @@ public class MicrobiologyTestFixturesTest {
     @Mock
     private PatientService patientService;
 
+    @Mock
+    private TestSectionService testSectionService;
+
     private MicrobiologyTestFixtures fixtures;
 
     @Before
@@ -76,7 +81,7 @@ public class MicrobiologyTestFixturesTest {
         when(systemUserService.getAllSystemUsers()).thenReturn(List.of(systemUser("7")));
         fixtures = new MicrobiologyTestFixtures(methodService, sampleService, sampleItemService, analysisService,
                 testService, typeOfSampleService, localizationService, testMethodService, statusService,
-                statusOfSampleService, systemUserService, configurationService, personService, patientService);
+                statusOfSampleService, systemUserService, configurationService, personService, patientService, testSectionService);
     }
 
     @Test
@@ -149,18 +154,54 @@ public class MicrobiologyTestFixturesTest {
     @Test
     public void ensuresEveryRequiredWorkflowStatus() {
         when(statusService.getStatusID(SampleStatus.Entered)).thenReturn("20");
+        when(statusService.getStatusID(OrderStatus.Entered)).thenReturn("24");
         when(statusService.getStatusID(AnalysisStatus.NotStarted)).thenReturn("21");
         when(statusService.getStatusID(AnalysisStatus.Finalized)).thenReturn("22");
+        when(statusService.getStatusID(AnalysisStatus.Canceled)).thenReturn("23");
         when(statusOfSampleService.getMatch("id", "20")).thenReturn(Optional.of(new StatusOfSample()));
+        when(statusOfSampleService.getMatch("id", "24")).thenReturn(Optional.of(new StatusOfSample()));
         when(statusOfSampleService.getMatch("id", "21")).thenReturn(Optional.of(new StatusOfSample()));
         when(statusOfSampleService.getMatch("id", "22")).thenReturn(Optional.of(new StatusOfSample()));
+        when(statusOfSampleService.getMatch("id", "23")).thenReturn(Optional.of(new StatusOfSample()));
 
         fixtures.ensureRequiredWorkflowStatuses();
 
         verify(statusService).getStatusID(SampleStatus.Entered);
+        verify(statusService).getStatusID(OrderStatus.Entered);
         verify(statusService).getStatusID(AnalysisStatus.NotStarted);
         verify(statusService).getStatusID(AnalysisStatus.Finalized);
+        verify(statusService).getStatusID(AnalysisStatus.Canceled);
         verify(statusOfSampleService, never()).insert(any(StatusOfSample.class));
+    }
+
+    @Test
+    public void provisionsMissingAnalysisCanceledStatusThroughServices() {
+        when(statusService.getStatusID(AnalysisStatus.Canceled)).thenReturn("-1", "45");
+        when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of());
+
+        assertEquals("45", fixtures.ensureAnalysisCanceledStatus());
+
+        ArgumentCaptor<StatusOfSample> statusCaptor = ArgumentCaptor.forClass(StatusOfSample.class);
+        verify(statusOfSampleService).insert(statusCaptor.capture());
+        assertEquals("Test Canceled", statusCaptor.getValue().getStatusOfSampleName());
+        assertEquals("ANALYSIS", statusCaptor.getValue().getStatusType());
+        assertEquals("900", statusCaptor.getValue().getCode());
+        verify(statusService).refreshCache();
+    }
+
+    @Test
+    public void provisionsMissingOrderEnteredStatusThroughServices() {
+        when(statusService.getStatusID(OrderStatus.Entered)).thenReturn("-1", "46");
+        when(statusOfSampleService.getAllStatusOfSamples()).thenReturn(List.of());
+
+        assertEquals("46", fixtures.ensureOrderEnteredStatus());
+
+        ArgumentCaptor<StatusOfSample> statusCaptor = ArgumentCaptor.forClass(StatusOfSample.class);
+        verify(statusOfSampleService).insert(statusCaptor.capture());
+        assertEquals("Test Entered", statusCaptor.getValue().getStatusOfSampleName());
+        assertEquals("ORDER", statusCaptor.getValue().getStatusType());
+        assertEquals("900", statusCaptor.getValue().getCode());
+        verify(statusService).refreshCache();
     }
 
     @Test

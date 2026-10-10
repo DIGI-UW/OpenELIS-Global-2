@@ -3,6 +3,7 @@ package org.openelisglobal.labelpreset.service;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertThrows;
 
+import java.io.ByteArrayOutputStream;
 import java.util.List;
 import java.util.Map;
 import javax.sql.DataSource;
@@ -16,6 +17,7 @@ import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.labelpreset.valueholder.BarcodeType;
 import org.openelisglobal.labelpreset.valueholder.LabelPreset;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
+import org.openelisglobal.testsupport.PdfText;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.jdbc.core.JdbcTemplate;
 
@@ -126,6 +128,26 @@ public class OrderLabelReprintDecreaseQtyTest extends BaseWebContextSensitiveTes
         // The saved qty is untouched.
         OrderLabelRequest reread = orderLabelRequestDAO.get(requestId).orElseThrow();
         assertEquals("rejected increase leaves saved qty at 3", Integer.valueOf(3), reread.getQty());
+    }
+
+    // ── OGC-1169: reprint at a chosen quantity ────────────────────────────────
+
+    @Test
+    public void renderFromSnapshot_withQuantity_printsThatManyCopiesUpToThePresetMax() throws Exception {
+        ByteArrayOutputStream two = orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(), sampleItemId,
+                "sample", 2);
+        assertEquals("two copies instead of the saved three", 2, PdfText.pageCount(two.toByteArray()));
+
+        ByteArrayOutputStream saved = orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(),
+                sampleItemId, "sample", null);
+        assertEquals("no quantity keeps the saved three", 3, PdfText.pageCount(saved.toByteArray()));
+
+        LabelQuantityRefusedException above = assertThrows(LabelQuantityRefusedException.class,
+                () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(), sampleItemId, "sample", 6));
+        assertEquals(LabelQuantityRefusedException.ABOVE_MAXIMUM, above.getMessageKey());
+        LabelQuantityRefusedException below = assertThrows(LabelQuantityRefusedException.class,
+                () -> orderLabelReprintService.renderFromSnapshot(sampleId, preset.getId(), sampleItemId, "sample", 0));
+        assertEquals(LabelQuantityRefusedException.BELOW_MINIMUM, below.getMessageKey());
     }
 
     private void cleanTestData() {

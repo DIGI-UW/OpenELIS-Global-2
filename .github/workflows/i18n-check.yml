@@ -4,13 +4,15 @@ on:
   pull_request:
     paths:
       - "frontend/src/languages/**"
+      - "scripts/ci/check-i18n-plurals.py"
+      - ".github/workflows/i18n-check.yml"
 
 jobs:
   check-duplicate-keys:
     name: Duplicate key check
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Check for duplicate i18n keys
         run: |
@@ -29,12 +31,15 @@ jobs:
           print('All i18n files OK — no duplicate keys')
           "
 
+      - name: Check plural values Transifex can parse
+        run: python3 scripts/ci/check-i18n-plurals.py frontend/src/languages/en.json
+
   check-translation-source:
     name: Translation source-of-truth check
     if: github.head_ref != 'chore/update-transifex'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 

@@ -47,7 +47,7 @@ jobs:
           echo "image_name=${image_name}" >> $GITHUB_OUTPUT
 
       - name: Checkout repository
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
 
         # Add support for more platforms with QEMU (optional)
         # https://github.com/docker/setup-qemu-action
@@ -72,7 +72,7 @@ jobs:
 
       - name: Build and push Docker image
         id: build
-        uses: docker/build-push-action@v5
+        uses: docker/build-push-action@v7
         with:
           context: ./frontend
           # Select the `dev` stage of the multi-stage frontend/Dockerfile.
@@ -107,7 +107,7 @@ jobs:
       - build-and-push-image-frontend-dev
     steps:
       - name: Download digests
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v7
         with:
           path: /tmp/digests/frontend
           pattern: digests-*

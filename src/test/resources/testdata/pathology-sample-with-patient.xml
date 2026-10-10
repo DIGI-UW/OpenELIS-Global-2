@@ -11,8 +11,14 @@
     need: PathologyDisplayService reads the case's patient through sample_human
     and renders the person's names, so a pathology case with no patient behind
     it cannot be converted at all. Case 1 holds an open request (301), case 2
-    holds only a closed one (302), which is the pair the open-request flag is
-    read against. -->
+    holds only a closed one (302), which is the pair the case view's request
+    statuses are read against. Neither sample carries a sample_requester row,
+    so both cases are ordered without a named requester. Specimen items are not
+    declared here: a sample_item needs a type_of_sample, and naming that table
+    in a dataset truncates it (and, through its localization, test, test_section
+    and panel) for every later test class in the Surefire fork, so the case-view
+    display test seeds its own type and items over this fixture instead. -->
+
 <dataset>
     <system_user id="1001" lastupdated="2024-06-08 14:00:00.0"
         external_id="EXT001" login_name="technician1" first_name="John"
@@ -42,15 +48,20 @@
     <program id="2" lastupdated="2024-06-10 12:00:00.0"
         code="PROG002" name="Blood Test2 Program" manually_changed="false" />
 
+    <!-- The two dates differ on purpose: the case view shows the day the specimen
+        arrived beside the day the examination was asked for, and two samples stamped
+        on the same day cannot tell the two fields apart. Midnight is deliberate:
+        it is the value a UTC formatter reads as the day before in any zone east
+        of Greenwich, which is the case the display item has to get right. -->
     <sample id="1" accession_number="12345"
         received_date="2024-06-03 00:00:00.0"
-        entered_date="2024-06-03 00:00:00.0"
-        collection_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-01 00:00:00.0"
+        collection_date="2024-06-01 12:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
     <sample id="2" accession_number="12346"
         received_date="2024-06-03 00:00:00.0"
-        entered_date="2024-06-03 00:00:00.0"
-        collection_date="2024-06-03 00:00:00.0"
+        entered_date="2024-06-01 00:00:00.0"
+        collection_date="2024-06-01 12:00:00.0"
         lastupdated="2023-11-01 12:00:00" />
 
     <sample_human id="1" samp_id="1" patient_id="1"

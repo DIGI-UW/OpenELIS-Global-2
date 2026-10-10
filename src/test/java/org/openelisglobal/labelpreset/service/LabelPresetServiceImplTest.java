@@ -9,6 +9,7 @@ import static org.junit.Assert.fail;
 
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
 import javax.sql.DataSource;
 import org.junit.After;
 import org.junit.Before;
@@ -286,26 +287,57 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
     }
 
     @Test
-    public void update_withEmptyFields_clearsStoredFields() {
-        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_clear", entry("LAB_NUMBER", true, 1));
+    public void update_withEmptyFields_clearsTheSelectableFieldsButKeepsLabNumber() {
+        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_clear", entry("LAB_NUMBER", true, 1),
+                entry("PATIENT_NAME", false, 2));
 
         LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_clear");
         form.setFields(List.of());
         labelPresetService.update(preset.getId(), form, SYS_USER);
 
-        assertEquals(List.of(), storedFieldKeys(preset.getId()));
+        assertEquals("Lab Number is on every preset (FR-008)", List.of("LAB_NUMBER"), storedFieldKeys(preset.getId()));
     }
 
     @Test
     public void update_swappedDisplayOrders_isApplied() {
         LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_swap", entry("LAB_NUMBER", true, 1),
-                entry("PATIENT_NAME", false, 2));
+                entry("PATIENT_NAME", false, 2), entry("PATIENT_ID", false, 3));
 
         LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_swap");
-        form.setFields(List.of(entry("LAB_NUMBER", true, 2), entry("PATIENT_NAME", false, 1)));
+        form.setFields(
+                List.of(entry("LAB_NUMBER", true, 1), entry("PATIENT_NAME", false, 3), entry("PATIENT_ID", false, 2)));
         labelPresetService.update(preset.getId(), form, SYS_USER);
 
-        assertEquals(List.of("PATIENT_NAME", "LAB_NUMBER"), storedFieldKeys(preset.getId()));
+        assertEquals(List.of("LAB_NUMBER", "PATIENT_ID", "PATIENT_NAME"), storedFieldKeys(preset.getId()));
+    }
+
+    // ── Lab Number first, always (OGC-1218) ─────────────────────────────────
+
+    @Test
+    public void create_withoutFields_getsLabNumberRequiredAtPositionOne() {
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_fresh");
+        form.setFields(null);
+        LabelPreset created = labelPresetService.create(form, SYS_USER);
+
+        assertEquals(List.of("LAB_NUMBER"), storedFieldKeys(created.getId()));
+        assertEquals(List.of("1:true"), storedFieldPositions(created.getId()));
+    }
+
+    @Test
+    public void fields_labNumberIsForcedFirstRequiredAndTheRestRenumbered() {
+        LabelPreset preset = createPresetWithFields(TEST_PREFIX + "fields_forced", entry("PATIENT_NAME", false, 5),
+                entry("LAB_NUMBER", false, 9), entry("TESTS", true, 2));
+
+        assertEquals(List.of("LAB_NUMBER", "TESTS", "PATIENT_NAME"), storedFieldKeys(preset.getId()));
+        assertEquals(List.of("1:true", "2:true", "3:false"), storedFieldPositions(preset.getId()));
+
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "fields_forced");
+        form.setFields(List.of(entry("PATIENT_ID", false, 1)));
+        labelPresetService.update(preset.getId(), form, SYS_USER);
+
+        assertEquals("a request without Lab Number still keeps it first", List.of("LAB_NUMBER", "PATIENT_ID"),
+                storedFieldKeys(preset.getId()));
+        assertEquals(List.of("1:true", "2:false"), storedFieldPositions(preset.getId()));
     }
 
     @Test
@@ -321,6 +353,38 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
 
         assertEquals(List.of("LAB_NUMBER", "PATIENT_ID", "PATIENT_DOB"), storedFieldKeys(preset.getId()));
         assertEquals(labNumberId, fieldId(updated, "LAB_NUMBER"));
+    }
+
+    @Test
+    public void systemPresetFieldKeys_answersByNameInDisplayOrder_ignoringCaseAndSpace() {
+        LabelPreset orderLabel = labelPresetService.list(null, null).stream()
+                .filter(p -> Boolean.TRUE.equals(p.getIsSystem()) && "Order Label".equals(p.getName())).findFirst()
+                .orElse(null);
+        assertNotNull("the Order Label system preset is seeded", orderLabel);
+        LabelPresetForm before = mirrorForm(orderLabel);
+        try {
+            LabelPresetForm form = mirrorForm(orderLabel);
+            form.setFields(
+                    List.of(entry("LAB_NUMBER", true, 1), entry("SITE_ID", false, 2), entry("PATIENT_NAME", false, 3)));
+            labelPresetService.update(orderLabel.getId(), form, SYS_USER);
+
+            Set<String> keys = labelPresetService.systemPresetFieldKeys("  order label ");
+
+            assertEquals(List.of("LAB_NUMBER", "SITE_ID", "PATIENT_NAME"), new java.util.ArrayList<>(keys));
+        } finally {
+            labelPresetService.update(orderLabel.getId(), before, SYS_USER);
+        }
+    }
+
+    @Test
+    public void systemPresetFieldKeys_isNullForAnUnknownNameAndForAUserPreset() {
+        LabelPresetForm form = buildMinimalForm(TEST_PREFIX + "Not A System Preset");
+        labelPresetService.create(form, SYS_USER);
+
+        assertNull(labelPresetService.systemPresetFieldKeys("No Such Label"));
+        assertNull("a user preset never drives the legacy renderers",
+                labelPresetService.systemPresetFieldKeys(TEST_PREFIX + "Not A System Preset"));
+        assertNull(labelPresetService.systemPresetFieldKeys("  "));
     }
 
     @Test
@@ -366,6 +430,11 @@ public class LabelPresetServiceImplTest extends BaseWebContextSensitiveTest {
         LabelPresetForm form = buildMinimalForm(name);
         form.setFields(List.of(entries));
         return labelPresetService.create(form, SYS_USER);
+    }
+
+    private List<String> storedFieldPositions(Integer presetId) {
+        return jdbc.queryForList("SELECT display_order || ':' || is_required FROM clinlims.label_preset_field"
+                + " WHERE preset_id = ? ORDER BY display_order", String.class, presetId);
     }
 
     private List<String> storedFieldKeys(Integer presetId) {

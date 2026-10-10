@@ -1,3 +1,4 @@
+import CultureBottleFields from "./CultureBottleFields";
 import React, { useState, useEffect, useRef } from "react";
 import { useIntl, FormattedMessage } from "react-intl";
 import {
@@ -13,7 +14,6 @@ import {
   DismissibleTag,
   Search,
   Link,
-  Modal,
 } from "@carbon/react";
 import {
   Add,
@@ -23,23 +23,34 @@ import {
   ChevronUp,
 } from "@carbon/icons-react";
 import { getFromOpenElisServer } from "../../../utils/Utils";
-import { hasCultureWorkflowTest } from "../../orderDataUtils";
 import {
   formatHoldingMinutes,
   holdingDeadline,
   shortestHoldingMinutes,
 } from "../../dateUtils";
+import { RequiredMarker, requiredProps } from "../../../common/RequiredMarker";
 
 const SampleTestSection = ({
   samples,
   setSamples,
-  orderData,
-  setOrderData,
   isReadOnly,
   workflowType,
+  orderData,
 }) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
+
+  const [samplingSites, setSamplingSites] = useState([]);
+  useEffect(() => {
+    if (workflowType !== "environmental") return;
+    let current = true;
+    getFromOpenElisServer("/rest/admin/vector/sampling-sites", (sites) => {
+      if (current && Array.isArray(sites)) setSamplingSites(sites);
+    });
+    return () => {
+      current = false;
+    };
+  }, [workflowType]);
 
   const [sampleTypes, setSampleTypes] = useState([]);
   const [testsPerSample, setTestsPerSample] = useState({});
@@ -50,7 +61,6 @@ const SampleTestSection = ({
   const [trapTypesPerSample, setTrapTypesPerSample] = useState({});
   const [isLoading, setIsLoading] = useState(true);
   const [loadingPerSample, setLoadingPerSample] = useState({});
-  const [pendingSamples, setPendingSamples] = useState(null);
 
   const cloneSamples = () =>
     samples.map((sample) => ({
@@ -59,7 +69,7 @@ const SampleTestSection = ({
       tests: [...(sample.tests || [])],
     }));
 
-  // Environmental manifest dictionary data
+  // Shared container catalog used by environmental samples and culture bottles.
   const [containerTypes, setContainerTypes] = useState([]);
 
   // Per-row expanded state for test/panel picker (environmental manifest)
@@ -92,16 +102,15 @@ const SampleTestSection = ({
     };
   }, [workflowType]);
 
-  // Fetch environmental manifest dictionaries once
+  // Fetch the shared container catalog once.
   useEffect(() => {
-    if (workflowType !== "environmental") return;
     getFromOpenElisServer(
       "/rest/vector/dictionary/sample-containers",
       (data) => {
         if (componentMounted.current) setContainerTypes(data || []);
       },
     );
-  }, [workflowType]);
+  }, []);
 
   const fetchedSampleTypesRef = useRef({});
 
@@ -215,7 +224,7 @@ const SampleTestSection = ({
         <FormattedMessage
           id="sample.holdingLimit"
           defaultMessage="Holding time: {limit}"
-          values={{ limit: formatHoldingMinutes(minutes) }}
+          values={{ limit: formatHoldingMinutes(minutes, intl) }}
         />
         {deadline && (
           <>
@@ -251,13 +260,42 @@ const SampleTestSection = ({
     setSamples([...samples, newSample]);
   };
 
+  const hasSetTest = (sample, index) =>
+    (sample.tests || []).some((selected) => {
+      const catalog = (testsPerSample[index] || []).find(
+        (test) => String(test.id) === String(selected.id || selected),
+      );
+      return (catalog || selected).collectedInSets === true;
+    });
+
+  const applySamples = (updated) => {
+    const next = updated.map((sample, index) => {
+      if (
+        hasSetTest(sample, index) &&
+        !hasSetTest(samples[index] || {}, index) &&
+        !sample.cultureSetNumber
+      ) {
+        const previous = updated.slice(0, index).filter(hasSetTest).pop();
+        return { ...sample, cultureSetNumber: previous?.cultureSetNumber || 1 };
+      }
+      return sample;
+    });
+    setSamples(next);
+  };
+
   const handleDuplicateSample = (sourceIndex) => {
     const source = samples[sourceIndex];
     const newIndex = samples.length;
     const duplicate = {
       ...source,
       index: newIndex,
+      sampleItemId: "",
+      sampleTypeRequestId: "",
+      clientKey: "",
       sampleXML: null,
+      cultureSetNumber: hasSetTest(source, sourceIndex)
+        ? samples.filter(hasSetTest).pop()?.cultureSetNumber || 1
+        : "",
     };
     setSamples([...samples, duplicate]);
 
@@ -293,6 +331,7 @@ const SampleTestSection = ({
       gpsLatitude: parent.gpsLatitude || "",
       gpsLongitude: parent.gpsLongitude || "",
       locationDetails: parent.locationDetails || "",
+      collectionLocationId: parent.collectionLocationId || "",
       collectionDate: parent.collectionDate || "",
       collectionTime: parent.collectionTime || "",
       qcMetadata: {
@@ -322,44 +361,8 @@ const SampleTestSection = ({
     return "purple";
   };
 
-  const hasMicrobiologyDetail = Object.values(
-    orderData?.microbiologyOrderDetail || {},
-  ).some((value) => value !== "" && value !== null && value !== false);
-
-  const clearMicrobiologyState = () => {
-    setOrderData((previous) => ({
-      ...previous,
-      microbiologyOrderDetail: undefined,
-      sampleOrderItems: {
-        ...previous.sampleOrderItems,
-        programId:
-          previous.sampleOrderItems?.microbiologyPreviousProgramId || "",
-        microbiologyProgramId: undefined,
-        microbiologyPreviousProgramId: undefined,
-      },
-    }));
-  };
-
-  const applySamples = (updated) => {
-    if (
-      hasCultureWorkflowTest(samples) &&
-      !hasCultureWorkflowTest(updated) &&
-      hasMicrobiologyDetail
-    ) {
-      setPendingSamples(updated);
-      return;
-    }
-    setSamples(updated);
-  };
-
-  const confirmDiscardMicrobiologyDetail = () => {
-    setSamples(pendingSamples);
-    clearMicrobiologyState();
-    setPendingSamples(null);
-  };
-
   const handleRemoveSample = (index) => {
-    applySamples(samples.filter((_, i) => i !== index));
+    setSamples(samples.filter((_, i) => i !== index));
   };
 
   const handleSampleTypeChange = (sampleIndex, sampleTypeId) => {
@@ -376,7 +379,7 @@ const SampleTestSection = ({
       sampleTypeName: selectedType?.value || "",
       ...(shouldClearSelections ? { panels: [], tests: [] } : {}),
     };
-    applySamples(updated);
+    setSamples(updated);
     if (sampleTypeId !== fetchedSampleTypesRef.current[sampleIndex]) {
       fetchedSampleTypesRef.current[sampleIndex] = sampleTypeId;
       fetchTestsForSampleType(sampleIndex, sampleTypeId);
@@ -501,6 +504,15 @@ const SampleTestSection = ({
     return panelCount + testCount;
   };
 
+  // Carbon labels a tag's close button from title, and falls back to
+  // dismissTooltipLabel only once the tag's own text has been ellipsised, so
+  // both have to be given or the button reads Carbon's English "Dismiss".
+  const removeLabel = (name) =>
+    intl.formatMessage(
+      { id: "common.removeSelection", defaultMessage: "Remove {name}" },
+      { name },
+    );
+
   // Shared test/panel picker — rendered below a row when expanded
   const renderTestPanelPicker = (sampleIndex) => {
     const sample = samples[sampleIndex];
@@ -524,13 +536,8 @@ const SampleTestSection = ({
                   text={panel.name}
                   onClose={() => handleRemovePanel(sampleIndex, panel.id)}
                   disabled={isReadOnly}
-                  dismissTooltipLabel={intl.formatMessage(
-                    {
-                      id: "common.removeSelection",
-                      defaultMessage: "Remove {name}",
-                    },
-                    { name: panel.name },
-                  )}
+                  title={removeLabel(panel.name)}
+                  dismissTooltipLabel={removeLabel(panel.name)}
                 />
               ))}
             </div>
@@ -610,13 +617,8 @@ const SampleTestSection = ({
                   text={test.name}
                   onClose={() => handleRemoveTest(sampleIndex, test.id)}
                   disabled={isReadOnly}
-                  dismissTooltipLabel={intl.formatMessage(
-                    {
-                      id: "common.removeSelection",
-                      defaultMessage: "Remove {name}",
-                    },
-                    { name: test.name },
-                  )}
+                  title={removeLabel(test.name)}
+                  dismissTooltipLabel={removeLabel(test.name)}
                 />
               ))}
             </div>
@@ -844,6 +846,9 @@ const SampleTestSection = ({
                   />
                 </th>
                 <th>
+                  <FormattedMessage id="env.sample.samplingSite" />
+                </th>
+                <th>
                   <FormattedMessage
                     id="env.sample.locationDetails"
                     defaultMessage="Location Details"
@@ -976,6 +981,50 @@ const SampleTestSection = ({
                           }
                           disabled={isReadOnly}
                         />
+                      </td>
+                      <td className="env-manifest-cell">
+                        <Select
+                          id={`sample-site-${sampleIndex}`}
+                          labelText={intl.formatMessage({
+                            id: "env.sample.samplingSite",
+                          })}
+                          hideLabel
+                          value={sample.collectionLocationId || ""}
+                          onChange={(event) =>
+                            handleEnvFieldChange(
+                              sampleIndex,
+                              "collectionLocationId",
+                              event.target.value,
+                            )
+                          }
+                          disabled={isReadOnly}
+                        >
+                          <SelectItem
+                            value=""
+                            text={intl.formatMessage(
+                              { id: "env.sample.useOrderSite" },
+                              {
+                                site:
+                                  orderData?.sampleOrderItems
+                                    ?.environmentalFields?.samplingSiteName ||
+                                  "",
+                              },
+                            )}
+                          />
+                          {samplingSites
+                            .filter(
+                              (site) =>
+                                site.active !== false ||
+                                String(site.id) === sample.collectionLocationId,
+                            )
+                            .map((site) => (
+                              <SelectItem
+                                key={site.id}
+                                value={String(site.id)}
+                                text={`${site.name} (${site.code})`}
+                              />
+                            ))}
+                        </Select>
                       </td>
                       <td className="env-manifest-cell">
                         <TextInput
@@ -1130,7 +1179,7 @@ const SampleTestSection = ({
                     </tr>
                     {isExpanded && sample.sampleTypeId && (
                       <tr className="env-manifest-row--expanded">
-                        <td colSpan={11}>
+                        <td colSpan={12}>
                           {renderTestPanelPicker(sampleIndex)}
                         </td>
                       </tr>
@@ -1160,7 +1209,7 @@ const SampleTestSection = ({
                           </td>
                           <td
                             className="env-manifest-cell env-manifest-cell--inherited"
-                            colSpan={5}
+                            colSpan={6}
                           >
                             <em>
                               <FormattedMessage
@@ -1354,25 +1403,6 @@ const SampleTestSection = ({
       className="order-section sample-test-section"
       data-testid="order-sample-test-section"
     >
-      <Modal
-        open={pendingSamples !== null}
-        modalHeading={intl.formatMessage({
-          id: "microbiology.orderEntry.discardHeading",
-        })}
-        primaryButtonText={intl.formatMessage({
-          id: "microbiology.orderEntry.discardConfirm",
-        })}
-        secondaryButtonText={intl.formatMessage({ id: "button.cancel" })}
-        danger
-        onRequestSubmit={confirmDiscardMicrobiologyDetail}
-        onRequestClose={() => setPendingSamples(null)}
-      >
-        <p>
-          {intl.formatMessage({
-            id: "microbiology.orderEntry.discardMessage",
-          })}
-        </p>
-      </Modal>
       <h4 className="section-title">
         <FormattedMessage id="label.button.sample" defaultMessage="Sample" />
       </h4>
@@ -1383,7 +1413,7 @@ const SampleTestSection = ({
         <p className="helper-text">
           <FormattedMessage
             id="sample.optional.info"
-            defaultMessage="Sample and test selection is optional at this step. Tests and sample type can be specified later during collection."
+            defaultMessage="Tests can wait: Save and exit keeps the order without them. Save and next needs at least one test on every sample."
           />
         </p>
       )}
@@ -1414,6 +1444,17 @@ const SampleTestSection = ({
                   </>
                 )}
               </h5>
+              {hasSetTest(sample, sampleIndex) && (
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={Copy}
+                  disabled={isReadOnly}
+                  onClick={() => handleDuplicateSample(sampleIndex)}
+                >
+                  {intl.formatMessage({ id: "order.cultureBottle.duplicate" })}
+                </Button>
+              )}
               <Link
                 onClick={() => handleRemoveSample(sampleIndex)}
                 disabled={isReadOnly}
@@ -1442,9 +1483,10 @@ const SampleTestSection = ({
                         id: "sample.type",
                         defaultMessage: "Sample Type",
                       })}
-                      <span className="required-indicator"> *</span>
+                      <RequiredMarker />
                     </span>
                   }
+                  {...requiredProps()}
                   value={sample.sampleTypeId || ""}
                   onChange={(e) =>
                     handleSampleTypeChange(sampleIndex, e.target.value)
@@ -1466,6 +1508,19 @@ const SampleTestSection = ({
                   ))}
                 </Select>
               </Column>
+
+              {hasSetTest(sample, sampleIndex) && (
+                <CultureBottleFields
+                  sample={sample}
+                  sampleIndex={sampleIndex}
+                  isReadOnly={isReadOnly}
+                  containers={containerTypes}
+                  includeCollectionTime
+                  onChange={(field, value) =>
+                    handleEnvFieldChange(sampleIndex, field, value)
+                  }
+                />
+              )}
 
               {workflowType === "vector" && (
                 <>
@@ -1633,13 +1688,8 @@ const SampleTestSection = ({
                             handleRemovePanel(sampleIndex, panel.id)
                           }
                           disabled={isReadOnly}
-                          dismissTooltipLabel={intl.formatMessage(
-                            {
-                              id: "common.removeSelection",
-                              defaultMessage: "Remove {name}",
-                            },
-                            { name: panel.name },
-                          )}
+                          title={removeLabel(panel.name)}
+                          dismissTooltipLabel={removeLabel(panel.name)}
                         />
                       ))}
                     </div>
@@ -1717,13 +1767,8 @@ const SampleTestSection = ({
                           text={test.name}
                           onClose={() => handleRemoveTest(sampleIndex, test.id)}
                           disabled={isReadOnly}
-                          dismissTooltipLabel={intl.formatMessage(
-                            {
-                              id: "common.removeSelection",
-                              defaultMessage: "Remove {name}",
-                            },
-                            { name: test.name },
-                          )}
+                          title={removeLabel(test.name)}
+                          dismissTooltipLabel={removeLabel(test.name)}
                         />
                       ))}
                     </div>

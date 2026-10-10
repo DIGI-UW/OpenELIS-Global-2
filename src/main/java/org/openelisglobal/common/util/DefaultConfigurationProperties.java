@@ -273,6 +273,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.ReflexAction, "Haiti");
         properties.setPropertyValue(Property.AccessionFormat, "SITEYEARNUM");
         properties.setPropertyValue(Property.TRACK_PATIENT_PAYMENT, "false");
+        properties.setPropertyValue(Property.SHOW_FAX_FIELDS, "false");
         properties.setPropertyValue(Property.ACCESSION_NUMBER_VALIDATE, "false");
         properties.setPropertyValue(Property.ALERT_FOR_INVALID_RESULTS, "false");
         properties.setPropertyValue(Property.DEFAULT_DATE_LOCALE, "fr-FR");
@@ -281,6 +282,7 @@ public class DefaultConfigurationProperties extends ConfigurationProperties {
         properties.setPropertyValue(Property.CONDENSE_NFS_PANEL, "false");
         properties.setPropertyValue(Property.PATIENT_DATA_ON_RESULTS_BY_ROLE, "false");
         properties.setPropertyValue(Property.USE_PAGE_NUMBERS_ON_REPORTS, "true");
+        properties.setPropertyValue(Property.REPORT_PAPER_SIZE, "A4");
         properties.setPropertyValue(Property.QA_SORT_EVENT_LIST, "true");
         properties.setPropertyValue(Property.ALWAYS_VALIDATE_RESULTS, "true");
         properties.setPropertyValue(Property.ADDITIONAL_SITE_INFO, "");

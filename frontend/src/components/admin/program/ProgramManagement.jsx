@@ -316,6 +316,7 @@ function ProgramManagement() {
               : [],
           domain: res.domain || "",
           active: res.active !== false,
+          showOnMicroCase: res.showOnMicroCase === true,
           questions: questionsFromParsed(parsed, id),
           rawQuestionnaire: parsed
             ? JSON.stringify(parsed, null, 2)
@@ -723,6 +724,9 @@ function ProgramEditor({
   const [code, setCode] = useState(initialProgram.code || "");
   const [labUnitIds, setLabUnitIds] = useState(detail?.labUnitIds || []);
   const [domain, setDomain] = useState(persistedDomain);
+  const [showOnMicroCase, setShowOnMicroCase] = useState(
+    detail?.showOnMicroCase === true,
+  );
   // FR-3: changing the Domain of a persisted program is staged behind a
   // confirmation. Bumping the radio key on cancel snaps the checked radio back.
   const [pendingDomain, setPendingDomain] = useState(null);
@@ -928,6 +932,7 @@ function ProgramEditor({
       },
       domain,
       active: isNew ? true : row.active !== false,
+      showOnMicroCase,
       labUnitIds,
       testSectionId: labUnitIds[0] || "",
       additionalOrderEntryQuestions,
@@ -1079,6 +1084,26 @@ function ProgramEditor({
             />
           </Column>
         </Grid>
+
+        <div style={{ marginTop: "1rem" }}>
+          <Toggle
+            id={`micro-program-${idSuffix}`}
+            labelText={intl.formatMessage({
+              id: "admin.programs.basicInfo.showOnMicroCase.label",
+            })}
+            labelA={intl.formatMessage({
+              id: "admin.programs.basicInfo.showOnMicroCase.off",
+            })}
+            labelB={intl.formatMessage({
+              id: "admin.programs.basicInfo.showOnMicroCase.on",
+            })}
+            toggled={showOnMicroCase}
+            onToggle={setShowOnMicroCase}
+          />
+          <p>
+            <FormattedMessage id="admin.programs.basicInfo.showOnMicroCase.helper" />
+          </p>
+        </div>
 
         <div style={{ marginTop: "1rem" }}>
           <RadioButtonGroup

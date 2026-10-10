@@ -50,6 +50,7 @@ import IdentificationDocuments from "./IdentificationDocuments";
 import { getPhoneFormatHint } from "./phoneFormatHint";
 import type { AddressHierarchyLevel, PatientRecord, Nullable } from "./types";
 import { labNow } from "../utils/labClock";
+import { RequiredMarker, requiredProps } from "../common/RequiredMarker";
 
 type ConfigurationItem = {
   id?: string;
@@ -66,6 +67,10 @@ interface CreatePatientFormProps {
     [key: string]: unknown;
   };
   setOrderFormValues?: React.Dispatch<
+    React.SetStateAction<Record<string, unknown>>
+  >;
+  /** Writes the form into the order without marking it changed (see PatientFormObserver). */
+  hydrateOrderFormValues?: React.Dispatch<
     React.SetStateAction<Record<string, unknown>>
   >;
   showActionsButton?: boolean;
@@ -878,6 +883,7 @@ function CreatePatientForm(props: CreatePatientFormProps) {
               <PatientFormObserver
                 orderFormValues={props.orderFormValues}
                 setOrderFormValues={props.setOrderFormValues}
+                hydrateOrderFormValues={props.hydrateOrderFormValues}
                 formAction={formAction}
                 selectedPatient={props.selectedPatient}
               />
@@ -998,11 +1004,10 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                               {intl.formatMessage({
                                 id: "patient.natioanalid",
                               })}
-                              {nationalIdRequired && (
-                                <span className="requiredlabel">*</span>
-                              )}
+                              <RequiredMarker required={nationalIdRequired} />
                             </>
                           }
+                          {...requiredProps(nationalIdRequired)}
                           id={field.name}
                           invalid={
                             props.error
@@ -1169,18 +1174,22 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                           legendText={
                             <>
                               {intl.formatMessage({ id: "patient.gender" })}
-                              {patientSexRequired && (
-                                <>
-                                  {" "}
-                                  <span className="requiredlabel">*</span>
-                                </>
-                              )}
+                              <RequiredMarker
+                                required={patientSexRequired}
+                                announce
+                              />
                             </>
                           }
                           name={field.name}
                           onChange={(value) => setFieldValue("gender", value)}
-                          invalid={errors.gender && touched.gender}
-                          invalidText={errors.gender}
+                          invalid={Boolean(
+                            (errors.gender && touched.gender) ||
+                            props.error?.("patientProperties.gender"),
+                          )}
+                          invalidText={
+                            errors.gender ||
+                            props.error?.("patientProperties.gender")
+                          }
                           id="create_patient_gender"
                         >
                           <RadioButton
@@ -1214,21 +1223,28 @@ function CreatePatientForm(props: CreatePatientFormProps) {
                               {intl.formatMessage({
                                 id: "patient.dob",
                               })}
-                              {patientAgeRequired && (
-                                <span className="requiredlabel">*</span>
-                              )}
+                              <RequiredMarker required={patientAgeRequired} />
                             </>
                           }
+                          {...requiredProps(patientAgeRequired)}
                           autofillDate={true}
                           value={values.birthDateForDisplay || ""}
                           onChange={(date) =>
                             handleDatePickerChange(setFieldValue, date)
                           }
-                          invalid={
-                            errors.birthDateForDisplay &&
-                            touched.birthDateForDisplay
+                          invalid={Boolean(
+                            (errors.birthDateForDisplay &&
+                              touched.birthDateForDisplay) ||
+                            props.error?.(
+                              "patientProperties.birthDateForDisplay",
+                            ),
+                          )}
+                          invalidText={
+                            errors.birthDateForDisplay ||
+                            props.error?.(
+                              "patientProperties.birthDateForDisplay",
+                            )
                           }
-                          invalidText={errors.birthDateForDisplay}
                           name={field.name}
                           disallowFutureDate={true}
                           futureDateText={intl.formatMessage({

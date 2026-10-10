@@ -580,7 +580,7 @@ public class TestReflexUtil {
         if (addTest || handleAction) {
 
             ReflexAction reflexAction = reflexResolver.getReflexAction();
-            reflexAction.handleReflex(reflex, result, actionSelectionId);
+            reflexAction.handleReflex(reflex, result, actionSelectionId, sysUserId);
 
             ObservationHistory observation = reflexAction.getObservation();
 
@@ -593,6 +593,17 @@ public class TestReflexUtil {
 
             Analysis newAnalysis = reflexAction.getNewAnalysis();
             Result finalResult = reflexAction.getFinalResult();
+
+            ReflexAction.CaseWork caseWork = reflexAction.getCaseWork();
+            if (caseWork != null && addTest) {
+                SpringContext.getBean(org.openelisglobal.microbiology.service.MicroOrderRoutingService.class)
+                        .routeCaseTest(caseWork.order(), caseWork.sampleTypeId(), caseWork.sample(), caseWork.test(),
+                                sysUserId);
+                Analysis trigger = result.getAnalysis();
+                trigger.setSysUserId(sysUserId);
+                trigger.setTriggeredReflex(Boolean.TRUE);
+                analysisService.update(trigger);
+            }
 
             /*******
              * This is allowing duplicate tests to be added for CD4 absolute. If the

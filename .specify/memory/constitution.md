@@ -1723,34 +1723,20 @@ All checks MUST pass before merge.
 **Quick Start** (from [README.md](README.md)):
 
 ```bash
-# Clone + submodules
 git clone https://github.com/DIGI-UW/OpenELIS-Global-2.git
 cd OpenELIS-Global-2
-git submodule update --init --recursive
-
-# Build DataExport submodule
-cd dataexport && mvn clean install -DskipTests && cd ..
-
-# Build OpenELIS WAR
-mvn clean install -DskipTests
-
-# Start development containers
-docker compose -f dev.docker-compose.yml up -d
+bash scripts/setup-workspace.sh
+scripts/dev-stack doctor
+scripts/dev-stack up
+scripts/dev-stack url
 ```
 
-**Access Points**:
-
-- React UI: https://localhost/
-- Legacy UI: https://localhost/api/OpenELIS-Global/
-- FHIR Server: https://fhir.openelis.org:8443/fhir/
-
-**Hot Reload**:
-
-- Frontend: Changes in `frontend/src/` auto-reload (Webpack HMR)
-- Backend: Rebuild WAR (`mvn clean install -DskipTests`) + recreate container:
-  ```bash
-  docker compose -f dev.docker-compose.yml up -d --no-deps --force-recreate oe.openelis.org
-  ```
+Use the endpoints printed by the launcher. Frontend source changes hot reload;
+re-run `scripts/dev-stack up` after backend or dependency changes. Run
+`scripts/run-ci-checks.sh` for the committed candidate while GitHub CI runs.
+Native builds and published-image deployments remain separate modes described
+in the setup guide. These operational commands do not alter the constitutional
+principles above.
 
 **Reference**: [dev_setup.md](docs/dev_setup.md)
 

@@ -29,6 +29,8 @@ import {
   toFieldEntries,
   translateServerMessage,
 } from "./helpers";
+import LabelPresetFieldsEditor from "./LabelPresetFieldsEditor";
+import { normalizeFields } from "./labelFieldCatalog";
 
 const BARCODE_TYPES = ["CODE_128", "QR", "DATAMATRIX"];
 
@@ -44,7 +46,7 @@ const EMPTY_FORM = {
   defaultPerSample: 1,
   maxPerSample: 10,
   isActive: true,
-  fields: [],
+  fields: normalizeFields([]),
 };
 
 function LabelPresetEditor({ preset, onClose }) {
@@ -70,7 +72,7 @@ function LabelPresetEditor({ preset, onClose }) {
         defaultPerSample: preset.defaultPerSample ?? 1,
         maxPerSample: preset.maxPerSample ?? 10,
         isActive: preset.isActive ?? true,
-        fields: preset.fields ?? [],
+        fields: normalizeFields(preset.fields ?? []),
       });
     } else {
       setForm(EMPTY_FORM);
@@ -423,6 +425,20 @@ function LabelPresetEditor({ preset, onClose }) {
                 </FormGroup>
               </Column>
             </Grid>
+          </Section>
+
+          {/* Section 5: Content fields (OGC-1218): Lab Number locked first, the
+              selectable fields in display order, each optionally required. */}
+          <Section style={{ marginTop: "1.5rem" }}>
+            <Heading>
+              <FormattedMessage id="admin.labelPresets.editor.section.fields" />
+            </Heading>
+            <LabelPresetFieldsEditor
+              fields={form.fields}
+              heightMm={form.heightMm}
+              onChange={(fields) => setField("fields", fields)}
+              disabled={submitting}
+            />
           </Section>
         </Form>
       </ModalBody>

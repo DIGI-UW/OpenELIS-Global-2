@@ -41,7 +41,6 @@ import org.openelisglobal.eqa.valueholder.SampleEQA;
 import org.openelisglobal.labelpreset.dto.OrderLabelPersistRequest;
 import org.openelisglobal.labelpreset.service.OrderLabelRequestService;
 import org.openelisglobal.labelpreset.valueholder.OrderLabelRequest;
-import org.openelisglobal.microbiology.service.MicroOrderRoutingService;
 import org.openelisglobal.note.service.NoteService;
 import org.openelisglobal.note.service.NoteServiceImpl.NoteType;
 import org.openelisglobal.note.valueholder.Note;
@@ -110,6 +109,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private static final String DEFAULT_ANALYSIS_TYPE = "MANUAL";
     private final String SAMPLE_SUBJECT = "Sample Note";
     // private String currentUserId;
+
+    @Autowired
+    private org.openelisglobal.microbiology.service.MicroOrderRoutingService microOrderRoutingService;
 
     @Autowired
     private OrganizationAddressService organizationAddressService;
@@ -185,10 +187,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     private OrderLabelRequestService orderLabelRequestService;
     @Autowired
     private org.openelisglobal.questionnaire.service.QuestionnaireStorageService questionnaireStorageService;
-    @Autowired(required = false)
-    private MicroOrderRoutingService microOrderRoutingService;
-    @Autowired(required = false)
-    private org.openelisglobal.microbiology.service.MicroCaseOrderDetailService microCaseOrderDetailService;
     @Lazy
     @Autowired
     private ResultLimitService resultLimitService;
@@ -257,7 +255,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
         persistProviderData(updateData);
         persistRequestorContactData(updateData);
-        persistSampleData(updateData, form.getMicrobiologyOrderDetail(), form.getRequestedSampleTypes());
+        persistSampleData(updateData);
         persistRequestedSampleTypes(updateData.getSample(), form.getRequestedSampleTypes(),
                 updateData.getCurrentUserId());
         fulfillRequestedSampleTypes(updateData);
@@ -466,9 +464,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         }
     }
 
-    private void persistSampleData(SamplePatientUpdateData updateData,
-            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail,
-            java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
+    private void persistSampleData(SamplePatientUpdateData updateData) {
         String analysisRevision = ConfigurationProperties.getInstance().getPropertyValue("analysis.default.revision");
 
         if (updateData.getSample() == null) {
@@ -519,13 +515,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             sampleService.insertDataWithAccessionNumber(updateData.getSample());
         }
 
-        if (isMicrobiologyOrder(updateData, requestedSampleTypes)) {
-            persistMicrobiologyOrderDraft(updateData.getSample(), microbiologyOrderDetail,
-                    updateData.getCurrentUserId());
-        } else {
-            discardMicrobiologyOrderDraft(updateData.getSample(), updateData.getCurrentUserId());
-        }
-
         for (SampleAdditionalField field : updateData.getSampleFields()) {
             field.setSample(updateData.getSample());
             sampleService.saveSampleAdditionalField(field);
@@ -558,6 +547,7 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         Map<SampleItem, Integer> specimenLabelQuantities = new LinkedHashMap<>();
         Integer orderLabelQuantity = null;
         matchRetriedSampleItems(updateData);
+        prepareRequestedCollectionDetails(updateData);
         for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
             SampleItem savedItem = null;
             String sampleItemId = null;
@@ -576,7 +566,20 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     savedItem.setQuantity(sampleTestCollection.item.getQuantity());
                     savedItem.setUnitOfMeasure(sampleTestCollection.item.getUnitOfMeasure());
                     savedItem.setCollectionConditions(sampleTestCollection.item.getCollectionConditions());
+                    String storedContainer = savedItem.getContainer();
+                    copyHandlingDetails(sampleTestCollection.item, savedItem);
+                    if (!sampleTestCollection.suppliedCollectionFields.contains("container")) {
+                        savedItem.setContainer(storedContainer);
+                    }
                     savedItem.setReceivedDate(sampleTestCollection.item.getReceivedDate());
+                    if (sampleTestCollection.suppliedCollectionFields.contains("cultureSetNumber")) {
+                        savedItem.setCultureSetNumber(sampleTestCollection.item.getCultureSetNumber());
+                    }
+                    if (sampleTestCollection.suppliedCollectionFields.contains("bodySite")) {
+                        savedItem.setBodySite(sampleTestCollection.item.getBodySite());
+                    }
+                    if (!GenericValidator.isBlankOrNull(sampleTestCollection.item.getCollectionLocationId()))
+                        savedItem.setCollectionLocationId(sampleTestCollection.item.getCollectionLocationId());
                     savedItem.setLabPerformedSampling(sampleTestCollection.item.isLabPerformedSampling());
                     // Keep existing typeOfSample if incoming is null (don't change sample type
                     // during collection)
@@ -612,6 +615,9 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             // entity
             // This prevents "transient instance" errors when creating Analysis objects
             sampleTestCollection.item = savedItem;
+            if (!"V".equals(updateData.getSample().getDomain())) {
+                bindRequestedCollection(sampleTestCollection, updateData);
+            }
 
             // Create QC profile if this sample item is a QC sample (OGC-554)
             if (!GenericValidator.isBlankOrNull(sampleTestCollection.qcType)) {
@@ -633,6 +639,11 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             sampleTestCollection.analysises = new ArrayList<>();
             for (Test test : sampleTestCollection.tests) {
                 test = testService.get(test.getId());
+
+                if (test.isOpensMicrobiologyCase() && "CASE".equals(test.getMicrobiologyCaseRole())) {
+                    microOrderRoutingService.routeCaseTest(savedItem, test, updateData.getCurrentUserId());
+                    continue;
+                }
 
                 // Check if analysis already exists for this sample item + test (for updates)
                 Analysis existingAnalysis = analysisService.getAnalysisBySampleItemAndTest(savedItem.getId(),
@@ -664,8 +675,6 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     persistAnalysisNotificationConfigs(analysis, updateData);
                 }
             }
-            routeMicrobiologyCases(savedItem, sampleTestCollection, updateData.getCurrentUserId(),
-                    microbiologyOrderDetail, microbiologyProgramSelected(updateData));
         }
 
         org.openelisglobal.sample.valueholder.Sample submittedSample = updateData.getSample();
@@ -679,11 +688,13 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 Double itemQty = stc.item.getQuantity();
                 int poolCount = itemQty == null ? 0 : itemQty.intValue();
                 if (poolCount <= 1) {
+                    bindRequestedCollection(stc, updateData);
                     continue;
                 }
                 List<SampleItem> siblings = vectorPoolFanOutService.fanOut(stc.item, stc.analysises, poolCount,
                         sysUserId);
                 if (siblings.isEmpty()) {
+                    bindRequestedCollection(stc, updateData);
                     continue;
                 }
                 // Parent is hard-deleted by fanOut; siblings get the labels instead.
@@ -691,6 +702,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 for (SampleItem sibling : siblings) {
                     specimenLabelQuantities.put(sibling, 1);
                 }
+                stc.item = siblings.getFirst();
+                bindRequestedCollection(stc, updateData);
             }
         }
 
@@ -825,7 +838,25 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
 
             // Matching the specimen rather than the position keeps a cancellation
             // pointing at the specimen that was actually taken off the order.
-            SampleTypeRequest request = takePendingRequestFor(reusable, typeOfSample);
+            SampleTypeRequest request;
+            if (!GenericValidator.isBlankOrNull(requested.getId())) {
+                Integer requestId = Integer.valueOf(requested.getId());
+                request = reusable.stream().filter(row -> requestId.equals(row.getId())).findFirst().orElseThrow(
+                        () -> new IllegalArgumentException("Requested specimen does not belong to this order"));
+                if (!typeOfSample.getId().equals(request.getTypeOfSample().getId())) {
+                    throw new IllegalArgumentException("A requested specimen cannot change sample type");
+                }
+                reusable.remove(request);
+            } else if (!GenericValidator.isBlankOrNull(requested.getSampleItemId())) {
+                request = reusable.stream()
+                        .filter(row -> row.getSampleItem() != null
+                                && requested.getSampleItemId().equals(row.getSampleItem().getId()))
+                        .findFirst().orElse(null);
+                if (request != null)
+                    reusable.remove(request);
+            } else {
+                request = takePendingRequestFor(reusable, typeOfSample);
+            }
             if (request != null && request.getStatus() == SampleTypeRequest.Status.COLLECTED) {
                 sortOrder++;
                 continue;
@@ -839,6 +870,15 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
             request.setTypeOfSample(typeOfSample);
             request.setSortOrder(sortOrder);
             request.setRequestedQuantity(requested.getRequestedQuantity());
+            request.setCultureSetNumber(requested.getCultureSetNumber());
+            request.setContainer(requested.getContainer());
+            request.setBodySite(requested.getBodySite());
+            if (!GenericValidator.isBlankOrNull(requested.getCollectionLocationId()))
+                request.setCollectionLocationId(requested.getCollectionLocationId());
+            request.setCollectionDate(GenericValidator.isBlankOrNull(requested.getCollectionDate()) ? null
+                    : java.sql.Date.valueOf(java.time.LocalDate.parse(requested.getCollectionDate())));
+            request.setCollectionTime(GenericValidator.isBlankOrNull(requested.getCollectionTime()) ? null
+                    : java.time.LocalTime.parse(requested.getCollectionTime()).toString());
             request.setRequestedTests(requested.getRequestedTests());
             request.setRequestedPanels(requested.getRequestedPanels());
             request.setStatus(SampleTypeRequest.Status.REQUESTED);
@@ -905,6 +945,76 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
     }
 
     /**
+     * Preserve a pending specimen's identity and recorded details before creating
+     * its sample.
+     */
+    private void prepareRequestedCollectionDetails(SamplePatientUpdateData updateData) {
+        List<SampleTypeRequest> requests = sampleTypeRequestService
+                .getRequestsBySampleId(updateData.getSample().getId());
+        Set<Integer> claimed = new HashSet<>();
+        for (SampleTestCollection collection : updateData.getSampleItemsTests()) {
+            if (collection.item == null)
+                continue;
+            SampleTypeRequest request = null;
+            if (collection.sampleTypeRequestId != null) {
+                request = requests.stream().filter(row -> collection.sampleTypeRequestId.equals(row.getId()))
+                        .findFirst().orElseThrow(
+                                () -> new IllegalArgumentException("Requested specimen does not belong to this order"));
+                if (!claimed.add(request.getId()))
+                    throw new IllegalArgumentException("Requested specimen is repeated");
+                if (request.getStatus() == SampleTypeRequest.Status.CANCELLED
+                        || !request.getTypeOfSample().getId().equals(collection.item.getTypeOfSampleId())
+                        || (request.getSampleItem() != null
+                                && !request.getSampleItem().getId().equals(collection.existingSampleItemId))) {
+                    throw new IllegalArgumentException("Requested specimen cannot be attached to this sample");
+                }
+            } else if (GenericValidator.isBlankOrNull(collection.existingSampleItemId)) {
+                List<SampleTypeRequest> matching = requests.stream()
+                        .filter(row -> row.getStatus() == SampleTypeRequest.Status.REQUESTED
+                                && !claimed.contains(row.getId())
+                                && row.getTypeOfSample().getId().equals(collection.item.getTypeOfSampleId()))
+                        .toList();
+                if (matching.size() == 1) {
+                    request = matching.getFirst();
+                    claimed.add(request.getId());
+                    collection.sampleTypeRequestId = request.getId();
+                }
+            }
+            if (request == null)
+                continue;
+            if (!collection.suppliedCollectionFields.contains("cultureSetNumber")) {
+                collection.item.setCultureSetNumber(request.getCultureSetNumber());
+            }
+            if (!collection.suppliedCollectionFields.contains("container"))
+                collection.item.setContainer(request.getContainer());
+            if (!collection.suppliedCollectionFields.contains("bodySite"))
+                collection.item.setBodySite(request.getBodySite());
+            if (!collection.suppliedCollectionFields.contains("collectionLocationId")
+                    && request.getCollectionLocationId() != null)
+                collection.item.setCollectionLocationId(request.getCollectionLocationId());
+            // A timestamp is available only when both its date and time were recorded.
+            if (!collection.suppliedCollectionFields.contains("date")
+                    && !collection.suppliedCollectionFields.contains("time") && request.getCollectionDate() != null
+                    && request.getCollectionTime() != null) {
+                collection.item.setCollectionDate(Timestamp.valueOf(request.getCollectionDate().toLocalDate()
+                        .atTime(java.time.LocalTime.parse(request.getCollectionTime()))));
+            }
+        }
+    }
+
+    private void bindRequestedCollection(SampleTestCollection collection, SamplePatientUpdateData updateData) {
+        if (collection.sampleTypeRequestId == null || collection.item.isRejected())
+            return;
+        SampleTypeRequest request = sampleTypeRequestService.get(collection.sampleTypeRequestId);
+        if (request.getStatus() == SampleTypeRequest.Status.COLLECTED)
+            return;
+        request.setStatus(SampleTypeRequest.Status.COLLECTED);
+        request.setSampleItem(collection.item);
+        request.setSysUserId(updateData.getCurrentUserId());
+        sampleTypeRequestService.update(request);
+    }
+
+    /**
      * Marks a requested specimen as collected once a sample of its type is saved on
      * the order, and links it to that sample. The samples are read back from the
      * order rather than taken from the save, because a save can replace the sample
@@ -967,93 +1077,43 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
         return null;
     }
 
-    private boolean microbiologyProgramSelected(SamplePatientUpdateData updateData) {
-        return updateData.getProgramSample() != null && updateData.getProgramSample().getProgram() != null
-                && "MICROBIOLOGY".equalsIgnoreCase(updateData.getProgramSample().getProgram().getCode());
-    }
-
     /**
-     * Order-entry details are microbiology data, so they are kept only for an order
-     * the server itself considers microbiology. A submitted payload never makes an
-     * order microbiology.
+     * Carries the collection and handling details a step save sends for a sample
+     * that already exists. Before OGC-1424 only some of them were copied, so an
+     * edited collection method, GPS position or legacy temperature on a saved
+     * sample was silently dropped. A chosen receiver is stored; a receiver that
+     * only defaulted to the saving user is stored when the receipt is recorded in
+     * this save, never on a sample received earlier. Called before the receipt date
+     * is copied. The arrival keeps its original recorder and time while the
+     * condition and temperature are unchanged, and a rejected temperature never
+     * clears the stored one.
      */
-    private boolean isMicrobiologyOrder(SamplePatientUpdateData updateData,
-            java.util.List<org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO> requestedSampleTypes) {
-        if (microOrderRoutingService == null) {
-            return false;
+    static void copyHandlingDetails(SampleItem incoming, SampleItem saved) {
+        saved.setCollectionMethod(incoming.getCollectionMethod());
+        saved.setSampleTemperature(incoming.getSampleTemperature());
+        saved.setSpecimenOrigin(incoming.getSpecimenOrigin());
+        saved.setContainer(incoming.getContainer());
+        saved.setLocationDetails(incoming.getLocationDetails());
+        saved.setGpsLatitude(incoming.getGpsLatitude());
+        saved.setGpsLongitude(incoming.getGpsLongitude());
+        boolean receiptRecordedNow = saved.getReceivedDate() == null && incoming.getReceivedDate() != null;
+        if (incoming.getReceivedById() != null && (!incoming.isReceivedByDefaulted() || receiptRecordedNow)) {
+            saved.setReceivedById(incoming.getReceivedById());
         }
-        // The submitted collection carries id-only tests, so the catalog attributes
-        // that decide the workflow are read from the persisted test, loaded once per
-        // id.
-        java.util.Map<String, Test> catalogById = new java.util.HashMap<>();
-        List<Test> orderedTests = new ArrayList<>();
-        if (updateData.getSampleItemsTests() != null) {
-            for (SampleTestCollection sampleTestCollection : updateData.getSampleItemsTests()) {
-                if (sampleTestCollection.tests == null) {
-                    continue;
-                }
-                for (Test submittedTest : sampleTestCollection.tests) {
-                    if (submittedTest == null || submittedTest.getId() == null) {
-                        continue;
-                    }
-                    Test catalogTest = catalogById.computeIfAbsent(submittedTest.getId(), testService::get);
-                    if (catalogTest != null) {
-                        orderedTests.add(catalogTest);
-                    }
-                }
-            }
+        java.math.BigDecimal temperature = incoming.isArrivalTemperatureRejected() ? saved.getArrivalTemperature()
+                : incoming.getArrivalTemperature();
+        boolean arrivalChanged = !java.util.Objects.equals(incoming.getArrivalCondition(), saved.getArrivalCondition())
+                || !sameTemperature(temperature, saved.getArrivalTemperature());
+        if (arrivalChanged) {
+            saved.setArrivalCondition(incoming.getArrivalCondition());
+            saved.setArrivalTemperature(temperature);
+            saved.setArrivalRecordedById(incoming.getArrivalRecordedById());
+            saved.setArrivalRecordedAt(incoming.getArrivalRecordedAt());
         }
-        // The requested stage of /order/enter sends an empty sampleXML, so the tests
-        // that decide eligibility live only in the requested sample types.
-        if (orderedTests.isEmpty() && requestedSampleTypes != null) {
-            for (org.openelisglobal.sampletyperequest.dto.SampleTypeRequestDTO requested : requestedSampleTypes) {
-                if (requested == null || requested.getRequestedTests() == null) {
-                    continue;
-                }
-                for (String testId : requested.getRequestedTests().split(",")) {
-                    String trimmed = testId.trim();
-                    if (trimmed.isEmpty()) {
-                        continue;
-                    }
-                    Test catalogTest = catalogById.computeIfAbsent(trimmed, testService::get);
-                    if (catalogTest != null) {
-                        orderedTests.add(catalogTest);
-                    }
-                }
-            }
-        }
-        return microOrderRoutingService.isMicrobiologyOrder(orderedTests, microbiologyProgramSelected(updateData));
     }
 
-    void persistMicrobiologyOrderDraft(org.openelisglobal.sample.valueholder.Sample sample,
-            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm orderDetail, String performedBy) {
-        if (microCaseOrderDetailService == null || sample == null || sample.getId() == null || orderDetail == null) {
-            return;
-        }
-        microCaseOrderDetailService.saveOrderDraft(sample, orderDetail, performedBy);
-    }
-
-    /**
-     * An order that stops qualifying before collection loses the details it
-     * captured; once a case exists they belong to the case and stay.
-     */
-    private void discardMicrobiologyOrderDraft(org.openelisglobal.sample.valueholder.Sample sample,
-            String performedBy) {
-        if (microCaseOrderDetailService == null || sample == null || sample.getId() == null) {
-            return;
-        }
-        microCaseOrderDetailService.discardOrderDraft(sample.getId(), performedBy);
-    }
-
-    private void routeMicrobiologyCases(SampleItem sampleItem, SampleTestCollection sampleTestCollection,
-            String currentUserId,
-            org.openelisglobal.microbiology.form.MicroCaseOrderDetailRequestForm microbiologyOrderDetail,
-            boolean microbiologyProgramSelected) {
-        if (microOrderRoutingService == null) {
-            return;
-        }
-        microOrderRoutingService.routeAnalysesForSampleItem(sampleItem, sampleTestCollection.analysises, currentUserId,
-                microbiologyOrderDetail, microbiologyProgramSelected);
+    private static boolean sameTemperature(java.math.BigDecimal a, java.math.BigDecimal b) {
+        return a == null ? b == null : b != null && a.compareTo(b) == 0;
     }
 
     /*
@@ -1413,6 +1473,8 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                 String local = String.valueOf(i);
                 if (stc.item != null && stc.item.getId() != null) {
                     sampleIdMap.put(local, stc.item.getId());
+                } else if (stc.existingSampleItemId != null && !stc.existingSampleItemId.isBlank()) {
+                    sampleIdMap.put(local, stc.existingSampleItemId);
                 }
                 List<String> testIds = new ArrayList<>();
                 if (stc.tests != null) {
@@ -1423,6 +1485,10 @@ public class SamplePatientEntryServiceImpl implements SamplePatientEntryService 
                     }
                 }
                 testIdsBySampleLocal.put(local, testIds);
+                String itemId = sampleIdMap.get(local);
+                if (itemId != null) {
+                    testIdsBySampleLocal.put("item-" + itemId, testIds);
+                }
             }
         }
 

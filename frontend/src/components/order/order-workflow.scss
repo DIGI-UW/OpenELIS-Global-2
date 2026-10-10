@@ -85,6 +85,17 @@
     }
   }
 
+  .order-status-cell {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .order-referral-line {
+    font-size: 0.75rem;
+    color: var(--cds-text-secondary);
+  }
+
   .order-progress {
     display: flex;
     align-items: center;

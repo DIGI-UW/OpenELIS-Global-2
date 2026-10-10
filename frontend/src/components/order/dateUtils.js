@@ -59,13 +59,6 @@ export const normalizeDateForState = (dateValue, dateLocale) => {
   return formatPickerDateForIso(dateValue, dateLocale);
 };
 
-export const isCollectionDateBeforeAdmissionDate = (
-  collectionDate,
-  admissionDate,
-) =>
-  Boolean(collectionDate && admissionDate) &&
-  collectionDate.slice(0, 10) < admissionDate.slice(0, 10);
-
 export const daysBetweenIsoDates = (startDate, endDate) => {
   if (!startDate || !endDate) {
     return null;
@@ -117,14 +110,31 @@ export const holdingDeadline = (sample = {}, tests = []) => {
   return new Date(parsed.getTime() + minutes * 60 * 1000);
 };
 
-/** Renders a holding time in minutes as a short "36 h 30 m" style label. */
-export const formatHoldingMinutes = (minutes) => {
+/**
+ * Renders a holding time in minutes as a short "36 h 30 min" style label, in
+ * the reader's language when `intl` is given (OGC-1443).
+ */
+export const formatHoldingMinutes = (minutes, intl) => {
   if (!minutes) {
     return "";
   }
   const hours = Math.floor(minutes / 60);
   const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  if (rest === 0) return `${hours} h`;
-  return `${hours} h ${rest} min`;
+  const say = (id, values, fallback) =>
+    intl ? intl.formatMessage({ id }, values) : fallback;
+  if (hours === 0) {
+    return say(
+      "sample.handling.holding.minutes",
+      { minutes: rest },
+      `${rest} min`,
+    );
+  }
+  if (rest === 0) {
+    return say("sample.handling.holding.hours", { hours }, `${hours} h`);
+  }
+  return say(
+    "sample.handling.holding.hoursMinutes",
+    { hours, minutes: rest },
+    `${hours} h ${rest} min`,
+  );
 };
