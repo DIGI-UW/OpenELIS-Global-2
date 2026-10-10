@@ -601,9 +601,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void theNumberIsNeverHeldAsAnUnknownAnswerWhenTheCallHasAnswers() throws Exception {
         bindViralLoadRecords();
-        jdbc.update("INSERT INTO clinlims.test_result"
-                + " (id, test_id, tst_rslt_type, value, is_active, sort_order, lastupdated)"
-                + " VALUES (?, ?, 'D', 'Not detected', true, 1, NOW())", NEGATIVE_OPTION_ID, TEST_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result"
+                        + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
+                        + " VALUES (?, ?, 'D', 'Not detected', true, 1, 'comp-call', NOW())",
+                NEGATIVE_OPTION_ID, TEST_ID);
         jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
                 + " (mapping_id, source_row_key, sub_identity, raw_value, mapping_state, test_result_id, last_updated)"
                 + " VALUES (?, 'HIVVL', '', 'NOT DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, NEGATIVE_OPTION_ID);
@@ -643,6 +645,43 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals("<40", stagedOn(staged, null).getResult());
         assertEquals("N", stagedOn(staged, null).getResultType());
         assertEquals("Detected", stagedOn(staged, "comp-call").getResult());
+    }
+
+    /**
+     * A mapping saved before a call target was required: the number has a place but
+     * the call has none, so the record is held whole rather than losing its call,
+     * and it recovers once the call has a target.
+     */
+    @Test
+    public void aNumberAndACallWithNoCallTargetAreHeldWholeUntilTheCallHasATarget() throws Exception {
+        bindViralLoadRecords();
+        jdbc.update("UPDATE clinlims.analyzer_mapping_test SET call_component_id = NULL"
+                + " WHERE mapping_id = ? AND source_row_key = 'HIVVL' AND sub_identity = ''", MAPPING_ID);
+        Observation main = number(record(null, "DETECTED^"), "40", Quantity.QuantityComparator.LESS_THAN);
+        main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        Bundle bundle = viralLoadBundle(main);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("one row stands for the record", 1, held.size());
+        assertTrue(held.get(0).isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY, held.get(0).getImportIssueReason());
+        assertNull("held whole, on no test", held.get(0).getTestId());
+
+        var bound = bindings.appendRevision(analyzer(),
+                new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
+                        String.valueOf(TEST_ID), null, null, null, "", "comp-call")), List.of()),
+                "1");
+        confirm(bound, bundle);
+        localState.applyMapping(String.valueOf(ANALYZER_ID), bound.mapping().getId(),
+                bound.mapping().getRevisionNumber(), bound.mapping().getMappingFingerprint(), "1");
+
+        List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("the number and the call, once each", 2, recovered.size());
+        assertEquals("<40", stagedOn(recovered, null).getResult());
+        assertEquals("DETECTED", stagedOn(recovered, "comp-call").getResult());
     }
 
     @Test
@@ -771,6 +810,48 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING, held.getImportIssueReason());
         assertEquals(Integer.valueOf(0), jdbc.queryForObject(
                 "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    /**
+     * A control held whole recovers into its number and its call; the call is a
+     * control too and is checked against QC like the number, so with no QC target
+     * for its answer it is held for that reason.
+     */
+    @Test
+    public void everyRowAControlHeldWholeRecoversIntoIsCheckedAgainstQc() throws Exception {
+        Bundle bundle = prepareControl(true, false);
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
+                TEST_ID);
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated)"
+                + " VALUES (?, 'Detected', 'Y', NOW())", DETECTED_ENTRY_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result"
+                        + " (id, test_id, tst_rslt_type, value, is_active, sort_order, component_id, lastupdated)"
+                        + " VALUES (?, ?, 'D', ?, true, 1, 'comp-call', NOW())",
+                RESULT_OPTION_ID, TEST_ID, String.valueOf(DETECTED_ENTRY_ID));
+        Observation control = bundle.getEntry().stream().map(entry -> entry.getResource())
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        control.setValue(new Quantity(7.1));
+        control.addInterpretation(
+                new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        importService.importBundle(bundle, "1");
+        assertEquals("held whole while its mapping is not confirmed", 1,
+                resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
+
+        jdbc.update("UPDATE clinlims.analyzer_mapping_test SET call_component_id = 'comp-call'"
+                + " WHERE mapping_id = ? AND source_row_key = 'WBC' AND sub_identity = ''", MAPPING_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
+                + " (mapping_id, source_row_key, raw_value, mapping_state, test_result_id, last_updated)"
+                + " VALUES (?, 'WBC', 'DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, RESULT_OPTION_ID);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1");
+
+        List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("the number and the call, once each", 2, recovered.size());
+        AnalyzerResults call = stagedOn(recovered, "comp-call");
+        assertTrue(call.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING, call.getImportIssueReason());
     }
 
     @Test

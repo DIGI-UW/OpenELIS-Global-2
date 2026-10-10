@@ -49,8 +49,7 @@ public record AnalyzerMappingDraft(List<AnalyzerMappingTestDraft> tests, List<An
                 snapshot.tests().stream()
                         .map(row -> new AnalyzerMappingTestDraft(row.getId().getSourceRowKey(), row.getMappingState(),
                                 row.getTestId(), row.getComponentId(), row.getUnresolvedReason(), row.getOrigin(),
-                                row.getId().getSubIdentity(), row.getCallComponentId(), row.isEnabled(),
-                                row.getInstrumentCode()))
+                                row.getId().getSubIdentity(), row.getCallComponentId(), row.isEnabled()))
                         .toList(),
                 snapshot.results().stream()
                         .map(row -> new AnalyzerMappingResultDraft(row.getId().getSourceRowKey(),

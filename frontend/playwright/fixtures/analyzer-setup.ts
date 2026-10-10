@@ -36,17 +36,25 @@ export class AnalyzerSetupPage {
     await expect(this.nameInput).toHaveValue(name);
   }
 
-  async selectProfile(profileName: string) {
+  /** With a pin, the option for exactly that revision; each revision is its own option. */
+  async selectProfile(
+    profileName: string,
+    pin?: { profileId: string; revision: number },
+  ) {
     await this.typePicker.click();
     await this.typePicker.fill(profileName);
+    const option =
+      escapeRegExp(profileName) + (pin ? `.*revision ${pin.revision}$` : "");
     await this.page
-      .getByRole("option", { name: new RegExp(escapeRegExp(profileName), "i") })
+      .getByRole("option", { name: new RegExp(option, "i") })
       .first()
       .click();
-    await expect(this.page).toHaveURL(
-      (url) =>
-        Boolean(url.searchParams.get("profile")) &&
-        Boolean(url.searchParams.get("revision")),
+    await expect(this.page).toHaveURL((url) =>
+      pin
+        ? url.searchParams.get("profile") === pin.profileId &&
+          url.searchParams.get("revision") === String(pin.revision)
+        : Boolean(url.searchParams.get("profile")) &&
+          Boolean(url.searchParams.get("revision")),
     );
     await expect(this.typePicker).toHaveValue(
       new RegExp(escapeRegExp(profileName), "i"),
@@ -87,30 +95,14 @@ export class AnalyzerSetupPage {
 
   /**
    * From the instrument step, through Assays as the defaults left them, to
-   * Verify: less the assays named in `assaysOff`, and with the code the
-   * instrument sends set for each assay in `instrumentCodes`.
+   * Verify: less the assays named in `assaysOff`.
    */
-  async continueToVerify({
-    assaysOff = [],
-    instrumentCodes = {},
-  }: {
-    assaysOff?: string[];
-    instrumentCodes?: Record<string, string>;
-  } = {}) {
+  async continueToVerify({ assaysOff = [] }: { assaysOff?: string[] } = {}) {
     await this.continueToAssays();
     for (const code of assaysOff) {
       const assay = this.page.getByTestId(`analyzer-assay-${code}`);
       await assay.locator("label").first().click();
       await expect(assay.getByRole("checkbox")).not.toBeChecked();
-    }
-    for (const [code, sent] of Object.entries(instrumentCodes)) {
-      const field = this.page
-        .getByTestId(`analyzer-assay-${code}`)
-        .getByRole("textbox", {
-          name: `Code the instrument sends for ${code}`,
-        });
-      await field.fill(sent);
-      await expect(field).toHaveValue(sent);
     }
     await this.page.getByRole("button", { name: "Continue to Verify" }).click();
     await expect(this.page).toHaveURL(

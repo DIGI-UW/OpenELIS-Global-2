@@ -472,8 +472,9 @@ public class AnalyzerMappingEditorServiceTest {
         when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(positiveAndNegative());
 
         AnalyzerMappingDraft valid = validDraft();
-        AnalyzerMappingDraft draft = new AnalyzerMappingDraft(List.of(valid.tests().get(0), valid.tests().get(1),
-                valid.tests().get(2).withAssay(false, "RAW-C-LOCAL")), valid.results());
+        AnalyzerMappingDraft draft = new AnalyzerMappingDraft(
+                List.of(valid.tests().get(0), valid.tests().get(1), valid.tests().get(2).withAssay(false)),
+                valid.results());
 
         AnalyzerMappingView view = service.preview("42", 3, draft);
 
@@ -486,7 +487,6 @@ public class AnalyzerMappingEditorServiceTest {
         assertEquals(AnalyzerMappingState.EXCLUDED, view.tests().get(1).mappingState());
         assertTrue(first.enabled());
         assertFalse("an assay this instrument does not run", view.tests().get(2).enabled());
-        assertEquals("RAW-C-LOCAL", view.tests().get(2).instrumentCode());
         verify(bridgeProfileCatalogService).getProfile("site.mock-analyzer", 3);
         verify(mappingService, never()).appendRevision(any(), any(), any());
     }
@@ -639,40 +639,6 @@ public class AnalyzerMappingEditorServiceTest {
         ArgumentCaptor<AnalyzerMappingDraft> saved = ArgumentCaptor.forClass(AnalyzerMappingDraft.class);
         verify(mappingService).appendRevision(eq(analyzer), saved.capture(), eq("17"));
         assertEquals(AnalyzerMappingOrigin.OVERRIDE, saved.getValue().tests().get(2).origin());
-    }
-
-    @Test
-    public void appliedInstrumentCodesNameEachRunningDeclaredAssayTheInstrumentRenames() throws Exception {
-        AnalyzerMapping applied = revision("61", 4, "sha256:" + "b".repeat(64));
-        AnalyzerMappingTest renamed = test(applied, "RAW-A", AnalyzerMappingState.BOUND, "9701");
-        renamed.setInstrumentCode(" A-XPRT ");
-        AnalyzerMappingTest sameCode = test(applied, "RAW-B", AnalyzerMappingState.BOUND, "9701");
-        sameCode.setInstrumentCode("RAW-B");
-        AnalyzerMappingTest off = test(applied, "RAW-C", AnalyzerMappingState.UNRESOLVED, null);
-        off.setEnabled(false);
-        off.setInstrumentCode("C-OFF");
-        AnalyzerMappingTest undeclared = test(applied, "SEEN-ONLY", AnalyzerMappingState.BOUND, "9701");
-        undeclared.setInstrumentCode("SEEN-2");
-        AnalyzerMappingTest component = test(applied, "RAW-B", AnalyzerMappingState.BOUND, "9701");
-        component.setId(new AnalyzerMappingTestPK("61", "RAW-B", "&LOG"));
-        component.setInstrumentCode("LOG-X");
-        Analyzer analyzer = analyzer();
-        analyzer.setMapping(applied);
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer));
-        when(mappingService.findById("61")).thenReturn(Optional.of(new AnalyzerMappingSnapshot(applied,
-                List.of(renamed, sameCode, off, undeclared, component), List.of())));
-        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
-
-        assertEquals(java.util.Map.of("RAW-A", "A-XPRT"), service.appliedInstrumentCodes("42"));
-        verify(mappingService, never()).findLatestByAnalyzerId(any());
-    }
-
-    @Test
-    public void anAnalyzerWithNoAppliedMappingHasNoInstrumentCodes() {
-        when(analyzerService.getWithMapping("42")).thenReturn(Optional.of(analyzer()));
-
-        assertTrue(service.appliedInstrumentCodes("42").isEmpty());
-        verifyZeroInteractions(mappingService, bridgeProfileCatalogService);
     }
 
     private void viralLoadCatalog() {

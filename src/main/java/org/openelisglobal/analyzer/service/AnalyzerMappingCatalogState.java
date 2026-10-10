@@ -16,7 +16,8 @@ public final class AnalyzerMappingCatalogState {
 
     private final AnalyzerMappingCatalogService mappingCatalogService;
     private final Map<String, AnalyzerMappingCatalogService.TestOption> activeTests;
-    private final Map<String, Set<String>> activeResultOptions = new HashMap<>();
+    private final Map<String, Map<String, AnalyzerMappingCatalogService.ResultOption>> activeResultOptions = new HashMap<>();
+    private final Map<String, Set<String>> primaryComponents = new HashMap<>();
 
     private AnalyzerMappingCatalogState(AnalyzerMappingCatalogService mappingCatalogService) {
         this.mappingCatalogService = mappingCatalogService;
@@ -68,10 +69,25 @@ public final class AnalyzerMappingCatalogState {
                 || test.getMappingState() != AnalyzerMappingState.BOUND || !isCurrentTest(test)) {
             return false;
         }
-        Set<String> optionIds = activeResultOptions.computeIfAbsent(test.getTestId(),
+        AnalyzerMappingCatalogService.ResultOption option = activeResultOptions.computeIfAbsent(test.getTestId(),
                 testId -> Optional.ofNullable(mappingCatalogService.getActiveResultOptions(testId)).orElse(List.of())
-                        .stream().map(AnalyzerMappingCatalogService.ResultOption::id).collect(Collectors.toSet()));
-        return optionIds.contains(result.getTestResultId());
+                        .stream().collect(Collectors.toMap(AnalyzerMappingCatalogService.ResultOption::id,
+                                Function.identity(), (first, ignored) -> first)))
+                .get(result.getTestResultId());
+        if (option == null) {
+            return false;
+        }
+        // The answer must belong to the component the record lands on.
+        String target = AnalyzerMappingTestDraft.answerComponentOf(test.getId().getSubIdentity(), test.getComponentId(),
+                test.getCallComponentId());
+        if (target != null) {
+            return target.equals(option.componentId());
+        }
+        return option.componentId() == null || primaryComponents.computeIfAbsent(test.getTestId(),
+                testId -> Optional.ofNullable(mappingCatalogService.getActiveComponents(testId)).orElse(List.of())
+                        .stream().filter(AnalyzerMappingCatalogService.ComponentOption::primary)
+                        .map(AnalyzerMappingCatalogService.ComponentOption::id).collect(Collectors.toSet()))
+                .contains(option.componentId());
     }
 
     /** One answer of one record: code, raw value and the record's sub-identity. */

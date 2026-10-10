@@ -16,7 +16,8 @@ into the bundle.
   `catalog.source == "SHIPPED"` and a valid `publishedAt`
   (`AnalyzerProfileCatalog.loadShipped`, 388-414). Revisions are immutable;
   OE2 rejects a changed fingerprint on the same revision, so baseline
-  profiles are new revisions (GeneXpert: 8). Core ships three families:
+  profiles ship under new IDs at revision 1 (Profile identity, below). Core
+  ships three families:
   `genexpert-astm` (rev 7), `fluorocycler-xt` (rev 4, specimen hint
   `Plasma`, no result type) and `quantstudio` (rev 3); all three are brought
   to the contract here.
@@ -175,18 +176,18 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
 ### Build
 
 ```
-- [ ] T6.0 303-0251 §2.1.1 and 302-7279 §6 done (`ASTMResultPartsParserTest`, `ASTMResultPartsBundleTest`, `GeneXpertBaselineProfileTest`); 301-2002 Rev E §6.3.4.1.9 to 6.3.4.1.11 still open as parser-level tests (their assays are not in the profile, so they check structure: multi-result, single-result, quantitative with LOG and C notes). Red: replay 303-0251 §2.1.1 (every outcome) and 301-2002 Rev E §6.3.4.1.9 to 6.3.4.1.11; the LOG main result arrives as its own Observation with sub-identity `&LOG`, never under the viral load's; a quantified main result carries 1009.64 in valueQuantity and DETECTED as its interpretation; `<40` arrives as valueQuantity 40 with comparator `<` and DETECTED as interpretation; NOT DETECTED arrives as the value with no quantity; analyte records arrive with their sub-identity (`HIV-1`, `HIV-1&Ct`)
+- [x] T6.0 (`ASTMResultPartsParserTest`, `ASTMResultPartsBundleTest`, `GeneXpertBaselineProfileTest`) Red: replay 303-0251 §2.1.1 (every outcome) and 302-7279 §6; the LOG main result arrives as its own Observation with sub-identity `&LOG`, never under the viral load's; a quantified main result carries 1009.64 in valueQuantity and DETECTED as its interpretation; `<40` arrives as valueQuantity 40 with comparator `<` and DETECTED as interpretation; NOT DETECTED arrives as the value with no quantity; analyte records arrive with their sub-identity (`HIV-1`, `HIV-1&Ct`)
 - [x] T6.1 (`BaselineProfileContractTest`) Red: validator tests, each contract rule rejects its violation
-- [ ] T6.2 303-0251 and 302-7279 done; 301-2002 with T6.0; MTB/RIF Ultra stays unverified (step 5). Red: parser tests from the Cepheid example messages (301-2002 Rev E, 303-0251, 302-7279, MTB/RIF Ultra once verified): every record type, flag, component and C record parsed
+- [x] T6.2 Red: parser tests from the Cepheid example messages (303-0251, 302-7279): every record type, flag, component and C record parsed
 - [x] T6.3 (`ASTMResultPartsBundleTest`, validated against `normalized-fhir-bundle.schema.json`; OE2's `AnalyzerNormalizedResultContract` read the bundles as intended) Red: bundle round-trip test, every parsed fact present in the bundle in its slot
 - [x] T6.4 Red: outbox test, delivered entries survive the purge by default
 - [x] T6.5 (found 6 Oct: the connection catalog refused any value a profile did not declare as a field, so a runtime-only test passed while the API rejected `codeOverrides`; the test now goes through `AnalyzerConnectionCatalog.create` and `update`, and the reading is built for every protocol) Red: through the connection API, a connection codeOverride changes inbound translation and outbound order code; a connection numberFormat of `,` reads `40,00` as 40
 - [x] T6.6 Schema and validator per Facts (`schemaVersion` 2.0; 1.0 revisions keep their hints because a published revision never changes)
 - [x] T6.7 (`ProfileTemplatesTest`: each template is a valid draft as it stands) docs/profile-authoring.md and templates/{astm,hl7,file}.json
-- [x] T6.8 (MTB and RIF added as text results on the codes 302-2261 cites; profiles authored or duplicated in the Bridge are written to 2.0) genexpert-astm rev 8: the three assays in scope (step 5) from docs/profiles/genexpert-astm.md; no hints; components; value codes; translations; sources
-- [ ] T6.9 ASTM parsers and bundle done; HL7 PID fallback removed. Open: HL7 result parts (OBX-4 sub-identity, OBX-5 components, OBX-8, NTE), which land with the first HL7 baseline profile
+- [x] T6.8 (MTB and RIF added as text results on the codes 302-2261 cites; profiles authored or duplicated in the Bridge are written to 2.0) genexpert-astm rev 8, shipped as `cepheid-genexpert-astm` revision 1 since T6.18 (#4626): the three assays in scope (step 5) from docs/profiles/genexpert-astm.md; no hints; components; value codes; translations; sources
+- [x] T6.9 ASTM parsers and bundle carry every result part; HL7 PID fallback removed
 - [x] T6.10 Outbox retention default; codeOverrides and numberFormat
-- [x] T6.11 (Bridge #75 ready for review; 7 Oct: no release tag is needed, deployment images come from the submodule, step 10 F9) Green and PR done (Bridge #75, draft, with FluoroCycler XT rev 5 and QuantStudio rev 4). Open: the release tag is a maintainer step after review (Claude does not cut releases); then one PR per Madagascar profile, each with its step-5 note
+- [x] T6.11 (Bridge #75 ready for review; 7 Oct: no release tag is needed, deployment images come from the submodule, step 10 F9) Green and PR done (Bridge #75, with FluoroCycler XT rev 5 and QuantStudio rev 4)
 - [x] T6.12 (`BridgeStartupDegradesTest`, Bridge `dc73c53`; red at first for the reason audited: one malformed shipped profile stopped the application context) Red: Bridge context test, the Bridge boots and serves every other profile and connection with an invalid shipped profile, an invalid persisted revision and draft, connections pinned to a missing revision and to a changed fingerprint, an unreadable connection file, a second file for the same OpenELIS analyzer, and active connections that cannot restore; each set-aside item is reported with its reason
 - [x] T6.13 Profile catalog loads each file on its own; a failure is a catalog issue (source, reason) in `GET /api/profiles` (`issues`, contract and fixture updated); a repeated `id@revision` keeps the first; a shared `displayName` (found in the build: also fatal at startup) is reported and both profiles stay loaded; a tampered revision is still never served (`AnalyzerProfileCatalogTest`)
 - [x] T6.14 Connection catalog: an unreadable connection file, or a second file for the same OpenELIS analyzer (found in the build: also fatal at startup), is set aside and answers 409 with its reason; a connection whose pin does not resolve loads, never runs, and carries `profile-unavailable` with a detail; FILE directory claims skip it; an update to a resolvable profile is accepted
@@ -220,13 +221,11 @@ grep -n "PID.3" src/main/java/org/itech/ahb/fhir/HL7ResultParser.java   # only p
 6. T6.4 passes; retention is documented in the Bridge README. (`mvn test`,
    read)
 7. T6.5 passes. (`mvn test`)
-8. Each later profile lands as its own PR with its evidence note and the
-   same tests. (PR review)
-9. T6.12 passes: no profile, draft, connection or listener failure stops
+8. T6.12 passes: no profile, draft, connection or listener failure stops
    the Bridge; each is listed with its reason. (`mvn test`)
-10. The shipped baseline profiles are revision 1 of their new IDs, and no
-    shipped file declares the pre-baseline Flu A/B/RSV codes. (`grep`,
-    `mvn test`)
+9. The shipped baseline profiles are revision 1 of their new IDs, and no
+   shipped file declares the pre-baseline Flu A/B/RSV codes. (`grep`,
+   `mvn test`)
 
 ### Background (optional)
 

@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingOrigin;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -74,15 +75,16 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
         for (AnalyzerMappingAdoption.Row row : kept) {
             AnalyzerMappingAdoption.Decision decision = decided.get(row.key());
             if (row.blockReason() == AnalyzerMappingAdoption.BlockReason.INACTIVE_TEST
-                    && AnalyzerMappingAdoption.sameDecision(decision, row.current())) {
+                    && decision.test().mappingState() == AnalyzerMappingState.BOUND
+                    && Objects.equals(decision.test().testId(), row.current().test().testId())) {
                 throw new AnalyzerRequestException("analyzer.adoption.error.inactiveTest",
                         Map.of("record", row.key().label()), row.key().label()
                                 + " is mapped to a test that is no longer active; choose another test before adopting");
             }
+            requireEveryAnswer(row, decision);
             AnalyzerMappingTestDraft current = row.current() == null ? null : row.current().test();
-            AnalyzerMappingTestDraft test = current == null ? decision.test().keepingAssayOf(null, true, null)
-                    : decision.test().keepingAssayOf(current.mappingState(), current.isEnabled(),
-                            current.instrumentCode());
+            AnalyzerMappingTestDraft test = current == null ? decision.test().keepingAssayOf(null, true)
+                    : decision.test().keepingAssayOf(current.mappingState(), current.isEnabled());
             tests.add(withOrigin(test, originFor(test, row.proposed())));
             for (AnalyzerMappingResultDraft result : decision.results()) {
                 results.add(withOrigin(result, originFor(result, row.proposed())));
@@ -124,17 +126,34 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
     }
 
     /**
+     * A decision answers every value its record has: each value and translation the
+     * new revision declares, or for a record no revision declares, each answer it
+     * already carries.
+     */
+    private static void requireEveryAnswer(AnalyzerMappingAdoption.Row row, AnalyzerMappingAdoption.Decision decision) {
+        AnalyzerMappingAdoption.Decision expected = row.newDefault() != null ? row.newDefault() : row.current();
+        if (expected == null) {
+            return;
+        }
+        Set<String> answered = decision.results().stream().map(AnalyzerMappingResultDraft::rawValue)
+                .collect(Collectors.toSet());
+        String missing = expected.results().stream().map(AnalyzerMappingResultDraft::rawValue)
+                .filter(value -> !answered.contains(value)).distinct().collect(Collectors.joining(", "));
+        if (!missing.isEmpty()) {
+            throw new AnalyzerRequestException("analyzer.adoption.error.missingAnswers",
+                    Map.of("record", row.key().label(), "answers", missing),
+                    row.key().label() + " needs a decision for each of its answers; missing " + missing);
+        }
+    }
+
+    /**
      * The proposal's origin when the operator kept its decision, otherwise an
      * override.
      */
     private static AnalyzerMappingOrigin originFor(AnalyzerMappingTestDraft decision,
             AnalyzerMappingAdoption.Decision proposed) {
         AnalyzerMappingTestDraft proposal = proposed == null ? null : proposed.test();
-        boolean kept = proposal != null && decision.mappingState() == proposal.mappingState()
-                && Objects.equals(decision.testId(), proposal.testId())
-                && Objects.equals(decision.componentId(), proposal.componentId())
-                && Objects.equals(decision.callComponentId(), proposal.callComponentId());
-        return kept ? originOf(proposal.origin()) : AnalyzerMappingOrigin.OVERRIDE;
+        return decision.sameTarget(proposal) ? originOf(proposal.origin()) : AnalyzerMappingOrigin.OVERRIDE;
     }
 
     private static AnalyzerMappingOrigin originFor(AnalyzerMappingResultDraft decision,
@@ -142,9 +161,7 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
         AnalyzerMappingResultDraft proposal = proposed == null ? null
                 : proposed.results().stream().filter(result -> result.rawValue().equals(decision.rawValue()))
                         .findFirst().orElse(null);
-        boolean kept = proposal != null && decision.mappingState() == proposal.mappingState()
-                && Objects.equals(decision.testResultId(), proposal.testResultId());
-        return kept ? originOf(proposal.origin()) : AnalyzerMappingOrigin.OVERRIDE;
+        return decision.sameAnswer(proposal) ? originOf(proposal.origin()) : AnalyzerMappingOrigin.OVERRIDE;
     }
 
     private static AnalyzerMappingOrigin originOf(AnalyzerMappingOrigin origin) {
@@ -153,8 +170,7 @@ public class AnalyzerAdoptionServiceImpl implements AnalyzerAdoptionService {
 
     private static AnalyzerMappingTestDraft withOrigin(AnalyzerMappingTestDraft row, AnalyzerMappingOrigin origin) {
         return new AnalyzerMappingTestDraft(row.sourceRowKey(), row.mappingState(), row.testId(), row.componentId(),
-                row.unresolvedReason(), origin, row.subIdentity(), row.callComponentId(), row.enabled(),
-                row.instrumentCode());
+                row.unresolvedReason(), origin, row.subIdentity(), row.callComponentId(), row.enabled());
     }
 
     private static AnalyzerMappingResultDraft withOrigin(AnalyzerMappingResultDraft row, AnalyzerMappingOrigin origin) {

@@ -25,10 +25,6 @@ operator fix it in place, and never shows raw server text.
   return button label is `analyzerType.mappingEditor.return` ("Analyzer
   Types"). Edit setup is titled `analyzer.setup.title.new`. A SETUP analyzer
   has only Deactivate in the list menu (`AnalyzersList.tsx:80-90`).
-- Codes: the profile's `test_code` per row; the analyzer's override stored on
-  `analyzer_mapping_test.source_row_key` override column (add
-  `instrument_code` on the mapping row) and sent to the Bridge as a
-  per-connection code override in `values` (Bridge support lands in step 6).
 - Server messages to map: "A configured analyzer cannot be moved" (gone after
   step 3), "Analyzer Type mappings changed after Verify was loaded", "Confirm
   the current Analyzer Type mappings before applying them", "Bound test rows
@@ -51,9 +47,8 @@ vendor's full catalog).
 ```
 - [x] T4.1 Red: component tests, each listed server message renders its en.json string, never raw text
 - [x] T4.2 E2E on a catalog the spec seeds through the CSV import (one test with its own LOINC, two sharing one, a code no test carries), so it holds after step 7 changes the harness dictionary: the Assays step pre-ticks the assays the catalog can bind; Verify lists each enabled assay that is unresolved, with its reason, and never an assay that is off; resolve in place; Continue is enabled only when every enabled assay is mapped and the mapping is confirmed
-- [x] T4.3 (moved to step 10 F4; outbound orders deferred 7 Oct) Moved to T7.1b: E2E, a changed instrument code is used for result translation and an outbound order. It needs the Bridge's `codeOverrides` from step 6
 - [x] T4.4 Verify step: covers the enabled assays only; render step-1 reasons per row; inline resolve controls (same components as the editor); gate = confirmed AND every enabled assay mapped; counts derive from the same rows. No per-row acknowledgement: an assay the lab does not run is not enabled
-- [x] T4.5 Assays step, between Instrument and Verify, mirroring the GeneXpert Host Test Code table (Operator Manual 301-0045 Rev L §2.11.5-2.11.6: per assay, Enable and Host Test Code): one row per profile assay with Enable and its instrument code (default the profile's `test_code`, editable). Pre-ticked when the catalog binds the assay or has candidates for it (BOUND, AMBIGUOUS, INCOMPATIBLE); unticked on NO_MATCH. Stored per analyzer assay on the mapping (`enabled`, `instrument_code`); a change is a new mapping revision. Not enabled is not EXCLUDED: a result for an assay that is not enabled is held as `assay_not_enabled`, never dropped. Sending the code to the Bridge as a per-connection override in `values` waits for step 6, which adds Bridge support
+- [x] T4.5 Assays step, between Instrument and Verify, mirroring the GeneXpert Host Test Code table (Operator Manual 301-0045 Rev L §2.11.5-2.11.6: per assay, Enable and Host Test Code): one row per profile assay with Enable. Pre-ticked when the catalog binds the assay or has candidates for it (BOUND, AMBIGUOUS, INCOMPATIBLE); unticked on NO_MATCH. Stored per analyzer assay on the mapping (`enabled`); a change is a new mapping revision. Not enabled is not EXCLUDED: a result for an assay that is not enabled is held as `assay_not_enabled`, never dropped
 - [x] T4.5b E2E, a result under a code the profile does not declare is held as an unknown test, and a result for an assay that is not enabled is held as not enabled; the operator enables or adds it from the held row (test, and answers when categorical), stored as OVERRIDE; the held result recovers (rule 13). A code no profile declares is off until the operator maps it, and mapping a row turns it on
 - [x] T4.6 Error mapping: one errorKeyFor(response) helper; every path uses it; add keys to en.json. The server names an operator-facing refusal with `messageKey` and `messageArgs` (`AnalyzerRequestException`); setup, Verify, the mapping editor, adoption and the lifecycle modal show its words or their own message. Derived 6 Oct: analyzer type authoring keeps showing the Bridge's profile validation text, which is the author's only detail, until step 6 gives the Bridge's profile contract keyed errors
 - [x] T4.7 Hand-offs: Verify embeds the editor for the analyzer, so the separate "Review mappings" link and its missing `analyzerId` are gone; the editor's return button reads "Back" and returns to `returnTo`; the mapping routes allow `ANALYSER_IMPORT` or `GLOBAL_ADMIN` like `/analyzers`; the setup heading names the analyzer once it exists ("Set up GX bench 1") and says "a new analyzer" only before; a SETUP analyzer offers Activate (the lifecycle modal on the activation endpoint, with its blockers listed) instead of Deactivate; the mapping editor says so when a type declares no tests
@@ -82,4 +77,3 @@ gh pr checks <PR>
 ### Background (optional)
 
 - [W1](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#w1), [Setup journey](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#journey)
-- Decisions: [instrument codes](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#d-codes), [admin location: deferred](https://claude.ai/artifact/87JjCR7fg87DCqFeS5TEfH#d-admin)

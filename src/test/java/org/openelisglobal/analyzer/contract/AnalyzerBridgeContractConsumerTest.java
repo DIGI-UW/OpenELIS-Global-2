@@ -133,26 +133,6 @@ public class AnalyzerBridgeContractConsumerTest {
     }
 
     @Test
-    public void connectionCarriesTheInstrumentCodesTheLabSet() throws IOException {
-        JsonNode create = fixture("connection-create.json");
-        JsonNode update = fixture("connection-update.json");
-        JsonNode connection = fixture("analyzer-connection.json");
-
-        assertTrue(create.path("values").path("codeOverrides").isObject());
-        assertTrue(update.path("values").path("codeOverrides").size() > 0);
-        assertEquals(update.path("values").path("codeOverrides"), connection.path("codeOverrides"));
-
-        com.fasterxml.jackson.databind.node.ObjectNode numbered = update.deepCopy();
-        ((com.fasterxml.jackson.databind.node.ObjectNode) numbered.path("values")).putObject("codeOverrides").put("GLU",
-                7);
-        assertFalse(validationMessages("connection-update.schema.json", numbered).isEmpty());
-        com.fasterxml.jackson.databind.node.ObjectNode blank = create.deepCopy();
-        ((com.fasterxml.jackson.databind.node.ObjectNode) blank.path("values")).putObject("codeOverrides").put("GLU",
-                "");
-        assertFalse(validationMessages("connection-create.schema.json", blank).isEmpty());
-    }
-
-    @Test
     public void shippedProfilesLabelTheirConnectionFieldsWithMessagesOe2Has() throws IOException {
         JsonNode messages = JSON.readTree(Path.of("frontend", "src", "languages", "en.json").toFile());
         Path profiles = Path.of("tools", "openelis-analyzer-bridge", "src", "main", "resources", "analyzer-profiles");

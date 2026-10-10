@@ -34,12 +34,9 @@ public final class AnalyzerMappingFingerprint {
                     putNullable(value, "componentId", row.componentId());
                     putNullable(value, "callComponentId", row.callComponentId());
                     // Absent unless set, so a mapping saved before assays could be
-                    // turned off or recoded keeps its fingerprint.
+                    // turned off keeps its fingerprint.
                     if (!row.isEnabled()) {
                         value.put("enabled", false);
-                    }
-                    if (row.instrumentCode() != null) {
-                        value.put("instrumentCode", row.instrumentCode());
                     }
                 });
 

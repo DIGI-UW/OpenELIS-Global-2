@@ -72,6 +72,22 @@ public class BridgeProfileCatalogServiceTest {
     }
 
     @Test
+    public void getCatalogRejectsAnIssueMissingItsSourceOrReason() throws Exception {
+        for (String issue : List.of("{\"reason\":\"Cannot load\"}", "{\"source\":\"file [a.json]\",\"reason\":\" \"}",
+                "{\"source\":\"file [a.json]\",\"reasn\":\"Cannot load\"}")) {
+            ObjectNode catalog = (ObjectNode) new ObjectMapper().readTree(validCatalog());
+            catalog.putArray("issues").add(new ObjectMapper().readTree(issue));
+            when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles"), any(Duration.class)))
+                    .thenReturn(new BridgeHttpClient.BridgeResponse(200, catalog.toString()));
+
+            BridgeProfileCatalogException exception = assertThrows(issue, BridgeProfileCatalogException.class,
+                    () -> service.getCatalog());
+
+            assertEquals(issue, "Bridge profile catalog contains an invalid issue", exception.getMessage());
+        }
+    }
+
+    @Test
     public void getProfileFetchesAndValidatesTheExactRequestedRevision() throws Exception {
         when(bridgeHttpClient.get(eq("https://bridge.example/api/profiles/site.mock%20hematology?revision=2"),
                 any(Duration.class))).thenReturn(new BridgeHttpClient.BridgeResponse(200, validProfileRevision()));

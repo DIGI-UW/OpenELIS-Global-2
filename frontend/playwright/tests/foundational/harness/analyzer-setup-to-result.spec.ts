@@ -25,6 +25,7 @@ import {
   savedValue,
   type Order,
 } from "../../../helpers/analyzer-review";
+import { createDemoPresentation } from "../../../helpers/demo-presentation";
 
 test.describe("A GeneXpert from setup to a clinical result", () => {
   const run = randomUUID().slice(0, 8);
@@ -39,12 +40,23 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
 
   test("an HIV-1 viral load reaches its order and is accepted as a clinical result", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "GeneXpert: an HIV-1 viral load becomes a clinical result",
+      "The GeneXpert was set up and activated on the shipped profile before this clip.",
+    );
+    await demo.caption(
+      "Off screen: a patient order for HIV-1 Viral Load on plasma is created.",
+    );
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
     const order = await createClinicalOrder(page, {
       testIds: [testId],
       specimenName: "Plasma",
     });
+    await demo.caption(
+      `The mock GeneXpert sends its ASTM result for ${order.accession} through the Bridge.`,
+    );
     await sendGeneXpertFixture(
       page,
       analyzer.id,
@@ -59,11 +71,15 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
             .length,
       )
       .toBeGreaterThan(0);
-    await acceptAll(page, analyzer, [order.accession]);
+    await demo.caption(
+      "The result waits on the analyzer's review screen. The reviewer accepts it and saves.",
+    );
+    await acceptAll(page, analyzer, [order.accession], { demo });
     await expect
       .poll(() => savedValue(page, order, testId, "HIV-1 viral load"))
       .toBe("1010");
 
+    await demo.caption("The order's Results screen now holds the value.");
     await page.goto(
       `/Results?accessionNumber=${encodeURIComponent(order.accession)}`,
       { waitUntil: "domcontentloaded" },
@@ -73,11 +89,25 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
     });
     await expect(clinicalRow.first()).toContainText("HIV-1 Viral Load");
     await expect(clinicalRow.first()).toContainText("1010");
+    await expect(clinicalRow.first()).toContainText(analyzer.name);
+    await demo.highlight(clinicalRow.first());
+    await demo.verified(
+      `HIV-1 viral load 1010 is saved on ${order.accession}`,
+      "Read back from the order's saved results, the same data the Results screen shows.",
+    );
   });
 
   test("a respiratory panel lands on each of its tests and components, each accepted as a clinical result", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "GeneXpert: one respiratory panel run, four tests",
+      "SARS-CoV-2, influenza A and B, RSV and the sample processing control each land on their own test.",
+    );
+    await demo.caption(
+      "Off screen: one nasopharyngeal swab is ordered for the four tests.",
+    );
     const specimen = "Nasopharyngeal Swab";
     const tests = {
       sars: await activeTestId(page, "SARS-CoV-2 PCR", specimen),
@@ -89,6 +119,9 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
       testIds: Object.values(tests),
       specimenName: specimen,
     });
+    await demo.caption(
+      "The mock GeneXpert sends one CoV-2/Flu/RSV plus run: SARS-CoV-2 positive.",
+    );
     await sendGeneXpertFixture(
       page,
       analyzer.id,
@@ -103,23 +136,45 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
             .length,
       )
       .toBeGreaterThan(0);
-    await acceptAll(page, analyzer, [order.accession]);
+    await demo.caption(
+      "Each test is its own row, with its parts beneath it. The reviewer accepts them and saves.",
+    );
+    await acceptAll(page, analyzer, [order.accession], { demo });
 
-    const saved = (testId: string, component: string) =>
-      savedValue(page, order, testId, component);
-    await expect.poll(() => saved(tests.sars, "SARS-CoV-2")).toBe("Positive");
-    await expect.poll(() => saved(tests.fluA, "Flu A 1")).toBe("Negative");
-    await expect.poll(() => saved(tests.fluB, "Flu B")).toBe("Negative");
-    await expect.poll(() => saved(tests.rsv, "RSV")).toBe("Negative");
     // The sample processing control rides on the test as a component of its own.
-    await expect
-      .poll(() => saved(tests.sars, "Sample processing control"))
-      .toBe("Not applicable");
+    const expected = [
+      { testId: tests.sars, component: "SARS-CoV-2", value: "Positive" },
+      { testId: tests.fluA, component: "Flu A 1", value: "Negative" },
+      { testId: tests.fluB, component: "Flu B", value: "Negative" },
+      { testId: tests.rsv, component: "RSV", value: "Negative" },
+      {
+        testId: tests.sars,
+        component: "Sample processing control",
+        value: "Not applicable",
+      },
+    ];
+    for (const { testId, component, value } of expected) {
+      await expect
+        .poll(() => savedValue(page, order, testId, component))
+        .toBe(value);
+    }
+    await demo.verified(
+      `Every part of the panel is saved on ${order.accession}`,
+      expected.map((row) => `${row.component}: ${row.value}`).join(" · "),
+    );
   });
 
   test("two GeneXperts on one listener each keep their own results", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "Two GeneXperts on one listener keep their own results",
+      "The Bridge tells them apart by the system name each instrument sends.",
+    );
+    await demo.caption(
+      "A second GeneXpert is set up with its own system name, on the same listener as the first.",
+    );
     const secondSender = `GX-RES-2-${run}`;
     const second = await activateShippedGeneXpert(
       page,
@@ -137,6 +192,9 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
         value: "<40",
       },
     ];
+    await demo.caption(
+      "Each instrument sends an HIV-1 viral load for its own order: 1010 from the first, <40 from the second.",
+    );
     const orders: Order[] = [];
     for (const instrument of instruments) {
       const order = await createClinicalOrder(page, {
@@ -176,20 +234,42 @@ test.describe("A GeneXpert from setup to a clinical result", () => {
       ).toHaveLength(0);
     }
     for (const [index, instrument] of instruments.entries()) {
-      await acceptAll(page, instrument.analyzer, [orders[index].accession]);
+      await demo.caption(
+        `Analyzer ${index + 1}'s review screen holds only its own result.`,
+      );
+      await acceptAll(page, instrument.analyzer, [orders[index].accession], {
+        demo,
+      });
       await expect
         .poll(() => savedValue(page, orders[index], testId, "HIV-1 viral load"))
         .toBe(instrument.value);
     }
+    await demo.verified(
+      "Each result is saved on its own order",
+      instruments
+        .map(
+          (instrument, index) =>
+            `GeneXpert ${index + 1}: ${instrument.value} on ${orders[index].accession}`,
+        )
+        .join(" · "),
+    );
   });
 });
 
 test.describe("A FluoroCycler from setup to a clinical result", () => {
   test("a results file in the watched folder reaches each order and is accepted", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "FluoroCycler: a results file becomes clinical results",
+      "The Bridge watches the folder named in setup and reads the file. OpenELIS never opens it.",
+    );
     const run = randomUUID().slice(0, 8);
     const directory = `/data/analyzer-imports/fluorocycler-xt/incoming/${run}`;
+    await demo.caption(
+      "Set up the FluoroCycler on its shipped profile, with the folder the Bridge watches.",
+    );
     const analyzer = await activateShippedAnalyzer(
       page,
       FLUOROCYCLER,
@@ -197,6 +277,9 @@ test.describe("A FluoroCycler from setup to a clinical result", () => {
       { importDirectory: directory },
     );
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
+    await demo.caption(
+      "Off screen: two plasma orders are created, and the instrument's results file for both lands in the folder.",
+    );
     const orders: Order[] = [];
     for (let index = 0; index < 2; index += 1) {
       orders.push(
@@ -221,10 +304,14 @@ test.describe("A FluoroCycler from setup to a clinical result", () => {
         )
         .toBeGreaterThan(0);
     }
+    await demo.caption(
+      "Both results wait on the review screen. The reviewer accepts them and saves.",
+    );
     await acceptAll(
       page,
       analyzer,
       orders.map((order) => order.accession),
+      { demo },
     );
     for (const [index, order] of orders.entries()) {
       await expect
@@ -233,6 +320,12 @@ test.describe("A FluoroCycler from setup to a clinical result", () => {
         )
         .toBe(Number(emitted[index].result));
     }
+    await demo.verified(
+      "Both viral loads in the file are saved on their orders",
+      orders
+        .map((order, index) => `${order.accession}: ${emitted[index].result}`)
+        .join(" · "),
+    );
   });
 });
 
@@ -252,10 +345,16 @@ test.describe("A catalog test deactivated after setup", () => {
 
   test("its result is held while the rest are accepted, then recovers once the test is active again", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "A catalog test turned off after setup",
+      "Its result is held while the rest are saved, and recovers once the test is back on.",
+    );
     const run = randomUUID().slice(0, 8);
     const senderId = `GX-OFF-${run}`;
     const specimen = "Nasopharyngeal Swab";
+    await demo.caption("Set up a GeneXpert on the shipped profile.");
     const analyzer = await activateShippedGeneXpert(
       page,
       `Deactivation GeneXpert ${run}`,
@@ -272,6 +371,9 @@ test.describe("A catalog test deactivated after setup", () => {
     });
 
     // The lab retires Influenza B after the analyzer was set up.
+    await demo.caption(
+      "Off screen: the lab turns Influenza B PCR off in its test catalog.",
+    );
     const headers = { "X-CSRF-Token": await csrfToken(page) };
     const off = await page.request.put(
       `${API}/test-catalog/tests/${tests.fluB}/basic-info`,
@@ -280,6 +382,9 @@ test.describe("A catalog test deactivated after setup", () => {
     expect(off.ok(), `Deactivate Influenza B: ${off.status()}`).toBeTruthy();
     deactivated = tests.fluB;
 
+    await demo.caption(
+      "The GeneXpert sends a CoV-2/Flu panel for the order: influenza B positive.",
+    );
     await sendGeneXpertFixture(
       page,
       analyzer.id,
@@ -299,7 +404,10 @@ test.describe("A catalog test deactivated after setup", () => {
 
     // The usable results are accepted; the held one stays on the screen.
     const fluBRow = (await own("FLUB"))!;
-    await acceptAll(page, analyzer, [order.accession]);
+    await demo.caption(
+      "Influenza A and SARS-CoV-2 are accepted and saved. Influenza B is held: it has no box to accept.",
+    );
+    await acceptAll(page, analyzer, [order.accession], { demo });
     await expect
       .poll(() => savedValue(page, order, tests.fluA, "Flu A 1"))
       .toBe("Negative");
@@ -311,8 +419,13 @@ test.describe("A catalog test deactivated after setup", () => {
     });
     const held = page.getByTestId(`held-analyzer-result-${fluBRow.id}`);
     await expect(held).toBeVisible();
+    await demo.caption("The held Influenza B result stays on the screen.");
+    await demo.highlight(held);
 
     // Influenza B is active again; the held observation is retried, not resent.
+    await demo.caption(
+      "Off screen: Influenza B PCR is turned back on. The reviewer applies the mapping and retries.",
+    );
     const on = await page.request.post(
       `${API}/test-catalog/tests/${tests.fluB}/activate`,
       { headers, data: {} },
@@ -329,19 +442,34 @@ test.describe("A catalog test deactivated after setup", () => {
       .poll(async () => (await own("FLUB"))?.importIssueReason)
       .toBeFalsy();
 
-    await acceptAll(page, analyzer, [order.accession]);
+    await demo.caption(
+      "The same result, not a resend, is now ready. The reviewer accepts it.",
+    );
+    await acceptAll(page, analyzer, [order.accession], { demo });
     await expect
       .poll(() => savedValue(page, order, tests.fluB, "Flu B"))
       .toBe("Positive");
+    await demo.verified(
+      `Influenza B Positive is saved on ${order.accession}`,
+      "Influenza A and SARS-CoV-2 were saved first; the held result was retried without a resend.",
+    );
   });
 });
 
 test.describe("A QuantStudio from setup to a clinical result", () => {
   test("a results workbook in the watched folder reaches each order and is accepted", async ({
     page,
-  }) => {
+  }, testInfo) => {
+    const demo = createDemoPresentation(page, testInfo);
+    await demo.intro(
+      "QuantStudio: a results workbook with rows nobody ordered",
+      "Two ordered samples are saved; unordered samples and a positive control ride along.",
+    );
     const run = randomUUID().slice(0, 8);
     const directory = `/data/analyzer-imports/quantstudio/incoming/${run}`;
+    await demo.caption(
+      "Set up the QuantStudio on its shipped profile, with the folder the Bridge watches.",
+    );
     const analyzer = await activateShippedAnalyzer(
       page,
       QUANTSTUDIO,
@@ -349,6 +477,9 @@ test.describe("A QuantStudio from setup to a clinical result", () => {
       { importDirectory: directory },
     );
     const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
+    await demo.caption(
+      "Off screen: two plasma orders are created, and a six-row workbook lands in the folder.",
+    );
     const orders: Order[] = [];
     for (let index = 0; index < 2; index += 1) {
       orders.push(
@@ -383,59 +514,31 @@ test.describe("A QuantStudio from setup to a clinical result", () => {
         )
         .toBeGreaterThan(0);
     }
+    await demo.caption(
+      "The reviewer accepts the two ordered results and saves.",
+    );
     await acceptAll(
       page,
       analyzer,
       orders.map((order) => order.accession),
+      { demo },
     );
+    const saved: number[] = [];
     for (const [index, order] of orders.entries()) {
       // A viral load is saved in whole copies.
+      const copies = Math.round(Number(emitted[index].result));
       await expect
         .poll(async () =>
           Number(await savedValue(page, order, testId, "HIV-1 viral load")),
         )
-        .toBe(Math.round(Number(emitted[index].result)));
+        .toBe(copies);
+      saved.push(copies);
     }
-  });
-});
-
-test.describe("An instrument that sends its own test code", () => {
-  test("the code set in the Assays step is the code results arrive under, and they land on the right test", async ({
-    page,
-  }) => {
-    const run = randomUUID().slice(0, 8);
-    const senderId = `GX-CODE-${run}`;
-    // The lab's instrument is configured to send HIVU where the profile says HIVVL.
-    const analyzer = await activateShippedGeneXpert(
-      page,
-      `Own codes GeneXpert ${run}`,
-      senderId,
-      { instrumentCodes: { HIVVL: "HIVU" } },
+    await demo.verified(
+      "Both ordered viral loads are saved, in whole copies",
+      orders
+        .map((order, index) => `${order.accession}: ${saved[index]}`)
+        .join(" · "),
     );
-    const testId = await activeTestId(page, "HIV-1 Viral Load", "Plasma");
-    const order = await createClinicalOrder(page, {
-      testIds: [testId],
-      specimenName: "Plasma",
-    });
-    await sendGeneXpertFixture(
-      page,
-      analyzer.id,
-      order.accession,
-      { assay: "hivvl", outcome: "quantified" },
-      senderId,
-      { HIVVL: "HIVU" },
-    );
-    type Row = WorklistRow & { componentId?: string | null };
-    const own = async () =>
-      (await worklistFor<Row>(page, analyzer.id, order.accession)).find(
-        (row) => !row.componentId,
-      );
-    // The Bridge translates the lab's code back to the profile's, so the result binds as usual.
-    await expect.poll(async () => (await own())?.testId).toBe(testId);
-    expect((await own())?.importIssueReason).toBeFalsy();
-    await acceptAll(page, analyzer, [order.accession]);
-    await expect
-      .poll(() => savedValue(page, order, testId, "HIV-1 viral load"))
-      .toBe("1010");
   });
 });

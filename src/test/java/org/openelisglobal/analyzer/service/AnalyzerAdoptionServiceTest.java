@@ -148,6 +148,27 @@ public class AnalyzerAdoptionServiceTest {
     }
 
     @Test
+    public void adoptionIsRefusedWhenADecisionLeavesOutAnAnswerOfItsRecord() {
+        current(row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT));
+        AnalyzerMappingTestDraft test = new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1");
+        AnalyzerMappingResultDraft positive = new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.BOUND,
+                "r1");
+        AnalyzerMappingResultDraft negative = new AnalyzerMappingResultDraft("RAW-A", "NEG", AnalyzerMappingState.BOUND,
+                "r2");
+        when(defaults.resolve(org.mockito.ArgumentMatchers.argThat(profile -> profile.revision() == 2)))
+                .thenReturn(new AnalyzerMappingDraft(List.of(test), List.of(positive, negative)));
+
+        AnalyzerRequestException omitted = assertThrows(AnalyzerRequestException.class,
+                () -> service.adopt("42", 2, BASE, new AnalyzerMappingDraft(List.of(test), List.of(positive)), "17"));
+        assertEquals("analyzer.adoption.error.missingAnswers", omitted.messageKey());
+        assertEquals(java.util.Map.of("record", "RAW-A", "answers", "NEG"), omitted.messageArgs());
+        verify(mappingService, never()).adoptRevision(any(), anyInt(), any(), any());
+
+        service.adopt("42", 2, BASE, new AnalyzerMappingDraft(List.of(test), List.of(positive, negative)), "17");
+        assertEquals(2, savedDraft().results().size());
+    }
+
+    @Test
     public void anOverrideOnAnInactiveTestMustBeChangedBeforeAdoption() {
         current(row("RAW-A", "t9", AnalyzerMappingOrigin.OVERRIDE));
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
@@ -161,10 +182,9 @@ public class AnalyzerAdoptionServiceTest {
     }
 
     @Test
-    public void adoptionKeepsAnAssayTheLabTurnedOffAndTheCodeTheInstrumentSends() {
+    public void adoptionKeepsAnAssayTheLabTurnedOff() {
         AnalyzerMappingTest off = row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT);
         off.setEnabled(false);
-        off.setInstrumentCode("LAB-A");
         current(off);
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
@@ -173,24 +193,21 @@ public class AnalyzerAdoptionServiceTest {
 
         AnalyzerMappingTestDraft saved = savedDraft().tests().get(0);
         assertEquals(Boolean.FALSE, saved.enabled());
-        assertEquals("LAB-A", saved.instrumentCode());
     }
 
     @Test
     public void aDecisionThatStatesTheAssaySwitchReplacesWhatTheRowHad() {
         AnalyzerMappingTest off = row("RAW-A", "t1", AnalyzerMappingOrigin.DEFAULT);
         off.setEnabled(false);
-        off.setInstrumentCode("LAB-A");
         current(off);
         newDefaults(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1"));
 
         service.adopt("42", 2, BASE,
-                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1").withAssay(true, null)),
+                reviewed(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.BOUND, "t1").withAssay(true)),
                 "17");
 
         AnalyzerMappingTestDraft saved = savedDraft().tests().get(0);
         assertEquals(Boolean.TRUE, saved.enabled());
-        assertEquals("stating the switch without a code returns to the profile's code", null, saved.instrumentCode());
     }
 
     @Test

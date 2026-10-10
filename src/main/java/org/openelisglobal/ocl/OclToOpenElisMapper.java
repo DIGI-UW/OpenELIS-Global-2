@@ -13,10 +13,12 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 import org.openelisglobal.common.constants.Constants;
+import org.openelisglobal.common.exception.LIMSRuntimeException;
 import org.openelisglobal.common.util.UserContextHolder;
 import org.openelisglobal.dictionary.service.DictionaryService;
 import org.openelisglobal.dictionary.valueholder.Dictionary;
@@ -647,16 +649,21 @@ public class OclToOpenElisMapper {
         dictionary.setSysUserId(systemUserId);
         dictionary.setLoincCode(loinc);
         dictionary.setDictionaryCategory(dictionaryCategoryService.getDictionaryCategoryByName("Test Result"));
-        if (!dictionaryService.duplicateDictionaryExists(dictionary)) {
+        // The Test Result answers with this name or this concept code, matched as the
+        // duplicate check matches them.
+        List<Dictionary> duplicates = dictionaryService.findDuplicates(dictionary);
+        if (duplicates.isEmpty()) {
             Localization localization = createLocalization(frenchName, englishName, "create Dictionary", systemUserId);
             dictionary.setLocalizedDictionaryName(localizationService.save(localization));
             return dictionaryService.save(dictionary);
         }
-        // The duplicate is the Test Result answer with this name or this concept code.
-        Dictionary existing = dictionaryService.getDictionaryEntryByNameAndCategoryName(englishName, "Test Result");
-        if (existing == null) {
-            existing = dictionaryService.getDictionaryByLocalAbbrev(dictionary);
+        if (duplicates.size() > 1) {
+            throw new LIMSRuntimeException("OCL answer " + conceptCode + " (" + englishName
+                    + ") matches more than one Test Result answer by name or code: "
+                    + duplicates.stream().map(d -> d.getDictEntry() + " [" + d.getLocalAbbreviation() + "]")
+                            .collect(Collectors.joining(", ")));
         }
+        Dictionary existing = duplicates.get(0);
         if (StringUtils.isNotBlank(loinc)) {
             existing.setLoincCode(loinc);
             existing.setSysUserId(systemUserId);

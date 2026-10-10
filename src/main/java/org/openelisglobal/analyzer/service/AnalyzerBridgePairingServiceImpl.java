@@ -18,6 +18,7 @@ import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import javax.net.ssl.SSLContext;
 import org.jasypt.util.text.TextEncryptor;
 import org.openelisglobal.analyzer.dao.AnalyzerBridgePairingDAO;
@@ -33,6 +34,8 @@ import org.springframework.stereotype.Service;
 public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingService {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(15);
+    private static final Set<String> REFUSALS = Set.of("analyzer.bridgePairing.error.wrongCode",
+            "analyzer.bridgePairing.error.closed");
     private static final ObjectMapper JSON = new ObjectMapper();
 
     private final AnalyzerBridgePairingDAO dao;
@@ -42,8 +45,13 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
     private final String serverKeyStore;
     private final String serverKeyStoreCredential;
 
-    private volatile String pinnedFingerprint;
+    // The WAR runs in two web contexts, each with its own copy of this service, and
+    // either may pair. The stored pairing is the only shared state, so the pin is
+    // read from it; only the TLS context built for a pin is kept.
     private volatile PairedBridge pairedBridge;
+    // A code the Bridge refused will be refused again; retrying it would use up the
+    // Bridge's attempts before the right code is entered on the Analyzers page.
+    private volatile boolean configuredCodeRefused;
 
     public AnalyzerBridgePairingServiceImpl(AnalyzerBridgePairingDAO dao, TextEncryptor encryptor,
             @Value("${analyzer.bridge.url:}") String bridgeUrl,
@@ -93,7 +101,6 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
         record.setPairedAt(Timestamp.from(Instant.now()));
         record.setPairedBy(sysUserId);
         dao.update(record);
-        pinnedFingerprint = bridgeFingerprint;
         pairedBridge = null;
         LogEvent.logInfo(getClass().getSimpleName(), "pair",
                 "Paired with the Analyzer Bridge at " + bridgeUrl + ", certificate " + bridgeFingerprint);
@@ -102,21 +109,21 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
 
     @Override
     public Optional<PairedBridge> getPairedBridge() {
-        PairedBridge cached = pairedBridge;
-        if (cached != null) {
-            return Optional.of(cached);
-        }
         Optional<AnalyzerBridgePairing> record = dao.findCurrent().filter(r -> r.getBridgeCertificateSha256() != null);
         if (record.isEmpty()) {
+            pairedBridge = null;
             return Optional.empty();
         }
+        String fingerprint = record.get().getBridgeCertificateSha256();
+        PairedBridge cached = pairedBridge;
+        if (cached != null && cached.bridgeCertificateSha256().equals(fingerprint)) {
+            return Optional.of(cached);
+        }
         try {
-            String fingerprint = record.get().getBridgeCertificateSha256();
             SSLContext context = BridgeTls.context(clientIdentity(record.get()),
                     new BridgeTls.PinnedServerTrustManager(fingerprint));
             cached = new PairedBridge(fingerprint, context);
             pairedBridge = cached;
-            pinnedFingerprint = fingerprint;
             return Optional.of(cached);
         } catch (GeneralSecurityException e) {
             throw new IllegalStateException("The stored Analyzer Bridge pairing cannot be read", e);
@@ -128,13 +135,9 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
         if (certificate == null) {
             return false;
         }
-        String pinned = pinnedFingerprint;
+        String pinned = dao.findCurrent().map(AnalyzerBridgePairing::getBridgeCertificateSha256).orElse(null);
         if (pinned == null) {
-            pinned = dao.findCurrent().map(AnalyzerBridgePairing::getBridgeCertificateSha256).orElse(null);
-            if (pinned == null) {
-                return false;
-            }
-            pinnedFingerprint = pinned;
+            return false;
         }
         try {
             return pinned.equalsIgnoreCase(BridgeTls.sha256(certificate));
@@ -146,12 +149,20 @@ public class AnalyzerBridgePairingServiceImpl implements AnalyzerBridgePairingSe
     @Override
     @Scheduled(initialDelay = 5_000, fixedDelay = 30_000)
     public void pairWithConfiguredCode() {
-        if (configuredCode.isEmpty() || bridgeUrl.isEmpty() || getStatus().paired()) {
+        if (configuredCode.isEmpty() || bridgeUrl.isEmpty() || configuredCodeRefused || getStatus().paired()) {
             return;
         }
         try {
             pair(configuredCode, null);
         } catch (BridgePairingException e) {
+            if (REFUSALS.contains(e.getMessage())) {
+                configuredCodeRefused = true;
+                LogEvent.logError(getClass().getSimpleName(), "pairWithConfiguredCode",
+                        "The Analyzer Bridge at " + bridgeUrl + " refused the configured pairing code ("
+                                + e.getMessage()
+                                + "); it is not tried again. Enter the Bridge's code on the Analyzers page.");
+                return;
+            }
             LogEvent.logWarn(getClass().getSimpleName(), "pairWithConfiguredCode",
                     "Could not pair with the Analyzer Bridge at " + bridgeUrl + " yet: " + e.getMessage());
         }

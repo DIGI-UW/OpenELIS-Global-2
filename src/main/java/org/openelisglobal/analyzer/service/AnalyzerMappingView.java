@@ -19,9 +19,8 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
     }
 
     /**
-     * One record of the mapping. On a main record, {@code enabled} and
-     * {@code instrumentCode} say whether this instrument runs the assay and the
-     * code it sends (null for the profile's own).
+     * One record of the mapping. On a main record, {@code enabled} says whether
+     * this instrument runs the assay.
      */
     public record TestRow(String sourceRowKey, String rawCode, List<String> aliases, String testNameHint, String loinc,
             String unit, String resultType, BridgeAnalyzerProfile.NormalizedCoding normalizedCoding,
@@ -29,7 +28,7 @@ public record AnalyzerMappingView(String analyzerId, String profileId, int profi
             AnalyzerMappingCatalogService.TestOption selectedTest,
             AnalyzerMappingCatalogService.TestOption suggestedTest, AnalyzerUnresolvedReason unresolvedReason,
             List<ResultRow> results, String subIdentity, String callComponentId, String componentCode,
-            String callComponentCode, boolean enabled, String instrumentCode) {
+            String callComponentCode, boolean enabled) {
 
         public TestRow {
             aliases = aliases == null ? List.of() : List.copyOf(aliases);

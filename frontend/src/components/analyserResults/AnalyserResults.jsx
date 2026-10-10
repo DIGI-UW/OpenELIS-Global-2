@@ -13,6 +13,7 @@ import {
   Pagination,
   Select,
   SelectItem,
+  Stack,
   Tag,
   TextArea,
   TextInput,
@@ -39,7 +40,7 @@ import ResultAlertModal, {
 } from "../resultPage/ResultAlertModal";
 import PlacementNotice from "./PlacementNotice";
 import InstrumentReported from "./InstrumentReported";
-import ResultParts, { groupTestParts } from "./ResultParts";
+import ResultParts, { decisionKey, groupTestParts } from "./ResultParts";
 import DeliveryBundleModal from "./DeliveryBundleModal";
 import RedirectControl from "./RedirectControl";
 
@@ -173,11 +174,18 @@ const AnalyserResults = (props) => {
       REVIEWABLE_HOLDS.includes(result.importIssueReason),
   );
   // One tick saves a whole grouping, so "accept all" ticks only the groupings
-  // whose every result has exactly one analysis waiting for it.
+  // whose every result has exactly one analysis waiting for it and a patient
+  // that matches the order or was not reported.
   const groupIsMatched = (grouping) =>
     actionablePatientResults
       .filter((result) => result.sampleGroupingNumber === grouping)
-      .every((result) => result.placement?.state === "RESOLVED");
+      .every(
+        (result) =>
+          result.placement?.state === "RESOLVED" &&
+          ["NOT_REPORTED", "MATCH"].includes(
+            result.placement?.patient?.status ?? "NOT_REPORTED",
+          ),
+      );
   const qcResults = allResults.filter((r) => r.isControl);
   const hasQcFailures = qcResults.some(
     (r) =>
@@ -343,13 +351,18 @@ const AnalyserResults = (props) => {
     var form = props.results;
     jpSet(form, "resultList[" + rowId + "].sentDate_", d);
   };
+  // A test is decided on its head row; its parts and duplicates carry the same
+  // decision, so a tick they loaded with cannot outvote it on save.
   const handleCheckBox = (e, rowId, fieldName) => {
-    const row = (props.results.resultList || []).find(
-      (result) => String(result.id) === String(rowId),
-    );
+    const rows = props.results.resultList || [];
+    const row = rows.find((result) => String(result.id) === String(rowId));
     if (row) {
-      row[fieldName] = e.target.checked;
-      rememberEdit(rowId, fieldName, e.target.checked);
+      rows
+        .filter((other) => decisionKey(other) === decisionKey(row))
+        .forEach((other) => {
+          other[fieldName] = e.target.checked;
+          rememberEdit(other.id, fieldName, e.target.checked);
+        });
     }
   };
 
@@ -529,65 +542,62 @@ const AnalyserResults = (props) => {
     const awaitingReview = REVIEWABLE_HOLDS.includes(row.importIssueReason);
     switch (column.id) {
       case "sampleInfo":
-        return (
-          <>
-            {sampleGroupHasId(row.id) && (
-              <>
-                <Button
-                  onClick={async () => {
-                    if ("clipboard" in navigator) {
-                      return await navigator.clipboard.writeText(
-                        row.accessionNumber,
-                      );
-                    } else {
-                      return document.execCommand(
-                        "copy",
-                        true,
-                        row.accessionNumber,
-                      );
-                    }
-                  }}
-                  kind="ghost"
-                  iconDescription={intl.formatMessage({
-                    id: "instructions.copy.labnum",
-                  })}
-                  hasIconOnly
-                  renderIcon={Copy}
-                />
-                <div className="sampleInfo" data-testid="LabNo">
-                  <br></br>
-                  {formatLabNum
-                    ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
-                    : row.accessionNumber}
-                  {row.instrumentSpecimenId &&
-                    row.instrumentSpecimenId !== row.accessionNumber && (
-                      <div data-testid="InstrumentSpecimenId">
-                        <FormattedMessage
-                          id="analyzer.placement.instrumentSpecimen"
-                          values={{ id: row.instrumentSpecimenId }}
-                        />
-                      </div>
-                    )}
-                  <br></br>
-                  <br></br>
-                </div>
-                {row.placement && (
-                  <RedirectControl row={row} onChange={handleRedirect} />
-                )}
-                {row.nonconforming && (
-                  <picture>
-                    <img
-                      src={config.serverBaseUrl + "/images/nonconforming.gif"}
-                      alt="nonconforming"
-                      width="20"
-                      height="15"
-                    />
-                  </picture>
-                )}
-              </>
+        // The table's cells break words anywhere, so the lab number gets a row
+        // to itself: beside the redirect control it shrinks to one character a line.
+        return sampleGroupHasId(row.id) ? (
+          <Stack gap={3}>
+            <Stack orientation="horizontal" gap={2}>
+              <Button
+                onClick={async () => {
+                  if ("clipboard" in navigator) {
+                    return await navigator.clipboard.writeText(
+                      row.accessionNumber,
+                    );
+                  } else {
+                    return document.execCommand(
+                      "copy",
+                      true,
+                      row.accessionNumber,
+                    );
+                  }
+                }}
+                kind="ghost"
+                iconDescription={intl.formatMessage({
+                  id: "instructions.copy.labnum",
+                })}
+                hasIconOnly
+                renderIcon={Copy}
+              />
+              <div className="sampleInfo" data-testid="LabNo">
+                {formatLabNum
+                  ? convertAlphaNumLabNumForDisplay(row.accessionNumber)
+                  : row.accessionNumber}
+                {row.instrumentSpecimenId &&
+                  row.instrumentSpecimenId !== row.accessionNumber && (
+                    <div data-testid="InstrumentSpecimenId">
+                      <FormattedMessage
+                        id="analyzer.placement.instrumentSpecimen"
+                        values={{ id: row.instrumentSpecimenId }}
+                      />
+                    </div>
+                  )}
+              </div>
+              {row.nonconforming && (
+                <picture>
+                  <img
+                    src={config.serverBaseUrl + "/images/nonconforming.gif"}
+                    alt="nonconforming"
+                    width="20"
+                    height="15"
+                  />
+                </picture>
+              )}
+            </Stack>
+            {row.placement && (
+              <RedirectControl row={row} onChange={handleRedirect} />
             )}
-          </>
-        );
+          </Stack>
+        ) : null;
       case "testName":
         return (
           <div className="sampleInfo" data-testid="sampleInfo">
@@ -701,7 +711,7 @@ const AnalyserResults = (props) => {
         );
 
       case "notes":
-        if (held) {
+        if (held && !awaitingReview) {
           return null;
         }
         return (
@@ -729,6 +739,7 @@ const AnalyserResults = (props) => {
             <ResultParts
               headId={row.id}
               parts={partsByHeadId.get(row.id) || []}
+              renderHeld={renderHeldResult}
             />
           </>
         );

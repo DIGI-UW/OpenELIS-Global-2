@@ -23,12 +23,25 @@ const TESTS: Record<string, { name: string; specimen: string }> = {
 
 const HELD = "held: run_failed";
 const SPC = "Sample processing control";
+const NUMBER = expect.stringMatching(/^-?\d+(\.\d+)?$/);
 
 /**
- * What a reviewer reads for each record, by assay code: "main" is the test's
- * own result, every other key a component's label. A run failure is held.
+ * Every record staged for each assay code: "main" is the test's own result,
+ * every other key a component's label. A run failure is held. The instrument's
+ * Ct and EndPt readings are numbers that vary by fixture.
  */
-type Expected = Record<string, Record<string, string>>;
+type Expected = Record<string, Record<string, unknown>>;
+
+/** The Ct and EndPt readings the instrument reports for each target. */
+const readings = (...targets: string[]) =>
+  Object.fromEntries(
+    targets.flatMap((target) => [
+      [`${target} Ct`, NUMBER],
+      [`${target} EndPt`, NUMBER],
+    ]),
+  );
+
+const HIV_READINGS = readings("HIV-1", "IQS-H", "IQS-L");
 
 const respiratory = (
   calls: Record<string, string>,
@@ -46,10 +59,9 @@ const respiratory = (
       code,
       {
         main: call,
-        ...(call === HELD
-          ? {}
-          : Object.fromEntries(analytes[code].map((label) => [label, call]))),
+        ...Object.fromEntries(analytes[code].map((label) => [label, call])),
         [SPC]: control,
+        ...readings(...analytes[code], "SPC"),
       },
     ]),
   );
@@ -67,6 +79,8 @@ const outcomes: Array<{ assay: string; outcome: string; expected: Expected }> =
           "HIV-1": "Positive",
           "IQS-H": "Pass",
           "IQS-L": "Pass",
+          ...HIV_READINGS,
+          "HIV-1 Delta Ct": NUMBER,
         },
       },
     },
@@ -79,6 +93,9 @@ const outcomes: Array<{ assay: string; outcome: string; expected: Expected }> =
           "HIV-1 call": "Detected",
           "HIV-1": "Positive",
           "IQS-H": "Pass",
+          "IQS-L": "Pass",
+          ...HIV_READINGS,
+          "HIV-1 Delta Ct": NUMBER,
         },
       },
     },
@@ -91,6 +108,9 @@ const outcomes: Array<{ assay: string; outcome: string; expected: Expected }> =
           "HIV-1 call": "Detected",
           "HIV-1": "Positive",
           "IQS-H": "Pass",
+          "IQS-L": "Pass",
+          ...HIV_READINGS,
+          "HIV-1 Delta Ct": NUMBER,
         },
       },
     },
@@ -103,6 +123,7 @@ const outcomes: Array<{ assay: string; outcome: string; expected: Expected }> =
           "HIV-1": "Negative",
           "IQS-H": "Pass",
           "IQS-L": "Pass",
+          ...HIV_READINGS,
         },
       },
     },
@@ -115,6 +136,7 @@ const outcomes: Array<{ assay: string; outcome: string; expected: Expected }> =
           "HIV-1": "Invalid",
           "IQS-H": "Fail",
           "IQS-L": "Fail",
+          ...HIV_READINGS,
         },
       },
     },
@@ -122,7 +144,13 @@ const outcomes: Array<{ assay: string; outcome: string; expected: Expected }> =
       assay: "hivvl",
       outcome: "error",
       expected: {
-        HIVVL: { main: HELD, "HIV-1": HELD, "IQS-H": HELD, "IQS-L": HELD },
+        HIVVL: {
+          main: HELD,
+          "HIV-1": HELD,
+          "IQS-H": HELD,
+          "IQS-L": HELD,
+          ...HIV_READINGS,
+        },
       },
     },
     ...(["cov-flu-rsv-plus", "cov-flu-plus"] as const).flatMap((assay) => {
@@ -281,9 +309,7 @@ test.describe("Every documented GeneXpert outcome", () => {
           expect(row.placement?.state).toBe("RESOLVED");
         }
       }
-      for (const [code, records] of Object.entries(expected)) {
-        expect(actual[code], code).toMatchObject(records);
-      }
+      expect(actual).toEqual(expected);
     });
   }
 });

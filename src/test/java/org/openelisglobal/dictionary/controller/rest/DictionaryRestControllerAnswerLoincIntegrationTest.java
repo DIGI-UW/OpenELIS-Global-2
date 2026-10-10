@@ -1,6 +1,7 @@
 package org.openelisglobal.dictionary.controller.rest;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertThrows;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -12,6 +13,8 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.common.action.IActionConstants;
+import org.openelisglobal.dictionary.valueholder.Dictionary;
+import org.openelisglobal.dictionarycategory.service.DictionaryCategoryService;
 import org.openelisglobal.dictionaryterminology.service.DictionaryTerminologyMappingService;
 import org.openelisglobal.dictionaryterminology.valueholder.DictionaryTerminologyMapping;
 import org.openelisglobal.login.valueholder.UserSessionData;
@@ -30,6 +33,9 @@ public class DictionaryRestControllerAnswerLoincIntegrationTest extends BaseWebC
 
     @Autowired
     private DictionaryTerminologyMappingService mappingService;
+
+    @Autowired
+    private DictionaryCategoryService categoryService;
 
     @Autowired
     private javax.sql.DataSource dataSource;
@@ -66,6 +72,34 @@ public class DictionaryRestControllerAnswerLoincIntegrationTest extends BaseWebC
 
         save(id, "Positive (LOINC IT, renamed)", "LA6577-6");
         assertEquals(Map.of("LA6577-6", "SAME_AS"), loincMappings(id));
+    }
+
+    @Test
+    public void anAnswerWhoseLoincMappingCannotBeSavedIsNotSavedEither() {
+        Dictionary answer = new Dictionary();
+        answer.setDictEntry("Positive (LOINC IT, refused)");
+        answer.setLocalAbbreviation("POSRF");
+        answer.setIsActive("Y");
+        answer.setSortOrder(1);
+        answer.setLoincCode("LA6576-8");
+        answer.setSysUserId("1");
+        answer.setDictionaryCategory(categoryService.get(String.valueOf(CATEGORY_ID)));
+        // The database refuses the mapping row, so only a shared transaction keeps
+        // the answer out as well.
+        jdbc.execute("CREATE OR REPLACE FUNCTION clinlims.refuse_mapping_it() RETURNS trigger AS $$"
+                + " BEGIN RAISE EXCEPTION 'mapping refused'; END $$ LANGUAGE plpgsql");
+        jdbc.execute("CREATE TRIGGER refuse_mapping_it BEFORE INSERT ON clinlims.dictionary_terminology_mapping"
+                + " FOR EACH ROW EXECUTE FUNCTION clinlims.refuse_mapping_it()");
+        try {
+            assertThrows(RuntimeException.class, () -> mappingService.saveAnswer(answer, null, false));
+        } finally {
+            jdbc.execute("DROP TRIGGER IF EXISTS refuse_mapping_it ON clinlims.dictionary_terminology_mapping");
+            jdbc.execute("DROP FUNCTION IF EXISTS clinlims.refuse_mapping_it()");
+        }
+
+        assertEquals("the answer is rolled back with its mapping", Integer.valueOf(0),
+                jdbc.queryForObject("SELECT count(*) FROM clinlims.dictionary WHERE dictionary_category_id = ?",
+                        Integer.class, CATEGORY_ID));
     }
 
     private void save(String id, String entry, String loinc) throws Exception {

@@ -1,12 +1,11 @@
 # Analyzer integration
 
 How OpenELIS, the Analyzer Bridge and the analyzer mock work together to get
-instrument results into the laboratory record. This is a short overview of the
-target setup. The
-[analyzer baseline roadmap](../roadmaps/analyzer-baseline-roadmap.md) is the
-authoritative plan while that setup is being built; its last step checks this
-file against the landed code. Work outside the remediation is listed in
-[roadmap.md](roadmap.md).
+instrument results into the laboratory record. This spec is the authority for
+analyzer design; code that disagrees with it is wrong. The
+[analyzer baseline roadmap](../roadmaps/analyzer-baseline-roadmap.md) records
+how the baseline was built and the decisions behind each rule. Work outside it
+is listed in [roadmap.md](roadmap.md).
 
 ## How it works
 
@@ -18,11 +17,15 @@ file against the landed code. Work outside the remediation is listed in
    control results are recognised. A profile says nothing about a site.
 2. **Each analyzer owns its mapping.** When a lab adds an analyzer, OpenELIS
    resolves the profile's standard codes against the local catalog by exact
-   match into that analyzer's own mapping. In the setup wizard the operator
+   match into that analyzer's own mapping; a row that does not resolve says why
+   (no match, ambiguous, or incompatible). There is no shared mapping per
+   analyzer type: the Analyzer Types page only previews a profile's defaults. In the setup wizard the operator
    enables the assays this instrument runs, as on the instrument's own host test
    code table, resolves every unresolved row among them, confirms, and activates.
-   Instrument codes, language and number format can be overridden per analyzer,
-   and a code the profile never declared is mapped the same way.
+   Language and number format can be overridden per analyzer on its Bridge
+   connection, and a code the profile never declared is mapped like any other
+   row. The code an instrument sends for a declared assay is a setting of its
+   Bridge connection; OpenELIS does not hold it.
 3. **Results arrive as FHIR bundles.** The Bridge parses the instrument's
    message and puts everything it understood into the bundle: each part of a
    result (number with comparator, qualitative call, log, analyte values,
@@ -43,18 +46,39 @@ file against the landed code. Work outside the remediation is listed in
    review row.
 7. **A newer profile revision is adopted explicitly.** One review screen shows
    every row's fate; the analyzer keeps receiving on its current revision until
-   the operator confirms and re-activates.
+   the operator confirms and applies. Apply switches OpenELIS and the Bridge
+   together; if the Bridge cannot switch, neither does.
+8. **The baseline profiles started fresh.** No profile from before the baseline
+   is an earlier revision of a baseline profile or can be adopted into one. A
+   one-time migration kept every existing analyzer's identity, history, lab
+   units and Bridge connection, exported its old mapping, cleared it, and left
+   it inactive until a person sets it up again on a baseline profile.
+9. **OpenELIS and the Bridge trust each other by certificate.** They pair once,
+   with the Bridge's single-use pairing code. Each side then pins the other's
+   certificate by its SHA-256 fingerprint and accepts only that certificate,
+   in both directions: no password, no certificate authority, no host name
+   check. `/analyzer/fhir` admits only the paired Bridge and records its
+   deliveries as the system user. OpenELIS keeps its own key pair for this,
+   apart from the certificate it serves HTTPS with, and reads the pairing from
+   its database wherever it checks it, so pairing again needs no restart.
+   [Pairing](../../docs/analyzers/bridge-pairing.md) is the operator's guide.
+10. **Setting analyzers up and working their results are separate roles.**
+    Global Admin owns everything that changes how results are read: analyzer
+    types, each analyzer's setup and mapping, adoption, activation, connection
+    probes and pairing. The Analyser Import role (and administrators) works
+    the results: the review page, held results and failed runs, import and
+    delivery issues, and the analyzer list.
 
 ## Who owns what
 
-| System        | Owns                                                                                                                                                                                                    |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Bridge        | Analyzer profiles (immutable revisions), connections and secrets, protocols and transports, parsing, control-result recognition, the raw message audit copy, and the FHIR bundle it builds.             |
-| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's mapping to the local catalog, placement and review of results, held results, quality control, activation, the bundle copy. |
-| Analyzer mock | Deterministic instrument behaviour and real ASTM, HL7 and FILE traffic, replayed from vendor-documented messages.                                                                                       |
+| System        | Owns                                                                                                                                                                                                                                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Bridge        | Analyzer profiles (immutable revisions), connections and secrets, protocols and transports (including watching result folders), parsing, control-result recognition, the raw message audit copy, the FHIR bundle it builds, and its own key pair and pairing record. |
+| OpenELIS      | The analyzer record (name, lab units, Bridge connection ID), each analyzer's mapping to the local catalog, placement and review of results, held results, quality control, activation, the bundle copy, and its own key pair and the paired Bridge's fingerprint.    |
+| Analyzer mock | Deterministic instrument behaviour and real ASTM, HL7 and FILE traffic, replayed from vendor-documented messages.                                                                                                                                                    |
 
 Production code never branches on a manufacturer, model, profile ID or
-analyzer code.
+analyzer code. OpenELIS has no file poller and never opens a result file.
 
 ## What must always hold
 

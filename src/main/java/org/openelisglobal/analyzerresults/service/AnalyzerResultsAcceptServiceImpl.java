@@ -73,6 +73,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     private static final String REJECT_VALUE = "XXXX";
     private static final String RESULT_SUBJECT = "Analyzer Result Note";
+    private static final Set<String> DICTIONARY_OPTION_TYPES = Set.of("D", "M", "Q", "C");
 
     @Autowired
     private AnalyzerResultsService analyzerResultsService;
@@ -283,7 +284,10 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                     .map(TestResultComponent::getSignificantDigits).map(String::valueOf).orElse(null);
         }
         List<TestResult> testResults = testResultService.getActiveTestResultsByTest(staged.getTestId());
-        return testResults == null || testResults.isEmpty() ? null : testResults.get(0).getSignificantDigits();
+        if (testResults == null || testResults.isEmpty()) {
+            return null;
+        }
+        return filterTestResultsByComponent(testResults, null).get(0).getSignificantDigits();
     }
 
     /**
@@ -564,9 +568,9 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
 
     /**
      * Applies the reviewer's decisions. Accept, retest and ignore are decided per
-     * test: a test's components follow its decision, and the other tests on the
-     * same specimen keep their own. Every row of a grouping takes its specimen's
-     * accession.
+     * test on each tube: a test's components follow its decision, and the other
+     * tests, and the same test on another tube of the order, keep their own. Every
+     * row of a grouping takes its specimen's accession.
      */
     List<AnalyzerResultItem> extractActionableResult(List<AnalyzerResultItem> resultItemList) {
         List<AnalyzerResultItem> actionableResultList = new ArrayList<>();
@@ -595,10 +599,16 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         return actionableResultList;
     }
 
-    private record DecisionKey(int grouping, String testId) {
+    /**
+     * One test on one tube. A row staged without a tube id counts as its
+     * accession's tube, as staging and placement count it.
+     */
+    private record DecisionKey(int grouping, String testId, String tube) {
 
         static DecisionKey of(AnalyzerResultItem item) {
-            return new DecisionKey(item.getSampleGroupingNumber(), item.getTestId());
+            String tube = GenericValidator.isBlankOrNull(item.getInstrumentSpecimenId()) ? item.getAccessionNumber()
+                    : item.getInstrumentSpecimenId();
+            return new DecisionKey(item.getSampleGroupingNumber(), item.getTestId(), tube);
         }
     }
 
@@ -1140,6 +1150,7 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
                 } else {
                     result.setValue(resultValue);
                 }
+                applySignificantDigits(result, resultItem, "getResult");
                 result.setSysUserId(sysUserId);
 
                 setAnalyte(result);
@@ -1169,19 +1180,28 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
             result.setValue(rawValue);
             result.setResultType(resultItem.getTestResultType());
         }
-        if (!GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
-            if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
-                result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
-            } else {
-                LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), "createNewResult",
-                        "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
-            }
-        }
+        applySignificantDigits(result, resultItem, "createNewResult");
 
         addMinMaxNormal(result, resultItem, patient);
         result.setSysUserId(sysUserId);
 
         return result;
+    }
+
+    /**
+     * The current configuration's precision. A blank one clears what a replaced
+     * result carried, so it is reported as a new result under the same
+     * configuration would be.
+     */
+    private static void applySignificantDigits(Result result, AnalyzerResultItem resultItem, String caller) {
+        if (GenericValidator.isBlankOrNull(resultItem.getSignificantDigits())) {
+            result.clearSignificantDigits();
+        } else if (StringUtil.isInteger(resultItem.getSignificantDigits())) {
+            result.setSignificantDigits(Integer.parseInt(resultItem.getSignificantDigits()));
+        } else {
+            LogEvent.logWarn(AnalyzerResultsAcceptServiceImpl.class.getSimpleName(), caller,
+                    "Invalid significantDigits value for testId '" + resultItem.getTestId() + "'");
+        }
     }
 
     private void populateAnalysis(AnalyzerResultItem resultItem, Analysis analysis, Test test) {
@@ -1233,15 +1253,15 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
         List<TestResult> candidates = filterTestResultsByComponent(all, resultItem.getComponentId());
         boolean hasDictCandidates = candidates.stream().anyMatch(c -> "D".equals(c.getTestResultType()));
         if (hasDictCandidates) {
-            TestResult testResult = testResultService.getTestResultsByTestAndDictonaryResult(resultItem.getTestId(),
-                    resultItem.getResult());
-            // Only trust the test-scoped dictionary match when it belongs to the target
-            // component; otherwise fall through to the component-filtered candidates.
-            String resolvedTestResultId = testResult == null ? null : testResult.getId();
-            boolean belongsToComponent = candidates.stream()
-                    .anyMatch(candidate -> candidate.getId().equals(resolvedTestResultId));
-            if (testResult != null && !belongsToComponent) {
-                testResult = null;
+            // Another component of the test can offer the same answer, so the answer is
+            // matched among this record's own options, never test-wide.
+            TestResult testResult = null;
+            if (StringUtil.isInteger(resultItem.getResult())) {
+                String answer = resultItem.getResult().trim();
+                testResult = candidates.stream()
+                        .filter(candidate -> DICTIONARY_OPTION_TYPES.contains(candidate.getTestResultType())
+                                && answer.equals(candidate.getValue()))
+                        .findFirst().orElse(null);
             }
             if (testResult == null && !StringUtil.isInteger(resultItem.getResult())) {
                 String desired = resultItem.getResult().trim();
@@ -1265,19 +1285,26 @@ public class AnalyzerResultsAcceptServiceImpl implements AnalyzerResultsAcceptSe
     }
 
     /**
-     * Keep only the test_result rows belonging to the resolved component (null =
-     * PRIMARY / legacy component_id-null rows). Falls back to the full list when no
-     * row matches, so a test whose test_result rows predate components still works.
+     * Keep only the test_result rows belonging to the resolved component. A main
+     * result (null) takes the rows on no component or on the test's primary
+     * component, never another component's: the rows come back in no set order.
+     * Falls back to the full list when no row matches, so a test whose test_result
+     * rows predate components still works.
      */
     private List<TestResult> filterTestResultsByComponent(List<TestResult> candidates, String componentId) {
         List<TestResult> filtered = new ArrayList<>();
         for (TestResult candidate : candidates) {
             String candidateComponentId = candidate.getComponentId();
-            if (componentId == null ? candidateComponentId == null : componentId.equals(candidateComponentId)) {
+            if (componentId == null ? onMainRecord(candidateComponentId) : componentId.equals(candidateComponentId)) {
                 filtered.add(candidate);
             }
         }
         return filtered.isEmpty() ? candidates : filtered;
+    }
+
+    private boolean onMainRecord(String componentId) {
+        return componentId == null || testResultComponentService.getMatch("id", componentId)
+                .map(TestResultComponent::getIsPrimary).orElse(false);
     }
 
     private void addMinMaxNormal(Result result, AnalyzerResultItem resultItem, Patient patient) {

@@ -238,7 +238,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
     }
 
     @Test
-    public void anAssayTurnedOffUnderItsInstrumentCodeIsKeptByTheRevision() {
+    public void anAssayTurnedOffIsKeptByTheRevision() {
         TransactionTemplate transaction = new TransactionTemplate(transactionManager);
         transaction.executeWithoutResult(status -> {
             String profileId = "site.assays." + UUID.randomUUID();
@@ -249,7 +249,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
 
             mappingService.appendRevision(analyzer, new AnalyzerMappingDraft(
                     List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.UNRESOLVED, null)
-                            .withAssay(false, "MTB")),
+                            .withAssay(false)),
                     List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.UNRESOLVED, null))),
                     TEST_SYS_USER_ID);
             entityManager.flush();
@@ -257,7 +257,6 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
 
             var row = mappingService.findLatestByAnalyzerId(analyzer.getId()).orElseThrow().tests().get(0);
             assertFalse(row.isEnabled());
-            assertEquals("MTB", row.getInstrumentCode());
             status.setRollbackOnly();
         });
     }
@@ -279,7 +278,7 @@ public class AnalyzerMappingPersistenceIntegrationTest extends BaseWebContextSen
             // RAW-A matched no local test, so the first revision has the assay off.
             AnalyzerMappingDraft restoredContent = new AnalyzerMappingDraft(
                     List.of(new AnalyzerMappingTestDraft("RAW-A", AnalyzerMappingState.UNRESOLVED, null)
-                            .withAssay(false, null)),
+                            .withAssay(false)),
                     List.of(new AnalyzerMappingResultDraft("RAW-A", "POS", AnalyzerMappingState.UNRESOLVED, null)));
 
             AnalyzerMappingSnapshot restored = mappingService.appendRevision(analyzer, restoredContent,

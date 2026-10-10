@@ -42,9 +42,6 @@ public class AnalyzerInstanceServiceTest {
     @Mock
     private AnalyzerActivationService activationService;
 
-    @Mock
-    private AnalyzerMappingEditorService mappingEditorService;
-
     private AnalyzerInstanceService service;
     private AnalyzerInstanceRequest request;
     private AnalyzerInstanceState localState;
@@ -71,8 +68,7 @@ public class AnalyzerInstanceServiceTest {
                 .thenReturn(localState.withBridgeConnectionId("bridge-connection-42"));
 
         Supplier<String> requestIds = () -> "create-connection-42";
-        service = new AnalyzerInstanceServiceImpl(localStateService, bridgeClient, activationService,
-                mappingEditorService, requestIds);
+        service = new AnalyzerInstanceServiceImpl(localStateService, bridgeClient, activationService, requestIds);
     }
 
     @Test
@@ -93,8 +89,7 @@ public class AnalyzerInstanceServiceTest {
         assertEquals("fixture.synthetic-connection", sent.path("profileRef").path("profileId").asText());
         assertEquals(3, sent.path("profileRef").path("revision").asInt());
         assertEquals(PROFILE_FINGERPRINT, sent.path("profileRef").path("fingerprint").asText());
-        assertEquals("a new analyzer has applied no instrument codes",
-                JSON.createObjectNode().set("codeOverrides", JSON.createObjectNode()), sent.path("values"));
+        assertEquals(JSON.createObjectNode(), sent.path("values"));
         assertEquals("bridge-connection-42", result.state().bridgeConnectionId());
         assertEquals(bridgeConnection, result.connection());
         assertNull(result.connectionErrorKey());
@@ -111,9 +106,7 @@ public class AnalyzerInstanceServiceTest {
 
         ArgumentCaptor<ObjectNode> bridgeRequest = ArgumentCaptor.forClass(ObjectNode.class);
         verify(bridgeClient).createConnection(bridgeRequest.capture());
-        ObjectNode expected = values.deepCopy();
-        expected.putObject("codeOverrides");
-        assertEquals(expected, bridgeRequest.getValue().path("values"));
+        assertEquals(values, bridgeRequest.getValue().path("values"));
     }
 
     @Test
@@ -218,77 +211,21 @@ public class AnalyzerInstanceServiceTest {
         assertEquals(4, sent.path("profileRef").path("revision").asInt());
         assertEquals(ADOPTED_FINGERPRINT, sent.path("profileRef").path("fingerprint").asText());
         assertEquals(1, sent.path("expectedConfigRevision").asInt());
-        assertEquals("the Bridge carries the connection's other values forward", List.of("codeOverrides"),
-                fieldNames(sent.path("values")));
+        assertEquals("the Bridge carries the connection's values forward", List.of(), fieldNames(sent.path("values")));
         assertTrue(result.connected());
         assertEquals(repinned, result.connection());
     }
 
     @Test
-    public void savingTheConnectionSendsTheAppliedInstrumentCodesInPlaceOfAnySupplied() {
-        when(mappingEditorService.appliedInstrumentCodes("42")).thenReturn(java.util.Map.of("HIVVL", "HIVU"));
-        ObjectNode requestedValues = JSON.createObjectNode();
-        requestedValues.put("host", "192.0.2.10");
-        requestedValues.putObject("codeOverrides").put("FLUA", "FLU-A");
-        request.setConnectionValues(requestedValues);
+    public void applyingAnAdoptedRevisionToARunningAnalyzerRestartsItOnThatRevision() {
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"))
+                .thenReturn(adopted(Analyzer.AnalyzerStatus.ACTIVE));
         when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
-                any(ObjectNode.class))).thenReturn(withCodes(bridgeConnection, "HIVVL", "HIVU"));
-
-        service.update("42", request, "17");
-
-        ObjectNode sent = sentUpdate();
-        assertEquals("192.0.2.10", sent.path("values").path("host").asText());
-        assertEquals(codes("HIVVL", "HIVU"), sent.path("values").path("codeOverrides"));
-    }
-
-    @Test
-    public void applyingSendsTheBridgeTheInstrumentCodesTheMappingNowHolds() {
-        AnalyzerInstanceState connectedState = localState.withBridgeConnectionId("bridge-connection-42");
-        when(localStateService.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
-                .thenReturn(connectedState);
-        when(mappingEditorService.appliedInstrumentCodes("42")).thenReturn(java.util.Map.of("HIVVL", "HIVU"));
-        ObjectNode renamed = withCodes(bridgeConnection, "HIVVL", "HIVU");
-        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
-                any(ObjectNode.class))).thenReturn(renamed);
-
-        AnalyzerInstanceView result = service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17");
-
-        ObjectNode sent = sentUpdate();
-        assertEquals(3, sent.path("profileRef").path("revision").asInt());
-        assertEquals(codes("HIVVL", "HIVU"), sent.path("values").path("codeOverrides"));
-        assertEquals(renamed, result.connection());
-        assertNull(result.connectionErrorKey());
-        verify(activationService, never()).reactivate(any(), any());
-    }
-
-    @Test
-    public void applyingClearsCodesTheMappingNoLongerHolds() {
-        AnalyzerInstanceState connectedState = localState.withBridgeConnectionId("bridge-connection-42");
-        when(localStateService.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
-                .thenReturn(connectedState);
-        when(bridgeClient.getConnection("bridge-connection-42"))
-                .thenReturn(withCodes(bridgeConnection, "HIVVL", "HIVU"));
-        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
-                any(ObjectNode.class))).thenReturn(bridgeConnection);
-
-        service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17");
-
-        assertEquals(JSON.createObjectNode(), sentUpdate().path("values").path("codeOverrides"));
-    }
-
-    @Test
-    public void applyingNewCodesToARunningAnalyzerRestartsItOnThem() {
-        AnalyzerInstanceState active = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
-                "fixture.synthetic-connection", 3, PROFILE_FINGERPRINT, "bridge-connection-42",
-                Analyzer.AnalyzerStatus.ACTIVE, 0L);
-        when(localStateService.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17")).thenReturn(active);
-        when(mappingEditorService.appliedInstrumentCodes("42")).thenReturn(java.util.Map.of("HIVVL", "HIVU"));
-        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
-                any(ObjectNode.class))).thenReturn(withCodes(bridgeConnection, "HIVVL", "HIVU"));
+                any(ObjectNode.class))).thenReturn(repinned());
         when(activationService.reactivate("42", "17"))
                 .thenReturn(new AnalyzerActivationResult("42", Analyzer.AnalyzerStatus.ACTIVE, true, true, List.of()));
 
-        AnalyzerInstanceView result = service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17");
+        AnalyzerInstanceView result = service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17");
 
         InOrder order = inOrder(bridgeClient, activationService);
         order.verify(bridgeClient).updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
@@ -298,28 +235,25 @@ public class AnalyzerInstanceServiceTest {
     }
 
     @Test
-    public void newCodesARunningAnalyzerCannotRestartOnAreTakenBackAndNothingIsApplied() {
-        AnalyzerInstanceState active = new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"),
-                "fixture.synthetic-connection", 3, PROFILE_FINGERPRINT, "bridge-connection-42",
-                Analyzer.AnalyzerStatus.ACTIVE, 0L);
-        when(localStateService.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17")).thenReturn(active);
-        when(mappingEditorService.appliedInstrumentCodes("42")).thenReturn(java.util.Map.of("HIVVL", "HIVU"));
-        ObjectNode renamed = withCodes(bridgeConnection, "HIVVL", "HIVU");
-        when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection, renamed);
+    public void anAdoptedRevisionARunningAnalyzerCannotRestartOnIsTakenBackAndNothingIsApplied() {
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"))
+                .thenReturn(adopted(Analyzer.AnalyzerStatus.ACTIVE));
+        ObjectNode repinned = repinned();
+        when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection, repinned);
         when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
-                any(ObjectNode.class))).thenReturn(renamed, bridgeConnection);
+                any(ObjectNode.class))).thenReturn(repinned, bridgeConnection);
         when(activationService.reactivate("42", "17"))
                 .thenReturn(new AnalyzerActivationResult("42", Analyzer.AnalyzerStatus.ACTIVE, false, false,
                         List.of(new AnalyzerActivationBlocker("analyzer.activation.blocker.connection"))));
 
         BridgeAnalyzerConnectionException refused = assertThrows(BridgeAnalyzerConnectionException.class,
-                () -> service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17"));
+                () -> service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"));
 
         assertEquals("analyzer.activation.blocker.connection", refused.messageKey());
         List<ObjectNode> sent = sentUpdates(2);
-        assertEquals(codes("HIVVL", "HIVU"), sent.get(0).path("values").path("codeOverrides"));
-        assertEquals("the connection goes back to the codes it ran on", JSON.createObjectNode(),
-                sent.get(1).path("values").path("codeOverrides"));
+        assertEquals(4, sent.get(0).path("profileRef").path("revision").asInt());
+        assertEquals("the connection goes back to the revision it ran on", 3,
+                sent.get(1).path("profileRef").path("revision").asInt());
     }
 
     @Test
@@ -355,6 +289,24 @@ public class AnalyzerInstanceServiceTest {
     }
 
     @Test
+    public void aConnectionAnotherRequestRepinnedIsLeftAsItIsAndReportedAsNeedingReconciliation() {
+        when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted());
+        ObjectNode elsewhere = bridgeConnection.deepCopy();
+        elsewhere.with("profileRef").put("revision", 5).put("fingerprint", "sha256:" + "9".repeat(64));
+        elsewhere.put("configRevision", 2);
+        when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection, elsewhere);
+        when(bridgeClient.updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
+                any(ObjectNode.class)))
+                .thenThrow(new BridgeAnalyzerConnectionException("analyzer.bridge.connection.conflict"));
+
+        BridgeAnalyzerConnectionException failed = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> service.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17"));
+
+        assertEquals("analyzer.bridge.connection.reconcileRequired", failed.messageKey());
+        sentUpdates(1);
+    }
+
+    @Test
     public void aConnectionThatCannotBePutBackIsReportedAsNeedingReconciliation() {
         when(localStateService.applyMapping("42", "13", 3, "sha256:" + "4".repeat(64), "17")).thenReturn(adopted());
         when(bridgeClient.getConnection("bridge-connection-42")).thenReturn(bridgeConnection)
@@ -370,8 +322,19 @@ public class AnalyzerInstanceServiceTest {
     }
 
     private AnalyzerInstanceState adopted() {
+        return adopted(Analyzer.AnalyzerStatus.SETUP);
+    }
+
+    private AnalyzerInstanceState adopted(Analyzer.AnalyzerStatus status) {
         return new AnalyzerInstanceState("42", "Synthetic bench 1", List.of("7"), "fixture.synthetic-connection", 4,
-                ADOPTED_FINGERPRINT, "bridge-connection-42", Analyzer.AnalyzerStatus.SETUP, 0L);
+                ADOPTED_FINGERPRINT, "bridge-connection-42", status, 0L);
+    }
+
+    private ObjectNode repinned() {
+        ObjectNode repinned = bridgeConnection.deepCopy();
+        repinned.with("profileRef").put("revision", 4).put("fingerprint", ADOPTED_FINGERPRINT);
+        repinned.put("configRevision", 2);
+        return repinned;
     }
 
     private List<ObjectNode> sentUpdates(int count) {
@@ -379,26 +342,6 @@ public class AnalyzerInstanceServiceTest {
         verify(bridgeClient, org.mockito.Mockito.times(count))
                 .updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"), updateRequest.capture());
         return updateRequest.getAllValues();
-    }
-
-    private ObjectNode sentUpdate() {
-        ArgumentCaptor<ObjectNode> updateRequest = ArgumentCaptor.forClass(ObjectNode.class);
-        verify(bridgeClient).updateConnection(org.mockito.ArgumentMatchers.eq("bridge-connection-42"),
-                updateRequest.capture());
-        return updateRequest.getValue();
-    }
-
-    private static ObjectNode codes(String profileCode, String instrumentCode) {
-        ObjectNode codes = JSON.createObjectNode();
-        codes.put(profileCode, instrumentCode);
-        return codes;
-    }
-
-    private static ObjectNode withCodes(ObjectNode connection, String profileCode, String instrumentCode) {
-        ObjectNode renamed = connection.deepCopy();
-        renamed.set("codeOverrides", codes(profileCode, instrumentCode));
-        renamed.put("configRevision", connection.path("configRevision").asInt() + 1);
-        return renamed;
     }
 
     private static List<String> fieldNames(com.fasterxml.jackson.databind.JsonNode node) {

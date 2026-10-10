@@ -152,6 +152,36 @@ public class AnalyzerBridgePairingServiceTest {
     }
 
     @Test
+    public void aPairingMadeInTheOtherWebContextIsTrustedWithoutARestart() throws Exception {
+        AnalyzerBridgePairingService delivery = service("");
+        service("").pair(CODE, "7");
+        assertTrue(delivery.isPairedBridge(bridge.identity.certificate()));
+        delivery.getPairedBridge().orElseThrow();
+
+        try (FakeBridge reinstalled = new FakeBridge(CODE)) {
+            new AnalyzerBridgePairingServiceImpl(dao, encryptor, reinstalled.url() + "/", "", "", "").pair(CODE, "7");
+
+            assertTrue(delivery.isPairedBridge(reinstalled.identity.certificate()));
+            assertFalse("the replaced Bridge is no longer trusted",
+                    delivery.isPairedBridge(bridge.identity.certificate()));
+            assertEquals(sha256(reinstalled.identity.certificate()),
+                    delivery.getPairedBridge().orElseThrow().bridgeCertificateSha256());
+        }
+    }
+
+    @Test
+    public void aConfiguredCodeTheBridgeRefusesIsNotTriedAgain() {
+        AnalyzerBridgePairingService pairing = service("WRONG-CODE");
+
+        pairing.pairWithConfiguredCode();
+        pairing.pairWithConfiguredCode();
+
+        assertEquals("the Bridge keeps its attempts for the code entered on the page", 1, bridge.pairingAttempts.get());
+        assertFalse(pairing.getStatus().paired());
+        assertTrue(pairing.pair(CODE, "7").paired());
+    }
+
+    @Test
     public void openElisSendsTheCertificateItServesSoTheBridgeCanPinIt() throws Exception {
         BridgeTls.Identity served = BridgeTls.generateIdentity();
         Path keyStore = Files.createTempFile("served", ".p12");

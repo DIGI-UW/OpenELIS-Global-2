@@ -394,6 +394,133 @@ public class AnalyzerResultsAcceptHoldIntegrationTest extends BaseWebContextSens
     }
 
     @org.junit.Test
+    public void aMainResultLandsOnThePrimaryComponentWhateverOrderTheOptionsAreIn() {
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " significant_digits, lastupdated) VALUES ('c-log-1145', ?, 'LOG', 'Log viral load', false, 'Y', 2,"
+                + " NOW()), ('c-main-1145', ?, 'PRIMARY', 'Viral load', true, 'Y', 0, NOW())", MULTI_TYPE_TEST,
+                MULTI_TYPE_TEST);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                        + " significant_digits, component_id, lastupdated) VALUES (97312, ?, 'N', '', true, 1, 2,"
+                        + " 'c-log-1145', NOW()), (97311, ?, 'N', '', true, 2, 0, 'c-main-1145', NOW())",
+                MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("UPDATE clinlims.analyzer_results SET result = '1009.64', test_result_type = 'N'"
+                + " WHERE id = ?::numeric", stagedRowId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setResult("1009.64");
+        item.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(item), "1");
+
+        java.util.Map<String, Object> saved = jdbc.queryForMap(
+                "SELECT r.test_result_id::text AS option, r.significant_digits::text AS digits FROM clinlims.result r"
+                        + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                        + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                        + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                ACCESSION);
+        assertEquals("the viral load is the primary component's, not the log's", "97311", saved.get("option"));
+        assertEquals("it keeps the primary component's precision", "0", saved.get("digits"));
+    }
+
+    @org.junit.Test
+    public void aMainCallKeepsItsAnswerWhenAnotherComponentOffersTheSameOne() {
+        jdbc.update("INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated) VALUES"
+                + " (97401, 'Positive 1145', 'Y', NOW()), (97402, 'Invalid 1145', 'Y', NOW())");
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " lastupdated) VALUES ('c-call-1145', ?, 'CALL', 'Call', false, 'Y', NOW()), ('c-main-1145', ?,"
+                + " 'PRIMARY', 'Call', true, 'Y', NOW())", MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, value, is_active, sort_order,"
+                + " component_id, lastupdated) VALUES (97321, ?, 'D', '97401', true, 1, 'c-call-1145', NOW()),"
+                + " (97322, ?, 'D', '97402', true, 3, 'c-main-1145', NOW()), (97323, ?, 'D', '97401', true, 1,"
+                + " 'c-main-1145', NOW())", MULTI_TYPE_TEST, MULTI_TYPE_TEST, MULTI_TYPE_TEST);
+        jdbc.update("UPDATE clinlims.analyzer_results SET result = '97401', test_result_type = 'D'"
+                + " WHERE id = ?::numeric", stagedRowId);
+        AnalyzerResultItem item = acceptedItem();
+        item.setResult("97401");
+        item.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(item), "1");
+
+        java.util.Map<String, Object> saved = jdbc
+                .queryForMap(
+                        "SELECT r.test_result_id::text AS option, r.value FROM clinlims.result r"
+                                + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        ACCESSION);
+        assertEquals("the call stays Positive", "97401", saved.get("value"));
+        assertEquals("on the primary component's Positive", "97323", saved.get("option"));
+    }
+
+    @org.junit.Test
+    public void aRerunThatReplacesAResultTakesTheComponentsCurrentDigits() {
+        aNumberOnAComponentIsSavedWithTheComponentsDigits();
+        jdbc.update("UPDATE clinlims.test_result_component SET significant_digits = 3 WHERE id = 'c-log-1145'");
+        jdbc.update("UPDATE clinlims.test_result SET significant_digits = 3 WHERE id = 97312");
+        entityManager.flush();
+        entityManager.clear();
+        entityManager.flush();
+        entityManager.clear();
+        String rerunId = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, component_id, test_result_type, last_updated) VALUES (?::numeric, ?, ?,"
+                        + " 'HoldIT 1145', '3.10', false, ?, 'c-log-1145', 'N', NOW())",
+                rerunId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST);
+        AnalyzerResultItem rerun = acceptedItem();
+        rerun.setId(rerunId);
+        rerun.setResult("3.10");
+        rerun.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(rerun), "1");
+
+        List<java.util.Map<String, Object>> results = jdbc
+                .queryForList(
+                        "SELECT r.value, r.significant_digits FROM clinlims.result r"
+                                + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        ACCESSION);
+        assertEquals("the rerun replaces the result", 1, results.size());
+        assertEquals("3.10", String.valueOf(results.get(0).get("value")));
+        assertEquals("the replaced result takes the component's three decimals", "3",
+                String.valueOf(results.get(0).get("significant_digits")));
+    }
+
+    @org.junit.Test
+    public void aRerunAfterTheComponentsDigitsAreClearedKeepsNoDigits() {
+        aNumberOnAComponentIsSavedWithTheComponentsDigits();
+        jdbc.update("UPDATE clinlims.test_result_component SET significant_digits = NULL WHERE id = 'c-log-1145'");
+        jdbc.update("UPDATE clinlims.test_result SET significant_digits = NULL WHERE id = 97312");
+        entityManager.flush();
+        entityManager.clear();
+        String rerunId = String.valueOf(jdbc.queryForObject("SELECT nextval('analyzer_results_seq')", Long.class));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_results (id, analyzer_id, accession_number, test_name, result,"
+                        + " iscontrol, test_id, component_id, test_result_type, last_updated) VALUES (?::numeric, ?, ?,"
+                        + " 'HoldIT 1145', '3.10', false, ?, 'c-log-1145', 'N', NOW())",
+                rerunId, ANALYZER_ID, ACCESSION, MULTI_TYPE_TEST);
+        AnalyzerResultItem rerun = acceptedItem();
+        rerun.setId(rerunId);
+        rerun.setResult("3.10");
+        rerun.setTypeOfSampleId(String.valueOf(TYPE_B));
+
+        acceptService.acceptAndPersist(List.of(rerun), "1");
+
+        List<java.util.Map<String, Object>> results = jdbc
+                .queryForList(
+                        "SELECT r.value, r.significant_digits FROM clinlims.result r"
+                                + " JOIN clinlims.analysis a ON r.analysis_id = a.id"
+                                + " JOIN clinlims.sample_item si ON a.sampitem_id = si.id"
+                                + " JOIN clinlims.sample s ON si.samp_id = s.id WHERE s.accession_number = ?",
+                        ACCESSION);
+        assertEquals("the rerun replaces the result", 1, results.size());
+        assertEquals("3.10", String.valueOf(results.get(0).get("value")));
+        assertEquals("the replaced result drops the two decimals its component no longer has", null,
+                results.get(0).get("significant_digits"));
+    }
+
+    @org.junit.Test
     public void releasingAHeldResultKeepsItsStagedCompletionDate() {
         jdbc.update("UPDATE clinlims.analyzer_results SET complete_date = '2026-09-01 10:00:00' WHERE id = ?::numeric",
                 stagedRowId);

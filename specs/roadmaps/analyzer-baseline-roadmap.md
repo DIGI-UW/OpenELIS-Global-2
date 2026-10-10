@@ -2,10 +2,9 @@
 
 Execution plan for the analyzer rework in OpenELIS-Global-2, the Analyzer
 Bridge, and the analyzer mock. Written for an implementing agent. This file
-and its step files are the one authoritative document for the remediation:
-where anything else disagrees, this file wins.
-[specs/analyzers/spec.md](../analyzers/spec.md) is a short overview of the
-target, checked against the landed code in step 9;
+and its step files are the plan for the remediation.
+[specs/analyzers/spec.md](../analyzers/spec.md) is the authority for analyzer
+design and changes in the same PR as each decision;
 [specs/analyzers/roadmap.md](../analyzers/roadmap.md) holds analyzer work
 outside this remediation. Every rule and step is decided; this file does not
 argue for them. Each step is
@@ -130,12 +129,11 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     MTB/RIF is three results: MTB detection (Detected, Not detected, Trace
     detected), bacillary level, rifampicin resistance on LOINC 89372-7
     (Detected, Not detected, Indeterminate). 46244-0 is retired.
-13. Instrument codes are a per-analyzer override. The profile ships the
-    vendor's suggested codes; setup lets the operator change what this
-    instrument uses; the Bridge uses the override for result translation and
-    outbound orders. Setup lists the profile's assays the way the instrument's
-    host test code table does: the lab enables the ones this instrument runs
-    and sets each code, and only enabled assays are mapped. A result for an
+13. Setup lists the profile's assays the way the instrument's host test code
+    table does: the lab enables the ones this instrument runs, and only
+    enabled assays are mapped. The code an instrument sends for a declared
+    assay is not set in OE2 (9 Oct, the #4611 review: it is a setting of the
+    Bridge connection). A result for an
     assay that is not enabled is held, never dropped. A code the profile does not declare (a cartridge or test
     the default profile does not cover) reaches OE2 and is held as an unknown
     test; the operator maps it like any other override, from the held row or
@@ -234,15 +232,6 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     side must never receive (local ownership, operational QC) are refused by
     name, not by refusing everything unknown. (Agreed 6 Oct.)
 
-Deferred and not in this roadmap: moving Analyzer Types under Admin; pairing
-the Bridge to its OE2 instance instead of password authentication (6 Oct: "I
-would love to have a non-password-based authentication that pairs the bridge
-to the OE2 instance instead, but that might be a follow up PR"); opening the
-OE2 submodule bump automatically when the Bridge or mock default branch moves,
-and the image-tag bump in `docker-compose.analyzers.yml` from the Bridge and
-mock release workflows (7 Oct: "why are we manually pinning anything??";
-decided "Only remove cross-checks now").
-
 ## Repo working agreements
 
 - Each repository tests only itself; tests that need the Bridge and the mock
@@ -284,8 +273,7 @@ uses; they are restated so a step can be run without re-reading those files.
   lands as a unit: steps 1 to 4 change behaviour that the harness E2E only
   satisfies once steps 6 and 7 deliver the profile and dictionary, so no PR
   below the top is independently shippable.
-- Bridge: step 6 as PRs in `DIGI-UW/openelis-analyzer-bridge`, GeneXpert
-  first, then one profile per PR.
+- Bridge: step 6 as PRs in `DIGI-UW/openelis-analyzer-bridge`.
 - Mock: step 8 as a PR in `DIGI-UW/analyzer-mock-server`.
 - Order from 6 Oct, one reviewable stacked PR each: Bridge request
   tolerance and the boundary checks (T6.21 to T6.23) with the startup work
@@ -295,14 +283,15 @@ uses; they are restated so a step can be run without re-reading those files.
   step 2b fixes they found (T7.1, T7.2, T2b.7b, T2b.7c). Then, decided 7 Oct
   ("Delete first, then rewrite (Recommended)"): the old revisions and the
   mock's generative GeneXpert templates deleted (T6.19, T8.4) with the seed
-  setting up the harness analyzers as an operator would (T7.4b); the
+  setting up the harness analyzers as an operator would (step 10 F8); the
   remaining specs rewritten straight to the end state; then the evidence
   package. From 7 Oct the remaining work is one ordered list,
   [step 10](analyzer-baseline/10-finish-line.md). From 8 Oct the review
   findings are fixed in new PRs above the security PR (#4657), not in the
   PRs they were filed on ([step 11](analyzer-baseline/11-review-remediation.md)).
-- Last: step 9 as its own PR on `develop`, after everything above has
-  landed.
+- The spec changes with the code: a decision updates
+  `specs/analyzers/spec.md` in the PR that implements it (decided 8 Oct). There
+  is no separate spec-sync step; the one planned as step 9 was removed on 9 Oct.
 - The top OE2 PR carries the submodule pins (`tools/openelis-analyzer-bridge`
   and `tools/analyzer-mock-server`), which move to the Bridge and mock PR
   heads as soon as they exist. The submodule commit is the only record of
@@ -311,9 +300,6 @@ uses; they are restated so a step can be run without re-reading those files.
   and mock edits are made inside the submodule checkouts of the OE2
   worktree, and each task's tick and pin bump ride in the OE2 commit that
   lands it.
-- Distro follow-on, out of scope here: each distro removes profiles core now
-  carries, unsets the shipped-pattern override, rebuilds any remaining
-  instrument as a fresh baseline profile, runs the migration.
 
 ## Steps
 
@@ -333,6 +319,5 @@ Each step is one file. It is self-contained: its Facts section holds everything 
 | 6    | [Profile contract, templates, and the shipped set](analyzer-baseline/06-profile-contract.md) | the Bridge enforces one profile contract, ships templates and a guide, ships GeneXpert as the first baseline profile, and carries every parsed fact into the bundle.                                                                       |
 | 7    | [Harness dictionary](analyzer-baseline/07-harness-dictionary.md)                             | the harness loads only the configuration the analyzer stories use, so every shipped analyzer binds out of the box; the Bridge and mock pins are bumped; the baseline E2E is green.                                                         |
 | 8    | [Manufacturer-shaped mock traffic](analyzer-baseline/08-mock-traffic.md)                     | the mock replays vendor-documented messages for every outcome, and a contract test keeps it aligned with the pinned baseline profile.                                                                                                      |
-| 9    | [Validate and sync the spec](analyzer-baseline/09-spec-sync.md)                              | `specs/analyzers/spec.md` describes the analyzer setup that landed, so it can be read without this roadmap.                                                                                                                                |
 | 10   | [Finish line](analyzer-baseline/10-finish-line.md)                                           | the remaining work as one ordered list, ending in the recorded evidence for the three analyzer workflows.                                                                                                                                  |
 | 11   | [Review remediation](analyzer-baseline/11-review-remediation.md)                             | every review thread on the stack is fixed or answered and the top PR is green, before step 10's final green and evidence.                                                                                                                  |

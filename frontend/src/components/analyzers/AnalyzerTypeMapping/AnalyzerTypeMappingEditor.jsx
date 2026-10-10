@@ -140,23 +140,12 @@ const planRowKey = (planRow) =>
     ? `${planRow.key.sourceRowKey} ${planRow.key.subIdentity}`
     : planRow.key.sourceRowKey;
 
-const sameTestDecision = (test, decision) =>
-  Boolean(decision) &&
-  test.mappingState === decision.test.mappingState &&
-  (test.testId || null) === (decision.test.testId || null);
-
-// The draft row already holds this decision, answers included.
-const holdsDecision = (test, decision) =>
-  sameTestDecision(test, decision) &&
-  test.results.every((result) => {
-    const decided = decision.results.find(
-      (candidate) => candidate.rawValue === result.rawValue,
-    );
-    return (
-      result.mappingState === (decided?.mappingState || "UNRESOLVED") &&
-      (result.resultOptionId || null) === (decided?.testResultId || null)
-    );
-  });
+// A record still bound to the test that is no longer active blocks adoption
+// until the operator picks another.
+const stillOnInactiveTest = (test, planRow) =>
+  planRow.blockReason === "INACTIVE_TEST" &&
+  test.mappingState === "BOUND" &&
+  (test.testId || null) === (planRow.current?.test.testId || null);
 
 /**
  * What the operator changed since the last save, row by row, so Save can show
@@ -378,14 +367,11 @@ const AnalyzerTypeMappingEditor = ({
     });
   }, [draftTests, adoption]);
 
+  // Every bound test's components: a record lands on one, and a main record with
+  // no call target may take only answers on none or on the primary one.
   useEffect(() => {
     draftTests
-      .filter(
-        (test) =>
-          test.mappingState === "BOUND" &&
-          test.testId &&
-          (takesComponent(test) || takesCallComponent(test)),
-      )
+      .filter((test) => test.mappingState === "BOUND" && test.testId)
       .forEach(({ testId }) => {
         if (loadedComponents.current.has(testId)) {
           return;
@@ -614,12 +600,11 @@ const AnalyzerTypeMappingEditor = ({
   const adoptionBlocked = (adoption?.rows || []).some(
     (planRow) =>
       planRow.blockReason === "HELD_RESULTS" ||
-      (planRow.blockReason === "INACTIVE_TEST" &&
-        draftTests.some(
-          (test) =>
-            recordKey(test) === planRowKey(planRow) &&
-            sameTestDecision(test, planRow.current),
-        )),
+      draftTests.some(
+        (test) =>
+          recordKey(test) === planRowKey(planRow) &&
+          stillOnInactiveTest(test, planRow),
+      ),
   );
 
   const confirmable = useMemo(
@@ -921,10 +906,7 @@ const AnalyzerTypeMappingEditor = ({
 
   const renderAdoptionDetail = (test, planRow) => {
     const key = recordKey(test);
-    if (
-      planRow.blockReason === "INACTIVE_TEST" &&
-      sameTestDecision(test, planRow.current)
-    ) {
+    if (stillOnInactiveTest(test, planRow)) {
       return (
         <InlineNotification
           kind="error"
@@ -963,7 +945,6 @@ const AnalyzerTypeMappingEditor = ({
               <Button
                 kind="ghost"
                 size="sm"
-                disabled={holdsDecision(test, decision)}
                 onClick={() => takeDecision(key, decision)}
               >
                 <FormattedMessage id={`analyzerType.adoption.${action}`} />
@@ -1074,14 +1055,21 @@ const AnalyzerTypeMappingEditor = ({
       catalogTests.find((candidate) => candidate.id === test.testId) ||
       test.selectedTest ||
       null;
+    const components = componentsByTest[test.testId] || [];
     const answerComponent = answerComponentId(test);
+    // As the save checks it: an answer on the record's component, or with none set
+    // an answer on no component or the primary one.
     const resultOptions = test.testId
-      ? resultOptionsByTest[test.testId]?.filter(
-          (option) =>
-            !answerComponent || option.componentId === answerComponent,
+      ? resultOptionsByTest[test.testId]?.filter((option) =>
+          answerComponent
+            ? option.componentId === answerComponent
+            : !option.componentId ||
+              components.some(
+                (component) =>
+                  component.id === option.componentId && component.primary,
+              ),
         )
       : undefined;
-    const components = componentsByTest[test.testId] || [];
     const key = recordKey(test);
     const label = recordLabel(test);
     const planRow = adopting ? adoptionRows.get(key) : null;

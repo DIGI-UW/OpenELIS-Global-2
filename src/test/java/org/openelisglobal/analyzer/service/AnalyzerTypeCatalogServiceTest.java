@@ -215,7 +215,7 @@ public class AnalyzerTypeCatalogServiceTest {
     public void aSavedRevisionNewerThanTheOneInForceIsReportedForVerification() throws Exception {
         when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
                 .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 2, 1)));
-        when(mappingDAO.findLatestByAnalyzerId("501")).thenReturn(Optional.of(mapping(2)));
+        when(mappingDAO.findLatestByAnalyzerId("501")).thenReturn(Optional.of(mapping(2, 2)));
         when(bridgeCatalogService.getProfile("site.mock-hematology", 2))
                 .thenReturn(profileRevision(2, "Mock Hematology revision 2"));
 
@@ -226,9 +226,25 @@ public class AnalyzerTypeCatalogServiceTest {
         assertFalse(result.newerProfileRevision());
     }
 
-    private static AnalyzerMapping mapping(int revisionNumber) {
+    @Test
+    public void aSavedAdoptionOfThisRevisionAwaitsVerificationInsteadOfOfferingAdoptionAgain() throws Exception {
+        when(mappingDAO.findAnalyzersInForceOnProfile("site.mock-hematology"))
+                .thenReturn(List.of(analyzer("501", "Hematology - Main Lab", 1, 1)));
+        when(mappingDAO.findLatestByAnalyzerId("501")).thenReturn(Optional.of(mapping(2, 2)));
+        when(bridgeCatalogService.getProfile("site.mock-hematology", 2))
+                .thenReturn(profileRevision(2, "Mock Hematology revision 2"));
+
+        AnalyzerTypeCatalogView.AffectedAnalyzer result = service.getType("site.mock-hematology", 2)
+                .affectedAnalyzers().get(0);
+
+        assertTrue(result.newerMappingRevision());
+        assertFalse("revision 2 is already adopted and saved", result.newerProfileRevision());
+    }
+
+    private static AnalyzerMapping mapping(int revisionNumber, int profileRevision) {
         AnalyzerMapping mapping = new AnalyzerMapping();
         mapping.setRevisionNumber(revisionNumber);
+        mapping.setProfileRevision(profileRevision);
         return mapping;
     }
 

@@ -24,6 +24,7 @@ import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
 import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
+import org.openelisglobal.testresultcomponent.valueholder.TestResultComponent;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -190,7 +191,6 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         entity.setCallComponentId(row.callComponentId());
         entity.setUnresolvedReason(row.unresolvedReason());
         entity.setEnabled(row.isEnabled());
-        entity.setInstrumentCode(row.instrumentCode());
         testDAO.insert(entity);
         return entity;
     }
@@ -292,6 +292,15 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         Test owner = option.getTest();
         if (owner == null || !mappedTest.testId().equals(owner.getId())) {
             throw new IllegalArgumentException(label + " must belong to mapped Test " + mappedTest.testId());
+        }
+        String target = AnalyzerMappingTestDraft.answerComponentOf(mappedTest.subIdentity(), mappedTest.componentId(),
+                mappedTest.callComponentId());
+        String optionComponent = option.getComponentId();
+        boolean onTarget = target != null ? target.equals(optionComponent)
+                : optionComponent == null || componentService.getMatch("id", optionComponent)
+                        .map(TestResultComponent::getIsPrimary).orElse(false);
+        if (!onTarget) {
+            throw new IllegalArgumentException(label + " must belong to the component its record lands on");
         }
     }
 
