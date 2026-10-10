@@ -312,7 +312,7 @@ public class WestgardRuleConfigServiceImpl extends BaseObjectServiceImpl<Westgar
 
     private String resolveAnalyzerName(String instrumentId) {
         try {
-            Optional<Analyzer> analyzer = analyzerService.getWithBinding(String.valueOf(instrumentId));
+            Optional<Analyzer> analyzer = analyzerService.getWithMapping(String.valueOf(instrumentId));
             return analyzer.map(Analyzer::getName).orElse("Analyzer " + instrumentId);
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getName(), "resolveAnalyzerName",

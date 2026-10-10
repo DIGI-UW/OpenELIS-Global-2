@@ -11,7 +11,7 @@
                 SELECT COUNT(*) FROM analyzer
                 WHERE id = 900011 AND name = 'Unmigrated fixture' AND is_active IS TRUE
                 AND status = 'SETUP' AND bridge_connection_id IS NULL
-                AND site_binding_revision_id IS NULL
+                AND mapping_id IS NULL
             ]]></sqlCheck>
             <!-- One export run holds the settings as a JSON document per analyzer. -->
             <sqlCheck expectedResult="1"><![CDATA[

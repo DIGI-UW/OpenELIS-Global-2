@@ -5,10 +5,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
-import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationRequest;
-import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationView;
 import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
-import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
@@ -61,23 +58,13 @@ public class AnalyzerTypeRestController extends BaseRestController {
         return ResponseEntity.ok(catalogService.getType(profileId, revision));
     }
 
+    /**
+     * The defaults a new analyzer on this profile revision would get. Read-only;
+     * each analyzer owns its mapping.
+     */
     @GetMapping("/{profileId}/mapping")
-    public ResponseEntity<AnalyzerMappingView> getMapping(@PathVariable String profileId, @RequestParam int revision) {
-        return ResponseEntity.ok(mappingService.getMapping(profileId, revision));
-    }
-
-    @PutMapping("/{profileId}/mapping")
-    public ResponseEntity<AnalyzerMappingView> saveMapping(@PathVariable String profileId, @RequestParam int revision,
-            @RequestBody AnalyzerMappingUpdate update, HttpServletRequest httpRequest) {
-        return ResponseEntity.ok(mappingService.saveMapping(profileId, revision, update, getSysUserId(httpRequest)));
-    }
-
-    @PostMapping("/{profileId}/mapping/confirm")
-    public ResponseEntity<AnalyzerMappingConfirmationView> confirmMapping(@PathVariable String profileId,
-            @RequestParam int revision, @RequestBody AnalyzerMappingConfirmationRequest request,
-            HttpServletRequest httpRequest) {
-        return ResponseEntity
-                .ok(mappingService.confirmMapping(profileId, revision, request, getSysUserId(httpRequest)));
+    public ResponseEntity<AnalyzerMappingView> getDefaults(@PathVariable String profileId, @RequestParam int revision) {
+        return ResponseEntity.ok(mappingService.getDefaults(profileId, revision));
     }
 
     @GetMapping("/mapping-catalog/tests")

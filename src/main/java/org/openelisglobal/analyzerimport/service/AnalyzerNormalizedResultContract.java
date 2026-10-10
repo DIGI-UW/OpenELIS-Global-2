@@ -137,6 +137,9 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
                 "Control-recognition fingerprint is required");
 
         String units = observation.hasValueQuantity() ? observation.getValueQuantity().getUnit() : null;
+        String comparator = observation.hasValueQuantity() && observation.getValueQuantity().hasComparator()
+                ? observation.getValueQuantity().getComparator().toCode()
+                : null;
         String resultType = observation.hasValueQuantity() ? "N" : "A";
         Timestamp completed = observation.hasEffectiveDateTimeType()
                 ? new Timestamp(observation.getEffectiveDateTimeType().getValue().getTime())
@@ -146,11 +149,15 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         String sourcePayload = fhirContext.newJsonParser().encodeResourceToString(observation);
         InstrumentPatient patient = observation.hasSubject() ? patients.get(observation.getSubject().getReference())
                 : null;
+        String note = observation.getNote().stream().map(annotation -> annotation.getText())
+                .filter(text -> text != null && !text.isBlank()).map(String::trim)
+                .collect(java.util.stream.Collectors.joining("\n"));
 
         return new Result(accessionNumber, rawCodes.get(0), rawValue, units, resultType, classification,
                 sourceTransport, recognitionMode, recognitionOutcome, recognitionFingerprint, lotNumber, controlLevel,
                 completed, sourcePayload, patient == null ? null : patient.identifier(),
-                patient == null ? null : patient.name());
+                patient == null ? null : patient.name(), note.isEmpty() ? null : note,
+                observation.hasDataAbsentReason(), comparator);
     }
 
     private static String nameOf(Patient patient) {
@@ -220,10 +227,25 @@ public record AnalyzerNormalizedResultContract(String messageId, String bridgeCo
         return value.trim();
     }
 
+    /**
+     * One analyzer result. {@code note} is the instrument's own comments on the run
+     * ({@code Observation.note}); {@code runFailed} means the run produced no value
+     * ({@code Observation.dataAbsentReason}), as for an ERROR or NO RESULT.
+     */
     public record Result(String accessionNumber, String rawTestCode, String rawValue, String units, String resultType,
             String classification, String sourceTransport, String recognitionMode, String recognitionOutcome,
             String recognitionFingerprint, String lotNumber, String controlLevel, Timestamp completeDate,
-            String sourcePayload, String instrumentPatientId, String instrumentPatientName) {
+            String sourcePayload, String instrumentPatientId, String instrumentPatientName, String note,
+            boolean runFailed, String comparator) {
+
+        /**
+         * The value as OpenELIS records it: a comparator the instrument reported leads
+         * the number, as in "<40", so a result beyond the measuring range is never
+         * stored as the bare limit.
+         */
+        public String reportedValue() {
+            return comparator == null || rawValue.startsWith(comparator) ? rawValue : comparator + rawValue;
+        }
     }
 
     /**

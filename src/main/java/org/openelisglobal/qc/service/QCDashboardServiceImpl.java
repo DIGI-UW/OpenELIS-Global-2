@@ -111,7 +111,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         Map<String, Analyzer> analyzerCache = new HashMap<>();
         for (String id : instrumentIds) {
             try {
-                Optional<Analyzer> analyzer = analyzerService.getWithBinding(id);
+                Optional<Analyzer> analyzer = analyzerService.getWithMapping(id);
                 analyzer.ifPresent(a -> analyzerCache.put(id, a));
             } catch (Exception e) {
                 LogEvent.logWarn(this.getClass().getName(), "getAllInstrumentComplianceStatus",
@@ -156,7 +156,7 @@ public class QCDashboardServiceImpl implements QCDashboardService {
             Timestamp endDate) {
         Analyzer analyzer = null;
         try {
-            Optional<Analyzer> opt = analyzerService.getWithBinding(String.valueOf(instrumentId));
+            Optional<Analyzer> opt = analyzerService.getWithMapping(String.valueOf(instrumentId));
             analyzer = opt.orElse(null);
         } catch (Exception e) {
             LogEvent.logWarn(this.getClass().getName(), "getInstrumentComplianceStatus",
@@ -278,8 +278,8 @@ public class QCDashboardServiceImpl implements QCDashboardService {
         if (analyzer != null) {
             status.setInstrumentName(analyzer.getName());
             status.setInstrumentLocation(resolveLabUnitNames(analyzer.getTestUnitIds()));
-            if (analyzer.getPinnedProfileBinding() != null) {
-                status.setInstrumentType(analyzer.getPinnedProfileBinding().getProfileId());
+            if (analyzer.getPinnedProfile() != null) {
+                status.setInstrumentType(analyzer.getPinnedProfile().getProfileId());
             }
         } else {
             status.setInstrumentName("Instrument " + instrumentId);

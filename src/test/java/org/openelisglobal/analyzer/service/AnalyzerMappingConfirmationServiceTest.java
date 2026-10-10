@@ -24,6 +24,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingConfirmationDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
@@ -31,8 +32,6 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResultPK;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.systemuser.service.SystemUserService;
 import org.openelisglobal.systemuser.valueholder.SystemUser;
@@ -70,15 +69,15 @@ public class AnalyzerMappingConfirmationServiceTest {
         when(systemUserService.getUserById("17")).thenReturn(actor);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(
                 List.of(new AnalyzerMappingCatalogService.TestOption("1", "Mock Test", "MOCK", List.of("1234-5"))));
-        when(mappingCatalogService.getActiveResultOptions("1"))
-                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("11", "DETECTED", "Detected")));
+        when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(
+                List.of(new AnalyzerMappingCatalogService.ResultOption("11", "DETECTED", "Detected", null)));
         when(confirmationDAO.insert(any(AnalyzerMappingConfirmation.class))).thenAnswer(invocation -> {
             AnalyzerMappingConfirmation confirmation = invocation.getArgument(0);
             confirmation.setId("71");
             return confirmation.getId();
         });
         when(auditTrailService.saveNewHistory(any(AnalyzerMappingConfirmation.class), eq("17"),
-                eq("analyzer_site_binding_confirmation"))).thenReturn("91");
+                eq("analyzer_mapping_confirmation"))).thenReturn("91");
     }
 
     @Test
@@ -90,11 +89,11 @@ public class AnalyzerMappingConfirmationServiceTest {
 
         ArgumentCaptor<AnalyzerMappingConfirmation> saved = ArgumentCaptor.forClass(AnalyzerMappingConfirmation.class);
         verify(confirmationDAO).insert(saved.capture());
-        assertSame(candidate.revision(), saved.getValue().getSiteBindingRevision());
+        assertSame(candidate.mapping(), saved.getValue().getMapping());
         assertEquals("site.mock-analyzer", saved.getValue().getProfileId());
         assertEquals(2, saved.getValue().getProfileRevision());
         assertEquals(PROFILE_FINGERPRINT, saved.getValue().getProfileRevisionFingerprint());
-        assertEquals(BINDING_FINGERPRINT, saved.getValue().getBindingFingerprint());
+        assertEquals(BINDING_FINGERPRINT, saved.getValue().getMappingFingerprint());
         assertEquals(RECOGNITION_FINGERPRINT, saved.getValue().getRecognitionFingerprint());
         assertEquals("91", saved.getValue().getAuditEventId());
         assertEquals("17", saved.getValue().getConfirmedBy());
@@ -103,13 +102,13 @@ public class AnalyzerMappingConfirmationServiceTest {
         assertEquals("Ada Lovelace", confirmed.confirmedByDisplayName());
         assertEquals(request.confirmedRows(), confirmed.confirmedRows());
         assertEquals(request.excludedRows(), confirmed.excludedRows());
-        verify(auditTrailService).saveNewHistory(saved.getValue(), "17", "analyzer_site_binding_confirmation");
+        verify(auditTrailService).saveNewHistory(saved.getValue(), "17", "analyzer_mapping_confirmation");
     }
 
     @Test
     public void disabledHistoryLeavesTheSavedConfirmationStaleWithoutASecondWrite() {
         when(auditTrailService.saveNewHistory(any(AnalyzerMappingConfirmation.class), eq("17"),
-                eq("analyzer_site_binding_confirmation"))).thenReturn(null);
+                eq("analyzer_mapping_confirmation"))).thenReturn(null);
 
         AnalyzerMappingConfirmationView confirmed = service.confirm(completeCandidate("61", BINDING_FINGERPRINT),
                 RECOGNITION_FINGERPRINT, exactRequest(), "17");
@@ -123,7 +122,7 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void rejectsAStaleBindingOrRecognitionFingerprintBeforeWriting() {
+    public void rejectsAStaleMappingOrRecognitionFingerprintBeforeWriting() {
         AnalyzerMappingConfirmationRequest stale = new AnalyzerMappingConfirmationRequest(
                 "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd", RECOGNITION_FINGERPRINT,
                 exactRequest().confirmedRows(), exactRequest().excludedRows());
@@ -136,8 +135,8 @@ public class AnalyzerMappingConfirmationServiceTest {
     @Test
     public void confirmsResolvedDecisionsWhileOtherRowsRemainUnresolved() throws Exception {
         AnalyzerMappingSnapshot base = completeCandidate("61", BINDING_FINGERPRINT);
-        AnalyzerMappingTest pending = test(base.revision(), "PENDING", AnalyzerMappingState.UNRESOLVED);
-        AnalyzerMappingSnapshot candidate = new AnalyzerMappingSnapshot(base.binding(), base.revision(),
+        AnalyzerMappingTest pending = test(base.mapping(), "PENDING", AnalyzerMappingState.UNRESOLVED);
+        AnalyzerMappingSnapshot candidate = new AnalyzerMappingSnapshot(base.mapping(),
                 List.of(base.tests().get(0), base.tests().get(1), pending), base.results());
 
         AnalyzerMappingConfirmationView view = service.confirm(candidate, RECOGNITION_FINGERPRINT, exactRequest(),
@@ -150,7 +149,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         ArgumentCaptor<AnalyzerMappingConfirmation> written = ArgumentCaptor
                 .forClass(AnalyzerMappingConfirmation.class);
         verify(confirmationDAO).insert(written.capture());
-        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(written.getValue()));
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(written.getValue()));
         assertTrue(service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).mappingsCurrent());
     }
 
@@ -170,17 +169,17 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void reportsAFormerConfirmationAsStaleForANewBindingRevision() throws Exception {
+    public void reportsAFormerConfirmationAsStaleForANewMappingRevision() throws Exception {
         AnalyzerMappingSnapshot former = completeCandidate("60",
                 "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         AnalyzerMappingConfirmation stored = storedConfirmation(former, exactRequest());
-        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
         AnalyzerMappingConfirmationView status = service.getStatus(completeCandidate("61", BINDING_FINGERPRINT),
                 RECOGNITION_FINGERPRINT);
 
         assertEquals(AnalyzerMappingConfirmationView.State.STALE, status.state());
-        assertEquals(former.revision().getBindingFingerprint(), status.bindingFingerprint());
+        assertEquals(former.mapping().getMappingFingerprint(), status.mappingFingerprint());
         assertEquals(exactRequest().confirmedRows(), status.confirmedRows());
     }
 
@@ -188,8 +187,8 @@ public class AnalyzerMappingConfirmationServiceTest {
     public void reportsAConfirmationAsStaleWhenControlRecognitionChanges() throws Exception {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
-        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
-        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
 
         AnalyzerMappingConfirmationView status = service.getStatus(candidate,
                 "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd");
@@ -210,7 +209,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
         stored.setProfileRevisionFingerprint(null);
         stored.setAuditEventId(null);
-        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
         AnalyzerMappingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
 
@@ -223,7 +222,7 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
         stored.setProfileId("another.profile");
         stored.setProfileRevision(3);
-        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
         assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
@@ -235,18 +234,18 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
         stored.setConfirmedBy(null);
         stored.setConfirmedAt(null);
-        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
         assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
     }
 
     @Test
-    public void reportsAConfirmationAsStaleWhenItsCatalogBindingIsNoLongerCurrent() throws Exception {
+    public void reportsAConfirmationAsStaleWhenItsCatalogChoicesAreNoLongerCurrent() throws Exception {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
-        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
-        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
         AnalyzerMappingConfirmationView status = service.getStatus(candidate, RECOGNITION_FINGERPRINT);
@@ -262,7 +261,7 @@ public class AnalyzerMappingConfirmationServiceTest {
     @Test
     public void reportsAConfirmationAsStaleWhenItsResultOptionMovesToAnotherTest() throws Exception {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
-        when(confirmationDAO.findLatestByBindingId("51"))
+        when(confirmationDAO.findLatestByAnalyzerId("42"))
                 .thenReturn(Optional.of(storedConfirmation(candidate, exactRequest())));
         when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(List.of());
 
@@ -277,8 +276,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
         stored.setConfirmedRowsJson(
                 new ObjectMapper().writeValueAsString(List.of(new AnalyzerMappingSourceRow("RAW-A", null))));
-        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
-        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
         assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
@@ -291,8 +290,8 @@ public class AnalyzerMappingConfirmationServiceTest {
         AnalyzerMappingSnapshot candidate = completeCandidate("61", BINDING_FINGERPRINT);
         AnalyzerMappingConfirmation stored = storedConfirmation(candidate, exactRequest());
         stored.setConfirmedRowsJson("not-json");
-        when(confirmationDAO.findByRevisionId("61")).thenReturn(Optional.of(stored));
-        when(confirmationDAO.findLatestByBindingId("51")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findByMappingId("61")).thenReturn(Optional.of(stored));
+        when(confirmationDAO.findLatestByAnalyzerId("42")).thenReturn(Optional.of(stored));
 
         assertEquals(Optional.empty(), service.assessCurrent(candidate, RECOGNITION_FINGERPRINT).currentConfirmation());
         assertFalse(service.hasMatchingConfirmation(candidate, RECOGNITION_FINGERPRINT));
@@ -302,7 +301,7 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     @Test
-    public void rejectsCatalogBindingsThatAreNoLongerCurrentBeforeWriting() {
+    public void rejectsCatalogChoicesThatAreNoLongerCurrentBeforeWriting() {
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of());
 
         assertThrows(IllegalArgumentException.class,
@@ -320,34 +319,29 @@ public class AnalyzerMappingConfirmationServiceTest {
     }
 
     private static AnalyzerMappingSnapshot completeCandidate(String revisionId, String fingerprint) {
-        AnalyzerProfileBinding profile = new AnalyzerProfileBinding();
-        profile.setId("41");
-        profile.setProfileId("site.mock-analyzer");
-        profile.setProfileRevision(2);
-        profile.setProfileFingerprint(PROFILE_FINGERPRINT);
-
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setId("51");
-        binding.setProfileBinding(profile);
+        Analyzer analyzer = new Analyzer();
+        analyzer.setId("42");
 
         AnalyzerMapping revision = new AnalyzerMapping();
         revision.setId(revisionId);
-        revision.setSiteBinding(binding);
+        revision.setAnalyzer(analyzer);
         revision.setRevisionNumber("60".equals(revisionId) ? 3 : 4);
-        revision.setBindingFingerprint(fingerprint);
+        revision.setProfileId("site.mock-analyzer");
+        revision.setProfileRevision(2);
+        revision.setProfileFingerprint(PROFILE_FINGERPRINT);
+        revision.setMappingFingerprint(fingerprint);
 
         AnalyzerMappingTest bound = test(revision, "RAW-A", AnalyzerMappingState.BOUND);
         AnalyzerMappingTest excluded = test(revision, "RAW-B", AnalyzerMappingState.EXCLUDED);
         AnalyzerMappingResult boundResult = result(revision, "RAW-A", "Detected", AnalyzerMappingState.BOUND);
         AnalyzerMappingResult excludedResult = result(revision, "RAW-B", "Invalid", AnalyzerMappingState.EXCLUDED);
-        return new AnalyzerMappingSnapshot(binding, revision, List.of(bound, excluded),
-                List.of(boundResult, excludedResult));
+        return new AnalyzerMappingSnapshot(revision, List.of(bound, excluded), List.of(boundResult, excludedResult));
     }
 
     private static AnalyzerMappingTest test(AnalyzerMapping revision, String sourceRowKey, AnalyzerMappingState state) {
         AnalyzerMappingTest test = new AnalyzerMappingTest();
         test.setId(new AnalyzerMappingTestPK(revision.getId(), sourceRowKey));
-        test.setSiteBindingRevision(revision);
+        test.setMapping(revision);
         test.setMappingState(state);
         test.setTestId(state == AnalyzerMappingState.BOUND ? "1" : null);
         return test;
@@ -357,7 +351,7 @@ public class AnalyzerMappingConfirmationServiceTest {
             AnalyzerMappingState state) {
         AnalyzerMappingResult result = new AnalyzerMappingResult();
         result.setId(new AnalyzerMappingResultPK(revision.getId(), sourceRowKey, rawValue));
-        result.setSiteBindingRevision(revision);
+        result.setMapping(revision);
         result.setMappingState(state);
         result.setTestResultId(state == AnalyzerMappingState.BOUND ? "11" : null);
         return result;
@@ -368,11 +362,11 @@ public class AnalyzerMappingConfirmationServiceTest {
         ObjectMapper mapper = new ObjectMapper();
         AnalyzerMappingConfirmation confirmation = new AnalyzerMappingConfirmation();
         confirmation.setId("70");
-        confirmation.setSiteBindingRevision(snapshot.revision());
+        confirmation.setMapping(snapshot.mapping());
         confirmation.setProfileId("site.mock-analyzer");
         confirmation.setProfileRevision(2);
         confirmation.setProfileRevisionFingerprint(PROFILE_FINGERPRINT);
-        confirmation.setBindingFingerprint(snapshot.revision().getBindingFingerprint());
+        confirmation.setMappingFingerprint(snapshot.mapping().getMappingFingerprint());
         confirmation.setRecognitionFingerprint(RECOGNITION_FINGERPRINT);
         confirmation.setAuditEventId("90");
         confirmation.setConfirmedRowsJson(mapper.writeValueAsString(request.confirmedRows()));

@@ -90,7 +90,7 @@ const renderWorklist = () => {
               <Route path="/AnalyzerResults">
                 <Index />
               </Route>
-              <Route path="/analyzers/types/:profileId/mapping">
+              <Route path="/analyzers/:analyzerId/mapping">
                 <MappingPage />
               </Route>
             </Switch>
@@ -106,7 +106,7 @@ const acceptBox = () => document.getElementById("resultList1005.isAccepted");
 
 const visitMappingAndReturn = async () => {
   fireEvent.click(
-    await screen.findByRole("link", { name: "Review Analyzer Type mapping" }),
+    await screen.findByRole("link", { name: "Review analyzer mapping" }),
   );
   fireEvent.click(
     await screen.findByRole("link", { name: "Back to worklist" }),
@@ -145,7 +145,7 @@ describe("Analyzer worklist review choices across mapping visits", () => {
     fireEvent.click(acceptBox());
 
     fireEvent.click(
-      await screen.findByRole("link", { name: "Review Analyzer Type mapping" }),
+      await screen.findByRole("link", { name: "Review analyzer mapping" }),
     );
     // Correcting the mapping recovers the held row; it now leads its grouping.
     getFromOpenElisServer.mockImplementation((_url, callback) =>

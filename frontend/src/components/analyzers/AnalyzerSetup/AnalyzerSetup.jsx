@@ -17,9 +17,9 @@ import {
   createAnalyzer,
   getAnalyzer,
   getAnalyzerLabUnits,
+  applyAnalyzerMapping,
+  getAnalyzerMapping,
   getAnalyzerTypeCatalog,
-  getAnalyzerTypeMapping,
-  selectAnalyzerSiteBinding,
   updateAnalyzer,
 } from "../../../services/analyzerService";
 import {
@@ -188,24 +188,21 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
       return;
     }
 
-    getAnalyzerTypeMapping(
-      mappingRoute.profileId,
-      mappingRoute.revision,
-      (response) => {
-        const error =
-          !response ||
-          response.error ||
-          !Array.isArray(response.tests) ||
-          response.profileId !== mappingRoute.profileId ||
-          response.profileRevision !== mappingRoute.revision;
-        setMappingResult({
-          requestKey: mappingRoute.requestKey,
-          mapping: error ? null : response,
-          error,
-        });
-      },
-    );
-  }, [candidateMatchesMappingRoute, currentStep, mappingRoute]);
+    getAnalyzerMapping(analyzerId, (response) => {
+      const error =
+        !response ||
+        response.error ||
+        !Array.isArray(response.tests) ||
+        String(response.analyzerId) !== String(analyzerId) ||
+        response.profileId !== mappingRoute.profileId ||
+        response.profileRevision !== mappingRoute.revision;
+      setMappingResult({
+        requestKey: mappingRoute.requestKey,
+        mapping: error ? null : response,
+        error,
+      });
+    });
+  }, [analyzerId, candidateMatchesMappingRoute, currentStep, mappingRoute]);
 
   const mappingMatchesRoute =
     mappingResult.requestKey === mappingRoute.requestKey;
@@ -345,12 +342,10 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     returnTo,
   )}`;
   const currentSetupUrl = `${location.pathname}${location.search}`;
-  const mappingEditorTarget = mappingRoute.valid
-    ? `/analyzers/types/${encodeURIComponent(
-        mappingRoute.profileId,
-      )}/mapping?revision=${mappingRoute.revision}&returnTo=${encodeURIComponent(
-        currentSetupUrl,
-      )}`
+  const mappingEditorTarget = analyzerId
+    ? `/analyzers/${encodeURIComponent(
+        analyzerId,
+      )}/mapping?returnTo=${encodeURIComponent(currentSetupUrl)}`
     : "/analyzers/types";
 
   const continueToConnect = () => {
@@ -359,12 +354,12 @@ const AnalyzerSetup = ({ currentStep = "instrument", onClose }) => {
     }
     setSelectingBinding(true);
     setBindingSelectionError(false);
-    selectAnalyzerSiteBinding(
+    applyAnalyzerMapping(
       candidate.id,
       {
-        siteBindingId: mapping.siteBindingId,
-        revision: mapping.siteBindingRevision,
-        bindingFingerprint: mapping.bindingFingerprint,
+        mappingId: mapping.mappingId,
+        revision: mapping.mappingRevision,
+        mappingFingerprint: mapping.mappingFingerprint,
       },
       (response) => {
         setSelectingBinding(false);

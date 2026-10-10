@@ -20,12 +20,12 @@ public class AnalyzerMappingResultDAOImpl extends BaseDAOImpl<AnalyzerMappingRes
 
     @Override
     @Transactional(readOnly = true)
-    public List<AnalyzerMappingResult> findByRevisionId(String revisionId) {
-        String hql = "FROM AnalyzerMappingResult r WHERE r.siteBindingRevision.id = :revisionId "
+    public List<AnalyzerMappingResult> findByMappingId(String mappingId) {
+        String hql = "FROM AnalyzerMappingResult r WHERE r.mapping.id = :mappingId "
                 + "ORDER BY r.id.sourceRowKey, r.id.rawValue";
         Query<AnalyzerMappingResult> query = entityManager.unwrap(Session.class).createQuery(hql,
                 AnalyzerMappingResult.class);
-        query.setParameter("revisionId", revisionId);
+        query.setParameter("mappingId", mappingId);
         return query.getResultList();
     }
 }

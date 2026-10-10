@@ -13,10 +13,12 @@ import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.hl7.fhir.r4.model.Bundle;
 import org.hl7.fhir.r4.model.Observation;
@@ -35,6 +37,8 @@ import org.openelisglobal.analyzer.service.AnalyzerMappingService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSourceRow;
 import org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft;
+import org.openelisglobal.analyzer.service.AnalyzerService;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
@@ -45,14 +49,15 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContextSensitiveTest {
 
-    private static final long PROFILE_BINDING_ID = 98401L;
-    private static final long SITE_BINDING_ID = 98402L;
-    private static final long SITE_BINDING_REVISION_ID = 98403L;
+    private static final long MAPPING_ID = 98403L;
     private static final long ANALYZER_ID = 98404L;
     private static final long TEST_ID = 98405L;
     private static final long RESULT_OPTION_ID = 98406L;
     private static final long OTHER_TEST_ID = 98407L;
     private static final long THIRD_TEST_ID = 98408L;
+    private static final long NEGATIVE_OPTION_ID = 98409L;
+    private static final long DETECTED_ENTRY_ID = 98420L;
+    private static final long NOT_DETECTED_ENTRY_ID = 98421L;
     private static final String QC_LOT_ID = "receipt-qc-lot";
     private static final String CONNECTION_ID = "bridge-connection-7f3c";
     private static final String ACCESSION = "ACC-UNKNOWN-TEST-001";
@@ -67,6 +72,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
 
     @Autowired
     private AnalyzerMappingService bindings;
+    @Autowired
+    private AnalyzerService analyzerService;
     @Autowired
     private AnalyzerMappingConfirmationService confirmations;
     @Autowired
@@ -87,23 +94,15 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         super.setUp();
         jdbc = new JdbcTemplate(dataSource);
         cleanup();
+        jdbc.update("INSERT INTO clinlims.analyzer (id, name, is_active, bridge_connection_id, last_updated)"
+                + " VALUES (?, 'Normalized import test', true, ?, NOW())", ANALYZER_ID, CONNECTION_ID);
         jdbc.update(
-                "INSERT INTO clinlims.analyzer_profile_binding"
-                        + " (id, profile_id, profile_revision, profile_fingerprint, last_updated)"
-                        + " VALUES (?, 'site.unknown-capable', 3, ?, NOW())",
-                PROFILE_BINDING_ID, "sha256:" + "1".repeat(64));
-        jdbc.update("INSERT INTO clinlims.analyzer_site_binding"
-                + " (id, profile_binding_id, created_by, created_at, last_updated) VALUES (?, ?, '1', NOW(), NOW())",
-                SITE_BINDING_ID, PROFILE_BINDING_ID);
-        jdbc.update("INSERT INTO clinlims.analyzer_site_binding_revision"
-                + " (id, site_binding_id, revision_number, binding_fingerprint, created_by, created_at, last_updated)"
-                + " VALUES (?, ?, 1, ?, '1', NOW(), NOW())", SITE_BINDING_REVISION_ID, SITE_BINDING_ID,
-                "sha256:" + "2".repeat(64));
-        jdbc.update(
-                "INSERT INTO clinlims.analyzer"
-                        + " (id, name, is_active, bridge_connection_id, site_binding_revision_id, last_updated)"
-                        + " VALUES (?, 'Normalized import test', true, ?, ?, NOW())",
-                ANALYZER_ID, CONNECTION_ID, SITE_BINDING_REVISION_ID);
+                "INSERT INTO clinlims.analyzer_mapping"
+                        + " (id, analyzer_id, revision_number, profile_id, profile_revision, profile_fingerprint,"
+                        + " mapping_fingerprint, created_by, created_at, last_updated)"
+                        + " VALUES (?, ?, 1, 'site.unknown-capable', 3, ?, ?, '1', NOW(), NOW())",
+                MAPPING_ID, ANALYZER_ID, "sha256:" + "1".repeat(64), "sha256:" + "2".repeat(64));
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = ? WHERE id = ?", MAPPING_ID, ANALYZER_ID);
     }
 
     @After
@@ -151,8 +150,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(Integer.valueOf(0), jdbc.queryForObject(
                 "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
 
-        AnalyzerMappingSnapshot binding = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID))
-                .orElseThrow();
+        AnalyzerMappingSnapshot binding = bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow();
         confirm(binding, bundle);
         assertEquals(1, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
 
@@ -202,8 +200,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     @Test
     public void invalidProfileDoesNotCommitAReceipt() throws Exception {
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
-        jdbc.update("UPDATE clinlims.analyzer_profile_binding SET profile_revision = 4 WHERE id = ?",
-                PROFILE_BINDING_ID);
+        jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_revision = 4 WHERE id = ?", MAPPING_ID);
         assertThrows(AnalyzerNormalizedResultImportException.class, () -> importService.importBundle(bundle, "1"));
         assertEquals(Integer.valueOf(0),
                 jdbc.queryForObject("SELECT COUNT(*) FROM clinlims.analyzer_delivery_receipt WHERE connection_id = ?",
@@ -215,8 +212,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         AnalyzerNormalizedResultImportSummary accepted = importService.importBundle(bundle, "1");
         jdbc.update("DELETE FROM clinlims.analyzer_results WHERE analyzer_id = ?", ANALYZER_ID);
-        jdbc.update("UPDATE clinlims.analyzer_profile_binding SET profile_revision = 4 WHERE id = ?",
-                PROFILE_BINDING_ID);
+        jdbc.update("UPDATE clinlims.analyzer_mapping SET profile_revision = 4 WHERE id = ?", MAPPING_ID);
 
         AnalyzerNormalizedResultImportSummary replay = importService.importBundle(bundle, "1");
 
@@ -290,22 +286,21 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 "INSERT INTO clinlims.test (id, guid, name, description, is_active, is_reportable, orderable, lastupdated)"
                         + " VALUES (?, ?, 'Recovery test', 'Recovery test', 'Y', 'Y', true, NOW())",
                 TEST_ID, UUID.randomUUID().toString());
-        AnalyzerMappingSnapshot previous = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID))
-                .orElseThrow();
-        AnalyzerMappingSnapshot updated = bindings.appendRevision(previous.binding(),
+        AnalyzerMappingSnapshot previous = bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow();
+        AnalyzerMappingSnapshot updated = bindings.appendRevision(analyzer(),
                 new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft(original.getRawTestCode(),
                         AnalyzerMappingState.BOUND, String.valueOf(TEST_ID))), List.of()),
                 "1");
         assertThrows(IllegalArgumentException.class,
-                () -> localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), updated.binding().getId(),
-                        updated.revision().getRevisionNumber(), updated.revision().getBindingFingerprint(), "1"));
+                () -> localState.applyMapping(String.valueOf(ANALYZER_ID), updated.mapping().getId(),
+                        updated.mapping().getRevisionNumber(), updated.mapping().getMappingFingerprint(), "1"));
         assertTrue("rejecting an unconfirmed revision must not release held results",
                 resultsService.get(id).isReadOnly());
 
         confirm(updated, bundle);
         assertTrue("confirmation alone must not replay held results", resultsService.get(id).isReadOnly());
-        localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), updated.binding().getId(),
-                updated.revision().getRevisionNumber(), updated.revision().getBindingFingerprint(), "1");
+        localState.applyMapping(String.valueOf(ANALYZER_ID), updated.mapping().getId(),
+                updated.mapping().getRevisionNumber(), updated.mapping().getMappingFingerprint(), "1");
         AnalyzerResults recovered = resultsService.get(id);
         assertFalse(recovered.isReadOnly());
         assertNull(recovered.getImportIssueReason());
@@ -328,7 +323,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         known.getCode().getCoding().stream().filter(code -> code.getSystem().endsWith("analyzer-raw-code"))
                 .forEach(code -> code.setCode("KNOWN"));
         bundle.addEntry().setFullUrl("urn:uuid:known-result").setResource(known);
-        confirm(bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
         AnalyzerNormalizedResultImportSummary receipt = importService.importBundle(bundle, "1");
         assertEquals(2, receipt.resultsStaged());
         assertEquals(1, receipt.resultsHeld());
@@ -348,8 +343,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("INSERT INTO clinlims.test_result"
                 + " (id, test_id, tst_rslt_type, value, is_active, sort_order, lastupdated)"
                 + " VALUES (?, ?, 'D', 'Positive', true, 1, NOW())", RESULT_OPTION_ID, TEST_ID);
-        var originalBinding = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID)).orElseThrow();
-        var partial = bindings.appendRevision(originalBinding.binding(),
+        var partial = bindings.appendRevision(analyzer(),
                 new AnalyzerMappingDraft(
                         List.of(new AnalyzerMappingTestDraft("VENDOR-NEW-42", AnalyzerMappingState.BOUND,
                                 String.valueOf(TEST_ID))),
@@ -361,14 +355,14 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
         observation.setValue(new StringType("DETECTED"));
         confirm(partial, bundle);
-        localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), partial.binding().getId(),
-                partial.revision().getRevisionNumber(), partial.revision().getBindingFingerprint(), "1");
+        localState.applyMapping(String.valueOf(ANALYZER_ID), partial.mapping().getId(),
+                partial.mapping().getRevisionNumber(), partial.mapping().getMappingFingerprint(), "1");
         var receipt = importService.importBundle(bundle, "1");
         assertEquals(1, receipt.resultsHeld());
         AnalyzerResults held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
         assertEquals(AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, held.getImportIssueReason());
 
-        var corrected = bindings.appendRevision(partial.binding(),
+        var corrected = bindings.appendRevision(analyzer(),
                 new AnalyzerMappingDraft(
                         List.of(new AnalyzerMappingTestDraft("VENDOR-NEW-42", AnalyzerMappingState.BOUND,
                                 String.valueOf(TEST_ID))),
@@ -377,8 +371,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 "1");
         confirm(corrected, bundle);
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
-        localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), corrected.binding().getId(),
-                corrected.revision().getRevisionNumber(), corrected.revision().getBindingFingerprint(), "1");
+        localState.applyMapping(String.valueOf(ANALYZER_ID), corrected.mapping().getId(),
+                corrected.mapping().getRevisionNumber(), corrected.mapping().getMappingFingerprint(), "1");
         AnalyzerResults recovered = resultsService.get(held.getId());
         assertFalse(recovered.isReadOnly());
         assertEquals("Positive", recovered.getResult());
@@ -388,6 +382,107 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
         assertEquals(receipt, importService.importBundle(bundle, "1"));
         assertEquals(1, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
+    }
+
+    @Test
+    public void aMultiRecordRunLandsItsMainResultOnTheTestAndTheRestOnComponentsOfTheSameTest() throws Exception {
+        // One cartridge run reports a main result and six more records; the mapping
+        // sends the main one to the test itself and each of the others to a component.
+        bindTest("HIV-VL", TEST_ID);
+        List<String> componentCodes = List.of("LOG", "HIV-1", "Ct", "EndPt", "IQS-H", "IQS-L");
+        for (int order = 0; order < componentCodes.size(); order++) {
+            String code = componentCodes.get(order);
+            jdbc.update(
+                    "INSERT INTO clinlims.test_result_component"
+                            + " (id, test_id, code, label, display_order, is_active) VALUES (?, ?, ?, ?, ?, 'Y')",
+                    "comp-" + code, TEST_ID, code, code, order + 1);
+            jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                    + " (mapping_id, source_row_key, mapping_state, test_id, component_id, last_updated)"
+                    + " VALUES (?, ?, 'BOUND', ?, ?, NOW())", MAPPING_ID, code, TEST_ID, "comp-" + code);
+        }
+        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        Observation main = bundle.getEntry().stream().map(entry -> entry.getResource())
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        main.getCode().getCodingFirstRep().setCode("HIV-VL");
+        for (String code : componentCodes) {
+            Observation record = main.copy();
+            record.getCode().getCodingFirstRep().setCode(code);
+            bundle.addEntry().setFullUrl("urn:uuid:result-" + code).setResource(record);
+        }
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(7, staged.size());
+        assertEquals(Set.of(String.valueOf(TEST_ID)),
+                staged.stream().map(AnalyzerResults::getTestId).collect(Collectors.toSet()));
+        assertEquals(1, staged.stream().map(AnalyzerResults::getAccessionNumber).distinct().count());
+        AnalyzerResults mainRow = staged.stream().filter(row -> "HIV-VL".equals(row.getRawTestCode())).findFirst()
+                .orElseThrow();
+        assertNull("the main result belongs to the test itself", mainRow.getComponentId());
+        for (String code : componentCodes) {
+            AnalyzerResults row = staged.stream().filter(candidate -> code.equals(candidate.getRawTestCode()))
+                    .findFirst().orElseThrow();
+            assertEquals("comp-" + code, row.getComponentId());
+            assertFalse(code + " is mapped, so it is not held", row.isReadOnly());
+        }
+    }
+
+    @Test
+    public void aPositiveControlThatGivesItsExpectedAnswerIsRecordedAsAPassingQcResult() throws Exception {
+        Bundle bundle = prepareQualitativeControl("POS", true);
+
+        AnalyzerNormalizedResultImportSummary summary = importService.importBundle(bundle, "1");
+
+        assertEquals(1, summary.controlResultsProcessed());
+        assertEquals(0, summary.resultsHeld());
+        assertEquals(Integer.valueOf(1),
+                jdbc.queryForObject(
+                        "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?"
+                                + " AND source = 'ASTM' AND qualitative_outcome = 'PASS' AND result_value IS NULL",
+                        Integer.class, QC_LOT_ID));
+    }
+
+    @Test
+    public void aQualitativeControlWithNoQcTargetIsHeldWithItsReasonAndRecordsNoQc() throws Exception {
+        Bundle bundle = prepareQualitativeControl("POS", false);
+
+        AnalyzerNormalizedResultImportSummary summary = importService.importBundle(bundle, "1");
+
+        assertEquals(0, summary.controlResultsProcessed());
+        assertEquals(1, summary.resultsHeld());
+        AnalyzerResults held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+        assertTrue(held.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING, held.getImportIssueReason());
+        assertEquals(Integer.valueOf(0), jdbc.queryForObject(
+                "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
+    }
+
+    @Test
+    public void aRunWithNoValueIsHeldAsAFailedRunCarryingTheInstrumentsNote() throws Exception {
+        bindTest("VENDOR-NEW-42");
+        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        Observation run = bundle.getEntry().stream().map(entry -> entry.getResource())
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        run.setValue(null);
+        run.getDataAbsentReason().addCoding().setSystem("http://terminology.hl7.org/CodeSystem/data-absent-reason")
+                .setCode("error");
+        run.getExtensionByUrl("https://openelis-global.org/fhir/StructureDefinition/analyzer-raw-value")
+                .setValue(new StringType("ERROR"));
+        run.addNote().setText("Error 2008: pressure abort");
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        AnalyzerNormalizedResultImportSummary summary = importService.importBundle(bundle, "1");
+
+        assertEquals(1, summary.resultsHeld());
+        AnalyzerResults held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+        assertTrue("a failed run is never a patient result", held.isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_RUN_FAILED, held.getImportIssueReason());
+        assertEquals("ERROR", held.getRawResultValue());
+        assertEquals("Error 2008: pressure abort", held.getInstrumentNote());
+        assertEquals("the test is known, so the failure can be recorded on it", String.valueOf(TEST_ID),
+                held.getTestId());
     }
 
     @Test
@@ -408,9 +503,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
             jdbc.update("INSERT INTO clinlims.test_result"
                     + " (id, test_id, tst_rslt_type, value, is_active, sort_order, lastupdated)"
                     + " VALUES (?, ?, 'D', 'Positive', true, 1, NOW())", RESULT_OPTION_ID, THIRD_TEST_ID);
-            jdbc.update("INSERT INTO clinlims.analyzer_site_binding_result"
-                    + " (site_binding_revision_id, source_row_key, raw_value, mapping_state, test_result_id, last_updated)"
-                    + " VALUES (?, 'C', 'DETECTED', 'BOUND', ?, NOW())", SITE_BINDING_REVISION_ID, RESULT_OPTION_ID);
+            jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
+                    + " (mapping_id, source_row_key, raw_value, mapping_state, test_result_id, last_updated)"
+                    + " VALUES (?, 'C', 'DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, RESULT_OPTION_ID);
         }
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         Observation first = bundle.getEntry().stream().map(entry -> entry.getResource())
@@ -421,7 +516,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
             other.getCode().getCodingFirstRep().setCode(code);
             bundle.addEntry().setFullUrl("urn:uuid:result-" + code).setResource(other);
         }
-        confirm(bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID)).orElseThrow(), bundle);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
         if (deactivateAnswer) {
             jdbc.update("UPDATE clinlims.test_result SET is_active = false WHERE id = ?", RESULT_OPTION_ID);
         } else {
@@ -459,9 +554,13 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(3, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
     }
 
+    private Analyzer analyzer() {
+        return analyzerService.getWithMapping(String.valueOf(ANALYZER_ID)).orElseThrow();
+    }
+
     private void confirm(AnalyzerMappingSnapshot candidate, Bundle bundle) {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            AnalyzerMappingSnapshot binding = bindings.findByRevisionId(candidate.revision().getId()).orElseThrow();
+            AnalyzerMappingSnapshot binding = bindings.findById(candidate.mapping().getId()).orElseThrow();
             Observation observation = bundle.getEntry().stream().map(entry -> entry.getResource())
                     .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
             String fingerprint = observation
@@ -477,7 +576,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
             assertEquals(AnalyzerMappingConfirmationView.State.CURRENT,
                     confirmations
                             .confirm(binding, fingerprint, new AnalyzerMappingConfirmationRequest(
-                                    binding.revision().getBindingFingerprint(), fingerprint, tests, List.of()), "1")
+                                    binding.mapping().getMappingFingerprint(), fingerprint, tests, List.of()), "1")
                             .state());
             assertTrue(confirmations.assessCurrent(binding, fingerprint).currentConfirmation().isPresent());
         });
@@ -492,9 +591,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 "INSERT INTO clinlims.test (id, guid, name, description, is_active, is_reportable, orderable, lastupdated)"
                         + " VALUES (?, ?, ?, ?, 'Y', 'Y', true, NOW())",
                 testId, UUID.randomUUID().toString(), "Receipt test " + sourceCode, "Receipt test " + sourceCode);
-        jdbc.update("INSERT INTO clinlims.analyzer_site_binding_test"
-                + " (site_binding_revision_id, source_row_key, mapping_state, test_id, last_updated)"
-                + " VALUES (?, ?, 'BOUND', ?, NOW())", SITE_BINDING_REVISION_ID, sourceCode, testId);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                + " (mapping_id, source_row_key, mapping_state, test_id, last_updated)"
+                + " VALUES (?, ?, 'BOUND', ?, NOW())", MAPPING_ID, sourceCode, testId);
     }
 
     private Bundle prepareControl(boolean withStatistics) throws Exception {
@@ -504,8 +603,8 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private Bundle prepareControl(boolean withStatistics, boolean confirmed) throws Exception {
         bindTest("WBC");
         jdbc.update(
-                "UPDATE clinlims.analyzer_profile_binding SET profile_id = 'site.mock-hematology', profile_revision = 1 WHERE id = ?",
-                PROFILE_BINDING_ID);
+                "UPDATE clinlims.analyzer_mapping SET profile_id = 'site.mock-hematology', profile_revision = 1 WHERE id = ?",
+                MAPPING_ID);
         jdbc.update("INSERT INTO clinlims.qc_control_lot"
                 + " (id, fhir_uuid, product_name, lot_number, manufacturer, control_level, test_id, instrument_id,"
                 + " calculation_method, initial_runs_count, manufacturer_mean, manufacturer_std_dev, activation_date,"
@@ -518,7 +617,45 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class,
                 Files.readString(FIXTURE.resolveSibling("normalized-qc.fhir.json")));
         if (confirmed)
-            confirm(bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID)).orElseThrow(), bundle);
+            confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+        return bundle;
+    }
+
+    /**
+     * A control that reports Detected or Not detected: the analyzer's mapping turns
+     * POS and NEG into those answers, and the Test Catalog QC target for the lot's
+     * level expects Detected when {@code withTarget}.
+     */
+    private Bundle prepareQualitativeControl(String reported, boolean withTarget) throws Exception {
+        Bundle bundle = prepareControl(false, false);
+        jdbc.update(
+                "INSERT INTO clinlims.dictionary (id, dict_entry, is_active, lastupdated)"
+                        + " VALUES (?, 'Detected', 'Y', NOW()), (?, 'Not detected', 'Y', NOW())",
+                DETECTED_ENTRY_ID, NOT_DETECTED_ENTRY_ID);
+        jdbc.update(
+                "INSERT INTO clinlims.test_result"
+                        + " (id, test_id, tst_rslt_type, value, is_active, sort_order, lastupdated)"
+                        + " VALUES (?, ?, 'D', ?, true, 1, NOW()), (?, ?, 'D', ?, true, 2, NOW())",
+                RESULT_OPTION_ID, TEST_ID, String.valueOf(DETECTED_ENTRY_ID), NEGATIVE_OPTION_ID, TEST_ID,
+                String.valueOf(NOT_DETECTED_ENTRY_ID));
+        jdbc.update(
+                "INSERT INTO clinlims.analyzer_mapping_result"
+                        + " (mapping_id, source_row_key, raw_value, mapping_state, test_result_id, last_updated)"
+                        + " VALUES (?, 'WBC', 'POS', 'BOUND', ?, NOW()), (?, 'WBC', 'NEG', 'BOUND', ?, NOW())",
+                MAPPING_ID, RESULT_OPTION_ID, MAPPING_ID, NEGATIVE_OPTION_ID);
+        if (withTarget) {
+            jdbc.update(
+                    "INSERT INTO clinlims.test_qc_target"
+                            + " (id, test_id, control_level, expected_dict_result_id, is_active, last_updated)"
+                            + " VALUES ('qualitative-target', ?, 'NORMAL', ?, true, NOW())",
+                    TEST_ID, DETECTED_ENTRY_ID);
+        }
+        Observation control = bundle.getEntry().stream().map(entry -> entry.getResource())
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        control.setValue(new StringType(reported));
+        control.getExtensionByUrl("https://openelis-global.org/fhir/StructureDefinition/analyzer-raw-value")
+                .setValue(new StringType(reported));
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
         return bundle;
     }
 
@@ -538,24 +675,22 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         jdbc.update("DELETE FROM clinlims.qc_statistics WHERE control_lot_id = ?", QC_LOT_ID);
         jdbc.update("DELETE FROM clinlims.qc_control_lot WHERE id = ?", QC_LOT_ID);
         jdbc.update("DELETE FROM clinlims.qc_control_lot WHERE id = 'receipt-qc-other'");
-        jdbc.update(
-                "DELETE FROM clinlims.analyzer_site_binding_confirmation WHERE site_binding_revision_id IN"
-                        + " (SELECT id FROM clinlims.analyzer_site_binding_revision WHERE site_binding_id = ?)",
-                SITE_BINDING_ID);
-        jdbc.update(
-                "DELETE FROM clinlims.analyzer_site_binding_result WHERE site_binding_revision_id IN"
-                        + " (SELECT id FROM clinlims.analyzer_site_binding_revision WHERE site_binding_id = ?)",
-                SITE_BINDING_ID);
-        jdbc.update(
-                "DELETE FROM clinlims.analyzer_site_binding_test WHERE site_binding_revision_id IN"
-                        + " (SELECT id FROM clinlims.analyzer_site_binding_revision WHERE site_binding_id = ?)",
-                SITE_BINDING_ID);
-        jdbc.update("DELETE FROM clinlims.test_result WHERE id = ?", RESULT_OPTION_ID);
+        jdbc.update("UPDATE clinlims.analyzer SET mapping_id = NULL WHERE id = ?", ANALYZER_ID);
+        String mappingIds = "(SELECT id FROM clinlims.analyzer_mapping WHERE analyzer_id = ?)";
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping_confirmation WHERE mapping_id IN " + mappingIds,
+                ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping_result WHERE mapping_id IN " + mappingIds, ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping_test WHERE mapping_id IN " + mappingIds, ANALYZER_ID);
+        jdbc.update("UPDATE clinlims.analyzer_mapping SET supersedes_mapping_id = NULL WHERE analyzer_id = ?",
+                ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.analyzer_mapping WHERE analyzer_id = ?", ANALYZER_ID);
+        jdbc.update("DELETE FROM clinlims.test_qc_target WHERE test_id = ?", TEST_ID);
+        jdbc.update("DELETE FROM clinlims.test_result WHERE id IN (?, ?)", RESULT_OPTION_ID, NEGATIVE_OPTION_ID);
+        jdbc.update("DELETE FROM clinlims.dictionary WHERE id IN (?, ?)", DETECTED_ENTRY_ID, NOT_DETECTED_ENTRY_ID);
+        jdbc.update("DELETE FROM clinlims.test_result_component WHERE test_id IN (?, ?, ?)", TEST_ID, OTHER_TEST_ID,
+                THIRD_TEST_ID);
         jdbc.update("DELETE FROM clinlims.test WHERE id IN (?, ?, ?)", TEST_ID, OTHER_TEST_ID, THIRD_TEST_ID);
         jdbc.update("DELETE FROM clinlims.analyzer_delivery_receipt WHERE analyzer_id = ?", ANALYZER_ID);
         jdbc.update("DELETE FROM clinlims.analyzer WHERE id = ?", ANALYZER_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_site_binding_revision WHERE site_binding_id = ?", SITE_BINDING_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_site_binding WHERE id = ?", SITE_BINDING_ID);
-        jdbc.update("DELETE FROM clinlims.analyzer_profile_binding WHERE id = ?", PROFILE_BINDING_ID);
     }
 }

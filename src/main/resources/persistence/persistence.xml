@@ -139,11 +139,9 @@
         <class>org.openelisglobal.shipment.valueholder.Shipment</class>
         <class>org.openelisglobal.shipment.valueholder.BoxSampleItem</class>
 
-        <!-- Analyzer orchestration and site-binding entities -->
+        <!-- Analyzer orchestration and per-analyzer mapping entities -->
         <class>org.openelisglobal.analyzer.valueholder.Analyzer</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerEvent</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding</class>
-        <class>org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerMapping</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest</class>
         <class>org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult</class>

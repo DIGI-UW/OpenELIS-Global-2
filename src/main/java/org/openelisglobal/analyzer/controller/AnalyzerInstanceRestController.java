@@ -69,11 +69,11 @@ public class AnalyzerInstanceRestController extends BaseRestController {
         return ResponseEntity.ok(toMap(analyzerInstanceService.update(id, input, getSysUserId(request))));
     }
 
-    @PutMapping("/{id}/site-binding")
-    public ResponseEntity<Map<String, Object>> selectSiteBindingRevision(@PathVariable String id,
+    @PutMapping("/{id}/mapping/apply")
+    public ResponseEntity<Map<String, Object>> applyMapping(@PathVariable String id,
             @Valid @RequestBody AnalyzerMappingSelectionRequest input, HttpServletRequest request) {
-        return ResponseEntity.ok(toMap(analyzerInstanceService.selectSiteBindingRevision(id, input.getSiteBindingId(),
-                input.getRevision(), input.getBindingFingerprint(), getSysUserId(request))));
+        return ResponseEntity.ok(toMap(analyzerInstanceService.applyMapping(id, input.getMappingId(),
+                input.getRevision(), input.getMappingFingerprint(), getSysUserId(request))));
     }
 
     @ExceptionHandler(IllegalArgumentException.class)

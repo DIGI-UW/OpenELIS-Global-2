@@ -1,6 +1,5 @@
 package org.openelisglobal.analyzer.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -12,20 +11,19 @@ import java.util.stream.Collectors;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingResultDAO;
 import org.openelisglobal.analyzer.dao.AnalyzerMappingTestDAO;
-import org.openelisglobal.analyzer.dao.AnalyzerSiteBindingDAO;
+import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResult;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingResultPK;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerMappingTestPK;
-import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBinding;
 import org.openelisglobal.audittrail.dao.AuditTrailService;
 import org.openelisglobal.test.service.TestService;
 import org.openelisglobal.test.valueholder.Test;
 import org.openelisglobal.testresult.service.TestResultService;
 import org.openelisglobal.testresult.valueholder.TestResult;
+import org.openelisglobal.testresultcomponent.service.TestResultComponentService;
 import org.openelisglobal.typeoftestresult.service.TypeOfTestResultServiceImpl;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,149 +31,156 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
 
-    private static final String AUDIT_TABLE = "analyzer_site_binding_revision";
+    private static final String AUDIT_TABLE = "analyzer_mapping";
 
-    private final AnalyzerSiteBindingDAO bindingDAO;
-    private final AnalyzerMappingDAO revisionDAO;
+    private final AnalyzerMappingDAO mappingDAO;
     private final AnalyzerMappingTestDAO testDAO;
     private final AnalyzerMappingResultDAO resultDAO;
     private final AuditTrailService auditTrailService;
     private final TestService testService;
     private final TestResultService testResultService;
+    private final TestResultComponentService componentService;
     private final AnalyzerMappingDefaults mappingDefaults;
+    private final BridgeProfileCatalogService profileCatalogService;
 
-    public AnalyzerMappingServiceImpl(AnalyzerSiteBindingDAO bindingDAO, AnalyzerMappingDAO revisionDAO,
-            AnalyzerMappingTestDAO testDAO, AnalyzerMappingResultDAO resultDAO, AuditTrailService auditTrailService,
-            TestService testService, TestResultService testResultService, AnalyzerMappingDefaults mappingDefaults) {
-        this.bindingDAO = bindingDAO;
-        this.revisionDAO = revisionDAO;
+    public AnalyzerMappingServiceImpl(AnalyzerMappingDAO mappingDAO, AnalyzerMappingTestDAO testDAO,
+            AnalyzerMappingResultDAO resultDAO, AuditTrailService auditTrailService, TestService testService,
+            TestResultService testResultService, TestResultComponentService componentService,
+            AnalyzerMappingDefaults mappingDefaults, BridgeProfileCatalogService profileCatalogService) {
+        this.mappingDAO = mappingDAO;
         this.testDAO = testDAO;
         this.resultDAO = resultDAO;
         this.auditTrailService = auditTrailService;
         this.testService = testService;
         this.testResultService = testResultService;
+        this.componentService = componentService;
         this.mappingDefaults = mappingDefaults;
+        this.profileCatalogService = profileCatalogService;
     }
 
     @Override
     @Transactional
-    public AnalyzerMappingSnapshot resolveInitialRevision(AnalyzerProfileBinding profileBinding,
-            JsonNode portableProfile, String actor) {
-        String effectiveActor = requireText(actor, "actor");
-        BridgeAnalyzerProfile profile = BridgeAnalyzerProfile.from(portableProfile);
-        validateProfileIdentity(profileBinding, profile);
-        return bindingDAO.findByProfileBindingId(profileBinding.getId()).map(this::loadLatest)
-                .orElseGet(() -> createInitial(profileBinding, profile, effectiveActor));
-    }
-
-    @Override
-    @Transactional
-    public AnalyzerMappingSnapshot appendRevision(AnalyzerSiteBinding binding, AnalyzerMappingDraft draft,
+    public AnalyzerMappingSnapshot assignProfile(Analyzer analyzer, String profileId, int profileRevision,
             String actor) {
         String effectiveActor = requireText(actor, "actor");
-        if (binding == null || binding.getId() == null || binding.getId().isBlank()) {
-            throw new IllegalArgumentException("Site binding is required");
+        if (analyzer == null || analyzer.getId() == null) {
+            throw new IllegalArgumentException("A saved analyzer is required");
         }
-        validateDraft(draft);
-        AnalyzerMapping current = revisionDAO.findLatestByBindingId(binding.getId()).orElse(null);
-        if (current != null && current.getBindingFingerprint().equals(AnalyzerMappingFingerprint.calculate(draft))) {
-            return loadRevision(binding, current);
+        String normalizedProfileId = requireText(profileId, "Profile ID");
+        if (profileRevision < 1) {
+            throw new IllegalArgumentException("Profile revision must be at least 1");
         }
-        int revisionNumber = current == null ? 1 : current.getRevisionNumber() + 1;
-        return persistRevision(binding, current, revisionNumber, draft, effectiveActor);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<AnalyzerMappingSnapshot> findCurrentByProfileBindingId(String profileBindingId) {
-        String bindingId = requireText(profileBindingId, "profile binding ID");
-        return bindingDAO.findByProfileBindingId(bindingId).map(this::loadLatest);
-    }
-
-    @Override
-    @Transactional(readOnly = true)
-    public Optional<AnalyzerMappingSnapshot> findByRevisionId(String revisionId) {
-        String id = requireText(revisionId, "site binding revision ID");
-        return revisionDAO.get(id).map(revision -> loadRevision(revision.getSiteBinding(), revision));
-    }
-
-    private AnalyzerMappingSnapshot createInitial(AnalyzerProfileBinding profileBinding, BridgeAnalyzerProfile profile,
-            String actor) {
-        AnalyzerSiteBinding binding = new AnalyzerSiteBinding();
-        binding.setProfileBinding(profileBinding);
-        binding.setCreatedBy(actor);
-        binding.setSysUserId(actor);
-        bindingDAO.insert(binding);
+        BridgeAnalyzerProfile profile = findProfile(normalizedProfileId, profileRevision);
+        if (!"ACTIVE".equals(profile.status())) {
+            throw new IllegalArgumentException(profileLabel(normalizedProfileId, profileRevision) + " is not active");
+        }
         AnalyzerMappingDraft draft = mappingDefaults.resolve(profile);
         validateDraft(draft);
-        return persistRevision(binding, null, 1, draft, actor);
+        Optional<AnalyzerMapping> latest = mappingDAO.findLatestByAnalyzerId(analyzer.getId());
+        return persistRevision(analyzer, latest.orElse(null), latest.map(m -> m.getRevisionNumber() + 1).orElse(1),
+                profile.profileId(), profile.revision(), profile.revisionFingerprint(), draft, effectiveActor);
     }
 
-    private AnalyzerMappingSnapshot loadLatest(AnalyzerSiteBinding binding) {
-        AnalyzerMapping revision = revisionDAO.findLatestByBindingId(binding.getId())
-                .orElseThrow(() -> new IllegalStateException("Site binding has no revision: " + binding.getId()));
-        return loadRevision(binding, revision);
+    @Override
+    @Transactional
+    public AnalyzerMappingSnapshot appendRevision(Analyzer analyzer, AnalyzerMappingDraft draft, String actor) {
+        String effectiveActor = requireText(actor, "actor");
+        if (analyzer == null || analyzer.getId() == null) {
+            throw new IllegalArgumentException("A saved analyzer is required");
+        }
+        validateDraft(draft);
+        AnalyzerMapping current = mappingDAO.findLatestByAnalyzerId(analyzer.getId())
+                .orElseThrow(() -> new IllegalStateException("Analyzer has no mapping: " + analyzer.getId()));
+        if (current.getMappingFingerprint().equals(AnalyzerMappingFingerprint.calculate(draft))) {
+            return load(current);
+        }
+        return persistRevision(analyzer, current, current.getRevisionNumber() + 1, current.getProfileId(),
+                current.getProfileRevision(), current.getProfileFingerprint(), draft, effectiveActor);
     }
 
-    private AnalyzerMappingSnapshot loadRevision(AnalyzerSiteBinding binding, AnalyzerMapping revision) {
-        return new AnalyzerMappingSnapshot(binding, revision, testDAO.findByRevisionId(revision.getId()),
-                resultDAO.findByRevisionId(revision.getId()));
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerMappingSnapshot> findLatestByAnalyzerId(String analyzerId) {
+        return mappingDAO.findLatestByAnalyzerId(requireText(analyzerId, "analyzer ID")).map(this::load);
     }
 
-    private AnalyzerMappingSnapshot persistRevision(AnalyzerSiteBinding binding, AnalyzerMapping supersedes,
-            int revisionNumber, AnalyzerMappingDraft draft, String actor) {
-        AnalyzerMapping revision = new AnalyzerMapping();
-        revision.setSiteBinding(binding);
-        revision.setRevisionNumber(revisionNumber);
-        revision.setBindingFingerprint(AnalyzerMappingFingerprint.calculate(draft));
-        revision.setSupersedesRevision(supersedes);
-        revision.setCreatedBy(actor);
-        revision.setSysUserId(actor);
-        revisionDAO.insert(revision);
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<AnalyzerMappingSnapshot> findById(String mappingId) {
+        return mappingDAO.get(requireText(mappingId, "mapping ID")).map(this::load);
+    }
+
+    private BridgeAnalyzerProfile findProfile(String profileId, int profileRevision) {
+        return profileCatalogService.getCatalog().profiles().stream()
+                .map(revision -> BridgeAnalyzerProfile.from(revision.profile()))
+                .filter(profile -> profileId.equals(profile.profileId()) && profileRevision == profile.revision())
+                .findFirst().orElseThrow(() -> new IllegalArgumentException(
+                        profileLabel(profileId, profileRevision) + " was not found"));
+    }
+
+    private static String profileLabel(String profileId, int profileRevision) {
+        return "Bridge profile " + profileId + " revision " + profileRevision;
+    }
+
+    private AnalyzerMappingSnapshot load(AnalyzerMapping mapping) {
+        return new AnalyzerMappingSnapshot(mapping, testDAO.findByMappingId(mapping.getId()),
+                resultDAO.findByMappingId(mapping.getId()));
+    }
+
+    private AnalyzerMappingSnapshot persistRevision(Analyzer analyzer, AnalyzerMapping supersedes, int revisionNumber,
+            String profileId, int profileRevision, String profileFingerprint, AnalyzerMappingDraft draft,
+            String actor) {
+        AnalyzerMapping mapping = new AnalyzerMapping();
+        mapping.setAnalyzer(analyzer);
+        mapping.setRevisionNumber(revisionNumber);
+        mapping.setProfileId(profileId);
+        mapping.setProfileRevision(profileRevision);
+        mapping.setProfileFingerprint(profileFingerprint);
+        mapping.setMappingFingerprint(AnalyzerMappingFingerprint.calculate(draft));
+        mapping.setSupersedes(supersedes);
+        mapping.setCreatedBy(actor);
+        mapping.setSysUserId(actor);
+        mappingDAO.insert(mapping);
 
         List<AnalyzerMappingTest> tests = draft.tests().stream()
                 .sorted(Comparator.comparing(AnalyzerMappingTestDraft::sourceRowKey))
-                .map(row -> persistTest(revision, row)).toList();
+                .map(row -> persistTest(mapping, row)).toList();
         List<AnalyzerMappingResult> results = draft.results().stream()
                 .sorted(Comparator.comparing(AnalyzerMappingResultDraft::sourceRowKey)
                         .thenComparing(AnalyzerMappingResultDraft::rawValue))
-                .map(row -> persistResult(revision, row)).toList();
-        auditTrailService.saveNewHistory(revision, actor, AUDIT_TABLE);
-        return new AnalyzerMappingSnapshot(binding, revision, tests, results);
+                .map(row -> persistResult(mapping, row)).toList();
+        auditTrailService.saveNewHistory(mapping, actor, AUDIT_TABLE);
+        return new AnalyzerMappingSnapshot(mapping, tests, results);
     }
 
-    private AnalyzerMappingTest persistTest(AnalyzerMapping revision, AnalyzerMappingTestDraft row) {
+    private AnalyzerMappingTest persistTest(AnalyzerMapping mapping, AnalyzerMappingTestDraft row) {
         AnalyzerMappingTest entity = new AnalyzerMappingTest();
-        entity.setId(new AnalyzerMappingTestPK(revision.getId(), row.sourceRowKey()));
-        entity.setSiteBindingRevision(revision);
+        entity.setId(new AnalyzerMappingTestPK(mapping.getId(), row.sourceRowKey()));
+        entity.setMapping(mapping);
         entity.setMappingState(row.mappingState());
+        entity.setOrigin(row.origin());
         entity.setTestId(row.testId());
+        entity.setComponentId(row.componentId());
+        entity.setUnresolvedReason(row.unresolvedReason());
         testDAO.insert(entity);
         return entity;
     }
 
-    private AnalyzerMappingResult persistResult(AnalyzerMapping revision, AnalyzerMappingResultDraft row) {
+    private AnalyzerMappingResult persistResult(AnalyzerMapping mapping, AnalyzerMappingResultDraft row) {
         AnalyzerMappingResult entity = new AnalyzerMappingResult();
-        entity.setId(new AnalyzerMappingResultPK(revision.getId(), row.sourceRowKey(), row.rawValue()));
-        entity.setSiteBindingRevision(revision);
+        entity.setId(new AnalyzerMappingResultPK(mapping.getId(), row.sourceRowKey(), row.rawValue()));
+        entity.setMapping(mapping);
         entity.setMappingState(row.mappingState());
+        entity.setOrigin(row.origin());
         entity.setTestResultId(row.testResultId());
+        entity.setUnresolvedReason(row.unresolvedReason());
         resultDAO.insert(entity);
         return entity;
     }
 
-    private static void validateProfileIdentity(AnalyzerProfileBinding selected, BridgeAnalyzerProfile profile) {
-        if (selected == null || selected.getId() == null || profile == null
-                || !selected.getProfileId().equals(profile.profileId())
-                || selected.getProfileRevision() != profile.revision()
-                || !selected.getProfileFingerprint().equals(profile.revisionFingerprint())) {
-            throw new IllegalArgumentException("Portable profile does not match the selected profile reference");
-        }
-    }
-
     private void validateDraft(AnalyzerMappingDraft draft) {
         if (draft == null) {
-            throw new IllegalArgumentException("Site binding draft is required");
+            throw new IllegalArgumentException("Mapping draft is required");
         }
         Set<String> testRows = new HashSet<>();
         for (AnalyzerMappingTestDraft row : draft.tests()) {
@@ -184,6 +189,11 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
                 throw new IllegalArgumentException("Duplicate test source row: " + sourceRowKey);
             }
             validateTarget("test row " + sourceRowKey, row.mappingState(), row.testId());
+            if (row.componentId() != null && !row.componentId().isBlank()
+                    && row.mappingState() != AnalyzerMappingState.BOUND) {
+                throw new IllegalArgumentException(
+                        row.mappingState() + " test row " + sourceRowKey + " cannot have a component");
+            }
         }
 
         Set<ResultSourceKey> resultRows = new HashSet<>();
@@ -204,6 +214,9 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         for (AnalyzerMappingTestDraft row : draft.tests()) {
             if (row.mappingState() == AnalyzerMappingState.BOUND) {
                 requireActiveTest(row.sourceRowKey(), row.testId());
+                if (row.componentId() != null && !row.componentId().isBlank()) {
+                    requireComponentOfTest(row.sourceRowKey(), row.testId(), row.componentId());
+                }
             }
         }
         for (AnalyzerMappingResultDraft row : draft.results()) {
@@ -218,6 +231,14 @@ public class AnalyzerMappingServiceImpl implements AnalyzerMappingService {
         Test test = testService.get(testId);
         if (test == null || !test.isActive()) {
             throw new IllegalArgumentException("BOUND test row " + sourceRowKey + " must reference an active Test");
+        }
+    }
+
+    private void requireComponentOfTest(String sourceRowKey, String testId, String componentId) {
+        boolean belongs = componentService.getComponentsByTestId(testId).stream()
+                .anyMatch(component -> componentId.equals(component.getId()));
+        if (!belongs) {
+            throw new IllegalArgumentException("Test row " + sourceRowKey + " must name a component of Test " + testId);
         }
     }
 

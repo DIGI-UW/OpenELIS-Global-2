@@ -172,13 +172,12 @@ public class AnalyzerInstanceServiceTest {
     }
 
     @Test
-    public void selectsTheReviewedSiteBindingWithoutRewritingBridgeConfiguration() {
+    public void appliesTheReviewedMappingWithoutRewritingBridgeConfiguration() {
         AnalyzerInstanceState connectedState = localState.withBridgeConnectionId("bridge-connection-42");
-        when(localStateService.selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
+        when(localStateService.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17"))
                 .thenReturn(connectedState);
 
-        AnalyzerInstanceView result = service.selectSiteBindingRevision("42", "12", 2, "sha256:" + "3".repeat(64),
-                "17");
+        AnalyzerInstanceView result = service.applyMapping("42", "12", 2, "sha256:" + "3".repeat(64), "17");
 
         assertTrue(result.connected());
         assertEquals(bridgeConnection, result.connection());

@@ -20,10 +20,8 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnitRunner;
 import org.openelisglobal.analyzer.service.AnalyzerControlRecognitionUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
-import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationRequest;
 import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationView;
 import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
-import org.openelisglobal.analyzer.service.AnalyzerMappingUpdate;
 import org.openelisglobal.analyzer.service.AnalyzerMappingView;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogView;
@@ -76,7 +74,7 @@ public class AnalyzerTypeRestControllerTest {
     public void getAnalyzerTypeReturnsTheExactComposedRevision() {
         AnalyzerTypeCatalogView.TypeSummary expected = new AnalyzerTypeCatalogView.TypeSummary("site.mock", 2,
                 "sha256:test", "Mock revision 2", "OpenELIS", "Mock", "SITE", "ACTIVE", "ASTM", "LIS2-A2", "BOTH", null,
-                null, "51", new AnalyzerTypeCatalogView.MappingSummary(0, 0, 1, "NOT_STARTED"),
+                null, new AnalyzerTypeCatalogView.MappingSummary(0, 0, 1, "NOT_STARTED"),
                 new AnalyzerTypeCatalogView.MappingSummary(0, 0, 0, "NOT_APPLICABLE"), 1, "NEEDS_LOCAL_MAPPING",
                 "PUBLISHED", "17", "2026-08-18T12:00:00Z");
         when(catalogService.getType("site.mock", 2)).thenReturn(expected);
@@ -97,7 +95,7 @@ public class AnalyzerTypeRestControllerTest {
     @Test
     public void getMappingResultOptionsScopesChoicesToTheMappedTest() {
         List<AnalyzerMappingCatalogService.ResultOption> expected = List
-                .of(new AnalyzerMappingCatalogService.ResultOption("11", "501", "Detected"));
+                .of(new AnalyzerMappingCatalogService.ResultOption("11", "501", "Detected", null));
         when(mappingCatalogService.getActiveResultOptions("1")).thenReturn(expected);
 
         assertSame(expected, controller.getMappingResultOptions("1").getBody());
@@ -105,40 +103,23 @@ public class AnalyzerTypeRestControllerTest {
     }
 
     @Test
-    public void getMappingReturnsTheSoleSharedEditorDocumentForTheExactRevision() {
+    public void getDefaultsReturnsThePreviewForTheExactRevisionWithoutAnAnalyzer() {
         BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
                 "NONE", "This analyzer interface transports no control results.", true, List.of());
-        AnalyzerMappingView expected = new AnalyzerMappingView("site.mock", 2, "sha256:test", "Mock Analyzer", "FILE",
-                null, 0, null, List.of(), recognition);
-        when(mappingService.getMapping("site.mock", 2)).thenReturn(expected);
+        AnalyzerMappingView expected = new AnalyzerMappingView(null, "site.mock", 2, "sha256:test", "Mock Analyzer",
+                "FILE", null, 0, null, List.of(), recognition, null);
+        when(mappingService.getDefaults("site.mock", 2)).thenReturn(expected);
 
-        assertSame(expected, controller.getMapping("site.mock", 2).getBody());
-        verify(mappingService).getMapping("site.mock", 2);
+        assertSame(expected, controller.getDefaults("site.mock", 2).getBody());
+        verify(mappingService).getDefaults("site.mock", 2);
     }
 
     @Test
-    public void saveMappingUsesTheAuthenticatedUserAsTheAuditActor() {
-        BridgeProfileCatalog.ControlRecognitionSummary recognition = new BridgeProfileCatalog.ControlRecognitionSummary(
-                "NONE", "This analyzer interface transports no control results.", true, List.of());
-        AnalyzerMappingUpdate update = new AnalyzerMappingUpdate(null, List.of(), List.of());
-        AnalyzerMappingView expected = new AnalyzerMappingView("site.mock", 2, "sha256:test", "Mock Analyzer", "FILE",
-                "51", 1, "sha256:binding", List.of(), recognition);
-        when(mappingService.saveMapping("site.mock", 2, update, "17")).thenReturn(expected);
-
-        assertSame(expected, controller.saveMapping("site.mock", 2, update, authenticatedRequest(17)).getBody());
-        verify(mappingService).saveMapping("site.mock", 2, update, "17");
-    }
-
-    @Test
-    public void confirmMappingUsesTheAuthenticatedUserAsTheAuditActor() {
-        AnalyzerMappingConfirmationRequest request = new AnalyzerMappingConfirmationRequest(
-                "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
-                "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc", List.of(), List.of());
-        AnalyzerMappingConfirmationView expected = AnalyzerMappingConfirmationView.unconfirmed();
-        when(mappingService.confirmMapping("site.mock", 2, request, "17")).thenReturn(expected);
-
-        assertSame(expected, controller.confirmMapping("site.mock", 2, request, authenticatedRequest(17)).getBody());
-        verify(mappingService).confirmMapping("site.mock", 2, request, "17");
+    public void typeControllerOffersNoWayToSaveOrConfirmAMapping() {
+        for (Method method : AnalyzerTypeRestController.class.getDeclaredMethods()) {
+            String name = method.getName().toLowerCase();
+            assertFalse(name, name.contains("savemapping") || name.contains("confirmmapping"));
+        }
     }
 
     @Test
