@@ -346,6 +346,7 @@ jobs:
           ref: ${{ needs.setup.outputs.head_sha }}
           sparse-checkout: |
             .github/scripts
+            .github/systemd
             volume
             projects/analyzer-harness
       - name: Build the deployment bundle
@@ -359,7 +360,8 @@ jobs:
           mkdir -p "bundle/tools/openelis-analyzer-bridge/$(dirname "$profiles")"
           cp -R "bridge/$profiles" "bundle/tools/openelis-analyzer-bridge/$profiles"
           tar -czf deploy-bundle.tgz docker-compose.yml docker-compose.analyzers.yml volume \
-            projects/analyzer-harness/seed-analyzers.sh \
+            projects/analyzer-harness/seed-analyzers.sh projects/analyzer-harness/docker-compose.base.yml \
+            projects/analyzer-harness/config-templates \
             -C bundle tools
       - name: Validate deployment request
         env:
@@ -397,9 +399,12 @@ jobs:
       - name: Deploy published images and require readiness
         run: |
           ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "mkdir -p $REMOTE_RUN/diagnostics"
-          scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" request.json deploy-bundle.tgz .github/scripts/deploy-published-testing.py .github/scripts/check-readiness.py "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/"
+          scp -i ~/.ssh/id_deploy -P "$DEPLOY_PORT" request.json deploy-bundle.tgz .github/scripts/deploy-published-testing.py .github/scripts/check-readiness.py .github/scripts/reset-testing.py .github/scripts/install-testing-reset.sh .github/systemd/openelis-testing-reset.service .github/systemd/openelis-testing-reset.timer "$DEPLOY_USER@$DEPLOY_HOST:$REMOTE_RUN/"
           set -o pipefail
           ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "python3 $REMOTE_RUN/deploy-published-testing.py $REMOTE_RUN/request.json" 2>&1 | tee deployment.log
+      - name: Install the nightly baseline reset schedule
+        run: |
+          ssh -i ~/.ssh/id_deploy -p "$DEPLOY_PORT" "$DEPLOY_USER@$DEPLOY_HOST" "sudo -n bash $REMOTE_RUN/install-testing-reset.sh '$SITE_PATH' '$DEPLOY_USER' '$REMOTE_RUN'"
       - name: Collect deployment diagnostics
         if: always()
         run: |

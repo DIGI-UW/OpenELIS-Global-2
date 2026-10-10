@@ -2,24 +2,20 @@
 """Deploy a develop commit's own compose stack with its published images."""
 
 import argparse
-import base64
 import datetime
 import fcntl
-import functools
+import html
 import importlib.util
 import json
 import os
 import pathlib
 import re
 import shutil
-import ssl
 import subprocess
 import sys
 import tarfile
 import tempfile
-import time
 import urllib.parse
-import urllib.request
 
 
 APP_REPOSITORY = "https://github.com/DIGI-UW/OpenELIS-Global-2.git"
@@ -31,19 +27,20 @@ SERVICES = {
     "frontend.openelis.org": "openelis-global-2-frontend",
     "proxy": "openelis-global-2-proxy",
 }
-ANALYZER_SERVICES = ("openelis-analyzer-bridge", "astm-simulator")
+ANALYZER_SERVICES = ("harness-catalog-init", "openelis-analyzer-bridge", "astm-simulator")
 SEED_SCRIPT = "projects/analyzer-harness/seed-analyzers.sh"
+BASELINE_CATALOG = "projects/analyzer-harness/config-templates"
 BUNDLE_FILES = (
     "docker-compose.yml",
     "docker-compose.analyzers.yml",
     "volume/properties/common.properties",
     "volume/openelis-analyzer-bridge/configuration.yml",
     SEED_SCRIPT,
+    "projects/analyzer-harness/docker-compose.base.yml",
+    BASELINE_CATALOG + "/tests/molecular-tests.csv",
+    BASELINE_CATALOG + "/test-results/molecular-test-results.csv",
 )
 DEFAULT_MOCK_URL = "http://127.0.0.1:8085"
-SMOKE_ANALYZER = "Cepheid GeneXpert (ASTM Mode)"
-SMOKE_DESTINATION = "tcp://openelis-analyzer-bridge:12001"
-SMOKE_SENDER_ID = "OE2-TEST-GENEXPERT"
 TEST_USER = "admin"
 TEST_PASS = "adminADMIN!"
 
@@ -86,6 +83,24 @@ def write_json(path, value):
     temporary.replace(path)
 
 
+def publish_baseline_status(site, report):
+    state = site / ".openelis-ci"
+    write_json(state / "reset-status.json", report)
+    public = state / "public"
+    public.mkdir(exist_ok=True)
+    write_json(public / "status.json", report)
+    fields = [("Reset state", report["state"]), ("Deployed version", report.get("appSha", "unknown")),
+              ("Last successful reset (UTC)", report.get("lastSuccessfulReset") or "None recorded"),
+              ("Schedule", "Daily at 6:00 p.m. America/Los_Angeles"), ("Details", report.get("message", ""))]
+    rows = "".join(f"<dt>{html.escape(key)}</dt><dd>{html.escape(str(value))}</dd>" for key, value in fields)
+    page = '<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width">'
+    page += '<title>Testing baseline status</title><style>body{font:18px system-ui;max-width:60rem;margin:3rem auto;padding:1rem}dt{font-weight:600;margin-top:1rem}dd{margin:.3rem 0;overflow-wrap:anywhere}</style>'
+    page += '<h1>Testing baseline status</h1><p>Test data is cleared daily at 6 p.m. Pacific. Ordinary deployments preserve data.</p><dl>' + rows + '</dl></html>\n'
+    temporary = public / "index.html.tmp"
+    temporary.write_text(page)
+    temporary.replace(public / "index.html")
+
+
 def require_stack_owner(site_dir):
     containers = run(["docker", "ps", "--filter", "publish=80", "--filter", "publish=443",
                       "--format", "{{.ID}}"], site_dir, True).split()
@@ -125,6 +140,9 @@ def unpack_release(bundle, site_dir, sha):
         # uploaded catalogs remain site-owned and survive release changes.
         catalog.mkdir(exist_ok=True)
         (staging / "configuration").symlink_to(configuration, target_is_directory=True)
+        public_status = site_dir / ".openelis-ci/public"
+        public_status.mkdir(parents=True, exist_ok=True)
+        (staging / "testing-status").symlink_to(public_status, target_is_directory=True)
         staging.rename(release)
         staging.mkdir()
     return release
@@ -171,40 +189,6 @@ def site_settings(site_dir, release):
         "TEST_PASS": environment.get("TEST_PASS") or environment.get("OE_ADMIN_PASSWORD") or TEST_PASS,
         "MOCK_URL": "http://127.0.0.1:" + (environment.get("ASTM_SIMULATOR_HTTP_PORT") or "8085"),
     }
-
-
-def smoke_accession(run_id):
-    digits = re.sub(r"\D", "", run_id)
-    return "DEV019" + digits.zfill(14)[-14:]
-
-
-def http_json(method, url, body=None, username=TEST_USER, password=TEST_PASS, auth_origin=None):
-    headers = {"Content-Type": "application/json"}
-    if auth_origin is None or url.startswith(auth_origin + "/"):
-        token = base64.b64encode(f"{username}:{password}".encode()).decode()
-        headers["Authorization"] = "Basic " + token
-    request = urllib.request.Request(url, method=method, data=None if body is None else json.dumps(body).encode(),
-                                     headers=headers)
-    with urllib.request.urlopen(request, timeout=30, context=ssl._create_unverified_context()) as response:
-        return json.load(response)
-
-
-def verify_analyzer_delivery(api_base, mock_url, accession, http=http_json, sleep=time.sleep, timeout=120):
-    pushed = http("POST", mock_url + "/simulate/astm/genexpert_astm",
-                  {"destination": SMOKE_DESTINATION, "sample_id": accession, "sender_id": SMOKE_SENDER_ID})
-    if pushed.get("pushed") != 1:
-        raise RuntimeError(f"Mock did not deliver the smoke result: {pushed}")
-    analyzers = http("GET", api_base + "/analyzer/analyzers").get("analyzers", [])
-    analyzer_id = next(item["id"] for item in analyzers if item.get("name") == SMOKE_ANALYZER)
-    deadline = time.monotonic() + timeout
-    while True:
-        response = http("GET", f"{api_base}/AnalyzerResults?id={analyzer_id}")
-        rows = [row for row in response.get("resultList", []) if row.get("accessionNumber") == accession]
-        if rows:
-            return {"accession": accession, "rows": len(rows)}
-        if time.monotonic() >= deadline:
-            raise RuntimeError(f"analyzer result {accession} never reached OpenELIS: {response}")
-        sleep(3)
 
 
 def prune_releases(site_dir, current, previous):
@@ -269,18 +253,20 @@ def deploy(request, diagnostics, bundle):
         if not report["ready"]:
             raise RuntimeError("Application did not become ready; inspect deployment diagnostics")
         run(["env", "BASE_URL=" + origin, "MOCK_URL=" + mock_url,
-             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network", "--activate"],
+             "bash", str(release / SEED_SCRIPT), "--ensure-connections", "--no-mock-network"],
             release, env={**os.environ, **settings})
-        authenticated_http = functools.partial(http_json, username=settings["TEST_USER"],
-                                               password=settings["TEST_PASS"], auth_origin=origin)
-        delivery = verify_analyzer_delivery(origin + "/api/OpenELIS-Global/rest", mock_url,
-                                            smoke_accession(request["run_id"]), http=authenticated_http)
         target = {"instance": "testing", "state": "ready", "appSha": manifest["appSha"],
                   "appBranch": manifest["appBranch"], "release": str(release), "images": images,
                   "deploymentId": request["run_id"],
                   "deployedAt": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                  "verification": {"readiness": report, "url": contract["url"], "analyzerDelivery": delivery}}
+                  "readinessContract": contract,
+                  "verification": {"readiness": report, "url": contract["url"]}}
         write_json(target_path, target)
+        reset_status = state_dir / "reset-status.json"
+        baseline = json.loads(reset_status.read_text()) if reset_status.exists() else {
+            "state": "not-reset", "message": "Nightly reset has not run yet"}
+        baseline["appSha"] = manifest["appSha"]
+        publish_baseline_status(site_dir, baseline)
         write_json(diagnostics / "target.json", target)
         prune_releases(site_dir, release, previous_release)
         run(["docker", "image", "prune", "--all", "--force"], site_dir)

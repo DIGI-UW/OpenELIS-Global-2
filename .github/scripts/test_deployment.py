@@ -50,7 +50,6 @@ class DeploymentTest(unittest.TestCase):
         self.branch_head = self.sha
         self.commands = []
         self.port_owner = deployment.PROJECT
-        self.delivery = []
 
     def command(self, args, _cwd, capture=False, **_kwargs):
         self.commands.append(args)
@@ -68,15 +67,9 @@ class DeploymentTest(unittest.TestCase):
             return json.dumps([{"Id": "sha256:actual"}])
         return ""
 
-    def verify_delivery(self, api_base, mock_url, accession, **_):
-        self.delivery.append((api_base, mock_url, accession))
-        return {"accession": accession, "rows": 2}
-
-    def deploy(self, run=None, **patches):
-        run = run or self.command
-        with patch.object(deployment, "run", side_effect=run), patch.object(deployment.subprocess, "run"), \
-                patch.object(deployment, "verify_analyzer_delivery",
-                             side_effect=patches.get("delivery", self.verify_delivery)):
+    def deploy(self, run=None):
+        with patch.object(deployment, "run", side_effect=run or self.command), \
+                patch.object(deployment.subprocess, "run"):
             deployment.deploy(self.request, self.diagnostics, self.bundle)
 
     def ready_health(self):
@@ -255,7 +248,7 @@ class DeploymentTest(unittest.TestCase):
             self.deploy()
         self.assertFalse(self.target.exists())
 
-    def test_ready_deployment_seeds_analyzers_then_proves_delivery(self):
+    def test_ready_deployment_initializes_connections_without_review_or_traffic(self):
         self.ready_health()
         self.deploy()
         release = self.root / "releases" / self.sha
@@ -263,27 +256,14 @@ class DeploymentTest(unittest.TestCase):
         self.assertIn("BASE_URL=http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port), seed)
         self.assertIn("MOCK_URL=" + deployment.DEFAULT_MOCK_URL, seed)
         self.assertEqual(["bash", str(release / "projects/analyzer-harness/seed-analyzers.sh"),
-                          "--ensure-connections", "--no-mock-network", "--activate"], seed[-5:])
+                          "--ensure-connections", "--no-mock-network"], seed[-4:])
         self.assertLess(self.commands.index(self.compose_calls("up")[0]), self.commands.index(seed))
-        self.assertEqual([("http://127.0.0.1:" + str(test_readiness.ReadinessTest.server.server_port)
-                           + "/api/OpenELIS-Global/rest", deployment.DEFAULT_MOCK_URL, "DEV01900361250089391")],
-                         self.delivery)
         target = json.loads(self.target.read_text())
         self.assertEqual(self.sha, target["appSha"])
         self.assertEqual(str(release), target["release"])
         self.assertEqual(5, len(target["images"]))
-        self.assertEqual("DEV01900361250089391", target["verification"]["analyzerDelivery"]["accession"])
-
-    def test_failed_delivery_proof_withdraws_ready_identity(self):
-        self.ready_health()
-
-        def lost(*_args, **_kwargs):
-            raise RuntimeError("analyzer result DEV01900361250089391 never reached OpenELIS")
-
-        with self.assertRaisesRegex(RuntimeError, "never reached OpenELIS"):
-            self.deploy(delivery=lost)
-        self.assertFalse(self.target.exists())
-        self.assertFalse(any(args[:3] == ["docker", "image", "prune"] for args in self.commands))
+        self.assertNotIn("analyzerDelivery", target["verification"])
+        self.assertNotIn("--activate", seed)
 
     def test_success_keeps_only_the_current_and_previous_release(self):
         releases = self.root / "releases"
@@ -316,60 +296,6 @@ class DeploymentTest(unittest.TestCase):
 
         self.assertEqual({"TEST_USER": "qa-admin", "TEST_PASS": "p#ss", "QUOTED": "a # b"},
                          deployment.read_env_file(path))
-
-    def test_smoke_accession_is_a_valid_unique_accession(self):
-        self.assertEqual("DEV01900361250089391", deployment.smoke_accession("36125008939-1"))
-        self.assertEqual(20, len(deployment.smoke_accession("9" * 30 + "-12")))
-        self.assertNotEqual(deployment.smoke_accession("1-1"), deployment.smoke_accession("1-2"))
-
-
-class AnalyzerDeliveryTest(unittest.TestCase):
-    def setUp(self):
-        self.calls = []
-        self.rows = []
-
-    def http(self, method, url, body=None):
-        self.calls.append((method, url, body))
-        if url.endswith("/simulate/astm/genexpert_astm"):
-            return {"status": "completed", "pushed": 1}
-        if url.endswith("/analyzer/analyzers"):
-            return {"analyzers": [{"id": 7, "name": "QuantStudio 5"},
-                                  {"id": 2, "name": deployment.SMOKE_ANALYZER}]}
-        if url.endswith("/AnalyzerResults?id=2"):
-            return {"resultList": self.rows}
-        raise AssertionError(url)
-
-    def test_pushes_to_shared_listener_with_seeded_identity_and_waits_for_its_rows(self):
-        polls = []
-
-        def arrive_on_second_poll(_seconds):
-            polls.append(_seconds)
-            self.rows = [{"accessionNumber": "DEV01900000000000011", "rawTestCode": "HIV-VL"}]
-
-        report = deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
-                                                     http=self.http, sleep=arrive_on_second_poll, timeout=5)
-        push = self.calls[0]
-        self.assertEqual(("POST", "http://mock/simulate/astm/genexpert_astm",
-                          {"destination": "tcp://openelis-analyzer-bridge:12001", "sample_id": "DEV01900000000000011",
-                           "sender_id": "OE2-TEST-GENEXPERT"}), push)
-        self.assertEqual({"accession": "DEV01900000000000011", "rows": 1}, report)
-        self.assertEqual(1, len(polls))
-
-    def test_result_that_never_arrives_fails_with_the_last_response(self):
-        with self.assertRaisesRegex(RuntimeError, "never reached OpenELIS"):
-            deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
-                                                http=self.http, sleep=lambda _s: None, timeout=0)
-
-    def test_mock_that_did_not_push_fails_before_polling(self):
-        def refused(method, url, body=None):
-            self.calls.append((method, url, body))
-            return {"status": "failed", "pushed": 0, "error": "connection refused"}
-
-        with self.assertRaisesRegex(RuntimeError, "connection refused"):
-            deployment.verify_analyzer_delivery("https://oe/rest", "http://mock", "DEV01900000000000011",
-                                                http=refused, sleep=lambda _s: None, timeout=5)
-        self.assertEqual(1, len(self.calls))
-
 
 if __name__ == "__main__":
     unittest.main()

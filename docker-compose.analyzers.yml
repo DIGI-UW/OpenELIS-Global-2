@@ -7,6 +7,14 @@
 # identifying the configured instrument through its message sender ID.
 
 services:
+  harness-catalog-init:
+    extends:
+      file: ./projects/analyzer-harness/docker-compose.base.yml
+      service: harness-catalog-init
+    volumes:
+      - ./configuration:/catalog
+      - ./projects/analyzer-harness/config-templates:/templates:ro
+
   openelis-analyzer-bridge:
     container_name: openelis-analyzer-bridge
     image: itechuw/openelis-analyzer-bridge:3.2.6
@@ -77,6 +85,13 @@ services:
     restart: unless-stopped
 
   oe.openelis.org:
+    depends_on:
+      db.openelis.org:
+        condition: service_healthy
+      certs:
+        condition: service_completed_successfully
+      harness-catalog-init:
+        condition: service_completed_successfully
     environment:
       - ANALYZER_BRIDGE_URL=https://bridge.openelis.org:8443
       - ANALYZER_BRIDGE_USERNAME=${ANALYZER_BRIDGE_USERNAME:-admin}
@@ -84,6 +99,10 @@ services:
     volumes:
       # The deployer seeds this persistent directory once; Catalog Import can write to it.
       - ./configuration/backend:/var/lib/openelis-global/configuration/backend
+
+  frontend.openelis.org:
+    volumes:
+      - ./testing-status:/usr/share/nginx/html/testing-baseline:ro
 
 volumes:
   analyzer-imports:
