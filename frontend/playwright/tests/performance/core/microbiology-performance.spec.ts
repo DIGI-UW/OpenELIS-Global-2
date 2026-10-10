@@ -20,7 +20,7 @@ import {
 const WARMUPS = 2;
 const MEASURED = P95_MEASURED_ITERATIONS;
 const CULTURE_WORKLIST_URL =
-  "/Microbiology/worklist?sort=priority&page=1&pageSize=100";
+  "/Microbiology/worklist?grain=cultures&sort=priority&page=1&pageSize=100";
 const AST_WORKLIST_URL =
   "/Microbiology/worklist?grain=ast&sort=priority&page=1&pageSize=100";
 const CULTURE_WORKLIST_ENDPOINT =
@@ -164,7 +164,7 @@ test.describe("Microbiology browser performance qualification", () => {
         () =>
           measureNavigation(
             page,
-            `/Microbiology/cases/${denseCase.caseId}`,
+            `/Microbiology/cases/${denseCase.caseId}?view=workbench`,
             MICROBIOLOGY_CASE_READY_MARK,
           ),
       ),
