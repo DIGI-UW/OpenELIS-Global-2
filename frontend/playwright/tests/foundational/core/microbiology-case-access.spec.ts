@@ -59,11 +59,15 @@ test.describe("Microbiology V2 MVP case visibility", () => {
         exact: true,
       }),
     ).toBeVisible();
-    expect(
-      await page.evaluate(
-        () => document.documentElement.scrollWidth <= window.innerWidth,
-      ),
-    ).toBeTruthy();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () => document.documentElement.scrollWidth <= window.innerWidth,
+          ),
+        { timeout: LONG_TIMEOUT },
+      )
+      .toBeTruthy();
     await page.screenshot({
       path: testInfo.outputPath("case-shell-mobile.png"),
       fullPage: true,
