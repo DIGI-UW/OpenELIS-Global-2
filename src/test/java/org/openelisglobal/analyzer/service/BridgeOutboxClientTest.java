@@ -111,6 +111,29 @@ public class BridgeOutboxClientTest {
     }
 
     @Test
+    public void readsOneEntryById() throws Exception {
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox/" + RECEIPT_ID), eq(TIMEOUT)))
+                .thenReturn(new BridgeHttpClient.BridgeResponse(200, """
+                        {"id":"%s","state":"PENDING","connectionId":"conn-7","attempts":5}""".formatted(RECEIPT_ID)));
+
+        JsonNode entry = client.get(RECEIPT_ID);
+
+        assertEquals("conn-7", entry.path("connectionId").asText());
+    }
+
+    @Test
+    public void reportsAnUnknownEntry() throws Exception {
+        when(httpClient.get(eq(BASE_URL + "/admin/outbox/ob-404"), eq(TIMEOUT))).thenReturn(
+                new BridgeHttpClient.BridgeResponse(404, "{\"error\":\"not_found\",\"id\":\"ob-404\"}"));
+
+        BridgeAnalyzerConnectionException failure = assertThrows(BridgeAnalyzerConnectionException.class,
+                () -> client.get("ob-404"));
+
+        assertEquals("analyzer.deliveryIssues.error.bridgeRefused", failure.messageKey());
+        assertEquals("not_found", failure.messageArgs().get("reason"));
+    }
+
+    @Test
     public void reportsTheBridgeReasonWhenAnEntryCannotBeRetried() throws Exception {
         when(httpClient.post(eq(BASE_URL + "/admin/outbox/" + RECEIPT_ID + "/retry"), eq("{}"), eq(TIMEOUT)))
                 .thenReturn(new BridgeHttpClient.BridgeResponse(409,
@@ -140,5 +163,6 @@ public class BridgeOutboxClientTest {
         assertThrows(IllegalArgumentException.class, () -> client.retry("../stats"));
         assertThrows(IllegalArgumentException.class, () -> client.retry("recv-v1:abc/../../stats"));
         assertThrows(IllegalArgumentException.class, () -> client.dismiss("ob-1?x=1"));
+        assertThrows(IllegalArgumentException.class, () -> client.get("../stats"));
     }
 }

@@ -628,4 +628,7 @@
   <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
   <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>
 
+  <!-- Durable attribution for manual Retry/Dismiss on undelivered analyzer results. -->
+  <include relativeToChangelogFile="true" file="119-analyzer-delivery-action.xml"/>
+
 </databaseChangeLog>
