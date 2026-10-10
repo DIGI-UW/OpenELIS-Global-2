@@ -10,6 +10,7 @@ public class MicroCaseTestForm {
     public String sampleItemId;
     public String testName;
     public String placement;
+    public String cultureId;
     public String status;
     public String version;
     public String enteredBy;

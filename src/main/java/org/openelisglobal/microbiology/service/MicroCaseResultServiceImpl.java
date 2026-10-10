@@ -44,6 +44,10 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.panel.service.PanelService panelCatalog;
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.typeofsample.service.TypeOfSamplePanelService samplePanels;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCaseInoculationDAO cultureRows;
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroCultureDAO cultureData;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -107,7 +111,9 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             f.testId = a.getTest().getId();
             f.sampleItemId = a.getSampleItem().getId();
             f.testName = a.getTest().getName();
-            f.placement = "ADDITIONAL".equals(link.getPlacement()) ? "ADDITIONAL" : "INITIAL";
+            f.placement = link.getCultureId() != null ? "CULTURE"
+                    : "ADDITIONAL".equals(link.getPlacement()) ? "ADDITIONAL" : "INITIAL";
+            f.cultureId = link.getCultureId();
             f.status = state(a);
             f.version = version(a, link);
             f.enteredBy = link.getEnteredBy();
@@ -134,7 +140,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         if (!access.hasLabUnitRole(actor, c.getLabUnitId(), Constants.ROLE_RESULTS))
             throw new AccessDeniedException("Case lab unit access required");
         MicroCaseMutationGuard.requireMutable(c);
-        if (search.getSamples(caseId).stream()
+        if (cultureRows.getSources(caseId).stream()
                 .noneMatch(s -> !s.isRejected() && sampleTypeId.equals(s.getTypeOfSampleId())))
             bad("MICROBIOLOGY_SAMPLE_CASE_MISMATCH");
         var catalog = new MicroCaseTestCatalogForm();
@@ -155,10 +161,18 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     @Transactional
     public List<MicroCaseTestForm> addTests(String caseId, MicroCaseAddTestsForm request, String actor) {
         var c = writeCase(caseId, actor, Constants.ROLE_RESULTS);
-        if (request == null || !List.of("INITIAL", "ADDITIONAL").contains(request.placement))
+        if (request == null || !List.of("INITIAL", "ADDITIONAL", "CULTURE").contains(request.placement))
             bad("MICROBIOLOGY_PLACEMENT_REQUIRED");
-        var specimen = search.getSamples(caseId).stream().filter(s -> s.getId().equals(request.sampleItemId))
-                .findFirst().orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_SAMPLE_CASE_MISMATCH"));
+        var specimen = ("CULTURE".equals(request.placement) ? cultureData.getSources(caseId)
+                : search.getSamples(caseId)).stream().filter(s -> s.getId().equals(request.sampleItemId)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_SAMPLE_CASE_MISMATCH"));
+        if ("CULTURE".equals(request.placement)) {
+            var culture = cultureRows.get(request.cultureId)
+                    .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_CULTURE_REQUIRED"));
+            if (!caseId.equals(culture.getCaseId()) || !request.sampleItemId.equals(culture.getSourceSampleItemId()))
+                bad("MICROBIOLOGY_CULTURE_SOURCE");
+        } else if (request.cultureId != null)
+            bad("MICROBIOLOGY_CULTURE_PLACEMENT");
         if (specimen.isRejected())
             bad("MICROBIOLOGY_SAMPLE_REJECTED");
         Set<String> ids = new LinkedHashSet<>(request.testIds == null ? List.of() : request.testIds);
@@ -193,7 +207,8 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         List<String> changedAnalysisIds = new ArrayList<>();
         for (var t : selected) {
             var prior = existing.stream().filter(
-                    a -> t.getId().equals(a.getTest().getId()) && specimen.getId().equals(a.getSampleItem().getId()))
+                    a -> t.getId().equals(a.getTest().getId()) && specimen.getId().equals(a.getSampleItem().getId())
+                            && Objects.equals(request.cultureId, links.getByCaseAndAnalysis(caseId, a.getId()).getCultureId()))
                     .findFirst().orElse(null);
             if (prior != null) {
                 var panel = selectedPanels.get(t.getId());
@@ -226,6 +241,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
             link.setCaseId(caseId);
             link.setAnalysisId(a.getId());
             link.setPlacement(request.placement);
+            link.setCultureId(request.cultureId);
             link.setSysUserId(actor);
             links.insert(link);
             record(caseId, "TEST_ADDED", a.getId(), actor);
