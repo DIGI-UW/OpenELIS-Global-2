@@ -48,15 +48,15 @@ normalizedCoding, resultValueHints)`. After step 6 the profile carries an
 ### Build
 
 ```
-- [ ] T1.1 Red: unit test, one usable + one answerless candidate on the same LOINC and specimen binds the usable one
-- [ ] T1.2 Red: unit test, two usable candidates stay UNRESOLVED with reason AMBIGUOUS
-- [ ] T1.3 Red: unit test, answer binds on Dictionary.loincCode, not label
-- [ ] T1.4 Red: unit test, editor suggestion for an UNRESOLVED row equals AnalyzerMappingDefaults output for the same catalog
-- [ ] T1.5 Move the compatibility check before uniqueness; add the reason enum; remove hint handling
-- [ ] T1.6 Extend ResultOption with answerCode; match answers on it
-- [ ] T1.7 Delete uniqueSuggestion and matches; have composeTestRow call the resolver for UNRESOLVED rows (tests and answers)
-- [ ] T1.8 Remove the specimen-hint and result-value-hint inputs and their i18n keys from the profile draft editor (ProfileTestDefinitions.jsx and ProfileDraftEditor.test.jsx), so nothing authors a field OE2 no longer reads
-- [ ] T1.9 Green; format cold; commit; stack PR on step 0
+- [x] T1.1 Red: unit test, one usable + one answerless candidate on the same LOINC and specimen binds the usable one
+- [x] T1.2 Red: unit test, two usable candidates stay UNRESOLVED with reason AMBIGUOUS
+- [x] T1.3 Red: unit test, answer binds on Dictionary.loincCode, not label
+- [x] T1.4 Red: unit test, editor suggestion for an UNRESOLVED row equals AnalyzerMappingDefaults output for the same catalog
+- [x] T1.5 Move the compatibility check before uniqueness; add the reason enum; remove hint handling
+- [x] T1.6 Extend ResultOption with answerCode; match answers on it
+- [x] T1.7 Delete uniqueSuggestion and matches; have composeTestRow call the resolver for UNRESOLVED rows (tests and answers)
+- [x] T1.8 Remove the specimen-hint and result-value-hint inputs and their i18n keys from the profile draft editor (ProfileTestDefinitions.jsx and ProfileDraftEditor.test.jsx), so nothing authors a field OE2 no longer reads
+- [x] T1.9 Green; format cold; commit; stack PR on step 0
 ```
 
 ### Verify
@@ -64,7 +64,7 @@ normalizedCoding, resultValueHints)`. After step 6 the profile carries an
 ```bash
 mvn -Dtest=AnalyzerMappingDefaultsTest,AnalyzerTypeMappingServiceTest test
 grep -rn "uniqueSuggestion\|result_value_hints\|resultValueHints\|specimenTypeHint" src/main/java   # 0 hits outside BridgeAnalyzerProfile parsing
-cd frontend && npx jest src/components/analyzers/AnalyzerTypeManagement/ProfileDraftEditor.test.jsx
+cd frontend && npx vitest run src/components/analyzers/AnalyzerTypeManagement
 gh pr checks <PR>
 ```
 
@@ -76,7 +76,7 @@ gh pr checks <PR>
    read `AnalyzerTypeMappingView`)
 4. No code path reads `result_value_hints` or `specimen_type_hint`. (`grep`)
 5. The profile draft editor offers no specimen or result-value hint input.
-   (`jest`, `grep`)
+   (`vitest`, `grep`)
 6. The harness E2E for this behaviour (a fresh setup of every shipped
    analyzer binds every declared row) is T7.1. It cannot pass here: shipped
    profiles gain answer codes in step 6 and the harness dictionary in step 7,

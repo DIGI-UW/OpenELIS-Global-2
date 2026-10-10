@@ -33,6 +33,8 @@ import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTest;
 import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingTestPK;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
+import org.openelisglobal.testresult.service.TestResultService;
+import org.openelisglobal.testresult.valueholder.TestResult;
 
 @RunWith(MockitoJUnitRunner.class)
 public class AnalyzerTypeMappingServiceTest {
@@ -60,12 +62,16 @@ public class AnalyzerTypeMappingServiceTest {
     @Mock
     private AnalyzerResultsService analyzerResultsService;
 
+    @Mock
+    private TestResultService testResultService;
+
     private AnalyzerTypeMappingService service;
 
     @Before
     public void setUp() {
         service = new AnalyzerTypeMappingServiceImpl(bridgeProfileCatalogService, profileBindingDAO, siteBindingService,
-                mappingCatalogService, profileBindingService, confirmationService, analyzerResultsService);
+                mappingCatalogService, profileBindingService, confirmationService, analyzerResultsService,
+                new AnalyzerMappingDefaults(mappingCatalogService, testResultService));
     }
 
     @Test
@@ -82,6 +88,7 @@ public class AnalyzerTypeMappingServiceTest {
         when(siteBindingService.findCurrentByProfileBindingId("41")).thenReturn(Optional.of(siteBinding));
         when(confirmationService.getStatus(siteBinding, recognitionFingerprint())).thenReturn(confirmation);
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
         when(mappingCatalogService.getActiveResultOptions("9701"))
                 .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive"),
                         new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Negative")));
@@ -159,6 +166,7 @@ public class AnalyzerTypeMappingServiceTest {
         when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
         when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2)).thenReturn(Optional.empty());
         when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(coveredAnswers());
 
         AnalyzerTypeMappingView view = service.getMapping("site.mock-analyzer", 2);
 
@@ -414,6 +422,76 @@ public class AnalyzerTypeMappingServiceTest {
         verify(siteBindingService, never()).appendRevision(any(), any(), any());
     }
 
+    @Test
+    public void suggestsExactlyWhatTheResolverResolvesForTheSameCatalog() throws Exception {
+        unboundMapping();
+        when(mappingCatalogService.getActiveResultOptions("9701")).thenReturn(coveredAnswers());
+        when(testResultService.getActiveTestResultsByTest("9701")).thenReturn(List.of(numericResult()));
+        when(testResultService.getActiveTestResultsByTest("9702")).thenReturn(List.of(numericResult()));
+        when(testResultService.getActiveTestResultsByTest("9703")).thenReturn(List.of(numericResult()));
+
+        AnalyzerTypeMappingView view = service.getMapping("site.mock-analyzer", 2);
+
+        assertEquals("9701", view.tests().get(0).suggestedTest().id());
+        assertEquals("811", view.tests().get(0).results().get(0).suggestedOption().id());
+        assertEquals("812", view.tests().get(0).results().get(1).suggestedOption().id());
+        assertEquals("9701", view.tests().get(1).suggestedTest().id());
+        assertNull(view.tests().get(2).suggestedTest());
+        assertEquals(AnalyzerUnresolvedReason.AMBIGUOUS, view.tests().get(2).unresolvedReason());
+        AnalyzerSiteBindingDraft resolved = new AnalyzerMappingDefaults(mappingCatalogService, testResultService)
+                .resolve(BridgeAnalyzerProfile.from(profileRevision().profile()));
+        for (int row = 0; row < resolved.tests().size(); row++) {
+            var editor = view.tests().get(row);
+            assertEquals(resolved.tests().get(row).testId(),
+                    editor.suggestedTest() == null ? null : editor.suggestedTest().id());
+            assertEquals(resolved.tests().get(row).unresolvedReason(), editor.unresolvedReason());
+        }
+    }
+
+    @Test
+    public void doesNotSuggestATestThatOnlySharesTheRawCodeOrName() throws Exception {
+        unboundMapping();
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(List.of(
+                new AnalyzerMappingCatalogService.TestOption("9801", "Second result", "RAW-B", List.of("12345-6"))));
+
+        AnalyzerTypeMappingView view = service.getMapping("site.mock-analyzer", 2);
+
+        assertNull(view.tests().get(1).suggestedTest());
+        assertEquals(AnalyzerUnresolvedReason.NO_MATCH, view.tests().get(1).unresolvedReason());
+    }
+
+    @Test
+    public void everyUnresolvedAnswerCarriesItsReasonWhenTheLocalAnswersCarryNoCode() throws Exception {
+        unboundMapping();
+        when(mappingCatalogService.getActiveResultOptions("9701"))
+                .thenReturn(List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Positive")));
+
+        AnalyzerTypeMappingView view = service.getMapping("site.mock-analyzer", 2);
+
+        assertEquals("9701", view.tests().get(0).suggestedTest().id());
+        for (var answer : view.tests().get(0).results()) {
+            assertNull(answer.suggestedOption());
+            assertEquals(AnalyzerUnresolvedReason.NO_MATCH, answer.unresolvedReason());
+        }
+    }
+
+    private void unboundMapping() throws Exception {
+        when(bridgeProfileCatalogService.getProfile("site.mock-analyzer", 2)).thenReturn(profileRevision());
+        when(profileBindingDAO.findByProfileIdAndRevision("site.mock-analyzer", 2)).thenReturn(Optional.empty());
+        when(mappingCatalogService.searchActiveTests(null)).thenReturn(activeTests());
+    }
+
+    private static List<AnalyzerMappingCatalogService.ResultOption> coveredAnswers() {
+        return List.of(new AnalyzerMappingCatalogService.ResultOption("811", "1001", "Reactive", "LA6576-8"),
+                new AnalyzerMappingCatalogService.ResultOption("812", "1002", "Non-reactive", "LA6577-6"));
+    }
+
+    private static TestResult numericResult() {
+        TestResult number = new TestResult();
+        number.setTestResultType("N");
+        return number;
+    }
+
     private BridgeProfileCatalog.ProfileRevision profileRevision() throws Exception {
         JsonNode profile = objectMapper.readTree("""
                 {
@@ -438,6 +516,10 @@ public class AnalyzerTypeMappingServiceTest {
                       "unit":"copies/mL",
                       "result_type":"qualitative",
                       "values":["POS","NEG"],
+                      "value_codes":{
+                        "POS":{"system":"http://loinc.org","code":"LA6576-8"},
+                        "NEG":{"system":"http://loinc.org","code":"LA6577-6"}
+                      },
                       "normalized_coding":{
                         "system":"https://loinc.org",
                         "code":"94500-6",

@@ -31,10 +31,15 @@ public class BridgeAnalyzerProfileTest {
                       "aliases":["RAW-A1","RAW-A2"],
                       "test_name_hint":"First result",
                       "specimen_type_hint":"Plasma",
+                      "result_value_hints":{"POS":"Detected"},
                       "loinc":"94500-6",
                       "unit":"copies/mL",
                       "result_type":"qualitative",
                       "values":["POS","NEG"],
+                      "value_codes":{
+                        "POS":{"system":"http://loinc.org","code":"LA6576-8","display":"Detected"},
+                        "NEG":{"system":"http://loinc.org","code":"LA6577-6"}
+                      },
                       "normalized_coding":{
                         "system":"https://loinc.org",
                         "code":"94500-6",
@@ -59,15 +64,44 @@ public class BridgeAnalyzerProfileTest {
         assertEquals("RAW-A", first.analyzerCode());
         assertEquals(List.of("RAW-A1", "RAW-A2"), first.aliases());
         assertEquals("First result", first.testNameHint());
-        assertEquals("Plasma", first.specimenTypeHint());
         assertEquals("94500-6", first.loinc());
         assertEquals("copies/mL", first.unit());
         assertEquals("qualitative", first.resultType());
         assertEquals(List.of("POS", "NEG"), first.resultValues());
+        assertEquals("LA6576-8", first.valueCodes().get("POS").code());
+        assertEquals("http://loinc.org", first.valueCodes().get("POS").system());
+        assertEquals("Detected", first.valueCodes().get("POS").display());
+        assertEquals("LA6577-6", first.valueCodes().get("NEG").code());
+        assertEquals(java.util.Map.of(), profile.testDefinitions().get(1).valueCodes());
         assertEquals("https://loinc.org", first.normalizedCoding().system());
         assertEquals("94500-6", first.normalizedCoding().code());
         assertEquals("SARS-CoV-2 RNA", first.normalizedCoding().display());
         assertEquals("RAW-B", profile.testDefinitions().get(1).analyzerCode());
         assertEquals("94500-6", profile.testDefinitions().get(1).loinc());
+    }
+
+    @Test(expected = IllegalArgumentException.class)
+    public void rejectsAValueCodeForAValueTheTestDoesNotDeclare() throws Exception {
+        BridgeAnalyzerProfile.from(objectMapper.readTree("""
+                {
+                  "profileMeta":{"id":"site.mock-analyzer","displayName":"Mock Analyzer"},
+                  "protocol":{"name":"ASTM"},
+                  "catalog":{
+                    "revision":1,
+                    "revisionFingerprint":"sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+                    "source":"SITE",
+                    "status":"ACTIVE"
+                  },
+                  "default_test_mappings":[
+                    {
+                      "test_code":"RAW-A",
+                      "loinc":"94500-6",
+                      "result_type":"qualitative",
+                      "values":["POS"],
+                      "value_codes":{"NEG":{"system":"http://loinc.org","code":"LA6577-6"}}
+                    }
+                  ]
+                }
+                """));
     }
 }

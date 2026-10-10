@@ -19,6 +19,9 @@ public interface AnalyzerMappingCatalogService {
         }
     }
 
-    record ResultOption(String id, String value, String label) {
+    record ResultOption(String id, String value, String label, String answerCode) {
+        public ResultOption(String id, String value, String label) {
+            this(id, value, label, null);
+        }
     }
 }
