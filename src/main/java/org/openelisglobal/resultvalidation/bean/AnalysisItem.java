@@ -252,6 +252,15 @@ public class AnalysisItem implements Serializable {
     private String rangeNotAppliedReason;
 
     private String enteredBy;
+    private boolean selfValidationBlocked;
+
+    public boolean isSelfValidationBlocked() {
+        return selfValidationBlocked;
+    }
+
+    public void setSelfValidationBlocked(boolean blocked) {
+        selfValidationBlocked = blocked;
+    }
 
     private String enteredDate;
 

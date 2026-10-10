@@ -21,6 +21,7 @@ import {
   TableContainer,
 } from "@carbon/react";
 import "./CaseWorkspace.scss";
+import CaseTestingWorkspace from "./CaseTestingWorkspace";
 import serviceDefault from "./CaseWorkspaceService";
 import {
   MICROBIOLOGY_CASE_PATH,
@@ -133,7 +134,9 @@ export default function CaseViewShell({
                     <h2>{t("microbiology.case.labUnit")}</h2>
                     <p>{detail.labUnit}</p>
                     <p>{detail.specimenType}</p>
-                    <p>{t("microbiology.case.readOnly")}</p>
+                    {!detail.canWrite && (
+                      <p>{t("microbiology.case.readOnly")}</p>
+                    )}
                   </Tile>
                 </Column>
               </Grid>
@@ -178,6 +181,11 @@ export default function CaseViewShell({
                   </TableBody>
                 </Table>
               </TableContainer>
+              <CaseTestingWorkspace
+                key={id}
+                detail={detail}
+                service={service}
+              />
               <h2>{t("microbiology.case.relatedCases")}</h2>
               {(detail.relatedCases || []).length === 0 ? (
                 <p>{t("microbiology.case.noRelatedCases")}</p>

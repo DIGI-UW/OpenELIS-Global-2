@@ -267,7 +267,9 @@ const ValidationReviewPanel = ({
   const qcHoldBlocksRelease =
     row.qcHold === true &&
     configurationProperties?.QC_FAIL_BLOCKS_VALIDATION === "true";
-  const releaseBlocked = busy || qcAckBlocksRelease || qcHoldBlocksRelease;
+  const selfValidationBlocked = row.selfValidationBlocked === true;
+  const releaseBlocked =
+    busy || qcAckBlocksRelease || qcHoldBlocksRelease || selfValidationBlocked;
   const reasonMissing = notesRequired && !noteText.trim();
   const modificationBlocked =
     busy || !editableHere || !String(newValue ?? "").trim() || reasonMissing;
@@ -619,6 +621,13 @@ const ValidationReviewPanel = ({
         >
           {!inSideMode && (
             <span data-testid="review-release">
+              {selfValidationBlocked && (
+                <p id={`review-self-validation-hint-${row.id}`}>
+                  {intl.formatMessage({
+                    id: "microbiology.testing.selfValidationBlocked",
+                  })}
+                </p>
+              )}
               <ESignatureButton
                 meaning={SignatureMeaning.VALIDATED_AND_RELEASED}
                 context={signContext}
@@ -631,6 +640,8 @@ const ValidationReviewPanel = ({
                   [
                     qcAckBlocksRelease && `review-qc-ack-hint-${row.id}`,
                     qcHoldBlocksRelease && `review-qc-hold-hint-${row.id}`,
+                    selfValidationBlocked &&
+                      `review-self-validation-hint-${row.id}`,
                   ]
                     .filter(Boolean)
                     .join(" ") || undefined

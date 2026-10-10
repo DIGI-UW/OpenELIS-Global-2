@@ -28,4 +28,5 @@
   <include relativeToChangelogFile="true" file="015-microbiology-program-visibility.xml"/>
   <include relativeToChangelogFile="true" file="016-microbiology-environmental-site-routing.xml"/>
 
+  <include relativeToChangelogFile="true" file="014-microbiology-case-result-entry.xml"/>
 </databaseChangeLog>

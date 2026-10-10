@@ -19,7 +19,14 @@ import { getFromOpenElisServer } from "../../../utils/Utils";
  * walking back to step 1. This offers the same catalogue, scoped to each
  * sample's own type, against the tests the order already holds.
  */
-const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
+const CollectTestPickerSection = ({
+  samples,
+  setSamples,
+  isReadOnly,
+  titleId = "collect.addTests.title",
+  helperId = "collect.addTests.helper",
+  excludedTestIds = [],
+}) => {
   const intl = useIntl();
   const componentMounted = useRef(true);
   const fetchedTypesRef = useRef({});
@@ -105,14 +112,11 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
   return (
     <Tile className="order-section">
       <h4 className="section-title">
-        <FormattedMessage
-          id="collect.addTests.title"
-          defaultMessage="Add Tests or Panels"
-        />
+        <FormattedMessage id={titleId} defaultMessage="Add Tests or Panels" />
       </h4>
       <p className="helper-text">
         <FormattedMessage
-          id="collect.addTests.helper"
+          id={helperId}
           defaultMessage="Add a test the clinician asked for after the order was entered, or one that only becomes appropriate with the specimen in hand."
         />
       </p>
@@ -183,17 +187,46 @@ const CollectTestPickerSection = ({ samples, setSamples, isReadOnly }) => {
                     onClick={() =>
                       !isReadOnly && toggleSelection(index, "panels", panel)
                     }
+                    role="button"
+                    tabIndex={isReadOnly ? -1 : 0}
+                    aria-disabled={isReadOnly}
+                    onKeyDown={(event) => {
+                      if (
+                        !isReadOnly &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        toggleSelection(index, "panels", panel);
+                      }
+                    }}
                   >
                     {panel.name}
                   </Tag>
                 ))}
-                {matching(options.tests, term).map((test) => (
+                {matching(
+                  options.tests.filter(
+                    (test) => !excludedTestIds.includes(String(test.id)),
+                  ),
+                  term,
+                ).map((test) => (
                   <Tag
                     key={`available-test-${test.id}`}
                     type="outline"
                     onClick={() =>
                       !isReadOnly && toggleSelection(index, "tests", test)
                     }
+                    role="button"
+                    tabIndex={isReadOnly ? -1 : 0}
+                    aria-disabled={isReadOnly}
+                    onKeyDown={(event) => {
+                      if (
+                        !isReadOnly &&
+                        (event.key === "Enter" || event.key === " ")
+                      ) {
+                        event.preventDefault();
+                        toggleSelection(index, "tests", test);
+                      }
+                    }}
                   >
                     {test.name}
                   </Tag>

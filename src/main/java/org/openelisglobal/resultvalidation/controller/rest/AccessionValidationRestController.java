@@ -308,6 +308,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
             form.setQcFailureList(validationUtility.findFailedQcForAccession(form.getAccessionNumber()));
         }
 
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(form.getResultList(), getSysUserId(request));
         return form;
     }
 
@@ -1003,6 +1005,10 @@ public class AccessionValidationRestController extends BaseResultValidationContr
                 skipped.add(skipReason(entry.getKey(), "notFound"));
                 continue;
             }
+            if (group.stream().anyMatch(AnalysisItem::isSelfValidationBlocked)) {
+                skipped.add(skipReason(entry.getKey(), "selfValidationBlocked"));
+                continue;
+            }
             if (!org.openelisglobal.resultvalidation.util.ValidationSignals.allClear(group)) {
                 skipped.add(skipReason(entry.getKey(), "notClear"));
                 continue;
@@ -1297,6 +1303,8 @@ public class AccessionValidationRestController extends BaseResultValidationContr
         List<AnalysisItem> visible = userService.filterAnalysisResultsByLabUnitRoles(getSysUserId(request), rows,
                 Constants.ROLE_VALIDATION);
         markQcHolds(visible);
+        SpringContext.getBean(org.openelisglobal.resultvalidation.service.ResultSelfValidationPolicy.class)
+                .decorateRows(visible, getSysUserId(request));
         return visible;
     }
 

@@ -105,4 +105,19 @@ public class ResultUtilAutoValidationTest extends BaseWebContextSensitiveTest {
         assertEquals(status(AnalysisStatus.Finalized),
                 ResultUtil.getStatusForTestResult(entered("100", "N", "10.5"), false));
     }
+
+    @Test
+    public void blockingSelfValidationAlsoBlocksAutomatedFinalization() {
+        var configuration = org.openelisglobal.common.util.ConfigurationProperties.getInstance();
+        var property = org.openelisglobal.common.util.ConfigurationProperties.Property.BLOCK_SELF_VALIDATION;
+        String previous = configuration.getPropertyValue(property);
+        try {
+            configuration.setPropertyValue(property, "true");
+            assertEquals(status(AnalysisStatus.TechnicalAcceptance),
+                    ResultUtil.getStatusForTestResult(entered("100", "N", "10.5"), false, analysisService.get("100")));
+        } finally {
+            configuration.setPropertyValue(property, previous);
+        }
+    }
+
 }
