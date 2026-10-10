@@ -1,0 +1,87 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<dataset>
+    <!-- One accession awaiting validation whose test reports two parts: the
+        viral load in copies/ml and its Ct, which has no unit. Each part's result
+        is its own validation row. -->
+
+    <system_role id="9400" name="Validation"
+        description="Validate results" display_key="role.validator"
+        active="true" editable="false" />
+    <system_user id="1" login_name="testUser" last_name="Doe"
+        first_name="John" is_active="Y" is_employee="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <status_of_sample id="1" description="Sample Entered"
+        code="1" status_type="SAMPLE" name="Entered"
+        lastupdated="2025-01-01 12:00:00" />
+    <status_of_sample id="2"
+        description="Technical Acceptance" code="2" status_type="ANALYSIS"
+        name="Technical Acceptance" lastupdated="2025-01-01 12:00:00" />
+
+    <localization id="1" description="Test Name" />
+    <localization_value id="1" localization_id="1"
+        locale="en" value="Viral Load" />
+    <localization id="2" description="Sample Type Name" />
+    <localization_value id="2" localization_id="2"
+        locale="en" value="Plasma" />
+    <supported_locale id="1" locale_code="en"
+        display_name="English" is_active="true" is_fallback="true"
+        sort_order="1" />
+
+    <type_of_sample id="1" description="Plasma" domain="H"
+        name_localization_id="2" lastupdated="2025-01-01 12:00:00" />
+
+    <test_section id="1" name="Molecular"
+        description="Molecular Biology" is_external="N"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        name_localization_id="1" display_key="mol" />
+
+    <test_formats id="1" lastupdated="2025-01-01 12:00:00" />
+
+    <unit_of_measure id="9101" name="cp/ml VCU"
+        description="copies per ml" lastupdated="2025-01-01 12:00:00" />
+
+    <test id="1" description="Viral Load" loinc="25836-8"
+        is_active="Y" is_reportable="Y" orderable="true"
+        lastupdated="2025-01-01 12:00:00" test_section_id="1"
+        test_format_id="1" sort_order="1" name="Viral Load"
+        guid="test-vcu-001" name_localization_id="1" uom_id="9101" />
+
+    <test_result_component id="vcu-load" test_id="1"
+        code="LOAD" label="Viral load" display_order="1" result_type="N"
+        uom_id="9101" is_active="Y" lastupdated="2025-01-01 12:00:00" />
+    <test_result_component id="vcu-ct" test_id="1"
+        code="CT" label="Ct" display_order="2" result_type="N" is_active="Y"
+        lastupdated="2025-01-01 12:00:00" />
+
+    <test_result id="1" test_id="1" result_group="1"
+        component_id="vcu-load" tst_rslt_type="N" significant_digits="0"
+        lastupdated="2025-01-01 12:00:00" sort_order="1"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+    <test_result id="2" test_id="1" result_group="2"
+        component_id="vcu-ct" tst_rslt_type="N" significant_digits="1"
+        lastupdated="2025-01-01 12:00:00" sort_order="2"
+        is_quantifiable="false" is_active="true" is_normal="true" />
+
+    <sample id="100" accession_number="VAL-CU-001" status_id="1"
+        received_date="2025-06-01 00:00:00.0"
+        entered_date="2025-06-01 00:00:00.0"
+        collection_date="2025-06-01 00:00:00.0"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <sample_item id="100" sort_order="1" status_id="1"
+        samp_id="100" typeosamp_id="1" collection_date="2025-06-01 10:00:00"
+        lastupdated="2025-06-01 12:00:00" />
+
+    <analysis id="100" sampitem_id="100" test_id="1"
+        test_sect_id="1" revision="0" status_id="2"
+        started_date="2025-06-01 11:00:00" lastupdated="2025-06-01 12:00:00"
+        analysis_type="MANUAL" is_reportable="Y" />
+
+    <result id="100" analysis_id="100" test_result_id="1"
+        result_type="N" value="1010" is_reportable="Y"
+        lastupdated="2025-06-01 12:00:00" />
+    <result id="101" analysis_id="100" test_result_id="2"
+        result_type="N" value="33.0" is_reportable="Y"
+        lastupdated="2025-06-01 12:00:00" />
+</dataset>
