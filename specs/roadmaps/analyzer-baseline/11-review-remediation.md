@@ -33,7 +33,7 @@ before step 10's final green (F10) and evidence recording (F11).
 PR A, mapping and adoption:
 
 ```
-- [x] R1 (4611#1, high) Adopting a newer revision keeps each row's assay switch and instrument code: AnalyzerAdoptionServiceImpl.adopt fills a missing enabled or instrumentCode from the current row, as the editor does; red first with an adoption after an Assays-step override
+- [x] R1 (4611#1, high) Adopting a newer revision keeps each row's assay switch: AnalyzerAdoptionServiceImpl.adopt carries the current row's switch forward, as the editor does; red first with an adoption after an Assays-step change
 - [x] R2 (4593#1, high) A row whose profile declares a component cannot be confirmed or saved without one: validateConfirmable and save refuse it; the editor keeps the row unresolved until a target is picked
 - [x] R3 (4604#2) Adopt checks baseMappingFingerprint under the lock, as the editor does
 - [x] R4 (4604#0, 4604#6) A failed Bridge update after the connection moved pins it back; a failed pin-back reports "reconcile required", not "nothing was applied"
@@ -55,7 +55,7 @@ PR B, results and import:
 - [x] R15 (4593#2) Held component parts offer Review mapping and Dismiss failed run
 - [x] R16 (4625#0) An analyzer whose restore failed offers Activate again
 - [x] R17 (4583#6) Placement runs once per page, not once per row before paging
-- [x] R24 (4611 review, 9 Oct) OE2 stops holding the code an instrument sends: `instrument_code` leaves the mapping (changeset 133), the Assays step and Apply's push to the Bridge; settling codes at setup is analyzers roadmap item 6
+- [x] R24 (4611 review, 9 Oct) OE2 stops holding the code an instrument sends: `instrument_code` leaves the mapping (changeset 133), the Assays step and Apply's push to the Bridge
 ```
 
 PR C, deploy, harness and docs:
@@ -74,14 +74,8 @@ Review of the top three PRs, 9 Oct (fixed on the top PR):
 - [x] R29 (4657 review) The pairing status sends pairedAt as ISO-8601 text
 - [x] R30 (4661 review) A test proves an answer and its LOINC mapping roll back together
 - [x] R31 (4657 review) bridge-pairing.md says the first pairing trusts whichever certificate answers
+- [x] R34 (4647 renumber, `2da79e8fc2`, `AnalyzerResultInstrumentSpecimenIdLiquibaseTest`) Changeset 132 is marked ran on a database that added its column as 120
 ```
-
-Moved on 9 Oct to the [analyzers roadmap](../../analyzers/roadmap.md), "After
-the baseline merges": R18 (the testing deployment's delivery check), R20 (low
-findings), R21 (pairing proof, a Bridge release first), R32 (QC read
-permission) and R33 (the Linux installer's client certificates). The changeset
-132 renumber is safe on databases that ran it as 120 (`2da79e8fc2`, test
-`AnalyzerResultInstrumentSpecimenIdLiquibaseTest`).
 
 Threads:
 

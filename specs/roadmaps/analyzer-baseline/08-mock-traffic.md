@@ -25,8 +25,7 @@ contract test keeps it aligned with the pinned baseline profile.
   notes); 303-0251 Rev A pages 3-7 (HIV VL XC:
   <40, numeric, >1E7, NOT DETECTED, ERROR with C record, INVALID; ASTM and
   HL7); 302-7279 Rev A page 5 onward (CoV-2/Flu/RSV plus panels: every
-  POSITIVE/NEGATIVE combination, ERROR, INVALID, NO RESULT; ASTM and HL7);
-  MTB/RIF Ultra once step 5 verifies it.
+  POSITIVE/NEGATIVE combination, ERROR, INVALID, NO RESULT; ASTM and HL7).
 - Fixture layout: `fixtures/genexpert/<assay>/<outcome>.astm` and `.hl7`;
   placeholders `{sample_id}`, `{patient_id}`, `{patient_name}`,
   `{instrument_code:<profile_code>}` substituted at send time.
@@ -38,7 +37,7 @@ contract test keeps it aligned with the pinned baseline profile.
 - [x] T8.2 (24 fixtures under `fixtures/genexpert/<assay>/<outcome>.astm`; 301-2002 examples belong to assays the profile does not declare, so none) Fixtures from the Cepheid examples per Facts
 - [x] T8.3 (mock #53) Endpoint: POST /simulate/fixture/{profile}/{assay}/{outcome} with sample_id, patient, optional code overrides
 - [x] T8.4 (mock `a80ca1e`: the generative route refuses a replay-only template and names the fixture route) Delete `templates/genexpert.json` (HL7; hand-written codes and values break rule 15, and no HL7 baseline profile exists to rebuild it from). The `genexpert_astm` template keeps only its transport and its fixtures: its `profileRef` to genexpert-astm 4 and its `fieldOverrides` seeding go, so it can no longer generate a message, only replay one. `hain_fluorocycler` and the QuantStudio templates pin `hain-fluorocycler-xt` and `thermo-quantstudio` revision 1. Lands with T6.19, before the rest of T7.6 (decided 7 Oct: "Delete first, then rewrite (Recommended)"); OE2 callers of the generative route (`analyzer-native-traffic.ts`, `ogc-1054-delivery-issues.spec.ts`, `deploy-published-testing.py`) move to fixtures in the same OE2 change
-- [x] T8.5 (mock #53 ready for review; 7 Oct: no release tag is needed, step 10 F9) Green and PR done (mock #53, draft). Open: the release tag is a maintainer step after review
+- [x] T8.5 (mock #53 ready for review; 7 Oct: no release tag is needed, step 10 F9) Green and PR done (mock #53)
 ```
 
 ### Verify
