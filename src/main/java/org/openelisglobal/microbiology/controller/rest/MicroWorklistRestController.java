@@ -1,7 +1,6 @@
 package org.openelisglobal.microbiology.controller.rest;
 
 import java.util.List;
-import org.openelisglobal.common.rest.BaseRestController;
 import org.openelisglobal.microbiology.form.MicroWorklistPageForm;
 import org.openelisglobal.microbiology.form.MicroWorklistQueryForm;
 import org.openelisglobal.microbiology.service.MicroWorklistService;
@@ -14,12 +13,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/rest/microbiology/worklist")
-public class MicroWorklistRestController extends BaseRestController {
+public class MicroWorklistRestController extends MicrobiologyRestControllerSupport {
 
     private final MicroWorklistService worklistService;
+    private final org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService access;
 
-    public MicroWorklistRestController(MicroWorklistService worklistService) {
+    public MicroWorklistRestController(MicroWorklistService worklistService,
+            org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService access) {
         this.worklistService = worklistService;
+        this.access = access;
     }
 
     @GetMapping
@@ -31,8 +33,17 @@ public class MicroWorklistRestController extends BaseRestController {
             @RequestParam(required = false) List<String> significance, @RequestParam(required = false) String stage,
             @RequestParam(required = false) String urgency, @RequestParam(required = false) String due,
             @RequestParam(required = false) String q, @RequestParam(required = false) String sort,
-            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize) {
+            @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer pageSize,
+            jakarta.servlet.http.HttpServletRequest request) {
         MicroWorklistQueryForm query = new MicroWorklistQueryForm();
+        String actor = authenticatedUserId(request);
+        var results = access.permittedLabUnitIds(actor, org.openelisglobal.common.constants.Constants.ROLE_RESULTS);
+        var validation = access.permittedLabUnitIds(actor,
+                org.openelisglobal.common.constants.Constants.ROLE_VALIDATION);
+        if (results != null && validation != null) {
+            query.permittedLabUnitIds = new java.util.LinkedHashSet<>(results);
+            query.permittedLabUnitIds.addAll(validation);
+        }
         query.grain = grain;
         query.status = status;
         query.from = from;

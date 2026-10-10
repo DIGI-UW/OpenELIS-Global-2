@@ -173,6 +173,9 @@ public class MicrobiologyUatScenarioServiceTest {
     private MicroCaseAnalysisService caseAnalysisService;
 
     @Mock
+    private MicroCaseMembershipService membership;
+
+    @Mock
     private InventoryItemService inventoryItemService;
 
     @Mock
@@ -248,7 +251,7 @@ public class MicrobiologyUatScenarioServiceTest {
                 testResultService, testMethodService, statusService, statusOfSampleService, configurationService,
                 caseService, caseAnalysisService, inventoryItemService, inventoryLotService, inventoryManagementService,
                 testReagentLinkService, referenceAdminService, breakpointAdminService, breakpointImportService,
-                nceCategoryService, nceTypeService, isolateService, astService, analyzerService);
+                nceCategoryService, nceTypeService, isolateService, astService, analyzerService, membership);
 
         EntityManager entityManager = mock(EntityManager.class);
         Query bulkUpdate = mock(Query.class);
@@ -380,6 +383,38 @@ public class MicrobiologyUatScenarioServiceTest {
     }
 
     @Test
+    public void reusesReleasedFixtureWithoutReattachingOrRewritingCaseOwnership() {
+        Sample sample = sample("sample-1");
+        SampleItem sampleItem = sampleItem("sample-item-1");
+        Method method = method("method-1");
+        org.openelisglobal.test.valueholder.Test test = test("test-1");
+        TestAnalyte testAnalyte = testAnalyte("test-analyte-1");
+        Analysis analysis = analysis("analysis-1");
+        MicroCase microCase = microCase("case-1");
+        microCase.setStage(org.openelisglobal.microbiology.valueholder.MicroCaseStage.FINAL_RELEASED.name());
+        microCase.setSampleId(sample.getId());
+        microCase.setLabUnitId("owning-unit");
+        microCase.setSampleTypeId("stored-sample-type");
+        configureHappyPath(sample, sampleItem, method, test, testAnalyte, analysis, microCase);
+        var member = new org.openelisglobal.microbiology.valueholder.MicroCaseSample();
+        member.setCaseId(microCase.getId());
+        member.setSampleItemId(sampleItem.getId());
+        when(membership.getCaseSamples(microCase.getId())).thenReturn(List.of(member));
+        MicrobiologyUatScenarioRequestForm request = new MicrobiologyUatScenarioRequestForm();
+        request.scenario = "MVP";
+        request.scenarioKey = "released-fixture-reuse";
+
+        var provisioned = service.provision(request, "1");
+
+        assertEquals(microCase.getId(), provisioned.caseId);
+        verify(membership, never()).addSample(anyString(), anyString(), anyString());
+        assertEquals("owning-unit", microCase.getLabUnitId());
+        assertEquals("stored-sample-type", microCase.getSampleTypeId());
+        assertEquals(org.openelisglobal.microbiology.valueholder.MicroCaseStage.FINAL_RELEASED.name(),
+                microCase.getStage());
+    }
+
+    @Test
     public void provisionsReusableLotTraceabilityFixturesThroughServices() {
         Sample sample = sample("sample-1");
         SampleItem sampleItem = sampleItem("sample-item-1");
@@ -396,6 +431,7 @@ public class MicrobiologyUatScenarioServiceTest {
 
         service.provision(request, "1");
 
+        verify(membership).addSample(microCase.getId(), sampleItem.getId(), "1");
         verify(breakpointAdminService).activate(anyString(), any(), anyString());
 
         ArgumentCaptor<InventoryItem> itemCaptor = ArgumentCaptor.forClass(InventoryItem.class);

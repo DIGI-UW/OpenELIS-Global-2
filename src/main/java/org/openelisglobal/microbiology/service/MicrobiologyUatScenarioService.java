@@ -142,6 +142,7 @@ public class MicrobiologyUatScenarioService {
     private final StatusOfSampleService statusOfSampleService;
     private final MicrobiologyConfigurationService configurationService;
     private final MicroCaseService caseService;
+    private final MicroCaseMembershipService membership;
     private final MicroCaseAnalysisService caseAnalysisService;
     private final InventoryItemService inventoryItemService;
     private final InventoryLotService inventoryLotService;
@@ -173,7 +174,7 @@ public class MicrobiologyUatScenarioService {
             MicrobiologyReferenceAdminService referenceAdminService, MicroBreakpointAdminService breakpointAdminService,
             MicroBreakpointImportService breakpointImportService, NceCategoryService nceCategoryService,
             NceTypeService nceTypeService, MicroIsolateService isolateService, MicroAstService astService,
-            AnalyzerService analyzerService) {
+            AnalyzerService analyzerService, MicroCaseMembershipService membership) {
         this.methodService = methodService;
         this.sampleService = sampleService;
         this.sampleItemService = sampleItemService;
@@ -194,6 +195,7 @@ public class MicrobiologyUatScenarioService {
         this.statusOfSampleService = statusOfSampleService;
         this.configurationService = configurationService;
         this.caseService = caseService;
+        this.membership = membership;
         this.caseAnalysisService = caseAnalysisService;
         this.inventoryItemService = inventoryItemService;
         this.inventoryLotService = inventoryLotService;
@@ -259,6 +261,17 @@ public class MicrobiologyUatScenarioService {
         TestAnalyte reportableTestAnalyte = getOrCreateReportableTestAnalyte(test, performedBy);
         Analysis analysis = getOrCreateAnalysis(test, sampleItem, performedBy);
         MicroCase microCase = caseService.createOrGetCase(sampleItem.getId(), method.getId(), performedBy);
+        String sampleItemId = sampleItem.getId();
+        boolean alreadyAttached = membership.getCaseSamples(microCase.getId()).stream()
+                .anyMatch(member -> sampleItemId.equals(member.getSampleItemId()) && member.getSplitOutAt() == null);
+        // Reusing a released fixture must not re-enter guarded membership writes.
+        if (!alreadyAttached) {
+            microCase.setSampleId(sample.getId());
+            microCase.setSampleTypeId(sampleItem.getTypeOfSample().getId());
+            microCase.setLabUnitId(test.getTestSection().getId());
+            entityManager.merge(microCase);
+            membership.addSample(microCase.getId(), sampleItemId, performedBy);
+        }
         caseAnalysisService.linkAnalysis(microCase, analysis, reportableTestAnalyte.getId());
         if (WHONET_EXPORT_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
             // Stands in for a stored V1 bacteriology row so the WHONET export's

@@ -19,6 +19,7 @@ test.describe("M-07 microbiology worklist grains", () => {
   }) => {
     const seeded = await seedMicrobiologyWorklistCase(page);
     const query = new URLSearchParams({
+      grain: "cultures",
       q: seeded.caseId,
       sort: "newest",
     });
