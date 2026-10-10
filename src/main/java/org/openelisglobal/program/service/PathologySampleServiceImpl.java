@@ -411,6 +411,7 @@ public class PathologySampleServiceImpl extends AuditableBaseObjectServiceImpl<P
         analysis.setTest(immunoHistologyTest);
         analysis.setIsReportable(currentAnalysis.getIsReportable());
         analysis.setAnalysisType(currentAnalysis.getAnalysisType());
+        analysis.setMethod(immunoHistologyTest.getMethod());
         analysis.setRevision(currentAnalysis.getRevision());
         analysis.setStartedDate(DateUtil.getNowAsTimestamp());
         analysis.setStatusId(SpringContext.getBean(IStatusService.class).getStatusID(AnalysisStatus.NotStarted));
