@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 import java.sql.Timestamp;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -17,6 +18,7 @@ import org.hl7.fhir.r4.model.Observation;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogState;
 import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingRowKey;
 import org.openelisglobal.analyzer.service.AnalyzerMappingService;
 import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
 import org.openelisglobal.analyzer.service.AnalyzerService;
@@ -162,10 +164,26 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
                     held.getSourceProfileId(), held.getSourceProfileRevision(), held.getSourceProtocol(),
                     List.of(source));
             List<AnalyzerResults> mapped = mapResults(contract, analyzer);
-            if (mapped.isEmpty()) {
+            // A row held before its record mapped stands for the whole record, which
+            // may now stage a number and a call; a row held on a target takes the
+            // row for that same target.
+            boolean wholeRecord = held.getTestId() == null;
+            Optional<AnalyzerResults> match = wholeRecord ? mapped.stream().findFirst()
+                    : mapped.stream().filter(row -> Objects.equals(held.getComponentId(), row.getComponentId()))
+                            .findFirst();
+            if (match.isEmpty()) {
                 continue;
             }
-            AnalyzerResults recovered = mapped.get(0);
+            AnalyzerResults recovered = match.get();
+            if (wholeRecord && mapped.size() > 1) {
+                List<AnalyzerResults> others = mapped.stream().filter(row -> row != recovered).toList();
+                others.forEach(row -> {
+                    row.setInstrumentPatientId(held.getInstrumentPatientId());
+                    row.setInstrumentPatientName(held.getInstrumentPatientName());
+                });
+                analyzerResultsService.insertAnalyzerResults(others, effectiveActor);
+                recoveredCount += (int) others.stream().filter(row -> !row.isReadOnly()).count();
+            }
             if (!recovered.isReadOnly() && recovered.getIsControl()
                     && processControl(recovered, analyzer) == QCResultProcessingService.Outcome.NO_TARGET) {
                 hold(recovered, AnalyzerResults.IMPORT_ISSUE_QC_TARGET_MISSING);
@@ -200,28 +218,129 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         AnalyzerMappingSnapshot binding = mappingService.findById(analyzer.getMapping().getId()).orElseThrow(
                 () -> new AnalyzerNormalizedResultImportException("analyzer.fhirImport.error.missingMapping",
                         "Analyzer mapping does not exist"));
-        Map<String, AnalyzerMappingTest> testsBySource = binding.tests().stream()
-                .collect(Collectors.toMap(row -> row.getId().getSourceRowKey(), row -> row));
-        Map<ResultKey, AnalyzerMappingResult> resultsBySource = binding.results().stream().collect(Collectors
-                .toMap(row -> new ResultKey(row.getId().getSourceRowKey(), row.getId().getRawValue()), row -> row));
-        Set<String> sourcesWithResultMappings = binding.results().stream().map(row -> row.getId().getSourceRowKey())
-                .collect(Collectors.toSet());
-        AnalyzerMappingCatalogState.Validation catalog = AnalyzerMappingCatalogState.load(mappingCatalogService)
-                .validate(binding);
+        Mapping mapping = new Mapping(
+                binding.tests().stream().collect(Collectors.toMap(AnalyzerMappingRowKey::of, row -> row)),
+                binding.results().stream().collect(Collectors.toMap(
+                        row -> new ResultKey(AnalyzerMappingRowKey.of(row), row.getId().getRawValue()), row -> row)),
+                binding.results().stream().map(AnalyzerMappingRowKey::of).collect(Collectors.toSet()),
+                AnalyzerMappingCatalogState.load(mappingCatalogService).validate(binding));
         Map<String, Boolean> confirmedByRecognition = new HashMap<>();
-        return contract.results().stream().map(result -> {
+        return contract.results().stream().flatMap(result -> {
             boolean confirmed = confirmedByRecognition.computeIfAbsent(result.recognitionFingerprint(),
                     fingerprint -> confirmationService.hasMatchingConfirmation(binding, fingerprint));
-            return toStagedResult(contract, result, analyzer, testsBySource, resultsBySource, sourcesWithResultMappings,
-                    confirmed, catalog);
-        }).flatMap(Optional::stream).toList();
+            return toStagedResults(contract, result, analyzer, mapping, confirmed).stream();
+        }).toList();
     }
 
-    private Optional<AnalyzerResults> toStagedResult(AnalyzerNormalizedResultContract contract,
-            AnalyzerNormalizedResultContract.Result result, Analyzer analyzer,
-            Map<String, AnalyzerMappingTest> testsBySource, Map<ResultKey, AnalyzerMappingResult> resultsBySource,
-            Set<String> sourcesWithResultMappings, boolean mappingConfirmed,
-            AnalyzerMappingCatalogState.Validation catalog) {
+    /**
+     * Stages one reported record. A record carrying a number and a call stages two
+     * rows: the number on the record's target and the call on its call target.
+     */
+    private List<AnalyzerResults> toStagedResults(AnalyzerNormalizedResultContract contract,
+            AnalyzerNormalizedResultContract.Result result, Analyzer analyzer, Mapping mapping,
+            boolean mappingConfirmed) {
+        AnalyzerMappingRowKey record = new AnalyzerMappingRowKey(result.rawTestCode(), result.subIdentity());
+        AnalyzerMappingTest testMapping = mapping.tests().get(record);
+        if (testMapping == null) {
+            return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST));
+        }
+        if (!mappingConfirmed) {
+            return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
+        }
+        if (testMapping.getMappingState() == AnalyzerMappingState.EXCLUDED) {
+            return List.of();
+        }
+        if (testMapping.getMappingState() != AnalyzerMappingState.BOUND
+                || !mapping.catalog().isCurrentBoundTest(record)) {
+            return List.of(held(contract, result, analyzer, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY));
+        }
+        if (result.runFailed()) {
+            AnalyzerResults row = staged(contract, result, analyzer, result.reportedValue());
+            row.setTestId(testMapping.getTestId());
+            row.setComponentId(testMapping.getComponentId());
+            hold(row, AnalyzerResults.IMPORT_ISSUE_RUN_FAILED);
+            return List.of(row);
+        }
+
+        List<AnalyzerResults> rows = new ArrayList<>();
+        if (result.number() != null) {
+            AnalyzerResults number = staged(contract, result, analyzer, result.reportedNumber());
+            number.setTestId(testMapping.getTestId());
+            number.setComponentId(testMapping.getComponentId());
+            number.setResultType("N");
+            AnalyzerMappingResult answer = mapping.results().get(new ResultKey(record, result.rawValue()));
+            if (answer == null || bindAnswer(number, answer, record, result.rawValue(), mapping)) {
+                rows.add(number);
+            }
+        }
+        if (result.call() != null) {
+            // A record whose mapping names a call target always sends its call there, so a
+            // viral load's Not detected never lands on the number's place.
+            boolean hasCallTarget = testMapping.getCallComponentId() != null;
+            String target = hasCallTarget ? testMapping.getCallComponentId() : testMapping.getComponentId();
+            AnalyzerResults call = staged(contract, result, analyzer, result.call());
+            call.setTestId(testMapping.getTestId());
+            call.setComponentId(target);
+            call.setResultType("A");
+            if (result.number() != null && !hasCallTarget) {
+                hold(call, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
+            } else {
+                AnalyzerMappingResult answer = mapping.results().get(new ResultKey(record, result.call()));
+                if (answer != null && !bindAnswer(call, answer, record, result.call(), mapping)) {
+                    call = null;
+                } else if (answer == null && mapping.recordsWithAnswers().contains(record)) {
+                    hold(call, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
+                }
+            }
+            if (call != null) {
+                rows.add(call);
+            }
+        }
+        if (result.number() == null && result.call() == null) {
+            AnalyzerResults row = staged(contract, result, analyzer, result.reportedValue());
+            row.setTestId(testMapping.getTestId());
+            row.setComponentId(testMapping.getComponentId());
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    /**
+     * Applies an answer mapping to a staged row. False when the operator excluded
+     * that value, so the row is not staged at all.
+     */
+    private boolean bindAnswer(AnalyzerResults row, AnalyzerMappingResult answer, AnalyzerMappingRowKey record,
+            String value, Mapping mapping) {
+        if (answer.getMappingState() == AnalyzerMappingState.EXCLUDED) {
+            return false;
+        }
+        if (answer.getMappingState() != AnalyzerMappingState.BOUND || answer.getTestResultId() == null) {
+            hold(row, AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY);
+            return true;
+        }
+        if (!mapping.catalog().isCurrentBoundResult(record, value)) {
+            hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
+            return true;
+        }
+        TestResult option = testResultService.get(answer.getTestResultId());
+        if (option == null || option.getValue() == null || option.getTestResultType() == null) {
+            hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
+            return true;
+        }
+        row.setResult(option.getValue());
+        row.setResultType(option.getTestResultType());
+        return true;
+    }
+
+    private AnalyzerResults held(AnalyzerNormalizedResultContract contract,
+            AnalyzerNormalizedResultContract.Result result, Analyzer analyzer, String reason) {
+        AnalyzerResults row = staged(contract, result, analyzer, result.reportedValue());
+        hold(row, reason);
+        return row;
+    }
+
+    private AnalyzerResults staged(AnalyzerNormalizedResultContract contract,
+            AnalyzerNormalizedResultContract.Result result, Analyzer analyzer, String value) {
         AnalyzerResults row = new AnalyzerResults();
         row.setAnalyzerId(analyzer.getId());
         row.setInstrumentSpecimenId(result.accessionNumber());
@@ -229,7 +348,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setInstrumentPatientName(result.instrumentPatientName());
         row.setAccessionNumber(placementService.accessionFor(result.accessionNumber()));
         row.setTestName(result.rawTestCode());
-        row.setResult(result.reportedValue());
+        row.setResult(value);
         row.setUnits(result.units());
         row.setResultType(result.resultType());
         row.setCompleteDate(
@@ -238,59 +357,7 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         row.setLotNumber(result.lotNumber());
         row.setControlLevel(result.controlLevel());
         copySourceContext(row, contract, result);
-        AnalyzerMappingTest testMapping = testsBySource.get(result.rawTestCode());
-        if (testMapping == null) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST);
-            return Optional.of(row);
-        }
-        if (!mappingConfirmed) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
-            return Optional.of(row);
-        }
-
-        if (testMapping.getMappingState() == AnalyzerMappingState.EXCLUDED) {
-            return Optional.empty();
-        }
-        if (testMapping.getMappingState() != AnalyzerMappingState.BOUND
-                || !catalog.isCurrentBoundTest(result.rawTestCode())) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_TEST_MAPPING_NOT_READY);
-            return Optional.of(row);
-        }
-        row.setTestId(testMapping.getTestId());
-        row.setComponentId(testMapping.getComponentId());
-        if (result.runFailed()) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_RUN_FAILED);
-            return Optional.of(row);
-        }
-
-        ResultKey resultKey = new ResultKey(result.rawTestCode(), result.rawValue());
-        AnalyzerMappingResult resultMapping = resultsBySource.get(resultKey);
-        if (resultMapping == null) {
-            if (sourcesWithResultMappings.contains(result.rawTestCode())) {
-                hold(row, AnalyzerResults.IMPORT_ISSUE_UNKNOWN_RESULT_VALUE);
-            }
-            return Optional.of(row);
-        }
-        if (resultMapping.getMappingState() == AnalyzerMappingState.EXCLUDED) {
-            return Optional.empty();
-        }
-        if (resultMapping.getMappingState() != AnalyzerMappingState.BOUND || resultMapping.getTestResultId() == null) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY);
-            return Optional.of(row);
-        }
-
-        if (!catalog.isCurrentBoundResult(result.rawTestCode(), result.rawValue())) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
-            return Optional.of(row);
-        }
-        TestResult option = testResultService.get(resultMapping.getTestResultId());
-        if (option == null || option.getValue() == null || option.getTestResultType() == null) {
-            hold(row, AnalyzerResults.IMPORT_ISSUE_INVALID_RESULT_MAPPING);
-            return Optional.of(row);
-        }
-        row.setResult(option.getValue());
-        row.setResultType(option.getTestResultType());
-        return Optional.of(row);
+        return row;
     }
 
     private void copySourceContext(AnalyzerResults row, AnalyzerNormalizedResultContract contract,
@@ -357,6 +424,11 @@ public class AnalyzerNormalizedResultImportServiceImpl implements AnalyzerNormal
         return value.trim();
     }
 
-    private record ResultKey(String sourceRowKey, String rawValue) {
+    private record ResultKey(AnalyzerMappingRowKey record, String rawValue) {
+    }
+
+    private record Mapping(Map<AnalyzerMappingRowKey, AnalyzerMappingTest> tests,
+            Map<ResultKey, AnalyzerMappingResult> results, Set<AnalyzerMappingRowKey> recordsWithAnswers,
+            AnalyzerMappingCatalogState.Validation catalog) {
     }
 }

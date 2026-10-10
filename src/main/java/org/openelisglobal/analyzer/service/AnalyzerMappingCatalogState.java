@@ -33,22 +33,20 @@ public final class AnalyzerMappingCatalogState {
             return Validation.empty();
         }
 
-        Map<String, AnalyzerMappingTest> testsBySource = binding.tests().stream()
-                .collect(Collectors.toMap(row -> row.getId().getSourceRowKey(), Function.identity()));
-        Set<String> currentBoundTests = binding.tests().stream()
+        Map<AnalyzerMappingRowKey, AnalyzerMappingTest> testsBySource = binding.tests().stream()
+                .collect(Collectors.toMap(AnalyzerMappingRowKey::of, Function.identity()));
+        Set<AnalyzerMappingRowKey> currentBoundTests = binding.tests().stream()
                 .filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND).filter(this::isCurrentTest)
-                .map(row -> row.getId().getSourceRowKey()).collect(Collectors.toCollection(HashSet::new));
-        Set<String> currentExcludedTests = binding.tests().stream()
-                .filter(row -> row.getMappingState() == AnalyzerMappingState.EXCLUDED)
-                .map(row -> row.getId().getSourceRowKey()).collect(Collectors.toCollection(HashSet::new));
+                .map(AnalyzerMappingRowKey::of).collect(Collectors.toCollection(HashSet::new));
+        Set<AnalyzerMappingRowKey> currentExcludedTests = binding.tests().stream()
+                .filter(row -> row.getMappingState() == AnalyzerMappingState.EXCLUDED).map(AnalyzerMappingRowKey::of)
+                .collect(Collectors.toCollection(HashSet::new));
         Set<ResultSourceKey> currentBoundResults = binding.results().stream()
                 .filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
-                .filter(row -> isCurrentResult(row, testsBySource.get(row.getId().getSourceRowKey())))
-                .map(row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()))
-                .collect(Collectors.toCollection(HashSet::new));
+                .filter(row -> isCurrentResult(row, testsBySource.get(AnalyzerMappingRowKey.of(row))))
+                .map(ResultSourceKey::of).collect(Collectors.toCollection(HashSet::new));
         Set<ResultSourceKey> currentExcludedResults = binding.results().stream()
-                .filter(row -> row.getMappingState() == AnalyzerMappingState.EXCLUDED)
-                .map(row -> new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue()))
+                .filter(row -> row.getMappingState() == AnalyzerMappingState.EXCLUDED).map(ResultSourceKey::of)
                 .collect(Collectors.toCollection(HashSet::new));
         return new Validation(currentBoundTests, currentExcludedTests, currentBoundResults, currentExcludedResults,
                 binding.tests().size(), binding.results().size());
@@ -76,12 +74,30 @@ public final class AnalyzerMappingCatalogState {
         return optionIds.contains(result.getTestResultId());
     }
 
-    public record ResultSourceKey(String sourceRowKey, String rawValue) {
+    /** One answer of one record: code, raw value and the record's sub-identity. */
+    public record ResultSourceKey(String sourceRowKey, String rawValue, String subIdentity) {
+
+        public ResultSourceKey {
+            subIdentity = subIdentity == null ? "" : subIdentity;
+        }
+
+        public ResultSourceKey(String sourceRowKey, String rawValue) {
+            this(sourceRowKey, rawValue, "");
+        }
+
+        public ResultSourceKey(AnalyzerMappingRowKey record, String rawValue) {
+            this(record.sourceRowKey(), rawValue, record.subIdentity());
+        }
+
+        static ResultSourceKey of(AnalyzerMappingResult row) {
+            return new ResultSourceKey(row.getId().getSourceRowKey(), row.getId().getRawValue(),
+                    row.getId().getSubIdentity());
+        }
     }
 
-    public record Validation(Set<String> currentBoundTestRows, Set<String> currentExcludedTestRows,
-            Set<ResultSourceKey> currentBoundResultRows, Set<ResultSourceKey> currentExcludedResultRows, int testRows,
-            int resultRows) {
+    public record Validation(Set<AnalyzerMappingRowKey> currentBoundTestRows,
+            Set<AnalyzerMappingRowKey> currentExcludedTestRows, Set<ResultSourceKey> currentBoundResultRows,
+            Set<ResultSourceKey> currentExcludedResultRows, int testRows, int resultRows) {
 
         public Validation {
             currentBoundTestRows = currentBoundTestRows == null ? Set.of() : Set.copyOf(currentBoundTestRows);
@@ -95,28 +111,31 @@ public final class AnalyzerMappingCatalogState {
             return new Validation(Set.of(), Set.of(), Set.of(), Set.of(), 0, 0);
         }
 
-        boolean isCurrentTest(String sourceRowKey) {
-            return isCurrentBoundTest(sourceRowKey) || isCurrentExcludedTest(sourceRowKey);
+        boolean isCurrentTest(AnalyzerMappingRowKey record) {
+            return isCurrentBoundTest(record) || currentExcludedTestRows.contains(record);
         }
 
+        public boolean isCurrentBoundTest(AnalyzerMappingRowKey record) {
+            return currentBoundTestRows.contains(record);
+        }
+
+        /** The main result of a code. */
         public boolean isCurrentBoundTest(String sourceRowKey) {
-            return currentBoundTestRows.contains(sourceRowKey);
+            return isCurrentBoundTest(AnalyzerMappingRowKey.main(sourceRowKey));
         }
 
-        boolean isCurrentExcludedTest(String sourceRowKey) {
-            return currentExcludedTestRows.contains(sourceRowKey);
+        boolean isCurrentResult(AnalyzerMappingRowKey record, String rawValue) {
+            ResultSourceKey key = new ResultSourceKey(record, rawValue);
+            return currentBoundResultRows.contains(key) || currentExcludedResultRows.contains(key);
         }
 
-        boolean isCurrentResult(String sourceRowKey, String rawValue) {
-            return isCurrentBoundResult(sourceRowKey, rawValue) || isCurrentExcludedResult(sourceRowKey, rawValue);
+        public boolean isCurrentBoundResult(AnalyzerMappingRowKey record, String rawValue) {
+            return currentBoundResultRows.contains(new ResultSourceKey(record, rawValue));
         }
 
+        /** An answer of the main result of a code. */
         public boolean isCurrentBoundResult(String sourceRowKey, String rawValue) {
-            return currentBoundResultRows.contains(new ResultSourceKey(sourceRowKey, rawValue));
-        }
-
-        boolean isCurrentExcludedResult(String sourceRowKey, String rawValue) {
-            return currentExcludedResultRows.contains(new ResultSourceKey(sourceRowKey, rawValue));
+            return isCurrentBoundResult(AnalyzerMappingRowKey.main(sourceRowKey), rawValue);
         }
     }
 }

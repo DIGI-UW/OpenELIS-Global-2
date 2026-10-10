@@ -44,6 +44,20 @@ public class AnalyzerMappingFingerprintTest {
                 AnalyzerMappingFingerprint.calculate(changedResult));
     }
 
+    @Test
+    public void aRecordSubIdentityAndACallTargetEachChangeTheFingerprint() {
+        AnalyzerMappingTestDraft main = test("HIVVL", AnalyzerMappingState.BOUND, "9701");
+        AnalyzerMappingDraft plain = new AnalyzerMappingDraft(List.of(main), List.of());
+        AnalyzerMappingDraft withCallTarget = new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL",
+                AnalyzerMappingState.BOUND, "9701", null, null, null, "", "comp-call")), List.of());
+        AnalyzerMappingDraft logRecord = new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL",
+                AnalyzerMappingState.BOUND, "9701", null, null, null, "&LOG", null)), List.of());
+
+        assertNotEquals(AnalyzerMappingFingerprint.calculate(plain),
+                AnalyzerMappingFingerprint.calculate(withCallTarget));
+        assertNotEquals(AnalyzerMappingFingerprint.calculate(plain), AnalyzerMappingFingerprint.calculate(logRecord));
+    }
+
     private static AnalyzerMappingTestDraft test(String sourceRowKey, AnalyzerMappingState state, String testId) {
         return new AnalyzerMappingTestDraft(sourceRowKey, state, testId);
     }

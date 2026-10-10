@@ -630,6 +630,7 @@
   <include relativeToChangelogFile="true" file="123-analyzer-mapping.xml"/>
   <include relativeToChangelogFile="true" file="124-analyzer-mapping-baseline-migration.xml"/>
   <include relativeToChangelogFile="true" file="125-analyzer-result-instrument-note.xml"/>
+  <include relativeToChangelogFile="true" file="126-analyzer-mapping-sub-identity.xml"/>
 
   <!-- Printed reports: the paper size they are laid out on (A4 or Letter). -->
   <include relativeToChangelogFile="true" file="120-report-paper-size.xml"/>

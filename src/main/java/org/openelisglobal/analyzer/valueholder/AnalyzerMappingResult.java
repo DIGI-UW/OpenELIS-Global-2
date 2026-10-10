@@ -57,7 +57,12 @@ public class AnalyzerMappingResult extends BaseObject<AnalyzerMappingResultPK> {
 
     @Override
     public String getStringId() {
-        return id == null ? null : id.getMappingId() + ":" + id.getSourceRowKey() + ":" + id.getRawValue();
+        if (id == null) {
+            return null;
+        }
+        String key = id.getSubIdentity().isEmpty() ? id.getSourceRowKey()
+                : id.getSourceRowKey() + ":" + id.getSubIdentity();
+        return id.getMappingId() + ":" + key + ":" + id.getRawValue();
     }
 
     public AnalyzerMapping getMapping() {

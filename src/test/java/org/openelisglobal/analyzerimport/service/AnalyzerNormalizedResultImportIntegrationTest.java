@@ -8,6 +8,7 @@ import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 
 import ca.uhn.fhir.context.FhirContext;
+import java.math.BigDecimal;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
@@ -21,7 +22,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import javax.sql.DataSource;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.CodeableConcept;
+import org.hl7.fhir.r4.model.Coding;
 import org.hl7.fhir.r4.model.Observation;
+import org.hl7.fhir.r4.model.Quantity;
 import org.hl7.fhir.r4.model.StringType;
 import org.junit.After;
 import org.junit.Before;
@@ -64,6 +68,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private static final Path FIXTURE = Path.of("tools", "openelis-analyzer-bridge", "contracts", "analyzer", "v1",
             "fixtures", "normalized-unknown-test.fhir.json");
     private static final FhirContext REAL_FHIR = FhirContext.forR4();
+    private static final String RAW_VALUE = "https://openelis-global.org/fhir/StructureDefinition/analyzer-raw-value";
+    private static final String V2_SUBID = "http://hl7.org/fhir/StructureDefinition/observation-v2-subid";
+    private static final String INTERPRETATION = "http://terminology.hl7.org/CodeSystem/v3-ObservationInterpretation";
 
     @Autowired
     private AnalyzerNormalizedResultImportService importService;
@@ -429,6 +436,256 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         }
     }
 
+    // Cepheid 303-0251 §2.1.1, quantified: R|1 "^1009.64", R|2 LOG "^3.00", R|3
+    // HIV-1 "POS^", R|4 HIV-1 Ct "^33.0", all under host test code HIVVL.
+    @Test
+    public void aQuantifiedViralLoadLandsEachRecordOnItsOwnTarget() throws Exception {
+        bindViralLoadRecords();
+        Bundle bundle = viralLoadBundle(number(record(null, "^1009.64"), "1009.64", null),
+                number(record("&LOG", "^3.00"), "3.00", null), call(record("HIV-1", "POS^"), "POS"),
+                number(record("HIV-1&Ct", "^33.0"), "33.0", null));
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(4, staged.size());
+        assertTrue("nothing is held", staged.stream().noneMatch(AnalyzerResults::isReadOnly));
+        assertEquals("1009.64", stagedOn(staged, null).getResult());
+        assertEquals("3.00", stagedOn(staged, "comp-LOG").getResult());
+        assertEquals("POS", stagedOn(staged, "comp-HIV-1").getResult());
+        assertEquals("33.0", stagedOn(staged, "comp-HIV-1-Ct").getResult());
+        assertTrue("the instrument reported no call",
+                staged.stream().noneMatch(row -> "comp-call".equals(row.getComponentId())));
+    }
+
+    // Cepheid 303-0251 §2.1.1, below range: R|1 "DETECTED^" with R.7 "<" and R.6
+    // "40.00 to 10000000.00"; R|2 LOG "^" with "<" and "1.60 to 7.00".
+    @Test
+    public void aBelowRangeViralLoadStagesTheLimitWithItsComparatorAndTheCallOnTheCallComponent() throws Exception {
+        bindViralLoadRecords();
+        Observation main = number(record(null, "DETECTED^"), "40", Quantity.QuantityComparator.LESS_THAN);
+        main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        Bundle bundle = viralLoadBundle(main,
+                number(record("&LOG", "^"), "1.60", Quantity.QuantityComparator.LESS_THAN));
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(3, staged.size());
+        assertTrue("nothing is held", staged.stream().noneMatch(AnalyzerResults::isReadOnly));
+        assertEquals("<40", stagedOn(staged, null).getResult());
+        assertEquals("DETECTED", stagedOn(staged, "comp-call").getResult());
+        assertEquals("<1.60", stagedOn(staged, "comp-LOG").getResult());
+        assertEquals("the raw text stays as the instrument sent it", "DETECTED^",
+                stagedOn(staged, null).getRawResultValue());
+    }
+
+    // Cepheid 303-0251 §2.1.1, not detected: R|1 "NOT DETECTED^", no number.
+    @Test
+    public void aNotDetectedViralLoadFillsOnlyTheCall() throws Exception {
+        bindViralLoadRecords();
+        Bundle bundle = viralLoadBundle(call(record(null, "NOT DETECTED^"), "NOT DETECTED"));
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(1, staged.size());
+        assertEquals("comp-call", staged.get(0).getComponentId());
+        assertEquals("NOT DETECTED", staged.get(0).getResult());
+        assertFalse(staged.get(0).isReadOnly());
+    }
+
+    // Cepheid 303-0251 §2.1.1, above range: R|1 "DETECTED^" with R.7 ">" and the
+    // R.6 upper limit 10000000.00.
+    @Test
+    public void anAboveRangeViralLoadStagesTheUpperLimitWithItsComparator() throws Exception {
+        bindViralLoadRecords();
+        Observation main = number(record(null, "DETECTED^"), "10000000", Quantity.QuantityComparator.GREATER_THAN);
+        main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        Bundle bundle = viralLoadBundle(main);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(2, staged.size());
+        assertEquals(">10000000", stagedOn(staged, null).getResult());
+        assertEquals("DETECTED", stagedOn(staged, "comp-call").getResult());
+    }
+
+    // Cepheid 303-0251 §2.1.1, invalid: R|1 "INVALID^", no number.
+    @Test
+    public void anInvalidViralLoadFillsOnlyTheCall() throws Exception {
+        bindViralLoadRecords();
+        Bundle bundle = viralLoadBundle(call(record(null, "INVALID^"), "INVALID"));
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(1, staged.size());
+        assertEquals("comp-call", staged.get(0).getComponentId());
+        assertEquals("INVALID", staged.get(0).getResult());
+    }
+
+    // Cepheid 303-0251 §2.1.1, error: R|1 "ERROR^" with a C record; step 6 sends no
+    // value, dataAbsentReason "error" and the C record as a note.
+    @Test
+    public void anErrorViralLoadIsHeldAsAFailedRunWithTheInstrumentsNote() throws Exception {
+        bindViralLoadRecords();
+        Observation main = record(null, "ERROR^");
+        main.setValue(null);
+        main.setDataAbsentReason(new CodeableConcept(
+                new Coding("http://terminology.hl7.org/CodeSystem/data-absent-reason", "error", "Error")));
+        main.addNote().setText("Error 2097: Assay-Specific Termination Error #2: 47, 8, 1, 0");
+        Bundle bundle = viralLoadBundle(main);
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(1, staged.size());
+        assertTrue(staged.get(0).isReadOnly());
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_RUN_FAILED, staged.get(0).getImportIssueReason());
+        assertTrue(staged.get(0).getInstrumentNote().contains("Error 2097"));
+    }
+
+    @Test
+    public void aRecordWhoseSubIdentityIsNotMappedIsHeldAsAnUnknownTest() throws Exception {
+        bindViralLoadRecords();
+        Bundle bundle = viralLoadBundle(number(record(null, "^1009.64"), "1009.64", null),
+                number(record("HIV-1&EndPt", "^257.0"), "257.0", null));
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        List<AnalyzerResults> staged = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals(2, staged.size());
+        AnalyzerResults endPoint = staged.stream().filter(AnalyzerResults::isReadOnly).findFirst().orElseThrow();
+        assertEquals(AnalyzerResults.IMPORT_ISSUE_UNKNOWN_TEST, endPoint.getImportIssueReason());
+        assertFalse("the mapped main record still lands", stagedOn(staged, null).isReadOnly());
+    }
+
+    @Test
+    public void theNumberIsNeverHeldAsAnUnknownAnswerWhenTheCallHasAnswers() throws Exception {
+        bindViralLoadRecords();
+        jdbc.update("INSERT INTO clinlims.test_result"
+                + " (id, test_id, tst_rslt_type, value, is_active, sort_order, lastupdated)"
+                + " VALUES (?, ?, 'D', 'Not detected', true, 1, NOW())", NEGATIVE_OPTION_ID, TEST_ID);
+        jdbc.update("INSERT INTO clinlims.analyzer_mapping_result"
+                + " (mapping_id, source_row_key, sub_identity, raw_value, mapping_state, test_result_id, last_updated)"
+                + " VALUES (?, 'HIVVL', '', 'NOT DETECTED', 'BOUND', ?, NOW())", MAPPING_ID, NEGATIVE_OPTION_ID);
+        Bundle bundle = viralLoadBundle(number(record(null, "^1009.64"), "1009.64", null));
+        confirm(bindings.findById(String.valueOf(MAPPING_ID)).orElseThrow(), bundle);
+
+        importService.importBundle(bundle, "1");
+
+        AnalyzerResults number = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).get(0);
+        assertFalse(number.getImportIssueReason(), number.isReadOnly());
+        assertEquals("1009.64", number.getResult());
+    }
+
+    @Test
+    public void aBelowRangeRecordHeldWholeRecoversIntoItsNumberAndItsCallWithoutDuplicates() throws Exception {
+        bindTest("HIVVL", TEST_ID);
+        jdbc.update("INSERT INTO clinlims.test_result_component"
+                + " (id, test_id, code, label, display_order, is_active) VALUES ('comp-call', ?, 'call', 'call', 1, 'Y')",
+                TEST_ID);
+        var unresolved = bindings.appendRevision(analyzer(), new AnalyzerMappingDraft(
+                List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.UNRESOLVED, null)), List.of()), "1");
+        Observation main = number(record(null, "DETECTED^"), "40", Quantity.QuantityComparator.LESS_THAN);
+        main.addInterpretation(new CodeableConcept(new Coding(INTERPRETATION, "DET", "Detected")).setText("DETECTED"));
+        Bundle bundle = viralLoadBundle(main);
+        confirm(unresolved, bundle);
+        localState.applyMapping(String.valueOf(ANALYZER_ID), unresolved.mapping().getId(),
+                unresolved.mapping().getRevisionNumber(), unresolved.mapping().getMappingFingerprint(), "1");
+        importService.importBundle(bundle, "1");
+        List<AnalyzerResults> held = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("held whole while its record is unmapped", 1, held.size());
+        assertTrue(held.get(0).isReadOnly());
+
+        var bound = bindings.appendRevision(analyzer(),
+                new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft("HIVVL", AnalyzerMappingState.BOUND,
+                        String.valueOf(TEST_ID), null, null, null, "", "comp-call")), List.of()),
+                "1");
+        confirm(bound, bundle);
+        localState.applyMapping(String.valueOf(ANALYZER_ID), bound.mapping().getId(),
+                bound.mapping().getRevisionNumber(), bound.mapping().getMappingFingerprint(), "1");
+
+        List<AnalyzerResults> recovered = resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID));
+        assertEquals("the number and the call, once each", 2, recovered.size());
+        assertTrue(recovered.stream().noneMatch(AnalyzerResults::isReadOnly));
+        assertEquals("<40", stagedOn(recovered, null).getResult());
+        assertEquals("DETECTED", stagedOn(recovered, "comp-call").getResult());
+        assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
+        assertEquals(2, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
+    }
+
+    /**
+     * The HIVVL records of one Cepheid run mapped as one test: the main record's
+     * number on the primary and its call on a call component; LOG and the HIV-1
+     * records on components of their own.
+     */
+    private void bindViralLoadRecords() {
+        bindTest("HIVVL", TEST_ID);
+        for (String code : List.of("call", "LOG", "HIV-1", "HIV-1-Ct")) {
+            jdbc.update(
+                    "INSERT INTO clinlims.test_result_component"
+                            + " (id, test_id, code, label, display_order, is_active) VALUES (?, ?, ?, ?, 1, 'Y')",
+                    "comp-" + code, TEST_ID, code, code);
+        }
+        jdbc.update("UPDATE clinlims.analyzer_mapping_test SET call_component_id = 'comp-call'"
+                + " WHERE mapping_id = ? AND source_row_key = 'HIVVL' AND sub_identity = ''", MAPPING_ID);
+        for (String[] record : List.of(new String[] { "&LOG", "comp-LOG" }, new String[] { "HIV-1", "comp-HIV-1" },
+                new String[] { "HIV-1&Ct", "comp-HIV-1-Ct" })) {
+            jdbc.update("INSERT INTO clinlims.analyzer_mapping_test"
+                    + " (mapping_id, source_row_key, sub_identity, mapping_state, test_id, component_id, last_updated)"
+                    + " VALUES (?, 'HIVVL', ?, 'BOUND', ?, ?, NOW())", MAPPING_ID, record[0], TEST_ID, record[1]);
+        }
+    }
+
+    /** One record of the run as step 6 emits it, before its value is set. */
+    private Observation record(String subIdentity, String rawText) throws Exception {
+        Bundle fixture = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        Observation record = fixture.getEntry().stream().map(entry -> entry.getResource())
+                .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
+        record.getCode().getCodingFirstRep().setCode("HIVVL").setDisplay("HIVVL");
+        record.getExtensionByUrl(RAW_VALUE).setValue(new StringType(rawText));
+        if (subIdentity != null) {
+            record.addExtension().setUrl(V2_SUBID).addExtension("original-sub-identifier", new StringType(subIdentity));
+        }
+        return record;
+    }
+
+    private Observation number(Observation record, String value, Quantity.QuantityComparator comparator) {
+        Quantity quantity = new Quantity().setValue(new BigDecimal(value)).setUnit("copies/mL");
+        if (comparator != null) {
+            quantity.setComparator(comparator);
+        }
+        return record.setValue(quantity);
+    }
+
+    private Observation call(Observation record, String text) {
+        return record.setValue(new StringType(text));
+    }
+
+    private Bundle viralLoadBundle(Observation... records) throws Exception {
+        Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
+        bundle.getEntry().removeIf(entry -> entry.getResource() instanceof Observation);
+        for (int index = 0; index < records.length; index++) {
+            bundle.addEntry().setFullUrl("urn:uuid:hivvl-record-" + index).setResource(records[index]);
+        }
+        return bundle;
+    }
+
+    private static AnalyzerResults stagedOn(List<AnalyzerResults> staged, String componentId) {
+        return staged.stream().filter(row -> java.util.Objects.equals(componentId, row.getComponentId())).findFirst()
+                .orElseThrow(() -> new AssertionError("nothing staged on " + componentId));
+    }
+
     @Test
     public void aPositiveControlThatGivesItsExpectedAnswerIsRecordedAsAPassingQcResult() throws Exception {
         Bundle bundle = prepareQualitativeControl("POS", true);
@@ -569,9 +826,12 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                     .getExtensionByUrl("recognitionFingerprint").getValue().primitiveValue();
             var tests = new ArrayList<AnalyzerMappingSourceRow>();
             binding.tests().stream().filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
-                    .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null)).forEach(tests::add);
+                    .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null,
+                            row.getId().getSubIdentity()))
+                    .forEach(tests::add);
             binding.results().stream().filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
-                    .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), row.getId().getRawValue()))
+                    .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), row.getId().getRawValue(),
+                            row.getId().getSubIdentity()))
                     .forEach(tests::add);
             assertEquals(AnalyzerMappingConfirmationView.State.CURRENT,
                     confirmations
