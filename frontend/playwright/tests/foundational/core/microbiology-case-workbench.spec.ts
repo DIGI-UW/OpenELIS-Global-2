@@ -36,7 +36,7 @@ test.describe("Microbiology case workbench", () => {
     page,
   }) => {
     const seeded = await seedMicrobiologyCase(page);
-    const worklistUrl = `/Microbiology/worklist?q=${encodeURIComponent(
+    const worklistUrl = `/Microbiology/worklist?grain=cultures&q=${encodeURIComponent(
       seeded.accessionNumber,
     )}&sort=newest`;
     await page.goto(worklistUrl, { waitUntil: "domcontentloaded" });
@@ -48,7 +48,7 @@ test.describe("Microbiology case workbench", () => {
 
     await expect(page).toHaveURL(
       new RegExp(
-        `/Microbiology/cases/${seeded.caseId}\\?q=${seeded.accessionNumber}&sort=newest&section=setup$`,
+        `/Microbiology/cases/${seeded.caseId}\\?grain=cultures&q=${seeded.accessionNumber}&sort=newest&section=setup$`,
       ),
     );
     await expect(

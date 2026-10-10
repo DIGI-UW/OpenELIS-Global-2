@@ -49,10 +49,7 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
 
     @GetMapping("/{caseId}")
     public ResponseEntity<MicroCaseDetailForm> getCaseDetail(@PathVariable String caseId, HttpServletRequest request) {
-        if (!accessService.canAccessCase(caseId, authenticatedUserId(request),
-                userModuleService.isUserAdmin(request))) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
+        authenticatedUserId(request);
         MicroCaseDetailForm detail = caseService.getCaseDetail(caseId);
         if (detail == null) {
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
@@ -96,7 +93,8 @@ public class MicroCaseRestController extends MicrobiologyRestControllerSupport {
     }
 
     private ResponseEntity<MicroCaseDetailForm> visibleDetail(MicroCaseDetailForm detail, HttpServletRequest request) {
-        accessService.filterRelatedCases(detail, authenticatedUserId(request));
+        if (detail != null)
+            detail.readOnlyAccess = !accessService.canAccessCase(detail.id, authenticatedUserId(request), false);
         return ResponseEntity.ok(detail);
     }
 

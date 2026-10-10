@@ -43,7 +43,7 @@ test.describe("Microbiology WCAG 2.1 AA qualification", () => {
     const accessionQuery = encodeURIComponent(seeded.accessionNumber);
 
     await page.goto(
-      `/Microbiology/worklist?stage=ALL&urgency=ALL&due=ALL&q=${accessionQuery}&sort=accessionNumber%2Casc&page=1&pageSize=10`,
+      `/Microbiology/worklist?grain=cultures&stage=ALL&urgency=ALL&due=ALL&q=${accessionQuery}&sort=accessionNumber%2Casc&page=1&pageSize=10`,
       { waitUntil: "domcontentloaded" },
     );
     await expect(
