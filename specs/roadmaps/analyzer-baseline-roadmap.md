@@ -215,8 +215,25 @@ A change that breaks a rule is wrong even if its step's Done-when passes.
     Xpress CoV-2/Flu/RSV plus). Each declared test cites its document and
     section. Real captures are checks of a site's configuration, never a
     source for a profile.
+20. A bad item degrades, never stops. A profile, draft, connection or
+    listener that cannot load or start is set aside with its reason, shown in
+    health and in the views OE2 reads; everything else keeps running.
+    Integrity checks (pins, fingerprints, validation) stay; their failure
+    isolates the item. A result is never read against a profile that could
+    not be resolved: it is held, visibly. Clinical validity comes from
+    transparency and management, never from a component refusing to run.
+    (Decided 6 Oct: "issues need to degrade the system gracefully!")
+21. Readers at the OE2 and Bridge boundary ignore fields they do not know.
+    A field added within a schema version is optional and breaks nobody; a
+    breaking change bumps `schemaVersion`, which the reader refuses with a
+    clear message. What a reader depends on it checks explicitly. Fields one
+    side must never receive (local ownership, operational QC) are refused by
+    name, not by refusing everything unknown. (Agreed 6 Oct.)
 
-Deferred and not in this roadmap: moving Analyzer Types under Admin.
+Deferred and not in this roadmap: moving Analyzer Types under Admin; pairing
+the Bridge to its OE2 instance instead of password authentication (6 Oct: "I
+would love to have a non-password-based authentication that pairs the bridge
+to the OE2 instance instead, but that might be a follow up PR").
 
 ## Repo working agreements
 
@@ -255,6 +272,13 @@ uses; they are restated so a step can be run without re-reading those files.
 - Bridge: step 6 as PRs in `DIGI-UW/openelis-analyzer-bridge`, GeneXpert
   first, then one profile per PR.
 - Mock: step 8 as a PR in `DIGI-UW/analyzer-mock-server`.
+- Order from 6 Oct, one reviewable stacked PR each: Bridge request
+  tolerance and the boundary checks (T6.21 to T6.23) with the startup work
+  in #4618; the analyzer page shows the Bridge's blockers and catalog
+  issues (T6.17); baseline profiles under new IDs and the old revisions
+  deleted (T6.18, T6.19); the harness dictionary (T7.3, T7.4); the E2E
+  rewrite (T7.1 to T7.2b, T7.6); then the evidence package (T7.8), which is
+  the finish line.
 - Last: step 9 as its own PR on `develop`, after everything above has
   landed.
 - The top OE2 PR (step 7) bumps the pins (`tools/openelis-analyzer-bridge`

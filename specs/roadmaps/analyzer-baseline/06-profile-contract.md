@@ -99,6 +99,78 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
   the profile's number format for that connection (rule 18) and is offered
   as a connection field.
 - Mock pin and OE2 pin are bumped in step 7, not here.
+- Startup audit (6 Oct, read in source at Bridge `19e5cc7`, not reproduced).
+  Each of these stops the Bridge from booting, so one bad file or one
+  connection nobody uses takes result delivery down for every analyzer:
+
+  | Startup path                                                                                                                                                                                               | Where                                                                                                                                        |
+  | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+  | A shipped profile fails to parse or validate, its fingerprint does not match, or it repeats an `id@revision`                                                                                               | `AnalyzerProfileCatalog.java:391-416, 476-483, 528-535`                                                                                      |
+  | A persisted revision or draft fails to load                                                                                                                                                                | `AnalyzerProfileCatalog.java:419-470`                                                                                                        |
+  | The profile catalog or draft directory cannot be read                                                                                                                                                      | `ProfileCatalogFileStore.java:40-41, 56-57`                                                                                                  |
+  | A saved connection file cannot be read, or its pinned revision is missing or has another fingerprint                                                                                                       | `AnalyzerConnectionCatalog.java:408-419, 715-745`                                                                                            |
+  | An active connection has no activated configuration                                                                                                                                                        | `AnalyzerConnectionCatalog.java:382-386`                                                                                                     |
+  | An active connection fails to restore: invalid values or profile, an ASTM port that cannot bind, a FILE directory that cannot be watched, a disabled FILE, HL7 or serial runtime, an unsupported transport | `AnalyzerConnectionCatalog.java:388-389`; `BridgeAnalyzerConnectionRuntime.java:161, 228-294`; `ManagedAstmConnectionListeners.java:150-165` |
+  | The FILE polling monitor fails to start                                                                                                                                                                    | `FileWatcher.java:226-250`                                                                                                                   |
+
+  Already graceful, and the pattern to follow: indistinguishable active
+  connections restore with a warning and their messages are held as
+  `AMBIGUOUS_SOURCE` (`BridgeAnalyzerConnectionRuntime.java:103-120`); an
+  occupied HL7 boot port is logged (`ManagedHl7ConnectionListeners.java:50-61`);
+  an absent serial device waits for reconnect; a corrupt outbox database is
+  recovered (`SqliteOutboxStore.java:72-83`); a render failure at delivery is
+  dead-lettered with its reason (`NormalizedBundleRenderer.java:248-253`,
+  `OutboxDispatcher.renderRecovered`); a failed retention purge is retried.
+  Deliberately fail-closed, and staying (decided 6 Oct: "for now, that's ok"): security disabled, or the
+  default password outside dev and test (`SecurityConfig.java:70-90`); it is
+  a credential, not data, and an exposed Bridge with a known password is not
+  a degraded mode.
+
+- Boundary strictness (6 Oct, read in source). OE2 read the profile
+  catalog with Jackson's defaults into records, which refuse any field the
+  record does not declare (`BridgeProfileCatalogServiceImpl.java`, since
+  #4056; nothing configured or tested it), so the Bridge's new `issues`
+  field made OE2 refuse the whole catalog. OE2's other Bridge readers
+  (`BridgeAnalyzerConnectionClient`, `BridgeOutboxClient`) read a JSON tree
+  and check only what they use. In the other direction the Bridge validates
+  every connection create, update, probe and runtime request from OE2
+  against schemas with `additionalProperties: false`
+  (`AnalyzerConnectionContractValidator`, called from
+  `AnalyzerConnectionController`), so a field a newer OE2 adds is refused
+  with 400 by an older Bridge. Part of that is deliberate: the contract test
+  `schemasRejectLocalOwnershipAndOperationalQcLeakage` requires a create
+  request carrying `operationalQc` to be refused. The Bridge also validates
+  its own connection responses before sending them. Not yet read: how OE2
+  parses the FHIR result bundle (HAPI parser error handling) and whether the
+  Bridge's Jackson mapper refuses unknown fields on its other endpoints.
+- Profile identity (decided 6 Oct: "we need a new profile id for sure").
+  Revisions 1 to 7 of `genexpert-astm` (and 1 to 4 of `fluorocycler-xt`, 1
+  to 3 of `quantstudio`) are pre-baseline; rule 6 says none is an earlier
+  version of a baseline profile. The baseline profiles ship under new
+  profile IDs at revision 1, so the data says what rule 6 says, one ID never
+  holds both a 1.0 and a 2.0 revision, and no pre-baseline analyzer is
+  offered the baseline as an update. A revision number is an identity
+  (`profileId`, `revision`, `fingerprint`) in OE2, the Bridge and history,
+  so an existing ID's revision 1 is not reused. IDs (approved 6 Oct):
+  `cepheid-genexpert-astm`, `hain-fluorocycler-xt`, `thermo-quantstudio`.
+- GeneXpert codes found wrong on 6 Oct (CDC LIVD SARS-CoV-2, 2026-07-21,
+  "LOINC Mapping" sheet, Cepheid rows; NLM LOINC): the Xpert Xpress
+  CoV-2/Flu/RSV plus maps Flu A, Flu B and RSV to 85477-8, 85478-6 and
+  85479-4 ("in Upper respiratory specimen by NAA with probe detection").
+  Rev 8 declares 92142-9, 92141-1 and 92131-2, which LIVD gives to the older
+  Xpert Xpress SARS-CoV-2/Flu/RSV (whose SARS-CoV-2 is 94502-2). SARS-CoV-2
+  at 94500-6 is right for the plus panel and for Xpress CoV-2 plus.
+- Internal controls (decided 6 Oct, agreeing to codes rather than text
+  matching). SPC (CoV-2/Flu/RSV plus) and IQS-H, IQS-L (HIV-1 VL XC) report
+  PASS, FAIL, NA (SPC ignored because a target amplified) and NO RESULT (run
+  aborted): 302-7279 §6 and 303-0251 §2.1.1 examples; a failed control makes
+  the main result INVALID. LOINC 90101-7 "Internal control result" with
+  answer list LL3837-3: Pass LA10392-1, Fail LA25389-0 (NLM LOINC,
+  tx.fhir.org); SNOMED 385432009 Not applicable. The OGC-1054 import FRS
+  (`openelis-work/designs/system/analyzer-import-redesign-v2.md` FR-F1, and
+  `analyzer-profile-mapping.md` MC-4) models an instrument's internal
+  control as a result component of the patient's analysis, normally not on
+  the patient report, with the analyzer's verdict authoritative.
 
 ### Build
 
@@ -115,6 +187,18 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
 - [ ] T6.9 ASTM parsers and bundle done; HL7 PID fallback removed. Open: HL7 result parts (OBX-4 sub-identity, OBX-5 components, OBX-8, NTE), which land with the first HL7 baseline profile
 - [x] T6.10 Outbox retention default; codeOverrides and numberFormat
 - [ ] T6.11 Green and PR done (Bridge #75, draft, with FluoroCycler XT rev 5 and QuantStudio rev 4). Open: the release tag is a maintainer step after review (Claude does not cut releases); then one PR per Madagascar profile, each with its step-5 note
+- [x] T6.12 (`BridgeStartupDegradesTest`, Bridge `dc73c53`; red at first for the reason audited: one malformed shipped profile stopped the application context) Red: Bridge context test, the Bridge boots and serves every other profile and connection with an invalid shipped profile, an invalid persisted revision and draft, connections pinned to a missing revision and to a changed fingerprint, an unreadable connection file, a second file for the same OpenELIS analyzer, and active connections that cannot restore; each set-aside item is reported with its reason
+- [x] T6.13 Profile catalog loads each file on its own; a failure is a catalog issue (source, reason) in `GET /api/profiles` (`issues`, contract and fixture updated); a repeated `id@revision` keeps the first; a shared `displayName` (found in the build: also fatal at startup) is reported and both profiles stay loaded; a tampered revision is still never served (`AnalyzerProfileCatalogTest`)
+- [x] T6.14 Connection catalog: an unreadable connection file, or a second file for the same OpenELIS analyzer (found in the build: also fatal at startup), is set aside and answers 409 with its reason; a connection whose pin does not resolve loads, never runs, and carries `profile-unavailable` with a detail; FILE directory claims skip it; an update to a resolvable profile is accepted
+- [x] T6.15 Restore: each active connection restores on its own; a failure reports `actualRuntimeState` ERROR (the contract's state) with a `runtime-restore-failed` blocker carrying the reason, and the next ACTIVATE retries it. Blockers gain an optional `detail`. The FILE monitor start is unchanged (it creates missing directories and has not failed in any test); recorded here, not chased
+- [x] T6.16 Bridge health stays UP while the Bridge runs (asserted in T6.12): a set-aside profile, draft or connection is that item's issue, not the Bridge's (decided 6 Oct: "the bridge is up, no?? a bad profile etc is not a bridge issue, its a profile issue!"). Issues are reported on the item: the profile catalog lists them, and each connection carries its own blocker or ERROR reason
+- [ ] T6.17 OE2 consumer. Done with the pin bump: `BridgeProfileCatalog` reads `issues` (without it OE2 rejected the whole catalog response as invalid JSON, `BridgeProfileCatalogServiceTest`). Open: the analyzer page shows the Bridge connection's readiness blockers (none are shown today, including `missingRequiredValues`) with `en.json` labels for `profileUnavailable` and `restoreFailed`, and offers setup to re-verify; the profile catalog issues are shown on the analyzer types page; a message arriving for a connection that is not running stays held with its reason (asserted)
+- [x] T6.20 OE2's profile catalog reader ignores fields it does not know; schemaVersion, fingerprint and recognition summary are still checked (`BridgeProfileCatalogServiceTest`)
+- [x] T6.21 (Bridge `21cf32f`) Bridge connection requests (create, update, probe, runtime) accept fields the Bridge does not know; create and update refuse by name `openelisTestId`, `openelisResultOptionId`, `labUnitId`, `controlLots`, `qcRules`, `westgard`, `operationalQc` (the reserved `values` keys were already refused by name); the Bridge keeps only the pin fields it knows, so its connection responses still match their schema (`AnalyzerContractArtifactsTest`, `AnalyzerConnectionControllerTest`)
+- [x] T6.22 The contract README states rule 21 (Bridge `21cf32f`, `cd4cb17`); added-field cases: Bridge requests (`AnalyzerContractArtifactsTest`), OE2 catalog reader (`BridgeProfileCatalogServiceTest`), OE2 connection client (`BridgeAnalyzerConnectionClientTest`, a guard: that reader already read a JSON tree)
+- [x] T6.23 Remaining readers read in source: OE2's FHIR bundle import uses HAPI's default lenient parser (no strict handler is set anywhere in OE2), so unknown elements are logged and ignored; the Bridge has no custom Jackson mapper or `spring.jackson` setting, so its request bodies use Spring Boot's default, which ignores unknown fields; OE2's connection and outbox clients read a JSON tree. Recorded, not changed: the Bridge reads its own stored FILE receipt context (`FileResultRenderer.java:25`, versioned `FileReceiptContext`) with a default mapper, so a context written by an older Bridge with a field a newer one dropped would dead-letter that one receipt with its reason; it stops nothing
+- [ ] T6.18 Baseline profiles under new IDs at revision 1 (IDs per Facts): rev 8 content becomes the GeneXpert baseline with Flu A 85477-8, Flu B 85478-6, RSV 85479-4, and the SPC, IQS-H and IQS-L records declaring PASS LA10392-1, FAIL LA25389-0, NA SNOMED 385432009, and NO RESULT as their run failure; FluoroCycler XT rev 5 and QuantStudio rev 4 become revision 1 of theirs. Docs, templates, mock fixtures and contract test, and OE2 references follow
+- [ ] T6.19 Delete the pre-baseline revisions of the core IDs (`genexpert-astm` 1 to 8, `fluorocycler-xt` 1 to 5, `quantstudio` 1 to 4) in the same release as T6.13 to T6.15 (decided 6 Oct: "yes delete"). A connection pinned to one shows `profile-unavailable` and is re-verified, as rule 6 and changeset 124 already require. Distro folders are unaffected
 ```
 
 ### Verify
@@ -138,6 +222,11 @@ grep -n "PID.3" src/main/java/org/itech/ahb/fhir/HL7ResultParser.java   # only p
 7. T6.5 passes. (`mvn test`)
 8. Each later profile lands as its own PR with its evidence note and the
    same tests. (PR review)
+9. T6.12 passes: no profile, draft, connection or listener failure stops
+   the Bridge; each is listed with its reason. (`mvn test`)
+10. The shipped baseline profiles are revision 1 of their new IDs, and no
+    shipped file declares the pre-baseline Flu A/B/RSV codes. (`grep`,
+    `mvn test`)
 
 ### Background (optional)
 
