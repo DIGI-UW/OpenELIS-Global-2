@@ -122,6 +122,27 @@ public class AnalyzerResultsControllerTest extends BaseWebContextSensitiveTest {
         }
     }
 
+    /**
+     * A viral load is reported in whole copies and its log to two decimals: a
+     * number on a component keeps that component's digits, not the test's main
+     * result's.
+     */
+    @Test
+    public void aNumberOnAComponentKeepsTheComponentsDigits() throws Exception {
+        JdbcTemplate jdbc = new JdbcTemplate(dataSource);
+        jdbc.update("INSERT INTO clinlims.test_result (id, test_id, tst_rslt_type, significant_digits, is_active,"
+                + " lastupdated) VALUES (4901, 4001, 'N', 0, true, NOW())");
+        jdbc.update("INSERT INTO clinlims.test_result_component (id, test_id, code, label, is_primary, is_active,"
+                + " significant_digits, lastupdated) VALUES ('comp-log-digits', 4001, 'LOG', 'Log viral load', false,"
+                + " 'Y', 2, NOW())");
+        jdbc.update("UPDATE clinlims.analyzer_results SET component_id = 'comp-log-digits', result = '3.00'"
+                + " WHERE id = 1001");
+
+        mockMvc.perform(get("/rest/AnalyzerResults").with(user("admin").roles("ADMIN")).param("id", "2001"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.resultList[0].result").value("3.00"))
+                .andExpect(jsonPath("$.resultList[0].significantDigits").value("2"));
+    }
+
     @Test
     public void awaitingSpecimenKeepsItsMappedValueAvailableForReview() throws Exception {
         new JdbcTemplate(dataSource).update(
