@@ -228,6 +228,143 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
         assertEquals(2L, stored.stream().map(r -> r.getTestResult().getComponentId()).distinct().count());
     }
 
+    private void configureSelection(String type) {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        var selection = configured.stream().filter(c -> !c.getIsPrimary()).findFirst().orElseThrow();
+        selection.setResultType(type);
+        var option = new org.openelisglobal.testresult.valueholder.TestResult();
+        option.setTestResultType(type);
+        option.setValue("M3 selected option");
+        option.setSortOrder("1");
+        option.setIsActive(true);
+        components.saveSampleResults(analysis.getTest().getId(), configured, null,
+                Map.of(selection.getCode(), List.of(option)), actor);
+        em.flush();
+    }
+
+    private void rejectEmptySelection(String type) {
+        configureSelection(type);
+        var submission = payload();
+        for (var input : submission.components) {
+            input.value = "";
+            input.multiSelectResultValues = "{}";
+        }
+        var failure = assertThrows(IllegalArgumentException.class,
+                () -> workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)));
+        assertEquals("MICROBIOLOGY_RESULT_REQUIRED", failure.getMessage());
+        assertEquals(0, results.getResultsByAnalysis(analysis).size());
+        assertEquals(AnalysisStatus.NotStarted, statuses.getAnalysisStatusForID(analysis.getStatusId()));
+    }
+
+    @Test
+    public void rejectsEmptyMultiselectWithoutAdvancingAnalysis() {
+        rejectEmptySelection("M");
+    }
+
+    @Test
+    public void rejectsEmptyCascadeWithoutAdvancingAnalysis() {
+        rejectEmptySelection("C");
+    }
+
+    @Test
+    public void emptySelectionCannotDeleteExistingSelections() {
+        configureSelection("M");
+        var loaded = workspace.getTests(microCase.getId(), actor).get(0);
+        var selection = loaded.components.stream().filter(r -> "M".equals(r.getResultType())).findFirst().orElseThrow();
+        var submission = payload();
+        for (var input : submission.components) {
+            input.value = "";
+            input.multiSelectResultValues = selection.getTestResultComponentId().equals(input.componentId)
+                    ? "{\"1\":\"" + selection.getDictionaryResults().get(0).getId() + "\"}"
+                    : null;
+        }
+        workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor));
+        var before = results.getResultsByAnalysis(analysis).stream().map(r -> r.getId() + ":" + r.getValue()).toList();
+        assertEquals(1, before.size());
+        var edit = payload();
+        edit.components.forEach(input -> {
+            input.value = "";
+            input.multiSelectResultValues = "{\"1\":\" , \"}";
+        });
+        assertThrows(IllegalArgumentException.class,
+                () -> workspace.saveResults(microCase.getId(), analysis.getId(), edit, actor, request(actor)));
+        assertEquals(before,
+                results.getResultsByAnalysis(analysis).stream().map(r -> r.getId() + ":" + r.getValue()).toList());
+    }
+
+    @Test
+    public void clearingSelectionPreservesSubmittedNumericSibling() {
+        configureSelection("M");
+        var selection = workspace.getTests(microCase.getId(), actor).get(0).components.stream()
+                .filter(r -> "M".equals(r.getResultType())).findFirst().orElseThrow();
+        var submission = payload();
+        var selected = submission.components.stream()
+                .filter(c -> selection.getTestResultComponentId().equals(c.componentId)).findFirst().orElseThrow();
+        selected.value = "";
+        selected.multiSelectResultValues = "{\"1\":\"" + selection.getDictionaryResults().get(0).getId() + "\"}";
+        workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor));
+        assertEquals(2, results.getResultsByAnalysis(analysis).size());
+        var edit = payload();
+        edit.components.stream().filter(c -> selection.getTestResultComponentId().equals(c.componentId)).forEach(c -> {
+            c.value = "";
+            c.multiSelectResultValues = "{}";
+        });
+        workspace.saveResults(microCase.getId(), analysis.getId(), edit, actor, request(actor));
+        var saved = results.getResultsByAnalysis(analysis);
+        assertEquals(1, saved.size());
+        assertEquals("12", saved.get(0).getValue());
+    }
+
+    @Test
+    public void missingJsonSelectionDocumentIsAValidationError() {
+        configureSelection("M");
+        var submission = payload();
+        submission.components.forEach(c -> {
+            c.value = "";
+            c.multiSelectResultValues = " ";
+        });
+        assertEquals("MICROBIOLOGY_INVALID_RESULT_OPTION", assertThrows(IllegalArgumentException.class,
+                () -> workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)))
+                .getMessage());
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+    }
+
+    private void configurePrecision(int places) {
+        var configured = components.getActiveComponentsByTestId(analysis.getTest().getId());
+        configured.forEach(c -> c.setSignificantDigits(places));
+        components.saveSampleResults(analysis.getTest().getId(), configured, null, null, actor);
+        em.flush();
+    }
+
+    @Test
+    public void acceptsNegativeExponentUsingMantissaPrecision() {
+        configurePrecision(2);
+        var submission = payload();
+        submission.components.get(0).value = "1.5e-7";
+        var saved = workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor));
+        assertEquals("TechnicalAcceptance", saved.get(0).status);
+        assertTrue(results.getResultsByAnalysis(analysis).stream().anyMatch(r -> "1.5e-7".equals(r.getValue())));
+    }
+
+    @Test
+    public void rejectsExcessMantissaPrecisionEvenWithPositiveExponent() {
+        configurePrecision(2);
+        var submission = payload();
+        submission.components.get(0).value = "1.555e7";
+        assertEquals("MICROBIOLOGY_INVALID_PRECISION", assertThrows(IllegalArgumentException.class,
+                () -> workspace.saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)))
+                .getMessage());
+        assertTrue(results.getResultsByAnalysis(analysis).isEmpty());
+    }
+
+    @Test
+    public void wholeNumberPrecisionDoesNotConstrainScientificMantissa() {
+        var submission = payload();
+        submission.components.get(0).value = "1.555e7";
+        assertEquals("TechnicalAcceptance", workspace
+                .saveResults(microCase.getId(), analysis.getId(), submission, actor, request(actor)).get(0).status);
+    }
+
     @Test
     public void rejectsStaleAndInvalidComponentsWithoutWriting() {
         var p = payload();
