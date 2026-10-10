@@ -64,8 +64,6 @@
         <mapping resource="hibernate/hbm/SampleDomain.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleHuman.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleItem.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleOrganization.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleProject.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleQaEvent.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleQaEventAction.hbm.xml" />
         <mapping resource="hibernate/hbm/SampleTracking.hbm.xml" />
@@ -90,7 +88,6 @@
         <mapping resource="hibernate/hbm/SystemUserModule.hbm.xml" />
         <mapping resource="hibernate/hbm/SystemUserSection.hbm.xml" />
         <mapping resource="hibernate/hbm/SamplePdf.hbm.xml" />
-        <mapping resource="hibernate/hbm/SampleNewborn.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientRelation.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientIdentity.hbm.xml" />
         <mapping resource="hibernate/hbm/PatientIdentityType.hbm.xml" />
