@@ -1,4 +1,4 @@
-FROM nginx:1.15-alpine
+FROM nginx:1.31-alpine
 
 USER root
 RUN apk update; \ 
