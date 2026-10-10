@@ -2,12 +2,11 @@
 
 Execution plan for the analyzer rework in OpenELIS-Global-2, the Analyzer
 Bridge, and the analyzer mock. Written for an implementing agent. This file
-and its step files are the one authoritative document for the remediation:
-where anything else disagrees, this file wins.
-[specs/analyzers/spec.md](../analyzers/spec.md) is a short overview of the
-target, checked against the landed code in step 9;
+and its step files are the plan for the remediation.
+[specs/analyzers/spec.md](../analyzers/spec.md) is the authority for analyzer
+design and changes in the same PR as each decision;
 [specs/analyzers/roadmap.md](../analyzers/roadmap.md) holds analyzer work
-outside this remediation. Every rule and step is decided; this file does not
+outside this remediation, including what follows the merge. Every rule and step is decided; this file does not
 argue for them. Each step is
 self-contained: its Facts section holds everything needed to build it. Links
 under Background are optional reading.
@@ -301,9 +300,9 @@ uses; they are restated so a step can be run without re-reading those files.
   [step 10](analyzer-baseline/10-finish-line.md). From 8 Oct the review
   findings are fixed in new PRs above the security PR (#4657), not in the
   PRs they were filed on ([step 11](analyzer-baseline/11-review-remediation.md)).
-- Step 9 (spec sync) lands in the stack's top PR, before the stack merges:
-  the spec is the target the code is built toward, so it is never left to
-  follow the code.
+- The spec changes with the code: a decision updates
+  `specs/analyzers/spec.md` in the PR that implements it (decided 8 Oct). There
+  is no separate spec-sync step; the one planned as step 9 was removed on 9 Oct.
 - The top OE2 PR carries the submodule pins (`tools/openelis-analyzer-bridge`
   and `tools/analyzer-mock-server`), which move to the Bridge and mock PR
   heads as soon as they exist. The submodule commit is the only record of
@@ -334,6 +333,5 @@ Each step is one file. It is self-contained: its Facts section holds everything 
 | 6    | [Profile contract, templates, and the shipped set](analyzer-baseline/06-profile-contract.md) | the Bridge enforces one profile contract, ships templates and a guide, ships GeneXpert as the first baseline profile, and carries every parsed fact into the bundle.                                                                       |
 | 7    | [Harness dictionary](analyzer-baseline/07-harness-dictionary.md)                             | the harness loads only the configuration the analyzer stories use, so every shipped analyzer binds out of the box; the Bridge and mock pins are bumped; the baseline E2E is green.                                                         |
 | 8    | [Manufacturer-shaped mock traffic](analyzer-baseline/08-mock-traffic.md)                     | the mock replays vendor-documented messages for every outcome, and a contract test keeps it aligned with the pinned baseline profile.                                                                                                      |
-| 9    | [Validate and sync the spec](analyzer-baseline/09-spec-sync.md)                              | `specs/analyzers/spec.md` describes the analyzer setup that landed, so it can be read without this roadmap.                                                                                                                                |
 | 10   | [Finish line](analyzer-baseline/10-finish-line.md)                                           | the remaining work as one ordered list, ending in the recorded evidence for the three analyzer workflows.                                                                                                                                  |
 | 11   | [Review remediation](analyzer-baseline/11-review-remediation.md)                             | every review thread on the stack is fixed or answered and the top PR is green, before step 10's final green and evidence.                                                                                                                  |

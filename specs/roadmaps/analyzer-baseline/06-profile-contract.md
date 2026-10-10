@@ -16,7 +16,8 @@ into the bundle.
   `catalog.source == "SHIPPED"` and a valid `publishedAt`
   (`AnalyzerProfileCatalog.loadShipped`, 388-414). Revisions are immutable;
   OE2 rejects a changed fingerprint on the same revision, so baseline
-  profiles are new revisions (GeneXpert: 8). Core ships three families:
+  profiles ship under new IDs at revision 1 (Profile identity, below). Core
+  ships three families:
   `genexpert-astm` (rev 7), `fluorocycler-xt` (rev 4, specimen hint
   `Plasma`, no result type) and `quantstudio` (rev 3); all three are brought
   to the contract here.
@@ -183,7 +184,7 @@ days`; purge in `OutboxDispatcher.purgeIfDue` and
 - [x] T6.5 (found 6 Oct: the connection catalog refused any value a profile did not declare as a field, so a runtime-only test passed while the API rejected `codeOverrides`; the test now goes through `AnalyzerConnectionCatalog.create` and `update`, and the reading is built for every protocol) Red: through the connection API, a connection codeOverride changes inbound translation and outbound order code; a connection numberFormat of `,` reads `40,00` as 40
 - [x] T6.6 Schema and validator per Facts (`schemaVersion` 2.0; 1.0 revisions keep their hints because a published revision never changes)
 - [x] T6.7 (`ProfileTemplatesTest`: each template is a valid draft as it stands) docs/profile-authoring.md and templates/{astm,hl7,file}.json
-- [x] T6.8 (MTB and RIF added as text results on the codes 302-2261 cites; profiles authored or duplicated in the Bridge are written to 2.0) genexpert-astm rev 8: the three assays in scope (step 5) from docs/profiles/genexpert-astm.md; no hints; components; value codes; translations; sources
+- [x] T6.8 (MTB and RIF added as text results on the codes 302-2261 cites; profiles authored or duplicated in the Bridge are written to 2.0) genexpert-astm rev 8, shipped as `cepheid-genexpert-astm` revision 1 since T6.18 (#4626): the three assays in scope (step 5) from docs/profiles/genexpert-astm.md; no hints; components; value codes; translations; sources
 - [ ] T6.9 ASTM parsers and bundle done; HL7 PID fallback removed. Open: HL7 result parts (OBX-4 sub-identity, OBX-5 components, OBX-8, NTE), which land with the first HL7 baseline profile
 - [x] T6.10 Outbox retention default; codeOverrides and numberFormat
 - [x] T6.11 (Bridge #75 ready for review; 7 Oct: no release tag is needed, deployment images come from the submodule, step 10 F9) Green and PR done (Bridge #75, draft, with FluoroCycler XT rev 5 and QuantStudio rev 4). Open: the release tag is a maintainer step after review (Claude does not cut releases); then one PR per Madagascar profile, each with its step-5 note

@@ -93,7 +93,7 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
 ### Build
 
 ```
-- [ ] F1 The top PR's CI is honest: the Build + Test failure (AnalyzerAdoptionIntegrationTest, which passes locally) is found and fixed at its cause; every E2E failure is accounted for by a spec this step rewrites
+- [x] F1 The top PR's CI is honest: the Build + Test failure (AnalyzerAdoptionIntegrationTest, which passes locally) is found and fixed at its cause; every E2E failure is accounted for by a spec this step rewrites
 - [x] F1a The adoption integration test creates and deletes its own catalog tests (earlier suites in CI's class order leave the test table empty)
 - [x] F1b The harness loads only what the analyzer stories use: the `analyzer-harness-*` files, with the generic rows the baseline profiles resolve (HIV-1 Viral Load, SARS-CoV-2 PCR, Xpert MTB/RIF, Rifampin Resistance) moved into them; the rest of the copied generic dictionary is deleted. Nothing else that runs on the harness (the foundational, storage and reporting fixtures, every harness spec) reads a row only the harness configuration provides or changes; checked by booting the harness and loading its fixtures
 - [x] F1c The harness webapp's health grace period lets CI's own wait (15 minutes) govern: a slow start shows as a slow job, never as "unhealthy" at 4 minutes
@@ -103,12 +103,11 @@ open tasks of step 7 (T7.1b, T7.2b, T7.4b, T7.5 to T7.8), which point here.
 - [x] F5 E2E user stories for placement, recordable: a result placed on its tube; a mistyped ID held and placed by the reviewer; a patient mismatch explained before saving; a rerun replacing a held result; a FILE plate with one mistyped sample name. Two tubes, an unordered test and an unknown ID stay proved by the placement integration tests
 - [x] F6 When the Bridge reports an analyzer's profile unavailable, the operator can reset it the way the upgrade migration does (keep identity, name, lab units, connection and history; clear the mapping; inactive) and set it up again on an available type; the message says so. Red first in OE2 (service and setup screen); then an E2E user story that authors a site profile, sets an analyzer up on it, removes that revision's file from the Bridge's data volume and restarts the Bridge, and the operator resets and sets the analyzer up again (derived 7 Oct: the only way to produce the state)
 - [x] F7a The upgrade path is proved at each level: an OE2 integration test (an analyzer left by the migration, its connection kept, is set up on a baseline type, the Bridge connection re-pinned, and it activates), a Bridge test (a connection whose profile revision is gone is re-pinned by an update, becomes ready and runs), and the stranded-analyzer user story of F6
-- [ ] F7b An upgrade rehearsal on the testing site from today's develop, recorded as the upgrade user story (the deployment itself needs the user's go at the time)
+- F7b The upgrade rehearsal on the testing site follows the merge: [analyzers roadmap](../../analyzers/roadmap.md), "After the baseline merges"
 - [x] F8 The operator-style seed is proved on a stack built from the branch pins (7 Oct: a fresh `scripts/dev-stack up` created the GeneXpert, two QuantStudios and the FluoroCycler on their baseline profiles, then confirmed, applied and activated each through the API the setup screens use). The specs set their analyzers up through the setup screens themselves, so the two paths are the same flow, not one shared script; the seed is re-run on the final pins at the end of F10
 - [x] F9 Deployment images come from the submodules: `publish-images.yml` publishes the Bridge and mock images that E2E built from the submodule commits and tested, beside the application images and with the same tags, and puts their digests in the deployment manifest; the hand-typed tags in `docker-compose.analyzers.yml` and the release check in `test_analyzer_overlay.py` are deleted; the testing deployment runs the manifest's digests (8 Oct, the user: "we need the PR-based e2e to be based on the submodule pins, not on any other pinning")
 - [ ] F10 Green (after [step 11](11-review-remediation.md)): the full harness suite on the local stack, then every CI check on the top PR
 - [ ] F11 Evidence: the `harness-demo-video` project records three workflows and nothing else. "Setup to clinical result": GeneXpert (HIV-1 viral load; respiratory panel), FluoroCycler, QuantStudio, and the changed instrument code. "Placement and recovery": the placement stories and the held-result recoveries (assay off, undeclared code, deactivated catalog test). "Lifecycle and degraded states": adoption of a newer revision, the stranded-analyzer reset, delivery issues, deactivate and reactivate. Packaged with the evidence-bundle skill (MP4, manifest with the app SHA and checksums, contact sheet checked), drafted as a comment on the top PR, media not committed
-- [ ] F12 Step 9 (spec sync) in the stack's top PR, before the stack merges
 ```
 
 Not in this step: OE2 sending orders to analyzers; the 301-2002 parser tests
@@ -131,6 +130,7 @@ grep -n "image:" docker-compose.analyzers.yml           # no hand-typed Bridge o
    fixtures.
 3. The evidence bundle for the three workflows is drafted on the top PR.
 4. An upgraded analyzer and a stranded analyzer can both be set up again by an
-   operator, proved at each level and recorded.
+   operator, proved at each level; the stranded one is recorded. The upgrade
+   rehearsal on the testing site follows the merge.
 5. Nobody types an image tag or a commit hash for the Bridge or mock outside
    the submodule.
