@@ -38,6 +38,8 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
     @Autowired
     private MicroCaseMembershipService membership;
     @Autowired
+    private MicroIsolateService isolates;
+    @Autowired
     private SystemUserService systemUsers;
     @Autowired
     private UserService users;
@@ -178,6 +180,26 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
                 .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                 .content("{\"text\":\"unauthorized write\"}"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+    }
+
+    @Test
+    public void retainedIsolateWriteRechecksOwnershipAfterRequestPreflight() {
+        var request = new org.springframework.mock.web.MockHttpServletRequest();
+        request.setAttribute(MicroCaseWriteAccessGuard.REQUEST_SCOPE,
+                new MicroCaseWriteAccessGuard.WriteScope(own.getId(), viewer, Constants.ROLE_RESULTS));
+        assertTrue(workspace.get(own.getId(), viewer).canWrite);
+        own.setLabUnitId(other.getId());
+        cases.update(own);
+        em.flush();
+        org.springframework.web.context.request.RequestContextHolder
+                .setRequestAttributes(new org.springframework.web.context.request.ServletRequestAttributes(request));
+        try {
+            assertThrows(AccessDeniedException.class, () -> isolates.createIsolate(own.getId(), "late write",
+                    "positive", null, MicroIsolateSignificance.UNKNOWN, viewer));
+            assertTrue(isolates.getIsolatesForCase(own.getId()).isEmpty());
+        } finally {
+            org.springframework.web.context.request.RequestContextHolder.resetRequestAttributes();
+        }
     }
 
     @Test

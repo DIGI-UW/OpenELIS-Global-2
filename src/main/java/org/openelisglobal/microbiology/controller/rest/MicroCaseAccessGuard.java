@@ -10,6 +10,7 @@ import org.openelisglobal.common.constants.Constants;
 import org.openelisglobal.microbiology.dao.*;
 import org.openelisglobal.microbiology.form.MicroAstRunRequestForm;
 import org.openelisglobal.microbiology.form.MicroIsolateRequestForm;
+import org.openelisglobal.microbiology.service.MicroCaseWriteAccessGuard;
 import org.openelisglobal.microbiology.service.MicrobiologyCaseAccessService;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.AccessDeniedException;
@@ -91,6 +92,9 @@ public class MicroCaseAccessGuard extends MicrobiologyRestControllerSupport {
         boolean allowed = read || access.hasLabUnitRole(actor, c.getLabUnitId(), role);
         if (!allowed)
             throw new AccessDeniedException("Case lab unit access required");
+        if (!read)
+            request.setAttribute(MicroCaseWriteAccessGuard.REQUEST_SCOPE,
+                    new MicroCaseWriteAccessGuard.WriteScope(caseId, actor, role));
     }
 
     private String resolve(String kind, String id) {
