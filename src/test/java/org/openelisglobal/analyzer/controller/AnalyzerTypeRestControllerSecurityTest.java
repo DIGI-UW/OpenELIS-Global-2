@@ -7,8 +7,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import org.junit.Test;
 import org.openelisglobal.analyzer.service.AnalyzerMappingCatalogService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingEditorService;
 import org.openelisglobal.analyzer.service.AnalyzerTypeCatalogService;
-import org.openelisglobal.analyzer.service.AnalyzerTypeMappingService;
 import org.openelisglobal.analyzer.service.BridgeProfileManagementService;
 import org.openelisglobal.login.dao.UserModuleService;
 import org.openelisglobal.security.SecuritySliceMockMvcTest;
@@ -76,14 +76,14 @@ public class AnalyzerTypeRestControllerSecurityTest extends SecuritySliceMockMvc
         }
 
         @Bean
-        AnalyzerTypeMappingService analyzerTypeMappingService() {
-            return mock(AnalyzerTypeMappingService.class);
+        AnalyzerMappingEditorService analyzerTypeMappingService() {
+            return mock(AnalyzerMappingEditorService.class);
         }
 
         @Bean
         AnalyzerTypeRestController analyzerTypeRestController(AnalyzerTypeCatalogService catalogService,
                 BridgeProfileManagementService managementService, AnalyzerMappingCatalogService mappingCatalogService,
-                AnalyzerTypeMappingService mappingService) {
+                AnalyzerMappingEditorService mappingService) {
             return new AnalyzerTypeRestController(catalogService, managementService, mappingCatalogService,
                     mappingService);
         }

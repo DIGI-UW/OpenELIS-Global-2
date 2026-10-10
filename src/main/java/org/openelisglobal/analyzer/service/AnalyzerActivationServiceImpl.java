@@ -13,9 +13,9 @@ import java.util.UUID;
 import java.util.function.Supplier;
 import org.openelisglobal.analyzer.valueholder.Analyzer;
 import org.openelisglobal.analyzer.valueholder.AnalyzerActivationRecord;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMapping;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingConfirmation;
 import org.openelisglobal.analyzer.valueholder.AnalyzerProfileBinding;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingConfirmation;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingRevision;
 import org.openelisglobal.test.service.TestSectionService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -34,8 +34,8 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     private final AnalyzerService analyzerService;
     private final BridgeProfileCatalogService profileCatalogService;
-    private final AnalyzerSiteBindingService siteBindingService;
-    private final AnalyzerSiteBindingConfirmationService confirmationService;
+    private final AnalyzerMappingService siteBindingService;
+    private final AnalyzerMappingConfirmationService confirmationService;
     private final TestSectionService testSectionService;
     private final BridgeAnalyzerConnectionClient bridgeClient;
     private final AnalyzerActivationRecordService activationRecordService;
@@ -45,8 +45,8 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
 
     @Autowired
     public AnalyzerActivationServiceImpl(AnalyzerService analyzerService,
-            BridgeProfileCatalogService profileCatalogService, AnalyzerSiteBindingService siteBindingService,
-            AnalyzerSiteBindingConfirmationService confirmationService, TestSectionService testSectionService,
+            BridgeProfileCatalogService profileCatalogService, AnalyzerMappingService siteBindingService,
+            AnalyzerMappingConfirmationService confirmationService, TestSectionService testSectionService,
             BridgeAnalyzerConnectionClient bridgeClient, AnalyzerActivationRecordService activationRecordService) {
         this(analyzerService, profileCatalogService, siteBindingService, confirmationService, testSectionService,
                 bridgeClient, activationRecordService, Clock.systemUTC(), () -> UUID.randomUUID().toString(),
@@ -54,7 +54,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     }
 
     AnalyzerActivationServiceImpl(AnalyzerService analyzerService, BridgeProfileCatalogService profileCatalogService,
-            AnalyzerSiteBindingService siteBindingService, AnalyzerSiteBindingConfirmationService confirmationService,
+            AnalyzerMappingService siteBindingService, AnalyzerMappingConfirmationService confirmationService,
             TestSectionService testSectionService, BridgeAnalyzerConnectionClient bridgeClient,
             AnalyzerActivationRecordService activationRecordService, Clock clock,
             Supplier<String> activationCommandIdSupplier, Supplier<String> deactivationCommandIdSupplier) {
@@ -201,8 +201,8 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             }
         }
 
-        AnalyzerSiteBindingSnapshot snapshot = null;
-        AnalyzerSiteBindingConfirmation confirmation = null;
+        AnalyzerMappingSnapshot snapshot = null;
+        AnalyzerMappingConfirmation confirmation = null;
         String bindingRevisionId = analyzer.getSiteBindingRevision() == null ? null
                 : analyzer.getSiteBindingRevision().getId();
         String recognitionFingerprint = profileRevision == null || profileRevision.controlRecognitionSummary() == null
@@ -211,7 +211,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
         if (bindingRevisionId != null && recognitionFingerprint != null) {
             snapshot = siteBindingService.findByRevisionId(bindingRevisionId).orElse(null);
             if (snapshot != null) {
-                AnalyzerSiteBindingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot,
+                AnalyzerMappingVerificationAssessment assessment = confirmationService.assessCurrent(snapshot,
                         recognitionFingerprint);
                 if (!assessment.mappingsCurrent()) {
                     blockers.add(new AnalyzerActivationBlocker(MAPPINGS_BLOCKER));
@@ -257,10 +257,10 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
     }
 
     private ActivationContext deactivationContext(Analyzer analyzer, ConnectionReference connection) {
-        AnalyzerSiteBindingRevision revision = analyzer.getSiteBindingRevision();
-        AnalyzerSiteBindingSnapshot snapshot = revision == null ? null
+        AnalyzerMapping revision = analyzer.getSiteBindingRevision();
+        AnalyzerMappingSnapshot snapshot = revision == null ? null
                 : siteBindingService.findByRevisionId(revision.getId()).orElse(null);
-        AnalyzerSiteBindingConfirmation confirmation = analyzer.getLatestActivationRecord() == null ? null
+        AnalyzerMappingConfirmation confirmation = analyzer.getLatestActivationRecord() == null ? null
                 : analyzer.getLatestActivationRecord().getVerificationConfirmation();
         if (snapshot == null) {
             throw new IllegalArgumentException("Analyzer site binding is missing");
@@ -384,7 +384,7 @@ public class AnalyzerActivationServiceImpl implements AnalyzerActivationService 
             ObjectNode document) {
     }
 
-    private record ActivationContext(AnalyzerSiteBindingSnapshot snapshot, AnalyzerSiteBindingConfirmation confirmation,
+    private record ActivationContext(AnalyzerMappingSnapshot snapshot, AnalyzerMappingConfirmation confirmation,
             ConnectionReference connection, List<AnalyzerActivationBlocker> blockers) {
 
         String connectionId() {

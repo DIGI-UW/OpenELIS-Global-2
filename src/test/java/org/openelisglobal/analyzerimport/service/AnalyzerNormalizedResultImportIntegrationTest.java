@@ -26,16 +26,16 @@ import org.junit.Before;
 import org.junit.Test;
 import org.openelisglobal.BaseWebContextSensitiveTest;
 import org.openelisglobal.analyzer.service.AnalyzerInstanceLocalStateService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationRequest;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingConfirmationView;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingDraft;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingResultDraft;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingService;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSnapshot;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingSourceRow;
-import org.openelisglobal.analyzer.service.AnalyzerSiteBindingTestDraft;
-import org.openelisglobal.analyzer.valueholder.AnalyzerSiteBindingMappingState;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationRequest;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingConfirmationView;
+import org.openelisglobal.analyzer.service.AnalyzerMappingDraft;
+import org.openelisglobal.analyzer.service.AnalyzerMappingResultDraft;
+import org.openelisglobal.analyzer.service.AnalyzerMappingService;
+import org.openelisglobal.analyzer.service.AnalyzerMappingSnapshot;
+import org.openelisglobal.analyzer.service.AnalyzerMappingSourceRow;
+import org.openelisglobal.analyzer.service.AnalyzerMappingTestDraft;
+import org.openelisglobal.analyzer.valueholder.AnalyzerMappingState;
 import org.openelisglobal.analyzerresults.service.AnalyzerResultsService;
 import org.openelisglobal.analyzerresults.valueholder.AnalyzerResults;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,9 +66,9 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
     private DataSource dataSource;
 
     @Autowired
-    private AnalyzerSiteBindingService bindings;
+    private AnalyzerMappingService bindings;
     @Autowired
-    private AnalyzerSiteBindingConfirmationService confirmations;
+    private AnalyzerMappingConfirmationService confirmations;
     @Autowired
     private AnalyzerInstanceLocalStateService localState;
     @Autowired
@@ -151,7 +151,7 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(Integer.valueOf(0), jdbc.queryForObject(
                 "SELECT COUNT(*) FROM clinlims.qc_result WHERE control_lot_id = ?", Integer.class, QC_LOT_ID));
 
-        AnalyzerSiteBindingSnapshot binding = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID))
+        AnalyzerMappingSnapshot binding = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID))
                 .orElseThrow();
         confirm(binding, bundle);
         assertEquals(1, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
@@ -290,11 +290,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 "INSERT INTO clinlims.test (id, guid, name, description, is_active, is_reportable, orderable, lastupdated)"
                         + " VALUES (?, ?, 'Recovery test', 'Recovery test', 'Y', 'Y', true, NOW())",
                 TEST_ID, UUID.randomUUID().toString());
-        AnalyzerSiteBindingSnapshot previous = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID))
+        AnalyzerMappingSnapshot previous = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID))
                 .orElseThrow();
-        AnalyzerSiteBindingSnapshot updated = bindings.appendRevision(previous.binding(),
-                new AnalyzerSiteBindingDraft(List.of(new AnalyzerSiteBindingTestDraft(original.getRawTestCode(),
-                        AnalyzerSiteBindingMappingState.BOUND, String.valueOf(TEST_ID))), List.of()),
+        AnalyzerMappingSnapshot updated = bindings.appendRevision(previous.binding(),
+                new AnalyzerMappingDraft(List.of(new AnalyzerMappingTestDraft(original.getRawTestCode(),
+                        AnalyzerMappingState.BOUND, String.valueOf(TEST_ID))), List.of()),
                 "1");
         assertThrows(IllegalArgumentException.class,
                 () -> localState.selectSiteBindingRevision(String.valueOf(ANALYZER_ID), updated.binding().getId(),
@@ -350,11 +350,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
                 + " VALUES (?, ?, 'D', 'Positive', true, 1, NOW())", RESULT_OPTION_ID, TEST_ID);
         var originalBinding = bindings.findByRevisionId(String.valueOf(SITE_BINDING_REVISION_ID)).orElseThrow();
         var partial = bindings.appendRevision(originalBinding.binding(),
-                new AnalyzerSiteBindingDraft(
-                        List.of(new AnalyzerSiteBindingTestDraft("VENDOR-NEW-42", AnalyzerSiteBindingMappingState.BOUND,
+                new AnalyzerMappingDraft(
+                        List.of(new AnalyzerMappingTestDraft("VENDOR-NEW-42", AnalyzerMappingState.BOUND,
                                 String.valueOf(TEST_ID))),
-                        List.of(new AnalyzerSiteBindingResultDraft("VENDOR-NEW-42", "DETECTED",
-                                AnalyzerSiteBindingMappingState.UNRESOLVED, null))),
+                        List.of(new AnalyzerMappingResultDraft("VENDOR-NEW-42", "DETECTED",
+                                AnalyzerMappingState.UNRESOLVED, null))),
                 "1");
         Bundle bundle = REAL_FHIR.newJsonParser().parseResource(Bundle.class, Files.readString(FIXTURE));
         Observation observation = bundle.getEntry().stream().map(entry -> entry.getResource())
@@ -369,11 +369,11 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(AnalyzerResults.IMPORT_ISSUE_RESULT_MAPPING_NOT_READY, held.getImportIssueReason());
 
         var corrected = bindings.appendRevision(partial.binding(),
-                new AnalyzerSiteBindingDraft(
-                        List.of(new AnalyzerSiteBindingTestDraft("VENDOR-NEW-42", AnalyzerSiteBindingMappingState.BOUND,
+                new AnalyzerMappingDraft(
+                        List.of(new AnalyzerMappingTestDraft("VENDOR-NEW-42", AnalyzerMappingState.BOUND,
                                 String.valueOf(TEST_ID))),
-                        List.of(new AnalyzerSiteBindingResultDraft("VENDOR-NEW-42", "DETECTED",
-                                AnalyzerSiteBindingMappingState.BOUND, String.valueOf(RESULT_OPTION_ID)))),
+                        List.of(new AnalyzerMappingResultDraft("VENDOR-NEW-42", "DETECTED", AnalyzerMappingState.BOUND,
+                                String.valueOf(RESULT_OPTION_ID)))),
                 "1");
         confirm(corrected, bundle);
         assertEquals(0, importService.recoverHeldMappingResults(String.valueOf(ANALYZER_ID), "1"));
@@ -459,29 +459,25 @@ public class AnalyzerNormalizedResultImportIntegrationTest extends BaseWebContex
         assertEquals(3, resultsService.getResultsbyAnalyzer(String.valueOf(ANALYZER_ID)).size());
     }
 
-    private void confirm(AnalyzerSiteBindingSnapshot candidate, Bundle bundle) {
+    private void confirm(AnalyzerMappingSnapshot candidate, Bundle bundle) {
         new TransactionTemplate(transactionManager).executeWithoutResult(status -> {
-            AnalyzerSiteBindingSnapshot binding = bindings.findByRevisionId(candidate.revision().getId()).orElseThrow();
+            AnalyzerMappingSnapshot binding = bindings.findByRevisionId(candidate.revision().getId()).orElseThrow();
             Observation observation = bundle.getEntry().stream().map(entry -> entry.getResource())
                     .filter(Observation.class::isInstance).map(Observation.class::cast).findFirst().orElseThrow();
             String fingerprint = observation
                     .getExtensionByUrl(
                             "https://openelis-global.org/fhir/StructureDefinition/analyzer-control-recognition")
                     .getExtensionByUrl("recognitionFingerprint").getValue().primitiveValue();
-            var tests = new ArrayList<AnalyzerSiteBindingSourceRow>();
-            binding.tests().stream().filter(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.BOUND)
-                    .map(row -> new AnalyzerSiteBindingSourceRow(row.getId().getSourceRowKey(), null))
+            var tests = new ArrayList<AnalyzerMappingSourceRow>();
+            binding.tests().stream().filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
+                    .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), null)).forEach(tests::add);
+            binding.results().stream().filter(row -> row.getMappingState() == AnalyzerMappingState.BOUND)
+                    .map(row -> new AnalyzerMappingSourceRow(row.getId().getSourceRowKey(), row.getId().getRawValue()))
                     .forEach(tests::add);
-            binding.results().stream().filter(row -> row.getMappingState() == AnalyzerSiteBindingMappingState.BOUND)
-                    .map(row -> new AnalyzerSiteBindingSourceRow(row.getId().getSourceRowKey(),
-                            row.getId().getRawValue()))
-                    .forEach(tests::add);
-            assertEquals(AnalyzerSiteBindingConfirmationView.State.CURRENT,
+            assertEquals(AnalyzerMappingConfirmationView.State.CURRENT,
                     confirmations
-                            .confirm(binding, fingerprint,
-                                    new AnalyzerSiteBindingConfirmationRequest(
-                                            binding.revision().getBindingFingerprint(), fingerprint, tests, List.of()),
-                                    "1")
+                            .confirm(binding, fingerprint, new AnalyzerMappingConfirmationRequest(
+                                    binding.revision().getBindingFingerprint(), fingerprint, tests, List.of()), "1")
                             .state());
             assertTrue(confirmations.assessCurrent(binding, fingerprint).currentConfirmation().isPresent());
         });

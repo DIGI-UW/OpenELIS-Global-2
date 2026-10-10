@@ -20,15 +20,15 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
 
     private final AnalyzerService analyzerService;
     private final AnalyzerProfileBindingService profileBindingService;
-    private final AnalyzerSiteBindingService siteBindingService;
-    private final AnalyzerTypeMappingService typeMappingService;
+    private final AnalyzerMappingService siteBindingService;
+    private final AnalyzerMappingEditorService typeMappingService;
     private final AnalyzerResultsService analyzerResultsService;
     private final AnalyzerNormalizedResultImportService importService;
 
     @Autowired
     public AnalyzerInstanceLocalStateServiceImpl(AnalyzerService analyzerService,
-            AnalyzerProfileBindingService profileBindingService, AnalyzerSiteBindingService siteBindingService,
-            AnalyzerTypeMappingService typeMappingService, AnalyzerResultsService analyzerResultsService,
+            AnalyzerProfileBindingService profileBindingService, AnalyzerMappingService siteBindingService,
+            AnalyzerMappingEditorService typeMappingService, AnalyzerResultsService analyzerResultsService,
             AnalyzerNormalizedResultImportService importService) {
         this.analyzerService = analyzerService;
         this.profileBindingService = profileBindingService;
@@ -128,7 +128,7 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
         if (profile == null || profile.getId() == null) {
             throw new IllegalStateException("Analyzer profile binding is missing");
         }
-        AnalyzerSiteBindingSnapshot current = siteBindingService.findCurrentByProfileBindingId(profile.getId())
+        AnalyzerMappingSnapshot current = siteBindingService.findCurrentByProfileBindingId(profile.getId())
                 .orElseThrow(() -> new IllegalArgumentException("Analyzer Type mappings are missing"));
         if (!Objects.equals(requireText(siteBindingId, "Site binding ID"), current.binding().getId())
                 || revision != current.revision().getRevisionNumber()
@@ -136,9 +136,9 @@ public class AnalyzerInstanceLocalStateServiceImpl implements AnalyzerInstanceLo
                         current.revision().getBindingFingerprint())) {
             throw new IllegalArgumentException("Analyzer Type mappings changed after Verify was loaded");
         }
-        AnalyzerTypeMappingView mapping = typeMappingService.getMapping(profile.getProfileId(),
+        AnalyzerMappingView mapping = typeMappingService.getMapping(profile.getProfileId(),
                 profile.getProfileRevision());
-        if (mapping.confirmation().state() != AnalyzerSiteBindingConfirmationView.State.CURRENT
+        if (mapping.confirmation().state() != AnalyzerMappingConfirmationView.State.CURRENT
                 || !Objects.equals(mapping.siteBindingId(), current.binding().getId())
                 || mapping.siteBindingRevision() != revision
                 || !Objects.equals(mapping.bindingFingerprint(), current.revision().getBindingFingerprint())) {
