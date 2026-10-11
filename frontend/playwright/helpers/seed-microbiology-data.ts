@@ -66,6 +66,7 @@ export interface SeededMicrobiologyCase {
   alternateMethodId?: string;
   sampleTypeId?: string;
   cultureTestId?: string;
+  mediumItemId?: number;
   isolateSampleTypeId?: string;
   referralOrganizationId?: string;
   referralReasonId?: string;
