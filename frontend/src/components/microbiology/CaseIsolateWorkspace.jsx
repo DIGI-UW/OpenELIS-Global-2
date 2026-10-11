@@ -412,6 +412,7 @@ export default function CaseIsolateWorkspace({
           {detail.canWrite && (
             <Stack gap={3}>
               <Button
+                style={{ maxInlineSize: "100%" }}
                 disabled={
                   !cultures.some(
                     (row) =>
@@ -425,6 +426,7 @@ export default function CaseIsolateWorkspace({
                 {t("pick")}
               </Button>
               <Button
+                style={{ maxInlineSize: "100%" }}
                 kind="tertiary"
                 disabled={!options.sources.length}
                 onClick={() => open("specimen-referral")}
@@ -508,6 +510,7 @@ export default function CaseIsolateWorkspace({
                   {isolate.canIdentify && (
                     <Column sm={4} md={8} lg={16}>
                       <Button
+                        style={{ maxInlineSize: "100%" }}
                         kind="tertiary"
                         onClick={() => open("identify", isolate)}
                       >
@@ -518,6 +521,7 @@ export default function CaseIsolateWorkspace({
                   {isolate.canReidentify && (
                     <Column sm={4} md={8} lg={16}>
                       <Button
+                        style={{ maxInlineSize: "100%" }}
                         kind="tertiary"
                         onClick={() => open("reidentify", isolate)}
                       >
@@ -529,6 +533,7 @@ export default function CaseIsolateWorkspace({
                     !isolate.mismatchAcknowledgedAt && (
                       <Column sm={4} md={8} lg={16}>
                         <Button
+                          style={{ maxInlineSize: "100%" }}
                           kind="tertiary"
                           onClick={() => open("acknowledge", isolate)}
                         >
@@ -539,6 +544,7 @@ export default function CaseIsolateWorkspace({
                   {onLogCritical && (
                     <Column sm={4} md={8} lg={16}>
                       <Button
+                        style={{ maxInlineSize: "100%" }}
                         kind="ghost"
                         onClick={() => onLogCritical(isolate)}
                       >
@@ -554,6 +560,7 @@ export default function CaseIsolateWorkspace({
                       {isolate.received && !isolate.organismId && (
                         <Column sm={4} md={8} lg={16}>
                           <Button
+                            style={{ maxInlineSize: "100%" }}
                             kind="tertiary"
                             onClick={() => open("received-origin", isolate)}
                           >
@@ -564,6 +571,7 @@ export default function CaseIsolateWorkspace({
                       {!isolate.sampleItemId && (
                         <Column sm={4} md={8} lg={16}>
                           <Button
+                            style={{ maxInlineSize: "100%" }}
                             kind="tertiary"
                             onClick={() => open("sample-item", isolate)}
                           >
@@ -573,6 +581,7 @@ export default function CaseIsolateWorkspace({
                       )}
                       <Column sm={4} md={8} lg={16}>
                         <Button
+                          style={{ maxInlineSize: "100%" }}
                           kind="tertiary"
                           onClick={() => open("test", isolate)}
                         >
@@ -581,6 +590,7 @@ export default function CaseIsolateWorkspace({
                       </Column>
                       <Column sm={4} md={8} lg={16}>
                         <Button
+                          style={{ maxInlineSize: "100%" }}
                           kind="tertiary"
                           onClick={() => open("referral", isolate)}
                         >

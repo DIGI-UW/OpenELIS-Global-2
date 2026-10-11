@@ -91,11 +91,19 @@ test.describe("Microbiology keyboard-only workflow", () => {
         page.getByRole("heading", { name: "Microbiology case" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
-        page.getByTestId("microbiology-case-section-setup"),
+        page.getByTestId("microbiology-case-section-isolates"),
       ).toBeFocused({ timeout: LONG_TIMEOUT });
     });
 
     await test.step("Record culture lineage and a Timeline note with inline focus", async () => {
+      const inoculationPanel = page
+        .getByTestId("microbiology-case-view")
+        .getByRole("button", { name: "Inoculation", exact: true });
+      await tabTo(page, inoculationPanel);
+      await page.keyboard.press("Enter");
+      await expect(
+        page.getByTestId("microbiology-case-section-setup"),
+      ).toBeFocused({ timeout: LONG_TIMEOUT });
       const startInoculation = page
         .getByTestId("microbiology-case-section-setup")
         .getByRole("button", { name: "Start inoculation" });
@@ -247,7 +255,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
       });
       await tabTo(page, saveIdentification);
       await page.keyboard.press("Enter");
-      await expect(page.getByText("Final", { exact: true })).toBeVisible({
+      await expect(page.getByTitle("Final", { exact: true })).toBeVisible({
         timeout: LONG_TIMEOUT,
       });
 

@@ -33,6 +33,9 @@ test("picks a growth isolate, retains identification history and refers its dema
     .click();
   const dialog = page.getByRole("dialog");
   await dialog.getByLabel("Bottle or plate identifier").fill("M5-GROWTH");
+  await dialog
+    .getByLabel("Medium", { exact: true })
+    .selectOption(String(seeded.mediumItemId!));
   await firstOption(dialog.getByLabel("Medium lot", { exact: true }));
   await firstOption(dialog.getByLabel("Atmosphere", { exact: true }));
   await dialog.getByRole("button", { name: "Save", exact: true }).click();
@@ -148,6 +151,18 @@ test("picks a growth isolate, retains identification history and refers its dema
   });
   await page.setViewportSize({ width: 390, height: 844 });
   await expect(isolate.getByRole("heading", { name: /ISO-1/ })).toBeVisible();
+  await expect
+    .poll(() =>
+      isolate.evaluate((element) => element.scrollWidth <= element.clientWidth),
+    )
+    .toBe(true);
+  await expect
+    .poll(() =>
+      page.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+    )
+    .toBe(true);
   await page.screenshot({
     path: testInfo.outputPath("isolate-referral-mobile.png"),
     fullPage: true,
@@ -251,7 +266,7 @@ test("refers the original specimen using only the shared form's required receivi
     .selectOption(seeded.sampleItemId);
   await dialog
     .getByLabel("Requested referral or confirmatory test", { exact: true })
-    .selectOption(seeded.testId!);
+    .selectOption(seeded.cultureTestId!);
   await choose(
     dialog.getByRole("combobox", { name: "Reference lab", exact: true }),
     receivingLab,
