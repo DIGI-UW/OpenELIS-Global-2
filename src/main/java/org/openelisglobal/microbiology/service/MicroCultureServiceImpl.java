@@ -202,6 +202,9 @@ public class MicroCultureServiceImpl implements MicroCultureService {
             String actor) {
         var c = writeCase(caseId, actor);
         var row = requireRow(caseId, rowId);
+        // This row records receipt of an existing isolate, not an inoculated culture.
+        if ("RECEIVED_ISOLATE".equals(row.getPositiveSource()))
+            bad("RECEIVED_ISOLATE_LOCKED");
         if (r == null)
             bad("REQUIRED");
         Timestamp now = Timestamp.from(Instant.now());

@@ -8,19 +8,19 @@ identification for received isolates.
 
 ## Contract and permission boundary
 
-| Case endpoint under `/rest/microbiology/cases/{caseId}` | Behavior |
-| --- | --- |
-| `GET /isolates` | Isolates, eager origin/history, permission flags, linked referrals and badge |
-| `GET /isolates/options` | Active organisms/methods, configured isolate types, sources, allowed tests and referral choices |
-| `POST /isolates` | Pick from `cultureId`; optional Gram/morphology; coded significance |
-| `POST /isolates/{isolateId}/identify` | Organism, PRELIMINARY/FINAL, catalog method, performed timestamp, optional confidence/note and current version |
-| `POST /isolates/{isolateId}/reidentify` | Same fields, mandatory reason and current lab-unit Validation rights |
-| `POST /isolates/{isolateId}/received-origin` | Sending organization and reported coded organism or text before local identification |
-| `POST /isolates/{isolateId}/acknowledge` | Validator acknowledgment with reason and current version |
-| `POST /isolates/{isolateId}/sample-item` | Idempotent demand creation for LABEL, TESTING or REFERRAL |
-| `POST /isolates/{isolateId}/test` | Add an allowed clinical test to the isolate item |
-| `POST /isolates/{isolateId}/referral` | Demand-create the isolate item and create the existing referral workflow records |
-| `POST /isolates/referrals` | Refer a linked specimen or aliquot |
+| Case endpoint under `/rest/microbiology/cases/{caseId}` | Behavior                                                                                                       |
+| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `GET /isolates`                                         | Isolates, eager origin/history, permission flags, linked referrals and badge                                   |
+| `GET /isolates/options`                                 | Active organisms/methods, configured isolate types, sources, allowed tests and referral choices                |
+| `POST /isolates`                                        | Pick from `cultureId`; optional Gram/morphology; coded significance                                            |
+| `POST /isolates/{isolateId}/identify`                   | Organism, PRELIMINARY/FINAL, catalog method, performed timestamp, optional confidence/note and current version |
+| `POST /isolates/{isolateId}/reidentify`                 | Same fields, mandatory reason and current lab-unit Validation rights                                           |
+| `POST /isolates/{isolateId}/received-origin`            | Sending organization and reported coded organism or text before local identification                           |
+| `POST /isolates/{isolateId}/acknowledge`                | Validator acknowledgment with reason and current version                                                       |
+| `POST /isolates/{isolateId}/sample-item`                | Idempotent demand creation for LABEL, TESTING or REFERRAL                                                      |
+| `POST /isolates/{isolateId}/test`                       | Add an allowed clinical test to the isolate item                                                               |
+| `POST /isolates/{isolateId}/referral`                   | Demand-create the isolate item and create the existing referral workflow records                               |
+| `POST /isolates/referrals`                              | Refer a linked specimen or aliquot                                                                             |
 
 All writes lock the case, recheck current lab-unit rights and require a mutable
 case. Ordinary writes require Results; re-identification and mismatch
@@ -88,13 +88,19 @@ referral with reload, plus sender mismatch acknowledgment. Both journeys passed
 on the source-built development stack. Older affected browser journeys and
 full local/GitHub validation on the final committed revision remain pending.
 
-Focused checks passed: 16 isolate database tests; 59 culture, result-entry,
+Focused checks passed: 20 isolate database tests; 59 culture, result-entry,
 permission, identification and readiness regressions; 28 schema, mapping,
 architecture, controller and history checks; 19 scenario-service tests; and
-64 affected component and browser-fixture helper tests.
+68 affected component and browser-fixture helper tests.
 Finalized-report scenario fixtures retain pre-existing unlinked isolates to test
 historical amendment compatibility. Normal growth-qualified creation is covered
 by the current API fixtures and the recorded isolate journey.
+
+Received-isolate culture rows represent provenance and reject culture mutations
+and duplicate picking. Real subcultures remain available. The shared referral
+form requires a receiving laboratory; reason, send date and transport notes are
+optional. Supplied values still undergo reference, date and length validation.
+The database suite covers minimal drafts and preserves exact specimen links.
 
 Removing the sample-item association condition makes the two-isolate referral
 regression fail, and restoring it makes the full isolate suite pass.

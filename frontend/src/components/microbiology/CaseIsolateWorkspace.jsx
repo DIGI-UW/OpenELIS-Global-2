@@ -117,15 +117,16 @@ function IsolateAction({
       key={key}
       labelText={t(key)}
       value={draft[key]}
-      onChange={(e) =>
+      onChange={(e) => {
+        const value = e.target.value;
         setDraft((old) => ({
           ...old,
-          [key]: e.target.value,
+          [key]: value,
           ...(key === "sampleTypeId" || key === "sampleItemId"
             ? { testId: "" }
             : {}),
-        }))
-      }
+        }));
+      }}
     >
       <SelectItem value="" text={t("choose")} />
       {choices.map((choice) => (
@@ -218,7 +219,12 @@ function IsolateAction({
             {select(
               "cultureId",
               cultures
-                .filter((c) => c.outcome === "GROWTH" && c.sourceSampleItemId)
+                .filter(
+                  (c) =>
+                    !c.receivedIsolate &&
+                    c.outcome === "GROWTH" &&
+                    c.sourceSampleItemId,
+                )
                 .map((c) => ({ id: c.id, value: c.containerIdentifier })),
             )}
             {input("gramStain")}
@@ -390,7 +396,11 @@ export default function CaseIsolateWorkspace({
     }
   };
   return (
-    <Stack gap={5} data-testid="microbiology-isolates-card">
+    <Stack
+      gap={5}
+      data-testid="microbiology-isolates-card"
+      style={{ gridTemplateColumns: "minmax(0, 1fr)" }}
+    >
       <h2>{t("title")}</h2>
       {error && !action && (
         <InlineNotification kind="error" title={t(error)} hideCloseButton />
@@ -400,11 +410,14 @@ export default function CaseIsolateWorkspace({
         <>
           {data.referred && <Tag type="purple">{t("referred")}</Tag>}
           {detail.canWrite && (
-            <Stack orientation="horizontal" gap={3}>
+            <Stack gap={3}>
               <Button
                 disabled={
                   !cultures.some(
-                    (row) => row.outcome === "GROWTH" && row.sourceSampleItemId,
+                    (row) =>
+                      !row.receivedIsolate &&
+                      row.outcome === "GROWTH" &&
+                      row.sourceSampleItemId,
                   )
                 }
                 onClick={() => open("pick")}
@@ -423,7 +436,7 @@ export default function CaseIsolateWorkspace({
           {!data.isolates.length && <p>{t("empty")}</p>}
           {data.isolates.map((isolate) => (
             <Tile key={isolate.id} data-testid={`isolate-${isolate.id}`}>
-              <Stack gap={4}>
+              <Stack gap={4} style={{ gridTemplateColumns: "minmax(0, 1fr)" }}>
                 <h3>
                   {isolate.label} —{" "}
                   {isolate.organismName ||
@@ -431,7 +444,7 @@ export default function CaseIsolateWorkspace({
                       id: "microbiology.isolate.unidentified",
                     })}
                 </h3>
-                <Stack orientation="horizontal" gap={3}>
+                <Stack gap={3}>
                   <Tag type={isolate.status === "FINAL" ? "green" : "blue"}>
                     {t(isolate.status)}
                   </Tag>
@@ -493,7 +506,7 @@ export default function CaseIsolateWorkspace({
                 )}
                 <Grid condensed>
                   {isolate.canIdentify && (
-                    <Column sm={4} md={4} lg={4}>
+                    <Column sm={4} md={8} lg={16}>
                       <Button
                         kind="tertiary"
                         onClick={() => open("identify", isolate)}
@@ -503,7 +516,7 @@ export default function CaseIsolateWorkspace({
                     </Column>
                   )}
                   {isolate.canReidentify && (
-                    <Column sm={4} md={4} lg={4}>
+                    <Column sm={4} md={8} lg={16}>
                       <Button
                         kind="tertiary"
                         onClick={() => open("reidentify", isolate)}
@@ -514,7 +527,7 @@ export default function CaseIsolateWorkspace({
                   )}
                   {isolate.canAcknowledge &&
                     !isolate.mismatchAcknowledgedAt && (
-                      <Column sm={4} md={4} lg={4}>
+                      <Column sm={4} md={8} lg={16}>
                         <Button
                           kind="tertiary"
                           onClick={() => open("acknowledge", isolate)}
@@ -524,7 +537,7 @@ export default function CaseIsolateWorkspace({
                       </Column>
                     )}
                   {onLogCritical && (
-                    <Column sm={4} md={4} lg={4}>
+                    <Column sm={4} md={8} lg={16}>
                       <Button
                         kind="ghost"
                         onClick={() => onLogCritical(isolate)}
@@ -539,7 +552,7 @@ export default function CaseIsolateWorkspace({
                   {detail.canWrite && (
                     <>
                       {isolate.received && !isolate.organismId && (
-                        <Column sm={4} md={4} lg={4}>
+                        <Column sm={4} md={8} lg={16}>
                           <Button
                             kind="tertiary"
                             onClick={() => open("received-origin", isolate)}
@@ -549,7 +562,7 @@ export default function CaseIsolateWorkspace({
                         </Column>
                       )}
                       {!isolate.sampleItemId && (
-                        <Column sm={4} md={4} lg={4}>
+                        <Column sm={4} md={8} lg={16}>
                           <Button
                             kind="tertiary"
                             onClick={() => open("sample-item", isolate)}
@@ -558,7 +571,7 @@ export default function CaseIsolateWorkspace({
                           </Button>
                         </Column>
                       )}
-                      <Column sm={4} md={4} lg={4}>
+                      <Column sm={4} md={8} lg={16}>
                         <Button
                           kind="tertiary"
                           onClick={() => open("test", isolate)}
@@ -566,7 +579,7 @@ export default function CaseIsolateWorkspace({
                           {t("test")}
                         </Button>
                       </Column>
-                      <Column sm={4} md={4} lg={4}>
+                      <Column sm={4} md={8} lg={16}>
                         <Button
                           kind="tertiary"
                           onClick={() => open("referral", isolate)}

@@ -83,7 +83,7 @@ export const identifyMicrobiologyIsolate = async (
   await expect(page.getByRole("dialog")).toHaveCount(0, {
     timeout: LONG_TIMEOUT,
   });
-  await expect(page.getByText("Final", { exact: true })).toBeVisible();
+  await expect(page.getByTitle("Final", { exact: true })).toBeVisible();
   const isolate = page.locator('[data-testid^="isolate-"]');
   await expect(
     isolate.getByRole("definition").filter({ hasText: /^UAT micro culture$/ }),

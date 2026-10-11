@@ -367,3 +367,37 @@ it.each([null, "missing-source"])(
     ).toBeEnabled();
   },
 );
+
+it("preserves received-isolate provenance while allowing a real subculture", async () => {
+  const service = api([
+    {
+      ...row,
+      receivedIsolate: true,
+      outcome: "GROWTH",
+      positiveAt: row.inoculatedAt,
+    },
+  ]);
+  show(service, { onPickIsolate: vi.fn() });
+  const tile = await screen.findByTestId("culture-row-r1");
+  expect(
+    within(tile).getAllByText("Growth (received isolate)"),
+  ).not.toHaveLength(0);
+  expect(
+    within(tile).queryByRole("button", { name: "Pick isolate" }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tile).queryByRole("button", {
+      name: messages["microbiology.culture.action.positive-time"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tile).queryByRole("button", {
+      name: messages["microbiology.culture.action.reading"],
+    }),
+  ).not.toBeInTheDocument();
+  expect(
+    within(tile).getByRole("button", {
+      name: messages["microbiology.culture.subculture"],
+    }),
+  ).toBeEnabled();
+});

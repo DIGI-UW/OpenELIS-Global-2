@@ -616,7 +616,7 @@ export default function CaseCultureWorkspace({
                       {t("action.inoculated-time")}
                     </Button>
                   )}
-                  {row.positiveAt && (
+                  {!row.receivedIsolate && row.positiveAt && (
                     <Button
                       kind="ghost"
                       onClick={() =>
@@ -632,16 +632,18 @@ export default function CaseCultureWorkspace({
                     (source) => source.sampleItemId === row.sourceSampleItemId,
                   ) && (
                     <>
-                      {row.outcome === "GROWTH" && onPickIsolate && (
-                        <Button
-                          kind="tertiary"
-                          onClick={() => onPickIsolate(row)}
-                        >
-                          {intl.formatMessage({
-                            id: "microbiology.isolateWorkspace.pick",
-                          })}
-                        </Button>
-                      )}
+                      {!row.receivedIsolate &&
+                        row.outcome === "GROWTH" &&
+                        onPickIsolate && (
+                          <Button
+                            kind="tertiary"
+                            onClick={() => onPickIsolate(row)}
+                          >
+                            {intl.formatMessage({
+                              id: "microbiology.isolateWorkspace.pick",
+                            })}
+                          </Button>
+                        )}
                       <Button
                         kind="tertiary"
                         onClick={() => open("inoculate", row)}
