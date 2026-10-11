@@ -62,7 +62,8 @@ physical values are validated before persistence to prevent silent rounding.
 Liquibase migration 121 adds nullable fields for historic rows and three
 append-only history tables, foreign keys/indexes and coded choice seeds. Both
 application and test persistence units register all new mappings. Structural
-rollback removes M4 additions while retaining prior inoculation history. Older
+rollback removes M4 additions while retaining prior inoculation history and
+catalog vocabulary, including values present before the migration. Older
 inoculation-table rollback tests unwind M4 dependencies before dropping that
 table and reapply them afterward.
 
@@ -75,13 +76,26 @@ Component tests exercise actual Carbon controls, source-scoped Gram selection,
 media prefill, failed drafts, read-only controls and configuration payloads.
 The property-gated CULTURE_WORKSPACE browser scenario uses a unique case, lab
 unit, tests, medium and lot for its inoculate/read/extend/Gram/subculture/outcome
-journey and reload checks. Executed local checks: 58 frontend tests across seven files; 42 backend culture,
-ORM, migration, rollback and scenario tests across six files; and 36 existing
-case/result/access regression tests across three files. The browser journey
-passed in 8.1 seconds with desktop and narrow-viewport screenshots reviewed.
+journey and reload checks. Executed local checks: 61 frontend tests across eight
+files; 42 backend culture, ORM, migration, rollback and scenario tests across six
+files; 36 existing case/result/access regression tests across three files; and a
+final 41-test correction run covering culture persistence, rollback, architecture
+and scenario setup. The final culture journey and existing initial-testing
+journey both passed in one 19.8-second run, with desktop and narrow-viewport
+screenshots reviewed.
 Removing the duration-precision guard and reverting source-scoped Gram selection
 each caused the intended regression test to fail; the restored guards passed.
-Spotless, Prettier and focused lint checks passed. Full local CI and GitHub
+Additional regression checks preserve medium environment defaults on inventory
+edits and classify inoculation defaults as timestamps in the date guard.
+The synthetic culture scenario uses an independent specimen catalog and appends
+its lab unit after existing units; catalog visibility refreshes after commit.
+Spotless, Prettier and focused lint on the new culture UI/browser source passed.
+A broader lint check also reports existing inventory component hook rules and
+missing Vitest globals, reproduced unchanged on the parent branch. The first
+full local CI and GitHub runs failed; their culture fixture/vocabulary, migration
+test classification and timestamp-guard corrections passed focused regressions.
+The first local core shard also recorded admin/batch failures; a fresh full run
+must verify those rather than treating them as passing. Full local CI and GitHub
 checkpoint results remain separate gates, reported in the PR. Owner acceptance
 is pending.
 

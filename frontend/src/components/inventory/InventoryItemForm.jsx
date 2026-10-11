@@ -210,6 +210,8 @@ const InventoryItemForm = ({
         name: formData.name,
         tags: typedTags,
         microbiologyMedium: !!formData.microbiologyMedium,
+        usualAtmosphereId: item?.usualAtmosphereId ?? null,
+        usualTemperature: item?.usualTemperature ?? null,
         category: formData.category,
         manufacturer: formData.manufacturer,
         units: formData.units,

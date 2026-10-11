@@ -13,7 +13,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.MountableFile;
 
 /** Real upgrade and rollback against retained inoculation history. */
-public class MicroCultureMigrationTest {
+public class MicroCultureLiquibaseRollbackTest {
     @Test
     public void upgradesStoredInoculationsAndReversesOnlyM4Structure() throws Exception {
         try (var postgres = new PostgreSQLContainer<>("postgres:14.4")) {
@@ -37,6 +37,10 @@ public class MicroCultureMigrationTest {
                 assertTrue("M4 must be registered", preceding < pending.size());
                 app.update(preceding, contexts, new LabelExpression());
                 execute(connection,
+                        "INSERT INTO clinlims.dictionary_category (id,name,description,local_abbrev,lastupdated) VALUES (887810,'Culture atmosphere','Existing lab atmosphere','LABATM',now())");
+                execute(connection,
+                        "INSERT INTO clinlims.dictionary (id,dict_entry,dictionary_category_id,is_active,lastupdated) VALUES (887811,'Aerobic',887810,'Y',now()), (887812,'Lab-specific atmosphere',887810,'Y',now())");
+                execute(connection,
                         "INSERT INTO clinlims.sample (id,accession_number,entered_date,received_date) VALUES (887801,'M4-UPGRADE',DATE '2026-01-01',TIMESTAMP '2026-01-02 09:00:00')");
                 execute(connection,
                         "INSERT INTO clinlims.sample_item (id,sort_order,samp_id,status_id) SELECT 887802,1,887801,MIN(id) FROM clinlims.status_of_sample");
@@ -50,6 +54,8 @@ public class MicroCultureMigrationTest {
                     connection.commit();
                 String before = scalar(connection,
                         "SELECT to_jsonb(i)::text FROM clinlims.micro_case_inoculation i WHERE id='stored-row'");
+                String vocabularyBefore = scalar(connection,
+                        "SELECT jsonb_agg(jsonb_build_array(id,dict_entry,dictionary_category_id,is_active,lastupdated) ORDER BY id)::text FROM clinlims.dictionary d WHERE id IN (887811,887812)");
                 app.update(contexts);
                 assertTrue(column(connection, "micro_case_inoculation", "duration"));
                 assertTrue(column(connection, "test_section", "gram_stain_test_id"));
@@ -60,8 +66,13 @@ public class MicroCultureMigrationTest {
                 m4.rollback(m4.getDatabaseChangeLog().getChangeSets().size(), "test");
                 assertFalse(column(connection, "micro_case_inoculation", "duration"));
                 assertFalse(column(connection, "test_section", "gram_stain_test_id"));
+                assertTrue(column(connection, "inventory_item", "track_lots"));
                 assertEquals(before, scalar(connection,
                         "SELECT to_jsonb(i)::text FROM clinlims.micro_case_inoculation i WHERE id='stored-row'"));
+                assertEquals(vocabularyBefore, scalar(connection,
+                        "SELECT jsonb_agg(jsonb_build_array(id,dict_entry,dictionary_category_id,is_active,lastupdated) ORDER BY id)::text FROM clinlims.dictionary d WHERE id IN (887811,887812)"));
+                assertEquals("Existing lab atmosphere",
+                        scalar(connection, "SELECT description FROM clinlims.dictionary_category WHERE id=887810"));
                 m4.update(contexts);
                 assertTrue(column(connection, "micro_culture_reading", "reading_id"));
                 assertTrue(column(connection, "micro_case_inoculation", "duration"));

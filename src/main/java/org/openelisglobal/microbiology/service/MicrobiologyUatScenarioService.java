@@ -252,6 +252,9 @@ public class MicrobiologyUatScenarioService {
 
         if (WHONET_EXPORT_SCENARIO.equals(scenario)) {
             ensureSampleType(sampleItem, getOrCreateWhonetPendingSampleType(suffix, performedBy), performedBy);
+        } else if (CULTURE_WORKSPACE_SCENARIO.equals(scenario)) {
+            ensureSampleType(sampleItem, getOrCreateUatSampleType("UAT culture specimen " + suffix,
+                    "T" + suffix.substring(0, 9), performedBy), performedBy);
         } else {
             ensureSampleType(sampleItem, performedBy);
         }
@@ -281,6 +284,9 @@ public class MicrobiologyUatScenarioService {
             unit.setIsExternal(IActionConstants.NO);
             unit.setIsActive("Y");
             unit.setDomain("CLINICAL");
+            if (unit.getId() == null)
+                unit.setSortOrderInt(testSectionService.getAllTestSections().stream()
+                        .mapToInt(TestSection::getSortOrderInt).max().orElse(0) + 1);
             unit.setSysUserId(performedBy);
             if (unit.getId() == null)
                 testSectionService.insert(unit);
@@ -312,8 +318,21 @@ public class MicrobiologyUatScenarioService {
             mediaLink.setCultureCheckIntervalHours(new BigDecimal("8"));
             mediaLink.setSysUserId(performedBy);
             testReagentLinkService.update(mediaLink);
+            sampleItem = sampleItemService.get(sampleItem.getId());
             sampleItem.setReceivedDate(Timestamp.from(java.time.Instant.now().minusSeconds(3600)));
-            sampleItemService.update(sampleItem);
+            sampleItem.setSysUserId(performedBy);
+            sampleItem = sampleItemService.update(sampleItem);
+            // Publish catalog visibility only after the new unit is committed.
+            if (org.springframework.transaction.support.TransactionSynchronizationManager.isSynchronizationActive())
+                org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                        new org.springframework.transaction.support.TransactionSynchronization() {
+                            @Override
+                            public void afterCommit() {
+                                org.openelisglobal.common.services.DisplayListService.getInstance().refreshList(
+                                        org.openelisglobal.common.services.DisplayListService.ListType.TEST_SECTION_ACTIVE);
+                                typeOfSampleService.clearCache();
+                            }
+                        });
         }
         ensureInventoryTraceability(test, performedBy);
         ensureSpecimenLostVocabulary(performedBy);
@@ -1131,20 +1150,23 @@ public class MicrobiologyUatScenarioService {
     }
 
     private TypeOfSample getOrCreateUatSampleType(String performedBy) {
+        return getOrCreateUatSampleType(UAT_SAMPLE_TYPE_DESCRIPTION, "UATMS", performedBy);
+    }
+
+    private TypeOfSample getOrCreateUatSampleType(String description, String abbreviation, String performedBy) {
         TypeOfSample sampleType = typeOfSampleService.getAllTypeOfSamples().stream()
-                .filter(candidate -> UAT_SAMPLE_TYPE_DESCRIPTION.equals(candidate.getDescription())).findFirst()
-                .orElse(null);
+                .filter(candidate -> description.equals(candidate.getDescription())).findFirst().orElse(null);
         if (sampleType == null) {
             Localization localization = new Localization();
-            localization.setDescription("UAT microbiology sample type");
-            localization.setEnglish(UAT_SAMPLE_TYPE_DESCRIPTION);
+            localization.setDescription(description + " sample type");
+            localization.setEnglish(description);
             localization.setSysUserId(performedBy);
             localizationService.insert(localization);
 
             sampleType = new TypeOfSample();
-            sampleType.setDescription(UAT_SAMPLE_TYPE_DESCRIPTION);
+            sampleType.setDescription(description);
             sampleType.setDomain("H");
-            sampleType.setLocalAbbreviation("UATMS");
+            sampleType.setLocalAbbreviation(abbreviation);
             sampleType.setActive(true);
             sampleType.setSortOrder(999);
             sampleType.setWhonetCode(UAT_SAMPLE_TYPE_WHONET_CODE);
