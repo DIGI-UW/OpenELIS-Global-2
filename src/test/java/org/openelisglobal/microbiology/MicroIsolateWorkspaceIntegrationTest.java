@@ -38,6 +38,10 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroCultureService cultureService;
     @Autowired
+    private org.openelisglobal.dictionary.service.DictionaryService dictionaries;
+    @Autowired
+    private org.openelisglobal.dictionarycategory.service.DictionaryCategoryService dictionaryCategories;
+    @Autowired
     private MicroCaseDAO cases;
     @Autowired
     private MicroIsolateDAO isolates;
@@ -648,16 +652,18 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         var row = receiveCulture();
         Timestamp receivedAt = row.getOccurredAt();
         int activityCount = activities.getAllMatching("caseId", c.getId()).size();
-        var choices = cultureService.getCatalog();
         var request = new MicroCultureRequestForm();
         request.positiveAt = receivedAt;
         request.inoculatedAt = receivedAt;
         request.outcome = "GROWTH";
         request.signal = "Would incorrectly propose a negative received culture";
-        request.readingId = choices.readings.getFirst().getId();
+        request.readingId = createCultureChoice("Culture reading");
         request.extendBy = BigDecimal.ONE;
         request.unit = "HOURS";
-        request.reasonId = choices.extensionReasons.getFirst().getId();
+        request.reasonId = createCultureChoice("Extend incubation reason");
+        var choices = cultureService.getCatalog();
+        assertTrue(choices.readings.stream().anyMatch(choice -> request.readingId.equals(choice.getId())));
+        assertTrue(choices.extensionReasons.stream().anyMatch(choice -> request.reasonId.equals(choice.getId())));
 
         for (String action : List.of("positive-time", "inoculated-time", "reading", "extension", "negative-proposal",
                 "outcome")) {
@@ -676,6 +682,29 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         assertTrue(stored.getExtensions().isEmpty());
         assertTrue(stored.getProposals().isEmpty());
         assertEquals(activityCount, activities.getAllMatching("caseId", c.getId()).size());
+    }
+
+    /**
+     * Own valid coded choices instead of depending on migration seeds removed by
+     * earlier dictionary fixtures.
+     */
+    private String createCultureChoice(String categoryName) {
+        var category = dictionaryCategories.getDictionaryCategoryByName(categoryName);
+        if (category == null) {
+            category = new org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory();
+            category.setCategoryName(categoryName);
+            category.setDescription(categoryName);
+            category.setLocalAbbreviation("M5" + UUID.randomUUID().toString().substring(0, 8));
+            category.setSysUserId(writer);
+            dictionaryCategories.insert(category);
+        }
+        var choice = new org.openelisglobal.dictionary.valueholder.Dictionary();
+        choice.setDictionaryCategory(category);
+        choice.setDictEntry("M5 culture choice " + UUID.randomUUID());
+        choice.setIsActive("Y");
+        choice.setSortOrder(1);
+        choice.setSysUserId(writer);
+        return dictionaries.insert(choice);
     }
 
     private MicroCaseInoculation receiveCulture() {
