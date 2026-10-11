@@ -89,7 +89,7 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         outsider = writer(fixtures.createLabUnit().getId());
         specimen = fixtures.createSampleWithSampleItem("M4");
         specimen.setTypeOfSample(fixtures.getOrCreateActiveSampleType());
-        received = Timestamp.from(Instant.now().minusSeconds(172800));
+        received = Timestamp.from(Instant.now().minusSeconds(172800).truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
         specimen.setReceivedDate(received);
         specimen.getSample().setReceivedTimestamp(received);
         em.merge(specimen.getSample());
@@ -190,7 +190,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         r.temperature = new BigDecimal("35");
         r.checkIntervalHours = new BigDecimal("8");
         r.loopVolume = BigDecimal.ONE;
-        r.inoculatedAt = Timestamp.from(Instant.now().minusSeconds(3600));
+        r.inoculatedAt = Timestamp
+                .from(Instant.now().minusSeconds(3600).truncatedTo(java.time.temporal.ChronoUnit.MILLIS));
         return r;
     }
 
