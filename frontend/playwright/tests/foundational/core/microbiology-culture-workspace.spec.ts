@@ -84,6 +84,15 @@ test("inoculates cultures, appends readings, extends, subcultures and attaches G
     page.locator("#culture-test-chooser").getByRole("button", { name: /— 1$/ }),
   ).toBeVisible();
   await page
+    .locator("#culture-test-chooser")
+    .getByRole("button", { name: /— 1$/ })
+    .click();
+  await expect(
+    page
+      .locator("#culture-test-chooser")
+      .getByRole("button", { name: /^UAT culture [A-F0-9]+$/ }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+  await page
     .getByRole("button", { name: "Add selected tests", exact: true })
     .click();
   const tests = parent

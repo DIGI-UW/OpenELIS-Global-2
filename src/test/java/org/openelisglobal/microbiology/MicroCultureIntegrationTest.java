@@ -60,6 +60,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private DictionaryService dictionaries;
     @Autowired
+    private org.openelisglobal.dictionarycategory.service.DictionaryCategoryService categories;
+    @Autowired
     private SystemUserService users;
     @Autowired
     private RoleService roles;
@@ -78,6 +80,10 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         super.setUp();
         executeDataSetWithStateManagement("testdata/role.xml");
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        ensureVocabulary("Culture atmosphere", "Aerobic");
+        ensureVocabulary("Culture reading", "Growth observed");
+        ensureVocabulary("Culture quantity", "Scant");
+        ensureVocabulary("Extend incubation reason", "Awaiting growth");
         var unit = fixtures.createLabUnit();
         actor = writer(unit.getId());
         outsider = writer(fixtures.createLabUnit().getId());
@@ -137,6 +143,26 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         assignment.setLabUnitRoleMap(Set.of(map));
         em.persist(assignment);
         return id;
+    }
+
+    private void ensureVocabulary(String name, String entry) {
+        var category = categories.getDictionaryCategoryByName(name);
+        if (category == null) {
+            category = new org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory();
+            category.setCategoryName(name);
+            category.setDescription(name);
+            category.setSysUserId("1");
+            categories.insert(category);
+        }
+        if (dictionaries.getDictionaryEntryByNameAndCategoryName(entry, name) == null) {
+            var value = new org.openelisglobal.dictionary.valueholder.Dictionary();
+            value.setDictionaryCategory(category);
+            value.setDictEntry(entry);
+            value.setIsActive("Y");
+            value.setSortOrder(1);
+            value.setSysUserId("1");
+            dictionaries.insert(value);
+        }
     }
 
     private String code(String category, int index) {
