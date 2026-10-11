@@ -151,9 +151,20 @@ test.describe("OGC-782 microbiology MVP", () => {
       await expect(
         page.getByText(/ISO-1 — Escherichia coli \(UAT\)/),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
+      const isolate = page
+        .getByTestId("microbiology-isolates-card")
+        .locator('[data-testid^="isolate-"]');
       await expect(
-        page.getByTestId("microbiology-isolates-card"),
-      ).toContainText("MALDI-TOF · 99.5% · Clinically significant");
+        isolate
+          .getByRole("definition")
+          .filter({ hasText: /^UAT micro culture$/ }),
+      ).toBeVisible();
+      await expect(
+        isolate.getByRole("definition").filter({ hasText: /^99\.5$/ }),
+      ).toBeVisible();
+      await expect(
+        isolate.getByTitle("Clinically significant", { exact: true }),
+      ).toBeVisible();
     });
 
     await test.step("Start an AST run and record a MIC reading", async () => {
