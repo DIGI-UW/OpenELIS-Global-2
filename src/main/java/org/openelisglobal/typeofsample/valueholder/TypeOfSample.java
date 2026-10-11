@@ -31,6 +31,7 @@ public class TypeOfSample extends BaseObject<String> {
     private String localAbbreviation;
     private String whonetCode;
     private String disposalInstructions;
+    private boolean microbiologyIsolate;
     private boolean isActive;
     private int sortOrder;
     private ValueHolder localization = new ValueHolder();
@@ -146,5 +147,13 @@ public class TypeOfSample extends BaseObject<String> {
     @Override
     public int hashCode() {
         return Objects.hash(id);
+    }
+
+    public boolean isMicrobiologyIsolate() {
+        return microbiologyIsolate;
+    }
+
+    public void setMicrobiologyIsolate(boolean value) {
+        microbiologyIsolate = value;
     }
 }

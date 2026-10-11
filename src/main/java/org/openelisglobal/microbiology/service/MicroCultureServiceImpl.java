@@ -401,6 +401,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
 
     private MicroCultureForm form(MicroCaseInoculation row) {
         var f = new MicroCultureForm();
+        f.receivedIsolate = "RECEIVED_ISOLATE".equals(row.getPositiveSource());
         f.id = row.getId();
         f.parentId = row.getSourceInoculationId();
         f.sourceSampleItemId = row.getSourceSampleItemId();

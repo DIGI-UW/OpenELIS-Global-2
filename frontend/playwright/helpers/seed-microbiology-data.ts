@@ -66,6 +66,9 @@ export interface SeededMicrobiologyCase {
   alternateMethodId?: string;
   sampleTypeId?: string;
   cultureTestId?: string;
+  isolateSampleTypeId?: string;
+  referralOrganizationId?: string;
+  referralReasonId?: string;
   followUpTestId?: string;
   tbCultureTestId?: string;
   nonCultureTestId?: string;
@@ -129,6 +132,8 @@ type MicrobiologyScenario =
   | "MVP"
   | "WORKLIST"
   | "CULTURE_WORKSPACE"
+  | "ISOLATE_WORKSPACE"
+  | "RECEIVED_ISOLATE"
   | "INITIAL_TESTING"
   | "M3"
   | "M4"
@@ -1137,3 +1142,12 @@ export function seedMicrobiologyInitialTestingCase(
 
 export const seedMicrobiologyCultureWorkspace = (page: Page) =>
   provisionMicrobiologyScenario(page, "CULTURE_WORKSPACE");
+
+export const seedMicrobiologyIsolateWorkspace = (
+  page: Page,
+  received = false,
+) =>
+  provisionMicrobiologyScenario(
+    page,
+    received ? "RECEIVED_ISOLATE" : "ISOLATE_WORKSPACE",
+  );

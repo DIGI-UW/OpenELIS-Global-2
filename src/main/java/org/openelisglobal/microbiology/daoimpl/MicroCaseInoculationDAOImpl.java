@@ -67,9 +67,10 @@ public class MicroCaseInoculationDAOImpl extends BaseDAOImpl<MicroCaseInoculatio
         while (!frontier.isEmpty()) {
             visited.addAll(frontier);
             var children = entityManager.createQuery(
-                    "select si from SampleItem si join fetch si.sample left join fetch si.typeOfSample join fetch si.parentSampleItem p where p.id in (:parents)",
+                    "select si from SampleItem si join fetch si.sample left join fetch si.typeOfSample join fetch si.parentSampleItem p where p.id in (:parents) and not exists (select m.id from MicroCaseSample m where m.sampleItemId = si.id and m.caseId <> :caseId and m.splitOutAt is null)",
                     org.openelisglobal.sampleitem.valueholder.SampleItem.class).setParameter("parents", frontier)
-                    .getResultList().stream().filter(s -> !visited.contains(s.getId())).toList();
+                    .setParameter("caseId", caseId).getResultList().stream().filter(s -> !visited.contains(s.getId()))
+                    .toList();
             sources.addAll(children);
             frontier = children.stream().map(s -> s.getId()).toList();
         }

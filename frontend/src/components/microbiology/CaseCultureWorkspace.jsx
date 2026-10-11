@@ -321,6 +321,7 @@ export default function CaseCultureWorkspace({
   selectedId,
   onSelect,
   onChooseTests,
+  onPickIsolate,
   renderTests,
 }) {
   const intl = useIntl();
@@ -498,10 +499,21 @@ export default function CaseCultureWorkspace({
           <Tile data-testid={`culture-row-${row.id}`}>
             <Stack gap={4}>
               <h3>
-                {row.containerIdentifier} — {row.mediumName}
+                {row.containerIdentifier} —{" "}
+                {row.receivedIsolate
+                  ? intl.formatMessage({
+                      id: "microbiology.isolateWorkspace.receivedGrowth",
+                    })
+                  : row.mediumName}
               </h3>
               <Tag type={row.outcome === "GROWTH" ? "green" : "gray"}>
-                {row.outcome ? t(`outcome.${row.outcome}`) : t("incubating")}
+                {row.receivedIsolate
+                  ? intl.formatMessage({
+                      id: "microbiology.isolateWorkspace.receivedGrowth",
+                    })
+                  : row.outcome
+                    ? t(`outcome.${row.outcome}`)
+                    : t("incubating")}
               </Tag>
               {row.checkDue && <Tag type="warm-gray">{t("checkDue")}</Tag>}
               {row.finalReadDue && <Tag type="purple">{t("finalReadDue")}</Tag>}
@@ -562,30 +574,31 @@ export default function CaseCultureWorkspace({
                   gap={3}
                   style={{ display: "flex", flexWrap: "wrap" }}
                 >
-                  {(!row.outcome || row.outcome === "GROWTH") && (
-                    <>
-                      <Button
-                        kind="tertiary"
-                        onClick={() => open("reading", row)}
-                      >
-                        {t("action.reading")}
-                      </Button>
-                      <Button
-                        kind="tertiary"
-                        onClick={() => open("extension", row)}
-                      >
-                        {t("action.extension")}
-                      </Button>
-                      {!row.outcome && (
+                  {!row.receivedIsolate &&
+                    (!row.outcome || row.outcome === "GROWTH") && (
+                      <>
                         <Button
                           kind="tertiary"
-                          onClick={() => open("outcome", row)}
+                          onClick={() => open("reading", row)}
                         >
-                          {t("action.outcome")}
+                          {t("action.reading")}
                         </Button>
-                      )}
-                    </>
-                  )}
+                        <Button
+                          kind="tertiary"
+                          onClick={() => open("extension", row)}
+                        >
+                          {t("action.extension")}
+                        </Button>
+                        {!row.outcome && (
+                          <Button
+                            kind="tertiary"
+                            onClick={() => open("outcome", row)}
+                          >
+                            {t("action.outcome")}
+                          </Button>
+                        )}
+                      </>
+                    )}
                   {row.outcome === "NO_GROWTH" && (
                     <Button
                       kind="tertiary"
@@ -596,7 +609,7 @@ export default function CaseCultureWorkspace({
                       {t("lateGrowth")}
                     </Button>
                   )}
-                  {row.canEditInoculatedAt && (
+                  {!row.receivedIsolate && row.canEditInoculatedAt && (
                     <Button
                       kind="ghost"
                       onClick={() =>
@@ -620,41 +633,33 @@ export default function CaseCultureWorkspace({
                       {t("action.positive-time")}
                     </Button>
                   )}
-                  {(!row.outcome || row.outcome === "GROWTH") &&
-                    options.sources.some(
-                      (source) =>
-                        source.sampleItemId === row.sourceSampleItemId,
-                    ) && (
-                      <>
+                  {(!row.outcome || row.outcome === "GROWTH") && options.sources.some(
+                    (source) => source.sampleItemId === row.sourceSampleItemId,
+                  ) && (
+                    <>
+                      {row.outcome === "GROWTH" && onPickIsolate && (
                         <Button
                           kind="tertiary"
-                          onClick={() => open("inoculate", row)}
+                          onClick={() => onPickIsolate(row)}
                         >
-                          {t("subculture")}
+                          {intl.formatMessage({
+                            id: "microbiology.isolateWorkspace.pick",
+                          })}
                         </Button>
-                        <Button
-                          kind="tertiary"
-                          onClick={() =>
-                            onChooseTests(
-                              {
-                                ...row,
-                                source: options.sources.find(
-                                  (s) =>
-                                    s.sampleItemId === row.sourceSampleItemId,
-                                ),
-                              },
-                              null,
-                            )
-                          }
-                        >
-                          {t("testOnCulture")}
-                        </Button>
-                        <Button
-                          kind="tertiary"
-                          disabled={
-                            !options.gramStainTest ||
-                            !options.gramStainSampleTypeIds?.includes(
-                              options.sources.find(
+                      )}
+                      <Button
+                        kind="tertiary"
+                        onClick={() => open("inoculate", row)}
+                      >
+                        {t("subculture")}
+                      </Button>
+                      <Button
+                        kind="tertiary"
+                        onClick={() =>
+                          onChooseTests(
+                            {
+                              ...row,
+                              source: options.sources.find(
                                 (s) =>
                                   s.sampleItemId === row.sourceSampleItemId,
                               )?.sampleTypeId,

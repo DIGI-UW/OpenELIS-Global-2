@@ -21,6 +21,7 @@ public class MicrobiologyCaseAccessServiceTest {
     private UserRoleService userRoles;
     private org.openelisglobal.systemuser.service.SystemUserService systemUsers;
     private org.openelisglobal.login.service.LoginUserService logins;
+    private RoleService roles;
     private MicrobiologyCaseAccessServiceImpl access;
 
     @Before
@@ -28,7 +29,7 @@ public class MicrobiologyCaseAccessServiceTest {
         cases = mock(MicroCaseDAO.class);
         users = mock(UserService.class);
         userRoles = mock(UserRoleService.class);
-        RoleService roles = mock(RoleService.class);
+        roles = mock(RoleService.class);
         Role results = new Role();
         results.setId("r");
         Role validation = new Role();
@@ -104,5 +105,14 @@ public class MicrobiologyCaseAccessServiceTest {
     @Test public void administratorStillCannotFetchANonexistentCase() {
         when(userRoles.userInRole("7",Constants.ROLE_GLOBAL_ADMIN)).thenReturn(true);
         assertTrue(access.canReadLabUnit("7","10"));assertFalse(access.canAccessCase("missing","7",true));
+    }
+
+    @Test
+    public void missingRolePlaceholderNeverGrantsLabUnitAccess() {
+        var missing = new Role();
+        missing.setId("-1");
+        when(roles.getRoleByName(Constants.ROLE_VALIDATION)).thenReturn(missing);
+        assign("10", "-1");
+        assertFalse(access.hasLabUnitRole("7", "10", Constants.ROLE_VALIDATION));
     }
 }

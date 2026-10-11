@@ -11,6 +11,9 @@ import org.openelisglobal.sample.valueholder.Sample;
 
 public interface ReferralSetService {
 
+    org.openelisglobal.referral.valueholder.Referral createDraftForAnalysis(
+            org.openelisglobal.analysis.valueholder.Analysis analysis, ReferralItem item, String actor);
+
     void updateReferralSets(List<ReferralSet> referralSetList, List<Sample> modifiedSamples, Set<Sample> parentSamples,
             List<ReferralResult> removableReferralResults, String sysUserId);
 
