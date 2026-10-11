@@ -363,6 +363,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
       await page.keyboard.type("Keyboard qualification correction");
       const openAmendment = page.getByRole("button", {
         name: "Open amendment",
+        exact: true,
       });
       await tabTo(page, openAmendment);
       await page.keyboard.press("Enter");
@@ -372,6 +373,7 @@ test.describe("Microbiology keyboard-only workflow", () => {
 
       const releaseAmendment = page.getByRole("button", {
         name: "Release amended report",
+        exact: true,
       });
       await tabTo(page, releaseAmendment);
       await page.keyboard.press("Enter");

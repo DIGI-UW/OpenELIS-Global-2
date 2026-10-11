@@ -83,15 +83,22 @@ real Carbon controls and check payloads, read-only actions, acknowledgment reaso
 visible save failures and case-host refresh.
 
 Property-gated ISOLATE_WORKSPACE and RECEIVED_ISOLATE scenarios provide uniquely
-owned browser fixtures. Playwright journeys cover growth-to-pick-to-identify-to-
-referral with reload, plus sender mismatch acknowledgment. Both journeys passed
-on the source-built development stack. Older affected browser journeys and
-full local/GitHub validation on the final committed revision remain pending.
+owned case and media fixtures. Browser tests select each scenario's returned
+medium and test identifiers. Six affected journeys passed on the source-built
+application: culture/readings/subculture/Gram stain, growth-to-isolate referral
+with reload, received-isolate mismatch acknowledgment, minimal specimen referral,
+keyboard-only AST/report/amendment, and the MVP demo. The isolate referral journey
+checks that the card and document fit a 390-pixel viewport. Two affected WCAG scans
+also passed. Full local/GitHub validation on the final committed revision remains
+pending; these focused results are separate from complete CI.
 
 Focused checks passed: 20 isolate database tests; 59 culture, result-entry,
 permission, identification and readiness regressions; 28 schema, mapping,
 architecture, controller and history checks; 19 scenario-service tests; and
-68 affected component and browser-fixture helper tests.
+68 affected component and browser-fixture helper tests. Two additional lab-number
+preview tests reproduce undefined HTTP-response crashes before the guards and
+verify recovery afterward. The required Playwright lint passes; repository-wide
+source lint remains advisory, including the isolate loader state reset.
 Finalized-report scenario fixtures retain pre-existing unlinked isolates to test
 historical amendment compatibility. Normal growth-qualified creation is covered
 by the current API fixtures and the recorded isolate journey.
