@@ -252,3 +252,112 @@ it("requires a reason and valid confidence before submitting a versioned reident
     ),
   );
 });
+
+it("offers real growth cultures but excludes the automatic received-isolate row", async () => {
+  const service = api();
+  const received = {
+    id: "received-row",
+    containerIdentifier: "RECEIVED-1",
+    outcome: "GROWTH",
+    sourceSampleItemId: "s1",
+    receivedIsolate: true,
+  };
+  service.getCultures.mockResolvedValue([received]);
+  show(service);
+  expect(
+    await screen.findByRole("button", { name: "Pick isolate" }),
+  ).toBeDisabled();
+});
+
+it("never offers a received-isolate row in a mixed growth picker", async () => {
+  const service = api();
+  service.getCultures.mockResolvedValue([
+    {
+      id: "received-row",
+      containerIdentifier: "RECEIVED-1",
+      outcome: "GROWTH",
+      sourceSampleItemId: "s1",
+      receivedIsolate: true,
+    },
+    {
+      id: "r1",
+      containerIdentifier: "PLATE-1",
+      outcome: "GROWTH",
+      sourceSampleItemId: "s1",
+    },
+  ]);
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const picker = within(screen.getByRole("dialog")).getByLabelText(
+    "Source culture row",
+  );
+  expect(
+    within(picker).getByRole("option", { name: "PLATE-1" }),
+  ).toBeInTheDocument();
+  expect(
+    within(picker).queryByRole("option", { name: "RECEIVED-1" }),
+  ).not.toBeInTheDocument();
+});
+
+it("submits the shared specimen referral with only a receiving lab and scoped test", async () => {
+  const service = api([]);
+  service.getIsolateOptions.mockResolvedValue({
+    ...options,
+    organizations: [{ id: "lab1", value: "Reference facility" }],
+    tests: [
+      { id: "test1", name: "Confirmatory PCR", sampleTypeIds: ["specimen"] },
+    ],
+  });
+  service.referSpecimen = vi
+    .fn()
+    .mockResolvedValue({ isolates: [], referrals: [], referred: true });
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Refer specimen out" }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const fields = within(dialog);
+  fireEvent.change(fields.getByLabelText("Isolate or specimen item"), {
+    target: { value: "s1" },
+  });
+  fireEvent.change(
+    fields.getByLabelText("Requested referral or confirmatory test"),
+    { target: { value: "test1" } },
+  );
+  fireEvent.change(fields.getByRole("combobox", { name: "Reference lab" }), {
+    target: { value: "Reference facility" },
+  });
+  fireEvent.click(
+    await fields.findByRole("option", { name: "Reference facility" }),
+  );
+  expect(fields.getByRole("combobox", { name: "Reference lab" })).toHaveValue(
+    "Reference facility",
+  );
+  expect(fields.getByLabelText("Isolate or specimen item")).toHaveValue("s1");
+  expect(
+    fields.getByLabelText("Requested referral or confirmatory test"),
+  ).toHaveValue("test1");
+  expect(fields.getByRole("button", { name: "Save Referral" })).toBeEnabled();
+  fireEvent.click(fields.getByRole("button", { name: "Save Referral" }));
+  await waitFor(() =>
+    expect(service.referSpecimen).toHaveBeenCalledWith(
+      "c1",
+      expect.objectContaining({
+        sampleItemId: "s1",
+        testId: "test1",
+        referral: expect.objectContaining({
+          referredInstituteId: "lab1",
+          referralReasonId: "",
+          referredSendDate: "",
+          subcontractNotes: "",
+        }),
+      }),
+    ),
+  );
+  await waitFor(() =>
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument(),
+  );
+  expect(
+    screen.getByText(messages["label.results.history.event.REFERRAL"]),
+  ).toBeVisible();
+});

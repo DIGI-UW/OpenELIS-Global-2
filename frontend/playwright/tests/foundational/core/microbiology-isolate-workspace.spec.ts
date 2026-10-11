@@ -163,9 +163,23 @@ test("received isolate preserves sender identification and requires validator ac
   });
   await page
     .getByLabel("Testing section", { exact: true })
+    .selectOption("CULTURE");
+  const culture = page.locator('[data-testid^="culture-row-"]');
+  await expect(culture).toHaveCount(1, { timeout: LONG_TIMEOUT });
+  await expect(
+    culture.getByRole("button", { name: "Pick isolate", exact: true }),
+  ).toHaveCount(0);
+  await expect(
+    culture.getByRole("button", { name: "Edit positive time", exact: true }),
+  ).toHaveCount(0);
+  await page
+    .getByLabel("Testing section", { exact: true })
     .selectOption("ISOLATES");
   const isolate = page.locator('[data-testid^="isolate-"]');
   await expect(isolate).toHaveCount(1, { timeout: LONG_TIMEOUT });
+  await expect(
+    page.getByRole("button", { name: "Pick isolate", exact: true }),
+  ).toBeDisabled();
   const dialog = page.getByRole("dialog");
   await expect(
     isolate.getByText("Growth (received isolate)", { exact: true }),
@@ -215,4 +229,50 @@ test("received isolate preserves sender identification and requires validator ac
   await expect(isolate.getByText(/Mismatch acknowledged by/)).toBeVisible({
     timeout: LONG_TIMEOUT,
   });
+});
+
+test("refers the original specimen using only the shared form's required receiving laboratory", async ({
+  page,
+}) => {
+  const seeded = await seedMicrobiologyIsolateWorkspace(page);
+  const receivingLab = `UAT reference ${seeded.accessionNumber.slice("UATMICRO".length)}`;
+  await page.goto(`/Microbiology/cases/${seeded.caseId}`, {
+    waitUntil: "domcontentloaded",
+  });
+  await page
+    .getByLabel("Testing section", { exact: true })
+    .selectOption("ISOLATES");
+  await page
+    .getByRole("button", { name: "Refer specimen out", exact: true })
+    .click();
+  const dialog = page.getByRole("dialog");
+  await dialog
+    .getByLabel("Isolate or specimen item", { exact: true })
+    .selectOption(seeded.sampleItemId);
+  await dialog
+    .getByLabel("Requested referral or confirmatory test", { exact: true })
+    .selectOption(seeded.testId!);
+  await choose(
+    dialog.getByRole("combobox", { name: "Reference lab", exact: true }),
+    receivingLab,
+  );
+  await dialog
+    .getByRole("button", { name: "Save Referral", exact: true })
+    .click();
+  await expect(dialog).toHaveCount(0, { timeout: LONG_TIMEOUT });
+  const table = page.getByRole("table", {
+    name: "Isolate and specimen referrals",
+    exact: true,
+  });
+  await expect(
+    table.getByRole("cell", { name: receivingLab, exact: true }),
+  ).toBeVisible();
+  await page.reload({ waitUntil: "domcontentloaded" });
+  await page
+    .getByLabel("Testing section", { exact: true })
+    .selectOption("ISOLATES");
+  await expect(
+    table.getByRole("cell", { name: receivingLab, exact: true }),
+  ).toBeVisible({ timeout: LONG_TIMEOUT });
+  await expect(page.locator('[data-testid^="isolate-"]')).toHaveCount(0);
 });

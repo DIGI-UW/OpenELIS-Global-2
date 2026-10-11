@@ -362,7 +362,7 @@ test.describe("OGC-782 microbiology MVP", () => {
         page.getByRole("heading", { name: "Patient History" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       const releasedResultRow = page.getByRole("row", {
-        name: /UAT microbiology culture.*ISO-1 — Escherichia coli \(UAT\)/,
+        name: /UAT microbiology culture.*ISO-1: Escherichia coli \(UAT\)/,
       });
       await expect(releasedResultRow).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(releasedResultRow).toContainText("Ciprofloxacin (UAT) R");

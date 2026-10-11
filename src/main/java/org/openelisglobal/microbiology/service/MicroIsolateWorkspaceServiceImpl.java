@@ -151,6 +151,8 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
                 .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_ISOLATE_CULTURE_REQUIRED"));
         if (!"GROWTH".equals(row.getOutcome()))
             bad("GROWTH_REQUIRED");
+        if ("RECEIVED_ISOLATE".equals(row.getPositiveSource()))
+            bad("RECEIVED_SOURCE");
         source(caseId, row.getSourceSampleItemId());
         text(r.gramStain, 255, false);
         text(r.colonyMorphology, 255, false);
@@ -289,13 +291,20 @@ public class MicroIsolateWorkspaceServiceImpl implements MicroIsolateWorkspaceSe
         var receivingLab = organizations.get(item.getReferredInstituteId());
         if (receivingLab == null || !"Y".equals(receivingLab.getIsActive()))
             bad("ORGANIZATION");
-        if (item.getReferralReasonId() == null || reasons.get(item.getReferralReasonId()) == null)
+        item.setReferralReasonId(trim(item.getReferralReasonId()));
+        if (item.getReferralReasonId() != null && reasons.getMatch("id", item.getReferralReasonId()).isEmpty())
             bad("REFERRAL_REASON");
-        text(item.getSubcontractNotes(), 2000, true);
-        var sent = org.openelisglobal.common.util.DateUtil
-                .convertStringDateToTruncatedTimestamp(item.getReferredSendDate());
-        if (sent == null || sent.after(MicroCaseServiceImpl.now()))
-            bad("REFERRAL_DATE");
+        text(item.getSubcontractNotes(), 2000, false);
+        item.setReferredSendDate(trim(item.getReferredSendDate()));
+        if (item.getReferredSendDate() != null) {
+            var format = new java.text.SimpleDateFormat(org.openelisglobal.common.util.DateUtil.getDateFormat());
+            format.setLenient(false);
+            var position = new java.text.ParsePosition(0);
+            var sent = format.parse(item.getReferredSendDate(), position);
+            if (sent == null || position.getIndex() != item.getReferredSendDate().length()
+                    || sent.after(MicroCaseServiceImpl.now()))
+                bad("REFERRAL_DATE");
+        }
         text(item.getAgreementReference(), 100, false);
         text(item.getCocContactName(), 100, false);
         text(item.getCocContactPhone(), 50, false);

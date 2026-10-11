@@ -36,6 +36,8 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
     @Autowired
     private MicroReceivedIsolateService receivedService;
     @Autowired
+    private MicroCultureService cultureService;
+    @Autowired
     private MicroCaseDAO cases;
     @Autowired
     private MicroIsolateDAO isolates;
@@ -618,6 +620,154 @@ public class MicroIsolateWorkspaceIntegrationTest extends BaseWebContextSensitiv
         assertEquals(baseline.mismatchAcknowledgedBy(), restored.mismatchAcknowledgedBy());
         assertEquals(baseline.mismatchAcknowledgedAt(), restored.mismatchAcknowledgedAt());
         assertFalse(readiness.getReadiness(c.getId()).blockers.contains("REPORTED_IDENTIFICATION_MISMATCH"));
+    }
+
+    @Test
+    public void receivedGrowthCannotBePickedIntoAnotherIsolate() {
+        var row = receiveCulture();
+        int activityCount = activities.getAllMatching("caseId", c.getId()).size();
+        var request = new MicroIsolateWorkspaceRequestForm();
+        request.cultureId = row.getId();
+        request.gramStain = "Gram negative rods";
+        request.significance = "SIGNIFICANT";
+
+        assertEquals("MICROBIOLOGY_ISOLATE_RECEIVED_SOURCE",
+                assertThrows(IllegalArgumentException.class, () -> workspace.pick(c.getId(), request, writer))
+                        .getMessage());
+
+        var form = reload();
+        assertEquals(1, form.isolates.size());
+        assertEquals("ISO-1", form.isolates.getFirst().label());
+        assertTrue(form.isolates.getFirst().received());
+        assertEquals(1, isolates.getAllMatching("caseId", c.getId()).size());
+        assertEquals(activityCount, activities.getAllMatching("caseId", c.getId()).size());
+    }
+
+    @Test
+    public void receivedCultureRejectsActionsWithoutChangingItsOriginOrHistory() {
+        var row = receiveCulture();
+        Timestamp receivedAt = row.getOccurredAt();
+        int activityCount = activities.getAllMatching("caseId", c.getId()).size();
+        var choices = cultureService.getCatalog();
+        var request = new MicroCultureRequestForm();
+        request.positiveAt = receivedAt;
+        request.inoculatedAt = receivedAt;
+        request.outcome = "GROWTH";
+        request.signal = "Would incorrectly propose a negative received culture";
+        request.readingId = choices.readings.getFirst().getId();
+        request.extendBy = BigDecimal.ONE;
+        request.unit = "HOURS";
+        request.reasonId = choices.extensionReasons.getFirst().getId();
+
+        for (String action : List.of("positive-time", "inoculated-time", "reading", "extension", "negative-proposal",
+                "outcome")) {
+            assertEquals("MICROBIOLOGY_CULTURE_RECEIVED_ISOLATE_LOCKED", assertThrows(IllegalArgumentException.class,
+                    () -> cultureService.act(c.getId(), row.getId(), action, request, writer)).getMessage());
+        }
+
+        assertTrue(reload().isolates.getFirst().received());
+        var stored = cultures.getRows(c.getId()).getFirst();
+        assertEquals("RECEIVED_ISOLATE", stored.getPositiveSource());
+        assertEquals("GROWTH", stored.getOutcome());
+        assertEquals(receivedAt, stored.getOccurredAt());
+        assertEquals(receivedAt, stored.getOutcomeAt());
+        assertNull(stored.getPositiveAt());
+        assertTrue(stored.getReadings().isEmpty());
+        assertTrue(stored.getExtensions().isEmpty());
+        assertTrue(stored.getProposals().isEmpty());
+        assertEquals(activityCount, activities.getAllMatching("caseId", c.getId()).size());
+    }
+
+    private MicroCaseInoculation receiveCulture() {
+        source = sampleItems.get(source.getId());
+        source.setTypeOfSample(isolateType);
+        sampleItems.update(source);
+        receivedService.receive(c.getId(), source, writer);
+        reload();
+        return cultures.getRows(c.getId()).getFirst();
+    }
+
+    @Test
+    public void minimalReferralsPersistWithoutOptionalReasonDateOrTransportNotes() {
+        var request = minimalReferralRequest();
+        for (boolean blankFields : List.of(false, true)) {
+            request.referral.setReferralReasonId(blankFields ? " " : null);
+            request.referral.setReferredSendDate(blankFields ? " " : null);
+            request.referral.setSubcontractNotes(blankFields ? "" : null);
+            workspace.act(c.getId(), pick(), "referral", request, writer);
+            reload();
+        }
+
+        var form = reload();
+        assertTrue(form.referred);
+        var children = form.isolates.stream().map(MicroIsolateWorkspaceForm.Isolate::sampleItemId).toList();
+        var linked = referrals.getWorkspaceReferrals(children);
+        assertEquals(2, linked.size());
+        assertEquals(new HashSet<>(children),
+                new HashSet<>(linked.stream().map(r -> r.getAnalysis().getSampleItem().getId()).toList()));
+        for (var referral : linked) {
+            assertEquals(request.referral.getReferredInstituteId(), referral.getOrganization().getId());
+            assertEquals("DRAFT", referral.getStatus().name());
+            assertNull(referral.getReferralReasonId());
+            assertNull(referral.getSentDate());
+            assertTrue(referral.getSubcontract().getSubcontractNotes() == null
+                    || referral.getSubcontract().getSubcontractNotes().isBlank());
+        }
+    }
+
+    @Test
+    public void suppliedReferralReasonDateAndTransportNotesStillRequireValidValues() {
+        String id = pick();
+        var request = minimalReferralRequest();
+        request.referral.setReferralReasonId("999999999");
+        assertEquals("MICROBIOLOGY_ISOLATE_REFERRAL_REASON", assertThrows(IllegalArgumentException.class,
+                () -> workspace.act(c.getId(), id, "referral", request, writer)).getMessage());
+
+        var reason = new org.openelisglobal.referral.valueholder.ReferralReason();
+        reason.setName("M5 " + UUID.randomUUID().toString().substring(0, 12));
+        reason.setSysUserId(writer);
+        reasons.insert(reason);
+        request.referral.setReferralReasonId(reason.getId());
+        request.referral.setSubcontractNotes("Transport at room temperature");
+        String today = org.openelisglobal.common.util.DateUtil.getCurrentDateAsText();
+        String future = org.openelisglobal.common.util.DateUtil
+                .formatDateAsText(Date.from(Instant.now().plusSeconds(172800)));
+        for (String date : List.of("not a date", "99/99/2000", today + " trailing text", future)) {
+            request.referral.setReferredSendDate(date);
+            assertEquals("MICROBIOLOGY_ISOLATE_REFERRAL_DATE", assertThrows(IllegalArgumentException.class,
+                    () -> workspace.act(c.getId(), id, "referral", request, writer)).getMessage());
+        }
+        request.referral.setReferredSendDate(today);
+        request.referral.setSubcontractNotes("x".repeat(2001));
+        assertEquals("MICROBIOLOGY_ISOLATE_TEXT", assertThrows(IllegalArgumentException.class,
+                () -> workspace.act(c.getId(), id, "referral", request, writer)).getMessage());
+        assertTrue(reload().referrals.isEmpty());
+        assertTrue(
+                referrals.getWorkspaceReferrals(cultures.getSources(c.getId()).stream().map(SampleItem::getId).toList())
+                        .isEmpty());
+    }
+
+    private MicroIsolateWorkspaceRequestForm minimalReferralRequest() {
+        var test = fixtures.createCatalogTest();
+        test.setTestSection(units.get(c.getLabUnitId()));
+        tests.update(test);
+        var mapping = new org.openelisglobal.typeofsample.valueholder.TypeOfSampleTest();
+        mapping.setTypeOfSampleId(isolateType.getId());
+        mapping.setTestId(test.getId());
+        mapping.setSysUserId(writer);
+        sampleTests.insert(mapping);
+        var facility = new org.openelisglobal.organization.valueholder.Organization();
+        facility.setOrganizationName("M5 optional referral " + UUID.randomUUID());
+        facility.setIsActive("Y");
+        facility.setMlsSentinelLabFlag("N");
+        facility.setSysUserId(writer);
+        organizations.insert(facility);
+        var request = new MicroIsolateWorkspaceRequestForm();
+        request.sampleTypeId = isolateType.getId();
+        request.testId = test.getId();
+        request.referral = new ReferralItem();
+        request.referral.setReferredInstituteId(facility.getId());
+        return request;
     }
 
     private MicroIsolateIdentificationEvent restorationEvent(String isolateId, String amendmentId, String id,
