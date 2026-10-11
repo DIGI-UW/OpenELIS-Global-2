@@ -112,6 +112,14 @@ The database suite covers minimal drafts and preserves exact specimen links.
 Removing the sample-item association condition makes the two-isolate referral
 regression fail, and restoring it makes the full isolate suite pass.
 
-The optional repository-wide TypeScript check reports 2,524 errors on both the
-parent revision and this milestone; no additional errors were found in the new
-isolate browser specification. This is recorded separately from required CI.
+The complete backend run exposed three fixture gaps: a missing case lab unit and
+validator assignment, a retired isolate API call, and reliance on culture choices
+removed by earlier dictionary fixtures. The repaired tests use explicit access,
+the case-scoped API, and their own coded choices. All 55 tests passed when the
+dictionary-replacement tests ran before the three affected microbiology classes.
+
+The optional repository-wide TypeScript check reports 2,522 errors versus 2,524
+on the parent revision. The lab-number response guards remove two existing
+diagnostics; the new preview tests use JSX like the component they exercise.
+No additional errors were found in the new isolate browser specification.
+This is recorded separately from required CI.

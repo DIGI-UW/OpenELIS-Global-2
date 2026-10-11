@@ -17,11 +17,10 @@ vi.mock("../../utils/Utils", async () => ({
   getFromOpenElisServer: vi.fn(),
 }));
 
-type Preview = { status: boolean; body: string };
 const currentPreviewUrl =
   "/rest/SampleEntryGenerateScanProvider?noIncrement=true";
 const legacyPreviewUrl = `${currentPreviewUrl}&format=SITEYEARNUM`;
-let previewCallbacks: Map<string, (response: Preview | undefined) => void>;
+let previewCallbacks;
 
 const renderForm = () =>
   render(
@@ -51,7 +50,7 @@ const renderForm = () =>
     </MemoryRouter>,
   );
 
-const deliverPreview = (url: string, response: Preview | undefined) => {
+const deliverPreview = (url, response) => {
   const callback = previewCallbacks.get(url);
   if (!callback) throw new Error(`No pending preview request: ${url}`);
   act(() => callback(response));
@@ -61,21 +60,17 @@ describe("Lab number preview failures", () => {
   beforeEach(() => {
     previewCallbacks = new Map();
     vi.mocked(getFromOpenElisServer).mockReset();
-    vi.mocked(getFromOpenElisServer).mockImplementation(
-      <T,>(url: string, callback: (response: T | undefined) => void) => {
-        if (url === "/rest/labnumbermanagement") {
-          callback({
-            labNumberType: "ALPHANUM",
-            usePrefix: false,
-            alphanumPrefix: "",
-          } as T);
-        } else {
-          previewCallbacks.set(url, (response) =>
-            callback(response as T | undefined),
-          );
-        }
-      },
-    );
+    vi.mocked(getFromOpenElisServer).mockImplementation((url, callback) => {
+      if (url === "/rest/labnumbermanagement") {
+        callback({
+          labNumberType: "ALPHANUM",
+          usePrefix: false,
+          alphanumPrefix: "",
+        });
+      } else {
+        previewCallbacks.set(url, (response) => callback(response));
+      }
+    });
   });
 
   // catchesInversion: removing the current-preview guard throws on the

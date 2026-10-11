@@ -210,15 +210,21 @@ public class MicroCaseWorkspaceIntegrationTest extends BaseWebContextSensitiveTe
         em.persist(isolate);
         em.flush();
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .get("/rest/microbiology/isolates/" + isolate.getId() + "/identification-history")
+                .get("/rest/microbiology/cases/" + hidden.getId() + "/isolates")
                 .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor()))
-                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk());
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isOk())
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.isolates[0].id").value(isolate.getId()))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.isolates[0].canIdentify").value(false))
+                .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers
+                        .jsonPath("$.isolates[0].canReidentify").value(false));
         mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders
-                .put("/rest/microbiology/isolates/" + isolate.getId() + "/identification")
+                .post("/rest/microbiology/cases/" + hidden.getId() + "/isolates/" + isolate.getId() + "/identify")
                 .requestAttr(org.openelisglobal.common.action.IActionConstants.USER_SESSION_DATA, sessionActor())
-                .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                .content("{\"preliminaryOrganismText\":\"denied\"}"))
+                .contentType(org.springframework.http.MediaType.APPLICATION_JSON).content("{}"))
                 .andExpect(org.springframework.test.web.servlet.result.MockMvcResultMatchers.status().isForbidden());
+        assertNull(em.find(MicroIsolate.class, isolate.getId()).getOrganismId());
     }
 
     @Test
