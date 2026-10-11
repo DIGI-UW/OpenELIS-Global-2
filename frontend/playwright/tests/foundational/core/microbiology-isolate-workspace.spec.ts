@@ -64,7 +64,7 @@ test("picks a growth isolate, retains identification history and refers its dema
     .getByRole("button", { name: "Identify organism", exact: true })
     .click();
   await choose(
-    dialog.getByLabel("Organism", { exact: true }),
+    dialog.getByRole("combobox", { name: "Organism", exact: true }),
     "Escherichia coli",
   );
   await dialog
@@ -104,16 +104,21 @@ test("picks a growth isolate, retains identification history and refers its dema
     .getByLabel("Requested referral or confirmatory test")
     .selectOption(seeded.followUpTestId!);
   await choose(
-    dialog.getByLabel("Reference lab", { exact: true }),
+    dialog.getByRole("combobox", { name: "Reference lab", exact: true }),
     `UAT reference ${seeded.accessionNumber.slice("UATMICRO".length)}`,
   );
   await dialog
     .getByLabel("Reason", { exact: true })
     .selectOption(seeded.referralReasonId!);
+  const config = await (
+    await page.request.get("/api/OpenELIS-Global/rest/configuration-properties")
+  ).json();
   const [year, month, day] = seeded.collectionLocalDate!.split("-");
-  await dialog
-    .getByLabel("Handoff Date", { exact: true })
-    .fill(`${month}/${day}/${year}`);
+  const handoffDate =
+    config.DEFAULT_DATE_LOCALE === "fr-FR"
+      ? `${day}/${month}/${year}`
+      : `${month}/${day}/${year}`;
+  await dialog.getByLabel("Handoff Date", { exact: true }).fill(handoffDate);
   await dialog.getByLabel("Handoff Time", { exact: true }).fill("10:30");
   await dialog
     .getByLabel("Notes", { exact: true })
@@ -169,7 +174,7 @@ test("received isolate preserves sender identification and requires validator ac
     .getByRole("button", { name: "Record sender identification", exact: true })
     .click();
   await choose(
-    dialog.getByLabel("Sending organization", { exact: true }),
+    dialog.getByRole("combobox", { name: "Sending organization", exact: true }),
     `UAT reference ${seeded.accessionNumber.slice("UATMICRO".length)}`,
   );
   await dialog
@@ -181,7 +186,7 @@ test("received isolate preserves sender identification and requires validator ac
     .getByRole("button", { name: "Identify organism", exact: true })
     .click();
   await choose(
-    dialog.getByLabel("Organism", { exact: true }),
+    dialog.getByRole("combobox", { name: "Organism", exact: true }),
     "Escherichia coli",
   );
   await dialog

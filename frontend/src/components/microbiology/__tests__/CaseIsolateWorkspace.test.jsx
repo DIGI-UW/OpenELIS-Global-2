@@ -169,3 +169,86 @@ it("a validator must provide a reason to acknowledge the sender mismatch", async
     ),
   );
 });
+
+it("keeps a failed pick open and shows the error inside the active dialog", async () => {
+  const service = api([]);
+  service.pickIsolate.mockRejectedValue(new Error("Save failed"));
+  show(service);
+  fireEvent.click(await screen.findByRole("button", { name: "Pick isolate" }));
+  const dialog = screen.getByRole("dialog");
+  fireEvent.change(within(dialog).getByLabelText("Source culture row"), {
+    target: { value: "r1" },
+  });
+  fireEvent.click(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  );
+  expect(
+    await within(dialog).findByText(
+      messages["microbiology.isolateWorkspace.saveError"],
+    ),
+  ).toBeVisible();
+  expect(within(dialog).getByLabelText("Source culture row")).toHaveValue("r1");
+  expect(
+    within(dialog).getByRole("button", { name: "Save", exact: true }),
+  ).toBeEnabled();
+});
+
+it("requires a reason and valid confidence before submitting a versioned reidentification", async () => {
+  const service = api([
+    {
+      ...isolate,
+      organismId: "o1",
+      status: "FINAL",
+      method: "Biochemical identification",
+      confidence: 98,
+      canIdentify: false,
+      canReidentify: true,
+    },
+  ]);
+  show(service);
+  fireEvent.click(
+    await screen.findByRole("button", { name: "Reidentify", exact: true }),
+  );
+  const dialog = screen.getByRole("dialog");
+  const fields = within(dialog);
+  const save = fields.getByRole("button", { name: "Save", exact: true });
+  const reason = fields.getByLabelText("Re-identification reason");
+  expect(save).toBeDisabled();
+  fireEvent.change(reason, { target: { value: "   " } });
+  expect(save).toBeDisabled();
+  fireEvent.change(reason, {
+    target: { value: "Corrected after confirmatory panel" },
+  });
+  fireEvent.change(fields.getByLabelText("ID confidence (%)"), {
+    target: { value: "101" },
+  });
+  expect(save).toBeDisabled();
+  fireEvent.change(fields.getByLabelText("ID confidence (%)"), {
+    target: { value: "99.5" },
+  });
+  fireEvent.change(fields.getByLabelText("Clinical significance"), {
+    target: { value: "COLONIZER" },
+  });
+  fireEvent.change(fields.getByLabelText("Identification performed at"), {
+    target: { value: "2026-01-15T09:30" },
+  });
+  expect(save).toBeEnabled();
+  fireEvent.click(save);
+  await waitFor(() =>
+    expect(service.isolateAction).toHaveBeenCalledWith(
+      "c1",
+      "i1",
+      "reidentify",
+      expect.objectContaining({
+        organismId: "o1",
+        identificationStatus: "FINAL",
+        identificationMethod: "m1",
+        confidence: 99.5,
+        significance: "COLONIZER",
+        identifiedAt: new Date("2026-01-15T09:30").toISOString(),
+        version: "v1",
+        reason: "Corrected after confirmatory panel",
+      }),
+    ),
+  );
+});

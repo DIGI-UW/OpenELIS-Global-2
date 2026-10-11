@@ -533,6 +533,9 @@ public class MicrobiologyUatScenarioService {
 
     private void ensureInventoryTraceability(Test test, String performedBy) {
         InventoryItem media = getOrCreateInventoryItem(UAT_MEDIA_NAME, ItemType.REAGENT, "plate", performedBy);
+        media.setMicrobiologyMedium(true);
+        media.setTrackLots(true);
+        inventoryItemService.update(media);
         InventoryItem astCard = getOrCreateInventoryItem(UAT_AST_CARD_NAME, ItemType.CARTRIDGE, "card", performedBy);
         getOrCreateReagentLink(test, media, "PRIMARY", "plate", performedBy);
         getOrCreateReagentLink(test, astCard, "SECONDARY", "card", performedBy);

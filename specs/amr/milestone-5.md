@@ -65,7 +65,10 @@ new COLONIZER rows conflict with the preceding constraint; it does not silently
 rewrite those observations.
 
 The obsolete unlinked isolate mutation controller is replaced by these
-case-scoped DTO routes. Archived workbench cleanup remains tracked separately.
+case-scoped DTO routes. Older case-section links host the same isolate workspace
+and preserve their critical-notification shortcut; their fixtures now create
+formal growth culture rows through the current APIs. Remaining archived
+workbench cleanup stays tracked separately.
 
 ## Validation
 
@@ -75,17 +78,24 @@ append-only history, sender mismatch/readiness, official amendment restoration,
 received-isolate routing, detached eager access and exact referral associations.
 The migration test upgrades retained isolate/history rows, verifies that an
 incompatible COLONIZER downgrade leaves the schema and record intact, rolls back
-structural additions with compatible data and reapplies them. Component tests use real Carbon controls and check
-payloads, read-only actions, and required acknowledgment reasons.
+structural additions with compatible data and reapplies them. Component tests use
+real Carbon controls and check payloads, read-only actions, acknowledgment reasons,
+visible save failures and case-host refresh.
 
 Property-gated ISOLATE_WORKSPACE and RECEIVED_ISOLATE scenarios provide uniquely
 owned browser fixtures. Playwright journeys cover growth-to-pick-to-identify-to-
-referral with reload, plus sender mismatch acknowledgment. Browser and full local/
-GitHub validation are pending until their results are recorded.
+referral with reload, plus sender mismatch acknowledgment. Both journeys passed
+on the source-built development stack. Older affected browser journeys and
+full local/GitHub validation on the final committed revision remain pending.
 
 Focused checks passed: 16 isolate database tests; 59 culture, result-entry,
 permission, identification and readiness regressions; 28 schema, mapping,
-architecture, controller and history checks; and 31 affected component tests.
+architecture, controller and history checks; 19 scenario-service tests; and
+64 affected component and browser-fixture helper tests.
+Finalized-report scenario fixtures retain pre-existing unlinked isolates to test
+historical amendment compatibility. Normal growth-qualified creation is covered
+by the current API fixtures and the recorded isolate journey.
+
 Removing the sample-item association condition makes the two-isolate referral
 regression fail, and restoring it makes the full isolate suite pass.
 

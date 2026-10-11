@@ -323,6 +323,148 @@ const hasAllAntibiotics = (
     run.readings.some((reading) => reading.antibioticId === antibiotic.id),
   );
 
+export async function ensureWorkspaceGrowthCulture(
+  page: Page,
+  seeded: SeededMicrobiologyCase,
+) {
+  const root = `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/cultures`;
+  const rows = await requireJsonResponse<{ id: string; outcome: string }[]>(
+    "Load growth sources",
+    await page.request.get(root),
+  );
+  const growth = rows.find((row) => row.outcome === "GROWTH");
+  if (growth) return growth.id;
+  const options = await requireJsonResponse<{
+    media: {
+      id: number;
+      name: string;
+      lots: { id: number; lotNumber: string }[];
+    }[];
+    atmospheres: { id: string; value: string }[];
+  }>("Load culture choices", await page.request.get(`${root}/options`));
+  const medium = options.media.find((m) =>
+    m.lots.some((lot) => lot.lotNumber === "UAT-MICRO-MEDIA-FEFO"),
+  );
+  const lot = medium?.lots.find((l) => l.lotNumber === "UAT-MICRO-MEDIA-FEFO");
+  const atmosphere = options.atmospheres.find((a) => a.value === "Aerobic");
+  if (!medium || !lot || !atmosphere || !seeded.collectionDate)
+    throw new Error("Growth-source fixture catalog incomplete");
+  const headers = { "X-CSRF-Token": await getCsrfToken(page) };
+  const created = await requireJsonResponse<
+    { id: string; containerIdentifier: string }[]
+  >(
+    "Inoculate fixture culture",
+    await page.request.post(root, {
+      headers,
+      data: {
+        sourceSampleItemId: seeded.sampleItemId,
+        containerIdentifier: "AST-FIXTURE-GROWTH",
+        mediumItemId: medium.id,
+        lotId: lot.id,
+        atmosphereId: atmosphere.id,
+        duration: 24,
+        durationUnit: "HOURS",
+        inoculatedAt: Date.parse(seeded.collectionDate),
+      },
+    }),
+  );
+  const row = created.find(
+    (r) => r.containerIdentifier === "AST-FIXTURE-GROWTH",
+  );
+  if (!row) throw new Error("Fixture culture missing after inoculation");
+  await requireJsonResponse(
+    "Record fixture growth",
+    await page.request.post(`${root}/${row.id}/outcome`, {
+      headers,
+      data: { outcome: "GROWTH" },
+    }),
+  );
+  return row.id;
+}
+
+async function createWorkspaceIsolate(
+  page: Page,
+  seeded: SeededMicrobiologyCase,
+  colonyMorphology: string,
+  significance = "CLINICALLY_SIGNIFICANT",
+): Promise<MicrobiologyIsolateFixture> {
+  const cultureId = await ensureWorkspaceGrowthCulture(page, seeded);
+  const workspace = await requireJsonResponse<{
+    isolates: {
+      id: string;
+      label: string;
+      gramStain: string;
+      colonyMorphology: string;
+      significance: string;
+    }[];
+  }>(
+    "Pick fixture isolate",
+    await page.request.post(
+      `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/isolates`,
+      {
+        headers: { "X-CSRF-Token": await getCsrfToken(page) },
+        data: {
+          cultureId,
+          gramStain: "Gram negative rods",
+          colonyMorphology,
+          significance:
+            significance === "CLINICALLY_SIGNIFICANT"
+              ? "SIGNIFICANT"
+              : significance,
+        },
+      },
+    ),
+  );
+  const isolate = workspace.isolates.find(
+    (i) => i.colonyMorphology === colonyMorphology,
+  );
+  if (!isolate) throw new Error("Fixture isolate missing after pick");
+  return {
+    ...isolate,
+    isolateLabel: isolate.label,
+    organismId: "",
+    identificationStatus: "PRELIMINARY",
+  };
+}
+
+async function identifyWorkspaceIsolate(
+  page: Page,
+  seeded: SeededMicrobiologyCase,
+  isolateId: string,
+  organismId: string,
+  significance = "CLINICALLY_SIGNIFICANT",
+) {
+  const root = `${API_PREFIX}/rest/microbiology/cases/${seeded.caseId}/isolates`;
+  const workspace = await requireJsonResponse<{
+    isolates: { id: string; version: string; organismId: string }[];
+  }>("Load fixture identification", await page.request.get(root));
+  const isolate = workspace.isolates.find((i) => i.id === isolateId);
+  if (!isolate || !seeded.methodId || !seeded.collectionDate)
+    throw new Error("Fixture identification data missing");
+  await requireJsonResponse(
+    "Identify fixture isolate",
+    await page.request.post(
+      `${root}/${isolateId}/${isolate.organismId ? "reidentify" : "identify"}`,
+      {
+        headers: { "X-CSRF-Token": await getCsrfToken(page) },
+        data: {
+          organismId,
+          identificationStatus: "FINAL",
+          identificationMethod: seeded.methodId,
+          confidence: 99.5,
+          identifiedAt: Date.parse(seeded.collectionDate),
+          significance:
+            significance === "CLINICALLY_SIGNIFICANT"
+              ? "SIGNIFICANT"
+              : significance,
+          version: isolate.version,
+          reason: "Prepare reviewed AST fixture",
+        },
+      },
+    ),
+  );
+}
+
 async function ensureReviewedAstIsolate(
   page: Page,
   seeded: SeededMicrobiologyReferenceAdmin,
@@ -336,40 +478,23 @@ async function ensureReviewedAstIsolate(
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
   const isolate =
     existing ||
-    (await requireJsonResponse<MicrobiologyIsolateFixture>(
-      `Create ${isolateLabel}`,
-      await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
-        headers,
-        data: {
-          caseId: seeded.caseId,
-          isolateLabel,
-          gramStain: "Gram negative rods",
-          colonyMorphology: "Lactose fermenting colonies",
-          significance,
-        },
-      }),
+    (await createWorkspaceIsolate(
+      page,
+      seeded,
+      `Lactose fermenting colonies (${isolateLabel})`,
+      significance,
     ));
   if (
     isolate.organismId !== organismId ||
     isolate.identificationStatus !== "CONFIRMED" ||
     isolate.significance !== significance
   ) {
-    await requireJsonResponse(
-      `Confirm ${isolateLabel}`,
-      await page.request.put(
-        `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
-        {
-          headers,
-          data: {
-            organismId,
-            preliminaryOrganismText: organismText,
-            significance,
-            identificationStatus: "CONFIRMED",
-            identificationMethod: "MALDI_TOF",
-            identificationConfidence: 99.5,
-          },
-        },
-      ),
+    await identifyWorkspaceIsolate(
+      page,
+      seeded,
+      isolate.id,
+      organismId,
+      significance,
     );
   }
 
@@ -518,10 +643,10 @@ async function seedMicrobiologyWhonetExportScenario(
     ),
   );
   const mappedExisting = caseDetail.isolates.find(
-    (isolate) => isolate.isolateLabel === "WHONET-MAPPED",
+    (isolate) => isolate.organismId === reference.organismId,
   );
   const unmappedExisting = caseDetail.isolates.find(
-    (isolate) => isolate.isolateLabel === "WHONET-UNMAPPED",
+    (isolate) => isolate.organismId === reference.unmappedOrganismId,
   );
 
   if (
@@ -723,37 +848,12 @@ async function prepareMicrobiologyAstCase(
   }
   const headers = { "X-CSRF-Token": await getCsrfToken(page) };
 
-  const isolate = await requireJsonResponse<{ id: string }>(
-    "Create microbiology isolate",
-    await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
-      headers,
-      data: {
-        caseId: seeded.caseId,
-        isolateLabel: "ISO-1",
-        gramStain: "Gram negative rods",
-        colonyMorphology: "Synthetic lactose-fermenting colonies",
-        preliminaryOrganismText: "Escherichia coli",
-        significance: "CLINICALLY_SIGNIFICANT",
-      },
-    }),
+  const isolate = await createWorkspaceIsolate(
+    page,
+    seeded,
+    "Synthetic lactose-fermenting colonies",
   );
-  await requireJsonResponse(
-    "Confirm microbiology isolate",
-    await page.request.put(
-      `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
-      {
-        headers,
-        data: {
-          organismId: seeded.organismId,
-          preliminaryOrganismText: "Escherichia coli",
-          significance: "CLINICALLY_SIGNIFICANT",
-          identificationStatus: "CONFIRMED",
-          identificationMethod: "MALDI_TOF",
-          identificationConfidence: 99.5,
-        },
-      },
-    ),
-  );
+  await identifyWorkspaceIsolate(page, seeded, isolate.id, seeded.organismId);
 
   const [panels, standards, antibiotics] = await Promise.all([
     requireJsonResponse<MicrobiologyReferenceOption[]>(
@@ -1032,35 +1132,16 @@ export async function seedDenseMicrobiologyCase(
   const isolateIds: string[] = [];
   let astReadingCount = 0;
   for (let isolateIndex = 1; isolateIndex <= 5; isolateIndex += 1) {
-    const isolate = await requireJsonResponse<{ id: string }>(
-      "Create dense-case isolate",
-      await page.request.post(`${API_PREFIX}/rest/microbiology/isolates`, {
-        headers,
-        data: {
-          caseId: seeded.caseId,
-          isolateLabel: `QISO-${isolateIndex}`,
-          gramStain: "Gram negative rods",
-          colonyMorphology: `Qualification morphology ${isolateIndex}`,
-          significance: "CLINICALLY_SIGNIFICANT",
-        },
-      }),
+    const isolate = await createWorkspaceIsolate(
+      page,
+      seeded,
+      `Qualification morphology ${isolateIndex}`,
     );
-    await requireJsonResponse(
-      "Identify dense-case isolate",
-      await page.request.put(
-        `${API_PREFIX}/rest/microbiology/isolates/${isolate.id}/identification`,
-        {
-          headers,
-          data: {
-            organismId: seeded.organismId,
-            preliminaryOrganismText: `Qualification organism ${isolateIndex}`,
-            significance: "CLINICALLY_SIGNIFICANT",
-            identificationStatus: "CONFIRMED",
-            identificationMethod: "MALDI_TOF",
-            identificationConfidence: 99.5,
-          },
-        },
-      ),
+    await identifyWorkspaceIsolate(
+      page,
+      seeded,
+      isolate.id,
+      seeded.organismId!,
     );
     isolateIds.push(isolate.id);
     for (let runIndex = 0; runIndex < 8; runIndex += 1) {
