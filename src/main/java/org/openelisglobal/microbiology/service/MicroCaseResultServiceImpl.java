@@ -46,8 +46,6 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
     private org.openelisglobal.typeofsample.service.TypeOfSamplePanelService samplePanels;
     @org.springframework.beans.factory.annotation.Autowired
     private MicroCaseInoculationDAO cultureRows;
-    @org.springframework.beans.factory.annotation.Autowired
-    private MicroCultureDAO cultureData;
     private final MicroCaseDAO cases;
     private final MicroCaseAnalysisDAO links;
     private final MicroCaseSearchDAO search;
@@ -163,7 +161,7 @@ public class MicroCaseResultServiceImpl implements MicroCaseResultService {
         var c = writeCase(caseId, actor, Constants.ROLE_RESULTS);
         if (request == null || !List.of("INITIAL", "ADDITIONAL", "CULTURE").contains(request.placement))
             bad("MICROBIOLOGY_PLACEMENT_REQUIRED");
-        var specimen = ("CULTURE".equals(request.placement) ? cultureData.getSources(caseId)
+        var specimen = ("CULTURE".equals(request.placement) ? cultureRows.getSources(caseId)
                 : search.getSamples(caseId)).stream().filter(s -> s.getId().equals(request.sampleItemId)).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_SAMPLE_CASE_MISMATCH"));
         if ("CULTURE".equals(request.placement)) {

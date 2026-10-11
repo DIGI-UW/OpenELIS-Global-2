@@ -40,7 +40,7 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Autowired
     private MicroCultureService service;
     @Autowired
-    private MicroCultureDAO cultures;
+    private MicroCaseInoculationDAO cultures;
     @Autowired
     private MicroCaseDAO cases;
     @Autowired
