@@ -139,7 +139,7 @@ test.describe("OGC-782 microbiology MVP", () => {
 
     await test.step("Create a clinically significant isolate", async () => {
       await demo.step(3, "Add a clinically significant isolate");
-      await createMicrobiologyIsolate(page);
+      await createMicrobiologyIsolate(page, seeded);
       await expect(page).toHaveURL(/section=isolates/);
       await captureCard(
         page,
@@ -149,7 +149,7 @@ test.describe("OGC-782 microbiology MVP", () => {
       );
       await identifyMicrobiologyIsolate(page, organismId);
       await expect(
-        page.getByText(/ISO-1: Escherichia coli \(UAT\)/),
+        page.getByText(/ISO-1 — Escherichia coli \(UAT\)/),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(
         page.getByTestId("microbiology-isolates-card"),
@@ -345,11 +345,11 @@ test.describe("OGC-782 microbiology MVP", () => {
       await accordionButton(page, "Isolates").click();
       await expect(page).toHaveURL(/section=isolates/);
       await expect(
-        page.getByRole("button", { name: "Edit isolate" }),
-      ).toBeDisabled();
+        page.getByRole("button", { name: "Reidentify", exact: true }),
+      ).toHaveCount(0);
       await expect(
-        page.getByRole("button", { name: "Create isolate" }),
-      ).toBeDisabled();
+        page.getByRole("button", { name: "Pick isolate", exact: true }),
+      ).toHaveCount(0);
 
       await demo.step(
         9,
@@ -362,7 +362,7 @@ test.describe("OGC-782 microbiology MVP", () => {
         page.getByRole("heading", { name: "Patient History" }),
       ).toBeVisible({ timeout: LONG_TIMEOUT });
       const releasedResultRow = page.getByRole("row", {
-        name: /UAT microbiology culture.*ISO-1: Escherichia coli \(UAT\)/,
+        name: /UAT microbiology culture.*ISO-1 — Escherichia coli \(UAT\)/,
       });
       await expect(releasedResultRow).toBeVisible({ timeout: LONG_TIMEOUT });
       await expect(releasedResultRow).toContainText("Ciprofloxacin (UAT) R");

@@ -9,6 +9,14 @@ import MicrobiologyCaseView from "../MicrobiologyCaseView";
 import CaseWorkspaceService from "../CaseWorkspaceService";
 import messages from "../../../languages/en.json";
 
+vi.mock("../IsolatePanel", () => ({
+  default: ({ onChanged, readOnly }) => (
+    <button onClick={onChanged} disabled={readOnly}>
+      Save isolate
+    </button>
+  ),
+}));
+
 const caseDetail = {
   id: "case-1",
   sampleItemId: "1001",
@@ -844,6 +852,10 @@ describe("MicrobiologyCaseView", () => {
         .fn()
         .mockResolvedValueOnce(caseDetail)
         .mockResolvedValueOnce(refreshedCase),
+      getCaseTimeline: vi
+        .fn()
+        .mockResolvedValueOnce(caseDetail.activities)
+        .mockResolvedValueOnce(refreshedCase.activities),
       recordCaseActivity: vi.fn(),
       createIsolate: vi.fn().mockResolvedValue({ id: "iso-1" }),
     };
@@ -861,30 +873,11 @@ describe("MicrobiologyCaseView", () => {
         screen.getByTestId("microbiology-case-section-isolates"),
       ).toHaveFocus(),
     );
-    await user.type(screen.getByLabelText("Gram stain"), "Gram negative rods");
-    await user.type(
-      screen.getByLabelText("Colony morphology"),
-      "Lactose fermenting colonies",
-    );
-    await user.click(screen.getByRole("button", { name: "Create isolate" }));
-
-    await waitFor(() =>
-      expect(service.createIsolate).toHaveBeenCalledWith({
-        caseId: "case-1",
-        isolateLabel: "ISO-1",
-        gramStain: "Gram negative rods",
-        colonyMorphology: "Lactose fermenting colonies",
-        significance: "CLINICALLY_SIGNIFICANT",
-      }),
-    );
-    await waitFor(() =>
-      expect(
-        screen.getByTestId("microbiology-isolates-card"),
-      ).toHaveTextContent("ISO-1: Escherichia coli"),
-    );
+    await user.click(screen.getByRole("button", { name: "Save isolate" }));
+    await waitFor(() => expect(service.getCaseDetail).toHaveBeenCalledTimes(2));
     await user.click(getAccordionButton("Timeline"));
     await screen.findByTestId("microbiology-case-section-timeline");
-    expect(screen.getByText("Isolate Created")).toBeInTheDocument();
+    expect(await screen.findByText("Isolate Created")).toBeInTheDocument();
   });
 
   it("keeps worklist context while selecting a case section and returning", async () => {
@@ -950,9 +943,6 @@ describe("MicrobiologyCaseView", () => {
     expect(
       await screen.findByText("Final case is read-only"),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Edit isolate" })).toBeDisabled();
-    expect(
-      screen.getByRole("button", { name: "Create isolate" }),
-    ).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save isolate" })).toBeDisabled();
   });
 });

@@ -61,7 +61,15 @@ const labels = {
   PENDING: "microbiology.isolate.pending",
 };
 
-function IsolateAction({ action, options, cultures, saving, onSave, onClose }) {
+function IsolateAction({
+  action,
+  options,
+  cultures,
+  saving,
+  error,
+  onSave,
+  onClose,
+}) {
   const intl = useIntl();
   const t = (key, values) =>
     intl.formatMessage(
@@ -202,6 +210,9 @@ function IsolateAction({ action, options, cultures, saving, onSave, onClose }) {
       preventCloseOnClickOutside
     >
       <Stack gap={5}>
+        {error && (
+          <InlineNotification kind="error" title={t(error)} hideCloseButton />
+        )}
         {action.kind === "pick" && (
           <>
             {select(
@@ -295,6 +306,7 @@ export default function CaseIsolateWorkspace({
   initialCultureId = "",
   onChanged,
   onClosePick,
+  onLogCritical,
 }) {
   const intl = useIntl();
   const t = (key, values) =>
@@ -378,9 +390,9 @@ export default function CaseIsolateWorkspace({
     }
   };
   return (
-    <Stack gap={5}>
+    <Stack gap={5} data-testid="microbiology-isolates-card">
       <h2>{t("title")}</h2>
-      {error && (
+      {error && !action && (
         <InlineNotification kind="error" title={t(error)} hideCloseButton />
       )}
       {!data && !error && <InlineLoading description={t("loading")} />}
@@ -511,6 +523,19 @@ export default function CaseIsolateWorkspace({
                         </Button>
                       </Column>
                     )}
+                  {onLogCritical && (
+                    <Column sm={4} md={4} lg={4}>
+                      <Button
+                        kind="ghost"
+                        onClick={() => onLogCritical(isolate)}
+                      >
+                        {intl.formatMessage(
+                          { id: "microbiology.critical.logForIsolate" },
+                          { isolate: isolate.label },
+                        )}
+                      </Button>
+                    </Column>
+                  )}
                   {detail.canWrite && (
                     <>
                       {isolate.received && !isolate.organismId && (
@@ -554,42 +579,44 @@ export default function CaseIsolateWorkspace({
                 </Grid>
                 <Accordion>
                   <AccordionItem title={t("history")}>
-                    <Table aria-label={t("history")}>
-                      <TableHead>
-                        <TableRow>
-                          {[
-                            "organismId",
-                            "identificationStatus",
-                            "identificationMethod",
-                            "confidence",
-                            "identifiedAt",
-                            "by",
-                            "recordedAt",
-                            "reason",
-                          ].map((key) => (
-                            <TableHeader key={key}>{t(key)}</TableHeader>
-                          ))}
-                        </TableRow>
-                      </TableHead>
-                      <TableBody>
-                        {isolate.history.map((event) => (
-                          <TableRow key={event.id}>
-                            <TableCell>{event.organismName}</TableCell>
-                            <TableCell>{t(event.status)}</TableCell>
-                            <TableCell>{event.method}</TableCell>
-                            <TableCell>
-                              {event.confidence == null
-                                ? t("notAvailable")
-                                : intl.formatNumber(event.confidence)}
-                            </TableCell>
-                            <TableCell>{date(event.identifiedAt)}</TableCell>
-                            <TableCell>{event.by}</TableCell>
-                            <TableCell>{date(event.at)}</TableCell>
-                            <TableCell>{event.reason}</TableCell>
+                    <TableContainer>
+                      <Table aria-label={t("history")}>
+                        <TableHead>
+                          <TableRow>
+                            {[
+                              "organismId",
+                              "identificationStatus",
+                              "identificationMethod",
+                              "confidence",
+                              "identifiedAt",
+                              "by",
+                              "recordedAt",
+                              "reason",
+                            ].map((key) => (
+                              <TableHeader key={key}>{t(key)}</TableHeader>
+                            ))}
                           </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
+                        </TableHead>
+                        <TableBody>
+                          {isolate.history.map((event) => (
+                            <TableRow key={event.id}>
+                              <TableCell>{event.organismName}</TableCell>
+                              <TableCell>{t(event.status)}</TableCell>
+                              <TableCell>{event.method}</TableCell>
+                              <TableCell>
+                                {event.confidence == null
+                                  ? t("notAvailable")
+                                  : intl.formatNumber(event.confidence)}
+                              </TableCell>
+                              <TableCell>{date(event.identifiedAt)}</TableCell>
+                              <TableCell>{event.by}</TableCell>
+                              <TableCell>{date(event.at)}</TableCell>
+                              <TableCell>{event.reason}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TableContainer>
                   </AccordionItem>
                 </Accordion>
               </Stack>
@@ -638,6 +665,7 @@ export default function CaseIsolateWorkspace({
               options={options}
               cultures={cultures}
               saving={saving}
+              error={error}
               onSave={save}
               onClose={close}
             />

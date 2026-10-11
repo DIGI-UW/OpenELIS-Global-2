@@ -81,7 +81,7 @@ test.describe("Microbiology reagent and card lot traceability", () => {
     });
 
     await test.step("Create the isolate needed for AST", async () => {
-      await createAndIdentifyMicrobiologyIsolate(page, seeded.organismId!);
+      await createAndIdentifyMicrobiologyIsolate(page, seeded);
     });
 
     await test.step("Choose and retain the exact AST card lot", async () => {
