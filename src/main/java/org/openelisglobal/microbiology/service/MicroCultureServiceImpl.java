@@ -29,7 +29,9 @@ import org.springframework.web.server.ResponseStatusException;
 @Transactional(readOnly = true)
 public class MicroCultureServiceImpl implements MicroCultureService {
     private final MicroCaseDAO cases;
-    private final MicroCultureDAO cultures;
+    private final MicroCultureReadingDAO readings;
+    private final MicroCultureExtensionDAO extensions;
+    private final MicroCultureProposalDAO proposals;
     private final MicroCaseInoculationDAO rows;
     private final MicroCaseAnalysisDAO analyses;
     private final MicroCaseActivityDAO activities;
@@ -41,13 +43,16 @@ public class MicroCultureServiceImpl implements MicroCultureService {
     private final TestReagentLinkService mediaLinks;
     private final org.openelisglobal.typeofsample.service.TypeOfSampleTestService sampleTests;
 
-    public MicroCultureServiceImpl(MicroCaseDAO cases, MicroCultureDAO cultures, MicroCaseInoculationDAO rows,
-            MicroCaseAnalysisDAO analyses, MicroCaseActivityDAO activities, MicrobiologyCaseAccessService access,
-            InventoryItemService items, InventoryLotService lots, DictionaryService dictionaries,
-            TestSectionService units, TestReagentLinkService mediaLinks,
+    public MicroCultureServiceImpl(MicroCaseDAO cases, MicroCaseInoculationDAO rows, MicroCultureReadingDAO readings,
+            MicroCultureExtensionDAO extensions, MicroCultureProposalDAO proposals, MicroCaseAnalysisDAO analyses,
+            MicroCaseActivityDAO activities, MicrobiologyCaseAccessService access, InventoryItemService items,
+            InventoryLotService lots, DictionaryService dictionaries, TestSectionService units,
+            TestReagentLinkService mediaLinks,
             org.openelisglobal.typeofsample.service.TypeOfSampleTestService sampleTests) {
         this.cases = cases;
-        this.cultures = cultures;
+        this.readings = readings;
+        this.extensions = extensions;
+        this.proposals = proposals;
         this.rows = rows;
         this.analyses = analyses;
         this.activities = activities;
@@ -72,7 +77,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
 
     @Override
     public List<MicroCultureForm> getRows(String caseId) {
-        return cultures.getRows(caseId).stream().map(this::form).toList();
+        return rows.getRows(caseId).stream().map(this::form).toList();
     }
 
     @Override
@@ -96,7 +101,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
         var c = cases.get(caseId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
         var f = getCatalog();
         f.requireTrackedMedia = units.get(c.getLabUnitId()).isRequireTrackedMedia();
-        f.sources = cultures.getSources(caseId).stream().filter(s -> !s.isRejected())
+        f.sources = rows.getSources(caseId).stream().filter(s -> !s.isRejected())
                 .map(s -> new MicroCultureOptionsForm.Source(s.getId(),
                         s.getExternalId() == null ? s.getSample().getAccessionNumber() + "-" + s.getSortOrder()
                                 : s.getExternalId(),
@@ -218,7 +223,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
             reading.setRecordedBy(actor);
             reading.setRecordedAt(now);
             reading.setSysUserId(actor);
-            cultures.insert(reading);
+            readings.insert(reading);
             row.getReadings().add(reading);
         }
         case "extension" -> {
@@ -234,7 +239,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
             extension.setRecordedAt(now);
             extension.setRecordedBy(actor);
             extension.setSysUserId(actor);
-            cultures.insert(extension);
+            extensions.insert(extension);
             row.getExtensions().add(extension);
         }
         case "inoculated-time" -> {
@@ -249,7 +254,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
             if (row.getSourceInoculationId() != null
                     && r.inoculatedAt.before(requireRow(caseId, row.getSourceInoculationId()).getOccurredAt()))
                 bad("PARENT_TIME");
-            if (cultures.getRows(caseId).stream().anyMatch(child -> rowId.equals(child.getSourceInoculationId())
+            if (rows.getRows(caseId).stream().anyMatch(child -> rowId.equals(child.getSourceInoculationId())
                     && r.inoculatedAt.after(child.getOccurredAt())))
                 bad("PARENT_TIME");
             audit(caseId, "CULTURE_INOCULATED_TIME", rowId, Map.of("old", row.getOccurredAt(), "new", r.inoculatedAt),
@@ -271,7 +276,7 @@ public class MicroCultureServiceImpl implements MicroCultureService {
             proposal.setRecordedAt(now);
             proposal.setRecordedBy(actor);
             proposal.setSysUserId(actor);
-            cultures.insert(proposal);
+            proposals.insert(proposal);
             row.getProposals().add(proposal);
         }
         case "outcome" -> {
@@ -318,12 +323,12 @@ public class MicroCultureServiceImpl implements MicroCultureService {
     }
 
     private MicroCaseInoculation requireRow(String caseId, String rowId) {
-        return cultures.getRows(caseId).stream().filter(r -> r.getId().equals(rowId)).findFirst()
+        return rows.getRows(caseId).stream().filter(r -> r.getId().equals(rowId)).findFirst()
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
     }
 
     private SampleItem requireSource(String caseId, String id) {
-        return cultures.getSources(caseId).stream().filter(s -> s.getId().equals(id) && !s.isRejected()).findFirst()
+        return rows.getSources(caseId).stream().filter(s -> s.getId().equals(id) && !s.isRejected()).findFirst()
                 .orElseThrow(() -> new IllegalArgumentException("MICROBIOLOGY_CULTURE_SOURCE"));
     }
 

@@ -31,6 +31,10 @@ unit and rejects terminal/final locks. Direct links retain the M2 read-only
 exception. Controllers compile no entity relationships and define no
 transactions. The service builds DTOs inside its transaction; separate HQL
 collection fetches initialize histories without multiple-bag/cartesian joins.
+The existing inoculation DAO owns eager row and specimen queries. Typed
+reading, extension and proposal DAOs extend the repository persistence base;
+there is no generic history insertion helper. Architecture regressions cover
+both culture controllers and require typed DAO inheritance.
 Foreign sources, rows, parent links and culture-test source mismatches are
 rejected. Two cultures may independently carry the same catalog test.
 
@@ -56,8 +60,10 @@ The lab-unit editor configures `requireTrackedMedia` and its Gram stain test.
 The engineering spec scopes mandatory tracking to the lab unit, default off.
 A tracked item or a unit requiring tracking forbids Not tracked; otherwise the
 user can choose it. Tracked selections require a matching active/in-use,
-QC-passed, unexpired lot with positive current quantity. Decimal timing and
-physical values are validated before persistence to prevent silent rounding.
+QC-passed, unexpired lot with positive current quantity. Duration, duration
+unit and atmosphere are required. Temperature, check
+interval and loop volume are optional; supplied values are validated before
+persistence to prevent silent rounding.
 
 Liquibase migration 121 adds nullable fields for historic rows and three
 append-only history tables, foreign keys/indexes and coded choice seeds. Both
@@ -104,9 +110,13 @@ same backend setup and the Cypress independent Site Information toggle. The
 review corrections passed 65 frontend tests across eight files and 46 backend
 tests, including a missing-category regression that reproduced the backend
 error before the correction. A fresh full run must verify all gates again.
-Full local CI and GitHub
-checkpoint results remain separate gates, reported in the PR. Owner acceptance
-is pending.
+The DAO consolidation passed 60 backend tests across six classes: culture
+persistence, case results/workspace, timing, ORM mappings and architecture.
+The new DAO architecture guard failed on the removed generic helper before
+the correction. Both culture controllers now participate in the transaction
+and role-boundary regressions.
+Full local CI and GitHub checkpoint results remain separate gates, reported in
+the PR. Owner acceptance is pending.
 
 Incoming instrument adapters, isolates and AST remain later roadmap slices.
 The retained workbench mutation path is scheduled for priority removal in
