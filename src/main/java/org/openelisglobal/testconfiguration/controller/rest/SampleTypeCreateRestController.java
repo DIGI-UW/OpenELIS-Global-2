@@ -110,6 +110,7 @@ public class SampleTypeCreateRestController extends BaseController {
 
         TypeOfSample typeOfSample = createTypeOfSample(identifyingName, form.getDescription(), userId,
                 backendDomainCode, form.getWhonetCode(), Boolean.TRUE.equals(form.getActive()));
+        typeOfSample.setMicrobiologyIsolate(Boolean.TRUE.equals(form.getMicrobiologyIsolate()));
         if (typeOfSampleService.nameInUse(identifyingName)) {
             return ResponseEntity.status(HttpStatus.CONFLICT).body(duplicateNameBody(identifyingName));
         }

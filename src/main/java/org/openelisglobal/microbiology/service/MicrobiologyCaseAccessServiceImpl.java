@@ -36,7 +36,7 @@ public class MicrobiologyCaseAccessServiceImpl implements MicrobiologyCaseAccess
         if (userRoles.userInRole(userId, Constants.ROLE_GLOBAL_ADMIN))
             return null;
         var role = roles.getRoleByName(roleName);
-        if (role == null)
+        if (role == null || role.getId() == null || "-1".equals(role.getId()))
             return Set.of();
         UserLabUnitRoles assignments = users.getUserLabUnitRoles(userId);
         Set<String> ids = new LinkedHashSet<>();

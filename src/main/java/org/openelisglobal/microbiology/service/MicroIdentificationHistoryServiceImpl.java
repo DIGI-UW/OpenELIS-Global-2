@@ -36,9 +36,14 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
 
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setIsolateId(updated.getId());
+        event.setEventSequence(identificationEventDAO.getByIsolateId(updated.getId()).stream()
+                .mapToLong(MicroIsolateIdentificationEvent::getEventSequence).max().orElse(0) + 1);
         event.setAmendmentId(amendment == null ? null : amendment.getId());
         event.setEventType(hasIdentification(previous) ? MicroIdentificationEventType.REIDENTIFIED.name()
                 : MicroIdentificationEventType.IDENTIFIED.name());
+        event.setPreviousIdentifiedAt(previous.getIdentifiedAt());
+        event.setPreviousMismatchAcknowledgedBy(previous.getMismatchAcknowledgedBy());
+        event.setPreviousMismatchAcknowledgedAt(previous.getMismatchAcknowledgedAt());
         event.setPreviousOrganismId(previous.getOrganismId());
         event.setPreviousOrganismText(previous.getPreliminaryOrganismText());
         event.setPreviousSignificance(previous.getSignificance());
@@ -52,9 +57,12 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
         event.setNewIdentificationMethod(updated.getIdentificationMethod());
         event.setNewIdentificationConfidence(updated.getIdentificationConfidence());
         event.setReason(hasText(reason) ? reason.trim() : "Identification updated");
+        event.setIdentifiedAt(updated.getIdentifiedAt());
         event.setChangedAt(MicroCaseServiceImpl.now());
         event.setChangedBy(performedBy);
         identificationEventDAO.insert(event);
+        if (updated.getIdentificationHistory().stream().noneMatch(e -> e.getId().equals(event.getId())))
+            updated.getIdentificationHistory().add(event);
         return event;
     }
 
@@ -70,6 +78,9 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
             MicroIsolate isolate = isolateDAO.get(source.getIsolateId())
                     .orElseThrow(() -> new IllegalStateException("AMENDMENT_ISOLATE_MISSING"));
             MicroIsolate current = snapshot(isolate);
+            isolate.setIdentifiedAt(source.getPreviousIdentifiedAt());
+            isolate.setMismatchAcknowledgedBy(source.getPreviousMismatchAcknowledgedBy());
+            isolate.setMismatchAcknowledgedAt(source.getPreviousMismatchAcknowledgedAt());
             isolate.setOrganismId(source.getPreviousOrganismId());
             isolate.setPreliminaryOrganismText(source.getPreviousOrganismText());
             isolate.setSignificance(source.getPreviousSignificance());
@@ -89,8 +100,7 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
     }
 
     private boolean hasIdentification(MicroIsolate isolate) {
-        return hasText(isolate.getOrganismId()) || hasText(isolate.getPreliminaryOrganismText())
-                || hasText(isolate.getIdentificationStatus());
+        return hasText(isolate.getOrganismId()) || hasText(isolate.getPreliminaryOrganismText());
     }
 
     private MicroIsolate snapshot(MicroIsolate isolate) {
@@ -103,6 +113,9 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
         snapshot.setIdentificationStatus(isolate.getIdentificationStatus());
         snapshot.setIdentificationMethod(isolate.getIdentificationMethod());
         snapshot.setIdentificationConfidence(isolate.getIdentificationConfidence());
+        snapshot.setIdentifiedAt(isolate.getIdentifiedAt());
+        snapshot.setMismatchAcknowledgedBy(isolate.getMismatchAcknowledgedBy());
+        snapshot.setMismatchAcknowledgedAt(isolate.getMismatchAcknowledgedAt());
         return snapshot;
     }
 
@@ -110,8 +123,13 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
             String performedBy) {
         MicroIsolateIdentificationEvent event = new MicroIsolateIdentificationEvent();
         event.setIsolateId(updated.getId());
+        event.setEventSequence(identificationEventDAO.getByIsolateId(updated.getId()).stream()
+                .mapToLong(MicroIsolateIdentificationEvent::getEventSequence).max().orElse(0) + 1);
         event.setAmendmentId(amendmentId);
         event.setEventType(MicroIdentificationEventType.AMENDMENT_REVERTED.name());
+        event.setPreviousIdentifiedAt(previous.getIdentifiedAt());
+        event.setPreviousMismatchAcknowledgedBy(previous.getMismatchAcknowledgedBy());
+        event.setPreviousMismatchAcknowledgedAt(previous.getMismatchAcknowledgedAt());
         event.setPreviousOrganismId(previous.getOrganismId());
         event.setPreviousOrganismText(previous.getPreliminaryOrganismText());
         event.setPreviousSignificance(previous.getSignificance());
@@ -124,6 +142,7 @@ public class MicroIdentificationHistoryServiceImpl implements MicroIdentificatio
         event.setNewIdentificationStatus(updated.getIdentificationStatus());
         event.setNewIdentificationMethod(updated.getIdentificationMethod());
         event.setNewIdentificationConfidence(updated.getIdentificationConfidence());
+        event.setIdentifiedAt(updated.getIdentifiedAt());
         event.setReason(reason);
         event.setChangedAt(MicroCaseServiceImpl.now());
         event.setChangedBy(performedBy);

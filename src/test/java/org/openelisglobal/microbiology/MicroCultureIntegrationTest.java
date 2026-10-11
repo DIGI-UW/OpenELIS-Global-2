@@ -78,8 +78,8 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
     @Override
     public void setUp() throws Exception {
         super.setUp();
-        executeDataSetWithStateManagement("testdata/role.xml");
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/role.xml");
         ensureVocabulary("Culture atmosphere", "Aerobic");
         ensureVocabulary("Culture reading", "Growth observed");
         ensureVocabulary("Culture quantity", "Scant");

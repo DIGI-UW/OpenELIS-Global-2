@@ -64,7 +64,24 @@ export const cultureAction = (id, rowId, action, body) =>
     `${caseUrl(id)}/cultures/${encodeURIComponent(rowId)}/${encodeURIComponent(action)}`,
     body,
   );
+export const getIsolates = (id) => read(`${caseUrl(id)}/isolates`);
+export const getIsolateOptions = (id) =>
+  read(`${caseUrl(id)}/isolates/options`);
+export const pickIsolate = (id, body) =>
+  mutate(`${caseUrl(id)}/isolates`, body);
+export const referSpecimen = (id, body) =>
+  mutate(`${caseUrl(id)}/isolates/referrals`, body);
+export const isolateAction = (id, isolateId, action, body) =>
+  mutate(
+    `${caseUrl(id)}/isolates/${encodeURIComponent(isolateId)}/${encodeURIComponent(action)}`,
+    body,
+  );
 export default {
+  getIsolates,
+  getIsolateOptions,
+  pickIsolate,
+  referSpecimen,
+  isolateAction,
   getCultures,
   getCultureOptions,
   inoculateCulture,

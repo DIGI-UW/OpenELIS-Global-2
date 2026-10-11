@@ -78,8 +78,8 @@ public class MicroCaseResultIntegrationTest extends BaseWebContextSensitiveTest 
     public void setUp() throws Exception {
         super.setUp();
         executeDataSetWithStateManagement("testdata/analysis.xml");
-        executeDataSetWithStateManagement("testdata/role.xml");
         executeDataSetWithStateManagement("testdata/system-user.xml");
+        executeDataSetWithStateManagement("testdata/role.xml");
         fixtures.ensureRequiredWorkflowStatuses();
         if ("-1".equals(statuses.getStatusID(AnalysisStatus.TechnicalAcceptance))) {
             var status = new org.openelisglobal.statusofsample.valueholder.StatusOfSample();

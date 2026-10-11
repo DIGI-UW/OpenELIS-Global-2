@@ -100,6 +100,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class MicrobiologyUatScenarioService {
 
+    @org.springframework.beans.factory.annotation.Autowired
+    private MicroReceivedIsolateService receivedIsolates;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.organization.service.OrganizationService organizations;
+    @org.springframework.beans.factory.annotation.Autowired
+    private org.openelisglobal.referral.service.ReferralReasonService referralReasons;
+    private static final String ISOLATE_WORKSPACE_SCENARIO = "ISOLATE_WORKSPACE";
+    private static final String RECEIVED_ISOLATE_SCENARIO = "RECEIVED_ISOLATE";
     private static final String INITIAL_TESTING_SCENARIO = "INITIAL_TESTING";
     @org.springframework.beans.factory.annotation.Autowired
     private org.openelisglobal.testresultcomponent.service.TestResultComponentService components;
@@ -218,6 +226,8 @@ public class MicrobiologyUatScenarioService {
     @Transactional
     public MicrobiologyUatScenarioForm provision(MicrobiologyUatScenarioRequestForm request, String performedBy) {
         String scenario = normalizeScenario(request == null ? null : request.scenario);
+        boolean isolateWorkspace = ISOLATE_WORKSPACE_SCENARIO.equals(scenario)
+                || RECEIVED_ISOLATE_SCENARIO.equals(scenario);
         Analyzer analyzer = ANALYZER_REVIEW_SCENARIO.equals(scenario)
                 ? requireConfiguredAnalyzer(request == null ? null : request.analyzerInstrumentId)
                 : null;
@@ -252,7 +262,7 @@ public class MicrobiologyUatScenarioService {
 
         if (WHONET_EXPORT_SCENARIO.equals(scenario)) {
             ensureSampleType(sampleItem, getOrCreateWhonetPendingSampleType(suffix, performedBy), performedBy);
-        } else if (CULTURE_WORKSPACE_SCENARIO.equals(scenario)) {
+        } else if ((CULTURE_WORKSPACE_SCENARIO.equals(scenario) || isolateWorkspace)) {
             ensureSampleType(sampleItem, getOrCreateUatSampleType("UAT culture specimen " + suffix,
                     "T" + suffix.substring(0, 9), performedBy), performedBy);
         } else {
@@ -272,7 +282,7 @@ public class MicrobiologyUatScenarioService {
             ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), followUp, performedBy);
         }
         InventoryItem cultureMedium = null;
-        if (CULTURE_WORKSPACE_SCENARIO.equals(scenario)) {
+        if ((CULTURE_WORKSPACE_SCENARIO.equals(scenario) || isolateWorkspace)) {
             test = getOrCreateUatTest("UAT culture " + suffix, true, method, performedBy);
             var unit = testSectionService.getTestSectionByName("M4 " + suffix);
             if (unit == null)
@@ -334,6 +344,37 @@ public class MicrobiologyUatScenarioService {
                             }
                         });
         }
+        TypeOfSample isolateSampleType = null;
+        org.openelisglobal.organization.valueholder.Organization referenceLab = null;
+        org.openelisglobal.referral.valueholder.ReferralReason referralReason = null;
+        if (isolateWorkspace) {
+            isolateSampleType = getOrCreateUatSampleType("UAT isolate " + suffix, "I" + suffix.substring(0, 9),
+                    performedBy);
+            isolateSampleType.setMicrobiologyIsolate(true);
+            isolateSampleType.setSysUserId(performedBy);
+            typeOfSampleService.update(isolateSampleType);
+            ensureOrderableSampleTypeMapping(isolateSampleType, followUp, performedBy);
+            if (RECEIVED_ISOLATE_SCENARIO.equals(scenario))
+                ensureSampleType(sampleItem, isolateSampleType, performedBy);
+            referenceLab = organizations.getAll().stream()
+                    .filter(o -> ("UAT reference " + suffix).equals(o.getOrganizationName())).findFirst().orElse(null);
+            if (referenceLab == null) {
+                referenceLab = new org.openelisglobal.organization.valueholder.Organization();
+                referenceLab.setOrganizationName("UAT reference " + suffix);
+                referenceLab.setIsActive("Y");
+                referenceLab.setMlsSentinelLabFlag("N");
+                referenceLab.setSysUserId(performedBy);
+                organizations.insert(referenceLab);
+            }
+            referralReason = referralReasons.getAllReferralReasons().stream()
+                    .filter(r -> ("UAT confirmation " + suffix).equals(r.getName())).findFirst().orElse(null);
+            if (referralReason == null) {
+                referralReason = new org.openelisglobal.referral.valueholder.ReferralReason();
+                referralReason.setName("UAT confirmation " + suffix);
+                referralReason.setSysUserId(performedBy);
+                referralReasons.insert(referralReason);
+            }
+        }
         ensureInventoryTraceability(test, performedBy);
         ensureSpecimenLostVocabulary(performedBy);
         ensureOrderableSampleTypeMapping(sampleItem.getTypeOfSample(), test, performedBy);
@@ -361,6 +402,8 @@ public class MicrobiologyUatScenarioService {
             entityManager.createQuery("update MicroCase c set c.workflowType = 'BACTERIOLOGY' where c.id = :id")
                     .setParameter("id", microCase.getId()).executeUpdate();
         }
+        if (RECEIVED_ISOLATE_SCENARIO.equals(scenario))
+            receivedIsolates.receive(microCase.getId(), sampleItem, performedBy);
         AstScenarioData astScenarioData = null;
         if (REVIEWED_AST_SCENARIO.equals(scenario) || WHONET_FILTER_SCENARIO.equals(scenario)) {
             astScenarioData = ensureReviewedAstScenario(microCase, astReferenceData, performedBy);
@@ -369,6 +412,9 @@ public class MicrobiologyUatScenarioService {
         }
 
         MicrobiologyUatScenarioForm form = new MicrobiologyUatScenarioForm();
+        form.isolateSampleTypeId = isolateSampleType == null ? null : isolateSampleType.getId();
+        form.referralOrganizationId = referenceLab == null ? null : referenceLab.getId();
+        form.referralReasonId = referralReason == null ? null : referralReason.getId();
         form.scenario = scenario;
         form.scenarioKey = scenarioKey;
         form.accessionNumber = accessionNumber;
@@ -1232,11 +1278,12 @@ public class MicrobiologyUatScenarioService {
 
     private String normalizeScenario(String scenario) {
         String normalized = scenario == null ? "MVP" : scenario.trim().toUpperCase(Locale.ROOT);
-        if (!CULTURE_WORKSPACE_SCENARIO.equals(normalized) && !"CASE".equals(normalized) && !"MVP".equals(normalized)
-                && !WORKLIST_SCENARIO.equals(normalized) && !INITIAL_TESTING_SCENARIO.equals(normalized)
-                && !REFERENCE_ADMIN_SCENARIO.equals(normalized) && !WHONET_EXPORT_SCENARIO.equals(normalized)
-                && !REVIEWED_AST_SCENARIO.equals(normalized) && !WHONET_FILTER_SCENARIO.equals(normalized)
-                && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
+        if (!ISOLATE_WORKSPACE_SCENARIO.equals(normalized) && !RECEIVED_ISOLATE_SCENARIO.equals(normalized)
+                && !CULTURE_WORKSPACE_SCENARIO.equals(normalized) && !"CASE".equals(normalized)
+                && !"MVP".equals(normalized) && !WORKLIST_SCENARIO.equals(normalized)
+                && !INITIAL_TESTING_SCENARIO.equals(normalized) && !REFERENCE_ADMIN_SCENARIO.equals(normalized)
+                && !WHONET_EXPORT_SCENARIO.equals(normalized) && !REVIEWED_AST_SCENARIO.equals(normalized)
+                && !WHONET_FILTER_SCENARIO.equals(normalized) && !ANALYZER_REVIEW_SCENARIO.equals(normalized)) {
             throw new IllegalArgumentException(
                     "scenario must be CASE, MVP, WORKLIST, M3, M4, AST_REVIEWED, WHONET_FILTERS, or AST_ANALYZER_REVIEW");
         }

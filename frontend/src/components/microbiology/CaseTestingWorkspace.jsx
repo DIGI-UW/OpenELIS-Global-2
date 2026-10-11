@@ -314,8 +314,13 @@ function ResultEditor({ test, service, caseId, onSaved, onCancel }) {
 }
 
 import CaseCultureWorkspace from "./CaseCultureWorkspace";
+import CaseIsolateWorkspace from "./CaseIsolateWorkspace";
 
-export default function CaseTestingWorkspace({ detail, service }) {
+export default function CaseTestingWorkspace({
+  detail,
+  service,
+  onCaseChanged,
+}) {
   const mounted = useRef(true);
   useLayoutEffect(
     () => () => {
@@ -330,6 +335,7 @@ export default function CaseTestingWorkspace({ detail, service }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [cultureId, setCultureId] = useState("");
+  const [pickCultureId, setPickCultureId] = useState("");
   const [cultureSource, setCultureSource] = useState(null);
   const [placement, setPlacement] = useState("INITIAL");
   const [editor, setEditor] = useState(null);
@@ -580,6 +586,7 @@ export default function CaseTestingWorkspace({ detail, service }) {
       >
         <SelectItem value="INITIAL" text={t("microbiology.testing.initial")} />
         <SelectItem value="CULTURE" text={t("microbiology.culture.title")} />
+        <SelectItem value="ISOLATES" text={t("microbiology.case.isolates")} />
         <SelectItem
           value="ADDITIONAL"
           text={t("microbiology.testing.additional")}
@@ -591,6 +598,10 @@ export default function CaseTestingWorkspace({ detail, service }) {
           service={service}
           selectedId={cultureId}
           renderTests={renderTests}
+          onPickIsolate={(row) => {
+            setPickCultureId(row.id);
+            setPlacement("ISOLATES");
+          }}
           onSelect={(row) => {
             setCultureId(row.id);
             setCultureSource({
@@ -618,6 +629,22 @@ export default function CaseTestingWorkspace({ detail, service }) {
           }}
         />
       )}
+      {placement === "ISOLATES" && (
+        <CaseIsolateWorkspace
+          key={detail.id}
+          detail={detail}
+          service={service}
+          initialCultureId={pickCultureId}
+          onClosePick={() => setPickCultureId("")}
+          onChanged={() => {
+            service
+              .getTests(detail.id)
+              .then(setTests)
+              .catch(() => setError(true));
+            onCaseChanged?.();
+          }}
+        />
+      )}
       {loading && <InlineLoading description={t("common.loading")} />}
       {error && (
         <InlineNotification
@@ -626,11 +653,14 @@ export default function CaseTestingWorkspace({ detail, service }) {
           hideCloseButton
         />
       )}
-      {placement !== "CULTURE" && renderTests(null)}
-      {!loading && !tests.some((test) => test.placement === placement) && (
-        <p>{t("microbiology.testing.noTests")}</p>
-      )}
+      {["INITIAL", "ADDITIONAL"].includes(placement) && renderTests(null)}
+      {placement !== "ISOLATES" &&
+        !loading &&
+        !tests.some((test) => test.placement === placement) && (
+          <p>{t("microbiology.testing.noTests")}</p>
+        )}
       {detail.canWrite &&
+        placement !== "ISOLATES" &&
         selection.length > 0 &&
         (placement !== "CULTURE" || cultureId) && (
           <>
