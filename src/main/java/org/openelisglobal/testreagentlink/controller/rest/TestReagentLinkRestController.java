@@ -81,6 +81,7 @@ public class TestReagentLinkRestController extends BaseRestController {
         public Long reagentId;
         public String reagentName;
         public String manufacturer;
+        public boolean microbiologyMedium;
         public String usageType;
         public BigDecimal quantityPerTest;
         public String quantityUnit;
@@ -239,6 +240,7 @@ public class TestReagentLinkRestController extends BaseRestController {
         if (item != null) {
             r.reagentName = item.getName();
             r.manufacturer = item.getManufacturer();
+            r.microbiologyMedium = item.isMicrobiologyMedium();
             r.lowStockThreshold = item.getLowStockThreshold();
         }
         r.currentStock = inventoryItemService.getTotalCurrentStock(link.getReagentId());

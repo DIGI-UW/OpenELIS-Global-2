@@ -516,15 +516,17 @@ const ReagentsSection = ({ testId }) => {
                           </Tag>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            kind="ghost"
-                            size="sm"
-                            onClick={() => setCultureTarget(link)}
-                          >
-                            {intl.formatMessage({
-                              id: "microbiology.culture.mediaDefaults",
-                            })}
-                          </Button>
+                          {link.microbiologyMedium && (
+                            <Button
+                              kind="ghost"
+                              size="sm"
+                              onClick={() => setCultureTarget(link)}
+                            >
+                              {intl.formatMessage({
+                                id: "microbiology.culture.mediaDefaults",
+                              })}
+                            </Button>
+                          )}
                           <Button
                             kind="ghost"
                             size="sm"
