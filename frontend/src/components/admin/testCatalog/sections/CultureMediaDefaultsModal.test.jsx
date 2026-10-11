@@ -65,3 +65,52 @@ test("saves incubation defaults without discarding existing reagent usage; faile
   ).toHaveValue(56);
   expect(onSaved).not.toHaveBeenCalled();
 });
+
+test("selects and clears specimen-specific media defaults through Carbon controls", async () => {
+  getFromOpenElisServer.mockImplementation((url, callback) => {
+    callback(
+      url === "/rest/test-catalog/sample-types"
+        ? [
+            { id: "serum", name: "Serum" },
+            { id: "plasma", name: "Plasma" },
+          ]
+        : { atmospheres: [] },
+    );
+  });
+  putToOpenElisServer.mockClear();
+  putToOpenElisServer.mockImplementation((url, body, callback) =>
+    callback(200),
+  );
+  render(
+    <IntlProvider locale="en" messages={messages}>
+      <CultureMediaDefaultsModal
+        testId="12"
+        link={{
+          reagentId: 10,
+          sampleTypeId: "serum",
+          usageType: "PRIMARY",
+          quantityUnit: "mL",
+        }}
+        onClose={vi.fn()}
+        onSaved={vi.fn()}
+      />
+    </IntlProvider>,
+  );
+  const specimen = await screen.findByLabelText("Specimen type");
+  expect(specimen).toHaveValue("serum");
+  fireEvent.change(specimen, { target: { value: "plasma" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(JSON.parse(putToOpenElisServer.mock.calls[0][1])).toEqual(
+    expect.objectContaining({
+      sampleTypeId: "plasma",
+      cultureDefaultsChanged: true,
+      usageType: "PRIMARY",
+      quantityUnit: "mL",
+    }),
+  );
+  fireEvent.change(specimen, { target: { value: "" } });
+  fireEvent.click(screen.getByRole("button", { name: "Save" }));
+  expect(
+    JSON.parse(putToOpenElisServer.mock.calls[1][1]).sampleTypeId,
+  ).toBeNull();
+});

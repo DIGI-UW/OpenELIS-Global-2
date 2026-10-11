@@ -72,6 +72,11 @@ table and reapply them afterward.
 Focused tests cover real PostgreSQL migrations and persisted histories,
 source/lot/permission/final-lock rejection, temporal and precision boundaries,
 aliquots, culture tests, growth continuation, proposals and eager loading.
+Media defaults are editable only for inventory items tagged as microbiology
+media. Administrators can choose a specimen type or clear it to apply defaults
+to all specimen types. Historical rows without an available source retain their
+readings and outcomes, but hide subculture and culture-test actions.
+
 Component tests exercise actual Carbon controls, source-scoped Gram selection,
 media prefill, failed drafts, read-only controls and configuration payloads.
 The property-gated CULTURE_WORKSPACE browser scenario uses a unique case, lab
@@ -91,11 +96,15 @@ The synthetic culture scenario uses an independent specimen catalog and appends
 its lab unit after existing units; catalog visibility refreshes after commit.
 Spotless, Prettier and focused lint on the new culture UI/browser source passed.
 A broader lint check also reports existing inventory component hook rules and
-missing Vitest globals, reproduced unchanged on the parent branch. The first
-full local CI and GitHub runs failed; their culture fixture/vocabulary, migration
-test classification and timestamp-guard corrections passed focused regressions.
-The first local core shard also recorded admin/batch failures; a fresh full run
-must verify those rather than treating them as passing. Full local CI and GitHub
+missing Vitest globals, reproduced unchanged on the parent branch. On revision
+ef5fb7f3b4, GitHub Frontend, E2E and submodule gates passed; Backend
+failed because fixture-created dictionary categories omitted an abbreviation.
+The local full run passed all Playwright shards and Cypress core but failed the
+same backend setup and the Cypress independent Site Information toggle. The
+review corrections passed 65 frontend tests across eight files and 46 backend
+tests, including a missing-category regression that reproduced the backend
+error before the correction. A fresh full run must verify all gates again.
+Full local CI and GitHub
 checkpoint results remain separate gates, reported in the PR. Owner acceptance
 is pending.
 

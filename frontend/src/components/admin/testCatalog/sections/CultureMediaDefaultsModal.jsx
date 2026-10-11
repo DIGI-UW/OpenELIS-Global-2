@@ -21,6 +21,7 @@ export default function CultureMediaDefaultsModal({
   const intl = useIntl();
   const t = (key) => intl.formatMessage({ id: `microbiology.culture.${key}` });
   const [atmospheres, setAtmospheres] = useState([]);
+  const [sampleTypes, setSampleTypes] = useState([]);
   const [draft, setDraft] = useState({ ...link });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(false);
@@ -28,6 +29,9 @@ export default function CultureMediaDefaultsModal({
     let live = true;
     getFromOpenElisServer("/rest/microbiology/culture-catalog", (data) => {
       if (live && data?.atmospheres) setAtmospheres(data.atmospheres);
+    });
+    getFromOpenElisServer("/rest/test-catalog/sample-types", (data) => {
+      if (live && Array.isArray(data)) setSampleTypes(data);
     });
     return () => {
       live = false;
@@ -63,6 +67,7 @@ export default function CultureMediaDefaultsModal({
         ? null
         : draft.cultureDurationUnit || "HOURS";
     body.cultureAtmosphereId = draft.cultureAtmosphereId || null;
+    body.sampleTypeId = draft.sampleTypeId || null;
     putToOpenElisServer(
       `/rest/test-catalog/${testId}/reagents/${link.reagentId}`,
       JSON.stringify(body),
@@ -94,6 +99,22 @@ export default function CultureMediaDefaultsModal({
           />
         )}
         <p>{t("mediaDefaultsHelp")}</p>
+        <Select
+          id="media-default-specimen"
+          labelText={t("sampleTypeId")}
+          value={draft.sampleTypeId || ""}
+          onChange={(e) =>
+            setDraft((previous) => ({
+              ...previous,
+              sampleTypeId: e.target.value,
+            }))
+          }
+        >
+          <SelectItem value="" text={t("allSpecimenTypes")} />
+          {sampleTypes.map((option) => (
+            <SelectItem key={option.id} value={option.id} text={option.name} />
+          ))}
+        </Select>
         {input("cultureDuration", "duration")}
         <Select
           id="media-default-unit"

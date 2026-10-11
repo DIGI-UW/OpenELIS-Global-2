@@ -145,12 +145,21 @@ public class MicroCultureIntegrationTest extends BaseWebContextSensitiveTest {
         return id;
     }
 
+    @Test
+    public void provisionsVocabularyWhenTheCategoryIsAbsent() {
+        String name = "M4 missing " + UUID.randomUUID().toString().substring(0, 8);
+        ensureVocabulary(name, "New reading");
+        assertNotNull(categories.getDictionaryCategoryByName(name));
+        assertNotNull(dictionaries.getDictionaryEntryByNameAndCategoryName("New reading", name));
+    }
+
     private void ensureVocabulary(String name, String entry) {
         var category = categories.getDictionaryCategoryByName(name);
         if (category == null) {
             category = new org.openelisglobal.dictionarycategory.valueholder.DictionaryCategory();
             category.setCategoryName(name);
             category.setDescription(name);
+            category.setLocalAbbreviation("M4" + UUID.randomUUID().toString().substring(0, 8));
             category.setSysUserId("1");
             categories.insert(category);
         }

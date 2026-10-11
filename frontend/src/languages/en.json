@@ -12843,6 +12843,8 @@
   "microbiology.culture.save": "Save",
   "microbiology.culture.cancel": "Cancel",
   "microbiology.culture.sourceSampleItemId": "Source sample or aliquot",
+  "microbiology.culture.sampleTypeId": "Specimen type",
+  "microbiology.culture.allSpecimenTypes": "All specimen types",
   "microbiology.culture.subculturePurpose": "Subculture purpose",
   "microbiology.culture.containerIdentifier": "Bottle or plate identifier",
   "microbiology.culture.mediumItemId": "Medium",

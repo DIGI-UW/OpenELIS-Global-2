@@ -292,3 +292,18 @@ describe("ReagentsSection", () => {
     );
   });
 });
+
+it("offers culture defaults only for inventory items tagged as microbiology media", async () => {
+  const links = TWO_REAGENTS.map((link, index) => ({
+    ...link,
+    microbiologyMedium: index === 0,
+  }));
+  getFromOpenElisServer.mockImplementation((url, cb) => cb(links));
+  renderSection();
+  await screen.findByText("Glucose Reagent");
+  const actions = screen.getAllByRole("button", {
+    name: "Culture media defaults",
+  });
+  expect(actions).toHaveLength(1);
+  expect(actions[0].closest("tr")).toHaveTextContent("Glucose Reagent");
+});

@@ -344,3 +344,26 @@ test("changing the source refreshes its media-link incubation defaults", async (
     screen.getByLabelText(messages["microbiology.culture.durationUnit"]),
   ).toHaveValue("DAYS");
 });
+
+it.each([null, "missing-source"])(
+  "hides source-dependent actions for a historical row with source %s while preserving reading access",
+  async (sourceSampleItemId) => {
+    show(api([{ ...row, sourceSampleItemId }]));
+    await screen.findByRole("heading", { name: /PLATE-1/ });
+    expect(
+      screen.queryByRole("button", { name: "Subculture", exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", {
+        name: "Add test on this culture",
+        exact: true,
+      }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Gram stain", exact: true }),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add reading", exact: true }),
+    ).toBeEnabled();
+  },
+);
