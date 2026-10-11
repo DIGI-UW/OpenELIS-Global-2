@@ -488,7 +488,7 @@ describe("AnalyzerTypeManagement", () => {
         "FILE",
       ),
     );
-    expect(screen.getByText("Tecan Infinite F50")).toBeVisible();
+    expect(await screen.findByText("Tecan Infinite F50")).toBeVisible();
   });
 
   it("opens the read-only defaults and preserves the filtered return URL", async () => {
